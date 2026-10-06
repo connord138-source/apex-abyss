@@ -1,0 +1,38 @@
+{
+  "name": "ApexAbyss",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Players": {
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "Gravity": 0
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future"
+      }
+    }
+  }
+}

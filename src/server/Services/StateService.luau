@@ -1,0 +1,93 @@
+--!strict
+-- Replicates each player's own state to their client (HUD) a few times a second,
+-- only when something changed, and then only the top-level fields that changed.
+-- Services add their fields with StateService.provide; a service that changes
+-- something a provider reads calls DataService.markDirty(player).
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local Guard = require(script.Parent.Parent.Guard)
+local Net = require(script.Parent.Parent.Net)
+local DataService = require(script.Parent.DataService)
+
+type Provider = (player: Player, data: DataService.PlayerData, state: { [string]: any }) -> ()
+
+local StateService = {}
+
+local providers: { Provider } = {}
+-- What each client last received: top-level key → encoded value
+local sent: { [Player]: { [string]: string } } = {}
+local ALWAYS = "\0" -- a value that couldn't be encoded; resend it every time
+
+-- Adds fields to every player's state snapshot.
+function StateService.provide(provider: Provider)
+	table.insert(providers, provider)
+end
+
+local function encode(value: any): string?
+	if typeof(value) == "number" then
+		return string.format("%.17g", value)
+	elseif typeof(value) ~= "table" then
+		return `{typeof(value)}:{tostring(value)}`
+	end
+	local ok, json = pcall(HttpService.JSONEncode, HttpService, value)
+	return if ok then json else nil
+end
+
+-- The keys that changed since the last send, the keys that went away, and
+-- whether this is the first (full) snapshot.
+local function diff(player: Player, state: { [string]: any }): ({ [string]: any }, { string }, boolean)
+	local full = sent[player] == nil
+	local last: { [string]: string } = sent[player] or {}
+	local changes: { [string]: any } = {}
+	local cleared: { string } = {}
+	for key, value in state do
+		local encoded = encode(value)
+		if full or encoded == nil or last[key] ~= encoded then
+			changes[key] = value
+		end
+		last[key] = encoded or ALWAYS
+	end
+	for key in last do
+		if state[key] == nil then
+			table.insert(cleared, key)
+			last[key] = nil
+		end
+	end
+	sent[player] = last
+	return changes, cleared, full
+end
+
+local function snapshot(player: Player): { [string]: any }?
+	local data = DataService.get(player)
+	if data == nil then
+		return nil
+	end
+	local state: { [string]: any } = {}
+	for _, provider in providers do
+		provider(player, data, state)
+	end
+	return state
+end
+
+function StateService.start()
+	Players.PlayerRemoving:Connect(function(player)
+		sent[player] = nil
+	end)
+	Guard.loop("StateService.flush", 0.1, function()
+		for _, player in DataService.takeDirty() do
+			-- One player's failure mustn't drop everyone else's update
+			Guard.run("StateService.send", function()
+				local state = snapshot(player)
+				if state then
+					local changes, cleared, full = diff(player, state)
+					if full or next(changes) ~= nil or #cleared > 0 then
+						Net.sendState(player, changes, cleared, full)
+					end
+				end
+			end)
+		end
+	end)
+end
+
+return StateService

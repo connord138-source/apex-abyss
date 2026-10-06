@@ -1,0 +1,16 @@
+# Studio place files (the source of truth is src/)
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+
+# Blender autosaves
+*.blend1
+
+# Downloaded or generated model sources (large; links live in docs)
+assets/glb/
+assets/fbx/
+
+# Python
+__pycache__/
