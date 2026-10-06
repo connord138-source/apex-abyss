@@ -11,6 +11,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
+local Events = require(script.Parent.Parent.Events)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
@@ -89,7 +90,9 @@ local function collect(player: Player, index: any)
 	end
 	local backAt = now + Shells.respawn
 	mine[index] = backAt
-	EconomyService.addShells(player, if spot.golden then Shells.goldenValue else Shells.value)
+	local value = if spot.golden then Shells.goldenValue else Shells.value
+	EconomyService.addShells(player, value)
+	Events.shells:fire(player, value)
 	Net.shellResult(player, index, backAt)
 end
 

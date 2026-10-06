@@ -495,7 +495,7 @@ local function buildWallet()
 	row.Name = "Buttons"
 	row.BackgroundTransparency = 1
 	row.Position = UDim2.fromOffset(18, 218)
-	row.Size = UDim2.fromOffset(300, 36)
+	row.Size = UDim2.fromOffset(420, 36)
 	row.Parent = hud
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -516,6 +516,10 @@ local function buildWallet()
 	wardrobe.LayoutOrder = 3
 	wardrobe.TextSize = 14
 	wardrobe.Activated:Connect(MenuController.openWardrobe)
+	local fish = Ui.button(row, "Fish", "FISH", UDim2.fromOffset(70, 34), UDim2.new(), "secondary")
+	fish.LayoutOrder = 4
+	fish.TextSize = 14
+	fish.Activated:Connect(MenuController.openSpecies)
 end
 
 local function onState(s: { [string]: any })

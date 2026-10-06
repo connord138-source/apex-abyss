@@ -19,7 +19,10 @@ local function dress(player: Player)
 		return
 	end
 	character:SetAttribute("Shade", data.equipped.shade)
-	character:SetAttribute("Variant", data.equipped.variant)
+	-- Exotic variants reshape one species only
+	local variant = Config.Exotics.variantsById[data.equipped.variant]
+	local current = character:GetAttribute("Species")
+	character:SetAttribute("Variant", if variant and variant.species == current then variant.id else "")
 	character:SetAttribute("Parts", Cosmetics.partsText(data.equipped.parts))
 end
 

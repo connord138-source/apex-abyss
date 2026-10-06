@@ -8,12 +8,23 @@ local ProfileStore = require(script.Parent.Parent.Packages.ProfileStore)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 
+-- One species' own progress (owner: every species levels up separately)
+export type SpeciesRecord = {
+	mass: number, -- banked mass: the size every dive as this species starts at
+	bestMass: number,
+}
+
 export type PlayerData = {
 	version: number,
 	createdAt: number, -- first join
 	lastSeen: number,
-	mass: number, -- banked mass: the size every dive starts at (Hunt & Haul)
-	bestMass: number,
+	mass: number, -- retired: the Nibbler's mass before per-species progress (migrated)
+	bestMass: number, -- retired
+	species: { [string]: SpeciesRecord }, -- per species (Server/Progress)
+	current: string, -- the species the player swims as
+	unlocked: { [string]: boolean },
+	dna: { [string]: number }, -- per biome, for unlocking species
+	tutorial: { step: number, progress: number, done: boolean },
 	-- The last haul banked, so a Double Haul receipt that lands late (or after a
 	-- rejoin) still doubles exactly that amount, once
 	lastHaul: { id: number, amount: number, doubled: boolean },
@@ -51,6 +62,11 @@ local TEMPLATE: PlayerData = {
 	lastSeen = 0,
 	mass = 1,
 	bestMass = 1,
+	species = {},
+	current = "Nibbler",
+	unlocked = { Nibbler = true },
+	dna = {},
+	tutorial = { step = 1, progress = 0, done = false },
 	lastHaul = { id = 0, amount = 0, doubled = false },
 	nextHaulId = 1,
 	stats = {
@@ -226,6 +242,11 @@ local function onPlayerAdded(player: Player)
 	if data.createdAt == 0 then
 		data.createdAt = Timing.now()
 	end
+	-- Saves from before per-species progress: their size becomes the Nibbler's
+	if data.species.Nibbler == nil then
+		data.species.Nibbler = { mass = math.max(data.mass, 1), bestMass = math.max(data.bestMass, 1) }
+	end
+	data.unlocked.Nibbler = true
 
 	profiles[player] = profile
 	DataService.loaded:fire(player, data)

@@ -169,6 +169,14 @@ The approved details:
   - Pay a coral fee at the Old Hermit. His stall becomes the species shop: a hermit
     crab trading shells, which fits.
   - Account-wide upgrades (Fins, Gills, Jaw) move into the species trees.
+- **Built 2026-10-06:**
+  - per-species levels
+  - graybox bodies for all six species
+  - species stats on swimming, health and bites
+  - DNA drops
+  - switching in the safe zone, and DNA-plus-coral unlocks (the FISH menu)
+  - the tutorial: steps 1–4 and 7 below, with markers
+  Steps 5 (barracuda) and 6 (Growth Point) come with the predators and the trees.
 - **The tutorial (about 5–8 minutes, as the Nibbler):**
   1. Swim out of your den.
   2. Eat 10 small fish.

@@ -174,7 +174,7 @@ local PARTS: { [string]: Cosmetic } = {
 }
 
 local VARIANTS: { [string]: VariantShape } = {
-	Puffer = {
+	Puffball = {
 		scale = {
 			Body1 = Vector3.new(1.7, 1.7, 1.3),
 			Belly = Vector3.new(1.7, 1.6, 1.25),

@@ -8,7 +8,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local Config = require(ReplicatedStorage.Shared.Config)
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
+local FishPlans = require(ReplicatedStorage.Shared.FishPlans)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Spring = require(script.Parent.Parent.Spring)
 local SwimController = require(script.Parent.SwimController)
@@ -17,6 +19,7 @@ type FishState = {
 	body: Model,
 	root: BasePart,
 	joints: { [string]: Motor6D },
+	spine: { string }, -- segments behind Body1, front to back (the body plan's)
 	length: number, -- the eased length the body is drawn at
 	lengthVelocity: number,
 	applied: number, -- the length last applied to the parts
@@ -53,6 +56,7 @@ local function stateOf(character: Model): FishState?
 		body = body,
 		root = root,
 		joints = FishBuilder.joints(body),
+		spine = FishPlans.spine(body:GetAttribute("Plan") :: string?),
 		length = start,
 		lengthVelocity = 0,
 		applied = -1,
@@ -124,7 +128,9 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 
 	local velocity = if isLocal then SwimController.velocity else state.root.AssemblyLinearVelocity
 	local speed = velocity.Magnitude
-	local relative = math.clamp(speed / Size.topSpeed(state.length), 0, 2)
+	local species = Config.Species.byId[character:GetAttribute("Species") :: any]
+	local top = Size.topSpeed(state.length) * (if species then species.stats.speed else 1)
+	local relative = math.clamp(speed / top, 0, 2)
 	local boosting = relative > 1.15
 	local frequency = 0.9 + 3.6 * relative -- tail beats a second
 	local wantAmplitude = 0.08 + 0.26 * math.min(relative, 1) + (if boosting then 0.1 else 0)
@@ -145,9 +151,16 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 
 	local p, a, bend = state.phase, state.amplitude, state.bend
 	setTransform(state.joints, "Head", CFrame.Angles(0, math.sin(p + 0.5) * a * 0.12 + bend * 0.3, 0))
-	setTransform(state.joints, "Body2", CFrame.Angles(0, math.sin(p - 0.7) * a * 0.45 + bend * 0.5, 0))
-	setTransform(state.joints, "Body3", CFrame.Angles(0, math.sin(p - 1.4) * a * 0.8 + bend * 0.6, 0))
-	setTransform(state.joints, "Stalk", CFrame.Angles(0, math.sin(p - 2.1) * a * 1.25 + bend * 0.5, 0))
+	-- The wave runs down the spine, growing toward the tail; long bodies (the eel)
+	-- carry more of it with a gentler bend at each joint
+	local n = #state.spine
+	local soften = (3 / n) ^ 0.6
+	local spread = 2.1 + 0.25 * math.max(n - 3, 0)
+	for i, name in state.spine do
+		local t = i / n
+		local swing = math.sin(p - spread * t) * a * (0.45 + 0.8 * t) * soften * 1.3
+		setTransform(state.joints, name, CFrame.Angles(0, swing + bend * 0.55 * soften, 0))
+	end
 	local flutter = math.sin(p * 0.5) * (0.15 + 0.25 * (1 - math.min(relative, 1)))
 	setTransform(state.joints, "FinL", CFrame.Angles(0, 0, flutter))
 	setTransform(state.joints, "FinR", CFrame.Angles(0, 0, -flutter))

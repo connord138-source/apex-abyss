@@ -16,6 +16,7 @@ local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
 local ShellController = require(script.Controllers.ShellController)
 local SwimController = require(script.Controllers.SwimController)
+local TutorialController = require(script.Controllers.TutorialController)
 
 ClientState.start()
 Input.start()
@@ -24,6 +25,7 @@ HudController.start() -- before the swim controller, so it hears the first spawn
 MenuController.start() -- shops (at the stalls), wardrobe, odds
 RollController.start() -- wallet, Roll button and the reveal
 BiomeController.start() -- biome names, suggested levels and under-level warnings
+TutorialController.start() -- the first-session steps and markers
 CameraController.start()
 FishAnimator.start()
 HuntController.start()

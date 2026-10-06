@@ -13,10 +13,19 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Progress = require(script.Parent.Parent.Progress)
 local DataService = require(script.Parent.DataService)
 local WorldService = require(script.Parent.WorldService)
 
 local hunt = Config.Tuning.hunt
+
+type SpeciesDef = typeof(Config.Species.list[1])
+
+-- How thick a species' collider is (the eel slips through gaps).
+local function colliderScale(character: Model): number
+	local species = Config.Species.byId[character:GetAttribute("Species") :: any]
+	return if species then species.collider else 1
+end
 
 local FishService = {
 	-- (player, character) after a fish is spawned
@@ -26,50 +35,6 @@ local FishService = {
 local denOwners: { [number]: Player } = {}
 local dens: { [Player]: number } = {}
 local respawnToken: { [Player]: number } = {}
-
--- Graybox looks, handed out by UserId so a player keeps theirs
-local LOOKS: { FishBuilder.Look } = {
-	{
-		back = Color3.fromRGB(52, 92, 132),
-		belly = Color3.fromRGB(214, 226, 234),
-		fin = Color3.fromRGB(78, 132, 176),
-	},
-	{
-		back = Color3.fromRGB(214, 98, 52),
-		belly = Color3.fromRGB(246, 214, 182),
-		fin = Color3.fromRGB(236, 140, 80),
-	},
-	{
-		back = Color3.fromRGB(58, 122, 96),
-		belly = Color3.fromRGB(206, 228, 200),
-		fin = Color3.fromRGB(90, 160, 120),
-	},
-	{
-		back = Color3.fromRGB(110, 76, 160),
-		belly = Color3.fromRGB(222, 210, 240),
-		fin = Color3.fromRGB(150, 110, 200),
-	},
-	{
-		back = Color3.fromRGB(60, 140, 150),
-		belly = Color3.fromRGB(210, 236, 236),
-		fin = Color3.fromRGB(90, 186, 196),
-	},
-	{
-		back = Color3.fromRGB(176, 140, 50),
-		belly = Color3.fromRGB(244, 230, 184),
-		fin = Color3.fromRGB(214, 176, 80),
-	},
-	{
-		back = Color3.fromRGB(94, 104, 114),
-		belly = Color3.fromRGB(226, 228, 230),
-		fin = Color3.fromRGB(124, 136, 146),
-	},
-	{
-		back = Color3.fromRGB(168, 46, 60),
-		belly = Color3.fromRGB(240, 200, 200),
-		fin = Color3.fromRGB(206, 80, 92),
-	},
-}
 
 function FishService.denOf(player: Player): number?
 	return dens[player]
@@ -95,17 +60,17 @@ function FishService.setLength(player: Player, length: number)
 		return
 	end
 	character:SetAttribute("Length", length)
-	root.Size = Vector3.one * Size.colliderDiameter(length)
+	root.Size = Vector3.one * Size.colliderDiameter(length) * colliderScale(character)
 end
 
-local function makeCharacter(player: Player, length: number, at: CFrame): Model
+local function makeCharacter(player: Player, species: SpeciesDef, length: number, at: CFrame): Model
 	local character = Instance.new("Model")
 	character.Name = player.Name
 
 	local root = Instance.new("Part")
 	root.Name = "HumanoidRootPart"
 	root.Shape = Enum.PartType.Ball
-	root.Size = Vector3.one * Size.colliderDiameter(length)
+	root.Size = Vector3.one * Size.colliderDiameter(length) * species.collider
 	root.Transparency = 1
 	root.CanCollide = true
 	root.CanTouch = true
@@ -130,11 +95,14 @@ local function makeCharacter(player: Player, length: number, at: CFrame): Model
 	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	humanoid.Parent = character
 
-	local look = LOOKS[(player.UserId % #LOOKS) + 1]
-	FishBuilder.build(character, root, look, length)
+	local look = { back = species.back, belly = species.belly, fin = species.fin }
+	FishBuilder.build(character, root, look, length, species.plan)
 	character.PrimaryPart = root
+	local maxHealth = hunt.health * species.stats.health
+	character:SetAttribute("Species", species.id)
 	character:SetAttribute("Length", length)
-	character:SetAttribute("Health", hunt.health)
+	character:SetAttribute("MaxHealth", maxHealth)
+	character:SetAttribute("Health", maxHealth)
 	character:SetAttribute("SafeUntil", Timing.clock() + hunt.spawnProtection)
 	character:SetAttribute("UserId", player.UserId)
 	return character
@@ -147,8 +115,9 @@ function FishService.spawn(player: Player)
 		return
 	end
 	FishService.despawn(player)
-	local length = Size.length(data.mass)
-	local character = makeCharacter(player, length, Layout.spawnFrame(den))
+	local species = Progress.species(data)
+	local length = Size.length(Progress.mass(data))
+	local character = makeCharacter(player, species, length, Layout.spawnFrame(den))
 	player.Character = character
 	character.Parent = workspace
 	local root = character.PrimaryPart

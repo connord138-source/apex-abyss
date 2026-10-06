@@ -10,14 +10,17 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Schools = require(ReplicatedStorage.Shared.Schools)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
+local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
+local Progress = require(script.Parent.Parent.Progress)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
@@ -50,7 +53,7 @@ local eatenUntil: { [number]: number } = {} -- prey index → clock when it's ba
 local function newSession(): Session
 	return {
 		haul = 0,
-		health = hunt.health,
+		health = hunt.health, -- set to the species' max health on spawn
 		lastHitAt = 0,
 		lastBiteAt = 0,
 		safeUntil = Timing.clock() + hunt.spawnProtection,
@@ -71,7 +74,24 @@ local function liveLength(player: Player): number?
 	if data == nil or session == nil then
 		return nil
 	end
-	return Size.length(Size.liveMass(data.mass, session.haul))
+	return Size.length(Size.liveMass(Progress.mass(data), session.haul))
+end
+
+-- The species' max health in bite fights.
+local function maxHealth(player: Player): number
+	local data = DataService.get(player)
+	return hunt.health * (if data then Progress.species(data).stats.health else 1)
+end
+
+-- DNA of the biome a fish was eaten in (it unlocks that biome's species).
+local function giveDna(player: Player, position: Vector3, amount: number)
+	local data = DataService.get(player)
+	local biome = Biomes.at(position)
+	if data == nil or biome == nil or amount <= 0 then
+		return
+	end
+	data.dna[biome.id] = (data.dna[biome.id] or 0) + amount
+	DataService.markDirty(player)
 end
 
 local function refreshSize(player: Player)
@@ -93,8 +113,8 @@ end
 
 -- How far the server's view of a fish may trail where its owner really has it.
 local function slack(length: number): number
-	-- 1.25: room for Strong Fins
-	return Size.topSpeed(length) * 1.25 * swim.boostMultiplier * swim.lungeSpeed * hunt.latencySeconds
+	-- 1.6: room for Strong Fins and the fastest species
+	return Size.topSpeed(length) * 1.6 * swim.boostMultiplier * swim.lungeSpeed * hunt.latencySeconds
 		+ hunt.reachSlack
 end
 
@@ -138,7 +158,7 @@ local function eatPlayer(victim: Player, eater: Player)
 	-- Eating much smaller players pays almost nothing, so farming new fish is pointless
 	local ratio = math.clamp(victimLength / eaterLength / hunt.swallowRatio, 0, 1)
 	local farm = math.max(ratio * ratio, 0.02)
-	local gain = (lost * hunt.playerHaulShare + victimData.mass * hunt.playerBaseShare) * farm
+	local gain = (lost * hunt.playerHaulShare + Progress.mass(victimData) * hunt.playerBaseShare) * farm
 	EconomyService.addCoral(eater, economy.eatPlayerCoral * farm)
 	victimSession.haul = 0
 	victimSession.alive = false
@@ -158,6 +178,7 @@ local function eatPlayer(victim: Player, eater: Player)
 	FishService.respawnIn(victim, hunt.respawnSeconds)
 	DataService.markDirty(victim)
 	addHaul(eater, gain)
+	Events.ate:fire(eater, 1)
 end
 
 local function onEatPrey(player: Player, batch: any)
@@ -175,6 +196,7 @@ local function onEatPrey(player: Player, batch: any)
 	local mouth = mouthOf(root, length)
 	local allowance = Size.reach(length) + slack(length)
 	local gained = 0
+	local count = 0
 	for _, entry in batch do
 		if typeof(entry) ~= "table" then
 			continue
@@ -199,6 +221,14 @@ local function onEatPrey(player: Player, batch: any)
 		Net.preyEaten(index, backAt, player.UserId)
 		gained += prey.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now())
 		data.stats.preyEaten += 1
+		count += 1
+		-- DNA: big prey always carry some, small ones sometimes
+		local position = Schools.position(index, at)
+		if prey.mass >= economy.dnaBigMass then
+			giveDna(player, position, math.max(1, math.floor(prey.mass / economy.dnaBigMass)))
+		elseif math.random() < economy.dnaChance then
+			giveDna(player, position, 1)
+		end
 		local shells = ShellService.preyDrop(player, prey.id)
 		if shells > 0 then
 			Net.notify(player, `The {prey.name} had {shells} shell{if shells == 1 then "" else "s"}!`, "good")
@@ -206,6 +236,7 @@ local function onEatPrey(player: Player, batch: any)
 	end
 	if gained > 0 then
 		addHaul(player, gained)
+		Events.ate:fire(player, count)
 	end
 end
 
@@ -300,7 +331,8 @@ local function onBite(player: Player, userId: any)
 	local ratio = math.clamp((length / targetLength) ^ 2, 0.04, 1.5)
 	local attackerData = DataService.get(player)
 	local jaw = Perks.bite(if attackerData then attackerData.upgrades else nil)
-	local damage = hunt.biteDamage * ratio * (1 + 0.35 * school) * jaw
+	local species = if attackerData then Progress.species(attackerData).stats.bite else 1
+	local damage = hunt.biteDamage * ratio * (1 + 0.35 * school) * jaw * species
 	targetSession.health -= damage
 	targetSession.lastHitAt = now
 	Net.hit(player, target, damage)
@@ -316,25 +348,27 @@ end
 local function bank(player: Player, session: Session, data: DataService.PlayerData)
 	local amount = session.haul * hunt.bankMultiplier * Perks.bank(data.upgrades)
 	local coral = math.floor(economy.bankCoral * math.sqrt(amount))
-	local levelBefore = Size.level(data.mass)
-	data.mass += amount
-	data.bestMass = math.max(data.bestMass, data.mass)
+	local record = Progress.record(data)
+	local levelBefore = Size.level(record.mass)
+	record.mass += amount
+	record.bestMass = math.max(record.bestMass, record.mass)
 	data.lastHaul = { id = data.nextHaulId, amount = amount, doubled = false }
 	data.nextHaulId += 1
 	data.stats.banks += 1
 	data.stats.banked += amount
 	session.haul = 0
-	local levelAfter = Size.level(data.mass)
+	local levelAfter = Size.level(record.mass)
 	EconomyService.addCoral(player, coral)
 	Net.banked(player, {
 		amount = amount,
 		coral = coral,
-		mass = data.mass,
+		mass = record.mass,
 		levelBefore = levelBefore,
 		level = levelAfter,
 		stage = Size.stage(levelAfter),
 	})
 	refreshSize(player)
+	Events.banked:fire(player, amount, levelAfter)
 end
 
 -- Banking, the hub's safe zone and healing, a few times a second.
@@ -351,14 +385,16 @@ local function tick()
 			if session.inHub and not inHub then
 				session.safeUntil = math.max(session.safeUntil, now + hunt.leaveHubProtection)
 				character:SetAttribute("SafeUntil", session.safeUntil)
+				Events.leftHub:fire(player)
 			end
 			if inHub ~= session.inHub then
 				session.inHub = inHub
 				character:SetAttribute("InHub", inHub)
 				DataService.markDirty(player)
 			end
-			if session.health < hunt.health and now - session.lastHitAt > hunt.regenDelay then
-				session.health = math.min(hunt.health, session.health + hunt.regenPerSecond * 0.2)
+			local most = maxHealth(player)
+			if session.health < most and now - session.lastHitAt > hunt.regenDelay then
+				session.health = math.min(most, session.health + hunt.regenPerSecond * 0.2)
 				character:SetAttribute("Health", session.health)
 			end
 			local den = FishService.denOf(player)
@@ -395,9 +431,21 @@ function HuntService.feed(player: Player, mass: number)
 	end
 end
 
+-- The Haul a player is carrying (0 if not swimming).
+function HuntService.haul(player: Player): number
+	local session = sessions[player]
+	return if session then session.haul else 0
+end
+
+-- Gives DNA of the biome at `position` (forage and other food sources).
+function HuntService.giveDna(player: Player, position: Vector3, amount: number)
+	giveDna(player, position, amount)
+end
+
 function HuntService.start()
 	FishService.spawned:connect(function(player: Player, character: Model)
 		local session = newSession()
+		session.health = maxHealth(player)
 		session.haul = keptHaul[player] or 0
 		keptHaul[player] = nil
 		sessions[player] = session
@@ -440,15 +488,26 @@ function HuntService.start()
 	StateService.provide(function(player, data, state)
 		local session = sessions[player]
 		local haul = if session then session.haul else 0
-		local level = Size.level(data.mass)
-		state.mass = data.mass
+		local mass = Progress.mass(data)
+		local level = Size.level(mass)
+		local species = Progress.species(data)
+		state.mass = mass
 		state.haul = haul
 		state.level = level
 		state.stage = Size.stage(level)
-		state.speciesName = "Nibbler" -- the only species until per-species progression lands
+		state.species = species.id
+		state.speciesName = species.name
 		state.levelMass = Size.massForLevel(level)
 		state.nextLevelMass = Size.massForLevel(level + 1)
-		state.maxed = Size.isMaxed(data.mass, haul)
+		state.maxed = Size.isMaxed(mass, haul)
+		-- Every species' level, for the species menu
+		local levels: { [string]: number } = {}
+		for id, record in data.species do
+			levels[id] = Size.level(record.mass)
+		end
+		state.speciesLevels = levels
+		state.unlocked = data.unlocked
+		state.dna = data.dna
 		state.inHub = if session then session.inHub else true
 		state.den = FishService.denOf(player)
 		state.stats = data.stats

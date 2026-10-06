@@ -80,5 +80,10 @@ return {
 		-- without running away late
 		bankCoral = 6,
 		eatPlayerCoral = 20, -- for eating a player your size (less for smaller)
+		-- DNA (unlocks species): prey this heavy or heavier always carry some (1 per
+		-- this many kg); smaller prey carry 1 at this chance; forage at forageDnaChance
+		dnaBigMass = 2,
+		dnaChance = 0.25,
+		forageDnaChance = 0.04,
 	},
 }

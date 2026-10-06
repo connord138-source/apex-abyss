@@ -12,4 +12,7 @@ return {
 	Shells = require(script.Shells),
 	Forage = require(script.Forage),
 	Biomes = require(script.Biomes),
+	Species = require(script.Species),
+	Tutorial = require(script.Tutorial),
+	Abilities = require(script.Abilities),
 }

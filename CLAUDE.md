@@ -251,6 +251,27 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `RollController`: wallet, Roll / Odds / Wardrobe buttons, the reveal.
     - `MenuController`: shops, Wardrobe, odds; B closes.
     - `FishPreview`: a ViewportFrame fish.
+- **Species and the tutorial (2026-10-06):**
+  - `Config/Species` (six species: stats, colors, body plan, home biome, unlock rule),
+    `Config/Abilities` (names), `Config/Tutorial` (steps and the reward).
+  - `Shared/FishPlans`: a graybox body per species, normalized to 1 stud, with joints
+    at real pivots and the same core part names.
+  - Server:
+    - `Progress`: per-species banked mass (`data.species[id].mass`, current species
+      `data.current`). `data.mass` is retired and migrated into the Nibbler.
+    - `Events`: signals that services fire and the tutorial listens to.
+    - `SpeciesService`: switch species in the safe zone with no Haul aboard (respawns
+      you in your den); unlock with home-biome DNA plus coral.
+    - `TutorialService`: five steps. Finishing gives the 'Cuda, 50 shells and 500
+      coral, and opens species select.
+  - DNA drops: big prey always, small prey 25%, forage 4%, credited to the biome you
+    ate in.
+  - Client:
+    - `MenuController.openSpecies` (the FISH button).
+    - `TutorialController`: the step panel, plus EXIT and BANK HERE markers.
+    - The animator waves each plan's own spine. Swimming uses the species' speed and
+      turn.
+    - Exotic variants apply only on their own species.
 - **Tripo:** `tools/tripo.py` (key in `TRIPO_API_KEY`); jobs files are
   `tools/tripo_jobs_*.json`, outputs go to `assets/tripo/` (gitignored), and approved
   concepts are copied to `assets/concepts/`. The owner topped up to 2,450 on

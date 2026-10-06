@@ -1,10 +1,13 @@
 --!strict
--- The graybox player fish: ellipsoid segments on a chain of Motor6Ds, so clients
--- can swim it procedurally (FishAnimator: a wave down the spine, a tail beat, a
--- jaw snap). Every part and joint is laid out for a fish 1 stud long and keeps
--- that unit layout in attributes, so applyScale can resize the whole fish to any
--- length smoothly. Forward is -Z. The real creature models replace this later
--- with the same joint names.
+-- Builds a graybox fish from a body plan (Shared/FishPlans: one per species):
+-- ellipsoid parts on a chain of Motor6Ds, so clients can swim it procedurally
+-- (FishAnimator: a wave down the spine, a tail beat, a jaw snap). Every part and
+-- joint is laid out for a fish 1 stud long and keeps that unit layout in
+-- attributes, so applyScale can resize the whole fish to any length smoothly.
+-- Forward is -Z. The real creature models replace these later with the same joint
+-- names.
+local FishPlans = require(script.Parent.FishPlans)
+
 local FishBuilder = {}
 
 export type Look = {
@@ -13,150 +16,7 @@ export type Look = {
 	fin: Color3,
 }
 
-export type PartSpec = {
-	name: string,
-	parent: string, -- part it hangs from ("Root" = the HumanoidRootPart)
-	size: Vector3, -- unit size
-	c0: CFrame, -- the joint in the parent's frame (unit)
-	c1: CFrame, -- the joint in this part's frame (unit)
-	shape: "Ellipsoid" | "Wedge" | "Block" | "Ball",
-	color: "back" | "belly" | "fin" | "eye" | "fixed",
-	fixed: Color3?, -- the color when `color` is "fixed"
-	material: Enum.Material?,
-	transparency: number?,
-	light: Color3?, -- a small light in the part (an angler's lure)
-}
-
--- The spine, front to back, then the fins. Joints sit where segments meet, so a
--- Transform rotation bends the body there.
-local PARTS: { PartSpec } = {
-	{
-		name = "Body1",
-		parent = "Root",
-		size = Vector3.new(0.3, 0.32, 0.36),
-		c0 = CFrame.new(0, 0, -0.02),
-		c1 = CFrame.new(),
-		shape = "Ellipsoid",
-		color = "back",
-	},
-	{
-		name = "Head",
-		parent = "Body1",
-		size = Vector3.new(0.25, 0.26, 0.3),
-		c0 = CFrame.new(0, 0.01, -0.15),
-		c1 = CFrame.new(0, 0, 0.12),
-		shape = "Ellipsoid",
-		color = "back",
-	},
-	{
-		name = "Jaw",
-		parent = "Head",
-		size = Vector3.new(0.17, 0.07, 0.2),
-		c0 = CFrame.new(0, -0.075, 0.05),
-		c1 = CFrame.new(0, 0, 0.1),
-		shape = "Ellipsoid",
-		color = "belly",
-	},
-	{
-		name = "Belly",
-		parent = "Body1",
-		size = Vector3.new(0.26, 0.2, 0.42),
-		c0 = CFrame.new(0, -0.07, 0.03),
-		c1 = CFrame.new(),
-		shape = "Ellipsoid",
-		color = "belly",
-	},
-	{
-		name = "Body2",
-		parent = "Body1",
-		size = Vector3.new(0.23, 0.26, 0.27),
-		c0 = CFrame.new(0, 0, 0.15),
-		c1 = CFrame.new(0, 0, -0.12),
-		shape = "Ellipsoid",
-		color = "back",
-	},
-	{
-		name = "Body3",
-		parent = "Body2",
-		size = Vector3.new(0.15, 0.18, 0.22),
-		c0 = CFrame.new(0, 0, 0.12),
-		c1 = CFrame.new(0, 0, -0.09),
-		shape = "Ellipsoid",
-		color = "back",
-	},
-	{
-		name = "Stalk",
-		parent = "Body3",
-		size = Vector3.new(0.07, 0.1, 0.16),
-		c0 = CFrame.new(0, 0, 0.09),
-		c1 = CFrame.new(0, 0, -0.06),
-		shape = "Ellipsoid",
-		color = "back",
-	},
-	{
-		name = "TailUp",
-		parent = "Stalk",
-		size = Vector3.new(0.025, 0.24, 0.11),
-		c0 = CFrame.new(0, 0, 0.06) * CFrame.Angles(math.rad(38), 0, 0),
-		c1 = CFrame.new(0, -0.1, 0),
-		shape = "Ellipsoid",
-		color = "fin",
-	},
-	{
-		name = "TailDown",
-		parent = "Stalk",
-		size = Vector3.new(0.025, 0.22, 0.1),
-		c0 = CFrame.new(0, 0, 0.06) * CFrame.Angles(math.rad(-38), 0, 0),
-		c1 = CFrame.new(0, 0.09, 0),
-		shape = "Ellipsoid",
-		color = "fin",
-	},
-	{
-		name = "Dorsal",
-		parent = "Body1",
-		size = Vector3.new(0.02, 0.15, 0.2),
-		c0 = CFrame.new(0, 0.2, 0.04),
-		c1 = CFrame.new(),
-		shape = "Wedge",
-		color = "fin",
-	},
-	{
-		name = "FinL",
-		parent = "Body1",
-		size = Vector3.new(0.14, 0.015, 0.08),
-		c0 = CFrame.new(-0.13, -0.07, -0.08) * CFrame.Angles(0, math.rad(-25), math.rad(-20)),
-		c1 = CFrame.new(0.06, 0, 0),
-		shape = "Ellipsoid",
-		color = "fin",
-	},
-	{
-		name = "FinR",
-		parent = "Body1",
-		size = Vector3.new(0.14, 0.015, 0.08),
-		c0 = CFrame.new(0.13, -0.07, -0.08) * CFrame.Angles(0, math.rad(25), math.rad(20)),
-		c1 = CFrame.new(-0.06, 0, 0),
-		shape = "Ellipsoid",
-		color = "fin",
-	},
-	{
-		name = "EyeL",
-		parent = "Head",
-		size = Vector3.new(0.05, 0.05, 0.05),
-		c0 = CFrame.new(-0.1, 0.045, -0.05),
-		c1 = CFrame.new(),
-		shape = "Ellipsoid",
-		color = "eye",
-	},
-	{
-		name = "EyeR",
-		parent = "Head",
-		size = Vector3.new(0.05, 0.05, 0.05),
-		c0 = CFrame.new(0.1, 0.045, -0.05),
-		c1 = CFrame.new(),
-		shape = "Ellipsoid",
-		color = "eye",
-	},
-}
+export type PartSpec = FishPlans.PartSpec
 
 local EYE = Color3.fromRGB(16, 18, 22)
 
@@ -234,11 +94,12 @@ end
 -- Builds the fish's body under `character`, jointed to `root`, at `length` studs.
 -- Returns the Body model. The base colors go on the character too (LookBack,
 -- LookBelly, LookFin), so a shade can be taken off again.
-function FishBuilder.build(character: Model, root: BasePart, look: Look, length: number): Model
+function FishBuilder.build(character: Model, root: BasePart, look: Look, length: number, plan: string?): Model
 	local body = Instance.new("Model")
 	body.Name = "Body"
+	body:SetAttribute("Plan", plan or "Nibbler")
 	local parts: { [string]: BasePart } = { Root = root }
-	for _, spec in PARTS do
+	for _, spec in FishPlans.get(plan) do
 		parts[spec.name] = FishBuilder.makePart(body, parts[spec.parent], spec, look, length)
 	end
 	character:SetAttribute("LookBack", look.back)

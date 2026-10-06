@@ -12,6 +12,8 @@ local ForageService = require(Services.ForageService)
 local RollService = require(Services.RollService)
 local WardrobeService = require(Services.WardrobeService)
 local ShopService = require(Services.ShopService)
+local SpeciesService = require(Services.SpeciesService)
+local TutorialService = require(Services.TutorialService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -24,6 +26,8 @@ ForageService.start() -- starfish and shrimp on the seabed
 RollService.start() -- 50 shells = a roll
 WardrobeService.start() -- spawned: dress the fish
 ShopService.start() -- the plaza's vendors
+SpeciesService.start() -- switching and unlocking species
+TutorialService.start() -- loaded: skip steps already met
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

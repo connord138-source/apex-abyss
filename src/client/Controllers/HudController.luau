@@ -84,10 +84,15 @@ local function buildLevelCard()
 		Ui.FONT_BOLD,
 		14,
 		Ui.color.accent,
-		UDim2.fromOffset(110, 18),
-		UDim2.fromOffset(120, 15)
+		UDim2.fromOffset(130, 18),
+		UDim2.fromOffset(90, 15)
 	)
 	stageText.TextXAlignment = Enum.TextXAlignment.Right
+	-- Long names ("MORAY EEL · JUVENILE") shrink to fit
+	stageText.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 14
+	fit.Parent = stageText
 	levelMassText = Ui.label(
 		card,
 		"Mass",
@@ -543,7 +548,7 @@ end
 local function onState(s: { [string]: any })
 	local level = s.level or 1
 	levelText.Text = `LV {level}`
-	stageText.Text = string.upper(s.stage or "Fry")
+	stageText.Text = `{string.upper(s.speciesName or "Nibbler")} · {string.upper(s.stage or "Fry")}`
 	local mass = s.mass or 1
 	local from, to = s.levelMass or 1, s.nextLevelMass or 2
 	levelMassText.Text = `{Format.mass(mass)} banked`

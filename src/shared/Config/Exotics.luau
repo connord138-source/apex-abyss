@@ -14,6 +14,7 @@ export type Part = {
 export type Variant = {
 	id: string,
 	name: string,
+	species: string, -- exotic variants reshape one species only (Config/Species)
 	chance: number,
 	refund: number,
 	blurb: string,
@@ -64,15 +65,17 @@ local parts: { Part } = {
 
 local variants: { Variant } = {
 	{
-		id = "Puffer",
-		name = "Puffer",
+		id = "Puffball",
+		name = "Puffball Nibbler",
+		species = "Nibbler",
 		chance = 8000,
 		refund = 25000,
-		blurb = "Round, spiky and very proud of it.",
+		blurb = "A Nibbler that ate too much air. Round, spiky and very proud of it.",
 	},
 	{
 		id = "Hammerhead",
 		name = "Hammerhead",
+		species = "ReefShark",
 		chance = 10000,
 		refund = 30000,
 		blurb = "A wide hammer head with eyes at the tips.",

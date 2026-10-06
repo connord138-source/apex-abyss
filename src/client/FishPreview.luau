@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
 
@@ -20,7 +21,9 @@ local DEFAULT_LOOK: FishBuilder.Look = {
 
 export type Preview = {
 	frame: ViewportFrame,
-	show: (self: Preview, dress: Cosmetics.Dress) -> (),
+	-- Shows a fish in a dress; `species` picks the body and colors (the player's
+	-- current fish by default)
+	show: (self: Preview, dress: Cosmetics.Dress, species: string?) -> (),
 	destroy: (self: Preview) -> (),
 }
 
@@ -62,7 +65,7 @@ function FishPreview.new(parent: Instance, size: UDim2, position: UDim2, anchor:
 	local preview = {} :: Preview
 	preview.frame = frame
 
-	function preview.show(_self: Preview, dress: Cosmetics.Dress)
+	function preview.show(_self: Preview, dress: Cosmetics.Dress, speciesId: string?)
 		if fish then
 			fish:Destroy()
 		end
@@ -75,8 +78,15 @@ function FishPreview.new(parent: Instance, size: UDim2, position: UDim2, anchor:
 		newRoot.Size = Vector3.one
 		newRoot.CFrame = CFrame.new()
 		newRoot.Parent = model
-		local look = myLook()
-		local newBody = FishBuilder.build(model, newRoot, look, LENGTH)
+		local character = Players.LocalPlayer.Character
+		local id = speciesId
+			or (if character then character:GetAttribute("Species") :: string? else nil)
+			or Config.Species.STARTER
+		local species = Config.Species.byId[id] or Config.Species.byId[Config.Species.STARTER]
+		local look = if speciesId
+			then { back = species.back, belly = species.belly, fin = species.fin }
+			else myLook()
+		local newBody = FishBuilder.build(model, newRoot, look, LENGTH, species.plan)
 		Cosmetics.apply(newBody, look, dress, LENGTH)
 		FishBuilder.applyScale(newBody, LENGTH)
 		model.Parent = world

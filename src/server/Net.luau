@@ -37,6 +37,8 @@ local REQUESTS: { [string]: number } = {
 	Roll = 0.4, -- ()
 	Buy = 0.2, -- (kind: "upgrade" | "charm" | "dye" | "shells", id: string)
 	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)
+	SelectSpecies = 0.5, -- (speciesId) swim as another unlocked species (in the safe zone)
+	UnlockSpecies = 0.5, -- (speciesId) unlock with its biome's DNA and coral
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do

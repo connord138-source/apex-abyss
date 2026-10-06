@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
+local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
@@ -61,6 +62,7 @@ local function onEat(player: Player, batch: any)
 	end
 	local now = Timing.clock()
 	local fed = 0
+	local count = 0
 	for _, index in batch do
 		if typeof(index) ~= "number" or index % 1 ~= 0 or spots[index] == nil then
 			continue
@@ -78,9 +80,14 @@ local function onEat(player: Player, batch: any)
 		eatenUntil[index] = backAt
 		Net.forageEaten(index, backAt, player.UserId)
 		fed += def.mass
+		count += 1
+		if math.random() < Config.Tuning.economy.forageDnaChance then
+			HuntService.giveDna(player, spot.position, 1)
+		end
 	end
 	if fed > 0 then
 		HuntService.feed(player, fed)
+		Events.ate:fire(player, count)
 	end
 end
 

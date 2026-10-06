@@ -85,6 +85,13 @@ function SwimController.length(): number
 	return Size.length(Config.Tuning.size.startMass)
 end
 
+-- The species' handling multipliers (Config/Species), from the fish's attribute.
+function SwimController.stats(): { speed: number, turn: number }
+	local id = if character then character:GetAttribute("Species") else nil
+	local species = if typeof(id) == "string" then Config.Species.byId[id] else nil
+	return if species then species.stats else { speed = 1, turn = 1 }
+end
+
 function SwimController.root(): BasePart?
 	return root
 end
@@ -165,7 +172,8 @@ local function step(dt: number)
 	end
 	local length = SwimController.length()
 	local upgrades = if ClientState.current then ClientState.current.upgrades else nil
-	local top = Size.topSpeed(length) * Perks.speed(upgrades)
+	local stats = SwimController.stats()
+	local top = Size.topSpeed(length) * Perks.speed(upgrades) * stats.speed
 	local camera = workspace.CurrentCamera.CFrame
 
 	-- Where the player wants to go, relative to the camera
@@ -200,7 +208,7 @@ local function step(dt: number)
 		local current = if speed > top * 0.12 then velocity.Unit else heading
 		-- From (nearly) still, a fish can pivot quickly; at speed it carves
 		local turnScale = if speed < top * 0.25 then 2.6 else (if boosting then 0.75 else 1)
-		local direction = rotateToward(current, want, Size.turnRate(length) * turnScale * dt)
+		local direction = rotateToward(current, want, Size.turnRate(length) * stats.turn * turnScale * dt)
 		local targetSpeed = top * intent * (if boosting then swim.boostMultiplier else 1)
 		local newSpeed = speed + (targetSpeed - speed) * Spring.alpha(swim.accel, dt)
 		velocity = direction * newSpeed

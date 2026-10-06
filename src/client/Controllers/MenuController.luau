@@ -557,6 +557,257 @@ function MenuController.openWardrobe()
 	)
 end
 
+-- A stat as a bar (1 = the Nibbler's; the bar is full at 1.6).
+local function statBar(parent: Instance, y: number, label: string, value: number)
+	Ui.label(
+		parent,
+		label,
+		string.upper(label),
+		Ui.FONT_BOLD,
+		12,
+		Ui.color.muted,
+		UDim2.fromOffset(80, 16),
+		UDim2.fromOffset(0, y)
+	)
+	local _, fill =
+		Ui.bar(parent, label .. "Bar", UDim2.new(1, -90, 0, 6), UDim2.fromOffset(90, y + 5), Ui.color.accent)
+	fill.Size = UDim2.fromScale(math.clamp(value / 1.6, 0.05, 1), 1)
+	fill.BackgroundColor3 = if value > 1.05
+		then Ui.color.safe
+		elseif value < 0.95 then Ui.color.haul
+		else Ui.color.accent
+end
+
+-- The species menu: every playable fish, its level, stats and abilities; switch to
+-- one you own (in the safe zone) or unlock one with its biome's DNA and coral.
+function MenuController.openSpecies()
+	open(
+		"Your Fish",
+		"Every species grows on its own. Switch in the safe zone.",
+		Vector2.new(920, 540),
+		function(window)
+			local left = Instance.new("Frame")
+			left.BackgroundTransparency = 1
+			left.Size = UDim2.new(0, 300, 1, 0)
+			left.Parent = window.content
+			local list = Ui.list(left, 6)
+			local right =
+				Ui.panel(window.content, "Detail", UDim2.new(1, -316, 1, 0), UDim2.fromOffset(316, 0))
+			right.BackgroundTransparency = 0.55
+			local preview = FishPreview.new(right, UDim2.new(0.5, 0, 0, 190), UDim2.fromOffset(0, 6))
+			local info = Instance.new("Frame")
+			info.BackgroundTransparency = 1
+			info.Position = UDim2.new(0.5, 4, 0, 14)
+			info.Size = UDim2.new(0.5, -18, 0, 180)
+			info.Parent = right
+			local lower = Instance.new("Frame")
+			lower.BackgroundTransparency = 1
+			lower.Position = UDim2.fromOffset(18, 204)
+			lower.Size = UDim2.new(1, -36, 1, -214)
+			lower.Parent = right
+			local chosen: string = state().species or Config.Species.STARTER
+			local shownPreview = ""
+			local menu: Menu
+
+			local function renderDetail()
+				for _, frame in { info, lower } do
+					for _, child in frame:GetChildren() do
+						child:Destroy()
+					end
+				end
+				local s = state()
+				local species = Config.Species.byId[chosen]
+				local owned = (s.unlocked or {})[chosen] == true
+				local tutorialDone = s.tutorial ~= nil and s.tutorial.done == true
+				if shownPreview ~= chosen then
+					shownPreview = chosen
+					preview:show({ shade = nil, parts = {}, variant = nil }, chosen)
+				end
+				Ui.label(
+					info,
+					"Name",
+					string.upper(species.name),
+					Ui.FONT_HEAVY,
+					26,
+					Ui.color.text,
+					UDim2.new(1, 0, 0, 30)
+				)
+				Ui.label(
+					info,
+					"Role",
+					string.upper(species.role),
+					Ui.FONT_BOLD,
+					14,
+					Ui.color.accent,
+					UDim2.new(1, 0, 0, 18),
+					UDim2.fromOffset(0, 32)
+				)
+				local blurb = Ui.label(
+					info,
+					"Blurb",
+					species.blurb,
+					Ui.FONT,
+					15,
+					Ui.color.muted,
+					UDim2.new(1, 0, 0, 60),
+					UDim2.fromOffset(0, 54)
+				)
+				blurb.TextWrapped = true
+				blurb.TextYAlignment = Enum.TextYAlignment.Top
+				local level = (s.speciesLevels or {})[chosen]
+				Ui.label(
+					info,
+					"Level",
+					if owned then `LEVEL {level or 1}` else "NOT UNLOCKED",
+					Ui.FONT_HEAVY,
+					16,
+					if owned then Ui.color.haul else Ui.color.muted,
+					UDim2.new(1, 0, 0, 20),
+					UDim2.fromOffset(0, 120)
+				)
+
+				statBar(lower, 0, "Speed", species.stats.speed)
+				statBar(lower, 22, "Turning", species.stats.turn)
+				statBar(lower, 44, "Health", species.stats.health)
+				statBar(lower, 66, "Bite", species.stats.bite)
+				local names: { string } = {}
+				for _, id in species.abilities do
+					table.insert(names, Config.Abilities.byId[id].name)
+				end
+				local abilityText = if #names == 1
+					then `Ability: {names[1]} · {Config.Abilities.byId[species.abilities[1]].blurb}`
+					else `Abilities (pick one in its tree): {table.concat(names, " · ")}`
+				local abilities = Ui.label(
+					lower,
+					"Abilities",
+					abilityText,
+					Ui.FONT_SEMI,
+					14,
+					Ui.color.text,
+					UDim2.new(1, 0, 0, 36),
+					UDim2.fromOffset(0, 94)
+				)
+				abilities.TextWrapped = true
+				abilities.TextYAlignment = Enum.TextYAlignment.Top
+
+				-- What it takes, and the button
+				local rule = species.unlock
+				local note = ""
+				local action = ""
+				local style: Ui.ButtonStyle = "disabled"
+				local onPress: (() -> ())? = nil
+				if s.species == chosen then
+					action = "SWIMMING AS THIS"
+				elseif owned then
+					if tutorialDone then
+						action, style = `SWIM AS {string.upper(species.name)}`, "primary"
+						note = "Switching respawns you in your den. Bank your Haul first."
+						onPress = function()
+							ClientState.request("SelectSpecies", chosen)
+						end
+					else
+						action = "FINISH THE TUTORIAL"
+					end
+				elseif rule.kind == "tutorial" then
+					action = "FINISH THE TUTORIAL"
+					note = "Finish the tutorial and this fish is yours."
+				elseif rule.kind == "dna" and rule.biome then
+					local biome = Config.Biomes.byId[rule.biome]
+					local have = (s.dna or {})[rule.biome] or 0
+					local need = rule.dna or 0
+					local price = rule.coral or 0
+					note =
+						`Unlock with {need} {biome.name} DNA (you have {have}) and {Ui.number(price)} coral. DNA drops from fish in the {biome.name}.`
+					if have >= need and coral() >= price then
+						action, style = "UNLOCK", "gold"
+						onPress = function()
+							ClientState.request("UnlockSpecies", chosen)
+						end
+					else
+						action = "LOCKED"
+					end
+				end
+				local noteLabel = Ui.label(
+					lower,
+					"Note",
+					note,
+					Ui.FONT,
+					14,
+					Ui.color.muted,
+					UDim2.new(1, -200, 0, 40),
+					UDim2.new(0, 0, 1, -44)
+				)
+				noteLabel.TextWrapped = true
+				noteLabel.TextYAlignment = Enum.TextYAlignment.Top
+				local button = Ui.button(
+					lower,
+					"Action",
+					action,
+					UDim2.fromOffset(190, 44),
+					UDim2.new(1, -190, 1, -46),
+					style
+				)
+				if onPress then
+					button.Activated:Connect(onPress)
+				end
+			end
+
+			menu = {
+				window = window,
+				render = function()
+					rerender(list, function()
+						local s = state()
+						for i, species in Config.Species.list do
+							local owned = (s.unlocked or {})[species.id] == true
+							local level = (s.speciesLevels or {})[species.id]
+							local status = if s.species == species.id
+								then "SWIMMING"
+								elseif owned then `LV {level or 1}`
+								else "LOCKED"
+							local frame, button = row(
+								list,
+								i,
+								species.id,
+								species.name,
+								species.role,
+								nil,
+								status,
+								if species.id == chosen
+									then "primary"
+									elseif owned then "secondary"
+									else "disabled",
+								species.back
+							)
+							frame.Size = UDim2.new(1, -8, 0, 58)
+							-- A narrow column: give the names the room the wide rows give a status
+							for _, name in { "Title", "Blurb" } do
+								local label = frame:FindFirstChild(name) :: TextLabel?
+								if label then
+									label.Size = UDim2.new(1, -140, 0, label.Size.Y.Offset)
+								end
+							end
+							if button then
+								button.Size = UDim2.fromOffset(100, 34)
+								button.Position = UDim2.new(1, -110, 0.5, -17)
+								button.Selectable = true
+								button.Activated:Connect(function()
+									chosen = species.id
+									menu.render()
+								end)
+							end
+						end
+					end)
+					renderDetail()
+				end,
+				cleanup = function()
+					preview:destroy()
+				end,
+			}
+			return menu
+		end
+	)
+end
+
 function MenuController.openOdds()
 	local s = state()
 	local lucky = (s.charms or {}).Lucky or 0
