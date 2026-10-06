@@ -1,6 +1,6 @@
 --!strict
 -- The vendors round the hub plaza: everything Coral buys. Purchases come from the
--- shop menus (opened at a stall's prompt); the server checks the player is at
+-- shop menus (opened at a stall's counter); the server checks the player is at
 -- that vendor's stall and can afford it.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

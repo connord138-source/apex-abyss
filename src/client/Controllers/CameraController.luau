@@ -3,7 +3,9 @@
 -- drag) and the fish swims where it points. The look-at point trails the fish on
 -- a spring, so motion reads as fluid rather than glued on; the camera pulls back
 -- smoothly as the fish grows, widens a little while boosting, and never clips into
--- rock (it slides in along a ray instead).
+-- rock: the look-at point is kept out of rock first (it once sat inside a den's
+-- ceiling, so the ray started past it), then a sphere swept back from it pulls the
+-- camera in, snapping in and easing back out.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -21,6 +23,8 @@ local CameraController = {}
 local yaw, pitch = 0, -0.15
 local focus, focusVelocity = Vector3.zero, Vector3.zero
 local distance, distanceVelocity = 12, 0
+local zoom = 1
+local reach = 12
 local fov, fovVelocity = tuning.fov, 0
 local shake = 0
 local hasFocus = false
@@ -63,6 +67,11 @@ local function update(dt: number)
 	yaw -= look.X
 	pitch = math.clamp(pitch - look.Y, tuning.minPitch, tuning.maxPitch)
 
+	local notches = Input.consumeZoom()
+	if notches ~= 0 then
+		zoom = math.clamp(zoom - notches * tuning.zoomStep, tuning.zoomMin, tuning.zoomMax)
+	end
+
 	local root = SwimController.root()
 	local length = SwimController.length()
 	local target = if root then root.Position + Vector3.new(0, length * tuning.height, 0) else lastPosition
@@ -70,9 +79,11 @@ local function update(dt: number)
 		return
 	end
 	lastPosition = target
+	local wantDistance = (tuning.baseDistance + tuning.perLength * length) * zoom
 	if not hasFocus then
 		focus, focusVelocity = target, Vector3.zero
-		distance = tuning.baseDistance + tuning.perLength * length
+		distance = wantDistance
+		reach = wantDistance
 		hasFocus = true
 	end
 	focus, focusVelocity = Spring.vector(focus, focusVelocity, target, tuning.focusSpring, dt)
@@ -80,35 +91,51 @@ local function update(dt: number)
 	if (focus - target).Magnitude > length * 6 + 30 then
 		focus, focusVelocity = target, Vector3.zero
 	end
-	distance, distanceVelocity = Spring.number(
-		distance,
-		distanceVelocity,
-		tuning.baseDistance + tuning.perLength * length,
-		tuning.distanceSpring,
-		dt
-	)
+	distance, distanceVelocity =
+		Spring.number(distance, distanceVelocity, wantDistance, tuning.distanceSpring, dt)
 	local wantFov = if SwimController.boosting then tuning.boostFov else tuning.fov
 	fov, fovVelocity = Spring.number(fov, fovVelocity, wantFov, 6, dt)
 
 	local rotation = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)
 	local back = -rotation.LookVector
-	-- Slide in along the ray instead of clipping into rock
+	-- Keep out of rock. Everything that moves is ignored: fish, prey and pickups.
 	local ignore: { Instance } = {}
-	local character = SwimController.character()
-	if character then
-		table.insert(ignore, character)
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(ignore, player.Character)
+		end
 	end
-	local prey = workspace:FindFirstChild("Prey")
-	if prey then
-		table.insert(ignore, prey)
+	for _, name in { "Prey", "Forage", "Shells" } do
+		local folder = workspace:FindFirstChild(name)
+		if folder then
+			table.insert(ignore, folder)
+		end
 	end
 	rayParams.FilterDescendantsInstances = ignore
-	local reach = distance
-	local hit = workspace:Raycast(focus, back * (distance + 1), rayParams)
-	if hit then
-		reach = math.max(hit.Distance - 1, length * 0.8)
+	local clearance = math.clamp(length * tuning.clearance, tuning.clearanceMin, tuning.clearanceMax)
+	-- 1. The look-at point sits above the fish and trails it, so against a ceiling
+	-- or a wall it can end up inside the rock; pull it back toward the fish
+	local eye = focus
+	local anchor = if root then root.Position else focus
+	local toEye = eye - anchor
+	if toEye.Magnitude > 1e-3 then
+		local blocked = workspace:Raycast(anchor, toEye, rayParams)
+		if blocked then
+			eye = anchor + toEye.Unit * math.max(blocked.Distance - clearance, 0)
+		end
 	end
-	local position = focus + back * reach
+	-- 2. Sweep a sphere back from there; snap in when blocked, ease back out
+	local want = distance
+	local hit = workspace:Spherecast(eye, clearance, back * distance, rayParams)
+	if hit then
+		want = math.max(hit.Distance, 0.3)
+	end
+	if want < reach then
+		reach = want
+	else
+		reach += (want - reach) * (1 - math.exp(-dt * 5))
+	end
+	local position = eye + back * reach
 	if shake > 0.001 then
 		local t = os.clock() * 40
 		position += Vector3.new(math.noise(t, 0, 0), math.noise(0, t, 0), math.noise(0, 0, t)) * shake * length * 0.5

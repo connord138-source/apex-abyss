@@ -64,6 +64,19 @@ function Layout.spawnFrame(index: number): CFrame
 	return frame * CFrame.new(0, 0, -hub.denDepth * 0.1)
 end
 
+-- The vendor stalls stand round the plaza's beacon (Config/Shop `angle`).
+Layout.PLAZA_TOP = 1.5
+Layout.COUNTER_RADIUS = 33
+
+-- The middle of a stall's counter, for the server's reach check and the client's
+-- "E · Shop" hint (which works out where the stalls are without the parts, since
+-- they may not have streamed in).
+function Layout.counterPosition(angleDegrees: number): Vector3
+	return hub.center
+		+ outward(math.rad(angleDegrees)) * Layout.COUNTER_RADIUS
+		+ Vector3.new(0, Layout.PLAZA_TOP + 1.8, 0)
+end
+
 -- Whether a position is inside the hub (the cavern, its dens or its tunnels), where
 -- nobody can be eaten.
 function Layout.inHub(position: Vector3): boolean

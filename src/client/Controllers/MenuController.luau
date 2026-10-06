@@ -1,16 +1,17 @@
 --!strict
--- The menus: each vendor's shop (opened at its stall's prompt), the Wardrobe
+-- The menus: each vendor's shop (opened at its stall: E, Y or a tap on the hint
+-- that shows near a counter), the Wardrobe
 -- (shades, body parts and variants you own, on a preview of your fish) and the
 -- roll odds. One window at a time; the cursor is freed while it's open, and a
 -- controller can drive it (the D-pad moves between buttons, B closes).
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local ClientState = require(script.Parent.Parent.ClientState)
@@ -33,6 +34,7 @@ type Menu = {
 
 local gui: ScreenGui
 local current: Menu? = nil
+local currentShop: string? = nil
 local lastTick = 0
 
 local function state(): { [string]: any }
@@ -53,6 +55,7 @@ function MenuController.close()
 		return
 	end
 	current = nil
+	currentShop = nil
 	if menu.cleanup then
 		menu.cleanup()
 	end
@@ -390,6 +393,7 @@ function MenuController.openShop(vendorId: string, anchor: Vector3?)
 			end,
 		}
 	end)
+	currentShop = vendorId
 end
 
 local TABS = { "Shades", "Parts", "Variants" }
@@ -764,7 +768,10 @@ function MenuController.openSpecies()
 								then "SWIMMING"
 								elseif owned then `LV {level or 1}`
 								else "LOCKED"
-							local frame, button = row(
+							local selected = species.id == chosen
+							-- The chip on the right is a status, not a button: the whole row
+							-- selects the species (a bright LOCKED chip once read as clickable)
+							local frame, chip = row(
 								list,
 								i,
 								species.id,
@@ -772,7 +779,7 @@ function MenuController.openSpecies()
 								species.role,
 								nil,
 								status,
-								if species.id == chosen
+								if s.species == species.id
 									then "primary"
 									elseif owned then "secondary"
 									else "disabled",
@@ -786,15 +793,41 @@ function MenuController.openSpecies()
 									label.Size = UDim2.new(1, -140, 0, label.Size.Y.Offset)
 								end
 							end
-							if button then
-								button.Size = UDim2.fromOffset(100, 34)
-								button.Position = UDim2.new(1, -110, 0.5, -17)
-								button.Selectable = true
-								button.Activated:Connect(function()
+							if chip then
+								chip.Size = UDim2.fromOffset(100, 34)
+								chip.Position = UDim2.new(1, -110, 0.5, -17)
+								chip.Selectable = false
+								chip.Active = false
+							end
+							if selected then
+								frame.BackgroundTransparency = 0.05
+								Ui.stroke(frame, Ui.color.accent, 0.1, 2)
+							end
+							local hit = Instance.new("TextButton")
+							hit.Name = "Select"
+							hit.Text = ""
+							hit.BackgroundTransparency = 1
+							hit.AutoButtonColor = false
+							hit.Size = UDim2.fromScale(1, 1)
+							hit.ZIndex = 5
+							hit.Selectable = true
+							hit.Parent = frame
+							hit.MouseEnter:Connect(function()
+								if not selected then
+									frame.BackgroundTransparency = 0.15
+								end
+							end)
+							hit.MouseLeave:Connect(function()
+								if not selected then
+									frame.BackgroundTransparency = 0.35
+								end
+							end)
+							hit.Activated:Connect(function()
+								if chosen ~= species.id then
 									chosen = species.id
 									menu.render()
-								end)
-							end
+								end
+							end)
 						end
 					end)
 					renderDetail()
@@ -852,21 +885,120 @@ function MenuController.openOdds()
 	end)
 end
 
-function MenuController.start()
-	gui = Ui.screen("Menus", Players.LocalPlayer:WaitForChild("PlayerGui"), 10)
-	ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt)
-		local vendor = prompt:GetAttribute("Vendor")
-		local stall = prompt.Parent
-		if typeof(vendor) == "string" then
-			MenuController.openShop(vendor, if stall and stall:IsA("BasePart") then stall.Position else nil)
+-- The stall hint: near a counter, a chip over it says which key opens its shop
+-- (E, Y on a controller, or tap the chip). Our own, because a ProximityPrompt never
+-- showed for the custom fish character.
+local hintGui: BillboardGui
+local hintKeyFrame: Frame
+local hintKey: TextLabel
+local hintText: TextLabel
+local hintSpot: Attachment
+local nearVendor: string? = nil
+
+local counters: { [string]: Vector3 } = {}
+for _, vendor in Shop.vendors do
+	counters[vendor.id] = Layout.counterPosition(vendor.angle)
+end
+
+local function openNearShop()
+	local vendorId = nearVendor
+	if vendorId == nil then
+		return
+	end
+	if currentShop == vendorId then
+		MenuController.close()
+	else
+		MenuController.openShop(vendorId, counters[vendorId])
+	end
+end
+
+local function buildHint(playerGui: Instance)
+	hintSpot = Instance.new("Attachment")
+	hintSpot.Name = "StallHint"
+	hintSpot.Parent = workspace.Terrain
+	hintGui = Instance.new("BillboardGui")
+	hintGui.Name = "StallHint"
+	hintGui.Adornee = hintSpot
+	hintGui.Size = UDim2.fromOffset(250, 46)
+	hintGui.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
+	hintGui.AlwaysOnTop = true
+	hintGui.LightInfluence = 0
+	hintGui.Active = true
+	hintGui.Enabled = false
+	hintGui.ResetOnSpawn = false
+	local chip = Instance.new("TextButton")
+	chip.Name = "Chip"
+	chip.Text = ""
+	chip.AutoButtonColor = false
+	chip.Selectable = false
+	chip.Size = UDim2.fromScale(1, 1)
+	chip.BackgroundColor3 = Ui.color.panel
+	chip.BackgroundTransparency = 0.15
+	Ui.corner(chip, UDim.new(1, 0))
+	Ui.stroke(chip, Ui.color.accent, 0.2, 1.5)
+	chip.Parent = hintGui
+	local key = Instance.new("Frame")
+	key.Name = "Key"
+	key.AnchorPoint = Vector2.new(0, 0.5)
+	key.Position = UDim2.new(0, 6, 0.5, 0)
+	key.Size = UDim2.fromOffset(34, 34)
+	key.BackgroundColor3 = Ui.color.accent
+	Ui.corner(key, UDim.new(1, 0))
+	key.Parent = chip
+	hintKeyFrame = key
+	hintKey = Ui.label(key, "Text", "E", Ui.FONT_HEAVY, 18, Ui.color.panel, UDim2.fromScale(1, 1))
+	hintKey.TextXAlignment = Enum.TextXAlignment.Center
+	hintText = Ui.label(chip, "Text", "", Ui.FONT_BOLD, 16, Ui.color.text, UDim2.new(1, -54, 1, 0))
+	hintText.Position = UDim2.fromOffset(48, 0)
+	chip.Activated:Connect(openNearShop)
+	hintGui.Parent = playerGui
+end
+
+local function updateHint(root: BasePart?)
+	local best: string? = nil
+	local bestDistance = Shop.hintReach
+	if root then
+		for id, position in counters do
+			local distance = (root.Position - position).Magnitude
+			if distance <= bestDistance then
+				best, bestDistance = id, distance
+			end
 		end
-	end)
+	end
+	nearVendor = best
+	local show = best ~= nil and current == nil
+	hintGui.Enabled = show
+	if show and best then
+		hintSpot.WorldPosition = counters[best]
+		local touch = Input.isTouch()
+		hintKeyFrame.Visible = not touch
+		hintKey.Text = if Input.isGamepad() then "Y" else "E"
+		hintText.Position = UDim2.fromOffset(if touch then 18 else 48, 0)
+		hintText.Text = `{if touch then "TAP TO SHOP" else "SHOP"} · {Shop.vendorsById[best].name}`
+	end
+end
+
+function MenuController.start()
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	gui = Ui.screen("Menus", playerGui, 10)
+	buildHint(playerGui)
+	ContextActionService:BindAction("ApexShop", function(_, inputState)
+		if inputState ~= Enum.UserInputState.Begin or nearVendor == nil then
+			return Enum.ContextActionResult.Pass
+		end
+		openNearShop()
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.E, Enum.KeyCode.ButtonY)
 	ClientState.changed:connect(function()
 		if current then
 			current.render()
 		end
 	end)
 	RunService.Heartbeat:Connect(function()
+		local character = Players.LocalPlayer.Character
+		local found = character and character:FindFirstChild("HumanoidRootPart")
+		local root = if found and found:IsA("BasePart") then found else nil
+		updateHint(root)
 		local menu = current
 		if menu == nil then
 			return
@@ -875,14 +1007,7 @@ function MenuController.start()
 			lastTick = os.clock()
 			menu.render()
 		end
-		local character = Players.LocalPlayer.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if
-			menu.anchor
-			and root
-			and root:IsA("BasePart")
-			and (root.Position - menu.anchor).Magnitude > Shop.reach + 8
-		then
+		if menu.anchor and root and (root.Position - menu.anchor).Magnitude > Shop.reach + 8 then
 			MenuController.close()
 		end
 	end)

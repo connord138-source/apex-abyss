@@ -502,11 +502,12 @@ local function keeper(parent: Instance, at: CFrame, color: Color3)
 	end
 end
 
--- The four vendor stalls round the plaza (Config/Shop), each with a prompt that
--- opens its shop menu on the client.
+-- The four vendor stalls round the plaza (Config/Shop). The client shows its own
+-- "E · Shop" hint near a counter (MenuController): a ProximityPrompt never showed
+-- for the custom fish character (playtest 2026-10-06).
 local function buildVendors(parent: Instance)
 	local market = folder("Vendors", parent)
-	local plazaTop = 1.5
+	local plazaTop = Layout.PLAZA_TOP
 	for _, vendor in Config.Shop.vendors do
 		local angle = math.rad(vendor.angle)
 		local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
@@ -521,7 +522,7 @@ local function buildVendors(parent: Instance)
 			stall,
 			"Counter",
 			Vector3.new(12, 3.6, 3.5),
-			at(33, plazaTop + 1.8),
+			at(Layout.COUNTER_RADIUS, plazaTop + 1.8),
 			WOOD,
 			Enum.Material.Wood
 		)
@@ -577,18 +578,8 @@ local function buildVendors(parent: Instance)
 		label.Parent = gui
 		keeper(stall, at(36.2, plazaTop + 4.2), vendor.color:Lerp(Color3.new(1, 1, 1), 0.25))
 
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.Name = "ShopPrompt"
-		prompt.ActionText = "Shop"
-		prompt.ObjectText = vendor.name
-		prompt.HoldDuration = 0
-		prompt.MaxActivationDistance = 18
-		prompt.RequiresLineOfSight = false
-		prompt.KeyboardKeyCode = Enum.KeyCode.E
-		prompt.GamepadKeyCode = Enum.KeyCode.ButtonY -- X bites
-		prompt:SetAttribute("Vendor", vendor.id)
-		prompt.Parent = counter
-		vendorPositions[vendor.id] = counter.Position
+		counter:SetAttribute("Vendor", vendor.id)
+		vendorPositions[vendor.id] = Layout.counterPosition(vendor.angle)
 		stall.Parent = market
 	end
 end

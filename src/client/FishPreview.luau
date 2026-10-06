@@ -12,6 +12,8 @@ local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
 
 local LENGTH = 4
+local FOV = 30
+local ELEVATION = math.rad(8) -- the camera looks down on the fish a little
 
 local DEFAULT_LOOK: FishBuilder.Look = {
 	back = Color3.fromRGB(52, 92, 132),
@@ -48,7 +50,7 @@ function FishPreview.new(parent: Instance, size: UDim2, position: UDim2, anchor:
 	local world = Instance.new("WorldModel")
 	world.Parent = frame
 	local camera = Instance.new("Camera")
-	camera.FieldOfView = 30
+	camera.FieldOfView = FOV
 	camera.CFrame = CFrame.lookAt(Vector3.new(0, 1.2, 9.5), Vector3.new(0, 0, 0))
 	camera.Parent = frame
 	frame.CurrentCamera = camera
@@ -61,6 +63,24 @@ function FishPreview.new(parent: Instance, size: UDim2, position: UDim2, anchor:
 	local joints: { [string]: Motor6D } = {}
 	local spin = 0
 	local connection: RBXScriptConnection? = nil
+	-- The fish spins about its own middle, not its root
+	local pivot = CFrame.identity
+	-- Its size: horizontal reach while turning (the diagonal of its footprint) and height
+	local reach, height = LENGTH / 2, LENGTH / 4
+
+	-- Back the camera off until the turning fish fits the frame, whatever its shape
+	-- (long fish were cropped side-on in a narrow frame, playtest 2026-10-06).
+	local function frameCamera()
+		local size = frame.AbsoluteSize
+		local aspect = if size.Y > 1 then size.X / size.Y else 1
+		local tanV = math.tan(math.rad(FOV / 2))
+		local sinV = math.sin(math.atan(tanV))
+		local sinH = math.sin(math.atan(tanV * aspect))
+		local distance = math.max(reach / sinH, height / sinV) * 1.1
+		camera.CFrame =
+			CFrame.lookAt(Vector3.new(0, math.sin(ELEVATION), math.cos(ELEVATION)) * distance, Vector3.zero)
+	end
+	frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(frameCamera)
 
 	local preview = {} :: Preview
 	preview.frame = frame
@@ -92,6 +112,11 @@ function FishPreview.new(parent: Instance, size: UDim2, position: UDim2, anchor:
 		model.Parent = world
 		fish, root, body, shade = model, newRoot, newBody, dress.shade
 		joints = FishBuilder.joints(newBody)
+		local box, extents = model:GetBoundingBox()
+		pivot = CFrame.new(-box.Position)
+		reach = Vector2.new(extents.X, extents.Z).Magnitude / 2
+		height = extents.Y / 2
+		frameCamera()
 	end
 
 	function preview.destroy(_self: Preview)
@@ -110,7 +135,7 @@ function FishPreview.new(parent: Instance, size: UDim2, position: UDim2, anchor:
 		if currentRoot == nil or currentBody == nil then
 			return
 		end
-		currentRoot.CFrame = CFrame.Angles(0, math.rad(-70) + math.sin(spin) * 0.6, 0)
+		currentRoot.CFrame = CFrame.Angles(0, math.rad(-70) + math.sin(spin) * 0.6, 0) * pivot
 		local stalk = joints.Stalk
 		if stalk then
 			stalk.Transform = CFrame.Angles(0, math.sin(clock * 5) * 0.35, 0)

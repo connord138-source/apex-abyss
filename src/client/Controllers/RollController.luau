@@ -4,6 +4,8 @@
 -- rolled. The rarer the result, the longer the reel creeps and the bigger the
 -- landing (a flash and light rays in the tier's color from Rare up). Cosmetics land
 -- on a preview of your own fish, with a button to wear them straight away.
+local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -520,6 +522,11 @@ local function buildWallet()
 	fish.LayoutOrder = 4
 	fish.TextSize = 14
 	fish.Activated:Connect(MenuController.openSpecies)
+	-- Not selectable: a controller selection once stuck on ODDS and ate key presses
+	-- (playtest 2026-10-06). The D-pad opens these instead (RollController.start).
+	for _, button in { rollButton, odds, wardrobe, fish } do
+		button.Selectable = false
+	end
 end
 
 local function onState(s: { [string]: any })
@@ -547,6 +554,29 @@ function RollController.start()
 	rollResult.OnClientEvent:Connect(function(result: { [string]: any })
 		task.spawn(reveal, result)
 	end)
+	-- Controllers: the D-pad opens the HUD's menus (up Fish, left Wardrobe, right
+	-- Odds, down Roll) while no menu has the selection
+	GuiService.AutoSelectGuiEnabled = false
+	ContextActionService:BindAction("ApexHudPad", function(_, inputState, input)
+		if
+			inputState ~= Enum.UserInputState.Begin
+			or MenuController.isOpen()
+			or GuiService.SelectedObject ~= nil
+		then
+			return Enum.ContextActionResult.Pass
+		end
+		local key = input.KeyCode
+		if key == Enum.KeyCode.DPadUp then
+			MenuController.openSpecies()
+		elseif key == Enum.KeyCode.DPadLeft then
+			MenuController.openWardrobe()
+		elseif key == Enum.KeyCode.DPadRight then
+			MenuController.openOdds()
+		elseif key == Enum.KeyCode.DPadDown and rollButton.Visible then
+			RollController.roll()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.DPadUp, Enum.KeyCode.DPadDown, Enum.KeyCode.DPadLeft, Enum.KeyCode.DPadRight)
 	-- The roll button breathes while a roll is ready; a lost request frees it again
 	RunService.Heartbeat:Connect(function()
 		if rollButton.Visible and not busy then

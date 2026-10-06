@@ -226,13 +226,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - `FishBuilder`: the graybox fish, unit-scaled with named Motor6Ds.
   - `Format`.
 - **Client** (`src/client`):
-  - `Input`: every device.
+  - `Input`: every device. It builds the move vector itself (WASD/arrows, the left
+    stick, the HUD's touch thumbstick) and never waits on Roblox's `PlayerModule`,
+    which isn't inserted for this game (playtest 2026-10-06). Mouse wheel zooms.
   - `Spring`.
   - `Ui`: the design system (BuilderSans, palette, panels, bars).
   - `Controllers/`:
     - `SwimController`: momentum swim, banking into turns, the Dash (`dashCharge`), lunge.
     - `ForageController`: draws starfish and hopping shrimp, eats them with suction.
-    - `CameraController`: the spring camera, mouse lock.
+    - `CameraController`: the spring camera, mouse lock, wheel zoom. It pulls the
+      look-at point out of rock before sweeping a sphere back from it, so it never
+      sees through den ceilings.
     - `FishAnimator`: the spine wave, jaw and growth easing.
     - `SchoolController`: draws the prey and eats them with suction.
     - `HuntController`: player eats, bites and hit effects.
@@ -249,7 +253,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Client:
     - `ShellController`.
     - `RollController`: wallet, Roll / Odds / Wardrobe buttons, the reveal.
-    - `MenuController`: shops, Wardrobe, odds; B closes.
+    - `MenuController`: shops, Wardrobe, odds; B closes. Its own stall hint ("E ·
+      Shop", Y on a controller, tap on phones) shows within `Shop.hintReach` of a
+      counter (`Layout.counterPosition`); there are no ProximityPrompts.
+    - HUD buttons (ROLL, ODDS, WARDROBE, FISH) aren't selectable; the D-pad opens
+      them (up Fish, left Wardrobe, right Odds, down Roll).
     - `FishPreview`: a ViewportFrame fish.
 - **Species and the tutorial (2026-10-06):**
   - `Config/Species` (six species: stats, colors, body plan, home biome, unlock rule),
@@ -284,6 +292,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - real models, audio, caustics (needs a texture upload)
   - server-side speed checks
   - The progression numbers are placeholders: one full dive banks about 16 levels.
+
+## Playtests
+
+- Reports go in `docs/playtests/` (the first: `2026-10-06-pc.md`).
+- On the owner's PC, Rojo for this game runs on **port 34873** until the stale Hatch
+  & Snatch `rojo serve` on 34872 is closed. Never connect the plugin to the
+  HatchAndSnatch project from this place.
+- Keep Studio's Controller Emulator panel closed for keyboard tests.
+- Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
+  move vector comes from `Input`), and ProximityPrompts never showed or triggered
+  for it (so interactions use our own distance checks and hints).
 
 ## Lessons carried over from Hatch & Snatch
 

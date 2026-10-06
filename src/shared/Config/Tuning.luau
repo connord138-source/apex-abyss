@@ -41,8 +41,17 @@ return {
 	},
 
 	camera = {
-		baseDistance = 7, -- studs behind a fish, plus perLength × its length
-		perLength = 3.1,
+		-- Studs behind a fish, plus perLength × its length. A new 2-stud Nibbler sits
+		-- about 7 studs out (it was 13 and read as a dot, playtest 2026-10-06).
+		baseDistance = 2,
+		perLength = 2.4,
+		zoomMin = 0.6, -- the mouse wheel scales the distance within these
+		zoomMax = 1.8,
+		zoomStep = 0.1,
+		-- The camera stays this far off rock: × the fish's length, within the limits
+		clearance = 0.15,
+		clearanceMin = 0.25,
+		clearanceMax = 2.5,
 		height = 0.35, -- look-at point above the fish, × its length
 		fov = 70,
 		boostFov = 80,

@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -48,6 +49,7 @@ local healthFill: Frame
 local depthText: TextLabel
 local depthMarker: Frame
 local toastList: Frame
+local toastCount = 0
 local popLayer: Frame
 local flash: Frame
 
@@ -287,6 +289,8 @@ local function toast(text: string, kind: string)
 		elseif kind == "rare" then Ui.color.haul
 		else Ui.color.text
 	local item = Ui.panel(toastList, "Toast", UDim2.fromOffset(360, 36), UDim2.new())
+	toastCount += 1
+	item.LayoutOrder = toastCount -- the newest sits lowest, nearest the Haul card
 	item.BackgroundTransparency = 1
 	local label = Ui.label(item, "Text", text, Ui.FONT_BOLD, 16, color, UDim2.fromScale(1, 1))
 	label.TextXAlignment = Enum.TextXAlignment.Center
@@ -493,7 +497,84 @@ local function holdButton(button: TextButton, inputName: string)
 	end)
 end
 
+-- The swim stick on phones: touch anywhere in the lower left and drag. The ring
+-- appears under the thumb, so it's always where the thumb already is.
+local function buildThumbstick()
+	local RADIUS = 56
+	local zone = Instance.new("Frame")
+	zone.Name = "SwimStick"
+	zone.BackgroundTransparency = 1
+	zone.Active = true -- touches that start here don't also turn the camera
+	zone.AnchorPoint = Vector2.new(0, 1)
+	zone.Position = UDim2.fromScale(0, 1)
+	zone.Size = UDim2.fromScale(0.4, 0.6)
+	zone.Parent = gui
+	local ring = Instance.new("Frame")
+	ring.Name = "Ring"
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Size = UDim2.fromOffset(RADIUS * 2, RADIUS * 2)
+	ring.BackgroundColor3 = Ui.color.panel
+	ring.BackgroundTransparency = 0.55
+	Ui.corner(ring, UDim.new(1, 0))
+	Ui.stroke(ring, Ui.color.stroke, 0.5, 1.5)
+	ring.Parent = zone
+	local knob = Instance.new("Frame")
+	knob.Name = "Knob"
+	knob.AnchorPoint = Vector2.new(0.5, 0.5)
+	knob.Size = UDim2.fromOffset(48, 48)
+	knob.Position = UDim2.fromScale(0.5, 0.5)
+	knob.BackgroundColor3 = Ui.color.text
+	knob.BackgroundTransparency = 0.35
+	Ui.corner(knob, UDim.new(1, 0))
+	knob.Parent = ring
+	-- Resting spot, faded, so new players see where to put their thumb
+	local rest = UDim2.new(0, 110, 1, -110)
+	ring.Position = rest
+	ring.BackgroundTransparency = 0.75
+
+	local active: InputObject? = nil
+	local start = Vector2.zero
+	local function screenPoint(input: InputObject): Vector2
+		-- Touch positions skip the top bar; this ScreenGui ignores it
+		return Vector2.new(input.Position.X, input.Position.Y + Ui.topInset())
+	end
+	zone.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch or active ~= nil then
+			return
+		end
+		active = input
+		start = screenPoint(input)
+		local scale = Ui.scaleOf(gui)
+		local localPoint = (start - zone.AbsolutePosition) / scale
+		ring.Position = UDim2.fromOffset(localPoint.X, localPoint.Y)
+		ring.BackgroundTransparency = 0.55
+	end)
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		if input ~= active then
+			return
+		end
+		local scale = Ui.scaleOf(gui)
+		local delta = (screenPoint(input) - start) / scale
+		if delta.Magnitude > RADIUS then
+			delta = delta.Unit * RADIUS
+		end
+		knob.Position = UDim2.new(0.5, delta.X, 0.5, delta.Y)
+		Input.setTouchMove(delta / RADIUS)
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if input ~= active then
+			return
+		end
+		active = nil
+		Input.setTouchMove(Vector2.zero)
+		knob.Position = UDim2.fromScale(0.5, 0.5)
+		ring.Position = rest
+		ring.BackgroundTransparency = 0.75
+	end)
+end
+
 local function buildTouchButtons()
+	buildThumbstick()
 	local bite = touchButton("Bite", "BITE", 92, UDim2.new(1, -86, 1, -110))
 	bite.Activated:Connect(function()
 		Input.bite:fire()
@@ -511,8 +592,8 @@ local function showControlsHint()
 		then "Stick to swim · drag to look · BITE and DASH on the right"
 		elseif
 			Input.isGamepad()
-		then "Left stick swim · right stick look · RT dash · RB bite · A/B up and down · Y at a stall"
-		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · E at a stall to shop · hold Alt for the cursor"
+		then "Left stick swim · right stick look · RT dash · RB bite · A/B up and down · Y at a stall · D-pad menus"
+		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · Wheel zoom · E at a stall · hold Alt for the cursor"
 	local label = Ui.label(
 		gui,
 		"Controls",
@@ -657,12 +738,16 @@ function HudController.start()
 	toastList = Instance.new("Frame")
 	toastList.Name = "Toasts"
 	toastList.BackgroundTransparency = 1
-	toastList.AnchorPoint = Vector2.new(0.5, 0)
-	toastList.Position = UDim2.new(0.5, 0, 0, 70)
-	toastList.Size = UDim2.fromOffset(360, 200)
+	-- Above the Haul card, stacking up: the top of the screen belongs to the
+	-- safe-zone and biome banners (a toast once sat between a banner's lines)
+	toastList.AnchorPoint = Vector2.new(0.5, 1)
+	toastList.Position = UDim2.new(0.5, 0, 1, -130)
+	toastList.Size = UDim2.fromOffset(360, 160)
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 6)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = toastList
 	toastList.Parent = gui
 

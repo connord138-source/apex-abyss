@@ -2,14 +2,19 @@
 -- One place for every device's controls, so the swim, camera and HUD code never
 -- cares what the player is holding.
 --
---   PC:       mouse looks (cursor locked; hold Alt to free it), WASD swims toward
---             the camera, Space / Ctrl up and down, Shift or Q uses the ability (the
---             Nibbler's Dash), click or F bites
+--   PC:       mouse looks (cursor locked; hold Alt to free it), the wheel zooms,
+--             WASD or the arrows swim toward the camera, Space / Ctrl up and
+--             down, Shift or Q uses the ability (the Nibbler's Dash), click or F
+--             bites, E shops at a stall
 --   Gamepad:  left stick swims, right stick looks, RT ability, RB or X bites,
---             A / B up and down
---   Touch:    Roblox's thumbstick swims, drag anywhere else to look, the HUD's
---             Dash and Bite buttons
-local Players = game:GetService("Players")
+--             A / B up and down, Y shops at a stall
+--   Touch:    the HUD's thumbstick (bottom left) swims, drag anywhere else to
+--             look, the HUD's Dash and Bite buttons
+--
+-- The move vector is built here from the keys and sticks, not from Roblox's
+-- PlayerModule: that module isn't inserted for this game's custom fish character
+-- (playtest 2026-10-06: WASD did nothing while the client waited on it forever).
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
@@ -27,24 +32,28 @@ local Input = {
 	cursorWanted = false,
 }
 
-local controls: any = nil
 local touchLook = Vector2.zero
 local lookTouches: { [InputObject]: boolean } = {}
+local stick1 = Vector2.zero
 local stick2 = Vector2.zero
+local touchMove = Vector2.zero
+local wheel = 0
 local held: { [string]: boolean } = {}
 
 local function setHeld(key: Enum.KeyCode | Enum.UserInputType, down: boolean)
 	held[key.Name] = down
 end
 
-function Input.start()
-	local player = Players.LocalPlayer
-	task.spawn(function()
-		local module =
-			require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: ModuleScript) :: any
-		controls = module:GetControls()
-	end)
+-- A stick past its dead zone, rescaled so it still reaches 1 at full tilt.
+local function deadZone(position: Vector2): Vector2
+	local magnitude = position.Magnitude
+	if magnitude < 0.15 then
+		return Vector2.zero
+	end
+	return position.Unit * math.min((magnitude - 0.15) / 0.85, 1)
+end
 
+function Input.start()
 	UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			if not processed then
@@ -77,17 +86,23 @@ function Input.start()
 		setHeld(input.KeyCode, false)
 		setHeld(input.UserInputType, false)
 	end)
-	UserInputService.InputChanged:Connect(function(input: InputObject)
+	UserInputService.InputChanged:Connect(function(input: InputObject, processed: boolean)
 		if input.UserInputType == Enum.UserInputType.Touch and lookTouches[input] then
 			touchLook += Vector2.new(input.Delta.X, input.Delta.Y)
+		elseif input.UserInputType == Enum.UserInputType.MouseWheel then
+			if not processed then
+				wheel += input.Position.Z
+			end
+		elseif input.KeyCode == Enum.KeyCode.Thumbstick1 then
+			stick1 = deadZone(Vector2.new(input.Position.X, -input.Position.Y))
 		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
-			local position = Vector2.new(input.Position.X, -input.Position.Y)
-			stick2 = if position.Magnitude < 0.15 then Vector2.zero else position
+			stick2 = deadZone(Vector2.new(input.Position.X, -input.Position.Y))
 		end
 	end)
 	UserInputService.WindowFocusReleased:Connect(function()
 		table.clear(held)
 		table.clear(lookTouches)
+		stick1, stick2, touchMove = Vector2.zero, Vector2.zero, Vector2.zero
 	end)
 end
 
@@ -95,18 +110,30 @@ local function down(name: string): boolean
 	return held[name] == true
 end
 
--- The swim stick: x = right, z = forward (negative), from WASD, the left stick or
--- the touch thumbstick.
+local function axis(positive: boolean, negative: boolean): number
+	return (if positive then 1 else 0) - (if negative then 1 else 0)
+end
+
+-- The swim stick: x = right, z = forward (negative), from WASD or the arrow keys,
+-- the left stick, or the touch thumbstick. Length at most 1.
 function Input.moveVector(): Vector3
-	if controls then
-		local ok, vector = pcall(function()
-			return controls:GetMoveVector()
-		end)
-		if ok and typeof(vector) == "Vector3" then
-			return vector
-		end
+	local keys = Vector2.new(
+		axis(down("D") or down("Right"), down("A") or down("Left")),
+		axis(down("S") or down("Down"), down("W") or down("Up"))
+	)
+	-- The left stick moves the selection while a menu button is selected
+	-- (stick1 is stored with y flipped, so pushing up is negative, like W)
+	local stick = if GuiService.SelectedObject then Vector2.zero else stick1
+	local move = keys + stick + touchMove
+	if move.Magnitude > 1 then
+		move = move.Unit
 	end
-	return Vector3.zero
+	return Vector3.new(move.X, 0, move.Y)
+end
+
+-- The HUD's touch thumbstick: x = right, y = back (screen down), length at most 1.
+function Input.setTouchMove(vector: Vector2)
+	touchMove = vector
 end
 
 -- Up/down: +1, 0 or -1.
@@ -140,6 +167,13 @@ function Input.consumeLook(dt: number): Vector2
 	touchLook = Vector2.zero
 	look += stick2 * cameraTuning.gamepadSpeed * dt
 	return look
+end
+
+-- Mouse wheel notches since the last call (up is positive, meaning zoom in).
+function Input.consumeZoom(): number
+	local notches = wheel
+	wheel = 0
+	return notches
 end
 
 function Input.isTouch(): boolean
