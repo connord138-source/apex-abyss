@@ -16,6 +16,8 @@ local list: { Tier } = {
 	{ id = "Legendary", name = "Legendary", color = Color3.fromRGB(255, 202, 76), order = 4 },
 	{ id = "Mythic", name = "Mythic", color = Color3.fromRGB(255, 92, 146), order = 5 },
 	{ id = "Abyssal", name = "Abyssal", color = Color3.fromRGB(84, 255, 214), order = 6 },
+	-- World boss trophies: never rolled, only won by beating a boss
+	{ id = "Trophy", name = "Boss Trophy", color = Color3.fromRGB(196, 255, 170), order = 7 },
 }
 
 local byId: { [string]: Tier } = {}

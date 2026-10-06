@@ -68,7 +68,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - six species
     - their abilities
     - DNA unlocks at the Old Hermit
-    - the tutorial steps, with the Squid as the tutorial's reward
+    - the tutorial steps, with the **'Cuda** (a barracuda) as the tutorial's reward. It
+      replaced the playable Squid (owner, 2026-10-06), and the Giant Squid stays a boss
+      only.
     - looks-only rolled parts; power comes from the species trees
     - species-specific exotic variants
     - the per-biome food chain
@@ -90,9 +92,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     map, mostly in deep blue... a very hard and scary boss" with an extreme reward.
     - Claude's design is in GDD §8: Open Blue patrol, swallows any player, telegraphed
       attacks, three phases, a whole-server fight.
-    - Rewards: Megalodon Teeth (10 plus an Apex Reef Shark unlock the playable
-      Megalodon), a huge Haul, a coral jackpot, a Megalodon Roll, exclusive looks and a
-      den trophy.
+    - **Rewards (owner): no playable Megalodon or Kraken.** Bosses give exclusive skins
+      and den items "worth fighting for".
+      - Megalodon: the pale green **Ghost** shade (ForceField shimmer), a Jaw part, a
+        den jaw arch and a tooth trophy.
+      - Giant Squid: the **Abyss Ink** shade, Tentacles, a den Kraken-eye lantern.
+      - Teeth or Beaks from each kill buy them at a fifth stall, the **Trophy Hunter**,
+        and there's a chance of a direct drop.
+      - Plus a huge Haul, a coral jackpot, a Rare-or-better roll and a title.
+      - Boss shades have `boss` set in `Config/Shades.luau` and are kept out of the roll
+        odds.
     - It's built with the AI predators.
   - **Giant Squid world boss (owner):** "a giant squid that roams the map as well, they
     could be world events".
@@ -101,13 +110,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
       edges) take turns.
     - The squid's tentacle grabs break free by mashing or by others biting the
       tentacle. Its ink blinds, and tentacles can be bitten off.
-    - Its Kraken Beaks (10 plus an Apex Squid) unlock the playable Kraken. Details in
-      GDD §8.
+    - Its Kraken Beaks buy its trophies. Details in GDD §8.
   - **Level gating (owner):** biomes have suggested levels. Entering one above your
     fish's level shows a "too dangerous, come back stronger" warning (built:
     `Config/Biomes.luau`, `Shared/Biomes.luau`, `BiomeController`).
   - **Frozen Shelf is dropped for now** (owner: not much sea life; maybe a later
-    update). The Sunken Ruins are proposed in its place.
+    update). The **Sunken Ruins replace it** (owner approved).
 - **Creatures:**
   - Lines grow Fry → Juvenile → Adult → Apex.
   - Hard evolutions branch off at Apex with conditions and show as ??? in the Index

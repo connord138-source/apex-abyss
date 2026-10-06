@@ -20,6 +20,7 @@ export type Shade = {
 	glow: Color3?, -- a soft light on the fish
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
+	boss: string?, -- won only by beating this world boss (never in rolls)
 	blurb: string,
 }
 
@@ -166,6 +167,38 @@ local list: { Shade } = {
 		sparkle = Color3.fromRGB(255, 255, 255),
 		cycle = true,
 		blurb = "Every color, rolling across the body.",
+	},
+	-- World boss trophies (owner, 2026-10-06: "specific skins unlocked from beating
+	-- them... a pale green ghost skin"). Never rolled.
+	{
+		id = "Ghost",
+		name = "Ghost",
+		tier = "Trophy",
+		chance = 0,
+		refund = 0,
+		back = Color3.fromRGB(176, 255, 196),
+		belly = Color3.fromRGB(226, 255, 232),
+		fin = Color3.fromRGB(140, 240, 170),
+		material = Enum.Material.ForceField, -- a shimmering, see-through haunt
+		glow = Color3.fromRGB(150, 255, 180),
+		sparkle = Color3.fromRGB(200, 255, 210),
+		boss = "Megalodon",
+		blurb = "Pale green and see-through, like the drowned. Won from the Megalodon.",
+	},
+	{
+		id = "AbyssInk",
+		name = "Abyss Ink",
+		tier = "Trophy",
+		chance = 0,
+		refund = 0,
+		back = Color3.fromRGB(26, 16, 40),
+		belly = Color3.fromRGB(64, 40, 96),
+		fin = Color3.fromRGB(130, 64, 210),
+		reflectance = 0.1,
+		glow = Color3.fromRGB(150, 90, 255),
+		sparkle = Color3.fromRGB(110, 230, 255),
+		boss = "GiantSquid",
+		blurb = "Ink-black with glowing spots. Won from the Giant Squid.",
 	},
 }
 

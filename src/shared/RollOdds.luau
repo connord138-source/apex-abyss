@@ -35,6 +35,9 @@ for _, coral in Rolls.coral do
 	})
 end
 for _, shade in Config.Shades.list do
+	if shade.boss then
+		continue -- boss trophies are won, never rolled
+	end
 	table.insert(outcomes, {
 		id = shade.id,
 		kind = "shade",

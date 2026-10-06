@@ -140,13 +140,14 @@ The approved details:
   tree.
 - Rolled body parts are looks only; functional changes come from the species trees.
 - A second concept round: `assets/concepts/SpeciesRoster` and `NibblerGrowth`.
+- **Sunken Ruins approved** (owner, 2026-10-06) to replace Frozen Shelf.
 
 | Species | Role | Unlocked from | Ability options (pick one in the tree) |
 |---|---|---|---|
 | **Nibbler** (starter) | all-rounder | start | **Dash only** (a short burst that recharges; its tree upgrades the Dash) |
 | **Pufferfish** | tank / defense | Coral Reef | Puff Up (can't be swallowed 3 s) · Spike Burst · Toxic Cloud |
 | **Moray Eel** | speed / ambush; slips through gaps | Shipwreck Graveyard | Strike (long lunge) · Burrow (hide in rock) · Shock |
-| **Squid** | evasion / trickster | Kelp Shallows (the tutorial's reward) | Ink Cloud · Jet Escape · Camouflage |
+| **'Cuda** (a barracuda; replaced the Squid, owner 2026-10-06) | speed / hit-and-run: the fastest straight-line swimmer, wider turns | Kelp Shallows (the tutorial's reward) | Torpedo (a long charged sprint) · Razor Bite (bites make the target bleed) · Silver Flash (blinds a target briefly) |
 | **Reef Shark** | aggression / bite | Open Blue | Frenzy · Blood Sense · Ram |
 | **Anglerfish** | lure hunter of the dark | Abyssal Trench | Lure (pulls prey in) · Lantern Flash (stun) · Deep Sight |
 
@@ -175,7 +176,7 @@ The approved details:
   4. Pick up shells.
   5. Dodge a barracuda.
   6. Spend your first Growth Point.
-  7. Reach level 10. Species select opens, and the Squid unlocks as the tutorial's
+  7. Reach level 10. Species select opens, and the 'Cuda unlocks as the tutorial's
      reward.
 - **Body parts from rolls are looks only.**
   - Rolls will be sold for Robux (Shell packs), so functional rolled parts would mean
@@ -213,12 +214,9 @@ The approved details:
 ### Lines, evolutions and art
 
 - **Lines grow in stages:** Fry → Juvenile → Adult → Apex, by banked XP.
-- **Hard evolutions** branch off at Apex and need a condition. They show as ??? in the
+- **Hard evolutions** branch off at Apex and need a condition. The Megalodon and the
+  Kraken are world bosses, never playable (owner, 2026-10-06). They show as ??? in the
   Index until unlocked. Examples:
-  - Reef Shark (Apex) → **Megalodon** with 10 Megalodon Teeth from the world boss
-    (2026-10-06; replaces "eat an Apex during a Blood Tide")
-  - Squid (Apex) → **Kraken** with 10 Kraken Beaks from the Giant Squid world boss
-    (2026-10-06)
   - Moray → **Leviathan Eel** (reach a set depth)
   - Manta → **Void Manta** (requires a mutation)
 - **Art (changed 2026-10-06):** stylized, chunky low-poly, like *Schedule I* mixed
@@ -463,17 +461,23 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
        hides it.
     3. **Last stand** (under 25%): it dives for the Trench. Catch it before it escapes,
        or it heals and comes back later.
-- **Rewards** go to everyone who dealt at least 1% of the damage:
-  - **Megalodon Teeth:** 1 each, 2–3 for the top three. Ten Teeth plus an Apex-stage
-    Reef Shark unlock **the Megalodon as a playable species**. That's the ultimate
-    fish, and it replaces the older "eat an Apex during a Blood Tide" evolution idea.
-  - A huge Haul, which you still have to carry home.
-  - A coral jackpot (5,000+).
-  - A **Megalodon Roll** (Rare-or-better outcomes only, with its odds shown).
-  - A chance at exclusive looks: a Megalodon Jaw part and a scarred shade.
-  - The jaw on your den's trophy wall, and a Megalodon Slayer title.
-- **Respawn:** about 45 minutes after it dies, announced two minutes ahead ("The water
-  goes cold... the Megalodon is rising").
+- **Rewards** (owner, 2026-10-06: no playable Megalodon; "specific skins unlocked from
+  beating them... a pale green ghost skin or a certain item for their base. The reward
+  needs to be something worth fighting it for"). Everyone who dealt at least 1% of the
+  damage gets:
+  - **Megalodon Teeth:** 1 each, plus 1 for the top three and 1 for the killing bite.
+    The Teeth buy its trophies at the **Trophy Hunter**, a fifth stall in the plaza, so
+    dedicated hunters always get there.
+  - **Trophies:**
+    - the **Ghost** shade: pale green, see-through and shimmering (built in
+      `Config/Shades.luau`)
+    - a Megalodon Jaw body part
+    - a giant **jaw arch** for your den's entrance
+    - a mounted tooth for the trophy wall
+  - **A chance at a trophy straight from the kill** (about 1 in 15, doubled for the top
+    damage dealer).
+  - A huge Haul you still have to carry home, a coral jackpot (5,000+), a
+    Rare-or-better roll, and a Megalodon Slayer title.
 - **Tech:** a server-simulated boss on the same system as the aggressive predators
   (positions streamed about 10 times a second, clients interpolate, attacks checked on
   the server). It gets one hero Tripo model with the procedural spine swim. It's built
@@ -502,13 +506,16 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   - Its eye takes double damage while it's lit before a grab.
   - At low health it sinks back into the Trench, so it has to be finished before it
     escapes.
-- **Rewards** go to everyone who dealt at least 1% of the damage:
-  - **Kraken Beaks:** 1 each, more for the top three. Ten Beaks plus an Apex-stage
-    Squid unlock **the Kraken as a playable species**. This replaces the "Abyssal
-    Pearl" idea.
-  - A huge Haul, a coral jackpot and a Rare-or-better roll.
-  - A chance at exclusive looks: Kraken Tentacles and a bioluminescent shade.
-  - A den trophy and a Kraken Slayer title.
+- **Rewards** follow the same rules as the Megalodon (no playable Kraken). Everyone who
+  dealt at least 1% of the damage gets:
+  - **Kraken Beaks**, spent at the Trophy Hunter.
+  - **Trophies:**
+    - the **Abyss Ink** shade: ink-black with glowing spots (built)
+    - Kraken Tentacles body part
+    - a glowing **Kraken-eye lantern** for your den
+  - A chance at a trophy straight from the kill.
+  - Bonus Beaks for every tentacle you bit off.
+  - A huge Haul, a coral jackpot, a Rare-or-better roll, and a Kraken Slayer title.
 
 ### Tide events (the role the Moon Egg plays in Hatch & Snatch)
 

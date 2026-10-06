@@ -422,6 +422,7 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 		local tierInfo = Tiers.byId[tier]
 		local blurb = if has
 			then `{tierInfo.name}{if slot then ` · {slot}` else ""}`
+			elseif chance <= 0 then `{tierInfo.name} · beat the world boss to win it`
 			else `{tierInfo.name} · roll to find · {RollOdds.oneIn(1 / chance)}`
 		local action = if not has then "LOCKED" elseif worn then "TAKE OFF" else "WEAR"
 		local style: Ui.ButtonStyle = if not has then "disabled" elseif worn then "secondary" else "primary"
