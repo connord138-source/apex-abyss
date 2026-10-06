@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    {
+      "name": "SpeciesRoster",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/StyleSheet.png",
+      "prompt": "Using the attached image only as a STYLE reference (copy the chunky stylized low-poly look, flat-shaded facets, bold colors and lighting, not the exact creatures), draw a character select roster for a Roblox underwater game: six playable sea creatures as adults, side by side in a row on a plain soft teal gradient background, all in a three-quarter side view at a similar display size: 1) the starter: a round, friendly, sturdy orange and yellow reef fish with big googly eyes, the all-rounder; 2) a pufferfish, half puffed with spines, tanky; 3) a long green moray eel with an open toothy mouth, sneaky; 4) a purple squid with big curious eyes and curled tentacles, tricky; 5) a sleek grey reef shark, aggressive; 6) a dark blue deep-sea anglerfish with a glowing yellow lure and big teeth. Each has a distinct silhouette. Simple expressive eyes with dark pupils (googly only on the starter). No text, no labels, no watermark."
+    },
+    {
+      "name": "NibblerGrowth",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/StyleSheet.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly, flat-shaded facets, bold colors), draw a growth sheet of ONE fish species growing up, four stages left to right on a plain soft teal gradient background, each bigger than the last: 1) a tiny round orange and yellow baby fish with huge googly eyes and stubby fins; 2) a juvenile, a bit longer with bigger fins, eyes slightly smaller relative to the body; 3) an adult, sturdy and confident with stronger fins and a hint of armor plating on the head; 4) an apex version, large and powerful with bold armored scales and a proud fin crest, still clearly the same fish with the same colors and googly eyes. Same three-quarter side view for all four. No text, no labels, no watermark."
+    }
+  ]
+}

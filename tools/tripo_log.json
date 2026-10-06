@@ -8,6 +8,15 @@
   "task_id": "028494dd-c7a9-40bc-a089-235f98f7e6db",
   "type": "generate_image"
  },
+ "concepts/NibblerGrowth": {
+  "credits": 10,
+  "files": [
+   "NibblerGrowth.png"
+  ],
+  "status": "success",
+  "task_id": "e1df8e8b-0e3d-4a25-a357-fdcf81fe7e87",
+  "type": "generate_image"
+ },
  "concepts/ShadeSheet": {
   "credits": 10,
   "files": [
@@ -15,6 +24,15 @@
   ],
   "status": "success",
   "task_id": "fa6b28cb-e945-4737-8e20-edb33c5fb1d6",
+  "type": "generate_image"
+ },
+ "concepts/SpeciesRoster": {
+  "credits": 10,
+  "files": [
+   "SpeciesRoster.png"
+  ],
+  "status": "success",
+  "task_id": "b363c404-f896-4a1d-a9c1-04b1f83107e4",
   "type": "generate_image"
  },
  "concepts/StyleSheet": {

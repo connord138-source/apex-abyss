@@ -53,6 +53,20 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     is the headline twist.
   - **Pods of up to 3:** no friendly fire, a slipstream speed boost and shared kill XP.
 - **Servers:** 12 players.
+- **Species (owner, 2026-10-06):**
+  - **Everyone starts as the same small googly-eyed fish** (working name Nibbler).
+    - A tutorial levels it up before other species can be picked.
+    - The starter stays upgradeable as an all-rounder; the other species each
+      specialize.
+  - **Each species levels up separately.**
+  - **Each species has its own upgrade tree**, with a few ability options to pick in it.
+  - **At least 4–5 playable species in the first version**, unlocked through the
+    biomes.
+  - **Food:** calm fish plus aggressive AI predators worth more, different per biome.
+  - **Lots of rare color pulls and body-part changes.**
+  - Claude's proposal (six species, their abilities, the DNA unlocks, the tutorial
+    steps, looks-only rolled parts, species-specific variants, the per-biome food
+    chain) is in GDD §7 and waits for the owner's OK.
 - **Creatures:**
   - Lines grow Fry → Juvenile → Adult → Apex.
   - Hard evolutions branch off at Apex with conditions and show as ??? in the Index
@@ -187,7 +201,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `FishPreview`: a ViewportFrame fish.
 - **Tripo:** `tools/tripo.py` (key in `TRIPO_API_KEY`); jobs files are
   `tools/tripo_jobs_*.json`, outputs go to `assets/tripo/` (gitignored), and approved
-  concepts are copied to `assets/concepts/`. 1,470 API credits were left on
+  concepts are copied to `assets/concepts/`. 1,450 API credits were left on
   2026-10-06.
 - **Not built yet:**
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs

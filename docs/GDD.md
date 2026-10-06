@@ -99,6 +99,108 @@ owner disliked "Molt" and this was the recommended replacement.*
 
 ## 7. Creatures
 
+### Species and progression (owner, 2026-10-06)
+
+**Owner decisions:**
+
+- **Everyone starts as the same small googly-eyed fish**, the starter (working name
+  **Nibbler**).
+  - A tutorial levels it up before any other species can be picked.
+  - The starter stays upgradeable as it grows. It's the all-rounder: equal at
+    everything, while the other species each specialize in a playstyle.
+- **Every species levels up separately**, like Hungry Shark. More to grind and more
+  playtime.
+- **Every species has its own upgrade tree.** It has a few ability options to pick
+  between, so each fish can be customized.
+- **At least 4–5 playable species in the first version.** The shark, the pufferfish
+  and the others are unlocked.
+- **Biomes unlock species:** each biome's fish lead to a species you can play.
+- **Two kinds of food:**
+  - calm, relaxed fish to eat
+  - aggressive AI predators (not players) that fight back and are worth more
+  Every biome has its own fish.
+- **Lots of rare color pulls and body-part changes.**
+
+**Proposed by Claude, awaiting the owner's OK** (details below):
+
+- Six species at launch (the starter plus five specialists), each unlocked from its
+  own biome.
+- Tree points come from levels, and three abilities per species are picked in the
+  tree.
+- Rolled body parts are looks only; functional changes come from the species trees.
+- A second concept round: `assets/concepts/SpeciesRoster` and `NibblerGrowth`.
+
+| Species | Role | Unlocked from | Ability options (pick one in the tree) |
+|---|---|---|---|
+| **Nibbler** (starter) | all-rounder | start | Dash · Big Gulp (swallow bigger fish for 3 s) · Second Wind (heal) |
+| **Pufferfish** | tank / defense | Coral Reef | Puff Up (can't be swallowed 3 s) · Spike Burst · Toxic Cloud |
+| **Moray Eel** | speed / ambush; slips through gaps | Shipwreck Graveyard | Strike (long lunge) · Burrow (hide in rock) · Shock |
+| **Squid** | evasion / trickster | Kelp Shallows (the tutorial's reward) | Ink Cloud · Jet Escape · Camouflage |
+| **Reef Shark** | aggression / bite | Open Blue | Frenzy · Blood Sense · Ram |
+| **Anglerfish** | lure hunter of the dark | Abyssal Trench | Lure (pulls prey in) · Lantern Flash (stun) · Deep Sight |
+
+- **Per species:**
+  - its own banked size, level (1–100), stages (Fry → Juvenile → Adult → Apex) and
+    tree
+  - base stats: speed, turn, health, bite and boost
+  - a new species starts at level 1
+- **Upgrade trees:**
+  - Every level gives that species one Growth Point.
+  - The tree has three branches (for example Speed / Toughness / Jaws); deeper nodes
+    also cost coral.
+  - Tree upgrades change the look too (bigger spikes, bigger teeth), so a build reads
+    at a glance.
+  - Respecs cost coral.
+- **Unlocking a specialist:**
+  - Swim to its biome (depth pressure needs a high enough level on some fish).
+  - Collect that biome's **DNA**, dropped by its fish.
+  - Pay a coral fee at the Old Hermit. His stall becomes the species shop: a hermit
+    crab trading shells, which fits.
+  - Account-wide upgrades (Fins, Gills, Jaw) move into the species trees.
+- **The tutorial (about 5–8 minutes, as the Nibbler):**
+  1. Swim out of your den.
+  2. Eat 10 small fish.
+  3. Bank your Haul.
+  4. Pick up shells.
+  5. Dodge a barracuda.
+  6. Spend your first Growth Point.
+  7. Reach level 10. Species select opens, and the Squid unlocks as the tutorial's
+     reward.
+- **Body parts from rolls are looks only.**
+  - Rolls will be sold for Robux (Shell packs), so functional rolled parts would mean
+    paying to win PvP, and dozens of parts across six species couldn't be balanced.
+  - Power comes from the species trees, which also show on the fish.
+  - Exotic variants become species-specific (Shark: Hammerhead, Goblin; Puffer:
+    Crowned; Eel: Ribbon; ...), so a roll never turns one species into another.
+
+### The food chain (owner: calm fish plus aggressive AI predators worth more)
+
+- **Calm fish** are schools and grazers on shared paths (cheap, as built now). They
+  scatter a little when you charge them.
+- **Aggressive predators:**
+  - A handful per biome, simulated on the server and streamed to clients.
+  - They patrol a territory, chase fish smaller than themselves, bite, and retreat when
+    hurt.
+  - Worth 2–3× their mass in Haul, plus DNA, coral and a shell chance.
+
+| Biome | Calm fish | Aggressive predators |
+|---|---|---|
+| Kelp Shallows | krill swarms, minnows, sardines, kelp wrasse, sea turtle (big grazer) | barracuda, kelp crab |
+| Coral Reef | clownfish, tangs, parrotfish, seahorses | lionfish (venom), ambush grouper |
+| Shipwreck Graveyard | silversides, snapper, hermit crabs | moray (hides in hulls), giant grouper |
+| Open Blue | tuna, flying fish, jellyfish (sting) | mako shark, swordfish |
+| Abyssal Trench | lanternfish, hatchetfish, glass squid | gulper eel, viperfish, giant squid (mini-boss) |
+
+- **The first version needs these five biomes** for the six species. Frozen Shelf and
+  Hydrothermal Vents come later (orca, magma eel).
+- **Model budget:**
+  - Six species × 4 stages = 24 models.
+  - About 25 calm and predator fish, plus the vendors.
+  - At about 30 Tripo credits a model, that's roughly 1,500 credits. 1,450 were left
+    after the concept rounds, so a top-up will be needed.
+
+### Lines, evolutions and art
+
 - **Lines grow in stages:** Fry → Juvenile → Adult → Apex, by banked XP.
 - **Hard evolutions** branch off at Apex and need a condition. They show as ??? in the
   Index until unlocked. Examples:
