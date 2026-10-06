@@ -346,12 +346,31 @@ Instead it's built in four layers:
    - Coral Reef is east, Shipwreck Graveyard west, and Open Blue north (a drop-off into
      open water).
    - Abyssal Trench is south and deepest.
-   - Frozen Shelf and Vents come later.
+   - Sunken Ruins and Vents come later; Frozen Shelf is dropped for now.
    Each sector is about 800 studs across, with blended edges, and depth pressure gates
    the deeper ones. StreamingEnabled comes on for the big map (phone memory), and props
    get level-of-detail.
 
-**Look targets:** `assets/concepts/Biome*.jpg`, one per biome (owner to approve). The
+**Look targets:** `assets/concepts/Biome*.jpg`, one per biome. The owner approved the
+looks and the layout on 2026-10-06, as long as areas are gated by suggested level.
+
+- **Frozen Shelf is dropped for now** (owner: "I don't see much sealife being there").
+  It may come back in an update.
+- **Its replacement is the Sunken Ruins:** an ancient sunken city teeming with
+  octopuses, rays and groupers (`BiomeSunkenRuins.jpg`, proposed).
+- **Level gating:**
+  - Every biome has a suggested level range (`Config/Biomes.luau`).
+  - Entering a biome shows its name and levels.
+  - Entering one above your fish's level shows a red "TOO DANGEROUS FOR NOW"
+    warning: your fish's level, and to come back stronger.
+  - A chip under the depth gauge shows where you are. Built (`BiomeController`).
+  - Depth pressure (damage when far too deep) can come on top later.
+- **Sectors** (degrees round the hub, 0 = east):
+  - Kelp Shallows ring the hub out to 420 studs.
+  - From 420 to 1,100 studs: Coral Reef east, Abyssal Trench south, Shipwreck
+    Graveyard west, Open Blue north.
+  - Later, from 1,100 to 1,600 studs: Sunken Ruins beyond the Reef, Hydrothermal Vents
+    beyond the Trench. The
 vents concept shows open flames, which can't happen underwater; it'll use glow and
 embers instead.
 
@@ -385,7 +404,7 @@ progression**.
 | Coral Reef | 10–25 | barracuda, moray | stinging anemones |
 | Shipwreck Graveyard | 20–40 | groupers, eels in hulls | tight tunnels |
 | Open Blue | 35–55 | tuna, sharks | no cover at all |
-| Frozen Shelf | 50–70 | orcas, narwhals | brinicles |
+| Sunken Ruins (replaces Frozen Shelf) | 50–70 | octopuses, eagle rays, groupers | collapsing arches, tight doorways |
 | Hydrothermal Vents | 65–85 | magma creatures | scalding vents |
 | Abyssal Trench | 80–100 | anglers, giant squid | darkness: you see only bioluminescence and sonar |
 

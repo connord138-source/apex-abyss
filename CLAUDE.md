@@ -84,7 +84,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - Sectors round the hub.
     - Not one AI-generated scene.
     - Every biome must look different (owner); the look targets are
-      `assets/concepts/Biome*.jpg`.
+      `assets/concepts/Biome*.jpg`. **The owner approved the looks and the layout**
+      (Reef east, Wreck west, Open Blue north, Trench south).
+  - **Level gating (owner):** biomes have suggested levels. Entering one above your
+    fish's level shows a "too dangerous, come back stronger" warning (built:
+    `Config/Biomes.luau`, `Shared/Biomes.luau`, `BiomeController`).
+  - **Frozen Shelf is dropped for now** (owner: not much sea life; maybe a later
+    update). The Sunken Ruins are proposed in its place.
 - **Creatures:**
   - Lines grow Fry → Juvenile → Adult → Apex.
   - Hard evolutions branch off at Apex with conditions and show as ??? in the Index
@@ -120,8 +126,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **World:**
   - A hub cave inside a central seamount, with 12 safe dens ringed around a plaza.
   - Tunnels lead out at different depths, so depth is progression.
-  - Biomes: Kelp Shallows, Coral Reef, Shipwreck Graveyard, Open Blue, Frozen Shelf,
-    Hydrothermal Vents, Abyssal Trench.
+  - Biomes: Kelp Shallows, Coral Reef, Shipwreck Graveyard, Open Blue, Sunken Ruins
+    (replaces Frozen Shelf), Hydrothermal Vents, Abyssal Trench.
   - **Depth pressure** gates biomes, not walls.
   - The whole map is underwater, and the surface is the ceiling.
 - **Tide events:** Blood Tide, Sardine Run, Whale Fall, Leviathan Rising and
@@ -207,6 +213,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `HuntController`: player eats, bites and hit effects.
     - `NametagController`: threat colors.
     - `OceanController`: depth grading and marine snow.
+    - `BiomeController`: biome banner, level chip, under-level warning.
     - `HudController`.
 - **Rolls and shops (2026-10-06):**
   - Server: `EconomyService` (coral and shells), `ShellService` (spots, per-player
@@ -222,7 +229,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Tripo:** `tools/tripo.py` (key in `TRIPO_API_KEY`); jobs files are
   `tools/tripo_jobs_*.json`, outputs go to `assets/tripo/` (gitignored), and approved
   concepts are copied to `assets/concepts/`. The owner topped up to 2,450 on
-  2026-10-06, and 2,380 were left after the biome concepts. The budget plan is in GDD
+  2026-10-06, and 2,370 were left after the biome concepts. The budget plan is in GDD
   §8.
 - **Not built yet:**
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs

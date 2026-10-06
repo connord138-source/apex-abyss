@@ -3,6 +3,7 @@
 -- server never trusts it for growth, eats or banking.
 local ClientState = require(script.ClientState)
 local Input = require(script.Input)
+local BiomeController = require(script.Controllers.BiomeController)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
@@ -22,6 +23,7 @@ OceanController.start()
 HudController.start() -- before the swim controller, so it hears the first spawn
 MenuController.start() -- shops (at the stalls), wardrobe, odds
 RollController.start() -- wallet, Roll button and the reveal
+BiomeController.start() -- biome names, suggested levels and under-level warnings
 CameraController.start()
 FishAnimator.start()
 HuntController.start()

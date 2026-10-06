@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "name": "BiomeSunkenRuins",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. SUNKEN RUINS: an ancient sunken city at mid depth, teeming with sea life: broken white and teal marble columns and archways, a giant toppled statue head overgrown with coral, sea anemones and sponges, glowing turquoise glyphs carved in the stones, octopuses lounging on the ruins, eagle rays and big schools of fish gliding through the arches, groupers hiding in doorways, soft blue light falling from above. Mysterious, rich and alive."
+    }
+  ]
+}

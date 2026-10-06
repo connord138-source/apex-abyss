@@ -62,6 +62,15 @@
   "task_id": "1f2c339d-47c2-4306-87fc-ba79c6ed5287",
   "type": "generate_image"
  },
+ "concepts/BiomeSunkenRuins": {
+  "credits": 10,
+  "files": [
+   "BiomeSunkenRuins.png"
+  ],
+  "status": "success",
+  "task_id": "76bbd73b-fec0-40a7-a128-68ebc2617344",
+  "type": "generate_image"
+ },
  "concepts/HubPlaza": {
   "credits": 10,
   "files": [

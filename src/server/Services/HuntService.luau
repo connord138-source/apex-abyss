@@ -445,6 +445,7 @@ function HuntService.start()
 		state.haul = haul
 		state.level = level
 		state.stage = Size.stage(level)
+		state.speciesName = "Nibbler" -- the only species until per-species progression lands
 		state.levelMass = Size.massForLevel(level)
 		state.nextLevelMass = Size.massForLevel(level + 1)
 		state.maxed = Size.isMaxed(data.mass, haul)

@@ -11,4 +11,5 @@ return {
 	Shop = require(script.Shop),
 	Shells = require(script.Shells),
 	Forage = require(script.Forage),
+	Biomes = require(script.Biomes),
 }
