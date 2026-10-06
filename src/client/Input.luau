@@ -3,11 +3,12 @@
 -- cares what the player is holding.
 --
 --   PC:       mouse looks (cursor locked; hold Alt to free it), WASD swims toward
---             the camera, Space / Ctrl up and down, Shift boosts, click or F bites
---   Gamepad:  left stick swims, right stick looks, RT boosts, RB or X bites,
+--             the camera, Space / Ctrl up and down, Shift or Q uses the ability (the
+--             Nibbler's Dash), click or F bites
+--   Gamepad:  left stick swims, right stick looks, RT ability, RB or X bites,
 --             A / B up and down
 --   Touch:    Roblox's thumbstick swims, drag anywhere else to look, the HUD's
---             Boost and Bite buttons
+--             Dash and Bite buttons
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -20,6 +21,8 @@ local cameraTuning = Config.Tuning.camera
 local Input = {
 	-- () — the bite button was pressed
 	bite = Signal.new(),
+	-- () — the ability button was pressed (the Nibbler's Dash)
+	ability = Signal.new(),
 	-- Set by menus (none yet) to free the mouse
 	cursorWanted = false,
 }
@@ -62,6 +65,8 @@ function Input.start()
 			or key == Enum.KeyCode.ButtonX
 		then
 			Input.bite:fire()
+		elseif key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.Q or key == Enum.KeyCode.ButtonR2 then
+			Input.ability:fire()
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input: InputObject)
@@ -111,11 +116,7 @@ function Input.vertical(): number
 	return (if up then 1 else 0) - (if dive then 1 else 0)
 end
 
-function Input.boostHeld(): boolean
-	return down("LeftShift") or down("ButtonR2") or held.TouchBoost == true
-end
-
--- The HUD's touch buttons ("Boost", "Up", "Down").
+-- The HUD's held touch buttons ("Up", "Down").
 function Input.setTouchButton(name: string, isDown: boolean)
 	held["Touch" .. name] = isDown
 end

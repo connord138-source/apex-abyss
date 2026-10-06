@@ -26,11 +26,11 @@ return {
 		turnExponent = -0.32, -- big fish turn slower
 		drag = 1.7, -- per second, coasting with no input
 		verticalShare = 0.85, -- how much of top speed the up/down keys give
-		boostMultiplier = 1.9,
-		boostSeconds = 2.4, -- a full boost bar
-		boostRegen = 0.35, -- bars refilled per second when not boosting
-		boostMinimum = 0.15, -- the bar must be this full to start a boost
-		flickImpulse = 0.35, -- extra speed fraction for the tail flick that starts a boost
+		-- The Nibbler's Dash (owner, 2026-10-06: its only ability, "a small boost swim
+		-- that recharges"): a short burst of speed with a tail flick, then a recharge
+		boostMultiplier = 2.1, -- Dash speed, × top speed (also the server's eat slack)
+		dashSeconds = 0.5,
+		dashRecharge = 3.5, -- seconds to recharge (Deep Gills shortens it)
 		lungeSpeed = 1.7, -- a bite lunge's speed, × top speed
 		lungeSeconds = 0.2,
 		biteCooldown = 0.6,

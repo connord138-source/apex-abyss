@@ -25,7 +25,7 @@ function Perks.speed(upgrades: { [string]: number }?): number
 	return 1 + per("Fins") * Perks.level(upgrades, "Fins")
 end
 
--- Boost bar length (Deep Gills).
+-- Dash recharge speed (Deep Gills).
 function Perks.boost(upgrades: { [string]: number }?): number
 	return 1 + per("Gills") * Perks.level(upgrades, "Gills")
 end

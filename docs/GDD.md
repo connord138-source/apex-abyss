@@ -121,7 +121,18 @@ owner disliked "Molt" and this was the recommended replacement.*
   Every biome has its own fish.
 - **Lots of rare color pulls and body-part changes.**
 
-**Proposed by Claude, awaiting the owner's OK** (details below):
+**Proposed by Claude and approved by the owner ("Love it!", 2026-10-06)**, with
+these changes:
+
+- The Nibbler's only ability is a small **Dash** that recharges (no options). It's
+  built: Shift, Q or RT; the touch DASH button.
+- A newly unlocked species starts at level 1 (tunable).
+- The **safe zone** is the dens plus the vendor plaza. A banner says when you leave it
+  ("LEAVING THE SAFE ZONE", with a protection countdown) and when you're back. Built.
+- **Filler food:** starfish and shrimp on the seabed for low-level XP. Built
+  (`Config/Forage.luau`).
+
+The approved details:
 
 - Six species at launch (the starter plus five specialists), each unlocked from its
   own biome.
@@ -132,7 +143,7 @@ owner disliked "Molt" and this was the recommended replacement.*
 
 | Species | Role | Unlocked from | Ability options (pick one in the tree) |
 |---|---|---|---|
-| **Nibbler** (starter) | all-rounder | start | Dash · Big Gulp (swallow bigger fish for 3 s) · Second Wind (heal) |
+| **Nibbler** (starter) | all-rounder | start | **Dash only** (a short burst that recharges; its tree upgrades the Dash) |
 | **Pufferfish** | tank / defense | Coral Reef | Puff Up (can't be swallowed 3 s) · Spike Burst · Toxic Cloud |
 | **Moray Eel** | speed / ambush; slips through gaps | Shipwreck Graveyard | Strike (long lunge) · Burrow (hide in rock) · Shock |
 | **Squid** | evasion / trickster | Kelp Shallows (the tutorial's reward) | Ink Cloud · Jet Escape · Camouflage |
@@ -296,6 +307,64 @@ This replaced the finish and mutation plan.
   (fast travel), bounties, and coral-only cosmetic rolls.
 
 ## 8. World
+
+### How the world gets built (plan, 2026-10-06)
+
+The world isn't generated as one AI scene. AI 3D tools make single objects (around
+8,000 faces each), and one huge mesh couldn't collide, stream or run well on phones.
+Instead it's built in four layers:
+
+1. **Landforms: Roblox Terrain sculpted by code.**
+   - Each biome has its own seeded generator: dunes and rock fields, reef shelves and a
+     lagoon, a wreck valley of mud and canyons, an open-blue cliff edge falling into the
+     void, the trench's chasm and caves, ice shelves, volcanic vents.
+   - Each biome gets its own terrain materials and colors: Sand; Limestone and Pavement;
+     Mud and Ground; Rock; Slate and Basalt; Glacier and Snow; Basalt and CrackedLava.
+   - It lives in git, rebuilds the same every time, and is previewed from the cloud (top
+     and side renders, as Hatch & Snatch's island previews were).
+   - It can also be baked into the place file in Studio so servers start faster.
+2. **Hero props: Tripo models**, about 6–8 per biome:
+   - Kelp: giant kelp, boulders.
+   - Reef: brain coral, fan coral, tube sponges, anemones.
+   - Wreck: hulls, masts, anchors, cannons, lanterns.
+   - Open Blue: a whale skeleton, cliff chunks.
+   - Trench: crystals, tube worms, giant ribs.
+   - Frozen Shelf: ice spires, brinicles.
+   - Vents: black smokers.
+   Code places them by per-biome scatter rules, reusing each with rotation, scale and
+   tint. Graybox stand-ins show until a model is imported (the Hatch & Snatch
+   `Props.luau` pattern).
+3. **Atmosphere per biome:**
+   - fog color and density, light, color grade and caustics
+   - particles: sun shafts and spores; bright bubbles; murky silt; open-water rays;
+     bioluminescent plankton; ice crystals; embers
+   - an ambient sound bed
+   OceanController blends between biomes by where you are, not only by depth.
+4. **Layout:** the hub seamount sits in the middle, with biomes as sectors around and
+   below it (like the Hatch & Snatch island ring):
+   - Kelp Shallows ring the hub near the surface.
+   - Coral Reef is east, Shipwreck Graveyard west, and Open Blue north (a drop-off into
+     open water).
+   - Abyssal Trench is south and deepest.
+   - Frozen Shelf and Vents come later.
+   Each sector is about 800 studs across, with blended edges, and depth pressure gates
+   the deeper ones. StreamingEnabled comes on for the big map (phone memory), and props
+   get level-of-detail.
+
+**Look targets:** `assets/concepts/Biome*.jpg`, one per biome (owner to approve). The
+vents concept shows open flames, which can't happen underwater; it'll use glow and
+embers instead.
+
+**Tripo budget** (2,450 credits after the owner's top-up; 2,380 after the biome
+concepts):
+
+| Item | Count | Credits |
+|---|---|---|
+| Species models (6 × 4 stages) | 24 | ~720 |
+| Calm fish, predators, filler food | ~28 | ~650 |
+| Vendors | 4 | ~120 |
+| Biome hero props (5 biomes × 7, text-to-3D) | ~35 | ~700 |
+| Total | | ~2,190 (leaves ~190 spare) |
 
 ### The seamount hub
 

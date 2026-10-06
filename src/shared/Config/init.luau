@@ -10,4 +10,5 @@ return {
 	Rolls = require(script.Rolls),
 	Shop = require(script.Shop),
 	Shells = require(script.Shells),
+	Forage = require(script.Forage),
 }

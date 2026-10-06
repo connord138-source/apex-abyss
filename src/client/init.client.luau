@@ -5,6 +5,7 @@ local ClientState = require(script.ClientState)
 local Input = require(script.Input)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
+local ForageController = require(script.Controllers.ForageController)
 local HudController = require(script.Controllers.HudController)
 local HuntController = require(script.Controllers.HuntController)
 local MenuController = require(script.Controllers.MenuController)
@@ -27,6 +28,7 @@ HuntController.start()
 SchoolController.start()
 NametagController.start()
 task.spawn(ShellController.start) -- waits for the server's shell spots
+task.spawn(ForageController.start) -- waits for the server's starfish and shrimp spots
 SwimController.start() -- last: spawning fires the signals the others listen to
 
 print("[ApexAbyss] Client ready")

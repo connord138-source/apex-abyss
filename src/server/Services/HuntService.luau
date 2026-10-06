@@ -374,6 +374,27 @@ local function tick()
 	end
 end
 
+-- Where a player's mouth is, how long their fish is and how far the server's view
+-- of it may trail (for food checks elsewhere: ForageService). Nil when the fish
+-- can't eat right now (dead, respawning).
+function HuntService.mouth(player: Player): (Vector3?, number, number)
+	local session = sessions[player]
+	local _, root = FishService.character(player)
+	local length = liveLength(player)
+	if session == nil or root == nil or length == nil or not session.alive then
+		return nil, 0, 0
+	end
+	return mouthOf(root, length), length, slack(length)
+end
+
+-- Adds food to a player's Haul (with the Feast Charm), as eating prey does.
+function HuntService.feed(player: Player, mass: number)
+	local data = DataService.get(player)
+	if data then
+		addHaul(player, mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()))
+	end
+end
+
 function HuntService.start()
 	FishService.spawned:connect(function(player: Player, character: Model)
 		local session = newSession()

@@ -64,9 +64,27 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     biomes.
   - **Food:** calm fish plus aggressive AI predators worth more, different per biome.
   - **Lots of rare color pulls and body-part changes.**
-  - Claude's proposal (six species, their abilities, the DNA unlocks, the tutorial
-    steps, looks-only rolled parts, species-specific variants, the per-biome food
-    chain) is in GDD §7 and waits for the owner's OK.
+  - **Claude's proposal was approved ("Love it!")** and is in GDD §7:
+    - six species
+    - their abilities
+    - DNA unlocks at the Old Hermit
+    - the tutorial steps, with the Squid as the tutorial's reward
+    - looks-only rolled parts; power comes from the species trees
+    - species-specific exotic variants
+    - the per-biome food chain
+  - **The Nibbler's only ability is a recharging Dash** (owner). It's built; it replaced
+    the old held boost.
+  - **Safe zone = the dens plus the vendor plaza.** A banner shows on leaving or
+    entering it, with a protection countdown (built).
+  - **Filler food:** starfish and shrimp on the seabed (built).
+  - **World building:** see GDD §8 "How the world gets built".
+    - Code-sculpted Terrain per biome.
+    - Tripo hero props placed by scatter rules.
+    - Per-biome atmosphere.
+    - Sectors round the hub.
+    - Not one AI-generated scene.
+    - Every biome must look different (owner); the look targets are
+      `assets/concepts/Biome*.jpg`.
 - **Creatures:**
   - Lines grow Fry → Juvenile → Adult → Apex.
   - Hard evolutions branch off at Apex with conditions and show as ??? in the Index
@@ -167,7 +185,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Server** (`src/server/Services`):
   - `WorldService`: builds the graybox map (seabed and trench, surface ceiling, walls, hub ring with 12 dens, Haul Pools, 4 tunnels and the oculus, kelp, rocks, arches, coral, light shafts) and the base lighting. Gravity is 0.
   - `FishService`: custom fish characters (a ball collider `HumanoidRootPart`, a Humanoid with `EvaluateStateMachine = false`, and a `FishBuilder` body), den assignment, respawns.
-  - `HuntService`: validates prey eats, player eats and bites; the Haul; banking at your own den's pool; the hub safe zone, spawn protection and healing.
+  - `HuntService`: validates prey eats, player eats and bites; the Haul; banking at your own den's pool; the hub safe zone, spawn protection and healing. It also exposes `mouth` and `feed` for other food sources.
+  - `ForageService`: starfish and shrimp spots (placed by raycast) and server-checked eats.
 - **Shared** (`src/shared`):
   - `Config/` (Tuning, Prey, World).
   - `Size`: mass ↔ length, levels and stages, speed and turn rate.
@@ -180,7 +199,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - `Spring`.
   - `Ui`: the design system (BuilderSans, palette, panels, bars).
   - `Controllers/`:
-    - `SwimController`: momentum swim, banking into turns, boost, lunge.
+    - `SwimController`: momentum swim, banking into turns, the Dash (`dashCharge`), lunge.
+    - `ForageController`: draws starfish and hopping shrimp, eats them with suction.
     - `CameraController`: the spring camera, mouse lock.
     - `FishAnimator`: the spine wave, jaw and growth easing.
     - `SchoolController`: draws the prey and eats them with suction.
@@ -201,8 +221,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `FishPreview`: a ViewportFrame fish.
 - **Tripo:** `tools/tripo.py` (key in `TRIPO_API_KEY`); jobs files are
   `tools/tripo_jobs_*.json`, outputs go to `assets/tripo/` (gitignored), and approved
-  concepts are copied to `assets/concepts/`. 1,450 API credits were left on
-  2026-10-06.
+  concepts are copied to `assets/concepts/`. The owner topped up to 2,450 on
+  2026-10-06, and 2,380 were left after the biome concepts. The budget plan is in GDD
+  §8.
 - **Not built yet:**
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty

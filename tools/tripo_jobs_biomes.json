@@ -1,0 +1,60 @@
+{
+  "jobs": [
+    {
+      "name": "BiomeKelpShallows",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. KELP SHALLOWS: bright sunlit turquoise water near the surface, rippling light shafts, a forest of towering golden-green kelp swaying, pale sand dunes with scattered rocks, starfish and tiny shrimp on the sand, schools of silver minnows. Cheerful and safe-feeling."
+    },
+    {
+      "name": "BiomeCoralReef",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. CORAL REEF: a vivid, colorful reef of giant brain corals, fan corals, tube sponges and anemones in hot pink, orange, purple and yellow on white limestone shelves, a clear blue lagoon with dappled caustic light on the floor, tropical fish everywhere. Busy and saturated."
+    },
+    {
+      "name": "BiomeShipwreck",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. SHIPWRECK GRAVEYARD: murky green-teal water with drifting silt, broken wooden pirate shipwrecks and rusted iron hulls half buried in dark mud, masts leaning, anchors and cannons, chains, glowing lanterns in portholes, eels peeking out of holes. Moody, mysterious, slightly spooky."
+    },
+    {
+      "name": "BiomeOpenBlue",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. OPEN BLUE: vast open ocean with no floor visible, deep gradient from bright blue above to dark navy below, a huge rocky cliff edge dropping into the abyss on one side, a giant whale skeleton floating, sunbeams fading into the deep, distant silhouettes of tuna and a shark. Feels huge, exposed and dangerous."
+    },
+    {
+      "name": "BiomeAbyssalTrench",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. ABYSSAL TRENCH: near-black deep water lit only by bioluminescence, steep dark basalt canyon walls, glowing cyan and violet tube worms and crystal clusters, drifting glowing plankton, a faint lure light in the distance, giant ribs of an ancient sea creature. Eerie and beautiful."
+    },
+    {
+      "name": "BiomeFrozenShelf",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. FROZEN SHELF: icy pale-blue water under a ceiling of cracked sea ice with shafts of white light, huge blue ice spires and brinicles hanging down, snow-white seafloor with frozen rocks, drifting ice crystals. Crisp, cold and quiet."
+    },
+    {
+      "name": "BiomeHydrothermalVents",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/HubPlaza.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold readable colors, soft volumetric light), paint a wide establishing shot of an underwater game biome for a Roblox eat-and-grow game, seen from a small fish's view a little above the seabed. No characters in focus, only a few small stylized fish for scale. No text, no labels, no watermark. HYDROTHERMAL VENTS: a dark volcanic seafloor of black basalt and glowing orange magma cracks, tall black smoker chimneys billowing dark plumes, red tube worms and pale crabs clustered around warm vents, heat shimmer and floating embers. Hot, dramatic and dangerous."
+    }
+  ]
+}

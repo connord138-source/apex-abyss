@@ -11,11 +11,14 @@ local StarterGui = game:GetService("StarterGui")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Layout = require(ReplicatedStorage.Shared.Layout)
+local Timing = require(ReplicatedStorage.Shared.Timing)
 local Size = require(ReplicatedStorage.Shared.Size)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
 local Ui = require(script.Parent.Parent.Ui)
+local ForageController = require(script.Parent.ForageController)
 local HuntController = require(script.Parent.HuntController)
 local SchoolController = require(script.Parent.SchoolController)
 local ShellController = require(script.Parent.ShellController)
@@ -32,6 +35,8 @@ local stageText: TextLabel
 local levelMassText: TextLabel
 local levelFill: Frame
 local safeChip: Frame
+local safeText: TextLabel
+local safeDot: Frame
 local haulValue: TextLabel
 local haulScale: UIScale
 local haulFill: Frame
@@ -50,6 +55,9 @@ local shownHaul, haulVelocity = 0, 0
 local pulse, pulseVelocity = 1, 0
 local growth, growthVelocity = 0, 0
 local boostAlpha = 0
+local zoneSafe: boolean? = nil -- the side of the safe-zone edge we last announced
+local zoneCandidate: boolean? = nil
+local zoneSince = 0
 local healthAlpha = 0
 local lastHaul = 0
 
@@ -94,25 +102,82 @@ local function buildLevelCard()
 		Ui.bar(card, "Progress", UDim2.fromOffset(204, 5), UDim2.fromOffset(14, 56), Ui.color.accent)
 	levelFill = fill
 
-	safeChip = Ui.panel(gui, "Safe", UDim2.fromOffset(118, 28), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
-	local dot = Instance.new("Frame")
-	dot.Size = UDim2.fromOffset(8, 8)
-	dot.Position = UDim2.new(0, 12, 0.5, -4)
-	dot.BackgroundColor3 = Ui.color.safe
-	dot.BorderSizePixel = 0
-	Ui.corner(dot, UDim.new(1, 0))
-	dot.Parent = safeChip
-	Ui.label(
+	safeChip = Ui.panel(gui, "Safe", UDim2.fromOffset(140, 28), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
+	safeDot = Instance.new("Frame")
+	safeDot.Size = UDim2.fromOffset(8, 8)
+	safeDot.Position = UDim2.new(0, 12, 0.5, -4)
+	safeDot.BackgroundColor3 = Ui.color.safe
+	safeDot.BorderSizePixel = 0
+	Ui.corner(safeDot, UDim.new(1, 0))
+	safeDot.Parent = safeChip
+	safeText = Ui.label(
 		safeChip,
 		"Text",
 		"SAFE ZONE",
 		Ui.FONT_BOLD,
 		13,
 		Ui.color.safe,
-		UDim2.fromOffset(90, 28),
+		UDim2.fromOffset(110, 28),
 		UDim2.fromOffset(26, 0)
-	).TextYAlignment =
-		Enum.TextYAlignment.Center
+	)
+	safeText.TextYAlignment = Enum.TextYAlignment.Center
+end
+
+-- A banner when the fish crosses the safe zone's edge (the dens and the vendor
+-- plaza): leaving warns that other fish can eat you now; coming back says you're safe.
+local function zoneBanner(leaving: boolean)
+	local old = gui:FindFirstChild("ZoneBanner")
+	if old then
+		old:Destroy()
+	end
+	local color = if leaving then Ui.color.danger else Ui.color.safe
+	local holder = Instance.new("Frame")
+	holder.Name = "ZoneBanner"
+	holder.AnchorPoint = Vector2.new(0.5, 0)
+	holder.Position = UDim2.new(0.5, 0, 0, 40)
+	holder.Size = UDim2.fromOffset(560, 70)
+	holder.BackgroundTransparency = 1
+	local title = Ui.label(
+		holder,
+		"Title",
+		if leaving then "LEAVING THE SAFE ZONE" else "SAFE ZONE",
+		Ui.FONT_HEAVY,
+		30,
+		color,
+		UDim2.new(1, 0, 0, 34)
+	)
+	title.TextXAlignment = Enum.TextXAlignment.Center
+	title.TextStrokeTransparency = 0.5
+	title.TextTransparency = 1
+	local protection = Config.Tuning.hunt.leaveHubProtection
+	local sub = Ui.label(
+		holder,
+		"Sub",
+		if leaving
+			then `Other fish can eat you out here · protected for {protection}s`
+			else "Nobody can eat you in the dens or the market",
+		Ui.FONT_BOLD,
+		17,
+		Ui.color.text,
+		UDim2.new(1, 0, 0, 22),
+		UDim2.fromOffset(0, 36)
+	)
+	sub.TextXAlignment = Enum.TextXAlignment.Center
+	sub.TextStrokeTransparency = 0.6
+	sub.TextTransparency = 1
+	holder.Parent = gui
+	Ui.tween(holder, 0.35, { Position = UDim2.new(0.5, 0, 0, 56) }, Enum.EasingStyle.Back)
+	Ui.tween(title, 0.25, { TextTransparency = 0 })
+	Ui.tween(sub, 0.25, { TextTransparency = 0 })
+	task.delay(2.8, function()
+		if holder.Parent == nil then
+			return
+		end
+		Ui.tween(title, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
+		Ui.tween(sub, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
+		task.wait(0.55)
+		holder:Destroy()
+	end)
 end
 
 local function buildHaulCard()
@@ -428,18 +493,21 @@ local function buildTouchButtons()
 	bite.Activated:Connect(function()
 		Input.bite:fire()
 	end)
-	holdButton(touchButton("Boost", "BOOST", 70, UDim2.new(1, -190, 1, -72)), "Boost")
+	local dash = touchButton("Dash", "DASH", 70, UDim2.new(1, -190, 1, -72))
+	dash.Activated:Connect(function()
+		Input.ability:fire()
+	end)
 	holdButton(touchButton("Up", "UP", 52, UDim2.new(1, -60, 1, -220)), "Up")
 	holdButton(touchButton("Down", "DOWN", 52, UDim2.new(1, -124, 1, -186)), "Down")
 end
 
 local function showControlsHint()
 	local text = if Input.isTouch()
-		then "Stick to swim · drag to look · BITE and BOOST on the right"
+		then "Stick to swim · drag to look · BITE and DASH on the right"
 		elseif
 			Input.isGamepad()
-		then "Left stick swim · right stick look · RT boost · RB bite · A/B up and down"
-		else "Mouse to look · WASD swim · Shift boost · Click bite · Space/Ctrl up/down · E at a stall to shop · hold Alt for the cursor"
+		then "Left stick swim · right stick look · RT dash · RB bite · A/B up and down · Y at a stall"
+		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · E at a stall to shop · hold Alt for the cursor"
 	local label = Ui.label(
 		gui,
 		"Controls",
@@ -510,11 +578,39 @@ local function step(dt: number)
 	growth, growthVelocity = Spring.number(growth, growthVelocity, wantGrowth, 9, dt)
 	haulFill.Size = UDim2.fromScale(math.clamp(growth, 0, 1), 1)
 
+	-- The safe zone: checked here every frame so the warning is instant (the server
+	-- decides for real). A short settle time stops it flickering on the edge.
 	local character = SwimController.character()
-	safeChip.Visible = s.inHub == true or (character ~= nil and HuntController.isSafe(character))
+	local root = SwimController.root()
+	if root then
+		local inside = Layout.inHub(root.Position)
+		if zoneSafe == nil then
+			zoneSafe, zoneCandidate = inside, inside -- spawning in the den: no banner
+		elseif inside ~= zoneCandidate then
+			zoneCandidate, zoneSince = inside, os.clock()
+		elseif inside ~= zoneSafe and os.clock() - zoneSince > 0.25 then
+			zoneSafe = inside
+			zoneBanner(not inside)
+		end
+	end
+	local safeUntil = if character then character:GetAttribute("SafeUntil") else nil
+	local protectedFor = if typeof(safeUntil) == "number" then safeUntil - Timing.clock() else 0
+	if zoneSafe then
+		safeChip.Visible = true
+		safeText.Text = "SAFE ZONE"
+		safeText.TextColor3 = Ui.color.safe
+		safeDot.BackgroundColor3 = Ui.color.safe
+	elseif protectedFor > 0 then
+		safeChip.Visible = true
+		safeText.Text = `PROTECTED {math.ceil(protectedFor)}s`
+		safeText.TextColor3 = Ui.color.accent
+		safeDot.BackgroundColor3 = Ui.color.accent
+	else
+		safeChip.Visible = false
+	end
 
-	-- Boost: shown while it isn't full
-	local bar = SwimController.boostBar
+	-- The Dash: its bar refills while it recharges, then fades out when ready
+	local bar = SwimController.dashCharge
 	boostAlpha += ((if bar < 0.999 or SwimController.boosting then 1 else 0) - boostAlpha) * Spring.alpha(
 		6,
 		dt
@@ -522,9 +618,7 @@ local function step(dt: number)
 	boostFill.Size = UDim2.fromScale(bar, 1)
 	boostTrack.BackgroundTransparency = 1 - 0.85 * boostAlpha
 	boostFill.BackgroundTransparency = 1 - boostAlpha
-	boostFill.BackgroundColor3 = if bar < Config.Tuning.swim.boostMinimum and not SwimController.boosting
-		then Ui.color.muted
-		else Ui.color.accent
+	boostFill.BackgroundColor3 = if bar < 0.999 then Ui.color.muted else Ui.color.accent
 
 	-- Health: shown while hurt
 	local health = if character then character:GetAttribute("Health") else nil
@@ -535,11 +629,7 @@ local function step(dt: number)
 	healthFill.BackgroundTransparency = 1 - healthAlpha
 
 	-- Depth: studs below the surface
-	local y = workspace.CurrentCamera.Focus.Position.Y
-	local root = SwimController.root()
-	if root then
-		y = root.Position.Y
-	end
+	local y = if root then root.Position.Y else workspace.CurrentCamera.Focus.Position.Y
 	local below = World.surfaceY - y
 	depthText.Text = Format.depth(below)
 	local span = World.surfaceY - World.trench.floorY
@@ -607,6 +697,9 @@ function HudController.start()
 			Ui.color.haul,
 			position
 		)
+	end)
+	ForageController.ate:connect(function(mass: number, position: Vector3)
+		pop(`+{string.format("%.2f", mass)}`, Ui.color.haul, position)
 	end)
 	ShellController.collected:connect(function(value: number, position: Vector3)
 		pop(`+{value} SHELL{if value == 1 then "" else "S"}`, Color3.fromRGB(242, 228, 204), position)

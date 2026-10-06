@@ -25,6 +25,7 @@ local eaten = makeEvent("Eaten") -- (summary) to the fish that got eaten
 local hit = makeEvent("Hit") -- (attackerUserId, victimUserId, damage) to everyone, for effects
 local shellResult = makeEvent("ShellResult") -- (index, backAt) 0 = not allowed, show it again
 local rollResult = makeEvent("RollResult") -- (result) to the roller
+local forageEaten = makeEvent("ForageEaten") -- (index, backAt, eaterUserId) to everyone
 
 -- Each request: its minimum seconds between calls from one player
 local REQUESTS: { [string]: number } = {
@@ -32,6 +33,7 @@ local REQUESTS: { [string]: number } = {
 	EatPlayer = 0.2, -- (userId)
 	Bite = 0.35, -- (userId)
 	Collect = 0.03, -- (shell spot index)
+	EatForage = 0.05, -- ({ number }) forage spot indexes, batched by the client
 	Roll = 0.4, -- ()
 	Buy = 0.2, -- (kind: "upgrade" | "charm" | "dye" | "shells", id: string)
 	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)
@@ -44,6 +46,10 @@ end
 local getEaten = Instance.new("RemoteFunction")
 getEaten.Name = "GetEaten" -- () -> { [string]: number } prey index -> back-at time
 getEaten.Parent = folder
+
+local getForage = Instance.new("RemoteFunction")
+getForage.Name = "GetForage" -- () -> { positions, kinds, eaten }
+getForage.Parent = folder
 
 local getShells = Instance.new("RemoteFunction")
 getShells.Name = "GetShells" -- () -> { positions, golden, hidden }
@@ -107,6 +113,14 @@ end
 
 function Net.onGetEaten(handler: (Player) -> { [string]: number })
 	getEaten.OnServerInvoke = handler
+end
+
+function Net.onGetForage(handler: (Player) -> { [string]: any })
+	getForage.OnServerInvoke = handler
+end
+
+function Net.forageEaten(index: number, backAt: number, eaterUserId: number)
+	forageEaten:FireAllClients(index, backAt, eaterUserId)
 end
 
 function Net.onGetShells(handler: (Player) -> { [string]: any })

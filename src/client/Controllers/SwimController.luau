@@ -24,8 +24,8 @@ local World = Config.World
 
 local SwimController = {
 	velocity = Vector3.zero,
-	boosting = false,
-	boostBar = 1,
+	boosting = false, -- mid-Dash
+	dashCharge = 1, -- 0..1; the Dash is ready at 1
 	-- () — a bite lunge started (the animator snaps the jaw)
 	lunged = Signal.new(),
 	-- (character) — our fish spawned
@@ -40,6 +40,8 @@ local heading = Vector3.new(0, 0, -1) -- unit, the way the fish faces
 local roll, rollVelocity = 0, 0
 local lungeUntil = 0
 local lastBiteAt = -math.huge
+local dashUntil = 0
+local dashStarted = false
 local clock = 0
 
 local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vector3
@@ -95,6 +97,17 @@ function SwimController.heading(): Vector3
 	return heading
 end
 
+-- Starts a Dash if it has recharged; returns whether it did.
+function SwimController.dash(): boolean
+	if root == nil or SwimController.dashCharge < 1 then
+		return false
+	end
+	SwimController.dashCharge = 0
+	dashUntil = clock + swim.dashSeconds
+	dashStarted = true
+	return true
+end
+
 -- Starts a bite lunge if the cooldown allows; returns whether it did.
 function SwimController.lunge(): boolean
 	if root == nil or clock - lastBiteAt < swim.biteCooldown then
@@ -138,7 +151,8 @@ local function onCharacter(newCharacter: Model)
 	align = newAlign
 	heading = newRoot.CFrame.LookVector
 	SwimController.velocity = Vector3.zero
-	SwimController.boostBar = 1
+	SwimController.dashCharge = 1
+	dashUntil = 0
 	roll, rollVelocity = 0, 0
 	SwimController.spawned:fire(newCharacter)
 end
@@ -161,22 +175,21 @@ local function step(dt: number)
 		+ Vector3.yAxis * Input.vertical() * swim.verticalShare
 	local intent = math.min(wish.Magnitude, 1)
 
-	-- Boost: a bar that drains while held and refills when not
-	local wasBoosting = SwimController.boosting
-	local wantsBoost = Input.boostHeld() and intent > 0.1
-	local boosting = wantsBoost
-		and (
-			if wasBoosting then SwimController.boostBar > 0 else SwimController.boostBar >= swim.boostMinimum
-		)
-	if boosting then
-		SwimController.boostBar =
-			math.max(0, SwimController.boostBar - dt / (swim.boostSeconds * Perks.boost(upgrades)))
-	else
-		SwimController.boostBar = math.min(1, SwimController.boostBar + swim.boostRegen * dt)
+	-- The Dash: a burst that recharges (Deep Gills makes it recharge faster)
+	local boosting = clock < dashUntil
+	if not boosting then
+		SwimController.dashCharge =
+			math.min(1, SwimController.dashCharge + dt * Perks.boost(upgrades) / swim.dashRecharge)
 	end
 	SwimController.boosting = boosting
 
 	local velocity = SwimController.velocity
+	if dashStarted then
+		-- The tail flick: jump straight to Dash speed, the way the player is steering
+		dashStarted = false
+		local direction = if intent > 0.05 then limitPitch(wish.Unit) else heading
+		velocity = direction * top * swim.boostMultiplier
+	end
 	local speed = velocity.Magnitude
 	local lunging = clock < lungeUntil
 	if lunging then
@@ -190,10 +203,9 @@ local function step(dt: number)
 		local direction = rotateToward(current, want, Size.turnRate(length) * turnScale * dt)
 		local targetSpeed = top * intent * (if boosting then swim.boostMultiplier else 1)
 		local newSpeed = speed + (targetSpeed - speed) * Spring.alpha(swim.accel, dt)
-		if boosting and not wasBoosting then
-			newSpeed += top * swim.flickImpulse -- the tail flick
-		end
 		velocity = direction * newSpeed
+	elseif boosting then
+		velocity = heading * math.max(speed, top * swim.boostMultiplier * 0.8)
 	else
 		velocity *= math.exp(-swim.drag * dt)
 	end
@@ -260,6 +272,7 @@ function SwimController.start()
 		end
 	end)
 	RunService.PreSimulation:Connect(step)
+	Input.ability:connect(SwimController.dash)
 
 	-- Server moves (none in the prototype yet, but the remote exists)
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")

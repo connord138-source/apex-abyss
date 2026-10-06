@@ -77,7 +77,7 @@ local upgrades: { Upgrade } = {
 		id = "Gills",
 		vendor = "Outfitter",
 		name = "Deep Gills",
-		blurb = "+12% boost per level",
+		blurb = "Dash recharges 12% faster per level",
 		per = 0.12,
 		costs = { 250, 700, 1800, 4000, 9000 },
 	},
