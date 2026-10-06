@@ -124,6 +124,40 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Service start order** in `init.server.luau` matters: each service connects to
   `DataService.loaded` inside its `start()`, and DataService starts last.
 
+## Code map (graybox feel prototype, 2026-10-06)
+
+- **Server** (`src/server/Services`):
+  - `WorldService`: builds the graybox map (seabed and trench, surface ceiling, walls, hub ring with 12 dens, Haul Pools, 4 tunnels and the oculus, kelp, rocks, arches, coral, light shafts) and the base lighting. Gravity is 0.
+  - `FishService`: custom fish characters (a ball collider `HumanoidRootPart`, a Humanoid with `EvaluateStateMachine = false`, and a `FishBuilder` body), den assignment, respawns.
+  - `HuntService`: validates prey eats, player eats and bites; the Haul; banking at your own den's pool; the hub safe zone, spawn protection and healing.
+- **Shared** (`src/shared`):
+  - `Config/` (Tuning, Prey, World).
+  - `Size`: mass ↔ length, levels and stages, speed and turn rate.
+  - `Layout`: hub geometry.
+  - `Schools`: the deterministic prey paths.
+  - `FishBuilder`: the graybox fish, unit-scaled with named Motor6Ds.
+  - `Format`.
+- **Client** (`src/client`):
+  - `Input`: every device.
+  - `Spring`.
+  - `Ui`: the design system (BuilderSans, palette, panels, bars).
+  - `Controllers/`:
+    - `SwimController`: momentum swim, banking into turns, boost, lunge.
+    - `CameraController`: the spring camera, mouse lock.
+    - `FishAnimator`: the spine wave, jaw and growth easing.
+    - `SchoolController`: draws the prey and eats them with suction.
+    - `HuntController`: player eats, bites and hit effects.
+    - `NametagController`: threat colors.
+    - `OceanController`: depth grading and marine snow.
+    - `HudController`.
+- **Not built yet:**
+  - MonetizationService, Double Haul and Second Chance
+  - chum clouds, Pods and the Apex bounty
+  - boats and hooks, depth pressure
+  - real models, audio, caustics (needs a texture upload)
+  - server-side speed checks
+  - The progression numbers are placeholders: one full dive banks about 16 levels.
+
 ## Lessons carried over from Hatch & Snatch
 
 - A server `PivotTo` on a character can be undone by the client's own physics. Move
