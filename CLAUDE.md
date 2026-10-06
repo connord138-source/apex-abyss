@@ -86,6 +86,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - Every biome must look different (owner); the look targets are
       `assets/concepts/Biome*.jpg`. **The owner approved the looks and the layout**
       (Reef east, Wreck west, Open Blue north, Trench south).
+  - **Megalodon world boss (owner, 2026-10-06):** "a massive megalodon that roams the
+    map, mostly in deep blue... a very hard and scary boss" with an extreme reward.
+    - Claude's design is in GDD §8: Open Blue patrol, swallows any player, telegraphed
+      attacks, three phases, a whole-server fight.
+    - Rewards: Megalodon Teeth (10 plus an Apex Reef Shark unlock the playable
+      Megalodon), a huge Haul, a coral jackpot, a Megalodon Roll, exclusive looks and a
+      den trophy.
+    - It's built with the AI predators.
+  - **Giant Squid world boss (owner):** "a giant squid that roams the map as well, they
+    could be world events".
+    - **Bosses are world events:** about every 30 minutes one rises, announced two
+      minutes ahead. The Megalodon (Open Blue) and the Giant Squid (Trench and deep
+      edges) take turns.
+    - The squid's tentacle grabs break free by mashing or by others biting the
+      tentacle. Its ink blinds, and tentacles can be bitten off.
+    - Its Kraken Beaks (10 plus an Apex Squid) unlock the playable Kraken. Details in
+      GDD §8.
   - **Level gating (owner):** biomes have suggested levels. Entering one above your
     fish's level shows a "too dangerous, come back stronger" warning (built:
     `Config/Biomes.luau`, `Shared/Biomes.luau`, `BiomeController`).
@@ -229,7 +246,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Tripo:** `tools/tripo.py` (key in `TRIPO_API_KEY`); jobs files are
   `tools/tripo_jobs_*.json`, outputs go to `assets/tripo/` (gitignored), and approved
   concepts are copied to `assets/concepts/`. The owner topped up to 2,450 on
-  2026-10-06, and 2,370 were left after the biome concepts. The budget plan is in GDD
+  2026-10-06, and 2,350 were left after the biome and boss concepts. The budget plan is in GDD
   §8.
 - **Not built yet:**
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs

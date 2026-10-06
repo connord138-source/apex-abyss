@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "name": "GiantSquid",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/concepts/SpeciesRoster.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D, flat-shaded facets, bold colors), paint a terrifying world boss for a Roblox underwater game: a colossal GIANT SQUID rising out of a pitch-dark deep-sea trench, long tentacles with glowing suckers reaching toward a few tiny stylized player fish in the foreground for scale, one huge glowing eye staring, deep red and violet mottled skin with bioluminescent spots, an ink cloud billowing behind it, dark basalt canyon walls with glowing crystals. Eerie, enormous and dangerous, not cute. No text, no watermark."
+    }
+  ]
+}

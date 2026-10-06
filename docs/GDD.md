@@ -215,8 +215,10 @@ The approved details:
 - **Lines grow in stages:** Fry → Juvenile → Adult → Apex, by banked XP.
 - **Hard evolutions** branch off at Apex and need a condition. They show as ??? in the
   Index until unlocked. Examples:
-  - Great White → **Megalodon** (eat an Apex during a Blood Tide)
-  - Giant Squid → **Kraken** (hold an Abyssal Pearl from the trench boss)
+  - Reef Shark (Apex) → **Megalodon** with 10 Megalodon Teeth from the world boss
+    (2026-10-06; replaces "eat an Apex during a Blood Tide")
+  - Squid (Apex) → **Kraken** with 10 Kraken Beaks from the Giant Squid world boss
+    (2026-10-06)
   - Moray → **Leviathan Eel** (reach a set depth)
   - Manta → **Void Manta** (requires a mutation)
 - **Art (changed 2026-10-06):** stylized, chunky low-poly, like *Schedule I* mixed
@@ -412,12 +414,109 @@ progression**.
   crush damage that grows the deeper it goes.
 - **The surface** is the ceiling of the map. Boats sit up there and drop hooks.
 
+### World boss events (owner, 2026-10-06)
+
+Owner: "a giant squid that roams the map as well, they could be world events."
+
+- **Bosses are world events, not permanent residents:**
+  - About every 30 minutes, one boss rises and is announced to the whole server two
+    minutes ahead.
+  - It roams its home waters until it's killed or gives up and leaves (about 15
+    minutes).
+  - The two bosses take turns, so there's always a reason to come back.
+- **The bosses:**
+  - The **Megalodon** roams the Open Blue (below).
+  - The **Giant Squid** rises from the Abyssal Trench and the deep edges (below).
+- **"Leviathan Rising"** in the tide events becomes these boss events.
+
+### World boss: the Megalodon (owner, 2026-10-06)
+
+The owner asked for "a massive megalodon that roams the map, mostly in deep blue.
+Killing it rewards something extreme but it is a very hard and scary boss." The
+details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
+
+- **Size:** about 80 studs long, bigger than any player can grow, so every player is
+  food to it.
+- **Where it roams:**
+  - A long patrol through the Open Blue, sometimes sweeping the edges of the Reef and
+    the Wreck.
+  - It never enters the hub or the Kelp Shallows ring. Shallows players can still see
+    its silhouette pass along the edge.
+- **Dread before you see it:**
+  - Within about 300 studs, a low drone and a heartbeat swell under the music, and the
+    water darkens.
+  - A HUD warning, "MEGALODON NEARBY", points toward it.
+  - The camera shakes as it passes, and its tag reads APEX PREDATOR in red.
+- **Danger:**
+  - Its bite swallows any player whole: no bite fight, and the Haul is lost.
+  - It hunts the biggest fish around and mostly ignores tiny ones, so small players
+    can school round it. That's the headline twist.
+- **The fight** takes the whole server:
+  - Its health scales with how many players are attacking.
+  - Bites hurt it, the school bonus applies, and its gills and tail take double
+    damage.
+  - Every attack is telegraphed: its jaw opens with a red glint before a bite, and its
+    eyes flash before a charge.
+  - Three phases:
+    1. **Hunting** (100–60%): it charges its target.
+    2. **Frenzy** (60–25%): it's faster, tail sweeps knock fish back, and a blood cloud
+       hides it.
+    3. **Last stand** (under 25%): it dives for the Trench. Catch it before it escapes,
+       or it heals and comes back later.
+- **Rewards** go to everyone who dealt at least 1% of the damage:
+  - **Megalodon Teeth:** 1 each, 2–3 for the top three. Ten Teeth plus an Apex-stage
+    Reef Shark unlock **the Megalodon as a playable species**. That's the ultimate
+    fish, and it replaces the older "eat an Apex during a Blood Tide" evolution idea.
+  - A huge Haul, which you still have to carry home.
+  - A coral jackpot (5,000+).
+  - A **Megalodon Roll** (Rare-or-better outcomes only, with its odds shown).
+  - A chance at exclusive looks: a Megalodon Jaw part and a scarred shade.
+  - The jaw on your den's trophy wall, and a Megalodon Slayer title.
+- **Respawn:** about 45 minutes after it dies, announced two minutes ahead ("The water
+  goes cold... the Megalodon is rising").
+- **Tech:** a server-simulated boss on the same system as the aggressive predators
+  (positions streamed about 10 times a second, clients interpolate, attacks checked on
+  the server). It gets one hero Tripo model with the procedural spine swim. It's built
+  alongside the predators and the Open Blue.
+
+### World boss: the Giant Squid (owner, 2026-10-06; Claude's proposal)
+
+Concept: `assets/concepts/GiantSquid.jpg`.
+
+- **Size:** about 70 studs, plus tentacles. It rises from the Trench and prowls the
+  deep edges of the Open Blue and the Wreck.
+- **Dread:**
+  - The lights dim and glowing suckers appear in the dark.
+  - The HUD warns "SOMETHING STIRS BELOW".
+  - It attacks from underneath.
+- **Danger:**
+  - **Tentacle grab:** a tentacle wraps a fish and drags it toward the beak. Mash to
+    break free, or nearby fish can bite the tentacle to free you; being dragged in
+    means you're eaten.
+  - **Ink cloud:** blinds everyone in it and hides the squid.
+  - **Jet:** it vanishes and reappears somewhere else.
+- **The fight:**
+  - Its health scales with the number of attackers.
+  - Its tentacles can be bitten off: each one lost makes it weaker and gives bonus
+    rewards.
+  - Its eye takes double damage while it's lit before a grab.
+  - At low health it sinks back into the Trench, so it has to be finished before it
+    escapes.
+- **Rewards** go to everyone who dealt at least 1% of the damage:
+  - **Kraken Beaks:** 1 each, more for the top three. Ten Beaks plus an Apex-stage
+    Squid unlock **the Kraken as a playable species**. This replaces the "Abyssal
+    Pearl" idea.
+  - A huge Haul, a coral jackpot and a Rare-or-better roll.
+  - A chance at exclusive looks: Kraken Tentacles and a bioluminescent shade.
+  - A den trophy and a Kraken Slayer title.
+
 ### Tide events (the role the Moon Egg plays in Hatch & Snatch)
 
 - **Blood Tide:** bites hit harder and chum spawns everywhere.
 - **Sardine Run:** a huge bait ball, so food floods in.
 - **Whale Fall:** a dead whale sinks into a random biome and the whole server races to it.
-- **Leviathan Rising:** a server boss everyone fights together.
+- **World boss events** (Megalodon and Giant Squid) took Leviathan Rising's place; see
+  §8 "World boss events".
 - **Bioluminescent Night:** a dark sea, and glowing skins can drop.
 
 ## 9. Monetization

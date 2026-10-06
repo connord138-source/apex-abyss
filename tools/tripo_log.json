@@ -71,6 +71,15 @@
   "task_id": "76bbd73b-fec0-40a7-a128-68ebc2617344",
   "type": "generate_image"
  },
+ "concepts/GiantSquid": {
+  "credits": 10,
+  "files": [
+   "GiantSquid.png"
+  ],
+  "status": "success",
+  "task_id": "4f848ccb-9c44-4a85-a7a8-20ba5ec38229",
+  "type": "generate_image"
+ },
  "concepts/HubPlaza": {
   "credits": 10,
   "files": [
@@ -78,6 +87,15 @@
   ],
   "status": "success",
   "task_id": "028494dd-c7a9-40bc-a089-235f98f7e6db",
+  "type": "generate_image"
+ },
+ "concepts/Megalodon": {
+  "credits": 10,
+  "files": [
+   "Megalodon.png"
+  ],
+  "status": "success",
+  "task_id": "f59928b7-b88f-46d9-9af9-665e59e64449",
   "type": "generate_image"
  },
  "concepts/NibblerGrowth": {
