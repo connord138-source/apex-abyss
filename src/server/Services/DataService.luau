@@ -24,7 +24,21 @@ export type PlayerData = {
 		timesEaten: number,
 		banks: number,
 		banked: number, -- total mass ever banked
+		shells: number, -- shells ever collected
+		rolls: number,
+		coralEarned: number,
 	},
+	coral: number, -- the currency (vendors)
+	shells: number, -- every Config.Rolls.shellsPerRoll is one roll
+	shades: { [string]: boolean }, -- owned (Config/Shades)
+	parts: { [string]: boolean }, -- owned body parts (Config/Exotics)
+	variants: { [string]: boolean }, -- owned exotic variants
+	-- What's worn ("" = nothing); parts by slot
+	equipped: { shade: string, variant: string, parts: { [string]: string } },
+	upgrades: { [string]: number }, -- level per upgrade (Config/Shop)
+	charms: { [string]: number }, -- stocked charms held (Lucky, SecondChance)
+	boosts: { [string]: number }, -- timed charms: Unix time each runs out
+	shellTrades: { day: number, count: number }, -- the Tidecharm Trader's daily shell sales
 	-- Monetization
 	passes: { [string]: boolean },
 	purchaseIds: { string }, -- developer-product receipts already granted (newest last)
@@ -45,7 +59,20 @@ local TEMPLATE: PlayerData = {
 		timesEaten = 0,
 		banks = 0,
 		banked = 0,
+		shells = 0,
+		rolls = 0,
+		coralEarned = 0,
 	},
+	coral = 0,
+	shells = 0,
+	shades = {},
+	parts = {},
+	variants = {},
+	equipped = { shade = "", variant = "", parts = {} },
+	upgrades = {},
+	charms = {},
+	boosts = {},
+	shellTrades = { day = 0, count = 0 },
 	passes = {},
 	purchaseIds = {},
 	onboarding = 0,

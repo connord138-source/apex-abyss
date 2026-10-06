@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Spring = require(script.Parent.Parent.Spring)
@@ -27,6 +28,8 @@ type FishState = {
 	jawVelocity: number,
 	snapUntil: number,
 	heading: Vector3,
+	dressKey: string, -- the Shade/Parts/Variant attributes last dressed from
+	dressLength: number, -- the length the shade's effects were sized for
 }
 
 local FishAnimator = {}
@@ -61,6 +64,8 @@ local function stateOf(character: Model): FishState?
 		jawVelocity = 0,
 		snapUntil = 0,
 		heading = root.CFrame.LookVector,
+		dressKey = "",
+		dressLength = start,
 	}
 	states[character] = state
 	character.Destroying:Connect(function()
@@ -84,7 +89,29 @@ local function setTransform(joints: { [string]: Motor6D }, name: string, cframe:
 	end
 end
 
+-- Puts on the fish's shade, parts and variant when they change (Shared/Cosmetics),
+-- and re-sizes the shade's glow and glints when the fish has grown a lot.
+local function dress(character: Model, state: FishState)
+	local shade = character:GetAttribute("Shade")
+	local key = `{shade}|{character:GetAttribute("Parts")}|{character:GetAttribute("Variant")}`
+	local grown = math.abs(state.length - state.dressLength) > state.dressLength * 0.25
+	if key == state.dressKey and not grown then
+		return
+	end
+	local look = FishBuilder.lookOf(character)
+	if look == nil then
+		return
+	end
+	state.dressKey = key
+	state.dressLength = state.length
+	Cosmetics.apply(state.body, look, Cosmetics.dressOf(character), state.length)
+	state.applied = -1 -- re-scale everything, new parts included
+end
+
 local function animate(character: Model, state: FishState, dt: number, isLocal: boolean)
+	dress(character, state)
+	local shade = character:GetAttribute("Shade")
+	Cosmetics.animate(state.body, if typeof(shade) == "string" and shade ~= "" then shade else nil, clock)
 	-- Growth: spring toward the server's length
 	local target = character:GetAttribute("Length")
 	if typeof(target) == "number" then

@@ -12,8 +12,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
+local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
 
@@ -148,7 +150,8 @@ local function step(dt: number)
 		return
 	end
 	local length = SwimController.length()
-	local top = Size.topSpeed(length)
+	local upgrades = if ClientState.current then ClientState.current.upgrades else nil
+	local top = Size.topSpeed(length) * Perks.speed(upgrades)
 	local camera = workspace.CurrentCamera.CFrame
 
 	-- Where the player wants to go, relative to the camera
@@ -166,7 +169,8 @@ local function step(dt: number)
 			if wasBoosting then SwimController.boostBar > 0 else SwimController.boostBar >= swim.boostMinimum
 		)
 	if boosting then
-		SwimController.boostBar = math.max(0, SwimController.boostBar - dt / swim.boostSeconds)
+		SwimController.boostBar =
+			math.max(0, SwimController.boostBar - dt / (swim.boostSeconds * Perks.boost(upgrades)))
 	else
 		SwimController.boostBar = math.min(1, SwimController.boostBar + swim.boostRegen * dt)
 	end

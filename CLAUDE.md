@@ -57,10 +57,34 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Lines grow Fry → Juvenile → Adult → Apex.
   - Hard evolutions branch off at Apex with conditions and show as ??? in the Index
     (Megalodon, Kraken, Leviathan Eel, Void Manta).
-  - Art is the Hatch & Snatch style: Sonaria-inspired, semi-realistic, realistic eyes,
-    each creature fused with an element.
-- **Skins:** finishes Gold → Chrome → Diamond → Molten → Galaxy → Prismatic; mutations
-  Albino, Melanistic, Bioluminescent, Glass and Iridescent.
+  - **Art is stylized, chunky low-poly, Schedule I meets Abzû** (owner, 2026-10-06:
+    "cartoony feel similar to schedule 1 if that helps"; Claude chose it).
+    - Flat-shaded facets, bold colors, simple eyes; small fish cute and goofy, big ones
+      menacing.
+    - The concepts are in `assets/concepts/`, waiting for the owner's approval before
+      3D conversion.
+    - This replaces the Sonaria-style plan.
+- **Rolls (owner, 2026-10-06):**
+  - Collect **Shells** around the sea. Each player has their own copy of each, they
+    respawn for you after 4 minutes, golden ones in the trench are worth 5, and big
+    prey can drop them.
+  - **50 Shells = 1 roll**, mostly **Coral**.
+  - Rare **shades**: tints, then Lunar 1/120, Diamond 1/250, Divine 1/500, Exotic 1/900,
+    Prismatic 1/1,500.
+  - Very rare **Abyssal** body parts (1/4,000–6,000) and exotic variants (Puffer,
+    Hammerhead).
+  - Duplicates turn into coral, Lucky Charms give ×2, and rare rolls are announced.
+  - The exact odds add up to 100% (`Shared/RollOdds`, tested by
+    `tools/tests/run_odds.sh`).
+  - Add more shades and exotics as we build (table entries plus Cosmetics geometry).
+- **Coral and vendors (owner, 2026-10-06):** Coral is the currency. Four vendor stalls
+  round the hub plaza, near the dens, sell with it:
+  - Outfitter: upgrades.
+  - Den Mason: the Haul Chamber.
+  - Tidecharm Trader: Lucky, Second Chance, Magnet and Feast charms, plus 10 shells for
+    400 coral 5 times a day.
+  - Shade Dyer: tints.
+  - More ways to spend coral come later (den decor, currents, bounties).
 - **World:**
   - A hub cave inside a central seamount, with 12 safe dens ringed around a plaza.
   - Tunnels lead out at different depths, so depth is progression.
@@ -150,8 +174,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `NametagController`: threat colors.
     - `OceanController`: depth grading and marine snow.
     - `HudController`.
+- **Rolls and shops (2026-10-06):**
+  - Server: `EconomyService` (coral and shells), `ShellService` (spots, per-player
+    pickups), `RollService`, `ShopService` (stalls via `WorldService.vendorPosition`),
+    `WardrobeService` (equip, character attributes).
+  - Shared: `Perks` (what upgrades and charms do, for both sides), `RollOdds`,
+    `Cosmetics` (shades, parts and variants on a body).
+  - Client:
+    - `ShellController`.
+    - `RollController`: wallet, Roll / Odds / Wardrobe buttons, the reveal.
+    - `MenuController`: shops, Wardrobe, odds; B closes.
+    - `FishPreview`: a ViewportFrame fish.
+- **Tripo:** `tools/tripo.py` (key in `TRIPO_API_KEY`); jobs files are
+  `tools/tripo_jobs_*.json`, outputs go to `assets/tripo/` (gitignored), and approved
+  concepts are copied to `assets/concepts/`. 1,470 API credits were left on
+  2026-10-06.
 - **Not built yet:**
-  - MonetizationService, Double Haul and Second Chance
+  - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
   - real models, audio, caustics (needs a texture upload)

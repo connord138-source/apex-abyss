@@ -12,17 +12,21 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 local Schools = require(ReplicatedStorage.Shared.Schools)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
+local ShellService = require(script.Parent.ShellService)
 local StateService = require(script.Parent.StateService)
 
 local hunt = Config.Tuning.hunt
 local swim = Config.Tuning.swim
+local economy = Config.Tuning.economy
 local hub = Config.World.hub
 
 type Session = {
@@ -40,6 +44,7 @@ type Session = {
 local HuntService = {}
 
 local sessions: { [Player]: Session } = {}
+local keptHaul: { [Player]: number } = {} -- a Second Chance's Haul, for the next spawn
 local eatenUntil: { [number]: number } = {} -- prey index → clock when it's back
 
 local function newSession(): Session
@@ -88,7 +93,8 @@ end
 
 -- How far the server's view of a fish may trail where its owner really has it.
 local function slack(length: number): number
-	return Size.topSpeed(length) * swim.boostMultiplier * swim.lungeSpeed * hunt.latencySeconds
+	-- 1.25: room for Strong Fins
+	return Size.topSpeed(length) * 1.25 * swim.boostMultiplier * swim.lungeSpeed * hunt.latencySeconds
 		+ hunt.reachSlack
 end
 
@@ -122,10 +128,18 @@ local function eatPlayer(victim: Player, eater: Player)
 		return
 	end
 	local lost = victimSession.haul
+	-- A Second Chance charm keeps the Haul (the eater only gets the base share)
+	local saved = lost > 0 and (victimData.charms.SecondChance or 0) > 0
+	if saved then
+		victimData.charms.SecondChance -= 1
+		keptHaul[victim] = lost
+		lost = 0
+	end
 	-- Eating much smaller players pays almost nothing, so farming new fish is pointless
 	local ratio = math.clamp(victimLength / eaterLength / hunt.swallowRatio, 0, 1)
-	local gain = (lost * hunt.playerHaulShare + victimData.mass * hunt.playerBaseShare)
-		* math.max(ratio * ratio, 0.02)
+	local farm = math.max(ratio * ratio, 0.02)
+	local gain = (lost * hunt.playerHaulShare + victimData.mass * hunt.playerBaseShare) * farm
+	EconomyService.addCoral(eater, economy.eatPlayerCoral * farm)
 	victimSession.haul = 0
 	victimSession.alive = false
 	victimData.stats.timesEaten += 1
@@ -137,6 +151,7 @@ local function eatPlayer(victim: Player, eater: Player)
 	Net.eaten(victim, {
 		by = eater.DisplayName,
 		lost = lost,
+		saved = if saved then keptHaul[victim] else nil,
 		respawn = hunt.respawnSeconds,
 	})
 	Net.notify(eater, `You ate {victim.DisplayName}!`, "good")
@@ -182,8 +197,12 @@ local function onEatPrey(player: Player, batch: any)
 		local backAt = now + prey.respawn
 		eatenUntil[index] = backAt
 		Net.preyEaten(index, backAt, player.UserId)
-		gained += prey.mass * hunt.preyGain
+		gained += prey.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now())
 		data.stats.preyEaten += 1
+		local shells = ShellService.preyDrop(player, prey.id)
+		if shells > 0 then
+			Net.notify(player, `The {prey.name} had {shells} shell{if shells == 1 then "" else "s"}!`, "good")
+		end
 	end
 	if gained > 0 then
 		addHaul(player, gained)
@@ -279,7 +298,9 @@ local function onBite(player: Player, userId: any)
 	end
 	targetSession.bitBy[player.UserId] = now
 	local ratio = math.clamp((length / targetLength) ^ 2, 0.04, 1.5)
-	local damage = hunt.biteDamage * ratio * (1 + 0.35 * school)
+	local attackerData = DataService.get(player)
+	local jaw = Perks.bite(if attackerData then attackerData.upgrades else nil)
+	local damage = hunt.biteDamage * ratio * (1 + 0.35 * school) * jaw
 	targetSession.health -= damage
 	targetSession.lastHitAt = now
 	Net.hit(player, target, damage)
@@ -293,7 +314,8 @@ local function onBite(player: Player, userId: any)
 end
 
 local function bank(player: Player, session: Session, data: DataService.PlayerData)
-	local amount = session.haul * hunt.bankMultiplier
+	local amount = session.haul * hunt.bankMultiplier * Perks.bank(data.upgrades)
+	local coral = math.floor(economy.bankCoral * math.sqrt(amount))
 	local levelBefore = Size.level(data.mass)
 	data.mass += amount
 	data.bestMass = math.max(data.bestMass, data.mass)
@@ -303,8 +325,10 @@ local function bank(player: Player, session: Session, data: DataService.PlayerDa
 	data.stats.banked += amount
 	session.haul = 0
 	local levelAfter = Size.level(data.mass)
+	EconomyService.addCoral(player, coral)
 	Net.banked(player, {
 		amount = amount,
+		coral = coral,
 		mass = data.mass,
 		levelBefore = levelBefore,
 		level = levelAfter,
@@ -353,6 +377,8 @@ end
 function HuntService.start()
 	FishService.spawned:connect(function(player: Player, character: Model)
 		local session = newSession()
+		session.haul = keptHaul[player] or 0
+		keptHaul[player] = nil
 		sessions[player] = session
 		character:SetAttribute("InHub", true)
 		character:SetAttribute("Haul", 0)
@@ -360,6 +386,7 @@ function HuntService.start()
 	end)
 	DataService.releasing:connect(function(player: Player)
 		sessions[player] = nil
+		keptHaul[player] = nil
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		sessions[player] = nil

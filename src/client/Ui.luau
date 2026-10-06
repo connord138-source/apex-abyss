@@ -159,4 +159,155 @@ function Ui.topInset(): number
 	return inset.Y
 end
 
+export type ButtonStyle = "primary" | "secondary" | "gold" | "disabled"
+
+local BUTTON_COLORS: { [string]: { bg: Color3, text: Color3 } } = {
+	primary = { bg = Color3.fromRGB(46, 170, 214), text = Color3.fromRGB(4, 20, 30) },
+	secondary = { bg = Color3.fromRGB(28, 56, 74), text = Color3.fromRGB(226, 244, 250) },
+	gold = { bg = Color3.fromRGB(255, 196, 76), text = Color3.fromRGB(40, 24, 4) },
+	disabled = { bg = Color3.fromRGB(30, 44, 54), text = Color3.fromRGB(110, 136, 148) },
+}
+
+-- Restyles a button made by Ui.button.
+function Ui.setButtonStyle(button: TextButton, style: ButtonStyle)
+	local colors = BUTTON_COLORS[style]
+	button.BackgroundColor3 = colors.bg
+	button.TextColor3 = colors.text
+	button.AutoButtonColor = false
+	button:SetAttribute("Style", style)
+	button.Selectable = style ~= "disabled"
+end
+
+-- A rounded button that springs a little when pressed.
+function Ui.button(
+	parent: Instance,
+	name: string,
+	text: string,
+	size: UDim2,
+	position: UDim2,
+	style: ButtonStyle?
+): TextButton
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Text = text
+	button.FontFace = Ui.FONT_BOLD
+	button.TextSize = 16
+	button.Size = size
+	button.Position = position
+	button.BorderSizePixel = 0
+	Ui.corner(button, UDim.new(0, 10))
+	local scale = Instance.new("UIScale")
+	scale.Parent = button
+	Ui.setButtonStyle(button, style or "primary")
+	button.MouseButton1Down:Connect(function()
+		Ui.tween(scale, 0.08, { Scale = 0.94 })
+	end)
+	local function release()
+		Ui.tween(scale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+	end
+	button.MouseButton1Up:Connect(release)
+	button.MouseLeave:Connect(release)
+	button.SelectionGained:Connect(function()
+		Ui.tween(scale, 0.15, { Scale = 1.04 })
+	end)
+	button.SelectionLost:Connect(release)
+	button.Parent = parent
+	return button
+end
+
+export type Window = {
+	frame: Frame,
+	content: Frame,
+	close: TextButton,
+	title: TextLabel,
+	subtitle: TextLabel,
+}
+
+-- A centered menu window with a title, a subtitle and a close button. Content
+-- goes in `content` (a scrolling list is up to the caller).
+function Ui.window(parent: Instance, title: string, subtitle: string, size: Vector2): Window
+	local frame = Ui.panel(
+		parent,
+		"Window",
+		UDim2.fromOffset(size.X, size.Y),
+		UDim2.fromScale(0.5, 0.5),
+		Vector2.new(0.5, 0.5)
+	)
+	frame.BackgroundTransparency = 0.08
+	frame.ZIndex = 30
+	local stroke = frame:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Transparency = 0.5
+	end
+	local heading = Ui.label(
+		frame,
+		"Title",
+		title,
+		Ui.FONT_HEAVY,
+		26,
+		Ui.color.text,
+		UDim2.new(1, -80, 0, 30),
+		UDim2.fromOffset(22, 16)
+	)
+	local sub = Ui.label(
+		frame,
+		"Subtitle",
+		subtitle,
+		Ui.FONT,
+		15,
+		Ui.color.muted,
+		UDim2.new(1, -80, 0, 18),
+		UDim2.fromOffset(22, 48)
+	)
+	local close =
+		Ui.button(frame, "Close", "X", UDim2.fromOffset(38, 38), UDim2.new(1, -54, 0, 16), "secondary")
+	close.FontFace = Ui.FONT_HEAVY
+	close.TextSize = 18
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.BackgroundTransparency = 1
+	content.Position = UDim2.fromOffset(18, 80)
+	content.Size = UDim2.new(1, -36, 1, -96)
+	content.Parent = frame
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.92
+	scale.Parent = frame
+	Ui.tween(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	return { frame = frame, content = content, close = close, title = heading, subtitle = sub }
+end
+
+-- A vertical scrolling list that grows with its rows.
+function Ui.list(parent: Instance, padding: number?): ScrollingFrame
+	local scroller = Instance.new("ScrollingFrame")
+	scroller.Name = "List"
+	scroller.BackgroundTransparency = 1
+	scroller.BorderSizePixel = 0
+	scroller.Size = UDim2.fromScale(1, 1)
+	scroller.ScrollBarThickness = 4
+	scroller.ScrollBarImageColor3 = Ui.color.stroke
+	scroller.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroller.CanvasSize = UDim2.new()
+	scroller.Selectable = false
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, padding or 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = scroller
+	scroller.Parent = parent
+	return scroller
+end
+
+-- Thousands separators: 12,400.
+function Ui.number(value: number): string
+	local text = tostring(math.floor(value + 0.5))
+	local sign = ""
+	if text:sub(1, 1) == "-" then
+		sign, text = "-", text:sub(2)
+	end
+	local formatted = text:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	if formatted:sub(1, 1) == "," then
+		formatted = formatted:sub(2)
+	end
+	return sign .. formatted
+end
+
 return Ui

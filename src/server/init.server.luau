@@ -6,12 +6,22 @@ local Services = script.Services
 local WorldService = require(Services.WorldService)
 local FishService = require(Services.FishService)
 local HuntService = require(Services.HuntService)
+local EconomyService = require(Services.EconomyService)
+local ShellService = require(Services.ShellService)
+local RollService = require(Services.RollService)
+local WardrobeService = require(Services.WardrobeService)
+local ShopService = require(Services.ShopService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
 WorldService.start() -- the graybox map and the ocean lighting
 FishService.start() -- loaded: hand out a den and spawn the fish
 HuntService.start() -- eats, bites, Haul and banking
+EconomyService.start() -- coral and shells on the HUD
+ShellService.start() -- shell spots (after the world exists)
+RollService.start() -- 50 shells = a roll
+WardrobeService.start() -- spawned: dress the fish
+ShopService.start() -- the plaza's vendors
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

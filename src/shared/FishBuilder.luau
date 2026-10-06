@@ -13,14 +13,18 @@ export type Look = {
 	fin: Color3,
 }
 
-type PartSpec = {
+export type PartSpec = {
 	name: string,
 	parent: string, -- part it hangs from ("Root" = the HumanoidRootPart)
 	size: Vector3, -- unit size
 	c0: CFrame, -- the joint in the parent's frame (unit)
 	c1: CFrame, -- the joint in this part's frame (unit)
-	shape: "Ellipsoid" | "Wedge",
-	color: "back" | "belly" | "fin" | "eye",
+	shape: "Ellipsoid" | "Wedge" | "Block" | "Ball",
+	color: "back" | "belly" | "fin" | "eye" | "fixed",
+	fixed: Color3?, -- the color when `color` is "fixed"
+	material: Enum.Material?,
+	transparency: number?,
+	light: Color3?, -- a small light in the part (an angler's lure)
 }
 
 -- The spine, front to back, then the fins. Joints sit where segments meet, so a
@@ -160,49 +164,92 @@ local function scaled(cframe: CFrame, scale: number): CFrame
 	return CFrame.new(cframe.Position * scale) * cframe.Rotation
 end
 
+-- Makes one part of a fish and its joint, at `length` studs. The unit layout is
+-- kept in attributes (U, C0, C1) and again as the originals (U0, C00, C10), so
+-- applyScale can resize it and Shared/Cosmetics can reshape it and put it back.
+function FishBuilder.makePart(
+	body: Model,
+	parentPart: BasePart,
+	spec: PartSpec,
+	look: Look,
+	length: number
+): BasePart
+	local part: BasePart
+	if spec.shape == "Wedge" then
+		part = Instance.new("WedgePart")
+	elseif spec.shape == "Block" then
+		part = Instance.new("Part")
+	elseif spec.shape == "Ball" then
+		local ball = Instance.new("Part")
+		ball.Shape = Enum.PartType.Ball
+		part = ball
+	else
+		part = Instance.new("Part")
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = part
+	end
+	part.Name = spec.name
+	part.Material = spec.material or Enum.Material.SmoothPlastic
+	part.Color = if spec.color == "eye"
+		then EYE
+		elseif spec.color == "fixed" then spec.fixed or Color3.new(1, 1, 1)
+		else (look :: any)[spec.color]
+	part.Reflectance = if spec.color == "eye" then 0.25 else 0.04
+	part.Transparency = spec.transparency or 0
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Massless = true
+	part.CastShadow = spec.color ~= "eye" and (spec.transparency or 0) < 0.3
+	part:SetAttribute("Role", spec.color)
+	part:SetAttribute("U", spec.size)
+	part:SetAttribute("U0", spec.size)
+	part:SetAttribute("T0", spec.transparency or 0)
+	part.Size = spec.size * length
+	part.CFrame = parentPart.CFrame
+	if spec.light then
+		local light = Instance.new("PointLight")
+		light.Color = spec.light
+		light.Range = 10
+		light.Brightness = 2
+		light.Parent = part
+	end
+	part.Parent = body
+
+	local joint = Instance.new("Motor6D")
+	joint.Name = spec.name
+	joint.Part0 = parentPart
+	joint.Part1 = part
+	joint:SetAttribute("C0", spec.c0)
+	joint:SetAttribute("C1", spec.c1)
+	joint:SetAttribute("C00", spec.c0)
+	joint:SetAttribute("C10", spec.c1)
+	joint.C0 = scaled(spec.c0, length)
+	joint.C1 = scaled(spec.c1, length)
+	joint.Parent = part
+	return part
+end
+
 -- Builds the fish's body under `character`, jointed to `root`, at `length` studs.
--- Returns the Body model.
+-- Returns the Body model. The base colors go on the character too (LookBack,
+-- LookBelly, LookFin), so a shade can be taken off again.
 function FishBuilder.build(character: Model, root: BasePart, look: Look, length: number): Model
 	local body = Instance.new("Model")
 	body.Name = "Body"
 	local parts: { [string]: BasePart } = { Root = root }
 	for _, spec in PARTS do
-		local part: BasePart
-		if spec.shape == "Wedge" then
-			part = Instance.new("WedgePart")
-		else
-			part = Instance.new("Part")
-			local mesh = Instance.new("SpecialMesh")
-			mesh.MeshType = Enum.MeshType.Sphere
-			mesh.Parent = part
-		end
-		part.Name = spec.name
-		part.Material = Enum.Material.SmoothPlastic
-		part.Color = if spec.color == "eye" then EYE else (look :: any)[spec.color]
-		part.Reflectance = if spec.color == "eye" then 0.25 else 0.04
-		part.CanCollide = false
-		part.CanQuery = false
-		part.CanTouch = false
-		part.Massless = true
-		part.CastShadow = spec.color ~= "eye"
-		part:SetAttribute("U", spec.size)
-		part.Size = spec.size * length
-		part.CFrame = root.CFrame
-		part.Parent = body
-		parts[spec.name] = part
-
-		local joint = Instance.new("Motor6D")
-		joint.Name = spec.name
-		joint.Part0 = parts[spec.parent]
-		joint.Part1 = part
-		joint:SetAttribute("C0", spec.c0)
-		joint:SetAttribute("C1", spec.c1)
-		joint.C0 = scaled(spec.c0, length)
-		joint.C1 = scaled(spec.c1, length)
-		joint.Parent = part
+		parts[spec.name] = FishBuilder.makePart(body, parts[spec.parent], spec, look, length)
 	end
+	character:SetAttribute("LookBack", look.back)
+	character:SetAttribute("LookBelly", look.belly)
+	character:SetAttribute("LookFin", look.fin)
 	body.Parent = character
 	return body
+end
+
+function FishBuilder.scaled(cframe: CFrame, scale: number): CFrame
+	return scaled(cframe, scale)
 end
 
 -- Resizes a built body to `length` studs (every client eases this as the fish grows).
@@ -224,6 +271,17 @@ function FishBuilder.applyScale(body: Model, length: number)
 			end
 		end
 	end
+end
+
+-- The base look stored on a character by build.
+function FishBuilder.lookOf(character: Instance): Look?
+	local back = character:GetAttribute("LookBack")
+	local belly = character:GetAttribute("LookBelly")
+	local fin = character:GetAttribute("LookFin")
+	if typeof(back) == "Color3" and typeof(belly) == "Color3" and typeof(fin) == "Color3" then
+		return { back = back, belly = belly, fin = fin }
+	end
+	return nil
 end
 
 -- The joints by part name, for the animator.

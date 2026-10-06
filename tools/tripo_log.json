@@ -1,0 +1,38 @@
+{
+ "concepts/HubPlaza": {
+  "credits": 10,
+  "files": [
+   "HubPlaza.png"
+  ],
+  "status": "success",
+  "task_id": "028494dd-c7a9-40bc-a089-235f98f7e6db",
+  "type": "generate_image"
+ },
+ "concepts/ShadeSheet": {
+  "credits": 10,
+  "files": [
+   "ShadeSheet.png"
+  ],
+  "status": "success",
+  "task_id": "fa6b28cb-e945-4737-8e20-edb33c5fb1d6",
+  "type": "generate_image"
+ },
+ "concepts/StyleSheet": {
+  "credits": 10,
+  "files": [
+   "StyleSheet.png"
+  ],
+  "status": "success",
+  "task_id": "5d5de614-232a-4b5f-8e1d-0db248613603",
+  "type": "generate_image"
+ },
+ "concepts/Vendors": {
+  "credits": 10,
+  "files": [
+   "Vendors.png"
+  ],
+  "status": "success",
+  "task_id": "8b84f648-3f49-428f-abe5-b7331a708629",
+  "type": "generate_image"
+ }
+}

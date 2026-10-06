@@ -17,6 +17,7 @@ local WorldService = {}
 
 local root: Folder
 local denSigns: { [number]: TextLabel } = {}
+local vendorPositions: { [string]: Vector3 } = {}
 
 local SAND = Color3.fromRGB(196, 182, 140)
 local ROCK = Color3.fromRGB(92, 98, 104)
@@ -466,6 +467,137 @@ local function buildHub(parent: Instance)
 	end
 end
 
+local WOOD = Color3.fromRGB(132, 96, 66)
+local LANTERN = Color3.fromRGB(255, 196, 120)
+
+-- A placeholder shopkeeper until the vendor models arrive: a round body with eyes.
+local function keeper(parent: Instance, at: CFrame, color: Color3)
+	local body = Instance.new("Part")
+	body.Name = "Keeper"
+	body.Anchored = true
+	body.CanCollide = false
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.one * 4
+	body.CFrame = at
+	body.Color = color
+	body.Material = Enum.Material.SmoothPlastic
+	body.Parent = parent
+	for side = -1, 1, 2 do
+		local eye = Instance.new("Part")
+		eye.Name = "Eye"
+		eye.Anchored = true
+		eye.CanCollide = false
+		eye.Shape = Enum.PartType.Ball
+		eye.Size = Vector3.one * 1.1
+		eye.CFrame = at * CFrame.new(side * 0.8, 0.6, -1.55)
+		eye.Color = Color3.new(1, 1, 1)
+		eye.Material = Enum.Material.SmoothPlastic
+		eye.Parent = parent
+		local pupil = eye:Clone()
+		pupil.Name = "Pupil"
+		pupil.Size = Vector3.one * 0.55
+		pupil.CFrame = at * CFrame.new(side * 0.8, 0.6, -2.02)
+		pupil.Color = Color3.fromRGB(20, 22, 28)
+		pupil.Parent = parent
+	end
+end
+
+-- The four vendor stalls round the plaza (Config/Shop), each with a prompt that
+-- opens its shop menu on the client.
+local function buildVendors(parent: Instance)
+	local market = folder("Vendors", parent)
+	local plazaTop = 1.5
+	for _, vendor in Config.Shop.vendors do
+		local angle = math.rad(vendor.angle)
+		local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local function at(r: number, y: number): CFrame
+			local position = hub.center + radial * r + Vector3.new(0, y, 0)
+			-- Facing the beacon
+			return CFrame.lookAt(position, position - radial)
+		end
+		local stall = Instance.new("Model")
+		stall.Name = vendor.id
+		local counter = block(
+			stall,
+			"Counter",
+			Vector3.new(12, 3.6, 3.5),
+			at(33, plazaTop + 1.8),
+			WOOD,
+			Enum.Material.Wood
+		)
+		for side = -1, 1, 2 do
+			block(
+				stall,
+				"Post",
+				Vector3.new(0.8, 10, 0.8),
+				at(36, plazaTop + 5) * CFrame.new(side * 6, 0, 0),
+				WOOD,
+				Enum.Material.Wood
+			)
+			local lantern = Instance.new("Part")
+			lantern.Name = "Lantern"
+			lantern.Anchored = true
+			lantern.CanCollide = false
+			lantern.Shape = Enum.PartType.Ball
+			lantern.Size = Vector3.one * 1.1
+			lantern.CFrame = at(31.2, plazaTop + 8.6) * CFrame.new(side * 6.4, 0, 0)
+			lantern.Color = LANTERN
+			lantern.Material = Enum.Material.Neon
+			lantern.Parent = stall
+			local light = Instance.new("PointLight")
+			light.Color = LANTERN
+			light.Range = 14
+			light.Brightness = 0.9
+			light.Parent = lantern
+		end
+		local awning = block(
+			stall,
+			"Awning",
+			Vector3.new(14, 0.6, 8),
+			at(33.5, plazaTop + 10) * CFrame.Angles(math.rad(-12), 0, 0),
+			vendor.color,
+			Enum.Material.Fabric
+		)
+		awning.CastShadow = true
+		local sign =
+			block(stall, "Sign", Vector3.new(11, 2, 0.4), at(29.6, plazaTop + 8.8), WOOD, Enum.Material.Wood)
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front -- toward the beacon
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 40
+		gui.LightInfluence = 0
+		gui.Parent = sign
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(255, 240, 214)
+		label.Text = string.upper(vendor.name)
+		label.Parent = gui
+		keeper(stall, at(36.2, plazaTop + 4.2), vendor.color:Lerp(Color3.new(1, 1, 1), 0.25))
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "ShopPrompt"
+		prompt.ActionText = "Shop"
+		prompt.ObjectText = vendor.name
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 18
+		prompt.RequiresLineOfSight = false
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.GamepadKeyCode = Enum.KeyCode.ButtonY -- X bites
+		prompt:SetAttribute("Vendor", vendor.id)
+		prompt.Parent = counter
+		vendorPositions[vendor.id] = counter.Position
+		stall.Parent = market
+	end
+end
+
+-- Where a vendor's counter is (for the server's reach check).
+function WorldService.vendorPosition(id: string): Vector3?
+	return vendorPositions[id]
+end
+
 local function inTrench(x: number, z: number, margin: number): boolean
 	local trench = World.trench
 	return math.abs(x - trench.center.X) < trench.size.X / 2 + margin
@@ -624,6 +756,7 @@ function WorldService.start()
 	buildSeabed(folder("Seabed", root))
 	buildBounds(folder("Bounds", root))
 	buildHub(root)
+	buildVendors(root:FindFirstChild("Hub") :: Folder)
 	buildShallows(root)
 end
 

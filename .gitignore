@@ -14,3 +14,5 @@ assets/fbx/
 
 # Python
 __pycache__/
+# tools/tripo.py outputs (concept PNGs are committed separately under assets/concepts/)
+assets/tripo/

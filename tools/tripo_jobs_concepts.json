@@ -1,0 +1,32 @@
+{
+  "jobs": [
+    {
+      "name": "StyleSheet",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Game art style sheet for a Roblox underwater eat-and-grow game. Five sea creatures in a row from smallest to largest on a plain soft teal gradient background: a tiny round baby reef fish, a striped kelp wrasse, a sleek silver barracuda, a grey reef shark, and a huge menacing deep-sea anglerfish with a glowing lure. Style: chunky stylized low-poly 3D, flat-shaded facets with soft lighting, bold saturated colors, clean simple shapes, very readable silhouettes, like the indie game Schedule I mixed with the underwater game Abzu. Simple expressive eyes with small dark pupils and a white glint, no anime eyes, no giant cartoon eyes. The small fish look cute and a little goofy, the big ones look powerful and menacing. Each creature in a three-quarter side view, evenly lit, consistent scale cues, no text, no watermark."
+    },
+    {
+      "name": "ShadeSheet",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Cosmetic skin sheet for a Roblox underwater game: the same small chunky stylized low-poly reef fish shown seven times in a neat grid on a plain dark navy background, three-quarter side view, identical pose. Versions: 1) plain blue and white, 2) LUNAR: pale silver-blue with a soft moonlight glow and tiny star specks, 3) DIAMOND: faceted clear crystal with bright sparkles and light refraction, 4) DIVINE: white and gold with a warm halo glow and light rays, 5) EXOTIC: vivid tropical neon pattern of electric blue, hot orange and lime, 6) PRISMATIC: smooth rainbow iridescent sheen across the body, 7) a simple mint green tint. Style: flat-shaded low-poly facets, bold readable colors, like the indie game Schedule I mixed with Abzu, simple eyes with small dark pupils. No text, no labels, no watermark."
+    },
+    {
+      "name": "Vendors",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Character sheet of four underwater shopkeeper characters for a Roblox game hub, in a row on a plain soft teal background, each in a three-quarter view: 1) an old hermit crab outfitter wearing tiny spectacles with a measuring tape, 2) a burly orange octopus stonemason holding a hammer and a chisel, 3) a wise old sea turtle charm trader with necklaces of shells and trinkets, 4) a cheerful round pufferfish dye-maker with paint-stained fins and a little apron. Style: chunky stylized low-poly 3D with flat-shaded facets, bold saturated colors, simple friendly faces with small dark pupils, like the indie game Schedule I mixed with Abzu. No text, no watermark."
+    },
+    {
+      "name": "HubPlaza",
+      "group": "concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Concept art of an underwater cave hub inside a seamount for a Roblox game: a round cavern with a hole in the rocky roof letting god rays of light pour down, a glowing cyan crystal beacon in the center of a stone plaza, four small market stalls with coral and kelp awnings around the plaza run by sea creature shopkeepers, and twelve cozy den doorways carved into the cavern walls, each with a glowing pool inside. Small stylized fish swimming around. Style: chunky stylized low-poly 3D with flat-shaded facets, bold saturated colors, warm lanterns against cool blue water, like the indie game Schedule I mixed with Abzu. Wide angle, no text, no watermark."
+    }
+  ]
+}

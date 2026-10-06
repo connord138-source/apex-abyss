@@ -7,20 +7,26 @@ local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
 local HudController = require(script.Controllers.HudController)
 local HuntController = require(script.Controllers.HuntController)
+local MenuController = require(script.Controllers.MenuController)
 local NametagController = require(script.Controllers.NametagController)
 local OceanController = require(script.Controllers.OceanController)
+local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
+local ShellController = require(script.Controllers.ShellController)
 local SwimController = require(script.Controllers.SwimController)
 
 ClientState.start()
 Input.start()
 OceanController.start()
 HudController.start() -- before the swim controller, so it hears the first spawn
+MenuController.start() -- shops (at the stalls), wardrobe, odds
+RollController.start() -- wallet, Roll button and the reveal
 CameraController.start()
 FishAnimator.start()
 HuntController.start()
 SchoolController.start()
 NametagController.start()
+task.spawn(ShellController.start) -- waits for the server's shell spots
 SwimController.start() -- last: spawning fires the signals the others listen to
 
 print("[ApexAbyss] Client ready")

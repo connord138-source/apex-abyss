@@ -18,6 +18,7 @@ local Spring = require(script.Parent.Parent.Spring)
 local Ui = require(script.Parent.Parent.Ui)
 local HuntController = require(script.Parent.HuntController)
 local SchoolController = require(script.Parent.SchoolController)
+local ShellController = require(script.Parent.ShellController)
 local SwimController = require(script.Parent.SwimController)
 
 local World = Config.World
@@ -93,7 +94,7 @@ local function buildLevelCard()
 		Ui.bar(card, "Progress", UDim2.fromOffset(204, 5), UDim2.fromOffset(14, 56), Ui.color.accent)
 	levelFill = fill
 
-	safeChip = Ui.panel(gui, "Safe", UDim2.fromOffset(118, 28), UDim2.fromOffset(18, 144))
+	safeChip = Ui.panel(gui, "Safe", UDim2.fromOffset(118, 28), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
 	local dot = Instance.new("Frame")
 	dot.Size = UDim2.fromOffset(8, 8)
 	dot.Position = UDim2.new(0, 12, 0.5, -4)
@@ -264,6 +265,9 @@ local function celebrate(summary: { [string]: any })
 			and level > before
 		then `LEVEL {level} · {string.upper(tostring(summary.stage))}`
 		else "Your fish keeps this size now"
+	if typeof(summary.coral) == "number" and summary.coral > 0 then
+		sub ..= `  ·  +{Ui.number(summary.coral)} coral`
+	end
 	local line = Ui.label(
 		holder,
 		"Sub",
@@ -310,7 +314,11 @@ local function eatenScreen(summary: { [string]: any })
 	title.ZIndex = 21
 	local by = typeof(summary.by) == "string" and summary.by or "a bigger fish"
 	local lost = typeof(summary.lost) == "number" and summary.lost or 0
-	local detail = if lost > 0 then `by {by} · lost {Format.mass(lost)} of Haul` else `by {by}`
+	local saved = typeof(summary.saved) == "number" and summary.saved or 0
+	local detail = if saved > 0
+		then `by {by} · Second Chance kept your {Format.mass(saved)} Haul`
+		elseif lost > 0 then `by {by} · lost {Format.mass(lost)} of Haul`
+		else `by {by}`
 	local line = Ui.label(
 		overlay,
 		"Detail",
@@ -351,8 +359,8 @@ local function eatenScreen(summary: { [string]: any })
 	end)
 end
 
--- "+0.3" floating up from where a prey was eaten.
-local function pop(mass: number, position: Vector3)
+-- "+0.3" floating up from where a prey was eaten (or "+1 SHELL").
+local function pop(text: string, color: Color3, position: Vector3)
 	local camera = workspace.CurrentCamera
 	local point, visible = camera:WorldToViewportPoint(position)
 	if not visible then
@@ -362,12 +370,12 @@ local function pop(mass: number, position: Vector3)
 	local label = Ui.label(
 		popLayer,
 		"Pop",
-		`+{if mass < 10 then string.format("%.1f", mass) else tostring(math.floor(mass))}`,
+		text,
 		Ui.FONT_HEAVY,
 		20,
-		Ui.color.haul,
-		UDim2.fromOffset(80, 24),
-		UDim2.fromOffset(point.X / scale - 40, point.Y / scale - 12)
+		color,
+		UDim2.fromOffset(120, 24),
+		UDim2.fromOffset(point.X / scale - 60, point.Y / scale - 12)
 	)
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextStrokeTransparency = 0.6
@@ -431,7 +439,7 @@ local function showControlsHint()
 		elseif
 			Input.isGamepad()
 		then "Left stick swim · right stick look · RT boost · RB bite · A/B up and down"
-		else "Mouse to look · WASD swim · Shift boost · Click bite · Space/Ctrl up and down · hold Alt for the cursor"
+		else "Mouse to look · WASD swim · Shift boost · Click bite · Space/Ctrl up/down · E at a stall to shop · hold Alt for the cursor"
 	local label = Ui.label(
 		gui,
 		"Controls",
@@ -594,7 +602,14 @@ function HudController.start()
 		onState(ClientState.current)
 	end
 	SchoolController.ate:connect(function(_preyId: string, mass: number, position: Vector3)
-		pop(mass, position)
+		pop(
+			`+{if mass < 10 then string.format("%.1f", mass) else tostring(math.floor(mass))}`,
+			Ui.color.haul,
+			position
+		)
+	end)
+	ShellController.collected:connect(function(value: number, position: Vector3)
+		pop(`+{value} SHELL{if value == 1 then "" else "S"}`, Color3.fromRGB(242, 228, 204), position)
 	end)
 	HuntController.bitten:connect(function()
 		flash.BackgroundTransparency = 0.45

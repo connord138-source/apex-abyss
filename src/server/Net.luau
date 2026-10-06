@@ -23,12 +23,18 @@ local preyEaten = makeEvent("PreyEaten") -- (index, backAt, eaterUserId) to ever
 local banked = makeEvent("Banked") -- (summary) to the banker
 local eaten = makeEvent("Eaten") -- (summary) to the fish that got eaten
 local hit = makeEvent("Hit") -- (attackerUserId, victimUserId, damage) to everyone, for effects
+local shellResult = makeEvent("ShellResult") -- (index, backAt) 0 = not allowed, show it again
+local rollResult = makeEvent("RollResult") -- (result) to the roller
 
 -- Each request: its minimum seconds between calls from one player
 local REQUESTS: { [string]: number } = {
 	EatPrey = 0.05, -- ({ { index: number, at: number } }) batched by the client
 	EatPlayer = 0.2, -- (userId)
 	Bite = 0.35, -- (userId)
+	Collect = 0.03, -- (shell spot index)
+	Roll = 0.4, -- ()
+	Buy = 0.2, -- (kind: "upgrade" | "charm" | "dye" | "shells", id: string)
+	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -38,6 +44,10 @@ end
 local getEaten = Instance.new("RemoteFunction")
 getEaten.Name = "GetEaten" -- () -> { [string]: number } prey index -> back-at time
 getEaten.Parent = folder
+
+local getShells = Instance.new("RemoteFunction")
+getShells.Name = "GetShells" -- () -> { positions, golden, hidden }
+getShells.Parent = folder
 
 folder.Parent = ReplicatedStorage
 
@@ -97,6 +107,23 @@ end
 
 function Net.onGetEaten(handler: (Player) -> { [string]: number })
 	getEaten.OnServerInvoke = handler
+end
+
+function Net.onGetShells(handler: (Player) -> { [string]: any })
+	getShells.OnServerInvoke = handler
+end
+
+function Net.shellResult(player: Player, index: number, backAt: number)
+	shellResult:FireClient(player, index, backAt)
+end
+
+function Net.rollResult(player: Player, result: { [string]: any })
+	rollResult:FireClient(player, result)
+end
+
+-- A toast for everyone (rare rolls).
+function Net.notifyAll(text: string, kind: NotifyKind?)
+	notify:FireAllClients(text, kind or "info")
 end
 
 -- Handles one kind of client request. The handler gets the raw, untrusted arguments.

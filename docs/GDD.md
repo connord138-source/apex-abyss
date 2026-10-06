@@ -106,25 +106,92 @@ owner disliked "Molt" and this was the recommended replacement.*
   - Giant Squid → **Kraken** (hold an Abyssal Pearl from the trench boss)
   - Moray → **Leviathan Eel** (reach a set depth)
   - Manta → **Void Manta** (requires a mutation)
-- **Art:** the Sonaria-inspired style approved for Hatch & Snatch. Semi-realistic,
-  natural proportions, **realistic eyes**, faceted models with smooth shading, each
-  creature fused with an element: magma eel, ice orca, lightning jelly, void angler,
-  geode crab, coral ray. The Hatch & Snatch art lessons apply (no cartoon eyes, no toy
-  proportions, no matching poses; prompt with 2–3 approved references).
+- **Art (changed 2026-10-06):** stylized, chunky low-poly, like *Schedule I* mixed
+  with *Abzû*.
+  - Flat-shaded facets, bold saturated colors, readable silhouettes and simple eyes.
+  - Small fish are cute and a little goofy; big ones are powerful and menacing.
+  - The owner offered a Schedule I-style cartoony look, and Claude chose it: it stands
+    out on Roblox, reads at a glance (size and threat), stays light enough for hundreds
+    of fish on phones, and suits Tripo. It also keeps Apex Abyss looking different
+    from Hatch & Snatch.
+  - The first concepts are in `assets/concepts/`: StyleSheet, ShadeSheet, Vendors and
+    HubPlaza. They are waiting for the owner's approval before any 3D conversion.
+  - Element fusions (magma eel, ice orca, lightning jelly, void angler) still fit as
+    themes.
 - **Rig:** a spine chain plus fin and jaw bones, with a procedural sine swim. That's
   far simpler than the quadruped legs in Hatch & Snatch. Tentacled lines (squid,
   jelly) add tentacle chains.
 
-### Skins
+### Rolls, shades and exotics (owner, 2026-10-06; built)
 
-- **Finishes:** Gold → Chrome → Diamond → Molten → Galaxy → Prismatic.
-- **Mutations:** Albino, Melanistic, **Bioluminescent**, **Glass** (see-through) and
-  Iridescent.
-- **Where they come from:** a roll on every bank-up stage and evolution, plus Pearl
-  Clams out in the biomes.
-- **Paid random items:** exact odds summing to 100% are shown before buying.
+This replaced the finish and mutation plan.
+
+- **Shells** are the roll currency.
+  - 150 shell spots are spread over the Kelp Shallows, and 14 golden shells (worth 5)
+    lie on the trench floor.
+  - Every player has their own copy of each shell, so there's no racing. A shell you
+    pick up comes back for you after 4 minutes.
+  - Big prey sometimes carry 1–4 (`Config/Shells.luau`).
+  - Shells are never lost when you're eaten.
+- **50 Shells = 1 roll**, from the HUD's ROLL button. The reveal is a case-opening
+  reel, and it lasts longer and lands bigger the rarer the result.
+- **The roll table** (`Config/Rolls.luau`, `Shades.luau`, `Exotics.luau`;
+  `Shared/RollOdds.luau`). Exact odds per roll, which add up to exactly 100%
+  (`tools/tests/run_odds.sh`):
+
+| Outcome | Tier | Chance |
+|---|---|---|
+| Coral: Handful 25 / Pouch 60 / Chest 150 / Jackpot 600 | Coral | 63.2% / 19.9% / 5.9% / 1.35% |
+| 8 tints (Mint, Sunset, Ink, Sand, Ember, Lilac, Moss, Ocean) | Common | 1 in 100 each |
+| Lunar shade | Rare | 1 in 120 |
+| Diamond shade | Epic | 1 in 250 |
+| Divine shade | Legendary | 1 in 500 |
+| Exotic shade | Mythic | 1 in 900 |
+| Prismatic shade | Mythic | 1 in 1,500 |
+| Body parts: Angler Lure, Narwhal Horn, Sawblade Snout, Sail Fin, Veil Tail | Abyssal | 1 in 4,000 to 1 in 6,000 each |
+| Exotic variants: Puffer, Hammerhead | Abyssal | 1 in 8,000 / 1 in 10,000 |
+
+- **Luck:**
+  - A Lucky Charm doubles every non-coral chance on the next roll.
+  - Coral never drops below 50% of a roll.
+  - The odds panel shows the luck that applies.
+- **Duplicates** turn into coral: 120 for a tint, up to 12,000 for Prismatic and
+  15,000–30,000 for an Abyssal outcome.
+- **Announcements:** Rare and rarer results are announced to the whole server once
+  the roller's reveal has landed.
+- **Wearing them:**
+  - Shades, parts and variants are owned per player and worn on any fish, from the
+    Wardrobe or straight from the reveal.
+  - A fish wears one shade, one variant and one part per slot (Head, Back, Tail).
+  - The server sets the character's Shade, Parts and Variant attributes, and every
+    client dresses the fish from them (`Shared/Cosmetics.luau`).
+- **Adding more:** new shades and exotics are table entries (plus geometry in
+  Cosmetics), and the odds re-balance themselves.
+- **Paid rolls (later):** Shell packs, sold with the odds panel shown before buying and
+  hidden for `ArePaidRandomItemsRestricted` players.
 - **Moderation warning (from Hatch & Snatch):** pale or pinkish unwrapped skin atlases
   got an account suspended. Screen every texture before upload.
+
+### Coral and vendors (owner, 2026-10-06; built)
+
+- **Coral** is the currency.
+  - **Earned from:**
+    - Rolls: about 45 coral a roll on average.
+    - Banking a Haul: 6 × √kg banked.
+    - Eating players: 20 × the size-ratio penalty.
+    - Duplicate refunds.
+  - **Spent at** four vendors' stalls round the hub plaza, close to every den. Swim up
+    and press E (Y on a controller):
+
+| Vendor (keeper) | Sells |
+|---|---|
+| **Fin & Gill Outfitter** (Old Hermit) | 5-level upgrades: Strong Fins +4% speed, Deep Gills +12% boost, Shell Sense +20% pickup reach, Iron Jaw +6% bite. 150–11,000 coral a level. |
+| **Den Mason** (Octavio) | Haul Chamber: +6% to every banked Haul per level, 300–15,000 |
+| **Tidecharm Trader** (Old Tortuga) | Lucky Charm 800 (hold 3), Second Chance 1,200 (keep your Haul once), Shell Magnet 250 (×2 reach, 10 min), Feast Charm 400 (+25% Haul, 10 min); 10 Shells for 400, 5 times a day |
+| **Shade Dyer** (Puff) | The 8 tints at 1,500 each, previewed on your fish. Rare shades only come from rolls. |
+
+- **Later ways to spend coral:** den decor and the Den Designer, riptide currents
+  (fast travel), bounties, and coral-only cosmetic rolls.
 
 ## 8. World
 
@@ -184,6 +251,8 @@ Rule: **sell growth and safety, never bite damage**, so PvP stays fair.
 - **Game passes:** VIP, ×2 Mass, extra den slots.
 - **Pearl crates:** paid random items, with an odds panel before buying.
 - **Free rewards:** codes, a Roblox group perk, a Premium perk and rewarded ads.
+- **Shell packs (planned):** Robux for shells (paid rolls), with the odds panel shown
+  before buying.
 
 ## 10. Den
 

@@ -74,4 +74,11 @@ return {
 		latencySeconds = 0.35,
 		reachSlack = 4,
 	},
+
+	economy = {
+		-- Coral for banking a Haul: bankCoral × √(kg banked), so it grows with you
+		-- without running away late
+		bankCoral = 6,
+		eatPlayerCoral = 20, -- for eating a player your size (less for smaller)
+	},
 }
