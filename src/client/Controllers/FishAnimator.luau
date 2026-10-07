@@ -20,6 +20,7 @@ type FishState = {
 	root: BasePart,
 	joints: { [string]: Motor6D },
 	bones: { [string]: Bone }, -- a rigged mesh body's bones (Head, Spine1.., Tail)
+	boneFrames: { [string]: CFrame }, -- each bone's rest rotation in the fish's own axes
 	spine: { string }, -- segments behind Body1, front to back (the body plan's)
 	length: number, -- the eased length the body is drawn at
 	lengthVelocity: number,
@@ -77,11 +78,21 @@ local function stateOf(character: Model): FishState?
 	local length = character:GetAttribute("Length")
 	local start = if typeof(length) == "number" then length else 2
 	local bones, boneSpine = bonesOf(body)
+	-- Imported bones point their own Y down the spine (Blender's bone axis), so a turn
+	-- about a bone's Y rolled the body instead of swinging the tail (playtest
+	-- 2026-10-07). Keep each bone's rest rotation in the fish's axes to turn the
+	-- animation's fish-axis rotations into the bone's own.
+	local boneFrames: { [string]: CFrame } = {}
+	for name, bone in bones do
+		local rest = root.CFrame:ToObjectSpace(bone.WorldCFrame * bone.Transform:Inverse())
+		boneFrames[name] = rest.Rotation
+	end
 	local state: FishState = {
 		body = body,
 		root = root,
 		joints = FishBuilder.joints(body),
 		bones = bones,
+		boneFrames = boneFrames,
 		spine = if #boneSpine > 0 then boneSpine else FishPlans.spine(body:GetAttribute("Plan") :: string?),
 		length = start,
 		lengthVelocity = 0,
@@ -113,7 +124,8 @@ function FishAnimator.snap(character: Model)
 end
 
 -- Drives a part body's Motor6D or a mesh body's Bone of that name (both take an
--- animated offset in Transform).
+-- animated offset in Transform). `cframe` is a rotation in the fish's own axes (Y
+-- up, -Z ahead), which a bone gets in its own axes.
 local function setTransform(state: FishState, name: string, cframe: CFrame)
 	local joint = state.joints[name]
 	if joint then
@@ -122,7 +134,8 @@ local function setTransform(state: FishState, name: string, cframe: CFrame)
 	end
 	local bone = state.bones[name]
 	if bone then
-		bone.Transform = cframe
+		local frame = state.boneFrames[name]
+		bone.Transform = if frame then frame:Inverse() * cframe * frame else cframe
 	end
 end
 
