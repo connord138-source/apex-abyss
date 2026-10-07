@@ -197,6 +197,27 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   shade roll, and from Captain's chests the treasure-only Sunken Gold and Drowned
   Pearl shades at ~3% each). `Config/Treasure.luau`, `TreasureService`,
   `TreasureController`, `MenuController.openSatchel`. GDD §7.
+- **Bosses and fights (owner, 2026-10-07):** bosses are team-first but soloable in
+  8–10 min, "nothing should be one shot", "no minions in boss fights yet", separate
+  phases and different attacks per boss, cartoonish Schedule I look with "that undersea
+  horror aspect". Rules and both boss designs are in GDD §8.
+  - **Healing (owner: "a healing element ... for boss fights as well as PvP and PvE"):**
+    built. **Kelp Wraps** heal 40% over 4 s (18 s cooldown, carry 5, swim 30% slower
+    while healing, green glow everyone sees); from glowing medkelp fronds in the kelp
+    (eaten like forage), the Tidecharm Trader (120 coral), a 3% prey drop and treasure
+    chests; H / LB / HEAL. Eating prey heals 2% + 0.5%/kg. `Config/Tuning.luau`
+    `heal`, `HuntService.giveWrap/useWrap/damage/kill`, `HealController`. Never sold
+    for Robux.
+  - **AI predators (owner, 2026-10-06: aggressive AI fish worth more):** built as the
+    base the bosses extend. `Config/Predators.luau` (Barracuda, Reef Shark) and
+    `PredatorService`: simulated at 10 Hz, roam a band round the hub, hunt the biggest
+    worthwhile fish in range, telegraph every bite (0.9–1.1 s jaw flash and an INCOMING
+    warning for the target), bite for a share of max health; players bite back
+    (`BitePredator`, damage scaled by the length ratio, +35% per other biter in 2.5 s);
+    a kill pays Haul, DNA and coral by damage share. Positions stream over an
+    UnreliableRemoteEvent; `PredatorController` interpolates 0.15 s behind, draws the
+    `PreyModels` mesh (parts until imported) with a red PREDATOR tag and health bar.
+    A predator with `custom` set skips the plain behaviour (bosses drive it).
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -360,11 +381,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - models for the growth stages, vendors, predators, bosses and the other biomes;
+  - models for the growth stages, vendors and the other biomes (the Megalodon's is
+    generated, `assets/tripo/bosses/`, not yet rigged);
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
   - the biomes' Terrain (only the hub seamount is terrain so far)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
+  - the bosses themselves (Megalodon, Giant Squid) on top of the predator framework
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 
 ## Playtests

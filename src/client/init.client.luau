@@ -13,6 +13,7 @@ local HuntController = require(script.Controllers.HuntController)
 local MenuController = require(script.Controllers.MenuController)
 local NametagController = require(script.Controllers.NametagController)
 local OceanController = require(script.Controllers.OceanController)
+local PredatorController = require(script.Controllers.PredatorController)
 local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
 local ShellController = require(script.Controllers.ShellController)
@@ -32,6 +33,7 @@ TreasureController.start() -- treasure maps: sonar, the X, digging
 HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow
 CameraController.start()
 FishAnimator.start()
+PredatorController.start() -- AI predators: interpolation, tells, tags
 HuntController.start()
 SchoolController.start()
 NametagController.start()

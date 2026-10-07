@@ -32,7 +32,7 @@ local swim = Config.Tuning.swim
 local economy = Config.Tuning.economy
 local hub = Config.World.hub
 
-type Session = {
+export type Session = {
 	haul: number,
 	health: number,
 	lastHitAt: number,
@@ -196,9 +196,16 @@ local function onEatPrey(player: Player, batch: any)
 	end
 	local session = sessions[player]
 	local data = DataService.get(player)
-	local _, root = FishService.character(player)
+	local character, root = FishService.character(player)
 	local length = liveLength(player)
-	if session == nil or data == nil or root == nil or length == nil or not session.alive then
+	if
+		session == nil
+		or data == nil
+		or character == nil
+		or root == nil
+		or length == nil
+		or not session.alive
+	then
 		return
 	end
 	local now = Timing.clock()
@@ -236,7 +243,7 @@ local function onEatPrey(player: Player, batch: any)
 		if session.health < most then
 			session.health =
 				math.min(most, session.health + most * (heal.eatBase + heal.eatPerKg * prey.mass))
-			root.Parent:SetAttribute("Health", session.health)
+			character:SetAttribute("Health", session.health)
 		end
 		-- A wrap tucked in the fish, sometimes
 		if math.random() < heal.preyDropChance and HuntService.giveWrap(player, 1) then
@@ -460,6 +467,12 @@ function HuntService.feed(player: Player, mass: number)
 	if data then
 		addHaul(player, mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()))
 	end
+end
+
+-- Every fish's session (alive, inHub, safeUntil, ...), for creatures choosing a
+-- target (PredatorService). Read only.
+function HuntService.sessions(): { [Player]: Session }
+	return sessions
 end
 
 -- The Haul a player is carrying (0 if not swimming).

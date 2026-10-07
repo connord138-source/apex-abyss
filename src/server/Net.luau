@@ -27,6 +27,11 @@ local shellResult = makeEvent("ShellResult") -- (index, backAt) 0 = not allowed,
 local rollResult = makeEvent("RollResult") -- (result) to the roller
 local forageEaten = makeEvent("ForageEaten") -- (index, backAt, eaterUserId) to everyone
 local treasureResult = makeEvent("TreasureResult") -- (result) to the digger
+local predatorEvent = makeEvent("PredatorEvent") -- (kind, index, payload) to everyone: windup, bite, hurt, died, spawned
+-- Predator positions stream ~10 times a second; a dropped packet doesn't matter
+local predatorState = Instance.new("UnreliableRemoteEvent")
+predatorState.Name = "PredatorState"
+predatorState.Parent = folder
 
 -- Each request: its minimum seconds between calls from one player
 local REQUESTS: { [string]: number } = {
@@ -44,6 +49,7 @@ local REQUESTS: { [string]: number } = {
 	StartDig = 0.4, -- () begin digging at the followed map's X
 	FinishDig = 0.4, -- () the dig hold completed
 	UseWrap = 0.3, -- () use a Kelp Wrap (heal)
+	BitePredator = 0.35, -- (predator index) bite an AI predator or boss
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -149,6 +155,14 @@ end
 
 function Net.treasureResult(player: Player, result: { [string]: any })
 	treasureResult:FireClient(player, result)
+end
+
+function Net.predatorState(packet: { [string]: any })
+	predatorState:FireAllClients(packet)
+end
+
+function Net.predatorEvent(kind: string, index: number, payload: { [string]: any })
+	predatorEvent:FireAllClients(kind, index, payload)
 end
 
 -- A toast for everyone (rare rolls).

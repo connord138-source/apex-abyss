@@ -15,6 +15,7 @@ local ShopService = require(Services.ShopService)
 local SpeciesService = require(Services.SpeciesService)
 local TutorialService = require(Services.TutorialService)
 local TreasureService = require(Services.TreasureService)
+local PredatorService = require(Services.PredatorService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -30,6 +31,7 @@ ShopService.start() -- the plaza's vendors
 SpeciesService.start() -- switching and unlocking species
 TutorialService.start() -- loaded: skip steps already met
 TreasureService.start() -- treasure maps: drops, following, digging
+PredatorService.start() -- AI predators: roaming, hunting, bites, loot
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

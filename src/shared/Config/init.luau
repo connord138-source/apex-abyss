@@ -16,4 +16,5 @@ return {
 	Tutorial = require(script.Tutorial),
 	Abilities = require(script.Abilities),
 	Treasure = require(script.Treasure),
+	Predators = require(script.Predators),
 }

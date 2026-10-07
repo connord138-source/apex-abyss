@@ -502,7 +502,7 @@ cartoonish Schedule I vibes, but the undersea horror aspect for the bosses."
   passes, red APEX PREDATOR tags, "SOMETHING STIRS BELOW". Menace from scale, light
   and sound; no gore.
 
-### Healing (owner, 2026-10-07; to build with the predators)
+### Healing (owner, 2026-10-07; built)
 
 "We need a healing element for players that they can use for boss fights as well as
 PvP and PvE fights."
@@ -519,6 +519,28 @@ PvP and PvE fights."
 - **Eat to heal:** eating prey heals 2% plus 0.5% per kg, so snacking on the schools
   around a boss arena matters in a long fight.
 - The den and the plaza keep their full regen.
+
+### AI predators (built 2026-10-07)
+
+The owner's "aggressive AI predators worth more" are the base the bosses stand on.
+`Config/Predators.luau` lists them; `PredatorService` simulates them on the server
+(10 Hz) and streams positions to every client, which interpolate them.
+
+- **Barracuda** (9 studs, 140 hp, 3 alive, 220–400 studs out, 8–90 deep): fast, bites
+  20% of max health every 2.2 s after a 0.9 s tell; ignores fish under a quarter of
+  its length unless they bite it. Loot 6 kg Haul, 3 DNA, 40 coral.
+- **Reef Shark** (14 studs, 320 hp, 2 alive, 300–420 out, 10–110 deep): slower, bites
+  30% every 2.8 s after a 1.1 s tell. Loot 18 kg, 6 DNA, 120 coral.
+- **Behaviour:** roam waypoints in their band; hunt the biggest worthwhile fish in
+  aggro range (not safe, not in the hub), leading it a little; inside bite reach the
+  jaw flashes red for the tell (the target's screen says INCOMING), then the bite
+  lands if the fish is still in reach, else it coasts past and comes round. A
+  provoked predator chases 1.7× further.
+- **Fighting back:** the bite button on a predator in reach bites it for
+  `biteDamage × (your length ÷ its length)^1.5` (clamped 0.08–1.2), ×(1 + 0.35 per
+  other player who bit it in the last 2.5 s), × upgrades and species. Everyone who
+  dealt damage gets a share of the loot (at least 10%; the killer +10%).
+- **Respawn** 90 s / 150 s after a kill, somewhere else in the band.
 
 ### World boss: the Megalodon (owner, 2026-10-06)
 

@@ -1,6 +1,11 @@
 {
  "bosses/Megalodon": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "Megalodon.glb",
+   "Megalodon_preview.webp"
+  ],
+  "status": "success",
   "task_id": "f541e926-f11d-41fb-ad33-6b68a1648359",
   "type": "image_to_model"
  },
