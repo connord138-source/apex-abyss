@@ -19,6 +19,7 @@ type FishState = {
 	body: Model,
 	root: BasePart,
 	joints: { [string]: Motor6D },
+	bones: { [string]: Bone }, -- a rigged mesh body's bones (Head, Spine1.., Tail)
 	spine: { string }, -- segments behind Body1, front to back (the body plan's)
 	length: number, -- the eased length the body is drawn at
 	lengthVelocity: number,
@@ -40,6 +41,29 @@ local FishAnimator = {}
 local states: { [Model]: FishState } = {}
 local clock = 0
 
+-- The bones of an imported mesh body, by name, and its spine order (Spine1..N then
+-- Tail), or nothing for a part body.
+local function bonesOf(body: Model): ({ [string]: Bone }, { string })
+	local bones: { [string]: Bone } = {}
+	local spine: { string } = {}
+	if body:GetAttribute("Mesh") then
+		for _, descendant in body:GetDescendants() do
+			if descendant:IsA("Bone") then
+				bones[descendant.Name] = descendant
+			end
+		end
+		local i = 1
+		while bones[`Spine{i}`] do
+			table.insert(spine, `Spine{i}`)
+			i += 1
+		end
+		if bones.Tail then
+			table.insert(spine, "Tail")
+		end
+	end
+	return bones, spine
+end
+
 local function stateOf(character: Model): FishState?
 	local existing = states[character]
 	if existing then
@@ -52,11 +76,13 @@ local function stateOf(character: Model): FishState?
 	end
 	local length = character:GetAttribute("Length")
 	local start = if typeof(length) == "number" then length else 2
+	local bones, boneSpine = bonesOf(body)
 	local state: FishState = {
 		body = body,
 		root = root,
 		joints = FishBuilder.joints(body),
-		spine = FishPlans.spine(body:GetAttribute("Plan") :: string?),
+		bones = bones,
+		spine = if #boneSpine > 0 then boneSpine else FishPlans.spine(body:GetAttribute("Plan") :: string?),
 		length = start,
 		lengthVelocity = 0,
 		applied = -1,
@@ -86,10 +112,17 @@ function FishAnimator.snap(character: Model)
 	end
 end
 
-local function setTransform(joints: { [string]: Motor6D }, name: string, cframe: CFrame)
-	local joint = joints[name]
+-- Drives a part body's Motor6D or a mesh body's Bone of that name (both take an
+-- animated offset in Transform).
+local function setTransform(state: FishState, name: string, cframe: CFrame)
+	local joint = state.joints[name]
 	if joint then
 		joint.Transform = cframe
+		return
+	end
+	local bone = state.bones[name]
+	if bone then
+		bone.Transform = cframe
 	end
 end
 
@@ -150,7 +183,7 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 		Spring.number(state.bend, state.bendVelocity, math.clamp(yawRate * 0.12, -0.4, 0.4), 10, dt)
 
 	local p, a, bend = state.phase, state.amplitude, state.bend
-	setTransform(state.joints, "Head", CFrame.Angles(0, math.sin(p + 0.5) * a * 0.12 + bend * 0.3, 0))
+	setTransform(state, "Head", CFrame.Angles(0, math.sin(p + 0.5) * a * 0.12 + bend * 0.3, 0))
 	-- The wave runs down the spine, growing toward the tail; long bodies (the eel)
 	-- carry more of it with a gentler bend at each joint
 	local n = #state.spine
@@ -159,16 +192,16 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 	for i, name in state.spine do
 		local t = i / n
 		local swing = math.sin(p - spread * t) * a * (0.45 + 0.8 * t) * soften * 1.3
-		setTransform(state.joints, name, CFrame.Angles(0, swing + bend * 0.55 * soften, 0))
+		setTransform(state, name, CFrame.Angles(0, swing + bend * 0.55 * soften, 0))
 	end
 	local flutter = math.sin(p * 0.5) * (0.15 + 0.25 * (1 - math.min(relative, 1)))
-	setTransform(state.joints, "FinL", CFrame.Angles(0, 0, flutter))
-	setTransform(state.joints, "FinR", CFrame.Angles(0, 0, -flutter))
+	setTransform(state, "FinL", CFrame.Angles(0, 0, flutter))
+	setTransform(state, "FinR", CFrame.Angles(0, 0, -flutter))
 
 	-- The jaw: open fast, then snap shut
 	local wantJaw = if clock < state.snapUntil then 1 else 0
 	state.jaw, state.jawVelocity = Spring.number(state.jaw, state.jawVelocity, wantJaw, 34, dt)
-	setTransform(state.joints, "Jaw", CFrame.Angles(-math.max(state.jaw, 0) * 0.55, 0, 0))
+	setTransform(state, "Jaw", CFrame.Angles(-math.max(state.jaw, 0) * 0.55, 0, 0))
 end
 
 local function step(dt: number)

@@ -26,6 +26,7 @@ local hit = makeEvent("Hit") -- (attackerUserId, victimUserId, damage) to everyo
 local shellResult = makeEvent("ShellResult") -- (index, backAt) 0 = not allowed, show it again
 local rollResult = makeEvent("RollResult") -- (result) to the roller
 local forageEaten = makeEvent("ForageEaten") -- (index, backAt, eaterUserId) to everyone
+local treasureResult = makeEvent("TreasureResult") -- (result) to the digger
 
 -- Each request: its minimum seconds between calls from one player
 local REQUESTS: { [string]: number } = {
@@ -39,6 +40,9 @@ local REQUESTS: { [string]: number } = {
 	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)
 	SelectSpecies = 0.5, -- (speciesId) swim as another unlocked species (in the safe zone)
 	UnlockSpecies = 0.5, -- (speciesId) unlock with its biome's DNA and coral
+	FollowMap = 0.3, -- (mapId or "") follow a treasure map, or stop
+	StartDig = 0.4, -- () begin digging at the followed map's X
+	FinishDig = 0.4, -- () the dig hold completed
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -135,6 +139,10 @@ end
 
 function Net.rollResult(player: Player, result: { [string]: any })
 	rollResult:FireClient(player, result)
+end
+
+function Net.treasureResult(player: Player, result: { [string]: any })
+	treasureResult:FireClient(player, result)
 end
 
 -- A toast for everyone (rare rolls).

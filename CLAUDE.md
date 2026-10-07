@@ -180,6 +180,18 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     round together.
   - **Phones get one stick** (it appears under the left thumb) plus BITE and DASH; the
     UP/DOWN buttons are gone.
+- **Treasure maps (owner, 2026-10-07):** "randomly earn them... a treasure map to a
+  location where they dig up a treasure for a random reward, a large kelp haul or a
+  super rare skin at a low drop rate. Like clue scrolls. Only the player holding the
+  map can uncover it. Map in their inventory." Built: maps drop from prey (by mass),
+  shells (golden ones often) and big banks; three tiers (Tattered → Weathered →
+  Captain's) set the dig site's distance band and the loot; the SATCHEL (MAPS button)
+  lists them with a hint; FOLLOW gives a hot/cold sonar, an arrow inside 150 studs
+  and an X only the holder sees inside 45; hold E / Y / DIG on the X to dig; the roll
+  reveal opens the chest (coral, shells, a Haul worth levels, DNA, Lucky Charm, a
+  shade roll, and from Captain's chests the treasure-only Sunken Gold and Drowned
+  Pearl shades at ~3% each). `Config/Treasure.luau`, `TreasureService`,
+  `TreasureController`, `MenuController.openSatchel`. GDD §7.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -223,6 +235,35 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   kill a loop for the whole server.
 - **Service start order** in `init.server.luau` matters: each service connects to
   `DataService.loaded` inside its `start()`, and DataService starts last.
+
+## World and assets (2026-10-07)
+
+- **The hub cavern is Roblox Terrain** (owner: "needs to actually resemble a
+  cave/cavern, not straight flat edges"). `src/server/Cave.luau` lists fill ops (a
+  terraced seamount with faceted blocks, the carved cavern with a dome, bays, drips
+  and a ragged oculus, 12 den rooms with round doorways, 4 tunnels, floors put back)
+  and `WorldService.buildHub` applies them with `Terrain:Fill*`; material colors are
+  `Cave.COLORS`. Only pools, lamps, signs, sconces, plaza, beacon and light shafts
+  are still parts. Layout numbers are unchanged, so Layout/HuntService/FishService
+  still agree. Preview from the cloud: `LUAU=<luau> bash tools/preview/run_cave.sh
+  <dir>` (voxelizes the ops, marching cubes, Cycles on the CPU; no EGL here).
+- **Models come from Tripo, batch 1 done** (580 credits; balance ~1,660): 6 species
+  (clean single-fish sheets from `assets/concepts/StyleSheet.jpg`, then
+  image_to_model), 7 prey, 15 props/food. Reviews: contact sheets of
+  `assets/tripo/*/_preview.webp`. The owner's direction: Schedule I look with a
+  touch more realism; the sheets and models matched it first time except the eel
+  (needed a STRAIGHT body) and two props (color/shape named louder).
+- **Pipeline** (docs/ASSETS.md): `tools/blender/rig_fish.py` (spine chain
+  Root/Head/Spine1..N/Tail; head at -Y for FBX, +Y for `--static` GLB),
+  `fish_check.py`, zips hosted on Higgsfield CloudFront, `tools/assets_manifest.json`
+  bundles, `tools/fetch_assets.py`, `tools/studio/organize_imports.luau`. Folders the
+  code reads: `ReplicatedStorage.FishModels.<SpeciesId>` (rigged),
+  `PreyModels.<PreyId>` (static MeshPart), `WorldProps.<Name>`. Everything falls back
+  to graybox parts when a model is missing (`FishBuilder.meshTemplate`, `Props.dress`,
+  `PropParts.make`, `SchoolController.preyTemplate`).
+- **Branches:** world and asset work lands on `claude/world` while the PC chat
+  owns `claude/core-systems` (controls and UI fixes); merge `claude/world` into
+  `claude/core-systems` once the PC chat's fixes are pushed.
 
 ## Code map (graybox feel prototype, 2026-10-06)
 
@@ -332,7 +373,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - real models, audio, caustics (needs a texture upload)
+  - models for the growth stages, vendors, predators, bosses and the other biomes;
+    rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
+  - the biomes' Terrain (only the hub seamount is terrain so far)
+  - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 

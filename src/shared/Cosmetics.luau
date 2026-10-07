@@ -359,7 +359,66 @@ local function paint(body: Model, look: FishBuilder.Look, shadeId: string?, leng
 end
 
 -- Dresses a body. Call FishBuilder.applyScale(body, length) afterwards.
+-- A rigged mesh body (FishBuilder.buildMesh) keeps its texture: a shade tints it
+-- (SurfaceAppearance.Color and the part color multiply, so this only ever darkens
+-- or colors; whitening looks need their own textures later) and gets the shade's
+-- glow and glints. Rolled parts and variants don't fit a mesh yet.
+local function paintMesh(body: Model, shadeId: string?, length: number)
+	local mesh = body:FindFirstChild("Mesh")
+	if mesh == nil then
+		return
+	end
+	local shade = if shadeId then Config.Shades.byId[shadeId] else nil
+	local tint = if shade then shade.back:Lerp(Color3.new(1, 1, 1), 0.35) else Color3.new(1, 1, 1)
+	local core: BasePart? = nil
+	for _, descendant in mesh:GetDescendants() do
+		if descendant:IsA("SurfaceAppearance") then
+			(descendant :: any).Color = tint
+		elseif descendant:IsA("BasePart") then
+			descendant.Color = tint
+			descendant.Transparency = if shade then shade.transparency or 0 else 0
+			core = core or descendant
+		elseif descendant:GetAttribute("ShadeEffect") then
+			descendant:Destroy()
+		end
+	end
+	if shade == nil or core == nil then
+		return
+	end
+	if shade.glow then
+		local light = Instance.new("PointLight")
+		light.Name = "ShadeGlow"
+		light.Color = shade.glow
+		light.Range = math.clamp(length * 4, 8, 60)
+		light.Brightness = 1.2
+		light:SetAttribute("ShadeEffect", true)
+		light.Parent = core
+	end
+	if shade.sparkle then
+		local glints = Instance.new("ParticleEmitter")
+		glints.Name = "ShadeSparkle"
+		glints.Rate = 7
+		glints.Lifetime = NumberRange.new(0.6, 1.2)
+		glints.Speed = NumberRange.new(length * 0.2, length * 0.6)
+		glints.SpreadAngle = Vector2.new(180, 180)
+		glints.Drag = 2
+		glints.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.3, length * 0.06),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		glints.LightEmission = 1
+		glints.Color = ColorSequence.new(shade.sparkle)
+		glints:SetAttribute("ShadeEffect", true)
+		glints.Parent = core
+	end
+end
+
 function Cosmetics.apply(body: Model, look: FishBuilder.Look, dress: Dress, length: number)
+	if body:GetAttribute("Mesh") then
+		paintMesh(body, dress.shade, length)
+		return
+	end
 	strip(body)
 	local variant = if dress.variant then VARIANTS[dress.variant] else nil
 	if variant then

@@ -293,6 +293,40 @@ This replaced the finish and mutation plan.
 - **Moderation warning (from Hatch & Snatch):** pale or pinkish unwrapped skin atlases
   got an account suspended. Screen every texture before upload.
 
+### Treasure maps (owner, 2026-10-07; built)
+
+The owner's ask: "treasure maps players randomly earn... a map to a location where
+they dig up a treasure for a random reward, whether a large kelp haul or a super rare
+skin at a low drop rate. Like clue scrolls in RuneScape. Only the player holding the
+map can uncover it. The map is in their inventory."
+
+- **Getting one:** prey carry a chance that scales with their mass (a Minnow ~0.06%,
+  a Grouper 4.5%); every shell 1.2%, a golden shell 12%; banking a Haul of 4 kg or
+  more 4%. You hold at most 3; more don't drop until one is dug up. A found map is
+  followed automatically if nothing else is.
+- **Tiers:** Tattered (170–320 studs from the hub), Weathered (300–500), Captain's
+  (460–630, out by the drop-off). Small prey and plain shells mostly give Tattered;
+  big prey, golden shells and big banks skew to Weathered and Captain's.
+- **The satchel** (MAPS on the wallet row): each map with its tier and a hint ("About
+  320 studs north-east of the hub, among the boulders"), FOLLOW/STOP, the treasure
+  tally, and what each tier's chest can hold with exact odds.
+- **The hunt:** following a map puts a sonar card on the HUD: a ring beats faster the
+  closer you get and reads FREEZING → COLD → WARM → HOT → BURNING (plus ABOVE/BELOW).
+  Inside 150 studs an arrow points the way; inside 45 an X glows on the seabed that
+  only the holder sees (the site lives in the holder's own state). Hold E (Y on a
+  pad, DIG on touch) on the X for 2.5–3.5 s, with a progress bar and sand kicking up.
+  The server checks the map is the digger's and that they're really at the X, at the
+  start and the end of the hold.
+- **The chest** opens through the roll reveal, with that tier's loot on the reel.
+  Weights per tier are in `Config/Treasure.luau`: coral hoards (120/320/900), shell
+  caches (15/35/60), a Kelp Haul worth 1.5/2.5/4 levels dumped straight into the dive,
+  a DNA vial for the biome dug in, a Lucky Charm, a Shade Roll (Rare+ from Weathered,
+  Epic+ from Captain's), and only in Captain's chests the treasure-only shades
+  **Sunken Gold** (Mythic) and **Drowned Pearl** (Legendary) at 3% each. Duplicates
+  refund coral. Epic+ shade finds are announced to the server.
+- Later: map tiers in the other biomes (Reef, Wreck, Trench sites), riddle-style
+  clues for Captain's maps, a treasure-hunter title at 25 finds.
+
 ### Coral and vendors (owner, 2026-10-06; built)
 
 - **Coral** is the currency.

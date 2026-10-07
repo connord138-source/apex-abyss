@@ -15,4 +15,5 @@ return {
 	Species = require(script.Species),
 	Tutorial = require(script.Tutorial),
 	Abilities = require(script.Abilities),
+	Treasure = require(script.Treasure),
 }

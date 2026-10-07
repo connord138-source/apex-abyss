@@ -1,0 +1,42 @@
+{
+  "jobs": [
+    {
+      "name": "Nibbler",
+      "group": "species",
+      "type": "image_to_model",
+      "image": "assets/tripo/species_sheets/Nibbler.png"
+    },
+    {
+      "name": "Cuda",
+      "group": "species",
+      "type": "image_to_model",
+      "image": "assets/tripo/species_sheets/Cuda.png"
+    },
+    {
+      "name": "Puffer",
+      "group": "species",
+      "type": "image_to_model",
+      "image": "assets/tripo/species_sheets/Puffer.png"
+    },
+    {
+      "name": "ReefShark",
+      "group": "species",
+      "type": "image_to_model",
+      "image": "assets/tripo/species_sheets/ReefShark.png"
+    },
+    {
+      "name": "Angler",
+      "group": "species",
+      "type": "image_to_model",
+      "image": "assets/tripo/species_sheets/Angler.png"
+    },
+    {
+      "name": "MorayEel",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE long muscular green moray eel alone, large and centered, filling the frame, with its body laid out STRAIGHT and horizontal (no curve, no coil), head at the viewer's left, a ridged fin running along the whole back, mottled olive-green skin, mouth slightly open showing small teeth, small eyes, in a three-quarter view with the whole body visible, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    }
+  ]
+}

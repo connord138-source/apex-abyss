@@ -1,0 +1,18 @@
+{
+  "jobs": [
+    {
+      "name": "FanCoral",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a bright violet-purple sea fan coral (gorgonian): a wide flat lacy fan of branching lavender and purple twigs on a short dark stalk, vivid purple color. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, black, dark"
+    },
+    {
+      "name": "Shell",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a spiral conch seashell lying on its side: a cream shell with peach and pink stripes, a pointed spire of stacked whorls, a wide flared lip opening showing a glossy pink inside. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, black, dark"
+    }
+  ]
+}

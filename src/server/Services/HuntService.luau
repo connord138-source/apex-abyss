@@ -233,6 +233,7 @@ local function onEatPrey(player: Player, batch: any)
 		if shells > 0 then
 			Net.notify(player, `The {prey.name} had {shells} shell{if shells == 1 then "" else "s"}!`, "good")
 		end
+		Events.atePrey:fire(player, prey.id, position)
 	end
 	if gained > 0 then
 		addHaul(player, gained)
