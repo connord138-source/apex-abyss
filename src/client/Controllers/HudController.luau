@@ -503,6 +503,17 @@ local function buildThumbstick()
 	zone.Position = UDim2.fromScale(0, 1)
 	zone.Size = UDim2.fromScale(0.4, 0.6)
 	zone.Parent = gui
+	-- The ring is drawn on its own layer above the HUD's panels (a thumb near the
+	-- tutorial panel put the ring behind it); the zone that takes the touches stays
+	-- in the HUD, under the HUD's buttons
+	local layer = Ui.screen("SwimStickRing", gui.Parent :: Instance, 8)
+	local overlay = Instance.new("Frame")
+	overlay.Name = "Zone"
+	overlay.BackgroundTransparency = 1
+	overlay.AnchorPoint = zone.AnchorPoint
+	overlay.Position = zone.Position
+	overlay.Size = zone.Size
+	overlay.Parent = layer
 	local ring = Instance.new("Frame")
 	ring.Name = "Ring"
 	ring.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -511,7 +522,7 @@ local function buildThumbstick()
 	ring.BackgroundTransparency = 0.55
 	Ui.corner(ring, UDim.new(1, 0))
 	Ui.stroke(ring, Ui.color.stroke, 0.5, 1.5)
-	ring.Parent = zone
+	ring.Parent = overlay
 	local knob = Instance.new("Frame")
 	knob.Name = "Knob"
 	knob.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -529,8 +540,10 @@ local function buildThumbstick()
 	local active: InputObject? = nil
 	local start = Vector2.zero
 	local function screenPoint(input: InputObject): Vector2
-		-- Touch positions skip the top bar; this ScreenGui ignores it
-		return Vector2.new(input.Position.X, input.Position.Y + Ui.topInset())
+		-- Touch positions and AbsolutePosition both count from below the top bar,
+		-- even in a ScreenGui that ignores it (adding the inset drew the ring a
+		-- top bar's height under the thumb, playtest 2026-10-07)
+		return Vector2.new(input.Position.X, input.Position.Y)
 	end
 	zone.InputBegan:Connect(function(input: InputObject)
 		if input.UserInputType ~= Enum.UserInputType.Touch or active ~= nil then

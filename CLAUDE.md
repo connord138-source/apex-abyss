@@ -268,7 +268,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `NametagController`: threat colors.
     - `OceanController`: depth grading and marine snow.
     - `BiomeController`: biome banner, level chip, under-level warning.
-    - `HudController`.
+    - `HudController`. On phones it draws the one swim stick: the touch zone
+      (lower-left 40% × 60%) sits in the `Hud` ScreenGui under the HUD buttons, and
+      the ring on its own `SwimStickRing` layer above the HUD panels. Touch
+      positions and `AbsolutePosition` both count from below the top bar, even in
+      an `IgnoreGuiInset` ScreenGui, so no inset is added (adding it drew the ring
+      58 px under the thumb, playtest 2026-10-07).
 - **Rolls and shops (2026-10-06):**
   - Server: `EconomyService` (coral and shells), `ShellService` (spots, per-player
     pickups), `RollService`, `ShopService` (stalls via `WorldService.vendorPosition`),
