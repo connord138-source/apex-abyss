@@ -17,6 +17,7 @@
 -- (playtest 2026-10-06: WASD did nothing while the client waited on it forever).
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -37,6 +38,7 @@ local touchLook = Vector2.zero
 local lookTouches: { [InputObject]: boolean } = {}
 local stick1 = Vector2.zero
 local stick2 = Vector2.zero
+local stickPad: Enum.UserInputType? = nil -- the gamepad that last moved a stick
 local touchMove = Vector2.zero
 local wheel = 0
 local held: { [string]: boolean } = {}
@@ -52,6 +54,28 @@ local function deadZone(position: Vector2): Vector2
 		return Vector2.zero
 	end
 	return position.Unit * math.min((magnitude - 0.15) / 0.85, 1)
+end
+
+-- The sticks, read from the pad's own state every frame as well as from events: a
+-- release that sends no near-zero InputChanged (Studio's Controller Emulator sends
+-- InputChanged (0, 1), then InputEnded) left the fish swimming and the camera
+-- spinning on their own (playtest 2026-10-07), so a missed event can never stick.
+local function pollSticks()
+	local pad = stickPad
+	if pad == nil then
+		return
+	end
+	if not UserInputService:GetGamepadConnected(pad) then
+		stickPad, stick1, stick2 = nil, Vector2.zero, Vector2.zero
+		return
+	end
+	for _, state in UserInputService:GetGamepadState(pad) do
+		if state.KeyCode == Enum.KeyCode.Thumbstick1 then
+			stick1 = deadZone(Vector2.new(state.Position.X, -state.Position.Y))
+		elseif state.KeyCode == Enum.KeyCode.Thumbstick2 then
+			stick2 = deadZone(Vector2.new(state.Position.X, -state.Position.Y))
+		end
+	end
 end
 
 function Input.start()
@@ -90,6 +114,11 @@ function Input.start()
 			lookTouches[input] = nil
 			return
 		end
+		if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+			stick1 = Vector2.zero
+		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
+			stick2 = Vector2.zero
+		end
 		setHeld(input.KeyCode, false)
 		setHeld(input.UserInputType, false)
 	end)
@@ -101,8 +130,10 @@ function Input.start()
 				wheel += input.Position.Z
 			end
 		elseif input.KeyCode == Enum.KeyCode.Thumbstick1 then
+			stickPad = input.UserInputType
 			stick1 = deadZone(Vector2.new(input.Position.X, -input.Position.Y))
 		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
+			stickPad = input.UserInputType
 			stick2 = deadZone(Vector2.new(input.Position.X, -input.Position.Y))
 		end
 	end)
@@ -111,6 +142,8 @@ function Input.start()
 		table.clear(lookTouches)
 		stick1, stick2, touchMove = Vector2.zero, Vector2.zero, Vector2.zero
 	end)
+	-- Before the camera and the swim read them this frame
+	RunService:BindToRenderStep("ApexSticks", Enum.RenderPriority.Input.Value, pollSticks)
 end
 
 local function down(name: string): boolean
