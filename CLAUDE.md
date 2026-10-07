@@ -174,6 +174,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the aim (further is faster), sideways turns the aim, down brakes and backs up
     still facing forward. The right stick, or a drag on the screen, aims (up and down
     included).
+  - **A sideways-only push also turns the fish** (owner, 2026-10-07): it cruises
+    gently into the turn at about a third of top speed, so fish and camera swing
+    round together.
   - **Phones get one stick** (it appears under the left thumb) plus BITE and DASH; the
     UP/DOWN buttons are gone.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
@@ -244,8 +247,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     swimming on its own (playtest 2026-10-07). Roblox's own touch controls are
     off (`GuiService.TouchControlsEnabled = false`); the HUD draws the stick.
     `SwimController` swims the throttle along the aim and backs up on a pulled
-    stick; `CameraController` turns the aim by the steer at the fish's turn rate
-    (`camera.steerScale`).
+    stick, and cruises along the aim on a sideways-only push (`swim.turnCruise`);
+    `CameraController` turns the aim by the steer at the fish's turn rate
+    (`camera.steerScale`, at most `camera.steerMax` 2.0 rad/s).
   - `Spring`.
   - `Ui`: the design system (BuilderSans, palette, panels, bars).
   - `Controllers/`:

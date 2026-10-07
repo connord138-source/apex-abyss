@@ -177,13 +177,20 @@ local function step(dt: number)
 	local camera = workspace.CurrentCamera.CFrame
 
 	-- Where the player wants to go, relative to the camera: the keys as on PC, plus
-	-- a stick's throttle straight along the aim (its steering turns the camera)
+	-- a stick's throttle straight along the aim (its steering turns the camera). A
+	-- stick pushed sideways (and not pulled back) also cruises gently along the aim,
+	-- so the fish carves round with the camera; with no cruise the camera orbited a
+	-- fish coasting to a stop (playtest 2026-10-07, owner: cruise into the turn)
 	local move = Input.moveVector()
-	local throttle = Input.drive()
+	local throttle, steer = Input.drive()
+	local ahead = math.max(throttle, 0)
+	if throttle > -0.05 then
+		ahead = math.max(ahead, math.abs(steer) * swim.turnCruise)
+	end
 	local wish = camera.LookVector * -move.Z
 		+ camera.RightVector * move.X
 		+ Vector3.yAxis * Input.vertical() * swim.verticalShare
-		+ camera.LookVector * math.max(throttle, 0)
+		+ camera.LookVector * ahead
 	local intent = math.min(wish.Magnitude, 1)
 
 	-- The Dash: a burst that recharges (Deep Gills makes it recharge faster)

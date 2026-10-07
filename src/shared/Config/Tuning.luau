@@ -30,6 +30,9 @@ return {
 		-- this share of top speed
 		brake = 5,
 		reverseShare = 0.3,
+		-- A stick pushed only sideways cruises along the aim at up to this share of top
+		-- speed, so the fish carves round with the camera (owner, 2026-10-07)
+		turnCruise = 0.35,
 		-- The Nibbler's Dash (owner, 2026-10-06: its only ability, "a small boost swim
 		-- that recharges"): a short burst of speed with a tail flick, then a recharge
 		boostMultiplier = 2.1, -- Dash speed, × top speed (also the server's eat slack)
@@ -69,7 +72,7 @@ return {
 		-- within these (radians/s), so the camera and the fish turn together
 		steerScale = 0.75,
 		steerMin = 0.9,
-		steerMax = 2.6,
+		steerMax = 2.0, -- 2.6 (149°/s) spun a small fish's view too fast (playtest 2026-10-07)
 		minPitch = math.rad(-80),
 		maxPitch = math.rad(80),
 	},
