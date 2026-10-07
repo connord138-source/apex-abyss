@@ -260,7 +260,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `CameraController`: the spring camera, mouse lock, wheel zoom. It pulls the
       look-at point out of rock, then limits the distance with a ray plus a swept
       near-plane-sized box. Never rely on a sweep alone: Spherecast/Blockcast ignore
-      whatever they start touching (that let it through a den roof). Stopped by a
+      whatever they start touching (that let it through a den roof), and so do
+      rays: a Space tap can poke the fish into a ceiling, so a look-at point
+      hidden inside rock from last frame's camera spot is pushed out along the
+      face's normal first. Stopped by a
       ceiling or the seabed, it slides along the rock and looks back at the fish
       instead of collapsing into it; very close up, your own fish fades
       (`LocalTransparencyModifier`, skipping parts Cosmetics hid at 1). The look-at
