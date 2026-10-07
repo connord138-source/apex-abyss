@@ -958,10 +958,10 @@ local function updateHint(root: BasePart?)
 	local best: string? = nil
 	local bestDistance = Shop.hintReach
 	if root then
-		for id, position in counters do
-			local distance = (root.Position - position).Magnitude
+		for _, vendor in Shop.vendors do
+			local distance = Layout.counterDistance(vendor.angle, root.Position)
 			if distance <= bestDistance then
-				best, bestDistance = id, distance
+				best, bestDistance = vendor.id, distance
 			end
 		end
 	end

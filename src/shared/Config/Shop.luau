@@ -161,6 +161,7 @@ return {
 	shellTrade = { vendor = "Charms", shells = 10, price = 400, perDay = 5 },
 	-- How close you must be to a stall to buy from it (studs)
 	reach = 30,
-	-- How close the "E · Shop" hint shows (studs from the counter's middle)
-	hintReach = 18,
+	-- How close the "E · Shop" hint shows (studs from the counter's box, so it works
+	-- from the ends and the back too)
+	hintReach = 15,
 }

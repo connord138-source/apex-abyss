@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
@@ -504,7 +505,7 @@ local function buildWallet()
 	layout.Padding = UDim.new(0, 8)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = row
-	rollButton = Ui.button(row, "Roll", "ROLL", UDim2.fromOffset(96, 34), UDim2.new(), "gold")
+	rollButton = Ui.button(row, "Roll", "ROLL", UDim2.fromOffset(120, 34), UDim2.new(), "gold")
 	rollButton.LayoutOrder = 1
 	rollButton.TextSize = 15
 	rollScale = rollButton:FindFirstChildOfClass("UIScale") :: UIScale
@@ -537,7 +538,8 @@ local function onState(s: { [string]: any })
 	shellText.Text = `{shells % perRoll} / {perRoll} SHELLS`
 	Ui.tween(shellFill, 0.4, { Size = UDim2.fromScale((shells % perRoll) / perRoll, 1) })
 	rollButton.Visible = ready > 0
-	rollButton.Text = if ready > 1 then `ROLL ×{ready}` else "ROLL"
+	local key = if UserInputService.KeyboardEnabled then " (R)" else ""
+	rollButton.Text = if ready > 1 then `ROLL ×{ready}{key}` else `ROLL{key}`
 end
 
 function RollController.start()
@@ -577,6 +579,14 @@ function RollController.start()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.DPadUp, Enum.KeyCode.DPadDown, Enum.KeyCode.DPadLeft, Enum.KeyCode.DPadRight)
+	-- Keyboards: R rolls, without freeing the cursor (Alt+click on ROLL once missed)
+	ContextActionService:BindAction("ApexRollKey", function(_, inputState)
+		if inputState ~= Enum.UserInputState.Begin or not rollButton.Visible or MenuController.isOpen() then
+			return Enum.ContextActionResult.Pass
+		end
+		RollController.roll()
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.R)
 	-- The roll button breathes while a roll is ready; a lost request frees it again
 	RunService.Heartbeat:Connect(function()
 		if rollButton.Visible and not busy then

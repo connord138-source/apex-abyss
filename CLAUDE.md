@@ -235,8 +235,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `SwimController`: momentum swim, banking into turns, the Dash (`dashCharge`), lunge.
     - `ForageController`: draws starfish and hopping shrimp, eats them with suction.
     - `CameraController`: the spring camera, mouse lock, wheel zoom. It pulls the
-      look-at point out of rock before sweeping a sphere back from it, so it never
-      sees through den ceilings.
+      look-at point out of rock, then limits the distance with a ray plus a swept
+      near-plane-sized box. Never rely on a sweep alone: Spherecast/Blockcast ignore
+      whatever they start touching (that let it through a den roof). The look-at
+      point trails the fish by at most `maxLag` × its length, and shake rotates.
+    - `ForageController`: filler food is eaten from a generous reach
+      (`Forage.REACH_SCALE`/`REACH_BONUS`) with a suction pull (`PULL`), and the
+      server allows for both.
     - `FishAnimator`: the spine wave, jaw and growth easing.
     - `SchoolController`: draws the prey and eats them with suction.
     - `HuntController`: player eats, bites and hit effects.
@@ -295,7 +300,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 
 ## Playtests
 
-- Reports go in `docs/playtests/` (the first: `2026-10-06-pc.md`).
+- Reports go in `docs/playtests/` (`2026-10-06-pc.md`, then `2026-10-06-pc-retest.md`).
+- Toasts have their own ScreenGui above the menus, so refusals from menu buttons
+  show. ROLL also has R on keyboards.
 - On the owner's PC, Rojo for this game runs on **port 34873** until the stale Hatch
   & Snatch `rojo serve` on 34872 is closed. Never connect the plugin to the
   HatchAndSnatch project from this place.

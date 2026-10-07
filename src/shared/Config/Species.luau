@@ -57,9 +57,11 @@ local list: { Species } = {
 		blurb = "The fastest fish in a straight line. Hits hard, turns wide.",
 		plan = "Cuda",
 		home = "KelpShallows",
-		back = Color3.fromRGB(112, 128, 140),
-		belly = Color3.fromRGB(224, 230, 234),
-		fin = Color3.fromRGB(90, 104, 116),
+		-- Steel back, bright silver belly, yellow fins: plain grey vanished into the
+		-- water at speed (re-test 2026-10-06)
+		back = Color3.fromRGB(64, 92, 126),
+		belly = Color3.fromRGB(236, 242, 246),
+		fin = Color3.fromRGB(232, 188, 64),
 		stats = { speed = 1.25, turn = 0.8, health = 0.85, bite = 1.1 },
 		collider = 0.85,
 		abilities = { "Torpedo", "RazorBite", "SilverFlash" },

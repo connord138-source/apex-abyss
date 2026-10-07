@@ -67,6 +67,7 @@ end
 -- The vendor stalls stand round the plaza's beacon (Config/Shop `angle`).
 Layout.PLAZA_TOP = 1.5
 Layout.COUNTER_RADIUS = 33
+Layout.COUNTER_SIZE = Vector3.new(12, 3.6, 3.5)
 
 -- The middle of a stall's counter, for the server's reach check and the client's
 -- "E · Shop" hint (which works out where the stalls are without the parts, since
@@ -74,7 +75,23 @@ Layout.COUNTER_RADIUS = 33
 function Layout.counterPosition(angleDegrees: number): Vector3
 	return hub.center
 		+ outward(math.rad(angleDegrees)) * Layout.COUNTER_RADIUS
-		+ Vector3.new(0, Layout.PLAZA_TOP + 1.8, 0)
+		+ Vector3.new(0, Layout.PLAZA_TOP + Layout.COUNTER_SIZE.Y / 2, 0)
+end
+
+-- How far a point is from a stall's counter (0 inside it): measured to the box, so
+-- the long counter is as easy to reach from its ends and back as from its front.
+function Layout.counterDistance(angleDegrees: number, point: Vector3): number
+	local center = Layout.counterPosition(angleDegrees)
+	local radial = outward(math.rad(angleDegrees))
+	local frame = CFrame.lookAt(center, center - radial)
+	local localPoint = frame:PointToObjectSpace(point)
+	local half = Layout.COUNTER_SIZE / 2
+	local closest = Vector3.new(
+		math.clamp(localPoint.X, -half.X, half.X),
+		math.clamp(localPoint.Y, -half.Y, half.Y),
+		math.clamp(localPoint.Z, -half.Z, half.Z)
+	)
+	return (localPoint - closest).Magnitude
 end
 
 -- Whether a position is inside the hub (the cavern, its dens or its tunnels), where

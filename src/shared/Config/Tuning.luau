@@ -55,7 +55,8 @@ return {
 		height = 0.35, -- look-at point above the fish, × its length
 		fov = 70,
 		boostFov = 80,
-		focusSpring = 9, -- how tightly the look-at point follows the fish (Hz-ish)
+		focusSpring = 11, -- how tightly the look-at point follows the fish (Hz-ish)
+		maxLag = 0.8, -- the look-at point trails the fish by at most this × its length
 		distanceSpring = 4, -- how quickly the camera pulls back as you grow
 		mouseSensitivity = 0.0032, -- radians per pixel
 		touchSensitivity = 0.0055,

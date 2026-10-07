@@ -593,7 +593,7 @@ local function showControlsHint()
 		elseif
 			Input.isGamepad()
 		then "Left stick swim · right stick look · RT dash · RB bite · A/B up and down · Y at a stall · D-pad menus"
-		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · Wheel zoom · E at a stall · hold Alt for the cursor"
+		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · Wheel zoom · E at a stall · R roll · hold Alt for the cursor"
 	local label = Ui.label(
 		gui,
 		"Controls",
@@ -739,7 +739,9 @@ function HudController.start()
 	toastList.Name = "Toasts"
 	toastList.BackgroundTransparency = 1
 	-- Above the Haul card, stacking up: the top of the screen belongs to the
-	-- safe-zone and biome banners (a toast once sat between a banner's lines)
+	-- safe-zone and biome banners (a toast once sat between a banner's lines). Its
+	-- own ScreenGui draws over the menus, so a refusal from a menu button (switching
+	-- fish outside the safe zone) is seen rather than hidden behind the window.
 	toastList.AnchorPoint = Vector2.new(0.5, 1)
 	toastList.Position = UDim2.new(0.5, 0, 1, -130)
 	toastList.Size = UDim2.fromOffset(360, 160)
@@ -749,7 +751,7 @@ function HudController.start()
 	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = toastList
-	toastList.Parent = gui
+	toastList.Parent = Ui.screen("Toasts", playerGui, 12)
 
 	popLayer = Instance.new("Frame")
 	popLayer.Name = "Pops"

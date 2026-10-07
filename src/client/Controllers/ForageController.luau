@@ -40,6 +40,7 @@ type Food = {
 	pendingUntil: number,
 	suckFrom: Vector3?,
 	suckStart: number,
+	pulled: boolean, -- drawn toward a mouth right now (suction)
 }
 
 local foods: { Food } = {}
@@ -131,10 +132,13 @@ local function setHidden(food: Food, hidden: boolean)
 		return
 	end
 	food.hidden = hidden
+	-- Back on its spot (it was last drawn where a mouth sucked it in)
+	local home = frameOf(food, 0, false)
 	for i, part in food.parts do
 		part.Transparency = if hidden then 1 else 0
 		if not hidden then
 			part.Size = food.sizes[i]
+			part.CFrame = home * food.offsets[i]
 		end
 	end
 end
@@ -172,6 +176,7 @@ local function build(positions: { Vector3 }, kinds: { string })
 			pendingUntil = 0,
 			suckFrom = nil,
 			suckStart = 0,
+			pulled = false,
 		}
 		foods[index] = food
 		local frame = frameOf(food, 0, false)
@@ -188,7 +193,8 @@ local function step()
 	local root = SwimController.root()
 	local length = SwimController.length()
 	local mouth = if root then root.CFrame:PointToWorldSpace(Size.mouthOffset(length)) else nil
-	local reach = Size.reach(length) + 0.4
+	local reach = Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS
+	local pullRange = reach * Forage.PULL
 	table.clear(moveParts)
 	table.clear(moveFrames)
 	for _, food in foods do
@@ -217,16 +223,30 @@ local function step()
 		end
 		local near = (food.position - camera).Magnitude < HOP_DISTANCE
 		local frame = frameOf(food, now, near)
-		if mouth and (frame.Position - mouth).Magnitude <= reach then
-			food.suckFrom = frame.Position
-			food.suckStart = now
-			food.pendingUntil = now + CONFIRM_SECONDS
-			food.backAt = math.huge
-			table.insert(batch, food.index)
-			ForageController.ate:fire(Forage.byId[food.kind].mass, frame.Position)
-			continue
+		local moved = near and food.kind == "Shrimp"
+		if mouth then
+			local gap = (frame.Position - mouth).Magnitude
+			if gap < pullRange then
+				-- Suction: drawn toward the mouth as it comes close
+				local share = (1 - gap / pullRange) * Forage.PULL_SHARE
+				frame = CFrame.new(frame.Position:Lerp(mouth, share)) * frame.Rotation
+				gap = (frame.Position - mouth).Magnitude
+				food.pulled, moved = true, true
+			elseif food.pulled then
+				food.pulled, moved = false, true
+			end
+			if gap <= reach then
+				food.suckFrom = frame.Position
+				food.suckStart = now
+				food.pendingUntil = now + CONFIRM_SECONDS
+				food.backAt = math.huge
+				food.pulled = false
+				table.insert(batch, food.index)
+				ForageController.ate:fire(Forage.byId[food.kind].mass, frame.Position)
+				continue
+			end
 		end
-		if near and food.kind == "Shrimp" then
+		if moved then
 			place(food, frame, 1)
 		end
 	end

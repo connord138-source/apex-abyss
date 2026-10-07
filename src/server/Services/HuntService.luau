@@ -402,7 +402,9 @@ local function tick()
 				local length = liveLength(player) or 1
 				local offset = root.Position - Layout.poolPosition(den)
 				local flat = Vector2.new(offset.X, offset.Z).Magnitude
-				if flat < hub.poolRadius + length * 0.4 and math.abs(offset.Y) < hub.denHeight then
+				-- Any part of the fish over the glow banks (8.7 studs out, on the glow's
+				-- edge, once didn't: re-test 2026-10-06)
+				if flat < hub.poolRadius + length * 0.5 + 1 and math.abs(offset.Y) < hub.denHeight then
 					bank(player, session, data)
 				end
 			end

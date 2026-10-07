@@ -521,8 +521,8 @@ local function buildVendors(parent: Instance)
 		local counter = block(
 			stall,
 			"Counter",
-			Vector3.new(12, 3.6, 3.5),
-			at(Layout.COUNTER_RADIUS, plazaTop + 1.8),
+			Layout.COUNTER_SIZE,
+			at(Layout.COUNTER_RADIUS, plazaTop + Layout.COUNTER_SIZE.Y / 2),
 			WOOD,
 			Enum.Material.Wood
 		)

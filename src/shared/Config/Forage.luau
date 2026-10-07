@@ -46,4 +46,12 @@ return {
 	list = list,
 	byId = byId,
 	HOP = 1.6, -- studs a shrimp can be from its spot (the server allows for it)
+	-- Eat reach for filler food: × the fish's normal reach, plus studs. Single shrimp
+	-- and starfish were too fiddly for a new fish (re-test 2026-10-06).
+	REACH_SCALE = 1.6,
+	REACH_BONUS = 1.2,
+	-- Suction: food within PULL × that reach drifts toward the mouth, up to
+	-- PULL_SHARE of the way at the lips (so it's eaten from about 1.3 × reach)
+	PULL = 2.4,
+	PULL_SHARE = 0.55,
 }

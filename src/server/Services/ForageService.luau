@@ -71,7 +71,8 @@ local function onEat(player: Player, batch: any)
 			continue
 		end
 		local spot = spots[index]
-		local reach = Size.reach(length) + Forage.HOP + 1
+		-- The client's reach, its suction pull (eats from up to ~1.3 × reach) and a hop
+		local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * 1.35 + Forage.HOP
 		if (spot.position - mouth).Magnitude > reach + slack then
 			continue
 		end

@@ -4,8 +4,8 @@
 -- a spring, so motion reads as fluid rather than glued on; the camera pulls back
 -- smoothly as the fish grows, widens a little while boosting, and never clips into
 -- rock: the look-at point is kept out of rock first (it once sat inside a den's
--- ceiling, so the ray started past it), then a sphere swept back from it pulls the
--- camera in, snapping in and easing back out.
+-- ceiling, so the ray started past it), then a ray and a near-plane-sized box swept
+-- back from it pull the camera in, snapping in and easing back out.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -87,9 +87,14 @@ local function update(dt: number)
 		hasFocus = true
 	end
 	focus, focusVelocity = Spring.vector(focus, focusVelocity, target, tuning.focusSpring, dt)
-	-- Never let the focus fall too far behind (a respawn, a teleport)
-	if (focus - target).Magnitude > length * 6 + 30 then
+	local lag = focus - target
+	if lag.Magnitude > length * 6 + 30 then
+		-- A respawn or a teleport: cut straight there
 		focus, focusVelocity = target, Vector3.zero
+	elseif lag.Magnitude > length * tuning.maxLag then
+		-- At full speed the spring trailed far enough to shrink the fish to a dot
+		-- (playtest re-test, 2026-10-06); a little trail still reads as motion
+		focus = target + lag.Unit * length * tuning.maxLag
 	end
 	distance, distanceVelocity =
 		Spring.number(distance, distanceVelocity, wantDistance, tuning.distanceSpring, dt)
@@ -124,24 +129,40 @@ local function update(dt: number)
 			eye = anchor + toEye.Unit * math.max(blocked.Distance - clearance, 0)
 		end
 	end
-	-- 2. Sweep a sphere back from there; snap in when blocked, ease back out
+	-- 2. How far back the camera can go. A ray down the middle catches rock right
+	-- by the look-at point (a sweep ignores whatever it starts touching: a sphere
+	-- that grazed a den roof let the camera through it, re-test 2026-10-06), and a
+	-- box the size of the camera's near plane keeps the view's edges out of rock at
+	-- grazing angles. Snap in when blocked, ease back out.
+	local near = math.abs(camera.NearPlaneZ)
+	local halfHeight = near * math.tan(math.rad(fov / 2)) * 1.6
+	local viewport = camera.ViewportSize
+	local aspect = if viewport.Y > 0 then viewport.X / viewport.Y else 16 / 9
+	local nearBox = Vector3.new(halfHeight * aspect * 2, halfHeight * 2, near * 2)
 	local want = distance
-	local hit = workspace:Spherecast(eye, clearance, back * distance, rayParams)
-	if hit then
-		want = math.max(hit.Distance, 0.3)
+	local ray = workspace:Raycast(eye, back * distance, rayParams)
+	if ray then
+		want = math.min(want, ray.Distance - near - 0.1)
 	end
+	local swept = workspace:Blockcast(CFrame.new(eye) * rotation, nearBox, back * distance, rayParams)
+	if swept then
+		want = math.min(want, swept.Distance)
+	end
+	want = math.max(want, 0)
 	if want < reach then
 		reach = want
 	else
 		reach += (want - reach) * (1 - math.exp(-dt * 5))
 	end
 	local position = eye + back * reach
+	-- Shake turns the camera rather than moving it, so it can't knock it into rock
+	local jolt = CFrame.identity
 	if shake > 0.001 then
 		local t = os.clock() * 40
-		position += Vector3.new(math.noise(t, 0, 0), math.noise(0, t, 0), math.noise(0, 0, t)) * shake * length * 0.5
+		jolt = CFrame.Angles(math.noise(t, 0, 0) * shake * 0.06, math.noise(0, t, 0) * shake * 0.06, 0)
 		shake *= math.exp(-dt * 9)
 	end
-	camera.CFrame = CFrame.new(position) * rotation
+	camera.CFrame = CFrame.new(position) * rotation * jolt
 	camera.FieldOfView = fov
 end
 
