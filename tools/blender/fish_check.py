@@ -52,7 +52,9 @@ else:
     axis = Vector((0, 1, 0))
 axis.z = 0
 axis.normalize()
-side = Vector((-axis.y, axis.x, 0))  # perpendicular, horizontal
+# A fixed side (+X when the body runs along Y), so the picture says which way the
+# fish faces: a rigged fish's head sits at -Y and shows on the LEFT
+side = Vector((1, 0, 0)) if abs(axis.y) >= abs(axis.x) else Vector((0, 1, 0))
 print("[fish_check] dims", tuple(round(v, 3) for v in size), "axis", tuple(round(v, 3) for v in axis), "side", tuple(round(v, 3) for v in side))
 if head_bone and tail_bone:
     print("[fish_check] head bone at", tuple(round(v, 3) for v in (arm.matrix_world @ head_bone.head_local)), "tail bone at", tuple(round(v, 3) for v in (arm.matrix_world @ tail_bone.head_local)))

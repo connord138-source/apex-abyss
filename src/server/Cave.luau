@@ -154,14 +154,21 @@ function Cave.ops(): { Op }
 			)
 			block(ops, ROCK, CFrame.new(spot) * tilt, size)
 		end
-		for i = 1, 8 do
-			local angle = (i / 8) * 2 * math.pi + rng:NextNumber(-0.3, 0.3)
-			local spot = at(angle, terrace.r + 2, rng:NextNumber(terrace.y0 + 8, terrace.y1 - 6))
+		for i = 1, 10 do
+			-- Notches chipped out of the shelf's edge, tilted and mostly outside the
+			-- rock (deeper, square-on cuts read as windows)
+			local angle = (i / 10) * 2 * math.pi + rng:NextNumber(-0.3, 0.3)
+			local spot = at(angle, terrace.r + 6, terrace.y1 - rng:NextNumber(2, 10))
+			local tilt = CFrame.Angles(
+				rng:NextNumber(-0.7, 0.7),
+				angle + rng:NextNumber(-0.6, 0.6),
+				rng:NextNumber(-0.7, 0.7)
+			)
 			block(
 				ops,
 				AIR,
-				CFrame.new(spot) * CFrame.Angles(rng:NextNumber(-0.4, 0.4), angle, rng:NextNumber(-0.4, 0.4)),
-				Vector3.new(rng:NextNumber(10, 18), rng:NextNumber(8, 14), rng:NextNumber(10, 16))
+				CFrame.new(spot) * tilt,
+				Vector3.new(rng:NextNumber(12, 20), rng:NextNumber(8, 14), rng:NextNumber(10, 18))
 			)
 		end
 	end
