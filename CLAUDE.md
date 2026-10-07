@@ -17,8 +17,9 @@ guarded loops, state sync). Everything about this game is new.
 - Work branch: `claude/core-systems`. `main` holds the initial setup.
 - Start syncing from that folder with `rokit install`, then `rojo serve`, and connect
   the Rojo plugin in Studio.
-- Division of work: Claude does the building (code and Studio). Connor does the
-  playtesting and reports the Output window or screenshots.
+- Division of work: Claude does the building (code and Studio). Since 2026-10-07
+  (owner) a Claude session on Connor's PC both builds and play-tests (keyboard,
+  Controller Emulator, Device Simulator) and writes the reports.
 - Instructions for the owner's PC session must be written as a **paste-ready prompt**.
 - The owner prefers compact, decision-focused replies and keeping conversation context.
 
@@ -338,7 +339,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 ## Playtests
 
 - Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
-  `2026-10-07-pc.md`).
+  `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`).
+- On the owner's PC, format with `stylua --line-endings Windows src --glob
+  "!**/Packages/**"` (the clone checks out CRLF, so a plain check flags every file).
+- Studio testing lessons: the command bar `require`s its own copy of a
+  ModuleScript, so calling a service from it changes nothing in the running game;
+  in the Device Simulator, typing into the command bar flips `KeyboardEnabled` on
+  until the next touch, so `Input.isTouch()` reads false meanwhile.
 - Toasts have their own ScreenGui above the menus, so refusals from menu buttons
   show. ROLL also has R on keyboards.
 - On the owner's PC, Rojo for this game runs on **port 34873** until the stale Hatch
