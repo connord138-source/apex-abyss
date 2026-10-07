@@ -342,6 +342,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   stays owner-only. Menu: the stall hint shows YOUR DEN at your own Haul Pool
   (`MenuController.openDen`: upgrade, glow, slots → pick list). The seamount's foot
   was widened (Cave terrace +36, down to −26) so upgraded dens stay inside the rock.
+- **Roll reveal cards (owner, 2026-10-07: "better designs for the random rolls"):**
+  the reel's cards are drawn art (`RollController` `fishArt`/`coralArt`/`badgeArt`):
+  a shade shows a little fish in its own back, belly, fin and accent colors with its
+  glow halo, glints, chrome shine or rainbow; coral a sprig and the amount; parts the
+  slot they change; variants their species; on a tier gradient with a sheen and a tier
+  badge. The result shows a shade's three swatches and Rare+ wins burst motes.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -508,7 +514,6 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - models for the growth stages, vendors and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
   - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
-  - the roll reveal redesign (owner, 2026-10-07)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
   - The progression numbers are placeholders: one full dive banks about 16 levels.
