@@ -33,6 +33,11 @@ python tools/fetch_assets.py
 2. **File → Import 3D**, select **all** files in `assets/fbx/species/`, keep the rig
    (skinning) on and textures on, then **Import All**.
 3. Do the same for all files in `assets/glb/prey/` and `assets/glb/props/` (no rig).
+   The prey GLBs come into the Import Queue named **"Scene"** (their glTF root):
+   double-click each row and set **Name** to its file name (Minnow, Sardine, ...)
+   before Start Import, or the organize script can't tell them apart. The props
+   arrive with their file names. (The file dialog takes several quoted names in
+   its File name box: `"Minnow.glb" "Sardine.glb" ...`.)
 4. **View → Command Bar**, paste the contents of `tools/studio/organize_imports.luau`,
    press Enter. It moves every import into the folder the code reads and sets each
    model's PrimaryPart. It also copies the 'Cuda and Reef Shark into `PreyModels` for

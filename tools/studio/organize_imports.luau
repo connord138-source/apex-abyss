@@ -7,12 +7,17 @@
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (the MeshPart itself)
 --   props and food (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
+-- Studio names a GLB import "Scene": set each one's Name to its file name in the
+-- Import Preview before importing. ReefShark is both a rigged species (FBX) and a
+-- static prey (GLB); the rigged one (it has Bones) is the species.
 -- Safe to run again: a re-import replaces the old copy. Then File → Save (Ctrl+S):
 -- these folders live in the place file, not in Rojo.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local SPECIES = { Nibbler = true, Cuda = true, Puffer = true, MorayEel = true, ReefShark = true, Angler = true }
-local PREY = { Minnow = true, Sardine = true, Wrasse = true, Snapper = true, Grouper = true, Barracuda = true }
+local PREY = {
+	Minnow = true, Sardine = true, Wrasse = true, Snapper = true, Grouper = true, Barracuda = true, ReefShark = true,
+}
 local PROPS = {
 	GiantKelp = true, KelpClump = true, BoulderRound = true, BoulderJagged = true,
 	BrainCoral = true, FanCoral = true, StaghornCoral = true, TubeSponge = true, Anemone = true,
@@ -64,12 +69,14 @@ for _, item in workspace:GetChildren() do
 		if primary then
 			item.PrimaryPart = primary
 		end
-		if SPECIES[name] then
+		local rigged = item:FindFirstChildWhichIsA("Bone", true) ~= nil
+		if SPECIES[name] and rigged then
 			replaceIn(folder("FishModels"), name, item)
 			-- The same model also feeds the prey school of that species (the 'Cuda is the
-			-- Barracuda prey, the shark is the ReefShark prey)
+			-- Barracuda prey, the shark is the ReefShark prey) until its own prey GLB is in
 			local preyName = if name == "Cuda" then "Barracuda" elseif name == "ReefShark" then "ReefShark" else nil
-			if preyName and primary and not ReplicatedStorage:FindFirstChild("PreyModels") or (preyName and primary and ReplicatedStorage.PreyModels:FindFirstChild(preyName) == nil) then
+			local preyFolder = ReplicatedStorage:FindFirstChild("PreyModels")
+			if preyName and primary and not (preyFolder and preyFolder:FindFirstChild(preyName)) then
 				local copy = primary:Clone()
 				for _, child in copy:GetChildren() do
 					if child:IsA("Bone") then
