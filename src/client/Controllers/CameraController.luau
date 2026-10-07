@@ -67,7 +67,8 @@ local function fadeFish(character: Model?, amount: number)
 			end)
 		end
 	end
-	if math.abs(amount - fadeShown) < 0.02 then
+	-- Small changes are skipped, but always land exactly on solid again
+	if math.abs(amount - fadeShown) < 0.02 and not (amount == 0 and fadeShown ~= 0) then
 		return
 	end
 	fadeShown = amount
@@ -207,6 +208,20 @@ local function update(dt: number)
 		local blocked = workspace:Raycast(anchor, toEye, rayParams)
 		if blocked then
 			eye = anchor + toEye.Unit * math.max(blocked.Distance - clearance, 0)
+		end
+	end
+	-- A Space tap can poke the fish into a ceiling for a moment, and a ray that
+	-- starts inside rock doesn't see it: the camera went through a den roof for a few
+	-- frames (playtest 2026-10-07). Last frame's camera spot was out of rock, so if
+	-- the look-at point is hidden from it inside rock (a ray back out sees nothing,
+	-- unlike a corner in the way), push the point straight out of the rock's face.
+	local previous = camera.CFrame.Position
+	local fromCamera = eye - previous
+	if fromCamera.Magnitude > 1e-3 and fromCamera.Magnitude < wantDistance * 3 then
+		local hit = workspace:Raycast(previous, fromCamera, rayParams)
+		if hit and workspace:Raycast(eye, -fromCamera, rayParams) == nil then
+			local depth = (eye - hit.Position):Dot(hit.Normal)
+			eye -= hit.Normal * (depth - clearance)
 		end
 	end
 	-- 2. How far back the camera can go, the size of its near plane kept clear so
