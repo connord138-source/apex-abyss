@@ -25,6 +25,10 @@ local SchoolController = {
 }
 
 local DRAW_DISTANCE = 520 -- schools further than this from the camera aren't moved
+-- Batch 1's prey GLBs come out of Studio's importer nose on +Z, not the -Z they were
+-- exported for, so the schools swam tail first (playtest 2026-10-07); a mesh is
+-- turned round. Drop this if a re-exported bundle imports nose on -Z.
+local MESH_TURN = CFrame.Angles(0, math.pi, 0)
 local SUCK_SECONDS = 0.14
 local CONFIRM_SECONDS = 1.2
 local SEND_INTERVAL = 0.06
@@ -254,6 +258,7 @@ local function step(dt: number)
 							* CFrame.new(0, 0, -visual.body.Size.Z * 0.3)
 							* CFrame.Angles(0, beat * 0.22, 0)
 							* CFrame.new(0, 0, visual.body.Size.Z * 0.3)
+							* MESH_TURN
 					)
 				end
 			end
