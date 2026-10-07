@@ -886,13 +886,14 @@ function MenuController.openOdds()
 end
 
 -- The stall hint: near a counter, a chip over it says which key opens its shop
--- (E, Y on a controller, or tap the chip). Our own, because a ProximityPrompt never
--- showed for the custom fish character.
+-- (E, or Y on a controller). Phones get a SHOP button above BITE instead: the
+-- world chip drew behind the Haul card (playtest 2026-10-07). Our own, because a
+-- ProximityPrompt never showed for the custom fish character.
 local hintGui: BillboardGui
-local hintKeyFrame: Frame
 local hintKey: TextLabel
 local hintText: TextLabel
 local hintSpot: Attachment
+local shopButton: TextButton
 local nearVendor: string? = nil
 
 local counters: { [string]: Vector3 } = {}
@@ -945,13 +946,30 @@ local function buildHint(playerGui: Instance)
 	key.BackgroundColor3 = Ui.color.accent
 	Ui.corner(key, UDim.new(1, 0))
 	key.Parent = chip
-	hintKeyFrame = key
 	hintKey = Ui.label(key, "Text", "E", Ui.FONT_HEAVY, 18, Ui.color.panel, UDim2.fromScale(1, 1))
 	hintKey.TextXAlignment = Enum.TextXAlignment.Center
 	hintText = Ui.label(chip, "Text", "", Ui.FONT_BOLD, 16, Ui.color.text, UDim2.new(1, -54, 1, 0))
 	hintText.Position = UDim2.fromOffset(48, 0)
 	chip.Activated:Connect(openNearShop)
 	hintGui.Parent = playerGui
+
+	-- Phones: above BITE, left of the depth gauge, clear of the Haul card
+	local buttonGui = Ui.screen("StallButton", playerGui, 9)
+	shopButton =
+		Ui.button(buttonGui, "Shop", "", UDim2.fromOffset(230, 44), UDim2.new(1, -96, 1, -168), "primary")
+	shopButton.AnchorPoint = Vector2.new(1, 1)
+	shopButton.Selectable = false
+	shopButton.TextScaled = true
+	shopButton.TextWrapped = false -- one line; long vendor names shrink a little
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 16
+	fit.Parent = shopButton
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = shopButton
+	shopButton.Visible = false
+	shopButton.Activated:Connect(openNearShop)
 end
 
 local function updateHint(root: BasePart?)
@@ -967,14 +985,18 @@ local function updateHint(root: BasePart?)
 	end
 	nearVendor = best
 	local show = best ~= nil and current == nil
-	hintGui.Enabled = show
+	local touch = Input.isTouch()
+	hintGui.Enabled = show and not touch
+	shopButton.Visible = show and touch
 	if show and best then
-		hintSpot.WorldPosition = counters[best]
-		local touch = Input.isTouch()
-		hintKeyFrame.Visible = not touch
-		hintKey.Text = if Input.isGamepad() then "Y" else "E"
-		hintText.Position = UDim2.fromOffset(if touch then 18 else 48, 0)
-		hintText.Text = `{if touch then "TAP TO SHOP" else "SHOP"} · {Shop.vendorsById[best].name}`
+		local name = Shop.vendorsById[best].name
+		if touch then
+			shopButton.Text = `SHOP · {name}`
+		else
+			hintSpot.WorldPosition = counters[best]
+			hintKey.Text = if Input.isGamepad() then "Y" else "E"
+			hintText.Text = `SHOP · {name}`
+		end
 	end
 end
 

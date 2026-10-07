@@ -155,8 +155,31 @@ end
 
 -- The safe area's top inset (the Roblox top bar), in screen pixels.
 function Ui.topInset(): number
-	local inset = GuiService:GetGuiInset()
-	return inset.Y
+	-- GetGuiInset can still read 0 while the client starts up; the top bar's own
+	-- rect (which has a change signal) is set along with it
+	return math.max(GuiService:GetGuiInset().Y, GuiService.TopbarInset.Max.Y)
+end
+
+-- Phones: Roblox's top bar sits over the screen's top-left corner, so the HUD's
+-- top-left column (level card, wallet, HUD buttons, tutorial) moves down to start
+-- just below it (its buttons covered the level card's top edge, playtest
+-- 2026-10-07). `y` is the piece's design-space top; the column keeps its spacing.
+local COLUMN_TOP = 66 -- the level card's top, the column's first piece
+function Ui.belowTopBar(gui: ScreenGui, piece: GuiObject, y: number)
+	local touch = Ui.isTouch()
+	local function place()
+		local shift = 0
+		if touch then
+			shift = math.max(math.ceil((Ui.topInset() + 6) / Ui.scaleOf(gui)) - COLUMN_TOP, 0)
+		end
+		piece.Position = UDim2.new(piece.Position.X, UDim.new(0, y + shift))
+	end
+	place()
+	local scale = gui:FindFirstChildOfClass("UIScale")
+	if scale then
+		scale:GetPropertyChangedSignal("Scale"):Connect(place)
+	end
+	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(place)
 end
 
 export type ButtonStyle = "primary" | "secondary" | "gold" | "disabled"

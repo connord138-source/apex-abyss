@@ -159,6 +159,12 @@ function BiomeController.start()
 	gui = Ui.screen("Biome", Players.LocalPlayer:WaitForChild("PlayerGui"), 6)
 	chip =
 		Ui.panel(gui, "BiomeChip", UDim2.fromOffset(200, 50), UDim2.new(1, -18, 0.5, 118), Vector2.new(1, 0))
+	if Ui.isTouch() then
+		-- Phones: above the depth gauge instead, clear of the BITE button it sat on
+		-- (playtest 2026-10-07)
+		chip.AnchorPoint = Vector2.new(1, 1)
+		chip.Position = UDim2.new(1, -18, 0.5, -113)
+	end
 	chipName = Ui.label(
 		chip,
 		"Name",

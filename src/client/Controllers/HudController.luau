@@ -69,6 +69,7 @@ end
 
 local function buildLevelCard()
 	local card = Ui.panel(gui, "Level", UDim2.fromOffset(232, 70), UDim2.fromOffset(18, 66))
+	Ui.belowTopBar(gui, card, 66)
 	levelText = Ui.label(
 		card,
 		"Level",
@@ -136,6 +137,11 @@ local function zoneBanner(leaving: boolean)
 	local old = gui:FindFirstChild("ZoneBanner")
 	if old then
 		old:Destroy()
+	end
+	-- On phones the controls hint shares this spot; the banner takes over
+	local controls = gui:FindFirstChild("Controls")
+	if controls and Input.isTouch() then
+		controls:Destroy()
 	end
 	local color = if leaving then Ui.color.danger else Ui.color.safe
 	local holder = Instance.new("Frame")
@@ -532,8 +538,9 @@ local function buildThumbstick()
 	knob.BackgroundTransparency = 0.35
 	Ui.corner(knob, UDim.new(1, 0))
 	knob.Parent = ring
-	-- Resting spot, faded, so new players see where to put their thumb
-	local rest = UDim2.new(0, 110, 1, -110)
+	-- Resting spot, faded, so new players see where to put their thumb (low enough
+	-- to clear the tutorial panel once the top-left column moves below the top bar)
+	local rest = UDim2.new(0, 110, 1, -90)
 	ring.Position = rest
 	ring.BackgroundTransparency = 0.75
 
@@ -609,6 +616,15 @@ local function showControlsHint()
 		UDim2.fromOffset(700, 18),
 		UDim2.new(0, 18, 1, -36)
 	)
+	if Input.isTouch() then
+		-- Phones: top centre under the safe-zone pill, wrapped (bottom left it ran
+		-- into the Haul card, playtest 2026-10-07)
+		label.AnchorPoint = Vector2.new(0.5, 0)
+		label.Position = UDim2.new(0.5, 0, 0, 52)
+		label.Size = UDim2.fromOffset(520, 38)
+		label.TextWrapped = true
+		label.TextXAlignment = Enum.TextXAlignment.Center
+	end
 	label.TextStrokeTransparency = 0.75
 	task.delay(14, function()
 		Ui.tween(label, 1, { TextTransparency = 1, TextStrokeTransparency = 1 })

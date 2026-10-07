@@ -251,7 +251,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `CameraController` turns the aim by the steer at the fish's turn rate
     (`camera.steerScale`, at most `camera.steerMax` 2.0 rad/s).
   - `Spring`.
-  - `Ui`: the design system (BuilderSans, palette, panels, bars).
+  - `Ui`: the design system (BuilderSans, palette, panels, bars). On phones,
+    `Ui.belowTopBar` moves the top-left column (level card, wallet, HUD buttons,
+    tutorial panel) down below Roblox's top bar.
   - `Controllers/`:
     - `SwimController`: momentum swim, banking into turns, the Dash (`dashCharge`), lunge.
     - `ForageController`: draws starfish and hopping shrimp, eats them with suction.
@@ -272,7 +274,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `HuntController`: player eats, bites and hit effects.
     - `NametagController`: threat colors.
     - `OceanController`: depth grading and marine snow.
-    - `BiomeController`: biome banner, level chip, under-level warning.
+    - `BiomeController`: biome banner, level chip (under the depth gauge; above it
+      on phones, clear of BITE), under-level warning.
     - `HudController`. On phones it draws the one swim stick: the touch zone
       (lower-left 40% × 60%) sits in the `Hud` ScreenGui under the HUD buttons, and
       the ring on its own `SwimStickRing` layer above the HUD panels. Touch
@@ -289,8 +292,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `ShellController`.
     - `RollController`: wallet, Roll / Odds / Wardrobe buttons, the reveal.
     - `MenuController`: shops, Wardrobe, odds; B closes. Its own stall hint ("E ·
-      Shop", Y on a controller, tap on phones) shows within `Shop.hintReach` of a
-      counter (`Layout.counterPosition`); there are no ProximityPrompts.
+      Shop", Y on a controller) shows within `Shop.hintReach` of a counter
+      (`Layout.counterPosition`); there are no ProximityPrompts. Phones get a
+      screen "SHOP · vendor" button above BITE instead of the world chip.
     - HUD buttons (ROLL, ODDS, WARDROBE, FISH) aren't selectable; the D-pad opens
       them (up Fish, left Wardrobe, right Odds, down Roll).
     - `FishPreview`: a ViewportFrame fish.

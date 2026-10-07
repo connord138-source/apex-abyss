@@ -172,6 +172,7 @@ end
 function TutorialController.start()
 	gui = Ui.screen("Tutorial", Players.LocalPlayer:WaitForChild("PlayerGui"), 7)
 	panel = Ui.panel(gui, "Tutorial", UDim2.fromOffset(300, 92), UDim2.fromOffset(18, 262))
+	Ui.belowTopBar(gui, panel, 262)
 	header = Ui.label(
 		panel,
 		"Header",

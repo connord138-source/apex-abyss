@@ -454,6 +454,7 @@ end
 
 local function buildWallet()
 	local card = Ui.panel(hud, "Wallet", UDim2.fromOffset(232, 66), UDim2.fromOffset(18, 144))
+	Ui.belowTopBar(hud, card, 144)
 	local coralDot = Instance.new("Frame")
 	coralDot.Size = UDim2.fromOffset(10, 10)
 	coralDot.Position = UDim2.fromOffset(14, 14)
@@ -500,6 +501,7 @@ local function buildWallet()
 	row.Position = UDim2.fromOffset(18, 218)
 	row.Size = UDim2.fromOffset(420, 36)
 	row.Parent = hud
+	Ui.belowTopBar(hud, row, 218)
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.Padding = UDim.new(0, 8)
