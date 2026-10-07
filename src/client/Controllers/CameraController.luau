@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Size = require(ReplicatedStorage.Shared.Size)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
 local SwimController = require(script.Parent.SwimController)
@@ -132,6 +133,13 @@ local function update(dt: number)
 
 	local look = Input.consumeLook(dt)
 	yaw -= look.X
+	-- A stick's sideways push (controller, phone) turns the aim, at the fish's own
+	-- turn rate so the camera and the fish swing round together
+	local _, steer = Input.drive()
+	if steer ~= 0 then
+		local turn = Size.turnRate(SwimController.length()) * SwimController.stats().turn
+		yaw -= steer * math.clamp(turn * tuning.steerScale, tuning.steerMin, tuning.steerMax) * dt
+	end
 	pitch = math.clamp(pitch - look.Y, tuning.minPitch, tuning.maxPitch)
 
 	local notches = Input.consumeZoom()

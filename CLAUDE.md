@@ -167,6 +167,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Passes:** VIP, ×2 Mass, extra den slots.
   - **Pearl crates:** odds shown before buying.
   - **Rule:** sell growth and safety, never bite damage.
+- **Controls (owner, 2026-10-07):**
+  - **PC stays as built** (the owner likes it): WASD swims relative to the camera (A/D
+    slide sideways), the mouse aims, Space/C go up and down.
+  - **Controller and phone** use the left stick as throttle and rudder: up swims along
+    the aim (further is faster), sideways turns the aim, down brakes and backs up
+    still facing forward. The right stick, or a drag on the screen, aims (up and down
+    included).
+  - **Phones get one stick** (it appears under the left thumb) plus BITE and DASH; the
+    UP/DOWN buttons are gone.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -226,9 +235,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - `FishBuilder`: the graybox fish, unit-scaled with named Motor6Ds.
   - `Format`.
 - **Client** (`src/client`):
-  - `Input`: every device. It builds the move vector itself (WASD/arrows, the left
-    stick, the HUD's touch thumbstick) and never waits on Roblox's `PlayerModule`,
+  - `Input`: every device. `moveVector()` is the keyboard (camera-relative) and
+    `drive()` the sticks (throttle, steer); it never waits on Roblox's `PlayerModule`,
     which isn't inserted for this game (playtest 2026-10-06). Mouse wheel zooms.
+    `SwimController` swims the throttle along the aim and backs up on a pulled
+    stick; `CameraController` turns the aim by the steer at the fish's turn rate
+    (`camera.steerScale`).
   - `Spring`.
   - `Ui`: the design system (BuilderSans, palette, panels, bars).
   - `Controllers/`:

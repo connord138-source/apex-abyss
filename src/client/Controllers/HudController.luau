@@ -489,23 +489,10 @@ local function touchButton(name: string, text: string, size: number, position: U
 	return button
 end
 
-local function holdButton(button: TextButton, inputName: string)
-	button.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch then
-			Input.setTouchButton(inputName, true)
-			button.BackgroundTransparency = 0.1
-		end
-	end)
-	button.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch then
-			Input.setTouchButton(inputName, false)
-			button.BackgroundTransparency = 0.35
-		end
-	end)
-end
-
--- The swim stick on phones: touch anywhere in the lower left and drag. The ring
--- appears under the thumb, so it's always where the thumb already is.
+-- The swim stick on phones (owner, 2026-10-07: one stick): touch anywhere in the
+-- lower left and push up to swim (further = faster), sideways to turn, down to back
+-- up; dragging anywhere else aims up and down. The ring appears under the thumb, so
+-- it's always where the thumb already is.
 local function buildThumbstick()
 	local RADIUS = 56
 	local zone = Instance.new("Frame")
@@ -590,16 +577,14 @@ local function buildTouchButtons()
 	dash.Activated:Connect(function()
 		Input.ability:fire()
 	end)
-	holdButton(touchButton("Up", "UP", 52, UDim2.new(1, -60, 1, -220)), "Up")
-	holdButton(touchButton("Down", "DOWN", 52, UDim2.new(1, -124, 1, -186)), "Down")
 end
 
 local function showControlsHint()
 	local text = if Input.isTouch()
-		then "Stick to swim · drag to look · BITE and DASH on the right"
+		then "Left stick: push up to swim, sideways to turn · drag to aim up and down · BITE and DASH on the right"
 		elseif
 			Input.isGamepad()
-		then "Left stick swim · right stick look · RT dash · RB bite · A/B up and down · Y at a stall · D-pad menus"
+		then "Left stick: up to swim, sideways to turn · right stick aims · RT dash · RB bite · Y at a stall · D-pad menus"
 		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · Wheel zoom · E at a stall · R roll · hold Alt for the cursor"
 	local label = Ui.label(
 		gui,

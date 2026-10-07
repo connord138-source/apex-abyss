@@ -6,10 +6,11 @@
 --             WASD or the arrows swim toward the camera, Space / Ctrl up and
 --             down, Shift or Q uses the ability (the Nibbler's Dash), click or F
 --             bites, E shops at a stall
---   Gamepad:  left stick swims, right stick looks, RT ability, RB or X bites,
---             A / B up and down, Y shops at a stall
---   Touch:    the HUD's thumbstick (bottom left) swims, drag anywhere else to
---             look, the HUD's Dash and Bite buttons
+--   Gamepad:  left stick up swims ahead (further = faster), sideways turns, down
+--             backs up; right stick aims (up and down too); RT ability, RB or X
+--             bites, A / B up and down, Y shops at a stall
+--   Touch:    the same stick under the left thumb (bottom left), drag anywhere
+--             else to aim, the HUD's Dash and Bite buttons
 --
 -- The move vector is built here from the keys and sticks, not from Roblox's
 -- PlayerModule: that module isn't inserted for this game's custom fish character
@@ -120,21 +121,29 @@ local function axis(positive: boolean, negative: boolean): number
 	return (if positive then 1 else 0) - (if negative then 1 else 0)
 end
 
--- The swim stick: x = right, z = forward (negative), from WASD or the arrow keys,
--- the left stick, or the touch thumbstick. Length at most 1.
+-- Keyboard swimming: x = right, z = forward (negative), relative to the camera, from
+-- WASD or the arrow keys. Length at most 1. (The owner likes PC as it is: A/D slide
+-- the fish sideways while the mouse aims.)
 function Input.moveVector(): Vector3
 	local keys = Vector2.new(
 		axis(down("D") or down("Right"), down("A") or down("Left")),
 		axis(down("S") or down("Down"), down("W") or down("Up"))
 	)
-	-- The left stick moves the selection while a menu button is selected
-	-- (stick1 is stored with y flipped, so pushing up is negative, like W)
-	local stick = if GuiService.SelectedObject then Vector2.zero else stick1
-	local move = keys + stick + touchMove
-	if move.Magnitude > 1 then
-		move = move.Unit
+	if keys.Magnitude > 1 then
+		keys = keys.Unit
 	end
-	return Vector3.new(move.X, 0, move.Y)
+	return Vector3.new(keys.X, 0, keys.Y)
+end
+
+-- Stick swimming (owner, 2026-10-07: controller and phone): the left stick or the
+-- touch stick is a throttle and a rudder. Returns throttle (+1 full ahead, -1 back
+-- up) and steer (+1 turn right); the right stick or a screen drag aims up and down.
+function Input.drive(): (number, number)
+	-- The left stick moves the selection while a menu button is selected
+	-- (stick1 is stored with y flipped, so pushing up is negative)
+	local stick = if GuiService.SelectedObject then Vector2.zero else stick1
+	local drive = stick + touchMove
+	return math.clamp(-drive.Y, -1, 1), math.clamp(drive.X, -1, 1)
 end
 
 -- The HUD's touch thumbstick: x = right, y = back (screen down), length at most 1.
@@ -144,14 +153,9 @@ end
 
 -- Up/down: +1, 0 or -1.
 function Input.vertical(): number
-	local up = down("Space") or down("ButtonA") or held.TouchUp == true
-	local dive = down("LeftControl") or down("C") or down("ButtonB") or held.TouchDown == true
+	local up = down("Space") or down("ButtonA")
+	local dive = down("LeftControl") or down("C") or down("ButtonB")
 	return (if up then 1 else 0) - (if dive then 1 else 0)
-end
-
--- The HUD's held touch buttons ("Up", "Down").
-function Input.setTouchButton(name: string, isDown: boolean)
-	held["Touch" .. name] = isDown
 end
 
 -- Whether the mouse should be locked for looking right now.

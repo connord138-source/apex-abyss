@@ -176,11 +176,14 @@ local function step(dt: number)
 	local top = Size.topSpeed(length) * Perks.speed(upgrades) * stats.speed
 	local camera = workspace.CurrentCamera.CFrame
 
-	-- Where the player wants to go, relative to the camera
+	-- Where the player wants to go, relative to the camera: the keys as on PC, plus
+	-- a stick's throttle straight along the aim (its steering turns the camera)
 	local move = Input.moveVector()
+	local throttle = Input.drive()
 	local wish = camera.LookVector * -move.Z
 		+ camera.RightVector * move.X
 		+ Vector3.yAxis * Input.vertical() * swim.verticalShare
+		+ camera.LookVector * math.max(throttle, 0)
 	local intent = math.min(wish.Magnitude, 1)
 
 	-- The Dash: a burst that recharges (Deep Gills makes it recharge faster)
@@ -190,6 +193,9 @@ local function step(dt: number)
 			math.min(1, SwimController.dashCharge + dt * Perks.boost(upgrades) / swim.dashRecharge)
 	end
 	SwimController.boosting = boosting
+	-- A stick pulled back with nothing else held: brake, then back up, still facing
+	-- the way it was (a fish that spun round to face the camera looked wrong)
+	local reversing = throttle < -0.05 and intent <= 0.05 and not boosting
 
 	local velocity = SwimController.velocity
 	if dashStarted then
@@ -203,6 +209,9 @@ local function step(dt: number)
 	if lunging then
 		-- A bite lunge: a straight dart along the heading
 		velocity = heading * math.max(speed, top * swim.lungeSpeed)
+	elseif reversing then
+		local back = -heading * top * swim.reverseShare * -throttle
+		velocity = velocity:Lerp(back, Spring.alpha(swim.brake, dt))
 	elseif intent > 0.05 then
 		local want = limitPitch(wish.Unit)
 		local current = if speed > top * 0.12 then velocity.Unit else heading
@@ -242,9 +251,19 @@ local function step(dt: number)
 	end
 	linear.VectorVelocity = applied
 
-	-- Facing: along the velocity when moving; level out slowly when idle
+	-- Facing: along the velocity when moving ahead; while backing up (or coasting
+	-- backwards after it), keep facing forward and follow the aim's turn; level out
+	-- slowly when idle
 	local previous = heading
-	if velocity.Magnitude > top * 0.08 then
+	if reversing then
+		local aim = Vector3.new(camera.LookVector.X, heading.Y, camera.LookVector.Z)
+		if aim.Magnitude > 1e-3 then
+			heading = rotateToward(heading, limitPitch(aim.Unit), Size.turnRate(length) * stats.turn * dt)
+		end
+	elseif
+		velocity.Magnitude > top * 0.08
+		and (intent > 0.05 or boosting or lunging or velocity:Dot(heading) > 0)
+	then
 		heading = limitPitch(velocity.Unit)
 	else
 		local level = Vector3.new(heading.X, heading.Y * (1 - Spring.alpha(1.5, dt)), heading.Z)

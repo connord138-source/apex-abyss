@@ -582,6 +582,11 @@ Rule: **sell growth and safety, never bite damage**, so PvP stays fair.
      only checks it.
    - The spine ripples procedurally with speed, the head leads and the tail follows,
      and fins flare on turns.
+   - **Controls (owner, 2026-10-07):** PC as built (WASD relative to the camera, mouse
+     aims, Space/C up and down). Controller and phone: the left stick is throttle and
+     rudder (up swims along the aim, further is faster, sideways turns, down backs
+     up facing forward) and the right stick or a screen drag aims. Phones have one
+     stick plus BITE and DASH.
 2. **Camera:** spring-damped with lag, pulls back smoothly as you grow, and widens its
    field of view slightly on boost.
 3. **Look**

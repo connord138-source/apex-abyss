@@ -26,6 +26,10 @@ return {
 		turnExponent = -0.32, -- big fish turn slower
 		drag = 1.7, -- per second, coasting with no input
 		verticalShare = 0.85, -- how much of top speed the up/down keys give
+		-- A stick pulled back (controller, phone): brake at this rate, then back up at
+		-- this share of top speed
+		brake = 5,
+		reverseShare = 0.3,
 		-- The Nibbler's Dash (owner, 2026-10-06: its only ability, "a small boost swim
 		-- that recharges"): a short burst of speed with a tail flick, then a recharge
 		boostMultiplier = 2.1, -- Dash speed, × top speed (also the server's eat slack)
@@ -61,6 +65,11 @@ return {
 		mouseSensitivity = 0.0032, -- radians per pixel
 		touchSensitivity = 0.0055,
 		gamepadSpeed = 3.4, -- radians/s at full stick
+		-- A stick's sideways push turns the aim: the fish's own turn rate × steerScale,
+		-- within these (radians/s), so the camera and the fish turn together
+		steerScale = 0.75,
+		steerMin = 0.9,
+		steerMax = 2.6,
 		minPitch = math.rad(-80),
 		maxPitch = math.rad(80),
 	},
