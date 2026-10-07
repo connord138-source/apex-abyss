@@ -8,6 +8,7 @@
 -- names.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Species = require(script.Parent.Config.Species)
 local FishPlans = require(script.Parent.FishPlans)
 
 local FishBuilder = {}
@@ -117,12 +118,26 @@ function FishBuilder.build(character: Model, root: BasePart, look: Look, length:
 end
 
 -- The imported, rigged model for a species (docs/ASSETS.md):
--- ReplicatedStorage.FishModels.<plan>, a Model holding one skinned MeshPart with
--- Root/Head/Spine1..N/Tail bones, facing -Z. Nil while it isn't imported, and the
--- graybox part body is built instead.
+-- ReplicatedStorage.FishModels.<name>, a Model holding one skinned MeshPart with
+-- Root/Head/Spine1..N/Tail bones, facing -Z. It's named after its file: the body
+-- plan (Puffer, Angler) or the species id (MorayEel, ReefShark, whose plans are Eel
+-- and Shark, so they stayed graybox until both were looked up, playtest
+-- 2026-10-07). Nil while it isn't imported, and the graybox part body is built.
 function FishBuilder.meshTemplate(plan: string?): Model?
 	local folder = ReplicatedStorage:FindFirstChild("FishModels")
-	local template = folder and folder:FindFirstChild(plan or "Nibbler")
+	if folder == nil then
+		return nil
+	end
+	local name = plan or "Nibbler"
+	local template = folder:FindFirstChild(name)
+	if template == nil then
+		for _, species in Species.list do
+			if species.plan == name then
+				template = folder:FindFirstChild(species.id)
+				break
+			end
+		end
+	end
 	if template and template:IsA("Model") and template:FindFirstChildWhichIsA("MeshPart", true) then
 		return template
 	end
