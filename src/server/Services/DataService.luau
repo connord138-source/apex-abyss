@@ -14,6 +14,14 @@ export type SpeciesRecord = {
 	bestMass: number,
 }
 
+export type TreasureMap = {
+	id: string,
+	tier: string, -- Config/Treasure tier id
+	site: { x: number, y: number, z: number }, -- the dig spot on the seabed
+	hint: string,
+	created: number,
+}
+
 export type PlayerData = {
 	version: number,
 	createdAt: number, -- first join
@@ -50,6 +58,10 @@ export type PlayerData = {
 	charms: { [string]: number }, -- stocked charms held (Lucky, SecondChance)
 	boosts: { [string]: number }, -- timed charms: Unix time each runs out
 	shellTrades: { day: number, count: number }, -- the Tidecharm Trader's daily shell sales
+	-- Treasure maps held (Config/Treasure), the one being followed, and the tally
+	maps: { TreasureMap },
+	activeMap: string,
+	treasures: { found: number, byTier: { [string]: number } },
 	-- Monetization
 	passes: { [string]: boolean },
 	purchaseIds: { string }, -- developer-product receipts already granted (newest last)
@@ -89,6 +101,9 @@ local TEMPLATE: PlayerData = {
 	charms = {},
 	boosts = {},
 	shellTrades = { day = 0, count = 0 },
+	maps = {},
+	activeMap = "",
+	treasures = { found = 0, byTier = {} },
 	passes = {},
 	purchaseIds = {},
 	onboarding = 0,

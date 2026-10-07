@@ -21,6 +21,7 @@ export type Shade = {
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
 	boss: string?, -- won only by beating this world boss (never in rolls)
+	treasure: string?, -- found only in this map tier's treasure (never in rolls)
 	blurb: string,
 }
 
@@ -199,6 +200,42 @@ local list: { Shade } = {
 		sparkle = Color3.fromRGB(110, 230, 255),
 		boss = "GiantSquid",
 		blurb = "Ink-black with glowing spots. Won from the Giant Squid.",
+	},
+	-- Treasure-only shades (owner, 2026-10-07: "a super rare skin at a low drop
+	-- rate" from treasure maps). Only a Captain's chest holds them. Never rolled.
+	{
+		id = "SunkenGold",
+		name = "Sunken Gold",
+		tier = "Mythic",
+		chance = 0,
+		refund = 2500,
+		back = Color3.fromRGB(232, 176, 48),
+		belly = Color3.fromRGB(255, 226, 140),
+		fin = Color3.fromRGB(196, 132, 28),
+		accent = Color3.fromRGB(120, 80, 20),
+		material = Enum.Material.Metal,
+		reflectance = 0.45,
+		glow = Color3.fromRGB(255, 200, 90),
+		sparkle = Color3.fromRGB(255, 236, 170),
+		treasure = "Captain",
+		blurb = "Doubloon gold with a verdigris tail. Dug up from a Captain's chest.",
+	},
+	{
+		id = "DrownedPearl",
+		name = "Drowned Pearl",
+		tier = "Legendary",
+		chance = 0,
+		refund = 1500,
+		back = Color3.fromRGB(236, 232, 240),
+		belly = Color3.fromRGB(255, 252, 250),
+		fin = Color3.fromRGB(200, 214, 236),
+		accent = Color3.fromRGB(214, 196, 226),
+		material = Enum.Material.Glass,
+		reflectance = 0.3,
+		glow = Color3.fromRGB(220, 230, 255),
+		sparkle = Color3.fromRGB(255, 240, 255),
+		treasure = "Captain",
+		blurb = "Nacre white with a lilac sheen. Dug up from a Captain's chest.",
 	},
 }
 

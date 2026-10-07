@@ -841,6 +841,91 @@ function MenuController.openSpecies()
 	)
 end
 
+-- The satchel: the treasure maps you hold (Config/Treasure). FOLLOW one and the HUD's
+-- sonar leads you to its X; only you can dig it up.
+function MenuController.openSatchel()
+	local Treasure = Config.Treasure
+	open("Satchel", "", Vector2.new(720, 460), function(window)
+		local list = Ui.list(window.content, 6)
+		return {
+			window = window,
+			render = function()
+				local s = state()
+				local found = if typeof(s.treasures) == "table" then s.treasures.found or 0 else 0
+				window.subtitle.Text =
+					`Treasure maps drop from big fish, shells and big banks · Treasures found: {found}`
+				rerender(list, function()
+					local held = if typeof(s.maps) == "table" then s.maps else {}
+					for i, map in held do
+						local tier = Treasure.byId[map.tier]
+						local following = s.activeMap == map.id
+						local frame, button = row(
+							list,
+							i,
+							map.id,
+							`{if tier then tier.name else map.tier} Treasure Map`,
+							map.hint,
+							if following then "FOLLOWING" else "",
+							if following then "STOP" else "FOLLOW",
+							if following then "secondary" else "primary",
+							if tier then tier.color else nil
+						)
+						frame.Size = UDim2.new(1, -8, 0, 64)
+						if button then
+							button.Activated:Connect(function()
+								ClientState.request("FollowMap", if following then "" else map.id)
+							end)
+						end
+					end
+					if #held == 0 then
+						local empty = Ui.label(
+							list,
+							"Empty",
+							"No maps yet. Big fish, shells and big banks sometimes carry one.",
+							Ui.FONT_SEMI,
+							15,
+							Ui.color.muted,
+							UDim2.new(1, -8, 0, 40)
+						)
+						empty.TextXAlignment = Enum.TextXAlignment.Center
+					end
+					-- What a map can hold, per tier
+					local order = #held
+					for _, tier in Treasure.tiers do
+						order += 1
+						local total = 0
+						for _, reward in tier.rewards do
+							total += reward.weight
+						end
+						local parts: { string } = {}
+						for _, reward in tier.rewards do
+							table.insert(parts, `{reward.name} {RollOdds.percent(reward.weight / total)}`)
+						end
+						local frame = row(
+							list,
+							order,
+							`Tier{tier.id}`,
+							`{tier.name} chests hold`,
+							table.concat(parts, " · "),
+							nil,
+							nil,
+							nil,
+							tier.color
+						)
+						frame.Size = UDim2.new(1, -8, 0, 56)
+						frame.BackgroundTransparency = 0.6
+						local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
+						if blurb then
+							blurb.Size = UDim2.new(1, -40, 0, 18)
+							blurb.TextTruncate = Enum.TextTruncate.AtEnd
+						end
+					end
+				end)
+			end,
+		}
+	end)
+end
+
 function MenuController.openOdds()
 	local s = state()
 	local lucky = (s.charms or {}).Lucky or 0

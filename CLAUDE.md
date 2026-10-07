@@ -176,6 +176,18 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     included).
   - **Phones get one stick** (it appears under the left thumb) plus BITE and DASH; the
     UP/DOWN buttons are gone.
+- **Treasure maps (owner, 2026-10-07):** "randomly earn them... a treasure map to a
+  location where they dig up a treasure for a random reward, a large kelp haul or a
+  super rare skin at a low drop rate. Like clue scrolls. Only the player holding the
+  map can uncover it. Map in their inventory." Built: maps drop from prey (by mass),
+  shells (golden ones often) and big banks; three tiers (Tattered → Weathered →
+  Captain's) set the dig site's distance band and the loot; the SATCHEL (MAPS button)
+  lists them with a hint; FOLLOW gives a hot/cold sonar, an arrow inside 150 studs
+  and an X only the holder sees inside 45; hold E / Y / DIG on the X to dig; the roll
+  reveal opens the chest (coral, shells, a Haul worth levels, DNA, Lucky Charm, a
+  shade roll, and from Captain's chests the treasure-only Sunken Gold and Drowned
+  Pearl shades at ~3% each). `Config/Treasure.luau`, `TreasureService`,
+  `TreasureController`, `MenuController.openSatchel`. GDD §7.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.

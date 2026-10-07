@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local ClientState = require(script.Parent.Parent.ClientState)
 local FishPreview = require(script.Parent.Parent.FishPreview)
@@ -39,6 +40,7 @@ local rollButton: TextButton
 local rollScale: UIScale
 local busy = false
 local waitingSince = 0
+local mapsButton: TextButton
 
 local function state(): { [string]: any }
 	return ClientState.current or {}
@@ -150,13 +152,38 @@ local function spinSeconds(tier: Tier): number
 	return 3.4
 end
 
--- The reveal for one roll result from the server.
+-- Filler for a treasure reel: the rewards a map tier can hold (Config/Treasure).
+local function treasureFiller(rng: Random, poolTier: string): RollOdds.Outcome
+	local tier = Config.Treasure.byId[poolTier]
+	local rewards = if tier then tier.rewards else Config.Treasure.tiers[1].rewards
+	local total = 0
+	for _, reward in rewards do
+		total += reward.weight
+	end
+	local r = rng:NextNumber() * total
+	local picked = rewards[#rewards]
+	for _, reward in rewards do
+		r -= reward.weight
+		if r <= 0 then
+			picked = reward
+			break
+		end
+	end
+	return { id = picked.id, kind = picked.kind :: any, name = picked.name, tier = picked.tier }
+end
+
+-- The reveal for one result from the server: a roll (its outcome is looked up in
+-- the odds table) or a treasure (`result.outcome` comes along, and the reel's
+-- filler is that map tier's loot).
 local function reveal(result: { [string]: any })
-	local outcome = RollOdds.get(result.kind, result.id)
+	local outcome: RollOdds.Outcome? = if typeof(result.outcome) == "table"
+		then result.outcome
+		else RollOdds.get(result.kind, result.id)
 	if outcome == nil then
 		busy = false
 		return
 	end
+	local treasurePool: string? = if typeof(result.pool) == "string" then result.pool else nil
 	local tier = tierOf(outcome.tier)
 	local big = tier.order >= Tiers.byId.Rare.order
 	Input.cursorWanted = true
@@ -207,7 +234,10 @@ local function reveal(result: { [string]: any })
 	local rng = Random.new()
 	local cards: { Frame } = {}
 	for i = 1, REEL_CARDS do
-		local shown = if i == LAND_INDEX then outcome else filler(rng)
+		local shown = if i == LAND_INDEX
+			then outcome
+			elseif treasurePool then treasureFiller(rng, treasurePool)
+			else filler(rng)
 		cards[i] = card(strip, shown, (i - 1) * STEP)
 	end
 	-- Land somewhere inside the winning card, not dead center every time
@@ -337,14 +367,27 @@ local function reveal(result: { [string]: any })
 	local detail
 	if result.kind == "coral" then
 		detail = `+{Ui.number(result.coral or 0)} Coral`
+	elseif result.kind == "shells" then
+		detail = `+{Ui.number(result.shells or 0)} Shells`
+	elseif result.kind == "haul" then
+		detail = `+{Format.mass(result.haul or 0)} of Haul, straight into your dive`
+	elseif result.kind == "dna" then
+		detail = `+{Ui.number(result.dna or 0)} DNA`
+	elseif result.kind == "charm" then
+		detail = "A Lucky Charm: your next roll's rare odds ×2"
 	elseif result.duplicate then
-		detail =
-			`Already yours · +{Ui.number(result.coral or 0)} Coral instead · {RollOdds.oneIn(probability)}`
+		detail = `Already yours · +{Ui.number(result.coral or 0)} Coral instead`
+			.. (if treasurePool then "" else ` · {RollOdds.oneIn(probability)}`)
 	else
-		detail = `NEW · {RollOdds.oneIn(probability)}`
+		detail = if treasurePool
+			then "NEW · dug up from treasure"
+			else `NEW · {RollOdds.oneIn(probability)}`
 	end
 	if (result.luck or 1) > 1 then
 		detail ..= "  ·  Lucky Charm ×2"
+	end
+	if typeof(result.found) == "number" then
+		detail ..= `  ·  Treasures found: {result.found}`
 	end
 	local detailLabel = Ui.label(
 		panel,
@@ -359,8 +402,9 @@ local function reveal(result: { [string]: any })
 	detailLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	-- Cosmetics land on your own fish
+	local cosmetic = result.kind == "shade" or result.kind == "part" or result.kind == "variant"
 	local preview: FishPreview.Preview? = nil
-	if result.kind ~= "coral" then
+	if cosmetic then
 		local made = FishPreview.new(
 			overlay,
 			UDim2.fromOffset(300, 200),
@@ -413,7 +457,7 @@ local function reveal(result: { [string]: any })
 		Input.cursorWanted = MenuController.isOpen()
 		busy = false
 	end
-	if result.kind ~= "coral" and not result.duplicate then
+	if cosmetic and not result.duplicate then
 		local wear = Ui.button(buttons, "Wear", "WEAR IT", UDim2.fromOffset(150, 44), UDim2.new(), "gold")
 		wear.Activated:Connect(function()
 			ClientState.request("Equip", result.kind, result.id)
@@ -440,6 +484,16 @@ local function reveal(result: { [string]: any })
 	if Input.isGamepad() then
 		game:GetService("GuiService").SelectedObject = buttons:FindFirstChildWhichIsA("TextButton")
 	end
+end
+
+-- Opens a dug-up treasure (TreasureController) with the roll reveal.
+function RollController.revealTreasure(result: { [string]: any })
+	while busy do
+		task.wait(0.1)
+	end
+	busy = true
+	waitingSince = os.clock()
+	reveal(result)
 end
 
 -- Asks the server for a roll (the reveal plays when the result arrives).
@@ -498,7 +552,7 @@ local function buildWallet()
 	row.Name = "Buttons"
 	row.BackgroundTransparency = 1
 	row.Position = UDim2.fromOffset(18, 218)
-	row.Size = UDim2.fromOffset(420, 36)
+	row.Size = UDim2.fromOffset(540, 36)
 	row.Parent = hud
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -523,9 +577,14 @@ local function buildWallet()
 	fish.LayoutOrder = 4
 	fish.TextSize = 14
 	fish.Activated:Connect(MenuController.openSpecies)
+	mapsButton = Ui.button(row, "Maps", "MAPS", UDim2.fromOffset(84, 34), UDim2.new(), "secondary")
+	mapsButton.LayoutOrder = 5
+	mapsButton.TextSize = 14
+	mapsButton.Visible = false
+	mapsButton.Activated:Connect(MenuController.openSatchel)
 	-- Not selectable: a controller selection once stuck on ODDS and ate key presses
 	-- (playtest 2026-10-06). The D-pad opens these instead (RollController.start).
-	for _, button in { rollButton, odds, wardrobe, fish } do
+	for _, button in { rollButton, odds, wardrobe, fish, mapsButton } do
 		button.Selectable = false
 	end
 end
@@ -538,6 +597,10 @@ local function onState(s: { [string]: any })
 	shellText.Text = `{shells % perRoll} / {perRoll} SHELLS`
 	Ui.tween(shellFill, 0.4, { Size = UDim2.fromScale((shells % perRoll) / perRoll, 1) })
 	rollButton.Visible = ready > 0
+	local held = if typeof(s.maps) == "table" then #s.maps else 0
+	mapsButton.Visible = held > 0
+	mapsButton.Text = `MAPS ({held})`
+	Ui.setButtonStyle(mapsButton, if s.activeMap and s.activeMap ~= "" then "primary" else "secondary")
 	local key = if UserInputService.KeyboardEnabled then " (R)" else ""
 	rollButton.Text = if ready > 1 then `ROLL ×{ready}{key}` else `ROLL{key}`
 end

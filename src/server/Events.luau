@@ -7,6 +7,7 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 
 return {
 	ate = Signal.new(), -- (player, count) prey, forage or players eaten
+	atePrey = Signal.new(), -- (player, preyId, position) one prey fish eaten (treasure drops)
 	banked = Signal.new(), -- (player, amount, level) a Haul banked
 	leftHub = Signal.new(), -- (player) swam out of the safe zone
 	shells = Signal.new(), -- (player, count) shells picked up
