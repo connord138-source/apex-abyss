@@ -20,6 +20,7 @@ local stateUpdate = makeEvent("StateUpdate")
 local notify = makeEvent("Notify")
 local teleport = makeEvent("Teleport") -- (cframe) move your own fish there
 local preyEaten = makeEvent("PreyEaten") -- (index, backAt, eaterUserId) to everyone
+local preyChase = makeEvent("PreyChase") -- (index, targetUserId, startAt, seconds, hit) to everyone: a prey fish turns on a player
 local banked = makeEvent("Banked") -- (summary) to the banker
 local eaten = makeEvent("Eaten") -- (summary) to the fish that got eaten
 local hit = makeEvent("Hit") -- (attackerUserId, victimUserId, damage) to everyone, for effects
@@ -53,6 +54,7 @@ local REQUESTS: { [string]: number } = {
 	FinishDig = 0.4, -- () the dig hold completed
 	UseWrap = 0.3, -- () use a Kelp Wrap (heal)
 	BitePredator = 0.35, -- (predator index) bite an AI predator or boss
+	Struggle = 0.12, -- () mash to break a boss's grab
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -113,6 +115,11 @@ end
 
 function Net.preyEaten(index: number, backAt: number, eaterUserId: number)
 	preyEaten:FireAllClients(index, backAt, eaterUserId)
+end
+
+-- A prey fish chases a player (AggroService): clients draw the dart.
+function Net.preyChase(index: number, targetUserId: number, startAt: number, seconds: number)
+	preyChase:FireAllClients(index, targetUserId, startAt, seconds)
 end
 
 function Net.banked(player: Player, summary: { [string]: any })

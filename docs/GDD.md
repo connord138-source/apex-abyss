@@ -626,7 +626,7 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   Ghost shade. The Trophy Hunter stall sells Ghost for 12 Teeth. On escape it heals
   and returns in 15 min.
 
-### World boss: the Giant Squid (owner, 2026-10-06; Claude's proposal)
+### World boss: the Giant Squid (owner, 2026-10-06; Claude's proposal; built 2026-10-07)
 
 Concept: `assets/concepts/GiantSquid.jpg`.
 
@@ -662,6 +662,22 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   - A chance at a trophy straight from the kill.
   - Bonus Beaks for every tentacle you bit off.
   - A huge Haul, a coral jackpot, a Rare-or-better roll, and a Kraken Slayer title.
+
+- **As built (2026-10-07, `kit = "squid"` in `Config/Bosses.luau`):** 70 studs, 5,500 hp
+  (+60% per attacker), south patrol 280–560 studs out, lurking 10–55 up off the
+  floor. Lurker: tentacle grab (1 s tell, 60 stud range, 15%/s up to 4 s; the fish
+  is dragged to the beak; mash BITE/DASH 6 times, or 3 teammate bites on the squid,
+  break it; the biters earn a Kraken Beak), ink (6 s, 55 studs, blinds the camera
+  inside, hides its tag) then a jet 120 studs away; it also jets when two or more
+  are biting it. Enraged under 65%: two grabs, half the grab cooldown, whirlpool
+  (1.2 s tell, 3 s pull within 70 studs). Mantle under 30%: up to 90–140 off the
+  floor, beak slam (1.3 s tell, 45%) and siphon blast (1 s tell, 15% + a shove in a
+  cone), sinks away after 90 s. Soft spots: the eye and the tentacles (double
+  damage, stagger meter 650). Rewards: Kraken Beaks (1, +1 top three, +1 killer),
+  120 kg Haul and 5,000 coral by share, a Rare+ shade roll, Kraken Slayer, a 1/15
+  Abyss Ink drop; Abyss Ink costs 12 Beaks at the Trophy Hunter. The eight
+  individual tentacles with their own health are not modelled yet: biting the
+  tentacle zone is the soft spot, and bites free held fish.
 
 ### Tide events (the role the Moon Egg plays in Hatch & Snatch)
 

@@ -1,4 +1,14 @@
 {
+ "bosses/GiantSquid": {
+  "credits": 30,
+  "files": [
+   "GiantSquid.glb",
+   "GiantSquid_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f1317535-7df8-4c47-a523-bc59179ad55f",
+  "type": "image_to_model"
+ },
  "bosses/Megalodon": {
   "credits": 30,
   "files": [
@@ -429,6 +439,15 @@
   ],
   "status": "success",
   "task_id": "8a82a940-9c49-4dbc-8a3d-709d9e1fac65",
+  "type": "generate_image"
+ },
+ "species_sheets/GiantSquid": {
+  "credits": 10,
+  "files": [
+   "GiantSquid.png"
+  ],
+  "status": "success",
+  "task_id": "1f7a4b53-aca8-4c01-a2a8-95ff76872eec",
   "type": "generate_image"
  },
  "species_sheets/Megalodon": {

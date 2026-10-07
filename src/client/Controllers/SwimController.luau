@@ -44,6 +44,7 @@ local lastBiteAt = -math.huge
 local dashUntil = 0
 local dashStarted = false
 local clock = 0
+local heldPoint: Vector3? = nil -- a boss's grab drags the fish here
 
 local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vector3
 	local dot = math.clamp(from:Dot(to), -1, 1)
@@ -107,6 +108,10 @@ end
 
 -- Starts a Dash if it has recharged; returns whether it did.
 function SwimController.dash(): boolean
+	if heldPoint then
+		ClientState.request("Struggle")
+		return false
+	end
 	if root == nil or SwimController.dashCharge < 1 then
 		return false
 	end
@@ -124,6 +129,17 @@ function SwimController.shove(velocity: Vector3)
 	end
 	SwimController.velocity += velocity
 	lungeUntil = 0
+end
+
+-- A grab: while `point` is set the fish is dragged toward it and can't swim (it
+-- can only struggle). Nil lets go. PredatorController sets it from the HeldBy
+-- attribute the server puts on the character.
+function SwimController.hold(point: Vector3?)
+	heldPoint = point
+end
+
+function SwimController.isHeld(): boolean
+	return heldPoint ~= nil
 end
 
 -- Starts a bite lunge if the cooldown allows; returns whether it did.
@@ -214,7 +230,14 @@ local function step(dt: number)
 	local reversing = throttle < -0.05 and intent <= 0.05 and not boosting
 
 	local velocity = SwimController.velocity
-	if dashStarted then
+	local held = heldPoint
+	if held then
+		-- Dragged toward the beak: no swimming, just the pull
+		local pull = held - currentRoot.Position
+		velocity = if pull.Magnitude > 2 then pull.Unit * Config.Bosses.grabPull else Vector3.zero
+		dashStarted = false
+		lungeUntil = 0
+	elseif dashStarted then
 		-- The tail flick: jump straight to Dash speed, the way the player is steering
 		dashStarted = false
 		local direction = if intent > 0.05 then limitPitch(wish.Unit) else heading
@@ -222,7 +245,9 @@ local function step(dt: number)
 	end
 	local speed = velocity.Magnitude
 	local lunging = clock < lungeUntil
-	if lunging then
+	if held then
+		-- (the pull above stands)
+	elseif lunging then
 		-- A bite lunge: a straight dart along the heading
 		velocity = heading * math.max(speed, top * swim.lungeSpeed)
 	elseif reversing then

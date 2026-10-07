@@ -271,9 +271,9 @@ local function step(dt: number)
 	bar.BackgroundTransparency = 1 - (1 - Ui.PANEL_TRANSPARENCY) * barAlpha
 	nameLabel.Text = `{string.upper(def.name)} · {def.title}`
 	local phase = if typeof(state.phase) == "number" then state.phase else 1
-	local phaseText = PHASES[phase] or "HUNTING"
+	local phaseText = def.phaseNames[phase] or PHASES[phase] or "HUNTING"
 	if phase == 3 and typeof(state.lastStandUntil) == "number" then
-		phaseText = `LAST STAND · ESCAPES IN {clockText(state.lastStandUntil - now)}`
+		phaseText = `{phaseText} · ESCAPES IN {clockText(state.lastStandUntil - now)}`
 	end
 	if typeof(state.staggeredUntil) == "number" and state.staggeredUntil > now then
 		phaseText = `STAGGERED · {string.format("%.1f", state.staggeredUntil - now)} s`
@@ -298,7 +298,7 @@ local function step(dt: number)
 	if dread > 0 and distance > 60 then
 		nearby.Visible = true
 		nearby.BackgroundTransparency = 0.5 + 0.5 * (1 - dread)
-		nearbyLabel.Text = `{string.upper(def.name)} NEARBY · {math.floor(distance)} studs`
+		nearbyLabel.Text = `{def.dread.warning} · {math.floor(distance)} studs`
 		nearbyLabel.TextTransparency = 1 - dread
 		local look = camera.CFrame.LookVector
 		local flatLook = Vector3.new(look.X, 0, look.Z)

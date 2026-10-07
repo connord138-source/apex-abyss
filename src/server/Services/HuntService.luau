@@ -475,6 +475,11 @@ function HuntService.sessions(): { [Player]: Session }
 	return sessions
 end
 
+-- Whether prey fish `index` is eaten (and waiting to respawn) at `now`.
+function HuntService.preyEaten(index: number, now: number): boolean
+	return (eatenUntil[index] or 0) > now
+end
+
 -- The Haul a player is carrying (0 if not swimming).
 function HuntService.haul(player: Player): number
 	local session = sessions[player]
@@ -513,7 +518,7 @@ end
 
 -- Hurts a fish by a share of its max health (predators and bosses; nothing
 -- one-shots, owner 2026-10-07). `source` names the attacker for the death screen.
-function HuntService.damage(player: Player, fraction: number, source: string)
+function HuntService.damage(player: Player, fraction: number, source: string, quiet: boolean?)
 	local session = sessions[player]
 	local character = FishService.character(player)
 	if session == nil or character == nil or not session.alive or isSafe(session, Timing.clock()) then
@@ -523,7 +528,9 @@ function HuntService.damage(player: Player, fraction: number, source: string)
 	session.health -= amount
 	session.lastHitAt = Timing.clock()
 	character:SetAttribute("Health", math.max(session.health, 0))
-	Net.hitBy(player, -1, amount)
+	if not quiet then
+		Net.hitBy(player, -1, amount)
+	end
 	if session.health <= 0 then
 		HuntService.kill(player, source)
 	end

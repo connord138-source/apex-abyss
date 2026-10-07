@@ -102,6 +102,10 @@ local function autoEat()
 end
 
 local function onBite()
+	if SwimController.isHeld() then
+		ClientState.request("Struggle")
+		return
+	end
 	if not SwimController.lunge() then
 		return
 	end

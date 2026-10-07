@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Schools = require(ReplicatedStorage.Shared.Schools)
+local Ui = require(script.Parent.Parent.Ui)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -40,6 +41,8 @@ type Visual = {
 	suckFrom: CFrame?, -- the suction animation's start
 	suckStart: number,
 	fadeIn: number, -- 0..1 after respawning
+	-- A chase (AggroService): this fish darts at a player and back
+	chase: { target: Player, startAt: number, endsAt: number, glow: Highlight }?,
 }
 
 local visuals: { Visual } = {}
@@ -47,6 +50,9 @@ local parts: { BasePart } = {}
 local frames: { CFrame } = {}
 local batch: { { number } } = {}
 local lastSend = 0
+local aggro = Config.Tuning.aggro
+local chaseWarning: TextLabel? = nil
+local chaseWarningUntil = 0
 
 local function makePart(parent: Instance, color: Color3, shape: "Ellipsoid" | "Fin"): Part
 	local part = Instance.new("Part")
@@ -124,6 +130,7 @@ local function build()
 			suckFrom = nil,
 			suckStart = 0,
 			fadeIn = 1,
+			chase = nil,
 		}
 	end
 	folder.Parent = workspace
@@ -192,6 +199,34 @@ local function step(dt: number)
 				end
 			end
 			local frame = Schools.fishFrame(index, schoolFrame, now)
+			-- Chasing: it darts off its path at the player and comes back
+			local chase = visual.chase
+			if chase then
+				local character = chase.target.Character
+				local targetRoot = character and character:FindFirstChild("HumanoidRootPart")
+				if now >= chase.endsAt or targetRoot == nil or not targetRoot:IsA("BasePart") then
+					chase.glow:Destroy()
+					visual.chase = nil
+				else
+					local targetLength = character and character:GetAttribute("Length")
+					local blend = Schools.chaseBlend(now - chase.startAt, aggro.seconds, aggro.lungeAt)
+					local at = Schools.chasePosition(
+						index,
+						frame.Position,
+						targetRoot.Position,
+						if typeof(targetLength) == "number" then targetLength else 2,
+						blend
+					)
+					local toward = targetRoot.Position - at
+					if toward.Magnitude > 1e-3 and blend > 0.02 then
+						local face = CFrame.lookAt(at, at + toward)
+						frame = frame.Rotation:Lerp(face.Rotation, math.min(blend * 1.5, 1)) + at
+					else
+						frame = frame.Rotation + at
+					end
+					chase.glow.FillTransparency = 0.6 + 0.3 * (1 - blend)
+				end
+			end
 			if visual.suckFrom then
 				-- Sucked into our mouth: slide in and shrink, then vanish
 				local alpha = math.clamp((now - visual.suckStart) / SUCK_SECONDS, 0, 1)
@@ -265,6 +300,33 @@ local function step(dt: number)
 	flush(now)
 end
 
+-- The server says a fish turned on a player (AggroService): it darts at them.
+local function onPreyChase(index: number, targetUserId: number, startAt: number, seconds: number)
+	local visual = visuals[index]
+	local target = Players:GetPlayerByUserId(targetUserId)
+	if visual == nil or target == nil or visual.hidden then
+		return
+	end
+	if visual.chase then
+		visual.chase.glow:Destroy()
+	end
+	local glow = Instance.new("Highlight")
+	glow.Name = "ChaseGlow"
+	glow.FillColor = Ui.color.danger
+	glow.FillTransparency = 0.9
+	glow.OutlineColor = Ui.color.danger
+	glow.OutlineTransparency = 0.2
+	glow.DepthMode = Enum.HighlightDepthMode.Occluded
+	glow.Adornee = visual.body
+	glow.Parent = visual.body
+	visual.chase = { target = target, startAt = startAt, endsAt = startAt + seconds, glow = glow }
+	if target == Players.LocalPlayer and chaseWarning then
+		local prey = Config.Prey.byId[Schools.fish[index].prey]
+		chaseWarning.Text = `{string.upper(prey.name)} · TOO BIG TO EAT · SWIM!`
+		chaseWarningUntil = Timing.clock() + aggro.lungeAt + 0.4
+	end
+end
+
 -- The server says a fish was eaten (by anyone) and when it comes back.
 local function onPreyEaten(index: number, backAt: number, eaterUserId: number)
 	local visual = visuals[index]
@@ -283,6 +345,28 @@ function SchoolController.start()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local preyEaten = remotes:WaitForChild("PreyEaten") :: RemoteEvent
 	preyEaten.OnClientEvent:Connect(onPreyEaten)
+	local preyChase = remotes:WaitForChild("PreyChase") :: RemoteEvent
+	preyChase.OnClientEvent:Connect(onPreyChase)
+	-- The warning when one turns on us
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local gui = Ui.screen("Chase", playerGui, 6)
+	local label = Ui.label(
+		gui,
+		"Warning",
+		"",
+		Ui.FONT_HEAVY,
+		18,
+		Ui.color.danger,
+		UDim2.new(1, 0, 0, 26),
+		UDim2.new(0, 0, 0.5, -90)
+	)
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.TextStrokeTransparency = 0.4
+	label.Visible = false
+	chaseWarning = label
+	RunService.RenderStepped:Connect(function()
+		label.Visible = chaseWarningUntil > Timing.clock()
+	end)
 	-- Fish already eaten when we joined
 	local getEaten = remotes:WaitForChild("GetEaten") :: RemoteFunction
 	task.spawn(function()

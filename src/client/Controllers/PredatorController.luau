@@ -17,6 +17,8 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Ui = require(script.Parent.Parent.Ui)
 local CameraController = require(script.Parent.CameraController)
+local OceanController = require(script.Parent.OceanController)
+local SwimController = require(script.Parent.SwimController)
 
 local Predators = Config.Predators
 local Bosses = Config.Bosses
@@ -69,6 +71,7 @@ type Visual = {
 	markedUntil: number,
 	staggerUntil: number,
 	bloodUntil: number,
+	grabs: { [number]: number }, -- a squid's held fish: userId → when the grab times out
 	jaw: Highlight,
 	glow: PointLight,
 	blood: ParticleEmitter?,
@@ -83,6 +86,116 @@ local frames: { CFrame } = {}
 local folder: Folder
 local warning: TextLabel
 local warningUntil = 0
+-- A squid's tentacle beams (userId → the part) and its ink clouds
+local beams: { [number]: Part } = {}
+local inks: { { center: Vector3, radius: number, endsAt: number } } = {}
+
+local function dropBeam(userId: number)
+	local beam = beams[userId]
+	if beam then
+		beam:Destroy()
+		beams[userId] = nil
+	end
+end
+
+-- A tentacle from the beak to a held fish, redrawn every frame while the grab holds
+local function drawBeam(userId: number, from: Vector3, to: Vector3)
+	local beam = beams[userId]
+	if not beam then
+		local made = Instance.new("Part")
+		made.Name = "Tentacle"
+		made.Anchored = true
+		made.CanCollide = false
+		made.CanQuery = false
+		made.CanTouch = false
+		made.CastShadow = false
+		made.Shape = Enum.PartType.Cylinder
+		made.Material = Enum.Material.SmoothPlastic
+		made.Color = Color3.fromRGB(120, 40, 80)
+		made.Parent = folder
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 170, 80)
+		light.Brightness = 1.2
+		light.Range = 14
+		light.Parent = made
+		beams[userId] = made
+		beam = made
+	end
+	local part = beam :: Part
+	local span = to - from
+	local length = math.max(span.Magnitude, 1)
+	local mid = (from + to) / 2
+	part.Size = Vector3.new(length, 1.6, 1.6)
+	part.CFrame = CFrame.lookAt(mid, to) * CFrame.Angles(0, math.rad(90), 0)
+end
+
+-- A burst of dark ink that hangs in the water, and lingers in the blind list
+local function inkCloud(center: Vector3, radius: number, seconds: number)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.one
+	holder.CFrame = CFrame.new(center)
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Rate = 0
+	emitter.Lifetime = NumberRange.new(seconds * 0.8, seconds * 1.1)
+	emitter.Speed = NumberRange.new(radius * 0.08, radius * 0.25)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Drag = 1.5
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, radius * 0.25),
+		NumberSequenceKeypoint.new(0.3, radius * 0.7),
+		NumberSequenceKeypoint.new(1, radius * 0.9),
+	})
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(0.7, 0.45),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	emitter.Color = ColorSequence.new(Color3.fromRGB(18, 10, 24), Color3.fromRGB(30, 16, 40))
+	emitter.LightInfluence = 0
+	emitter.Parent = holder
+	holder.Parent = workspace
+	emitter:Emit(90)
+	table.insert(inks, { center = center, radius = radius, endsAt = Timing.clock() + seconds })
+	task.delay(seconds * 1.2, function()
+		holder:Destroy()
+	end)
+end
+
+-- A whirlpool: bubbles racing round the center for its duration
+local function whirlCloud(center: Vector3, radius: number, seconds: number)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(radius * 1.6, radius * 0.6, radius * 1.6)
+	holder.CFrame = CFrame.new(center)
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Shape = Enum.ParticleEmitterShape.Cylinder
+	emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	emitter.Rate = 160
+	emitter.Lifetime = NumberRange.new(0.8, 1.4)
+	emitter.Speed = NumberRange.new(radius * 0.5, radius * 0.9)
+	emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
+	emitter.Drag = 0.5
+	emitter.Size = NumberSequence.new(1.2, 0.3)
+	emitter.Transparency = NumberSequence.new(0.3, 1)
+	emitter.LightEmission = 0.4
+	emitter.Color = ColorSequence.new(Color3.fromRGB(200, 240, 255))
+	emitter.Parent = holder
+	holder.Parent = workspace
+	task.delay(seconds, function()
+		emitter.Enabled = false
+		task.wait(1.5)
+		holder:Destroy()
+	end)
+end
 
 local function makePart(parent: Instance, color: Color3): Part
 	local part = Instance.new("Part")
@@ -309,6 +422,7 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		markedUntil = 0,
 		staggerUntil = 0,
 		bloodUntil = 0,
+		grabs = {},
 		jaw = jaw,
 		glow = glow,
 		blood = nil,
@@ -356,6 +470,9 @@ end
 
 local function destroy(visual: Visual)
 	visuals[visual.index] = nil
+	for userId in visual.grabs do
+		dropBeam(userId)
+	end
 	if visual.model then
 		(visual.model :: Model):Destroy()
 	else
@@ -681,6 +798,48 @@ local function step(dt: number)
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, frames, Enum.BulkMoveMode.FireCFrameChanged)
 	end
+	-- Tentacle grabs: a beam to each held fish; our own fish is dragged to the beak
+	local myCharacter = Players.LocalPlayer.Character
+	local heldBy = if myCharacter then myCharacter:GetAttribute("HeldBy") else nil
+	local heldUntil = if myCharacter then myCharacter:GetAttribute("HeldUntil") else nil
+	local holder = if typeof(heldBy) == "number"
+			and typeof(heldUntil) == "number"
+			and heldUntil > now
+		then visuals[heldBy]
+		else nil
+	if holder and not holder.hidden then
+		SwimController.hold(holder.position + holder.heading * holder.def.length * 0.1)
+	else
+		SwimController.hold(nil)
+	end
+	for _, visual in visuals do
+		for userId, endsAt in visual.grabs do
+			local player = Players:GetPlayerByUserId(userId)
+			local character = player and player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if endsAt <= now or visual.hidden or root == nil or not root:IsA("BasePart") then
+				visual.grabs[userId] = nil
+				dropBeam(userId)
+				continue
+			end
+			drawBeam(userId, visual.position + visual.heading * visual.def.length * 0.1, root.Position)
+		end
+	end
+	-- Ink: the camera inside a cloud goes blind
+	local cameraAt = workspace.CurrentCamera.CFrame.Position
+	local blind = 0
+	for i = #inks, 1, -1 do
+		local cloud = inks[i]
+		if cloud.endsAt <= now then
+			table.remove(inks, i)
+			continue
+		end
+		local distance = (cloud.center - cameraAt).Magnitude
+		local inside = math.clamp(1 - (distance - cloud.radius * 0.55) / (cloud.radius * 0.45), 0, 1)
+		local fading = math.clamp((cloud.endsAt - now) / 1.5, 0, 1)
+		blind = math.max(blind, inside * fading)
+	end
+	OceanController.setBlind(blind)
 	-- The incoming warning
 	if warningUntil > now then
 		local left = warningUntil - now
@@ -870,6 +1029,96 @@ local function onEvent(kind: any, index: any, payload: any)
 		visual.staggerUntil = now + seconds
 	elseif kind == "laststand" then
 		visual.markedUntil = 0
+	elseif kind == "grab" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 1
+		if payload.missed == true then
+			if at then
+				bubbles(at, def.length * 0.2)
+			end
+		else
+			visual.tellUntil = now + seconds
+			if payload.target == me then
+				warn("TENTACLE · GET CLEAR", seconds + 0.3)
+			end
+		end
+	elseif kind == "grabbed" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 4
+		if typeof(payload.target) == "number" then
+			visual.grabs[payload.target] = now + seconds
+		end
+		visual.tellUntil = 0
+		if payload.target == me then
+			warn("GRABBED · MASH BITE TO BREAK FREE", seconds)
+			CameraController.kick(0.5)
+		end
+	elseif kind == "struggle" then
+		if payload.target == me and typeof(payload.progress) == "number" then
+			warn(`BREAKING FREE · {math.floor(payload.progress * 100 + 0.5)}%`, 1.2)
+		end
+	elseif kind == "released" then
+		if typeof(payload.target) == "number" then
+			visual.grabs[payload.target] = nil
+			dropBeam(payload.target)
+		end
+		if payload.target == me then
+			warn(if payload.how == "eaten" then "" else "FREE", 0.8)
+		end
+	elseif kind == "ink" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 6
+		local radius = if typeof(payload.radius) == "number" then payload.radius else 50
+		inkCloud(at or visual.position, radius, seconds)
+		visual.bloodUntil = now + seconds -- its tag hides in the cloud
+	elseif kind == "jet" then
+		visual.tellUntil = now + (if typeof(payload.seconds) == "number" then payload.seconds else 0.6)
+	elseif kind == "jetted" then
+		visual.tellUntil = 0
+		if
+			typeof(payload.fromX) == "number"
+			and typeof(payload.fromY) == "number"
+			and typeof(payload.fromZ) == "number"
+		then
+			bubbles(Vector3.new(payload.fromX, payload.fromY, payload.fromZ), def.length * 0.6)
+		end
+		if at then
+			table.clear(visual.samples)
+			visual.position = at
+			bubbles(at, def.length * 0.4)
+		end
+	elseif kind == "whirl" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 1.2
+		local radius = if typeof(payload.radius) == "number" then payload.radius else 70
+		visual.tellUntil = now + seconds
+		if myDistance <= radius + 10 then
+			warn("WHIRLPOOL · SWIM AWAY FROM IT", seconds + 3)
+		end
+	elseif kind == "whirling" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 3
+		local radius = if typeof(payload.radius) == "number" then payload.radius else 70
+		visual.tellUntil = 0
+		whirlCloud(at or visual.position, radius, seconds)
+	elseif kind == "siphon" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 1
+		local range = if typeof(payload.range) == "number" then payload.range else 48
+		visual.tellUntil = now + seconds
+		if myRoot and myRoot:IsA("BasePart") then
+			local offset = myRoot.Position - visual.position
+			if offset.Magnitude <= range + 10 and visual.heading:Dot(offset.Unit) > 0.4 then
+				warn("SIPHON BLAST · GET OUT OF ITS FACE", seconds + 0.3)
+			end
+		end
+	elseif kind == "siphoned" then
+		visual.tellUntil = 0
+		local range = if typeof(payload.range) == "number" then payload.range else 48
+		local heading = if typeof(payload.hx) == "number"
+				and typeof(payload.hy) == "number"
+				and typeof(payload.hz) == "number"
+			then Vector3.new(payload.hx, payload.hy, payload.hz)
+			else visual.heading
+		local origin = at or visual.position
+		bubbles(origin + heading * range * 0.3, def.length * 0.5)
+		bubbles(origin + heading * range * 0.7, def.length * 0.5)
+	elseif kind == "enraged" or kind == "mantle" then
+		visual.flashUntil = now + 0.3
 	elseif kind == "hurt" then
 		visual.flashUntil = now + 0.12
 		if typeof(payload.health) == "number" then
@@ -883,7 +1132,7 @@ local function onEvent(kind: any, index: any, payload: any)
 		end
 	elseif kind == "died" then
 		visual.mode = "dead"
-		if payload.reason ~= "escaped" then
+		if payload.reason ~= "escaped" and payload.reason ~= "sunk" then
 			bubbles(visual.position, def.length * (if visual.boss then 0.5 else 0.9))
 		end
 		setHidden(visual, true)

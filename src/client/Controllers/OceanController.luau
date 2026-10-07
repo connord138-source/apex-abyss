@@ -84,6 +84,9 @@ local hubBlend, hubVelocity = 0, 0
 local dreadTarget = 0
 local dread, dreadVelocity = 0, 0
 local heart = 0
+local blindTarget = 0
+local blind, blindVelocity = 0, 0
+local ink: ColorCorrectionEffect
 
 local function blendGrades(a: Grade, b: Grade, t: number): Grade
 	return {
@@ -138,7 +141,18 @@ local function step(dt: number)
 	grade.Saturation = blended.saturation - dread * 0.45
 	grade.Contrast = 0.06 + dread * (0.1 + beat * 0.16)
 	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 - dread * 0.55
+	-- Ink: inside a squid's cloud the water goes near-black
+	blind, blindVelocity = Spring.number(blind, blindVelocity, blindTarget, 4, dt)
+	ink.Enabled = blind > 0.01
+	ink.Brightness = -0.92 * blind
+	ink.Saturation = -0.8 * blind
+	ink.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(40, 24, 50), blind)
 	snowHolder.CFrame = CFrame.new(position)
+end
+
+-- How deep in a boss's ink cloud the camera is (0..1); PredatorController sets it.
+function OceanController.setBlind(amount: number)
+	blindTarget = math.clamp(amount, 0, 1)
 end
 
 -- How much a world boss's presence darkens the water (0..1); BossController sets it.
@@ -151,6 +165,10 @@ function OceanController.start()
 	grade.Name = "OceanGrade"
 	grade.Contrast = 0.06
 	grade.Parent = Lighting
+	ink = Instance.new("ColorCorrectionEffect")
+	ink.Name = "InkBlind"
+	ink.Enabled = false
+	ink.Parent = Lighting
 	bloom = Instance.new("BloomEffect")
 	bloom.Name = "OceanBloom"
 	bloom.Intensity = 0.55

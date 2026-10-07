@@ -94,6 +94,24 @@ return {
 		reachSlack = 4,
 	},
 
+	-- Prey that outsize a player turn on them (owner, 2026-10-07: "the fish that the
+	-- player cannot eat yet because they are too small need to briefly chase the
+	-- player at a slow speed and hurt them if they get too close"). AggroService
+	-- starts a short chase on the shared path; the fish darts at the player and nips
+	-- if it reaches them. Nothing here one-shots.
+	aggro = {
+		ratio = 1.15, -- a prey fish this many times the player's length (or more) is a threat
+		range = 24, -- studs from the fish's path position to the player to start a chase
+		seconds = 2.4, -- the whole chase, out and back
+		lungeAt = 1.25, -- when in the chase the nip lands (seconds)
+		reach = 2.5, -- studs past the fish's half-length the nip reaches
+		fraction = 0.07, -- of the player's max health, plus...
+		perKg = 0.003, -- ...this per kg of the fish, capped at
+		maxFraction = 0.2,
+		cooldown = 7, -- seconds before the same fish chases again
+		playerCooldown = 3.5, -- seconds before the same player is chased again
+	},
+
 	-- Healing (owner, 2026-10-07: "a healing element for boss fights, PvP and PvE").
 	-- Kelp Wraps are the consumable (Config/Shop sells them, medkelp fronds and prey
 	-- drop them, chests hold them); eating prey heals a little too.

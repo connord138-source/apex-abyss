@@ -6,26 +6,13 @@
 -- telegraphed attacks, health that scales with the attackers, soft spots that fill
 -- a stagger meter, and rewards by damage share. Bosses are world events: one rises
 -- about every half hour, announced two minutes ahead, taking turns (`rotation`).
+-- Two kits: the shark (charge, bite, tail sweep, mark, breach) and the squid
+-- (tentacle grab, ink, jet, whirlpool, beak slam, siphon).
 local Predators = require(script.Parent.Predators)
 
 export type Spot = { from: number, to: number } -- along the body, 0 = tail tip, 1 = nose
 
-export type BossDef = {
-	id: string,
-	name: string,
-	title: string, -- the tag line ("APEX PREDATOR")
-	predator: Predators.PredatorDef, -- the body the predator system streams and bites
-	rigged: boolean, -- the model is a rigged FishModels.<model> (spine swim) rather than a prey mesh
-	baseHealth: number,
-	healthPerAttacker: number, -- + this × base per attacker beyond the first
-	attackerWindow: number, -- seconds since their last bite that count a player as attacking
-	phases: { number }, -- health fractions where the next phase starts
-	patrol: {
-		direction: Vector3, -- the sector it roams (unit, flat)
-		spread: number, -- radians either side of it
-		band: { number }, -- distance from the hub's center
-		depth: { number },
-	},
+export type SharkKit = {
 	bite: { fraction: number, reach: number, telegraph: number, cooldown: number, trigger: number },
 	charge: {
 		fraction: number,
@@ -54,6 +41,70 @@ export type BossDef = {
 		lungeSeconds: number,
 		lungeFraction: number,
 	},
+	-- Last stand: breaches on the way to the Trench, then lies exhausted
+	breachEvery: number,
+	breach: {
+		fraction: number,
+		radius: number,
+		band: number,
+		telegraph: number,
+		rocket: number,
+		crash: number,
+		push: number,
+	},
+	exhausted: number,
+}
+
+export type SquidKit = {
+	-- A tentacle lights, then wraps a fish and drags it to the beak: `fraction` of max
+	-- health a second for up to `seconds`; mash (struggleNeed presses) or teammates'
+	-- bites on the squid (biteFree) break it
+	grab: {
+		fraction: number,
+		seconds: number,
+		telegraph: number,
+		range: number,
+		struggleNeed: number,
+		biteFree: number,
+		cooldown: number,
+		freeBeaks: number, -- Kraken Beaks for everyone whose bites broke a grab
+	},
+	ink: { seconds: number, radius: number, cooldown: number },
+	jet: { distance: number, telegraph: number, cooldown: number },
+	whirlpool: { seconds: number, radius: number, pull: number, telegraph: number, cooldown: number },
+	slam: { fraction: number, telegraph: number, reach: number, cooldown: number },
+	siphon: {
+		fraction: number,
+		telegraph: number,
+		range: number,
+		cosine: number,
+		push: number,
+		cooldown: number,
+	},
+	lurkDepth: { number }, -- phases 1–2: it keeps to this depth band
+	mantleDepth: { number }, -- phase 3: up into open water
+}
+
+export type BossDef = {
+	id: string,
+	name: string,
+	title: string, -- the tag line ("APEX PREDATOR")
+	predator: Predators.PredatorDef, -- the body the predator system streams and bites
+	rigged: boolean, -- the model is a rigged FishModels.<model> (spine swim) rather than a prey mesh
+	kit: "shark" | "squid",
+	shark: SharkKit?,
+	squid: SquidKit?,
+	baseHealth: number,
+	healthPerAttacker: number, -- + this × base per attacker beyond the first
+	attackerWindow: number, -- seconds since their last bite that count a player as attacking
+	phases: { number }, -- health fractions where the next phase starts
+	phaseNames: { string },
+	patrol: {
+		direction: Vector3, -- the sector it roams (unit, flat)
+		spread: number, -- radians either side of it
+		band: { number }, -- distance from the hub's center
+		depth: { number },
+	},
 	stagger: {
 		need: number,
 		seconds: number,
@@ -62,23 +113,10 @@ export type BossDef = {
 		staggerMultiplier: number,
 	},
 	softSpots: { Spot },
-	lastStand: {
-		clock: number, -- seconds before it escapes
-		breachEvery: number,
-		breach: {
-			fraction: number,
-			radius: number,
-			band: number,
-			telegraph: number,
-			rocket: number,
-			crash: number,
-			push: number,
-		},
-		exhausted: number, -- seconds it lies still after a breach
-	},
 	frenzySpeed: number, -- × speed in the second phase
+	escapeClock: number, -- seconds the third phase lasts before it escapes
 	rewards: {
-		trophyCurrency: string, -- data.trophies key (Megalodon Teeth, Kraken Beaks)
+		trophyCurrency: string, -- data.trophies key (MegalodonTeeth, KrakenBeaks)
 		currencyName: string,
 		each: number, -- trophies for everyone with a share
 		topThree: number, -- extra for the top three damage dealers
@@ -93,7 +131,7 @@ export type BossDef = {
 		shadeRollMin: string, -- everyone gets a shade roll this tier or better
 		title: string,
 	},
-	dread: { range: number, shakeRange: number },
+	dread: { range: number, shakeRange: number, warning: string },
 	event: { interval: number, warning: number, studioInterval: number, escapeDelay: number },
 }
 
@@ -125,41 +163,29 @@ local megalodon: BossDef = {
 		belly = Color3.fromRGB(214, 222, 230),
 	},
 	rigged = true,
-	baseHealth = 6000,
-	healthPerAttacker = 0.6,
-	attackerWindow = 20,
-	phases = { 0.6, 0.25 },
-	patrol = {
-		direction = Vector3.new(0, 0, -1), -- the Open Blue is north
-		spread = math.rad(80),
-		band = { 330, 620 },
-		depth = { 25, 170 },
-	},
-	bite = { fraction = 0.55, reach = 10, telegraph = 1.2, cooldown = 4, trigger = 22 },
-	charge = {
-		fraction = 0.35,
-		telegraph = 1.2,
-		seconds = 2.2,
-		speedMul = 2.2,
-		radius = 13,
-		cooldown = 9,
-		minRange = 35,
-		maxRange = 170,
-	},
-	sweep = { fraction = 0.2, telegraph = 1, radius = 40, behindMin = 3, push = 60, cooldown = 12 },
-	mark = {
-		seconds = 8,
-		cooldown = 24,
-		speedMul = 1.45,
-		lungeEvery = 2.2,
-		lungeTell = 0.5,
-		lungeSeconds = 0.7,
-		lungeFraction = 0.25,
-	},
-	stagger = { need = 700, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
-	softSpots = { { from = 0.6, to = 0.8 }, { from = 0, to = 0.22 } }, -- gills, tail
-	lastStand = {
-		clock = 60,
+	kit = "shark",
+	shark = {
+		bite = { fraction = 0.55, reach = 10, telegraph = 1.2, cooldown = 4, trigger = 22 },
+		charge = {
+			fraction = 0.35,
+			telegraph = 1.2,
+			seconds = 2.2,
+			speedMul = 2.2,
+			radius = 13,
+			cooldown = 9,
+			minRange = 35,
+			maxRange = 170,
+		},
+		sweep = { fraction = 0.2, telegraph = 1, radius = 40, behindMin = 3, push = 60, cooldown = 12 },
+		mark = {
+			seconds = 8,
+			cooldown = 24,
+			speedMul = 1.45,
+			lungeEvery = 2.2,
+			lungeTell = 0.5,
+			lungeSeconds = 0.7,
+			lungeFraction = 0.25,
+		},
 		breachEvery = 13,
 		breach = {
 			fraction = 0.3,
@@ -172,7 +198,22 @@ local megalodon: BossDef = {
 		},
 		exhausted = 5,
 	},
+	squid = nil,
+	baseHealth = 6000,
+	healthPerAttacker = 0.6,
+	attackerWindow = 20,
+	phases = { 0.6, 0.25 },
+	phaseNames = { "HUNTING", "FRENZY", "LAST STAND" },
+	patrol = {
+		direction = Vector3.new(0, 0, -1), -- the Open Blue is north
+		spread = math.rad(80),
+		band = { 330, 620 },
+		depth = { 25, 170 },
+	},
+	stagger = { need = 700, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
+	softSpots = { { from = 0.6, to = 0.8 }, { from = 0, to = 0.22 } }, -- gills, tail
 	frenzySpeed = 1.3,
+	escapeClock = 60,
 	rewards = {
 		trophyCurrency = "MegalodonTeeth",
 		currencyName = "Megalodon Teeth",
@@ -189,11 +230,95 @@ local megalodon: BossDef = {
 		shadeRollMin = "Rare",
 		title = "Megalodon Slayer",
 	},
-	dread = { range = 300, shakeRange = 70 },
+	dread = { range = 300, shakeRange = 70, warning = "MEGALODON NEARBY" },
 	event = { interval = 1800, warning = 120, studioInterval = 240, escapeDelay = 900 },
 }
 
-local list: { BossDef } = { megalodon }
+local giantSquid: BossDef = {
+	id = "GiantSquid",
+	name = "Giant Squid",
+	title = "TERROR OF THE DEEP",
+	predator = {
+		id = "GiantSquid",
+		name = "Giant Squid",
+		model = "GiantSquid",
+		tag = "TERROR OF THE DEEP",
+		length = 70,
+		health = 5500,
+		speed = 26,
+		turnRate = 1.1,
+		aggroRange = 190,
+		biteReach = 9,
+		biteFraction = 0.45,
+		biteCooldown = 6,
+		telegraph = 1.3,
+		ignoreBelow = 0.035,
+		band = { 280, 560 },
+		depth = { 10, 150 },
+		count = 0,
+		respawn = 0,
+		loot = { haulKg = 0, dna = 0, coral = 0 },
+		back = Color3.fromRGB(96, 34, 70),
+		belly = Color3.fromRGB(190, 140, 160),
+	},
+	rigged = true,
+	kit = "squid",
+	shark = nil,
+	squid = {
+		grab = {
+			fraction = 0.15,
+			seconds = 4,
+			telegraph = 1,
+			range = 60,
+			struggleNeed = 6,
+			biteFree = 3,
+			cooldown = 7,
+			freeBeaks = 1,
+		},
+		ink = { seconds = 6, radius = 55, cooldown = 20 },
+		jet = { distance = 120, telegraph = 0.6, cooldown = 22 },
+		whirlpool = { seconds = 3, radius = 70, pull = 30, telegraph = 1.2, cooldown = 18 },
+		slam = { fraction = 0.45, telegraph = 1.3, reach = 14, cooldown = 6 },
+		siphon = { fraction = 0.15, telegraph = 1, range = 48, cosine = 0.55, push = 85, cooldown = 10 },
+		lurkDepth = { 10, 55 },
+		mantleDepth = { 90, 140 },
+	},
+	baseHealth = 5500,
+	healthPerAttacker = 0.6,
+	attackerWindow = 20,
+	phases = { 0.65, 0.3 },
+	phaseNames = { "LURKER", "ENRAGED", "MANTLE" },
+	patrol = {
+		direction = Vector3.new(0, 0, 1), -- the Trench and the deep edges are south
+		spread = math.rad(75),
+		band = { 280, 560 },
+		depth = { 10, 55 },
+	},
+	stagger = { need = 650, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
+	softSpots = { { from = 0.52, to = 0.7 }, { from = 0, to = 0.25 } }, -- the eye, the tentacles
+	frenzySpeed = 1.25,
+	escapeClock = 90,
+	rewards = {
+		trophyCurrency = "KrakenBeaks",
+		currencyName = "Kraken Beaks",
+		each = 1,
+		topThree = 1,
+		killer = 1,
+		haulKg = 120,
+		minHaulShare = 0.1,
+		coral = 5000,
+		coralMin = 500,
+		minShare = 0.01,
+		dropChance = 1 / 15,
+		dropShade = "AbyssInk",
+		shadeRollMin = "Rare",
+		title = "Kraken Slayer",
+	},
+	dread = { range = 300, shakeRange = 60, warning = "SOMETHING STIRS BELOW" },
+	event = { interval = 1800, warning = 120, studioInterval = 240, escapeDelay = 900 },
+}
+
+local list: { BossDef } = { megalodon, giantSquid }
 
 local byId: { [string]: BossDef } = {}
 for _, def in list do
@@ -203,7 +328,10 @@ end
 return {
 	list = list,
 	byId = byId,
-	rotation = { "Megalodon" }, -- the order the events take turns in (the Giant Squid joins when built)
+	rotation = { "Megalodon", "GiantSquid" }, -- the order the events take turns in
 	-- Clients: the boss HUD bar shows within this distance of a boss
 	hudRange = 700,
+	-- A grabbed fish is dragged toward the beak at this speed (studs/s); its own
+	-- swimming is overridden until it breaks free
+	grabPull = 22,
 }

@@ -241,6 +241,29 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     draws the rigged `FishModels.Megalodon` with a spine wave and the tells (red jaw,
     amber eyes for charge/sweep/breach, gold stagger, blood cloud, shockwave ring).
     Pushes go through `Net.shove` → `SwimController.shove`.
+  - **Giant Squid (built 2026-10-07):** the second boss on the same service (`kit =
+    "squid"` in `Config/Bosses.luau`; the bosses take turns, `rotation`). 70 studs,
+    5,500 hp, lurks deep (10–55 up off the floor) in the south, patrol band 280–560.
+    Lurker: **tentacle grab** (1 s tell, range 60, 15%/s for up to 4 s; the victim's
+    fish is dragged to the beak: server sets `HeldBy`/`HeldUntil` on the character,
+    the client's SwimController.hold overrides the swim; mash BITE or DASH sends
+    `Struggle`, 6 breaks it; 3 bites on the squid by teammates break it too and pay
+    them a Kraken Beak each), **ink** (6 s black cloud, 55 studs; the camera inside
+    goes blind, `OceanController.setBlind`; its tag hides) straight into a **jet**
+    (120 studs away). Enraged under 65%: two grabs at once, half the grab cooldown,
+    **whirlpool** (1.2 s tell, 3 s pull of 30 stud/s² within 70 studs). Mantle under
+    30%: rises to 90–140 up, **beak slam** (1.3 s tell, 45%, reach 14) and **siphon
+    blast** (1 s tell, 15% + an 85 stud/s shove to everything in a 57° cone within 48
+    studs); sinks away after 90 s. Soft spots: the eye (52–70% along the body) and
+    the tentacles (0–25%). Rewards mirror the Megalodon's with Kraken Beaks, the
+    Kraken Slayer title and a 1/15 drop of Abyss Ink (12 Beaks at the Trophy Hunter).
+    Model: `FishModels.GiantSquid` (rigged, 6 segments, mantle forward).
+  - **Oversized prey fight back (owner, 2026-10-07):** `AggroService` + `Config/Tuning`
+    `aggro`: a prey fish at least 1.15× the player's length within 24 studs starts a
+    2.4 s chase (one per player at a time, 7 s per-fish cooldown): every client draws
+    the dart on the shared path (`Schools.chaseBlend/chasePosition`, a red outline,
+    a "TOO BIG TO EAT · SWIM!" warning for the target) and at 1.25 s the server nips
+    for 7% + 0.3%/kg of max health (cap 20%) if the fish reached them.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -404,12 +427,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - models for the growth stages, vendors, the Giant Squid and the other biomes;
+  - models for the growth stages, vendors and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
   - the biomes' Terrain (only the hub seamount is terrain so far)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
-  - the Giant Squid (its design is in GDD §8; the Megalodon is built)
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 
 ## Playtests

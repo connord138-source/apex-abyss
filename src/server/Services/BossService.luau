@@ -1,15 +1,19 @@
 --!strict
 -- World bosses (Config/Bosses, GDD §8). A boss is a `custom` predator: PredatorService
 -- streams it and checks the players' bites, and this service does the rest. The
--- event clock raises one about every half hour (two minutes' warning). The boss
--- hunts the biggest fish around, telegraphs every attack, and moves through three
--- phases as its health falls: Hunting (charge, bite), Frenzy (faster, tail sweep,
--- blood cloud, Marked for death) and Last stand (it makes for the Trench on a
--- clock, breaching on the way; catch it or it escapes). Its health scales with the
--- number of attackers; its soft spots take double damage and fill a stagger meter
--- that stuns it. Everyone who dealt a share of the damage is paid: Teeth for the
--- Trophy Hunter, a huge Haul, coral, a shade roll, a title, and a chance at the
--- trophy shade straight from the kill. Nothing it does one-shots (owner).
+-- event clock raises one about every half hour (two minutes' warning), the bosses
+-- taking turns. Each hunts the biggest fish around, telegraphs every attack, and
+-- moves through three phases as its health falls. Two kits:
+--   shark (Megalodon): Hunting (charge, bite), Frenzy (faster, blood cloud, tail
+--     sweep, Marked for death), Last stand (makes for the Trench on a clock,
+--     breaching on the way; catch it or it escapes).
+--   squid (Giant Squid): Lurker (tentacle grabs, ink then a jet away), Enraged (two
+--     grabs, whirlpool), Mantle (up into open water: beak slam, siphon blast; sinks
+--     away after its clock).
+-- Health scales with the number of attackers; soft spots take double damage and
+-- fill a stagger meter that stuns it. Everyone who dealt a share of the damage is
+-- paid: Teeth or Beaks for the Trophy Hunter, a huge Haul, coral, a shade roll, a
+-- title, and a chance at the trophy shade straight from the kill. Nothing one-shots.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -31,15 +35,24 @@ local Tiers = Config.Tiers
 local World = Config.World
 
 type BossDef = BossesConfig.BossDef
+type SharkKit = BossesConfig.SharkKit
+type SquidKit = BossesConfig.SquidKit
 type Predator = PredatorService.Predator
 
 type Attack = {
-	kind: string, -- bite, charge, lunge, sweep, breach
+	kind: string, -- shark: bite, charge, lunge, sweep, breach · squid: grab, ink, jet, whirlpool, slam, siphon
 	stage: string, -- tell, go, recover, rocket, crash
 	endsAt: number,
 	target: Player?,
 	aim: Vector3, -- a locked direction (charges)
 	hit: { [Player]: boolean }, -- fish already hurt by this attack
+}
+
+type Grab = {
+	endsAt: number,
+	struggles: number,
+	bites: number,
+	biters: { [Player]: boolean },
 }
 
 type Boss = {
@@ -51,11 +64,14 @@ type Boss = {
 	nextAttackAt: number,
 	nextTargetAt: number,
 	mark: { target: Player, endsAt: number, nextLungeAt: number }?,
+	grabs: { [Player]: Grab },
+	whirl: { endsAt: number, center: Vector3 }?,
+	inkUntil: number,
 	stagger: number, -- damage on soft spots toward a stagger
 	staggeredUntil: number,
 	staggerReadyAt: number,
 	exhaustedUntil: number,
-	lastStandUntil: number,
+	lastStandUntil: number, -- the third phase's escape clock
 	nextBreachAt: number,
 	bloodUntil: number,
 	waypoint: Vector3,
@@ -88,14 +104,23 @@ local function interval(def: BossDef): number
 	return if Timing.isStudio() then def.event.studioInterval else def.event.interval
 end
 
-local function patrolPoint(def: BossDef): Vector3
+local function depthBand(boss: Boss): { number }
+	local squid = boss.def.squid
+	if squid then
+		return if boss.phase >= 3 then squid.mantleDepth else squid.lurkDepth
+	end
+	return boss.def.patrol.depth
+end
+
+local function patrolPoint(def: BossDef, depth: { number }?): Vector3
 	local patrol = def.patrol
+	local band = depth or patrol.depth
 	local base = math.atan2(patrol.direction.Z, patrol.direction.X)
 	local angle = base + rng:NextNumber(-patrol.spread, patrol.spread)
 	local distance = rng:NextNumber(patrol.band[1], patrol.band[2])
 	return Vector3.new(
 		math.cos(angle) * distance,
-		rng:NextNumber(patrol.depth[1], patrol.depth[2]),
+		rng:NextNumber(band[1], band[2]),
 		math.sin(angle) * distance
 	)
 end
@@ -162,6 +187,11 @@ local function alongBody(predator: Predator, point: Vector3): (number, number)
 	return (a + ab * t - point).Magnitude, t
 end
 
+-- The squid's beak sits where the arms meet, a little behind its center
+local function beakOf(predator: Predator): Vector3
+	return predator.position + predator.heading * predator.def.length * 0.1
+end
+
 local function speedOf(boss: Boss): number
 	local speed = boss.def.predator.speed
 	if boss.phase >= 2 then
@@ -175,9 +205,60 @@ local function endMark(boss: Boss, now: number)
 		return
 	end
 	boss.mark = nil
-	boss.cooldowns.mark = now + boss.def.mark.cooldown
+	local shark = boss.def.shark
+	boss.cooldowns.mark = now + (if shark then shark.mark.cooldown else 20)
 	Net.predatorEvent("unmarked", boss.predator.index, {})
 	broadcast()
+end
+
+-- A grab lets go: the fish swims again, pushed off the beak
+local function release(boss: Boss, player: Player, how: string, now: number)
+	local grab = boss.grabs[player]
+	if grab == nil then
+		return
+	end
+	boss.grabs[player] = nil
+	local character, root = FishService.character(player)
+	if character then
+		character:SetAttribute("HeldBy", nil)
+		character:SetAttribute("HeldUntil", nil)
+	end
+	if root and how ~= "eaten" then
+		local away = root.Position - beakOf(boss.predator)
+		local flat = Vector3.new(away.X, 0, away.Z)
+		local out = if flat.Magnitude > 1e-3 then flat.Unit else -boss.predator.heading
+		Net.shove(player, out * 40 + Vector3.new(0, 10, 0))
+	end
+	Net.predatorEvent("released", boss.predator.index, { target = player.UserId, how = how })
+	if how == "bitten" then
+		local squid = boss.def.squid
+		local beaks = if squid then squid.grab.freeBeaks else 0
+		if beaks > 0 then
+			for biter in grab.biters do
+				local data = DataService.get(biter)
+				if data and biter ~= player then
+					local currency = boss.def.rewards.trophyCurrency
+					data.trophies[currency] = (data.trophies[currency] or 0) + beaks
+					DataService.markDirty(biter)
+					Net.notify(
+						biter,
+						`You bit {player.DisplayName} free · +{beaks} {boss.def.rewards.currencyName}`,
+						"good"
+					)
+				end
+			end
+		end
+		Net.notify(player, "Your team bit you free!", "good")
+	elseif how == "struggled" then
+		Net.notify(player, "You broke free!", "good")
+	end
+	local _ = now
+end
+
+local function releaseAll(boss: Boss, how: string, now: number)
+	for player in boss.grabs do
+		release(boss, player, how, now)
+	end
 end
 
 local function startAttack(
@@ -239,12 +320,12 @@ local function strike(
 	end
 end
 
-local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): Vector3
+local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?, fishLength: number): Vector3
 	local predator = boss.predator
 	local def = boss.def
+	local shark = def.shark :: SharkKit
 	local speed = speedOf(boss)
 	local index = predator.index
-	local root, fishLength = targetOf(boss)
 	local mouth = PredatorService.mouthOf(predator)
 	local toward = if root
 		then (root.Position + root.AssemblyLinearVelocity * 0.3 - mouth)
@@ -259,16 +340,16 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 			if now >= attack.endsAt then
 				local hit = false
 				if root then
-					local reach = def.bite.reach * 1.6 + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.15
+					local reach = shark.bite.reach * 1.6 + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.15
 					hit = (root.Position - mouth).Magnitude <= reach
 					if hit then
-						HuntService.damage(attack.target :: Player, def.bite.fraction, def.name)
+						HuntService.damage(attack.target :: Player, shark.bite.fraction, def.name)
 					end
 				end
 				Net.predatorEvent("bite", index, { hit = hit, x = mouth.X, y = mouth.Y, z = mouth.Z })
 				attack.stage = "recover"
 				attack.endsAt = now + 1.2
-				boss.cooldowns.bite = now + def.bite.cooldown
+				boss.cooldowns.bite = now + shark.bite.cooldown
 			end
 		else
 			predator.mode = "recover"
@@ -279,8 +360,8 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 		end
 	elseif attack.kind == "charge" or attack.kind == "lunge" then
 		local lunge = attack.kind == "lunge"
-		local fraction = if lunge then def.mark.lungeFraction else def.charge.fraction
-		local radius = if lunge then def.charge.radius * 0.8 else def.charge.radius
+		local fraction = if lunge then shark.mark.lungeFraction else shark.charge.fraction
+		local radius = if lunge then shark.charge.radius * 0.8 else shark.charge.radius
 		if attack.stage == "tell" then
 			predator.mode = "windup"
 			-- Eyes flash: it slows and lines up on the fish
@@ -290,12 +371,12 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 					then ((root.Position + root.AssemblyLinearVelocity * 0.4) - predator.position).Unit
 					else predator.heading
 				attack.stage = "go"
-				attack.endsAt = now + (if lunge then def.mark.lungeSeconds else def.charge.seconds)
+				attack.endsAt = now + (if lunge then shark.mark.lungeSeconds else shark.charge.seconds)
 				Net.predatorEvent("rush", index, { seconds = attack.endsAt - now })
 			end
 		elseif attack.stage == "go" then
 			predator.mode = "hunt"
-			desired = attack.aim * speed * (if lunge then 2 else def.charge.speedMul)
+			desired = attack.aim * speed * (if lunge then 2 else shark.charge.speedMul)
 			strike(boss, attack, fraction, now, function(fish)
 				local distance = alongBody(predator, fish.root.Position)
 				return distance <= radius + fish.length * 0.4
@@ -306,7 +387,7 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 				attack.stage = "recover"
 				attack.endsAt = now + (if lunge then 0.5 else 1.5)
 				if not lunge then
-					boss.cooldowns.charge = now + def.charge.cooldown
+					boss.cooldowns.charge = now + shark.charge.cooldown
 				end
 				Net.predatorEvent(
 					"charged",
@@ -327,24 +408,24 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 			desired = predator.velocity * 0.2
 			if now >= attack.endsAt then
 				local center = predator.position
-				strike(boss, attack, def.sweep.fraction, now, function(fish)
+				strike(boss, attack, shark.sweep.fraction, now, function(fish)
 					local offset = fish.root.Position - center
-					return offset.Magnitude <= def.sweep.radius + fish.length * 0.4
+					return offset.Magnitude <= shark.sweep.radius + fish.length * 0.4
 						and predator.heading:Dot(offset.Unit) < 0.25
 				end, function(fish)
 					local offset = fish.root.Position - center
 					local flat = Vector3.new(offset.X, 0, offset.Z)
 					local out = if flat.Magnitude > 1e-3 then flat.Unit else -predator.heading
-					return out * def.sweep.push + Vector3.new(0, 12, 0)
+					return out * shark.sweep.push + Vector3.new(0, 12, 0)
 				end)
 				Net.predatorEvent(
 					"swept",
 					index,
-					{ x = center.X, y = center.Y, z = center.Z, radius = def.sweep.radius }
+					{ x = center.X, y = center.Y, z = center.Z, radius = shark.sweep.radius }
 				)
 				attack.stage = "recover"
 				attack.endsAt = now + 0.8
-				boss.cooldowns.sweep = now + def.sweep.cooldown
+				boss.cooldowns.sweep = now + shark.sweep.cooldown
 			end
 		else
 			predator.mode = "recover"
@@ -354,7 +435,7 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 			end
 		end
 	elseif attack.kind == "breach" then
-		local breach = def.lastStand.breach
+		local breach = shark.breach
 		if attack.stage == "tell" then
 			predator.mode = "windup"
 			-- It sinks, gathering itself
@@ -395,9 +476,9 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 					index,
 					{ x = center.X, y = center.Y, z = center.Z, radius = breach.radius }
 				)
-				boss.exhaustedUntil = now + def.lastStand.exhausted
-				boss.nextBreachAt = now + def.lastStand.breachEvery + def.lastStand.exhausted
-				Net.predatorEvent("exhausted", index, { seconds = def.lastStand.exhausted })
+				boss.exhaustedUntil = now + shark.exhausted
+				boss.nextBreachAt = now + shark.breachEvery + shark.exhausted
+				Net.predatorEvent("exhausted", index, { seconds = shark.exhausted })
 				boss.attack = nil
 				broadcast()
 			end
@@ -406,32 +487,261 @@ local function runAttack(boss: Boss, attack: Attack, dt: number, now: number): V
 	return desired
 end
 
+local function jetTo(boss: Boss, now: number)
+	local predator = boss.predator
+	local def = boss.def
+	local squid = def.squid :: SquidKit
+	local from = predator.position
+	-- Somewhere `distance` away, still inside the patrol band
+	local destination = from
+	for _ = 1, 12 do
+		local angle = rng:NextNumber(0, 2 * math.pi)
+		local candidate = from + Vector3.new(math.cos(angle), 0, math.sin(angle)) * squid.jet.distance
+		local flat = Vector3.new(candidate.X, 0, candidate.Z).Magnitude
+		if flat >= def.patrol.band[1] and flat <= def.patrol.band[2] then
+			destination = candidate
+			break
+		end
+	end
+	local band = depthBand(boss)
+	destination = Vector3.new(destination.X, rng:NextNumber(band[1], band[2]), destination.Z)
+	Net.predatorEvent("jetted", predator.index, {
+		fromX = from.X,
+		fromY = from.Y,
+		fromZ = from.Z,
+		x = destination.X,
+		y = destination.Y,
+		z = destination.Z,
+	})
+	predator.position = destination
+	predator.velocity = Vector3.zero
+	boss.cooldowns.jet = now + squid.jet.cooldown
+end
+
+local function runSquid(boss: Boss, attack: Attack, now: number, root: BasePart?, fishLength: number): Vector3
+	local predator = boss.predator
+	local def = boss.def
+	local squid = def.squid :: SquidKit
+	local speed = speedOf(boss)
+	local index = predator.index
+	local beak = beakOf(predator)
+	local toward = if root
+		then (root.Position + root.AssemblyLinearVelocity * 0.3 - beak)
+		else predator.heading
+	local direction = if toward.Magnitude > 1e-3 then toward.Unit else predator.heading
+	local desired = predator.heading * speed * 0.3
+
+	if attack.kind == "grab" then
+		if attack.stage == "tell" then
+			predator.mode = "windup"
+			desired = direction * speed * 0.3
+			if now >= attack.endsAt then
+				local target = attack.target :: Player
+				local session = HuntService.sessions()[target]
+				local caught = root ~= nil
+					and session ~= nil
+					and session.alive
+					and not session.inHub
+					and session.safeUntil <= now
+					and (root.Position - beak).Magnitude <= squid.grab.range + fishLength * 0.5
+				if caught then
+					boss.grabs[target] =
+						{ endsAt = now + squid.grab.seconds, struggles = 0, bites = 0, biters = {} }
+					local character = FishService.character(target)
+					if character then
+						character:SetAttribute("HeldBy", index)
+						character:SetAttribute("HeldUntil", now + squid.grab.seconds)
+					end
+					Net.predatorEvent(
+						"grabbed",
+						index,
+						{ target = target.UserId, seconds = squid.grab.seconds }
+					)
+					Net.notify(target, "GRABBED · mash BITE to break free", "bad")
+				else
+					Net.predatorEvent(
+						"grab",
+						index,
+						{ target = 0, seconds = 0, missed = true, x = beak.X, y = beak.Y, z = beak.Z }
+					)
+				end
+				boss.cooldowns.grab = now + squid.grab.cooldown * (if boss.phase >= 2 then 0.5 else 1)
+				attack.stage = "recover"
+				attack.endsAt = now + 0.6
+			end
+		else
+			predator.mode = "hunt"
+			desired = predator.velocity * 0.5
+			if now >= attack.endsAt then
+				boss.attack = nil
+			end
+		end
+	elseif attack.kind == "ink" then
+		-- The cloud bursts at once; the attack is the moment it holds still in it
+		predator.mode = "recover"
+		desired = predator.velocity * 0.3
+		if now >= attack.endsAt then
+			boss.attack = nil
+			-- Then it's gone: the jet follows straight away
+			boss.cooldowns.jet = 0
+			boss.nextAttackAt = now
+		end
+	elseif attack.kind == "jet" then
+		if attack.stage == "tell" then
+			predator.mode = "windup"
+			desired = -predator.heading * speed * 0.3
+			if now >= attack.endsAt then
+				jetTo(boss, now)
+				boss.attack = nil
+			end
+		end
+	elseif attack.kind == "whirlpool" then
+		if attack.stage == "tell" then
+			predator.mode = "windup"
+			desired = predator.velocity * 0.1
+			if now >= attack.endsAt then
+				boss.whirl = { endsAt = now + squid.whirlpool.seconds, center = predator.position }
+				Net.predatorEvent("whirling", index, {
+					seconds = squid.whirlpool.seconds,
+					radius = squid.whirlpool.radius,
+					x = predator.position.X,
+					y = predator.position.Y,
+					z = predator.position.Z,
+				})
+				attack.stage = "go"
+				attack.endsAt = now + squid.whirlpool.seconds
+			end
+		elseif attack.stage == "go" then
+			predator.mode = "hunt"
+			desired = Vector3.zero
+			if now >= attack.endsAt then
+				boss.whirl = nil
+				boss.cooldowns.whirlpool = now + squid.whirlpool.cooldown
+				Net.predatorEvent("whirled", index, {})
+				boss.attack = nil
+			end
+		end
+	elseif attack.kind == "slam" then
+		if attack.stage == "tell" then
+			predator.mode = "windup"
+			desired = direction * speed * 0.4
+			if now >= attack.endsAt then
+				local hit = false
+				if root then
+					local reach = squid.slam.reach * 1.5 + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.15
+					hit = (root.Position - beak).Magnitude <= reach
+					if hit then
+						HuntService.damage(attack.target :: Player, squid.slam.fraction, def.name)
+					end
+				end
+				Net.predatorEvent("bite", index, { hit = hit, x = beak.X, y = beak.Y, z = beak.Z })
+				boss.cooldowns.slam = now + squid.slam.cooldown
+				attack.stage = "recover"
+				attack.endsAt = now + 1
+			end
+		else
+			predator.mode = "recover"
+			desired = predator.heading * speed * 0.3
+			if now >= attack.endsAt then
+				boss.attack = nil
+			end
+		end
+	elseif attack.kind == "siphon" then
+		if attack.stage == "tell" then
+			predator.mode = "windup"
+			desired = direction * speed * 0.2
+			if now >= attack.endsAt then
+				local origin = beak
+				local heading = predator.heading
+				strike(boss, attack, squid.siphon.fraction, now, function(fish)
+					local offset = fish.root.Position - origin
+					return offset.Magnitude <= squid.siphon.range + fish.length * 0.4
+						and offset.Magnitude > 1e-3
+						and heading:Dot(offset.Unit) >= squid.siphon.cosine
+				end, function(fish)
+					local offset = fish.root.Position - origin
+					local out = if offset.Magnitude > 1e-3 then offset.Unit else heading
+					return (heading * 0.7 + out * 0.3).Unit * squid.siphon.push
+				end)
+				Net.predatorEvent("siphoned", index, {
+					x = origin.X,
+					y = origin.Y,
+					z = origin.Z,
+					hx = heading.X,
+					hy = heading.Y,
+					hz = heading.Z,
+					range = squid.siphon.range,
+				})
+				boss.cooldowns.siphon = now + squid.siphon.cooldown
+				attack.stage = "recover"
+				attack.endsAt = now + 1
+			end
+		else
+			predator.mode = "recover"
+			desired = predator.heading * speed * 0.3
+			if now >= attack.endsAt then
+				boss.attack = nil
+			end
+		end
+	end
+	return desired
+end
+
+local function runAttack(boss: Boss, attack: Attack, now: number): Vector3
+	local root, fishLength = targetOf(boss)
+	if boss.def.kit == "squid" then
+		return runSquid(boss, attack, now, root, fishLength)
+	end
+	return runShark(boss, attack, now, root, fishLength)
+end
+
 local function enterPhase(boss: Boss, phase: number, now: number)
 	boss.phase = phase
 	local def = boss.def
 	local index = boss.predator.index
-	if phase == 2 then
-		boss.bloodUntil = now + 10
-		Net.predatorEvent("blood", index, { seconds = 10 })
-		Net.notifyAll(`The {string.upper(def.name)} is in a FRENZY!`, "bad")
-	elseif phase == 3 then
-		boss.lastStandUntil = now + def.lastStand.clock
-		boss.nextBreachAt = now + 4
-		endMark(boss, now)
-		boss.attack = nil
-		Net.predatorEvent("laststand", index, { seconds = def.lastStand.clock })
-		Net.notifyAll(
-			`LAST STAND · the {string.upper(def.name)} makes for the Trench · {def.lastStand.clock} s`,
-			"bad"
-		)
+	local name = string.upper(def.name)
+	if def.kit == "shark" then
+		local shark = def.shark :: SharkKit
+		if phase == 2 then
+			boss.bloodUntil = now + 10
+			Net.predatorEvent("blood", index, { seconds = 10 })
+			Net.notifyAll(`The {name} is in a FRENZY!`, "bad")
+		elseif phase == 3 then
+			boss.lastStandUntil = now + def.escapeClock
+			boss.nextBreachAt = now + 4
+			endMark(boss, now)
+			boss.attack = nil
+			Net.predatorEvent("laststand", index, { seconds = def.escapeClock })
+			Net.notifyAll(`LAST STAND · the {name} makes for the Trench · {def.escapeClock} s`, "bad")
+			local _ = shark
+		end
+	else
+		if phase == 2 then
+			Net.predatorEvent("enraged", index, {})
+			Net.notifyAll(`The {name} is ENRAGED · two tentacles at once`, "bad")
+		elseif phase == 3 then
+			boss.lastStandUntil = now + def.escapeClock
+			releaseAll(boss, "dropped", now)
+			boss.attack = nil
+			boss.whirl = nil
+			Net.predatorEvent("mantle", index, { seconds = def.escapeClock })
+			Net.notifyAll(`The {name} RISES into open water · it sinks away in {def.escapeClock} s`, "bad")
+		end
 	end
 	broadcast()
 end
 
 local function escape(boss: Boss, now: number)
 	active = nil
-	PredatorService.remove(boss.predator, "escaped")
-	Net.notifyAll(`The {string.upper(boss.def.name)} slipped away into the Trench. It will be back.`, "info")
+	releaseAll(boss, "dropped", now)
+	local reason = if boss.def.kit == "squid" then "sunk" else "escaped"
+	PredatorService.remove(boss.predator, reason)
+	Net.notifyAll(
+		if boss.def.kit == "squid"
+			then `The {string.upper(boss.def.name)} sank back into the Trench. It will be back.`
+			else `The {string.upper(boss.def.name)} slipped away into the Trench. It will be back.`,
+		"info"
+	)
 	schedule(now, boss.def.event.escapeDelay)
 	broadcast()
 end
@@ -587,6 +897,7 @@ local function onDied(predator: Predator, killer: Player?)
 		return -- removed (an escape): nothing to pay
 	end
 	active = nil
+	releaseAll(boss, "dropped", Timing.clock())
 	Net.notifyAll(
 		`{killer.DisplayName} landed the killing bite on the {string.upper(boss.def.name)}!`,
 		"rare"
@@ -598,8 +909,9 @@ local function onDied(predator: Predator, killer: Player?)
 end
 
 -- Every player bite on the boss: soft spots double it, a stagger or exhaustion
--- triples it, and soft-spot damage fills the stagger meter.
-local function onHit(predator: Predator, _player: Player, damage: number, point: Vector3): number
+-- triples it, soft-spot damage fills the stagger meter, and bites help a grabbed
+-- teammate break free.
+local function onHit(predator: Predator, player: Player, damage: number, point: Vector3): number
 	local boss = active
 	if boss == nil or boss.predator ~= predator then
 		return damage
@@ -631,17 +943,53 @@ local function onHit(predator: Predator, _player: Player, damage: number, point:
 			boss.staggeredUntil = now + def.stagger.seconds
 			boss.staggerReadyAt = now + def.stagger.seconds + def.stagger.cooldown
 			boss.attack = nil
+			boss.whirl = nil
 			endMark(boss, now)
+			releaseAll(boss, "dropped", now)
 			Net.predatorEvent("stagger", predator.index, { seconds = def.stagger.seconds })
 			Net.notifyAll(`The {string.upper(def.name)} is STAGGERED · bite it!`, "good")
 			broadcast()
 		end
 	end
+	-- Biting the squid while it holds someone loosens the grab
+	local squid = def.squid
+	if squid then
+		for victim, grab in boss.grabs do
+			if victim ~= player then
+				grab.bites += 1
+				grab.biters[player] = true
+				if grab.bites >= squid.grab.biteFree then
+					release(boss, victim, "bitten", now)
+				end
+			end
+		end
+	end
 	return final
 end
 
+local function onStruggle(player: Player)
+	local boss = active
+	if boss == nil then
+		return
+	end
+	local grab = boss.grabs[player]
+	local squid = boss.def.squid
+	if grab == nil or squid == nil then
+		return
+	end
+	grab.struggles += 1
+	Net.predatorEvent("struggle", boss.predator.index, {
+		target = player.UserId,
+		progress = math.clamp(grab.struggles / squid.grab.struggleNeed, 0, 1),
+	})
+	if grab.struggles >= squid.grab.struggleNeed then
+		release(boss, player, "struggled", Timing.clock())
+	end
+end
+
 local function summon(def: BossDef, now: number)
-	local predator = PredatorService.add(def.predator, patrolPoint(def))
+	local depth = if def.squid then def.squid.lurkDepth else def.patrol.depth
+	local predator = PredatorService.add(def.predator, patrolPoint(def, depth))
 	predator.onHit = onHit
 	predator.maxHealth = def.baseHealth
 	predator.health = def.baseHealth
@@ -654,6 +1002,9 @@ local function summon(def: BossDef, now: number)
 		nextAttackAt = now + 3,
 		nextTargetAt = 0,
 		mark = nil,
+		grabs = {},
+		whirl = nil,
+		inkUntil = 0,
 		stagger = 0,
 		staggeredUntil = 0,
 		staggerReadyAt = now + 15,
@@ -661,7 +1012,7 @@ local function summon(def: BossDef, now: number)
 		lastStandUntil = 0,
 		nextBreachAt = 0,
 		bloodUntil = 0,
-		waypoint = patrolPoint(def),
+		waypoint = patrolPoint(def, depth),
 		waypointUntil = now + 15,
 		spawnedAt = now,
 	}
@@ -670,28 +1021,36 @@ local function summon(def: BossDef, now: number)
 	broadcast()
 end
 
-local function countBehind(boss: Boss, now: number): number
+local function countNear(boss: Boss, now: number, radius: number, behind: boolean): number
 	local predator = boss.predator
 	local count = 0
 	for _, fish in fishAround(now) do
 		local offset = fish.root.Position - predator.position
-		if offset.Magnitude <= boss.def.sweep.radius and predator.heading:Dot(offset.Unit) < -0.1 then
+		if offset.Magnitude <= radius and (not behind or predator.heading:Dot(offset.Unit) < -0.1) then
 			count += 1
 		end
 	end
 	return count
 end
 
-local function chooseAttack(boss: Boss, now: number)
+local function grabCount(boss: Boss): number
+	local count = 0
+	for _ in boss.grabs do
+		count += 1
+	end
+	return count
+end
+
+local function chooseShark(boss: Boss, now: number)
 	local def = boss.def
+	local shark = def.shark :: SharkKit
 	local predator = boss.predator
 	local cooldowns = boss.cooldowns
-	boss.nextAttackAt = now + 0.3
 	if boss.phase == 3 and now >= boss.nextBreachAt then
-		startAttack(boss, "breach", "tell", def.lastStand.breach.telegraph, nil, now)
+		startAttack(boss, "breach", "tell", shark.breach.telegraph, nil, now)
 		Net.predatorEvent("breach", predator.index, {
 			stage = "tell",
-			seconds = def.lastStand.breach.telegraph,
+			seconds = shark.breach.telegraph,
 			x = predator.position.X,
 			z = predator.position.Z,
 		})
@@ -699,12 +1058,12 @@ local function chooseAttack(boss: Boss, now: number)
 	end
 	local mark = boss.mark
 	if mark and now >= mark.nextLungeAt then
-		mark.nextLungeAt = now + def.mark.lungeEvery
-		startAttack(boss, "lunge", "tell", def.mark.lungeTell, mark.target, now)
+		mark.nextLungeAt = now + shark.mark.lungeEvery
+		startAttack(boss, "lunge", "tell", shark.mark.lungeTell, mark.target, now)
 		Net.predatorEvent(
 			"windup",
 			predator.index,
-			{ target = mark.target.UserId, seconds = def.mark.lungeTell }
+			{ target = mark.target.UserId, seconds = shark.mark.lungeTell }
 		)
 		return
 	end
@@ -716,43 +1075,189 @@ local function chooseAttack(boss: Boss, now: number)
 	if
 		boss.phase >= 2
 		and (cooldowns.sweep or 0) <= now
-		and countBehind(boss, now) >= def.sweep.behindMin
+		and countNear(boss, now, shark.sweep.radius, true) >= shark.sweep.behindMin
 	then
-		startAttack(boss, "sweep", "tell", def.sweep.telegraph, nil, now)
+		startAttack(boss, "sweep", "tell", shark.sweep.telegraph, nil, now)
 		Net.predatorEvent("sweep", predator.index, {
-			seconds = def.sweep.telegraph,
+			seconds = shark.sweep.telegraph,
 			x = predator.position.X,
 			y = predator.position.Y,
 			z = predator.position.Z,
-			radius = def.sweep.radius,
+			radius = shark.sweep.radius,
 		})
 		return
 	end
 	if boss.phase >= 2 and mark == nil and (cooldowns.mark or 0) <= now and now - boss.spawnedAt > 10 then
-		boss.mark = { target = target, endsAt = now + def.mark.seconds, nextLungeAt = now + 1 }
-		Net.predatorEvent("marked", predator.index, { target = target.UserId, seconds = def.mark.seconds })
-		Net.notify(target, "MARKED FOR DEATH · the Megalodon has your scent", "bad")
+		boss.mark = { target = target, endsAt = now + shark.mark.seconds, nextLungeAt = now + 1 }
+		Net.predatorEvent("marked", predator.index, { target = target.UserId, seconds = shark.mark.seconds })
+		Net.notify(target, `MARKED FOR DEATH · the {def.name} has your scent`, "bad")
 		broadcast()
 		return
 	end
 	local distance = (root.Position - PredatorService.mouthOf(predator)).Magnitude
-	if (cooldowns.bite or 0) <= now and distance <= def.bite.trigger + fishLength * 0.5 then
-		startAttack(boss, "bite", "tell", def.bite.telegraph, target, now)
-		Net.predatorEvent("windup", predator.index, { target = target.UserId, seconds = def.bite.telegraph })
+	if (cooldowns.bite or 0) <= now and distance <= shark.bite.trigger + fishLength * 0.5 then
+		startAttack(boss, "bite", "tell", shark.bite.telegraph, target, now)
+		Net.predatorEvent(
+			"windup",
+			predator.index,
+			{ target = target.UserId, seconds = shark.bite.telegraph }
+		)
 		return
 	end
 	if
 		(cooldowns.charge or 0) <= now
-		and distance >= def.charge.minRange
-		and distance <= def.charge.maxRange
+		and distance >= shark.charge.minRange
+		and distance <= shark.charge.maxRange
 	then
-		startAttack(boss, "charge", "tell", def.charge.telegraph, target, now)
+		startAttack(boss, "charge", "tell", shark.charge.telegraph, target, now)
 		Net.predatorEvent(
 			"charge",
 			predator.index,
-			{ target = target.UserId, seconds = def.charge.telegraph }
+			{ target = target.UserId, seconds = shark.charge.telegraph }
 		)
 		return
+	end
+end
+
+local function chooseSquid(boss: Boss, now: number)
+	local def = boss.def
+	local squid = def.squid :: SquidKit
+	local predator = boss.predator
+	local cooldowns = boss.cooldowns
+	local index = predator.index
+	-- Pending jet after an ink
+	if boss.inkUntil > now and (cooldowns.jet or 0) <= now then
+		startAttack(boss, "jet", "tell", squid.jet.telegraph, nil, now)
+		Net.predatorEvent("jet", index, { seconds = squid.jet.telegraph })
+		return
+	end
+	local root, fishLength = PredatorService.targetRoot(predator)
+	local target = predator.target
+	local attackers = 0
+	for _, record in predator.hitBy do
+		if now - record.at < 6 then
+			attackers += 1
+		end
+	end
+	if boss.phase >= 3 then
+		if root and target then
+			local distance = (root.Position - beakOf(predator)).Magnitude
+			if (cooldowns.slam or 0) <= now and distance <= squid.slam.reach * 1.8 + fishLength * 0.5 then
+				startAttack(boss, "slam", "tell", squid.slam.telegraph, target, now)
+				Net.predatorEvent("windup", index, { target = target.UserId, seconds = squid.slam.telegraph })
+				return
+			end
+		end
+		if (cooldowns.siphon or 0) <= now then
+			local inFront = 0
+			for _, fish in fishAround(now) do
+				local offset = fish.root.Position - beakOf(predator)
+				if
+					offset.Magnitude <= squid.siphon.range
+					and offset.Magnitude > 1e-3
+					and predator.heading:Dot(offset.Unit) >= squid.siphon.cosine
+				then
+					inFront += 1
+				end
+			end
+			if inFront >= 1 then
+				startAttack(boss, "siphon", "tell", squid.siphon.telegraph, nil, now)
+				Net.predatorEvent("siphon", index, {
+					seconds = squid.siphon.telegraph,
+					range = squid.siphon.range,
+					x = predator.position.X,
+					y = predator.position.Y,
+					z = predator.position.Z,
+				})
+				return
+			end
+		end
+		return
+	end
+	-- Lurker and Enraged
+	if
+		boss.phase >= 2
+		and (cooldowns.whirlpool or 0) <= now
+		and countNear(boss, now, squid.whirlpool.radius, false) >= 2
+	then
+		startAttack(boss, "whirlpool", "tell", squid.whirlpool.telegraph, nil, now)
+		Net.predatorEvent("whirl", index, {
+			seconds = squid.whirlpool.telegraph,
+			radius = squid.whirlpool.radius,
+			x = predator.position.X,
+			y = predator.position.Y,
+			z = predator.position.Z,
+		})
+		return
+	end
+	if attackers >= 1 and (cooldowns.ink or 0) <= now and now - boss.spawnedAt > 8 then
+		startAttack(boss, "ink", "go", 0.8, nil, now)
+		boss.inkUntil = now + squid.ink.seconds
+		boss.cooldowns.ink = now + squid.ink.cooldown
+		Net.predatorEvent("ink", index, {
+			seconds = squid.ink.seconds,
+			radius = squid.ink.radius,
+			x = predator.position.X,
+			y = predator.position.Y,
+			z = predator.position.Z,
+		})
+		return
+	end
+	if root and target and boss.grabs[target] == nil then
+		local maxGrabs = if boss.phase >= 2 then 2 else 1
+		local distance = (root.Position - beakOf(predator)).Magnitude
+		if
+			(cooldowns.grab or 0) <= now
+			and grabCount(boss) < maxGrabs
+			and distance <= squid.grab.range * 1.2 + fishLength * 0.5
+		then
+			startAttack(boss, "grab", "tell", squid.grab.telegraph, target, now)
+			Net.predatorEvent("grab", index, { target = target.UserId, seconds = squid.grab.telegraph })
+			return
+		end
+	end
+	if attackers >= 2 and (cooldowns.jet or 0) <= now and predator.health < predator.maxHealth * 0.9 then
+		startAttack(boss, "jet", "tell", squid.jet.telegraph, nil, now)
+		Net.predatorEvent("jet", index, { seconds = squid.jet.telegraph })
+		return
+	end
+end
+
+local function chooseAttack(boss: Boss, now: number)
+	boss.nextAttackAt = now + 0.3
+	if boss.def.kit == "squid" then
+		chooseSquid(boss, now)
+	else
+		chooseShark(boss, now)
+	end
+end
+
+-- Grabs hurt their fish every tick and let go when time runs out
+local function tickGrabs(boss: Boss, dt: number, now: number)
+	local squid = boss.def.squid
+	if squid == nil then
+		return
+	end
+	for player, grab in boss.grabs do
+		local session = HuntService.sessions()[player]
+		if session == nil or not session.alive or session.inHub or player.Parent == nil then
+			release(boss, player, "eaten", now)
+			continue
+		end
+		if now >= grab.endsAt then
+			release(boss, player, "dropped", now)
+			continue
+		end
+		HuntService.damage(player, squid.grab.fraction * dt, boss.def.name, true)
+	end
+	local whirl = boss.whirl
+	if whirl then
+		for _, fish in fishAround(now) do
+			local offset = whirl.center - fish.root.Position
+			if offset.Magnitude <= squid.whirlpool.radius and offset.Magnitude > 4 then
+				Net.shove(fish.player, offset.Unit * squid.whirlpool.pull * dt)
+			end
+		end
 	end
 end
 
@@ -784,6 +1289,7 @@ local function tick(boss: Boss, dt: number, now: number)
 		escape(boss, now)
 		return
 	end
+	tickGrabs(boss, dt, now)
 	-- The mark runs out, or its fish is gone
 	local mark = boss.mark
 	if mark then
@@ -793,15 +1299,26 @@ local function tick(boss: Boss, dt: number, now: number)
 			mark = nil
 		end
 	end
-	-- Pick a target now and then (the marked fish while a mark holds)
+	-- Pick a target now and then (the marked fish while a mark holds; never a fish
+	-- it already holds)
 	if mark then
 		predator.target = mark.target
 	elseif now >= boss.nextTargetAt then
 		boss.nextTargetAt = now + 0.5
 		local root = PredatorService.targetRoot(predator)
-		local session = if predator.target then HuntService.sessions()[predator.target :: Player] else nil
-		if root == nil or session == nil or not session.alive or session.inHub then
+		local current = predator.target
+		local session = if current then HuntService.sessions()[current :: Player] else nil
+		if
+			root == nil
+			or session == nil
+			or not session.alive
+			or session.inHub
+			or (current ~= nil and boss.grabs[current :: Player] ~= nil)
+		then
 			predator.target = PredatorService.pickTarget(predator, now)
+			if predator.target and boss.grabs[predator.target :: Player] then
+				predator.target = nil
+			end
 		end
 	end
 
@@ -815,8 +1332,8 @@ local function tick(boss: Boss, dt: number, now: number)
 		desired = predator.velocity * 0.05
 		boss.attack = nil
 	elseif attack then
-		desired = runAttack(boss, attack, dt, now)
-		if attack.stage == "go" then
+		desired = runAttack(boss, attack, now)
+		if attack.stage == "go" and (attack.kind == "charge" or attack.kind == "lunge") then
 			turnRate = 6 -- locked on
 		end
 	else
@@ -826,7 +1343,7 @@ local function tick(boss: Boss, dt: number, now: number)
 		local root = PredatorService.targetRoot(predator)
 		if boss.attack then
 			desired = predator.velocity
-		elseif boss.phase == 3 then
+		elseif def.kit == "shark" and boss.phase == 3 then
 			-- Making for the Trench, slowly, until the clock runs out
 			local trench = World.trench.center
 			local goal = Vector3.new(trench.X, 30, trench.Z)
@@ -841,18 +1358,31 @@ local function tick(boss: Boss, dt: number, now: number)
 			predator.mode = "hunt"
 		elseif root then
 			local lead = root.Position + root.AssemblyLinearVelocity * 0.3
-			local toward = lead - PredatorService.mouthOf(predator)
-			desired = (if toward.Magnitude > 1e-3 then toward.Unit else predator.heading)
-				* speed
-				* (if mark then def.mark.speedMul else 1)
+			local anchor = if def.kit == "squid" then beakOf(predator) else PredatorService.mouthOf(predator)
+			local toward = lead - anchor
+			-- A squid holding fish hovers near them instead of ramming
+			local holding = def.kit == "squid" and grabCount(boss) > 0
+			local shark = def.shark
+			local chase = if mark and shark then shark.mark.speedMul elseif holding then 0.25 else 1
+			desired = (if toward.Magnitude > 1e-3 then toward.Unit else predator.heading) * speed * chase
 			predator.mode = "hunt"
 		else
 			if (boss.waypoint - predator.position).Magnitude < 15 or now > boss.waypointUntil then
-				boss.waypoint = patrolPoint(def)
+				boss.waypoint = patrolPoint(def, depthBand(boss))
 				boss.waypointUntil = now + 15
 			end
 			desired = (boss.waypoint - predator.position).Unit * speed * 0.55
 			predator.mode = "roam"
+		end
+		-- The squid keeps to its depth band: deep while it lurks, high in its mantle phase
+		if def.kit == "squid" then
+			local band = depthBand(boss)
+			local y = predator.position.Y
+			if y < band[1] then
+				desired = Vector3.new(desired.X, math.max(desired.Y, speed * 0.5), desired.Z)
+			elseif y > band[2] then
+				desired = Vector3.new(desired.X, math.min(desired.Y, -speed * 0.5), desired.Z)
+			end
 		end
 	end
 	PredatorService.steer(predator, desired, dt, turnRate)
@@ -877,6 +1407,7 @@ function BossService.start()
 	local now = Timing.clock()
 	schedule(now, interval(nextDef()))
 	PredatorService.died:connect(onDied)
+	Net.onRequest("Struggle", onStruggle)
 	RunService.Heartbeat:Connect(function(dt)
 		accumulator += dt
 		if accumulator < Config.Predators.tickSeconds then
@@ -896,7 +1427,10 @@ function BossService.start()
 		if not warned and clock >= nextEventAt - def.event.warning then
 			warned = true
 			Net.notifyAll(
-				`THE {string.upper(def.name)} RISES IN {math.floor(def.event.warning / 60)} MINUTES · gather in the Open Blue`,
+				`THE {string.upper(def.name)} RISES IN {math.floor(def.event.warning / 60)} MINUTES · {if def.kit
+						== "squid"
+					then "watch the deep edges"
+					else "gather in the Open Blue"}`,
 				"bad"
 			)
 			broadcast()
@@ -909,15 +1443,22 @@ function BossService.start()
 	end)
 	DataService.releasing:connect(function(player: Player)
 		local boss = active
-		if boss and boss.mark and boss.mark.target == player then
-			endMark(boss, Timing.clock())
+		if boss then
+			local clock = Timing.clock()
+			if boss.mark and boss.mark.target == player then
+				endMark(boss, clock)
+			end
+			if boss.grabs[player] then
+				boss.grabs[player] = nil
+			end
 		end
 	end)
 	if Timing.isStudio() then
 		-- Studio testing from the Server command bar (a require there gets its own
 		-- module copy, so the real service is reached through _G):
-		--   _G.ApexBoss.summon()            -- raise the next boss now
-		--   _G.ApexBoss.hurt(0.5)           -- take half its health off
+		--   _G.ApexBoss.summon()                -- raise the next boss now
+		--   _G.ApexBoss.summon("GiantSquid")    -- a particular one
+		--   _G.ApexBoss.hurt(0.5)               -- take half its health off
 		(_G :: any).ApexBoss = {
 			summon = BossService.summon,
 			hurt = function(fraction: number)

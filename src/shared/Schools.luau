@@ -132,4 +132,38 @@ function Schools.position(index: number, t: number): Vector3
 	return Schools.fishFrame(index, Schools.schoolFrame(f.school, t), t).Position
 end
 
+-- A chase (AggroService): how far along the dart a fish is at `elapsed` seconds
+-- into a chase of `seconds`: out to the target by `lungeAt`, a snap, then back to
+-- its path. 0 = on the path, 1 = at the target.
+function Schools.chaseBlend(elapsed: number, seconds: number, lungeAt: number): number
+	if elapsed <= 0 or elapsed >= seconds then
+		return 0
+	end
+	if elapsed <= lungeAt then
+		local t = elapsed / lungeAt
+		return t * t * (3 - 2 * t) -- ease out of the school
+	end
+	local back = (elapsed - lungeAt) / math.max(seconds - lungeAt, 0.01)
+	return 1 - back * back
+end
+
+-- Where a chasing fish is: between its path position and a point just short of the
+-- target (it stops at its own half-length plus the target's).
+function Schools.chasePosition(
+	index: number,
+	pathPosition: Vector3,
+	target: Vector3,
+	targetLength: number,
+	blend: number
+): Vector3
+	local f = fish[index]
+	local toward = target - pathPosition
+	local distance = toward.Magnitude
+	if distance < 1e-3 then
+		return pathPosition
+	end
+	local stop = math.max(distance - (f.length * 0.5 + targetLength * 0.35), 0)
+	return pathPosition + toward.Unit * stop * blend
+end
+
 return Schools

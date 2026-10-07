@@ -15,11 +15,11 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `species_fbx` | Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged FBX) | `ReplicatedStorage.FishModels.<SpeciesId>` |
 | `prey_glb` | Minnow, Sardine, Wrasse, Snapper, Grouper, Barracuda, ReefShark (static GLB) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
-| `boss_fbx` | Megalodon (rigged FBX, 7 spine segments; the world boss) | `ReplicatedStorage.FishModels.Megalodon` |
+| `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
-Not yet made: species growth stages (Fry/Juvenile/Apex), the vendors, the Giant
-Squid, the other biomes' props. The Barracuda and Reef Shark predators reuse the prey
-meshes. The Tripo balance is about 1,620 credits (`python tools/tripo.py balance`).
+Not yet made: species growth stages (Fry/Juvenile/Apex), the vendors, the other
+biomes' props. The Barracuda and Reef Shark predators reuse the prey
+meshes. The Tripo balance is about 1,580 credits (`python tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -32,8 +32,8 @@ python tools/fetch_assets.py
 
 1. `fetch_assets.py` downloads the bundles into `assets/fbx/` and `assets/glb/` (gitignored).
 2. **File → Import 3D**, select **all** files in `assets/fbx/species/`, keep the rig
-   (skinning) on and textures on, then **Import All**. Do the same for
-   `assets/fbx/bosses/Megalodon.fbx`.
+   (skinning) on and textures on, then **Import All**. Do the same for the two
+   files in `assets/fbx/bosses/`.
 3. Do the same for all files in `assets/glb/prey/` and `assets/glb/props/` (no rig).
 4. **View → Command Bar**, paste the contents of `tools/studio/organize_imports.luau`,
    press Enter. It moves every import into the folder the code reads and sets each

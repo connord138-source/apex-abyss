@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "name": "GiantSquid",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE colossal giant squid alone, large and centered, filling the frame, laid out STRAIGHT and horizontal, the pointed mantle (its body) at the viewer's LEFT and the eight arms and two long feeding tentacles trailing straight to the RIGHT, in a three-quarter view with the whole creature visible: a huge torpedo-shaped mantle with two broad fins, deep red-purple mottled skin with pale undersides, one enormous glowing amber eye visible on this side, rows of pale glowing suckers along the arms, a dark hooked beak hidden where the arms meet, menacing deep-sea monster but still stylized, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion; keep the arms and tentacles bundled close together and roughly parallel so the silhouette is one long body."
+    }
+  ]
+}
