@@ -241,7 +241,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     The sticks are zeroed on `InputEnded` and also re-read from the pad's own
     `GetGamepadState` every frame (render step `ApexSticks`): Studio's Controller
     Emulator sends no near-zero `InputChanged` on release, which left the fish
-    swimming on its own (playtest 2026-10-07).
+    swimming on its own (playtest 2026-10-07). Roblox's own touch controls are
+    off (`GuiService.TouchControlsEnabled = false`); the HUD draws the stick.
     `SwimController` swims the throttle along the aim and backs up on a pulled
     stick; `CameraController` turns the aim by the steer at the fish's turn rate
     (`camera.steerScale`).

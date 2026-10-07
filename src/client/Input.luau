@@ -79,6 +79,9 @@ local function pollSticks()
 end
 
 function Input.start()
+	-- The HUD's own stick and buttons replace Roblox's touch controls (its dynamic
+	-- thumbstick drew a second ring beside ours, playtest 2026-10-07)
+	GuiService.TouchControlsEnabled = false
 	UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			if not processed then
