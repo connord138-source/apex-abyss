@@ -32,6 +32,36 @@ function SwimWave.headYaw(bend: number): number
 	return bend * 0.25
 end
 
+-- Each rig's bones' rest rotations in the fish's own axes (its Root bone's: Y up, -Z
+-- ahead). Imported bones point their own Y down the spine (Blender's bone axis), so
+-- a turn about a bone's own Y rolled the body instead of swinging the tail (playtest
+-- 2026-10-07: tails moved +-0.02 studs); the swing is turned into each bone's axes.
+-- Taken once per rig, before any turn is applied, so no pose leaks in.
+local restFrames: { [any]: { [string]: CFrame } } = setmetatable({}, { __mode = "k" }) :: any
+
+local function restOf(bones: { [string]: Bone }): { [string]: CFrame }?
+	local root = bones.Root
+	if root == nil then
+		return nil
+	end
+	local frames = restFrames[bones]
+	if frames == nil then
+		local made: { [string]: CFrame } = {}
+		local rootFrame = root.WorldCFrame * root.Transform:Inverse()
+		for name, bone in bones do
+			made[name] = rootFrame:ToObjectSpace(bone.WorldCFrame * bone.Transform:Inverse()).Rotation
+		end
+		restFrames[bones] = made
+		frames = made
+	end
+	return frames
+end
+
+local function turn(bone: Bone, frame: CFrame?, yaw: number)
+	local rotation = CFrame.Angles(0, yaw, 0)
+	bone.Transform = if frame then frame:Inverse() * rotation * frame else rotation
+end
+
 -- Drives a rigged body's bones (Head, Spine1..N, Tail) in place
 function SwimWave.applyBones(
 	bones: { [string]: Bone },
@@ -40,15 +70,16 @@ function SwimWave.applyBones(
 	amplitude: number,
 	bend: number
 )
+	local frames = restOf(bones)
 	local head = bones.Head
 	if head then
-		head.Transform = CFrame.Angles(0, SwimWave.headYaw(bend), 0)
+		turn(head, frames and frames.Head, SwimWave.headYaw(bend))
 	end
 	local n = #spine
 	for i, name in spine do
 		local bone = bones[name]
 		if bone then
-			bone.Transform = CFrame.Angles(0, SwimWave.yaw(i, n, phase, amplitude, bend), 0)
+			turn(bone, frames and frames[name], SwimWave.yaw(i, n, phase, amplitude, bend))
 		end
 	end
 end
