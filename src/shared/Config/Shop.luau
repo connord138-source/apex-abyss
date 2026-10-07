@@ -125,6 +125,14 @@ local charms: { Charm } = {
 		max = 1,
 	},
 	{
+		id = "KelpWrap",
+		vendor = "Charms",
+		name = "Kelp Wrap",
+		blurb = "Heals 40% over 4 s (H). You swim slower while it works",
+		price = 120,
+		max = 5,
+	},
+	{
 		id = "Magnet",
 		vendor = "Charms",
 		name = "Shell Magnet",

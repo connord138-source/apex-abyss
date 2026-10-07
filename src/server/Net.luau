@@ -43,6 +43,7 @@ local REQUESTS: { [string]: number } = {
 	FollowMap = 0.3, -- (mapId or "") follow a treasure map, or stop
 	StartDig = 0.4, -- () begin digging at the followed map's X
 	FinishDig = 0.4, -- () the dig hold completed
+	UseWrap = 0.3, -- () use a Kelp Wrap (heal)
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -115,6 +116,11 @@ end
 
 function Net.hit(attacker: Player, victim: Player, damage: number)
 	hit:FireAllClients(attacker.UserId, victim.UserId, damage)
+end
+
+-- A hit from something that isn't a player (a creature): `sourceId` is negative.
+function Net.hitBy(victim: Player, sourceId: number, damage: number)
+	hit:FireAllClients(sourceId, victim.UserId, damage)
 end
 
 function Net.onGetEaten(handler: (Player) -> { [string]: number })

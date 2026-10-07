@@ -581,11 +581,11 @@ end
 
 local function showControlsHint()
 	local text = if Input.isTouch()
-		then "Left stick: push up to swim, sideways to turn · drag to aim up and down · BITE and DASH on the right"
+		then "Left stick: push up to swim, sideways to turn · drag to aim · BITE, DASH and HEAL on the right"
 		elseif
 			Input.isGamepad()
-		then "Left stick: up to swim, sideways to turn · right stick aims · RT dash · RB bite · Y at a stall · D-pad menus"
-		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · Wheel zoom · E at a stall · R roll · hold Alt for the cursor"
+		then "Left stick: up to swim, sideways to turn · right stick aims · RT dash · RB bite · LB heal · Y at a stall · D-pad menus"
+		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · Wheel zoom · E at a stall · H heal · R roll · hold Alt for the cursor"
 	local label = Ui.label(
 		gui,
 		"Controls",

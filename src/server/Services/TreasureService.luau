@@ -259,6 +259,9 @@ local function grant(
 	elseif reward.kind == "dna" then
 		HuntService.giveDna(player, siteOf(map), reward.amount or 0)
 		result.dna = reward.amount
+	elseif reward.kind == "wraps" then
+		HuntService.giveWrap(player, reward.amount or 0)
+		result.wraps = reward.amount
 	elseif reward.kind == "charm" then
 		local charmId = reward.charm or "Lucky"
 		data.charms[charmId] = (data.charms[charmId] or 0) + 1

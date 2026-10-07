@@ -87,6 +87,38 @@ local function starfish(parent: Instance, def: ForageDef, rng: Random): ({ BaseP
 	return parts, offsets
 end
 
+-- Medkelp: the imported model, or three glowing fronds from a little holdfast.
+local function medkelp(parent: Instance, def: ForageDef, rng: Random): ({ BasePart }, { CFrame })
+	local scale = rng:NextNumber(0.9, 1.3)
+	local prop = PropParts.make("Medkelp", Vector3.new(2.2, 3.2, 2.2) * scale, parent)
+	if prop then
+		return prop.parts, prop.offsets
+	end
+	local parts: { BasePart } = {}
+	local offsets: { CFrame } = {}
+	local holdfast = ellipsoid(parent, Color3.fromRGB(70, 90, 70), Vector3.new(1.1, 0.4, 1.1) * scale)
+	table.insert(parts, holdfast)
+	table.insert(offsets, CFrame.new())
+	for blade = 0, 2 do
+		local frond = ellipsoid(parent, def.color, Vector3.new(0.35, 2.6, 0.9) * scale)
+		frond.Material = Enum.Material.Neon
+		frond.Color = def.accent
+		table.insert(parts, frond)
+		table.insert(
+			offsets,
+			CFrame.Angles(0, blade * math.rad(120), 0)
+				* CFrame.new(0.3 * scale, 1.3 * scale, 0)
+				* CFrame.Angles(0, 0, math.rad(-18))
+		)
+	end
+	local glow = Instance.new("PointLight")
+	glow.Color = def.accent
+	glow.Range = 10
+	glow.Brightness = 0.8
+	glow.Parent = holdfast
+	return parts, offsets
+end
+
 -- A shrimp: the imported model, or a curled body and a tail fan.
 local function shrimp(parent: Instance, def: ForageDef, rng: Random): ({ BasePart }, { CFrame })
 	local scale = rng:NextNumber(0.85, 1.2)
@@ -165,6 +197,8 @@ local function build(positions: { Vector3 }, kinds: { string })
 		local parts, offsets
 		if kind == "Starfish" then
 			parts, offsets = starfish(folder, def, rng)
+		elseif kind == "Medkelp" then
+			parts, offsets = medkelp(folder, def, rng)
 		else
 			parts, offsets = shrimp(folder, def, rng)
 		end

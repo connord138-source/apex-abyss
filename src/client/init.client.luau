@@ -7,6 +7,7 @@ local BiomeController = require(script.Controllers.BiomeController)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
+local HealController = require(script.Controllers.HealController)
 local HudController = require(script.Controllers.HudController)
 local HuntController = require(script.Controllers.HuntController)
 local MenuController = require(script.Controllers.MenuController)
@@ -28,6 +29,7 @@ RollController.start() -- wallet, Roll button and the reveal
 BiomeController.start() -- biome names, suggested levels and under-level warnings
 TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
+HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow
 CameraController.start()
 FishAnimator.start()
 HuntController.start()

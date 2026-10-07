@@ -1,4 +1,9 @@
 {
+ "bosses/Megalodon": {
+  "status": "queued",
+  "task_id": "f541e926-f11d-41fb-ad33-6b68a1648359",
+  "type": "image_to_model"
+ },
  "concepts/BiomeAbyssalTrench": {
   "credits": 10,
   "files": [
@@ -419,6 +424,15 @@
   ],
   "status": "success",
   "task_id": "8a82a940-9c49-4dbc-8a3d-709d9e1fac65",
+  "type": "generate_image"
+ },
+ "species_sheets/Megalodon": {
+  "credits": 10,
+  "files": [
+   "Megalodon.png"
+  ],
+  "status": "success",
+  "task_id": "92ef48f7-ca90-47d6-a262-e079210cadf3",
   "type": "generate_image"
  },
  "species_sheets/MorayEel": {

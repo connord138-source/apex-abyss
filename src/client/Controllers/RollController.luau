@@ -373,6 +373,8 @@ local function reveal(result: { [string]: any })
 		detail = `+{Format.mass(result.haul or 0)} of Haul, straight into your dive`
 	elseif result.kind == "dna" then
 		detail = `+{Ui.number(result.dna or 0)} DNA`
+	elseif result.kind == "wraps" then
+		detail = `+{result.wraps or 0} Kelp Wraps (H heals you)`
 	elseif result.kind == "charm" then
 		detail = "A Lucky Charm: your next roll's rare odds ×2"
 	elseif result.duplicate then

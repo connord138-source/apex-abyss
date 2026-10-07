@@ -94,6 +94,20 @@ return {
 		reachSlack = 4,
 	},
 
+	-- Healing (owner, 2026-10-07: "a healing element for boss fights, PvP and PvE").
+	-- Kelp Wraps are the consumable (Config/Shop sells them, medkelp fronds and prey
+	-- drop them, chests hold them); eating prey heals a little too.
+	heal = {
+		wrapFraction = 0.4, -- of max health, over wrapSeconds
+		wrapSeconds = 4,
+		wrapCooldown = 18,
+		wrapMax = 5, -- carried at once
+		wrapSlow = 0.7, -- swim speed while a wrap heals (the PvP counterplay)
+		eatBase = 0.02, -- eating prey heals this fraction of max health...
+		eatPerKg = 0.005, -- ...plus this per kg of prey
+		preyDropChance = 0.03, -- a wrap tucked in a prey fish
+	},
+
 	economy = {
 		-- Coral for banking a Haul: bankCoral × √(kg banked), so it grows with you
 		-- without running away late

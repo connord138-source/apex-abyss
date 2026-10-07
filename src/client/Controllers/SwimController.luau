@@ -15,6 +15,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
+local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
@@ -174,6 +175,11 @@ local function step(dt: number)
 	local upgrades = if ClientState.current then ClientState.current.upgrades else nil
 	local stats = SwimController.stats()
 	local top = Size.topSpeed(length) * Perks.speed(upgrades) * stats.speed
+	-- A Kelp Wrap slows you while it heals (the PvP counterplay)
+	local healing = if character then character:GetAttribute("Healing") else nil
+	if typeof(healing) == "number" and healing > Timing.clock() then
+		top *= Config.Tuning.heal.wrapSlow
+	end
 	local camera = workspace.CurrentCamera.CFrame
 
 	-- Where the player wants to go, relative to the camera: the keys as on PC, plus
