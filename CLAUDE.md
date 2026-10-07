@@ -102,7 +102,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
       - Plus a huge Haul, a coral jackpot, a Rare-or-better roll and a title.
       - Boss shades have `boss` set in `Config/Shades.luau` and are kept out of the roll
         odds.
-    - It's built with the AI predators.
+    - It's built with the AI predators (not built yet, 2026-10-07).
+  - **Boss rules (owner, 2026-10-07):** team-first but soloable (solo in 8–10 min is
+    fine; health +60% per extra attacker), **nothing one-shots** (boss damage is a
+    share of max health: Megalodon bite 55%, Squid grab 15%/s), separate phases with
+    different attacks per boss, **no minions** in boss fights yet, and a **healing
+    element** for boss fights, PvP and PvE: Kelp Wraps (40% over 4 s, 18 s cooldown,
+    slower while healing; from medkelp fronds, the Tidecharm Trader for coral, prey
+    drops and chests; never Robux) plus eat-to-heal on prey. Look: Schedule I
+    stylization with undersea horror in the presentation (darkening water, drone,
+    silhouettes, glowing eyes; no gore). GDD §8 "Boss rules" and "Healing".
   - **Giant Squid world boss (owner):** "a giant squid that roams the map as well, they
     could be world events".
     - **Bosses are world events:** about every 30 minutes one rises, announced two

@@ -469,6 +469,57 @@ Owner: "a giant squid that roams the map as well, they could be world events."
   - The **Giant Squid** rises from the Abyssal Trench and the deep edges (below).
 - **"Leviathan Rising"** in the tide events becomes these boss events.
 
+**Boss rules (owner, 2026-10-07):** "designed to be taken on as a team, very hard but
+not impossible to defeat solo; attacks and separate phases; different attacks for
+different bosses; solo in 8–10 minutes is fine; nothing should be one-shot; a healing
+element players can use in boss fights, PvP and PvE; no minions in boss fights yet;
+cartoonish Schedule I vibes, but the undersea horror aspect for the bosses."
+
+- **Team-first, soloable:** health scales with attackers but not one for one. Base
+  health is tuned so a maxed solo fish wins in about 8–10 minutes of clean play; each
+  extra attacker (anyone who hit it in the last 20 s) adds +60% health, so teams
+  finish faster per head and solo stays possible.
+- **Solo is hard because of survival, not damage:** every attack has a 1–1.5 s tell
+  (visual, sound, HUD) and one correct answer. Alone you must answer all of them; a
+  team takes turns.
+- **No one-shots.** Boss damage is a share of the victim's max health, so two
+  mistakes in a row kill and a heal buys a third: Megalodon bite 55%, charge 35% plus
+  knockback, tail sweep 20% plus knockback, breach shockwave 30%; Squid grab 15% per
+  second held (up to 4 s), beak slam 45%, siphon blast 25% plus knockback. Being
+  killed by a boss costs the Haul like any death; Second Chance applies.
+- **Soft spots and Schooling:** gills, eye and tentacles take double damage, and
+  Schooling pools the mass of fish within ~20 studs, so six juveniles bite like one
+  adult. A **stagger meter** fills from soft-spot hits; full, the boss stalls 4 s with
+  its weak point wide open. Teams earn staggers; solo players get the same windows
+  from phase changes.
+- **Escape clock:** it roams 15 minutes and dives to escape at low health; finish it
+  or it heals and leaves.
+- **No minions** (owner): the fights are the boss alone, for now.
+- **Look:** stylized and chunky like everything else (the concepts already are), with
+  the horror in the presentation: the water darkens and loses color within ~300
+  studs, the music drops to a drone and a heartbeat, you see a silhouette through the
+  murk before the body, eyes and suckers glow in the dark, the camera shakes as it
+  passes, red APEX PREDATOR tags, "SOMETHING STIRS BELOW". Menace from scale, light
+  and sound; no gore.
+
+### Healing (owner, 2026-10-07; to build with the predators)
+
+"We need a healing element for players that they can use for boss fights as well as
+PvP and PvE fights."
+
+- **Kelp Wrap** (consumable): heals 40% of max health over 4 s, 18 s cooldown, carry up
+  to 5. Using one is a 0.6 s wrap (the fish glows green) and you swim 30% slower while
+  it heals, which is the counterplay in PvP: the attacker can catch you. Hotkey H on
+  keyboard, LB on a pad, a HEAL button on touch.
+- **Sources:** glowing medkelp fronds in the kelp forests (eaten like forage, one wrap
+  each, per player, back in 2 min), the Tidecharm Trader (120 coral, "safety" is
+  sellable), an occasional drop from prey, and a stack of three in Tattered and
+  Weathered treasure chests. Never sold for Robux (the rule: growth and safety for
+  coral, never bite damage).
+- **Eat to heal:** eating prey heals 2% plus 0.5% per kg, so snacking on the schools
+  around a boss arena matters in a long fight.
+- The den and the plaza keep their full regen.
+
 ### World boss: the Megalodon (owner, 2026-10-06)
 
 The owner asked for "a massive megalodon that roams the map, mostly in deep blue.
@@ -488,7 +539,8 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   - A HUD warning, "MEGALODON NEARBY", points toward it.
   - The camera shakes as it passes, and its tag reads APEX PREDATOR in red.
 - **Danger:**
-  - Its bite swallows any player whole: no bite fight, and the Haul is lost.
+  - Its bite takes 55% of any fish's max health (owner, 2026-10-07: nothing is a
+    one-shot); two bites kill, a Kelp Wrap buys a third.
   - It hunts the biggest fish around and mostly ignores tiny ones, so small players
     can school round it. That's the headline twist.
 - **The fight** takes the whole server:
@@ -498,11 +550,18 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   - Every attack is telegraphed: its jaw opens with a red glint before a bite, and its
     eyes flash before a charge.
   - Three phases:
-    1. **Hunting** (100–60%): it charges its target.
-    2. **Frenzy** (60–25%): it's faster, tail sweeps knock fish back, and a blood cloud
-       hides it.
-    3. **Last stand** (under 25%): it dives for the Trench. Catch it before it escapes,
-       or it heals and comes back later.
+    1. **Hunting** (100–60%): **Charge** (eyes flash red, a straight rush at the
+       biggest fish nearby; dodge sideways or up) and **Bite** (the jaw opens with a
+       red glint, a short lunge).
+    2. **Frenzy** (60–25%): faster. **Tail sweep**, a 360° knockback when three or more
+       fish bunch behind it, so nobody stacks. **Blood cloud** hides it; only sonar
+       pings show where it is. **Marked for death**: it locks onto the biggest fish
+       for 8 s with repeated short charges; the mark breaks when the stagger meter
+       fills, so the team's soft-spot hits save that player. (No minions, owner.)
+    3. **Last stand** (under 25%): it dives for the Trench on a 60 s clock. **Breach**:
+       it rockets up and crashes down with a shockwave ring (go vertical to dodge),
+       then lies exhausted 5 s with its gills glowing at triple damage, the solo kill
+       window. Catch it before it escapes, or it heals and comes back later.
 - **Rewards** (owner, 2026-10-06: no playable Megalodon; "specific skins unlocked from
   beating them... a pale green ghost skin or a certain item for their base. The reward
   needs to be something worth fighting it for"). Everyone who dealt at least 1% of the
@@ -536,18 +595,21 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   - The HUD warns "SOMETHING STIRS BELOW".
   - It attacks from underneath.
 - **Danger:**
-  - **Tentacle grab:** a tentacle wraps a fish and drags it toward the beak. Mash to
-    break free, or nearby fish can bite the tentacle to free you; being dragged in
-    means you're eaten.
+  - **Tentacle grab:** a tentacle lights up 1 s before it strikes, wraps a fish and
+    drags it toward the beak, 15% of max health a second for up to 4 s. Mash to
+    break free, or a teammate bites the tentacle to free you (no one-shot, owner).
   - **Ink cloud:** blinds everyone in it and hides the squid.
   - **Jet:** it vanishes and reappears somewhere else.
-- **The fight:**
-  - Its health scales with the number of attackers.
-  - Its tentacles can be bitten off: each one lost makes it weaker and gives bonus
-    rewards.
-  - Its eye takes double damage while it's lit before a grab.
-  - At low health it sinks back into the Trench, so it has to be finished before it
-    escapes.
+- **The fight,** three phases:
+  1. **Lurker** (100–65%): it stays in the dark: grabs, ink, jets. Its eight tentacles
+     have their own health; biting one off removes a grab and pays bonus Beaks.
+  2. **Enraged** (65–30%): two grabs at once. **Whirlpool**: it jets water to pull
+     everyone toward the beak for 3 s; swim hard against it or get behind a rock. Its
+     eye lights before each grab and takes double damage then.
+  3. **Mantle** (under 30%): it rises into open water where everyone can see it,
+     exposed but fast: **beak slam** (45%) and a **siphon blast** cone that knocks
+     fish back. It sinks to escape after 90 s.
+  - Its health scales with attackers the same way as the Megalodon's.
 - **Rewards** follow the same rules as the Megalodon (no playable Kraken). Everyone who
   dealt at least 1% of the damage gets:
   - **Kraken Beaks**, spent at the Trophy Hunter.
