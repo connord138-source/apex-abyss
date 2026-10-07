@@ -1,14 +1,17 @@
 --!strict
--- Builds the graybox map at server start: the seabed with a trench, the surface
--- ceiling, the map's walls, the hub cavern (wall ring, 12 dens with Haul Pools,
--- 4 tunnels, a roof with an oculus) and the Kelp Shallows' dressing (kelp, rocks,
--- arches, a coral patch, light shafts). Everything is placeholder geometry for
--- judging feel; layout numbers live in Config/World.luau and Shared/Layout.luau.
+-- Builds the map at server start: the seabed with a trench, the surface ceiling,
+-- the map's walls, the hub cavern (Terrain carved by Cave.luau, plus 12 dens' pools
+-- and signs, sconces, the plaza and beacon) and the Kelp Shallows' dressing (kelp,
+-- rocks, arches, a coral patch, light shafts). The dressing is placeholder geometry
+-- until the Tripo props land; layout numbers live in Config/World.luau and
+-- Shared/Layout.luau.
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Cave = require(script.Parent.Parent.Cave)
+local Props = require(script.Parent.Parent.Props)
 
 local World = Config.World
 local hub = World.hub
@@ -22,7 +25,6 @@ local vendorPositions: { [string]: Vector3 } = {}
 local SAND = Color3.fromRGB(196, 182, 140)
 local ROCK = Color3.fromRGB(92, 98, 104)
 local ROCK_DARK = Color3.fromRGB(58, 62, 70)
-local HUB_STONE = Color3.fromRGB(84, 92, 102)
 local KELP = Color3.fromRGB(78, 116, 52)
 local KELP_LIGHT = Color3.fromRGB(122, 150, 64)
 local POOL = Color3.fromRGB(80, 230, 255)
@@ -248,8 +250,9 @@ local function buildBounds(parent: Instance)
 	surface.CastShadow = false
 end
 
--- One den: a room cut back into the wall, with its Haul Pool and sign.
-local function buildDen(parent: Instance, index: number, segment: number, width: number)
+-- One den's furniture; the room itself is carved from the Terrain (Cave.luau).
+-- Its Haul Pool, a warm lamp and the sign over the round doorway.
+local function buildDen(parent: Instance, index: number, segment: number)
 	local angle = Layout.segmentAngle(segment)
 	local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
 	local function at(r: number, y: number): CFrame
@@ -258,30 +261,7 @@ local function buildDen(parent: Instance, index: number, segment: number, width:
 	end
 	local den = Instance.new("Model")
 	den.Name = `Den{index}`
-	local roomWidth = width * 0.88
 	local top = hub.denFloorY + hub.denHeight
-	local back = hub.radius + hub.denDepth
-	local midR = hub.radius + hub.denDepth / 2
-	-- Floor, ceiling, back and sides
-	block(den, "Floor", Vector3.new(roomWidth, 2, hub.denDepth), at(midR, hub.denFloorY - 1), HUB_STONE)
-	block(den, "Ceiling", Vector3.new(roomWidth + 4, 3, hub.denDepth + 2), at(midR, top + 1.5), HUB_STONE)
-	block(
-		den,
-		"Back",
-		Vector3.new(roomWidth + 4, hub.denHeight + 6, 3),
-		at(back + 1.5, top / 2 + 1),
-		HUB_STONE
-	)
-	for side = -1, 1, 2 do
-		local wall = block(
-			den,
-			"Side",
-			Vector3.new(2, hub.denHeight + 6, hub.denDepth),
-			at(midR, top / 2 + 1) * CFrame.new(side * (roomWidth / 2 + 1), 0, 0),
-			HUB_STONE
-		)
-		wall.Name = "Side"
-	end
 	-- The Haul Pool: swim into it to bank
 	local pool = Instance.new("Part")
 	pool.Name = "HaulPool"
@@ -313,15 +293,25 @@ local function buildDen(parent: Instance, index: number, segment: number, width:
 	bubbles.LightEmission = 0.6
 	bubbles.Color = ColorSequence.new(Color3.fromRGB(210, 250, 255))
 	bubbles.Parent = pool
-	-- A warm lamp so a den reads as home
+	-- A warm lamp so a den reads as home, on an invisible anchor under the room's roof
+	local anchor = Instance.new("Part")
+	anchor.Name = "Lamp"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.one
+	anchor.CFrame = at(hub.radius + hub.denDepth / 2, top - 4)
+	anchor.Parent = den
 	local lamp = Instance.new("PointLight")
 	lamp.Color = Color3.fromRGB(255, 196, 140)
 	lamp.Range = 26
 	lamp.Brightness = 0.9
-	lamp.Parent = den:FindFirstChild("Ceiling") :: BasePart
-	-- The sign over the opening, facing the hub
+	lamp.Parent = anchor
+	-- The sign over the doorway, facing the hub
 	local sign =
-		block(den, "Sign", Vector3.new(roomWidth * 0.8, 4, 0.6), at(hub.radius - 0.5, top + 3.5), ROCK_DARK)
+		block(den, "Sign", Vector3.new(16, 3.2, 0.6), at(hub.radius - 1.2, hub.denFloorY + 25.5), ROCK_DARK)
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Back -- the face toward the hub
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -340,15 +330,14 @@ local function buildDen(parent: Instance, index: number, segment: number, width:
 	den.Parent = parent
 end
 
+-- The hub: the cavern is Terrain (Cave.luau: the seamount, the dome and oculus,
+-- the den rooms and tunnels); parts add what terrain can't (pools, lamps, signs,
+-- sconces, the plaza, the beacon, light shafts).
 local function buildHub(parent: Instance)
 	local hubFolder = folder("Hub", parent)
-	local segments = hub.segments
-	local outerR = hub.radius + hub.wallThickness
-	local midR = hub.radius + hub.wallThickness / 2
-	local arc = 2 * math.pi / segments
-	local width = 2 * midR * math.tan(arc / 2) * 1.08
+	Cave.apply(workspace.Terrain, Cave.ops())
 	local denIndex = 0
-	for segment = 1, segments do
+	for segment = 1, hub.segments do
 		local angle = Layout.segmentAngle(segment)
 		local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
 		local function at(r: number, y: number): CFrame
@@ -356,67 +345,13 @@ local function buildHub(parent: Instance)
 			return CFrame.lookAt(position, position + radial)
 		end
 		local kind = Layout.segmentKind(segment)
-		local openTop = 0
 		if kind == "den" then
 			denIndex += 1
-			openTop = hub.denFloorY + hub.denHeight
-			block(
-				hubFolder,
-				"Wall",
-				Vector3.new(width, hub.denFloorY, hub.wallThickness),
-				at(midR, hub.denFloorY / 2),
-				HUB_STONE
-			)
-			buildDen(hubFolder, denIndex, segment, width)
-		elseif kind == "tunnel" then
-			openTop = hub.tunnelHeight
-			-- The tunnel runs out through the wall to the shallows
-			local length = hub.wallThickness + hub.tunnelLength
-			local tunnelMid = hub.radius + length / 2
-			for side = -1, 1, 2 do
-				block(
-					hubFolder,
-					"TunnelSide",
-					Vector3.new(3, hub.tunnelHeight + 4, length),
-					at(tunnelMid, (hub.tunnelHeight + 4) / 2) * CFrame.new(side * (width * 0.45 + 1.5), 0, 0),
-					HUB_STONE
-				)
-			end
-			block(
-				hubFolder,
-				"TunnelRoof",
-				Vector3.new(width * 0.9 + 6, 4, length),
-				at(tunnelMid, hub.tunnelHeight + 2),
-				HUB_STONE
-			)
-		end
-		-- The wall above any opening (or the whole height)
-		local wallHeight = hub.height - openTop
-		block(
-			hubFolder,
-			"Wall",
-			Vector3.new(width, wallHeight, hub.wallThickness),
-			at(midR, openTop + wallHeight / 2),
-			HUB_STONE
-		)
-		-- Roof, in two rings so the blocks overlap without gaps; the oculus stays open
-		local innerR = hub.oculusRadius
-		local splitR = (innerR + outerR) / 2
-		for _, ring in { { innerR, splitR }, { splitR, outerR + 2 } } do
-			local r0, r1 = ring[1], ring[2]
-			local ringWidth = 2 * r1 * math.tan(arc / 2) * 1.1
-			block(
-				hubFolder,
-				"Roof",
-				Vector3.new(ringWidth, 10, r1 - r0),
-				at((r0 + r1) / 2, hub.height + 5),
-				ROCK
-			)
-		end
-		-- A sconce between openings
-		if kind == "wall" then
+			buildDen(hubFolder, denIndex, segment)
+		elseif kind == "wall" then
+			-- A sconce between openings, just proud of the rock
 			local sconce =
-				block(hubFolder, "Sconce", Vector3.new(2, 2, 1), at(hub.radius - 0.5, 18), ROCK_DARK)
+				block(hubFolder, "Sconce", Vector3.new(2, 2, 1), at(hub.radius - 1.5, 18), ROCK_DARK)
 			sconce.Material = Enum.Material.Neon
 			sconce.Color = Color3.fromRGB(255, 190, 120)
 			local light = Instance.new("PointLight")
@@ -447,6 +382,10 @@ local function buildHub(parent: Instance)
 		Enum.Material.Neon
 	)
 	crystal.Transparency = 0.15
+	Props.dress(crystal, "CrystalCluster", {
+		cframe = CFrame.new(hub.center + Vector3.new(0, 11, 0)),
+		size = Vector3.new(18, 22, 18),
+	})
 	local glow = Instance.new("PointLight")
 	glow.Color = Color3.fromRGB(110, 230, 255)
 	glow.Range = 60
@@ -545,6 +484,11 @@ local function buildVendors(parent: Instance)
 			lantern.Color = LANTERN
 			lantern.Material = Enum.Material.Neon
 			lantern.Parent = stall
+			Props.dress(lantern, "Lantern", {
+				cframe = lantern.CFrame.Rotation + lantern.Position,
+				size = Vector3.new(1.6, 2.4, 1.6),
+				keepVisible = true,
+			})
 			local light = Instance.new("PointLight")
 			light.Color = LANTERN
 			light.Range = 14
@@ -577,6 +521,22 @@ local function buildVendors(parent: Instance)
 		label.Text = string.upper(vendor.name)
 		label.Parent = gui
 		keeper(stall, at(36.2, plazaTop + 4.2), vendor.color:Lerp(Color3.new(1, 1, 1), 0.25))
+		-- The imported stall stands where the counter is, facing the beacon; the
+		-- block posts and awning go when it's in (the sign and keeper stay)
+		local stallModel = Props.dress(counter, "MarketStall", {
+			cframe = at(33.5, plazaTop + 5.5) * CFrame.Angles(0, math.pi, 0),
+			size = Vector3.new(15, 11, 9),
+			tint = vendor.color:Lerp(Color3.new(1, 1, 1), 0.6),
+		})
+		if stallModel then
+			for _, child in stall:GetChildren() do
+				if child.Name == "Post" or child.Name == "Awning" then
+					child:Destroy()
+				elseif child.Name == "Lantern" and child:IsA("BasePart") then
+					child.Transparency = 1
+				end
+			end
+		end
 
 		counter:SetAttribute("Vendor", vendor.id)
 		vendorPositions[vendor.id] = Layout.counterPosition(vendor.angle)
@@ -626,8 +586,11 @@ local function buildShallows(parent: Instance)
 				rng:NextNumber(-0.06, 0.06)
 			)
 			local base = CFrame.new(x, World.seabedY, z) * lean
+			local plant = Instance.new("Model")
+			plant.Name = "Kelp"
+			plant.Parent = kelp
 			local stalk = block(
-				kelp,
+				plant,
 				"Stalk",
 				Vector3.new(1.1, height, 1.1),
 				base * CFrame.new(0, height / 2, 0),
@@ -640,7 +603,7 @@ local function buildShallows(parent: Instance)
 			for b = 1, 3 do
 				local y = height * (b / 4)
 				local blade = block(
-					kelp,
+					plant,
 					"Blade",
 					Vector3.new(0.2, rng:NextNumber(8, 16), rng:NextNumber(2.5, 4)),
 					base * CFrame.new(0, y, 0) * CFrame.Angles(0, b * 2.1, math.rad(rng:NextNumber(18, 34))),
@@ -651,6 +614,20 @@ local function buildShallows(parent: Instance)
 				blade.CanCollide = false
 				blade.CanQuery = false
 			end
+			-- The imported kelp (a single stalk model) replaces the blocks
+			local upright = CFrame.new(x, World.seabedY + height / 2, z)
+				* CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
+			local dressed = Props.dress(stalk, if rng:NextNumber() < 0.75 then "GiantKelp" else "KelpClump", {
+				cframe = upright,
+				size = Vector3.new(height * 0.22 + 4, height, height * 0.22 + 4),
+			})
+			if dressed then
+				for _, child in plant:GetChildren() do
+					if child.Name == "Blade" then
+						child:Destroy()
+					end
+				end
+			end
 		end
 	end
 
@@ -659,15 +636,20 @@ local function buildShallows(parent: Instance)
 	for _ = 1, 110 do
 		local x, z = spot(20)
 		local size = Vector3.new(rng:NextNumber(6, 30), rng:NextNumber(5, 22), rng:NextNumber(6, 30))
+		local yaw = rng:NextNumber(0, 6.28)
 		local rock = block(
 			rocks,
 			"Rock",
 			size,
 			CFrame.new(x, World.seabedY + size.Y * 0.25, z)
-				* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, 6.28), rng:NextNumber(-0.4, 0.4)),
+				* CFrame.Angles(rng:NextNumber(-0.4, 0.4), yaw, rng:NextNumber(-0.4, 0.4)),
 			ROCK
 		)
 		rock.Material = Enum.Material.Rock
+		Props.dress(rock, if rng:NextNumber() < 0.6 then "BoulderRound" else "BoulderJagged", {
+			cframe = CFrame.new(x, World.seabedY + size.Y * 0.42, z) * CFrame.Angles(0, yaw, 0),
+			size = Vector3.new(size.X * 1.1, size.Y * 0.95, size.Z * 1.1),
+		})
 	end
 	for _ = 1, 10 do
 		local x, z = spot(40)
@@ -721,6 +703,12 @@ local function buildShallows(parent: Instance)
 		piece.Color = colors[rng:NextInteger(1, #colors)]
 		piece.Material = Enum.Material.SmoothPlastic
 		piece.Parent = coral
+		local kinds = { "BrainCoral", "FanCoral", "StaghornCoral", "TubeSponge", "Anemone" }
+		Props.dress(piece, kinds[rng:NextInteger(1, #kinds)], {
+			cframe = CFrame.new(x, World.seabedY + size * 0.75, z)
+				* CFrame.Angles(0, rng:NextNumber(0, 6.28), 0),
+			size = Vector3.new(size * 1.7, size * 1.5, size * 1.7),
+		})
 	end
 
 	-- Light shafts from the surface

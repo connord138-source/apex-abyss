@@ -1,0 +1,144 @@
+{
+  "jobs": [
+    {
+      "name": "GiantKelp",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a tall giant kelp stalk: one slim olive-green stem with alternating broad yellow-green leaf blades and small round gas bladders, standing straight up, about six times taller than wide. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "KelpClump",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a clump of three short kelp stalks growing from a small rock holdfast, olive-green blades, upright. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "BoulderRound",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a rounded faceted grey-blue sea boulder with a few flat chiselled faces. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "BoulderJagged",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a jagged stack of two angular grey rocks leaning together, faceted. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "BrainCoral",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a dome of brain coral with deep winding grooves, coral orange-pink. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "FanCoral",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a purple sea fan coral: a flat branching fan on a short stalk. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "StaghornCoral",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a branching staghorn coral in orange with pale tips. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "TubeSponge",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a cluster of five yellow tube sponges of different heights on a shared base. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Anemone",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a magenta sea anemone with a thick column and many short rounded tentacles. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Shrimp",
+      "group": "food",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a small pale lilac-pink shrimp with a curved segmented body, long antennae and little legs. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Starfish",
+      "group": "food",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: an orange five-armed starfish with a bumpy top, lying flat. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Shell",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a cream and peach spiral conch seashell with a pointed spire. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Lantern",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a hanging brass underwater lantern: a rounded cage frame with a warm glowing amber glass and a rope loop on top. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "CrystalCluster",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a cluster of tall glowing cyan crystals of different heights growing from a dark rock base. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "MarketStall",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a small driftwood market stall: a wooden counter and two posts holding a patched canvas awning, with a lantern hanging from one post. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Minnow",
+      "group": "prey",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a tiny slender silver minnow fish with a faint blue back, a big round eye and a forked tail. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Sardine",
+      "group": "prey",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a small slim silver-blue sardine with a dark speckled back and a forked tail. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Wrasse",
+      "group": "prey",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a kelp wrasse reef fish: oval body, teal-green with purple bands and a yellow tail. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Snapper",
+      "group": "prey",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a red snapper reef fish: deep oval body, coral-red with a pink belly, a spiny dorsal fin. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    },
+    {
+      "name": "Grouper",
+      "group": "prey",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a big heavy grouper fish: broad head, wide lips, mottled brown and olive with pale spots, rounded fins. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text"
+    }
+  ]
+}

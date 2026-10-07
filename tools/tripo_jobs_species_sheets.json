@@ -1,0 +1,52 @@
+{
+  "jobs": [
+    {
+      "name": "Nibbler",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE round, friendly, sturdy small reef fish: orange body, yellow belly, two pale cream vertical bands, big googly eyes with dark pupils, small rounded fins and a fan tail alone, large and centered, filling most of the frame, in a three-quarter view facing the viewer's left with the whole body visible and fins spread, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "Cuda",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE long slim barracuda: steel-blue back, bright silver belly, pointed underbite jaw showing small teeth, two dorsal fins and yellow-tinted fins and tail alone, large and centered, filling most of the frame, in a three-quarter view facing the viewer's left with the whole body visible and fins spread, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "Puffer",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE pufferfish half-puffed: round brown and tan body covered in short spines, pale belly, big round eyes, small rounded fins, cute but tough alone, large and centered, filling most of the frame, in a three-quarter view facing the viewer's left with the whole body visible and fins spread, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "MorayEel",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE long muscular green moray eel in an S-curve: mottled olive-green skin, a ridged fin running along the back, open mouth with small teeth, small eyes alone, large and centered, filling most of the frame, in a three-quarter view facing the viewer's left with the whole body visible and fins spread, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "ReefShark",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE sleek grey reef shark: white belly, black-tipped fins, strong tail, slightly menacing but stylized alone, large and centered, filling most of the frame, in a three-quarter view facing the viewer's left with the whole body visible and fins spread, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "Angler",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE dark blue deep-sea anglerfish: huge round body, giant mouth with long pale teeth, a glowing yellow lure on a stalk over its head, spiny fins, pale cyan eyes alone, large and centered, filling most of the frame, in a three-quarter view facing the viewer's left with the whole body visible and fins spread, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    }
+  ]
+}

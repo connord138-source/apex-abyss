@@ -142,5 +142,304 @@
   "status": "success",
   "task_id": "8b84f648-3f49-428f-abe5-b7331a708629",
   "type": "generate_image"
+ },
+ "food/Shrimp": {
+  "credits": 20,
+  "files": [
+   "Shrimp.glb",
+   "Shrimp_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "74cbfd62-8fcc-47cd-b796-6d5e13cf28ae",
+  "type": "text_to_model"
+ },
+ "food/Starfish": {
+  "credits": 20,
+  "files": [
+   "Starfish.glb",
+   "Starfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "345434c0-d8f4-4e38-b230-4ffea5f59d5e",
+  "type": "text_to_model"
+ },
+ "prey/Grouper": {
+  "credits": 20,
+  "files": [
+   "Grouper.glb",
+   "Grouper_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "b79aa43b-366b-4daa-a777-28dd726515cd",
+  "type": "text_to_model"
+ },
+ "prey/Minnow": {
+  "credits": 20,
+  "files": [
+   "Minnow.glb",
+   "Minnow_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "369ec7f6-7478-4f36-94d3-c14ed465439e",
+  "type": "text_to_model"
+ },
+ "prey/Sardine": {
+  "credits": 20,
+  "files": [
+   "Sardine.glb",
+   "Sardine_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "d70d4803-4f8d-431a-9a9e-aa0740210c74",
+  "type": "text_to_model"
+ },
+ "prey/Snapper": {
+  "credits": 20,
+  "files": [
+   "Snapper.glb",
+   "Snapper_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "98003b95-da4f-4e17-9d85-289c409194da",
+  "type": "text_to_model"
+ },
+ "prey/Wrasse": {
+  "credits": 20,
+  "files": [
+   "Wrasse.glb",
+   "Wrasse_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "5264590d-c0d0-4512-b4b1-49755c9e9ed1",
+  "type": "text_to_model"
+ },
+ "props/Anemone": {
+  "credits": 20,
+  "files": [
+   "Anemone.glb",
+   "Anemone_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "4995a5b9-704c-4dc5-a03d-89b1ed33c98e",
+  "type": "text_to_model"
+ },
+ "props/BoulderJagged": {
+  "credits": 20,
+  "files": [
+   "BoulderJagged.glb",
+   "BoulderJagged_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "8f792a52-90cf-4da2-8612-8f5d399489b0",
+  "type": "text_to_model"
+ },
+ "props/BoulderRound": {
+  "credits": 20,
+  "files": [
+   "BoulderRound.glb",
+   "BoulderRound_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "04a43f8c-f9e0-4dc6-9087-21c25f9bc247",
+  "type": "text_to_model"
+ },
+ "props/BrainCoral": {
+  "credits": 20,
+  "files": [
+   "BrainCoral.glb",
+   "BrainCoral_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "5e8edf10-52ec-41ed-81f5-be0153566e60",
+  "type": "text_to_model"
+ },
+ "props/CrystalCluster": {
+  "credits": 20,
+  "files": [
+   "CrystalCluster.glb",
+   "CrystalCluster_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "d8bb6828-6482-46be-9401-f526baccd657",
+  "type": "text_to_model"
+ },
+ "props/FanCoral": {
+  "credits": 20,
+  "files": [
+   "FanCoral.glb",
+   "FanCoral_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "fd975fb8-cce1-4112-88c9-ff67d5876521",
+  "type": "text_to_model"
+ },
+ "props/GiantKelp": {
+  "credits": 20,
+  "files": [
+   "GiantKelp.glb",
+   "GiantKelp_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "680e5c5c-8bc1-4b14-a1df-49e8969b3037",
+  "type": "text_to_model"
+ },
+ "props/KelpClump": {
+  "credits": 20,
+  "files": [
+   "KelpClump.glb",
+   "KelpClump_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "609dd9df-d63d-4e41-a6e6-b82f17569fea",
+  "type": "text_to_model"
+ },
+ "props/Lantern": {
+  "credits": 20,
+  "files": [
+   "Lantern.glb",
+   "Lantern_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e58a2ea9-e150-4c40-b7e5-c53938b58330",
+  "type": "text_to_model"
+ },
+ "props/MarketStall": {
+  "credits": 20,
+  "files": [
+   "MarketStall.glb",
+   "MarketStall_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "2a143bbd-eb76-4a4c-a11c-6d617099a6e7",
+  "type": "text_to_model"
+ },
+ "props/Shell": {
+  "status": "queued",
+  "task_id": "b607a36f-28fd-4821-91b0-0b167cfb9717",
+  "type": "text_to_model"
+ },
+ "props/StaghornCoral": {
+  "credits": 20,
+  "files": [
+   "StaghornCoral.glb",
+   "StaghornCoral_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "6637282b-cedb-40b1-917b-766b2adcc35d",
+  "type": "text_to_model"
+ },
+ "props/TubeSponge": {
+  "credits": 20,
+  "files": [
+   "TubeSponge.glb",
+   "TubeSponge_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "4672369d-4ca5-4f27-96bc-e60a462a8db3",
+  "type": "text_to_model"
+ },
+ "species/Angler": {
+  "credits": 30,
+  "files": [
+   "Angler.glb",
+   "Angler_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e5b6705d-0857-4d2e-ad58-c9cbacd45517",
+  "type": "image_to_model"
+ },
+ "species/Cuda": {
+  "credits": 30,
+  "files": [
+   "Cuda.glb",
+   "Cuda_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "6d8cc448-d33f-410f-bca3-d9f17372877f",
+  "type": "image_to_model"
+ },
+ "species/Nibbler": {
+  "credits": 30,
+  "files": [
+   "Nibbler.glb",
+   "Nibbler_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "332bdca4-d82e-4194-8827-112053ce6d00",
+  "type": "image_to_model"
+ },
+ "species/Puffer": {
+  "credits": 30,
+  "files": [
+   "Puffer.glb",
+   "Puffer_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "57395a24-f1cf-4de5-9209-46dc2b5c2743",
+  "type": "image_to_model"
+ },
+ "species/ReefShark": {
+  "credits": 30,
+  "files": [
+   "ReefShark.glb",
+   "ReefShark_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "dcb0f1a9-a7f9-473a-8bb7-f5bfa073c4e8",
+  "type": "image_to_model"
+ },
+ "species_sheets/Angler": {
+  "credits": 10,
+  "files": [
+   "Angler.png"
+  ],
+  "status": "success",
+  "task_id": "3c24654f-c096-4885-8060-3a58fea260f1",
+  "type": "generate_image"
+ },
+ "species_sheets/Cuda": {
+  "credits": 10,
+  "files": [
+   "Cuda.png"
+  ],
+  "status": "success",
+  "task_id": "8a82a940-9c49-4dbc-8a3d-709d9e1fac65",
+  "type": "generate_image"
+ },
+ "species_sheets/MorayEel": {
+  "credits": 10,
+  "files": [
+   "MorayEel.png"
+  ],
+  "status": "success",
+  "task_id": "3f37eea1-692e-4d75-8426-697dc553e471",
+  "type": "generate_image"
+ },
+ "species_sheets/Nibbler": {
+  "credits": 10,
+  "files": [
+   "Nibbler.png"
+  ],
+  "status": "success",
+  "task_id": "1dacf384-595b-4e25-8dce-cf967e43c41e",
+  "type": "generate_image"
+ },
+ "species_sheets/Puffer": {
+  "credits": 10,
+  "files": [
+   "Puffer.png"
+  ],
+  "status": "success",
+  "task_id": "0767c559-dbaa-4b39-ac55-0403471dcb7e",
+  "type": "generate_image"
+ },
+ "species_sheets/ReefShark": {
+  "credits": 10,
+  "files": [
+   "ReefShark.png"
+  ],
+  "status": "success",
+  "task_id": "a2f96c21-dac9-42f2-9d50-25abb92f68f1",
+  "type": "generate_image"
  }
 }
