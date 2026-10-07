@@ -116,6 +116,16 @@ function SwimController.dash(): boolean
 	return true
 end
 
+-- A push from a creature (a tail sweep, a breach's shockwave): the server tells us
+-- and we add it, since this client owns the fish's physics.
+function SwimController.shove(velocity: Vector3)
+	if root == nil then
+		return
+	end
+	SwimController.velocity += velocity
+	lungeUntil = 0
+end
+
 -- Starts a bite lunge if the cooldown allows; returns whether it did.
 function SwimController.lunge(): boolean
 	if root == nil or clock - lastBiteAt < swim.biteCooldown then
@@ -317,6 +327,12 @@ function SwimController.start()
 			currentRoot.AssemblyLinearVelocity = Vector3.zero
 			SwimController.velocity = Vector3.zero
 			heading = cframe.LookVector
+		end
+	end)
+	local shove = remotes:WaitForChild("Shove") :: RemoteEvent
+	shove.OnClientEvent:Connect(function(velocity: Vector3)
+		if typeof(velocity) == "Vector3" then
+			SwimController.shove(velocity)
 		end
 	end)
 end

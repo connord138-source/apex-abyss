@@ -14,6 +14,7 @@ local MenuController = require(script.Controllers.MenuController)
 local NametagController = require(script.Controllers.NametagController)
 local OceanController = require(script.Controllers.OceanController)
 local PredatorController = require(script.Controllers.PredatorController)
+local BossController = require(script.Controllers.BossController)
 local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
 local ShellController = require(script.Controllers.ShellController)
@@ -34,6 +35,7 @@ HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow
 CameraController.start()
 FishAnimator.start()
 PredatorController.start() -- AI predators: interpolation, tells, tags
+BossController.start() -- world boss: HUD bar, dread, countdown, rewards
 HuntController.start()
 SchoolController.start()
 NametagController.start()

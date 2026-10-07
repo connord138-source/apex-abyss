@@ -1,7 +1,7 @@
 -- Paste into Studio's Command Bar (View → Command Bar) after importing the 3D files
 -- (File → Import 3D). It moves every imported model from the Workspace into the
 -- folder the game code reads, by name:
---   species (rigged FBX: Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler)
+--   species (rigged FBX: Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler) and bosses (Megalodon)
 --       -> ReplicatedStorage.FishModels.<SpeciesId>   (a Model holding the skinned MeshPart)
 --   prey (static GLB: Minnow, Sardine, Wrasse, Snapper, Grouper, Barracuda, ReefShark)
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (the MeshPart itself)
@@ -11,7 +11,10 @@
 -- these folders live in the place file, not in Rojo.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local SPECIES = { Nibbler = true, Cuda = true, Puffer = true, MorayEel = true, ReefShark = true, Angler = true }
+local SPECIES = {
+	Nibbler = true, Cuda = true, Puffer = true, MorayEel = true, ReefShark = true, Angler = true,
+	Megalodon = true, -- the world boss: rigged like a species, read by PredatorController
+}
 local PREY = { Minnow = true, Sardine = true, Wrasse = true, Snapper = true, Grouper = true, Barracuda = true }
 local PROPS = {
 	GiantKelp = true, KelpClump = true, BoulderRound = true, BoulderJagged = true,

@@ -218,6 +218,29 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     UnreliableRemoteEvent; `PredatorController` interpolates 0.15 s behind, draws the
     `PreyModels` mesh (parts until imported) with a red PREDATOR tag and health bar.
     A predator with `custom` set skips the plain behaviour (bosses drive it).
+  - **Megalodon (built 2026-10-07):** `Config/Bosses.luau` + `BossService` on top of the
+    predators. A world event about every 30 min (4 min in Studio; 2 min warning,
+    `_G.ApexBoss.summon()` / `.hurt(0.5)` from the Server command bar), patrolling the
+    Open Blue (north, 330–620 out). 80 studs, 6,000 hp +60% per extra attacker (20 s
+    window). Three phases: Hunting (Charge 35%, Bite 55%, both telegraphed),
+    Frenzy under 60% (×1.3 speed, blood cloud hides the tag, Tail sweep 20% + a shove
+    when 3+ fish bunch behind it, Marked for death: 8 s of short lunges at one fish),
+    Last stand under 25% (makes for the Trench on a 60 s clock, Breach every 13 s:
+    sinks, rockets up, crashes with a shockwave 30% + shove, then 5 s exhausted at
+    triple damage; escapes when the clock runs out and returns in 15 min). Gills and
+    tail take double damage and fill the stagger meter (700); full → 4 s stagger at
+    triple damage, breaks the mark. Rewards for everyone with ≥1% of the damage:
+    Megalodon Teeth (1, +1 top three, +1 killer), a Haul (120 kg by share, min 10%),
+    coral (5,000 by share, min 500), a Rare+ shade roll, the Megalodon Slayer title
+    (worn on the nametag), and a 1/15 (×2 for the top dealer) direct drop of the
+    Ghost shade. The **Trophy Hunter** (fifth stall, angle 90) sells Ghost for 12
+    Teeth and Abyss Ink for 12 Kraken Beaks (`Config/Shop.luau` `trophies`,
+    `data.trophies`). Client: `BossController` (countdown, boss bar with stagger
+    meter and Last stand clock, dread: darker water + heartbeat contrast, NEARBY
+    arrow, camera shake; reward card then the shade reveal), `PredatorController`
+    draws the rigged `FishModels.Megalodon` with a spine wave and the tells (red jaw,
+    amber eyes for charge/sweep/breach, gold stagger, blood cloud, shockwave ring).
+    Pushes go through `Net.shove` → `SwimController.shove`.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -381,13 +404,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - models for the growth stages, vendors and the other biomes (the Megalodon's is
-    generated, `assets/tripo/bosses/`, not yet rigged);
+  - models for the growth stages, vendors, the Giant Squid and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
   - the biomes' Terrain (only the hub seamount is terrain so far)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
-  - the bosses themselves (Megalodon, Giant Squid) on top of the predator framework
+  - the Giant Squid (its design is in GDD §8; the Megalodon is built)
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 
 ## Playtests

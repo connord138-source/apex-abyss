@@ -28,6 +28,9 @@ local rollResult = makeEvent("RollResult") -- (result) to the roller
 local forageEaten = makeEvent("ForageEaten") -- (index, backAt, eaterUserId) to everyone
 local treasureResult = makeEvent("TreasureResult") -- (result) to the digger
 local predatorEvent = makeEvent("PredatorEvent") -- (kind, index, payload) to everyone: windup, bite, hurt, died, spawned
+local bossState = makeEvent("BossState") -- (state) to everyone: the world boss event (warning, active, gone)
+local bossReward = makeEvent("BossReward") -- (summary) to a player who helped kill a boss
+local shove = makeEvent("Shove") -- (velocity) to a player: a push from a creature (its client adds it)
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -163,6 +166,24 @@ end
 
 function Net.predatorEvent(kind: string, index: number, payload: { [string]: any })
 	predatorEvent:FireAllClients(kind, index, payload)
+end
+
+function Net.bossState(state: { [string]: any })
+	bossState:FireAllClients(state)
+end
+
+function Net.bossStateTo(player: Player, state: { [string]: any })
+	bossState:FireClient(player, state)
+end
+
+function Net.bossReward(player: Player, summary: { [string]: any })
+	bossReward:FireClient(player, summary)
+end
+
+-- Pushes a player's fish (a tail sweep, a shockwave): the client owns its physics,
+-- so it adds the velocity itself.
+function Net.shove(player: Player, velocity: Vector3)
+	shove:FireClient(player, velocity)
 end
 
 -- A toast for everyone (rare rolls).

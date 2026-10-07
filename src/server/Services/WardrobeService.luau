@@ -24,6 +24,7 @@ local function dress(player: Player)
 	local current = character:GetAttribute("Species")
 	character:SetAttribute("Variant", if variant and variant.species == current then variant.id else "")
 	character:SetAttribute("Parts", Cosmetics.partsText(data.equipped.parts))
+	character:SetAttribute("Title", data.title)
 end
 
 -- Puts something on ("" takes it off; for parts, `slot` says which).

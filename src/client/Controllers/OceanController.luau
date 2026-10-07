@@ -69,6 +69,9 @@ local GRADES: { Grade } = {
 }
 
 local HUB_TINT = Color3.fromRGB(246, 236, 222)
+-- Dread (a world boss near): the water darkens and desaturates toward this, and
+-- the contrast beats like a heart
+local DREAD_TINT = Color3.fromRGB(150, 120, 130)
 
 local OceanController = {}
 
@@ -78,6 +81,9 @@ local bloom: BloomEffect
 local snowHolder: Part
 local current: Grade? = nil
 local hubBlend, hubVelocity = 0, 0
+local dreadTarget = 0
+local dread, dreadVelocity = 0, 0
+local heart = 0
 
 local function blendGrades(a: Grade, b: Grade, t: number): Grade
 	return {
@@ -122,11 +128,22 @@ local function step(dt: number)
 	else
 		atmosphere = Lighting:FindFirstChild("OceanAtmosphere") :: Atmosphere?
 	end
-	grade.TintColor = blended.tint:Lerp(HUB_TINT, hubBlend * 0.6)
-	grade.Brightness = blended.brightness
-	grade.Saturation = blended.saturation
-	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1
+	dread, dreadVelocity = Spring.number(dread, dreadVelocity, dreadTarget, 2.5, dt)
+	heart += dt * (0.9 + dread * 0.9) * 2 * math.pi
+	-- A double thump: lub-dub, then quiet
+	local cycle = heart % (2 * math.pi)
+	local beat = math.max(math.sin(cycle) ^ 6, math.sin(cycle - 0.9) ^ 6 * 0.6)
+	grade.TintColor = blended.tint:Lerp(HUB_TINT, hubBlend * 0.6):Lerp(DREAD_TINT, dread * 0.55)
+	grade.Brightness = blended.brightness - dread * 0.08
+	grade.Saturation = blended.saturation - dread * 0.45
+	grade.Contrast = 0.06 + dread * (0.1 + beat * 0.16)
+	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 - dread * 0.55
 	snowHolder.CFrame = CFrame.new(position)
+end
+
+-- How much a world boss's presence darkens the water (0..1); BossController sets it.
+function OceanController.setDread(amount: number)
+	dreadTarget = math.clamp(amount, 0, 1)
 end
 
 function OceanController.start()

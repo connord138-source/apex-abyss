@@ -80,7 +80,10 @@ local function step()
 			color, status = Ui.color.text, "EVEN FIGHT"
 		end
 		tag.name.TextColor3 = color
-		tag.status.Text = status
+		local title = character:GetAttribute("Title")
+		tag.status.Text = if typeof(title) == "string" and title ~= ""
+			then `{status} · {string.upper(title)}`
+			else status
 		tag.status.TextColor3 = color
 	end
 end

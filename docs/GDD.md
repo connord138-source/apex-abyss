@@ -542,7 +542,7 @@ The owner's "aggressive AI predators worth more" are the base the bosses stand o
   dealt damage gets a share of the loot (at least 10%; the killer +10%).
 - **Respawn** 90 s / 150 s after a kill, somewhere else in the band.
 
-### World boss: the Megalodon (owner, 2026-10-06)
+### World boss: the Megalodon (owner, 2026-10-06; built 2026-10-07)
 
 The owner asked for "a massive megalodon that roams the map, mostly in deep blue.
 Killing it rewards something extreme but it is a very hard and scary boss." The
@@ -605,6 +605,26 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   (positions streamed about 10 times a second, clients interpolate, attacks checked on
   the server). It gets one hero Tripo model with the procedural spine swim. It's built
   alongside the predators and the Open Blue.
+- **As built (2026-10-07, `Config/Bosses.luau`, `BossService`):** the event clock
+  raises it every 30 min (4 in Studio) with a 2 min warning; it patrols the Open
+  Blue (north, 330–620 studs out, 25–170 deep) and hunts the biggest fish within 200
+  studs, ignoring fish under 3.5% of its length. 6,000 hp, +60% per attacker beyond
+  the first (anyone who bit it in the last 20 s). Phases at 60% and 25%. Charge: 1.2 s
+  eye flash, then 2.2 s at ×2.2 speed, 35% to anything within 13 studs of its body,
+  9 s cooldown, used from 35–170 studs. Bite: 1.2 s jaw tell, 55%, 4 s cooldown.
+  Frenzy: ×1.3 speed, a 10 s blood cloud (its tag hides), Tail sweep when 3+ fish are
+  within 40 studs behind it (1 s tell, 20%, a 60 stud/s shove, 12 s cooldown), Marked
+  for death every 24 s (8 s, ×1.45 speed at the mark, a 0.5 s-tell lunge every 2.2 s
+  for 25%). Last stand: a 60 s clock toward the Trench, a Breach every 13 s (2.2 s
+  tell as it sinks, 1.3 s rocket, 0.9 s crash, a 48 stud ring 30% + shove to fish
+  within 16 studs of its depth, then 5 s exhausted at triple damage). Soft spots:
+  gills (60–80% along the body) and tail (0–22%) take double damage and fill a
+  700-point stagger meter; full → 4 s stagger at triple damage (18 s cooldown), which
+  breaks the mark. Rewards for everyone with ≥1% of the damage: Teeth 1 (+1 top three,
+  +1 killer), Haul 120 kg by share (min 10%), coral 5,000 by share (min 500), a Rare+
+  shade roll, the Megalodon Slayer title, a 1/15 (×2 for the top dealer) drop of the
+  Ghost shade. The Trophy Hunter stall sells Ghost for 12 Teeth. On escape it heals
+  and returns in 15 min.
 
 ### World boss: the Giant Squid (owner, 2026-10-06; Claude's proposal)
 

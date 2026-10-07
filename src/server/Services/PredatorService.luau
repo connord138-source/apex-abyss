@@ -4,11 +4,14 @@
 -- its band, hunts the biggest worthwhile fish in range, shows its jaw for a moment
 -- (the tell), then bites for a share of the victim's max health. Players bite back
 -- (BitePredator, checked for reach and cooldown); a kill pays everyone who helped by
--- damage share. The world bosses extend this (BossService) with phases and attacks.
+-- damage share. The world bosses (BossService) are `custom` predators: they ride the
+-- same stream and bite checks, but BossService moves them (steer), scales their
+-- damage (onHit) and pays their rewards.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -26,7 +29,7 @@ local World = Config.World
 local hunt = Config.Tuning.hunt
 local swim = Config.Tuning.swim
 
-type Def = typeof(Predators.list[1])
+export type Def = PredatorsConfig.PredatorDef
 
 export type Mode = "roam" | "hunt" | "windup" | "recover" | "dead"
 
@@ -46,16 +49,21 @@ export type Predator = {
 	respawnAt: number,
 	-- Damage dealt by each player this life, and when they last bit (the school bonus)
 	hitBy: { [Player]: { damage: number, at: number } },
-	-- Set by a boss controller to override the plain behaviour
+	-- Set by a boss controller: skips the plain behaviour and the plain loot
 	custom: boolean?,
+	-- A boss's hook on every player bite: (predator, player, damage, point) → damage
+	onHit: ((Predator, Player, number, Vector3) -> number)?,
+	-- A boss's stagger meter (0..1), streamed to clients
+	meter: number,
 }
 
 local PredatorService = {
-	-- (predator, killer) — a predator died
+	-- (predator, killer?) — a predator died (killer nil when it was removed)
 	died = require(ReplicatedStorage.Shared.Signal).new(),
 }
 
-local predators: { Predator } = {}
+local predators: { [number]: Predator } = {}
+local nextIndex = 1
 local rng = Random.new(World.seed + 41)
 local lastBite: { [Player]: number } = {}
 local accumulator = 0
@@ -78,8 +86,8 @@ local function randomWaypoint(def: Def): Vector3
 	return Vector3.new(def.band[1], def.depth[1] + 10, 0)
 end
 
-local function spawn(predator: Predator)
-	predator.position = randomWaypoint(predator.def)
+local function spawn(predator: Predator, at: Vector3?)
+	predator.position = at or randomWaypoint(predator.def)
 	predator.velocity = Vector3.zero
 	predator.heading = Vector3.new(1, 0, 0)
 	predator.health = predator.maxHealth
@@ -89,11 +97,13 @@ local function spawn(predator: Predator)
 	predator.waypoint = randomWaypoint(predator.def)
 	predator.waypointUntil = Timing.clock() + 12
 	predator.hitBy = {}
-	Net.predatorEvent(
-		"spawned",
-		predator.index,
-		{ x = predator.position.X, y = predator.position.Y, z = predator.position.Z }
-	)
+	predator.meter = 0
+	Net.predatorEvent("spawned", predator.index, {
+		id = predator.def.id,
+		x = predator.position.X,
+		y = predator.position.Y,
+		z = predator.position.Z,
+	})
 end
 
 local function mouthOf(predator: Predator): Vector3
@@ -160,6 +170,19 @@ local function targetRoot(predator: Predator): (BasePart?, number)
 	end
 	local length = character:GetAttribute("Length")
 	return root, if typeof(length) == "number" then length else 2
+end
+
+-- Moves a predator toward a desired velocity: it accelerates, turns no faster than
+-- `turnRate` (its own by default), and stays in the water column.
+local function steer(predator: Predator, desired: Vector3, dt: number, turnRate: number?)
+	local def = predator.def
+	predator.velocity = predator.velocity:Lerp(desired, 1 - math.exp(-dt * 2.2))
+	if predator.velocity.Magnitude > 0.5 then
+		predator.heading = rotateToward(predator.heading, predator.velocity, (turnRate or def.turnRate) * dt)
+	end
+	local position = predator.position + predator.velocity * dt
+	local y = math.clamp(position.Y, math.max(def.depth[1] * 0.6, World.seabedY + 5), World.surfaceY - 12)
+	predator.position = Vector3.new(position.X, y, position.Z)
 end
 
 local function simulate(predator: Predator, dt: number, now: number)
@@ -241,14 +264,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 			end
 		end
 	end
-	predator.velocity = predator.velocity:Lerp(desired, 1 - math.exp(-dt * 2.2))
-	if predator.velocity.Magnitude > 0.5 then
-		predator.heading = rotateToward(predator.heading, predator.velocity, def.turnRate * dt)
-	end
-	local position = predator.position + predator.velocity * dt
-	-- Stay in the water column and out of the floor
-	local y = math.clamp(position.Y, math.max(def.depth[1] * 0.6, World.seabedY + 5), World.surfaceY - 12)
-	predator.position = Vector3.new(position.X, y, position.Z)
+	steer(predator, desired, dt)
 end
 
 local function stream(now: number)
@@ -265,6 +281,8 @@ local function stream(now: number)
 			predator.mode,
 			math.floor(predator.health / predator.maxHealth * 100) / 100,
 			if predator.target then (predator.target :: Player).UserId else 0,
+			predator.def.id,
+			math.floor(predator.meter * 100) / 100,
 		}
 		table.insert(list, entry)
 	end
@@ -351,6 +369,10 @@ local function onBite(player: Player, index: any)
 	local jaw = Perks.bite(data.upgrades)
 	local species = Progress.species(data).stats.bite
 	local damage = hunt.biteDamage * ratio * (1 + Predators.schoolBonus * school) * jaw * species
+	local hook = predator.onHit
+	if hook then
+		damage = hook(predator, player, damage, nearest)
+	end
 	predator.health -= damage
 	local record: { damage: number, at: number } = predator.hitBy[player] or { damage = 0, at = now }
 	record.damage += damage
@@ -368,39 +390,81 @@ local function onBite(player: Player, index: any)
 		predator.mode = "dead"
 		predator.respawnAt = now + def.respawn
 		predator.target = nil
-		Net.predatorEvent("died", predator.index, { by = player.UserId })
-		payOut(predator, player)
+		Net.predatorEvent("died", predator.index, { by = player.UserId, gone = predator.custom == true })
+		if not predator.custom then
+			payOut(predator, player)
+		end
 		PredatorService.died:fire(predator, player)
+		if predator.custom then
+			predators[predator.index] = nil
+		end
 	end
 end
 
-function PredatorService.list(): { Predator }
+local function make(def: Def, custom: boolean?): Predator
+	local predator: Predator = {
+		index = nextIndex,
+		def = def,
+		position = Vector3.zero,
+		velocity = Vector3.zero,
+		heading = Vector3.new(1, 0, 0),
+		health = def.health,
+		maxHealth = def.health,
+		mode = "roam",
+		modeUntil = 0,
+		target = nil,
+		waypoint = Vector3.zero,
+		waypointUntil = 0,
+		respawnAt = 0,
+		hitBy = {},
+		custom = custom,
+		onHit = nil,
+		meter = 0,
+	}
+	nextIndex += 1
+	predators[predator.index] = predator
+	return predator
+end
+
+function PredatorService.list(): { [number]: Predator }
 	return predators
 end
 
+function PredatorService.get(index: number): Predator?
+	return predators[index]
+end
+
+-- Adds a creature the caller drives (a boss): it's streamed and bitable, but not
+-- simulated here. `at` is where it appears.
+function PredatorService.add(def: Def, at: Vector3?): Predator
+	local predator = make(def, true)
+	spawn(predator, at)
+	return predator
+end
+
+-- Takes a custom creature out of the world (a boss escaping): clients fade it.
+function PredatorService.remove(predator: Predator, reason: string)
+	if predators[predator.index] ~= predator then
+		return
+	end
+	predator.mode = "dead"
+	predator.target = nil
+	Net.predatorEvent("died", predator.index, { by = 0, gone = true, reason = reason })
+	PredatorService.died:fire(predator, nil)
+	predators[predator.index] = nil
+end
+
+-- Helpers for a boss controller
+PredatorService.pickTarget = pickTarget
+PredatorService.targetRoot = targetRoot
+PredatorService.steer = steer
+PredatorService.mouthOf = mouthOf
+PredatorService.rotateToward = rotateToward
+
 function PredatorService.start()
-	local index = 0
 	for _, def in Predators.list do
 		for _ = 1, def.count do
-			index += 1
-			local predator: Predator = {
-				index = index,
-				def = def,
-				position = Vector3.zero,
-				velocity = Vector3.zero,
-				heading = Vector3.new(1, 0, 0),
-				health = def.health,
-				maxHealth = def.health,
-				mode = "roam",
-				modeUntil = 0,
-				target = nil,
-				waypoint = Vector3.zero,
-				waypointUntil = 0,
-				respawnAt = 0,
-				hitBy = {},
-			}
-			predators[index] = predator
-			spawn(predator)
+			spawn(make(def, false))
 		end
 	end
 	Net.onRequest("BitePredator", onBite)

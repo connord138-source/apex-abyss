@@ -1,5 +1,5 @@
 {
-  "_comment": "Hosted bundles of the game's 3D models (docs/ASSETS.md). fetch_assets.py downloads and unzips each into assets/. Rebuilt 2026-10-07 from Tripo batch 1.",
+  "_comment": "Hosted bundles of the game's 3D models (docs/ASSETS.md). fetch_assets.py downloads and unzips each into assets/. Rebuilt 2026-10-07 from Tripo batch 1, plus the Megalodon boss.",
   "bundles": {
     "species_fbx": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/87744775-0fe7-4a82-b783-0349493adab1.zip",
@@ -15,6 +15,11 @@
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/63c1f02d-2b61-4180-a055-5b1ef404e18e.zip",
       "into": "assets/glb",
       "contents": "props/<Name>.glb: GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall"
+    },
+    "boss_fbx": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/e3e9dd2d-d5c1-46f4-ac02-e02ba6e36b89.zip",
+      "into": "assets/fbx",
+      "contents": "bosses/Megalodon.fbx (rigged like a species, 7 spine segments; imports to FishModels.Megalodon)"
     }
   }
 }

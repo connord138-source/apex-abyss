@@ -46,8 +46,12 @@ export type PlayerData = {
 		shells: number, -- shells ever collected
 		rolls: number,
 		coralEarned: number,
+		bossKills: number, -- world boss kills helped with
 	},
 	coral: number, -- the currency (vendors)
+	trophies: { [string]: number }, -- boss currencies (MegalodonTeeth, KrakenBeaks)
+	titles: { [string]: boolean }, -- earned titles
+	title: string, -- the worn title ("" = none)
 	shells: number, -- every Config.Rolls.shellsPerRoll is one roll
 	shades: { [string]: boolean }, -- owned (Config/Shades)
 	parts: { [string]: boolean }, -- owned body parts (Config/Exotics)
@@ -90,8 +94,12 @@ local TEMPLATE: PlayerData = {
 		shells = 0,
 		rolls = 0,
 		coralEarned = 0,
+		bossKills = 0,
 	},
 	coral = 0,
+	trophies = {},
+	titles = {},
+	title = "",
 	shells = 0,
 	shades = {},
 	parts = {},

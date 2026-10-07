@@ -12,6 +12,7 @@ export type PredatorDef = {
 	id: string,
 	name: string,
 	model: string, -- ReplicatedStorage.PreyModels.<model> (static mesh), else a part body
+	tag: string?, -- the tag's first line (default PREDATOR)
 	length: number, -- studs
 	health: number,
 	speed: number, -- studs/s hunting (roaming is slower)

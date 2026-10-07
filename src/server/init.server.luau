@@ -16,6 +16,7 @@ local SpeciesService = require(Services.SpeciesService)
 local TutorialService = require(Services.TutorialService)
 local TreasureService = require(Services.TreasureService)
 local PredatorService = require(Services.PredatorService)
+local BossService = require(Services.BossService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -32,6 +33,7 @@ SpeciesService.start() -- switching and unlocking species
 TutorialService.start() -- loaded: skip steps already met
 TreasureService.start() -- treasure maps: drops, following, digging
 PredatorService.start() -- AI predators: roaming, hunting, bites, loot
+BossService.start() -- world boss events: the Megalodon's phases, attacks and rewards
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

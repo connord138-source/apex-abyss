@@ -208,7 +208,50 @@ end
 
 local function shopSubtitle(vendorId: string): string
 	local vendor = Shop.vendorsById[vendorId]
+	if vendorId == "Trophies" then
+		local trophies = state().trophies or {}
+		local held = {}
+		local seen: { [string]: boolean } = {}
+		for _, trophy in Shop.trophies do
+			if not seen[trophy.currency] then
+				seen[trophy.currency] = true
+				table.insert(held, `{trophies[trophy.currency] or 0} {trophy.currencyName}`)
+			end
+		end
+		return `{vendor.keeper} · {vendor.blurb}   ·   You have {table.concat(held, ", ")}`
+	end
 	return `{vendor.keeper} · {vendor.blurb}   ·   You have {Ui.number(coral())} coral`
+end
+
+-- The Trophy Hunter: boss trophies for that boss's Teeth or Beaks (BossService)
+local function trophyRows(list: ScrollingFrame)
+	local s = state()
+	local trophies = s.trophies or {}
+	local owned = s.shades or {}
+	local order = 0
+	for _, trophy in Shop.trophies do
+		order += 1
+		local held = trophies[trophy.currency] or 0
+		local has = trophy.kind == "shade" and owned[trophy.shade or ""] == true
+		local boss = Config.Bosses.byId[trophy.boss]
+		local blurb = `{trophy.blurb} · from the {if boss then boss.name else trophy.boss}`
+		local _, button = row(
+			list,
+			order,
+			trophy.id,
+			trophy.name,
+			blurb,
+			`Have {held} {trophy.currencyName}`,
+			if has then "OWNED" else `{trophy.price} {string.upper(trophy.currencyName)}`,
+			if has then "disabled" elseif held >= trophy.price then "primary" else "disabled",
+			Tiers.byId.Trophy.color
+		)
+		if button and not has and held >= trophy.price then
+			button.Activated:Connect(function()
+				ClientState.request("Buy", "trophy", trophy.id)
+			end)
+		end
+	end
 end
 
 local function upgradeRows(list: ScrollingFrame, vendorId: string)
@@ -379,6 +422,8 @@ function MenuController.openShop(vendorId: string, anchor: Vector3?)
 				rerender(list, function()
 					if vendorId == "Charms" then
 						charmRows(list)
+					elseif vendorId == "Trophies" then
+						trophyRows(list)
 					elseif vendorId == "Dyer" and preview then
 						dyeRows(list, preview)
 					else

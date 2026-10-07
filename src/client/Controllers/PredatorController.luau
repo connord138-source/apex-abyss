@@ -1,30 +1,36 @@
 --!strict
--- The AI predators on this client (Config/Predators, PredatorService). The server
--- streams their positions ten times a second over an unreliable remote; this
--- controller keeps a short history per predator and draws each one a little behind
--- the stream, so they glide instead of stepping. Events (PredatorEvent) carry the
--- moments: a windup (the jaw flashes, and a warning if it's coming for us), a bite
--- (bubbles), a hurt (a flash, a damage pop for our own bites) and a death (a fade).
+-- The AI predators and world bosses on this client (Config/Predators, Config/Bosses,
+-- PredatorService). The server streams their positions ten times a second over an
+-- unreliable remote; this controller keeps a short history per creature and draws
+-- each one a little behind the stream, so they glide instead of stepping. Events
+-- (PredatorEvent) carry the moments: a windup (the jaw flashes, and a warning if
+-- it's coming for us), a bite (bubbles), a hurt (a flash, a damage pop for our own
+-- bites), a death (a fade), and the bosses' tells: a charge, a tail sweep, a mark,
+-- a stagger, a blood cloud, a breach and its shockwave.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Ui = require(script.Parent.Parent.Ui)
+local CameraController = require(script.Parent.CameraController)
 
 local Predators = Config.Predators
+local Bosses = Config.Bosses
 
-type Def = typeof(Predators.list[1])
+type Def = PredatorsConfig.PredatorDef
 
 local PredatorController = {
 	-- (damage, position) — our bite landed on a predator (HUD pops the number)
 	hit = Signal.new(),
+	-- (kind, index, payload) — every predator event, for the boss HUD
+	event = Signal.new(),
 }
 
-local HISTORY = 8 -- stream samples kept per predator
+local HISTORY = 8 -- stream samples kept per creature
 local EXTRAPOLATE = 0.25 -- seconds we keep moving past the last sample
 local FADE_SECONDS = 0.7
 local TAG_DISTANCE = 240
@@ -38,6 +44,10 @@ type Sample = {
 type Visual = {
 	index: number,
 	def: Def,
+	boss: boolean,
+	model: Model?, -- a rigged boss body (its MeshPart is `body`)
+	bones: { [string]: Bone },
+	spine: { string },
 	body: BasePart,
 	tail: BasePart?,
 	bodySize: Vector3,
@@ -47,13 +57,21 @@ type Visual = {
 	heading: Vector3,
 	mode: string,
 	health: number, -- 0..1
+	meter: number, -- a boss's stagger meter, 0..1
 	target: number, -- userId it's hunting (0 = none)
 	hidden: boolean,
+	gone: boolean, -- destroyed once it has faded
 	fade: number, -- 0 hidden .. 1 shown, eased
+	phase: number, -- the swim wave
 	windupUntil: number,
+	tellUntil: number, -- a charge or sweep tell (eyes flash, yellow)
 	flashUntil: number,
+	markedUntil: number,
+	staggerUntil: number,
+	bloodUntil: number,
 	jaw: Highlight,
 	glow: PointLight,
+	blood: ParticleEmitter?,
 	tag: BillboardGui,
 	healthFill: Frame,
 	status: TextLabel,
@@ -82,9 +100,9 @@ local function makePart(parent: Instance, color: Color3): Part
 	return part
 end
 
--- The imported mesh (docs/ASSETS.md): ReplicatedStorage.PreyModels.<model>, a
+-- The imported prey mesh (docs/ASSETS.md): ReplicatedStorage.PreyModels.<model>, a
 -- MeshPart facing -Z. Nil while it isn't imported (parts are drawn instead).
-local function template(name: string): MeshPart?
+local function preyTemplate(name: string): MeshPart?
 	local models = ReplicatedStorage:FindFirstChild("PreyModels")
 	local found = models and models:FindFirstChild(name)
 	if found and found:IsA("MeshPart") then
@@ -96,19 +114,43 @@ local function template(name: string): MeshPart?
 	return nil
 end
 
+-- A rigged body (FishModels.<model>, a Model holding a skinned MeshPart with bones)
+local function riggedTemplate(name: string): Model?
+	local models = ReplicatedStorage:FindFirstChild("FishModels")
+	local found = models and models:FindFirstChild(name)
+	if found and found:IsA("Model") and found:FindFirstChildWhichIsA("MeshPart", true) then
+		return found
+	end
+	return nil
+end
+
+local function defOf(id: string): (Def?, boolean)
+	local boss = Bosses.byId[id]
+	if boss then
+		return boss.predator, true
+	end
+	return Predators.byId[id], false
+end
+
 local function makeTag(visual: Visual)
 	local def = visual.def
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "PredatorTag"
-	gui.Size = UDim2.fromOffset(220, 46)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, def.length * 0.45 + 2, 0)
+	gui.Size = if visual.boss then UDim2.fromOffset(320, 56) else UDim2.fromOffset(220, 46)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, def.length * (if visual.boss then 0.3 else 0.45) + 2, 0)
 	gui.AlwaysOnTop = false
 	gui.LightInfluence = 0
-	gui.MaxDistance = TAG_DISTANCE
+	gui.MaxDistance = if visual.boss then 700 else TAG_DISTANCE
 	gui.Adornee = visual.body
-	local name =
-		Ui.label(gui, "Name", `PREDATOR · {string.upper(def.name)}`, Ui.FONT_HEAVY, 15, Ui.color.danger)
-	name.Size = UDim2.new(1, 0, 0, 20)
+	local name = Ui.label(
+		gui,
+		"Name",
+		`{def.tag or "PREDATOR"} · {string.upper(def.name)}`,
+		Ui.FONT_HEAVY,
+		if visual.boss then 20 else 15,
+		Ui.color.danger
+	)
+	name.Size = UDim2.new(1, 0, 0, if visual.boss then 26 else 20)
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.TextStrokeTransparency = 0.5
 	local status = Ui.label(
@@ -116,14 +158,20 @@ local function makeTag(visual: Visual)
 		"Status",
 		"",
 		Ui.FONT_SEMI,
-		12,
+		if visual.boss then 14 else 12,
 		Ui.color.text,
-		UDim2.new(1, 0, 0, 14),
-		UDim2.fromOffset(0, 20)
+		UDim2.new(1, 0, 0, 16),
+		UDim2.fromOffset(0, if visual.boss then 26 else 20)
 	)
 	status.TextXAlignment = Enum.TextXAlignment.Center
 	status.TextStrokeTransparency = 0.6
-	local _, fill = Ui.bar(gui, "Health", UDim2.new(0.6, 0, 0, 5), UDim2.new(0.2, 0, 0, 38), Ui.color.danger)
+	local _, fill = Ui.bar(
+		gui,
+		"Health",
+		UDim2.new(0.6, 0, 0, 5),
+		UDim2.new(0.2, 0, 0, if visual.boss then 46 else 38),
+		Ui.color.danger
+	)
 	fill.Size = UDim2.fromScale(1, 1)
 	gui.Parent = visual.body
 	visual.tag = gui
@@ -131,33 +179,91 @@ local function makeTag(visual: Visual)
 	visual.status = status
 end
 
-local function build(index: number, def: Def): Visual
+local function bonesOf(model: Model): ({ [string]: Bone }, { string })
+	local bones: { [string]: Bone } = {}
+	local spine: { string } = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Bone") then
+			bones[descendant.Name] = descendant
+		end
+	end
+	local i = 1
+	while bones[`Spine{i}`] do
+		table.insert(spine, `Spine{i}`)
+		i += 1
+	end
+	if bones.Tail then
+		table.insert(spine, "Tail")
+	end
+	return bones, spine
+end
+
+local function build(index: number, def: Def, boss: boolean): Visual
 	local length = def.length
 	local bodySize = Vector3.new(length * 0.2, length * 0.24, length * 0.8)
 	local tailSize = Vector3.new(length * 0.03, length * 0.3, length * 0.26)
-	local mesh = template(def.model)
-	local body: BasePart
+	local body: BasePart? = nil
 	local tail: BasePart? = nil
-	if mesh then
-		local clone = mesh:Clone()
-		clone.Anchored = true
-		clone.CanCollide = false
-		clone.CanQuery = false
-		clone.CanTouch = false
-		clone.CastShadow = false
-		bodySize = mesh.Size * (length / math.max(mesh.Size.Z, 0.01))
-		clone.Size = bodySize
-		clone.Parent = folder
-		body = clone
-	else
-		body = makePart(folder, def.back)
-		body.Size = bodySize
-		local fin = makePart(folder, def.back:Lerp(def.belly, 0.3))
-		fin.Name = "Tail"
-		fin.Size = tailSize
-		tail = fin
+	local model: Model? = nil
+	local bones: { [string]: Bone } = {}
+	local spine: { string } = {}
+	if boss then
+		local rigged = riggedTemplate(def.model)
+		if rigged then
+			local clone = rigged:Clone()
+			clone.Name = def.id
+			for _, descendant in clone:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanCollide = false
+					descendant.CanQuery = false
+					descendant.CanTouch = false
+				end
+			end
+			clone:ScaleTo(1)
+			local extents = clone:GetExtentsSize()
+			clone:ScaleTo(length / math.max(extents.Z, 0.01))
+			clone:PivotTo(CFrame.new())
+			local box = clone:GetBoundingBox()
+			clone:PivotTo(CFrame.new(-box.Position))
+			local primary = clone.PrimaryPart or clone:FindFirstChildWhichIsA("MeshPart", true)
+			if primary then
+				clone.PrimaryPart = primary
+				bodySize = clone:GetExtentsSize()
+				bones, spine = bonesOf(clone)
+				clone.Parent = folder
+				model = clone
+				body = primary
+			else
+				clone:Destroy()
+			end
+		end
 	end
-	body.Name = def.id
+	if body == nil then
+		local mesh = preyTemplate(def.model)
+		if mesh then
+			local clone = mesh:Clone()
+			clone.Anchored = true
+			clone.CanCollide = false
+			clone.CanQuery = false
+			clone.CanTouch = false
+			clone.CastShadow = false
+			bodySize = mesh.Size * (length / math.max(mesh.Size.Z, 0.01))
+			clone.Size = bodySize
+			clone.Parent = folder
+			body = clone
+		else
+			local made = makePart(folder, def.back)
+			made.Size = bodySize
+			local fin = makePart(folder, def.back:Lerp(def.belly, 0.3))
+			fin.Name = "Tail"
+			fin.Size = tailSize
+			tail = fin
+			body = made
+		end
+	end
+	local part = body :: BasePart
+	part.Name = def.id
 	-- The jaw tell and hurt flash: a highlight that's off until needed
 	local jaw = Instance.new("Highlight")
 	jaw.Name = "Jaw"
@@ -166,19 +272,23 @@ local function build(index: number, def: Def): Visual
 	jaw.OutlineColor = Ui.color.danger
 	jaw.OutlineTransparency = 1
 	jaw.DepthMode = Enum.HighlightDepthMode.Occluded
-	jaw.Adornee = body
-	jaw.Parent = body
+	jaw.Adornee = model or part
+	jaw.Parent = part
 	local glow = Instance.new("PointLight")
 	glow.Name = "Glow"
 	glow.Color = Ui.color.danger
 	glow.Brightness = 0
 	glow.Range = length * 1.6
 	glow.Shadows = false
-	glow.Parent = body
+	glow.Parent = part
 	local visual: Visual = {
 		index = index,
 		def = def,
-		body = body,
+		boss = boss,
+		model = model,
+		bones = bones,
+		spine = spine,
+		body = part,
 		tail = tail,
 		bodySize = bodySize,
 		tailSize = tailSize,
@@ -187,24 +297,73 @@ local function build(index: number, def: Def): Visual
 		heading = Vector3.new(1, 0, 0),
 		mode = "dead",
 		health = 1,
+		meter = 0,
 		target = 0,
 		hidden = true,
+		gone = false,
 		fade = 0,
+		phase = index * 1.7,
 		windupUntil = 0,
+		tellUntil = 0,
 		flashUntil = 0,
+		markedUntil = 0,
+		staggerUntil = 0,
+		bloodUntil = 0,
 		jaw = jaw,
 		glow = glow,
+		blood = nil,
 		tag = nil :: any,
 		healthFill = nil :: any,
 		status = nil :: any,
 	}
 	makeTag(visual)
 	visual.tag.Enabled = false
-	body.Transparency = 1
-	if tail then
-		tail.Transparency = 1
-	end
 	return visual
+end
+
+local function setTransparency(visual: Visual, transparency: number)
+	if visual.model then
+		for _, descendant in (visual.model :: Model):GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Transparency = transparency
+			end
+		end
+	else
+		visual.body.Transparency = transparency
+	end
+	if visual.tail then
+		visual.tail.Transparency = transparency
+	end
+end
+
+local function visualFor(index: number, id: string?): Visual?
+	local existing = visuals[index]
+	if existing then
+		return existing
+	end
+	if id == nil then
+		return nil
+	end
+	local def, boss = defOf(id)
+	if def == nil then
+		return nil
+	end
+	local made = build(index, def, boss)
+	setTransparency(made, 1)
+	visuals[index] = made
+	return made
+end
+
+local function destroy(visual: Visual)
+	visuals[visual.index] = nil
+	if visual.model then
+		(visual.model :: Model):Destroy()
+	else
+		visual.body:Destroy()
+	end
+	if visual.tail then
+		(visual.tail :: BasePart):Destroy()
+	end
 end
 
 local function setHidden(visual: Visual, hidden: boolean)
@@ -215,13 +374,19 @@ local function setHidden(visual: Visual, hidden: boolean)
 	visual.tag.Enabled = not hidden
 	if hidden then
 		visual.windupUntil = 0
+		visual.tellUntil = 0
+		visual.markedUntil = 0
+		visual.staggerUntil = 0
 		visual.jaw.FillTransparency = 1
 		visual.jaw.OutlineTransparency = 1
 		visual.glow.Brightness = 0
+		if visual.blood then
+			(visual.blood :: ParticleEmitter).Enabled = false
+		end
 	end
 end
 
-local function bubbles(position: Vector3, size: number)
+local function bubbles(position: Vector3, size: number, color: Color3?)
 	local holder = Instance.new("Part")
 	holder.Anchored = true
 	holder.CanCollide = false
@@ -240,16 +405,85 @@ local function bubbles(position: Vector3, size: number)
 	emitter.Size = NumberSequence.new(size * 0.12, size * 0.04)
 	emitter.Transparency = NumberSequence.new(0.2, 1)
 	emitter.LightEmission = 0.5
-	emitter.Color = ColorSequence.new(Color3.fromRGB(220, 250, 255))
+	emitter.Color = ColorSequence.new(color or Color3.fromRGB(220, 250, 255))
 	emitter.Parent = holder
 	holder.Parent = workspace
-	emitter:Emit(math.clamp(math.floor(size * 6), 8, 60))
+	emitter:Emit(math.clamp(math.floor(size * 6), 8, 80))
 	task.delay(2, function()
 		holder:Destroy()
 	end)
 end
 
--- Where the predator is at `t`, from its stream samples: between the two that
+-- A breach's shockwave: a ring that races outward along the water and fades
+local function shockwave(position: Vector3, radius: number)
+	local ring = Instance.new("Part")
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = Color3.fromRGB(230, 250, 255)
+	ring.Transparency = 0.2
+	ring.Size = Vector3.new(4, 1, 4)
+	ring.CFrame = CFrame.new(position)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Cylinder
+	mesh.Parent = ring
+	-- A cylinder mesh lies along X; stand it up
+	ring.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Parent = workspace
+	Ui.tween(
+		ring,
+		0.9,
+		{ Size = Vector3.new(2, radius * 2, radius * 2), Transparency = 1 },
+		Enum.EasingStyle.Quad
+	)
+	bubbles(position, radius * 0.5)
+	task.delay(1, function()
+		ring:Destroy()
+	end)
+end
+
+local function bloodCloud(visual: Visual, seconds: number)
+	local length = visual.def.length
+	local emitter = visual.blood
+	if emitter == nil then
+		local made = Instance.new("ParticleEmitter")
+		made.Name = "Blood"
+		made.Shape = Enum.ParticleEmitterShape.Sphere
+		made.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		made.Rate = 40
+		made.Lifetime = NumberRange.new(3, 5)
+		made.Speed = NumberRange.new(1, 4)
+		made.SpreadAngle = Vector2.new(180, 180)
+		made.Drag = 1
+		made.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, length * 0.15),
+			NumberSequenceKeypoint.new(0.4, length * 0.5),
+			NumberSequenceKeypoint.new(1, length * 0.7),
+		})
+		made.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.55),
+			NumberSequenceKeypoint.new(0.6, 0.7),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		made.Color = ColorSequence.new(Color3.fromRGB(96, 10, 18), Color3.fromRGB(40, 6, 12))
+		made.LightInfluence = 0.2
+		made.Parent = visual.body
+		visual.blood = made
+		emitter = made
+	end
+	local cloud = emitter :: ParticleEmitter
+	cloud.Enabled = true
+	visual.bloodUntil = Timing.clock() + seconds
+	task.delay(seconds, function()
+		if visual.bloodUntil <= Timing.clock() then
+			cloud.Enabled = false
+		end
+	end)
+end
+
+-- Where the creature is at `t`, from its stream samples: between the two that
 -- bracket it, or a little past the last one.
 local function sampleAt(visual: Visual, t: number): (Vector3, Vector3)
 	local samples = visual.samples
@@ -289,6 +523,42 @@ local function frameOf(position: Vector3, heading: Vector3): CFrame
 	return CFrame.lookAt(position, position + heading, up)
 end
 
+local function speedOf(visual: Visual): number
+	local samples = visual.samples
+	local count = #samples
+	if count < 2 then
+		return 0
+	end
+	local a, b = samples[count - 1], samples[count]
+	return (b.position - a.position).Magnitude / math.max(b.at - a.at, 1e-3)
+end
+
+-- A rigged body swims: a wave runs down the spine, wider and faster with speed
+local function swimBones(visual: Visual, dt: number, relative: number)
+	local frequency = 0.5 + 1.4 * math.min(relative, 1.5)
+	visual.phase += 2 * math.pi * frequency * dt
+	local amplitude = 0.06 + 0.16 * math.min(relative, 1)
+	local p = visual.phase
+	local head = visual.bones.Head
+	if head then
+		head.Transform = CFrame.Angles(0, math.sin(p + 0.5) * amplitude * 0.15, 0)
+	end
+	local n = #visual.spine
+	if n == 0 then
+		return
+	end
+	local soften = (3 / n) ^ 0.6
+	local spread = 2.1 + 0.25 * math.max(n - 3, 0)
+	for i, name in visual.spine do
+		local bone = visual.bones[name]
+		if bone then
+			local t = i / n
+			bone.Transform =
+				CFrame.Angles(0, math.sin(p - spread * t) * amplitude * (0.45 + 0.8 * t) * soften * 1.3, 0)
+		end
+	end
+end
+
 local function step(dt: number)
 	local now = Timing.clock()
 	local renderAt = now - Predators.interpolationDelay
@@ -301,13 +571,12 @@ local function step(dt: number)
 		if visual.fade ~= goal then
 			visual.fade =
 				math.clamp(visual.fade + (if goal > visual.fade then dt else -dt) / FADE_SECONDS, 0, 1)
-			local transparency = 1 - visual.fade
-			visual.body.Transparency = transparency
-			if visual.tail then
-				visual.tail.Transparency = transparency
-			end
+			setTransparency(visual, 1 - visual.fade)
 		end
 		if visual.fade <= 0 then
+			if visual.gone then
+				destroy(visual)
+			end
 			continue
 		end
 		local position, heading = sampleAt(visual, renderAt)
@@ -316,55 +585,90 @@ local function step(dt: number)
 		local blended = visual.heading:Lerp(heading, 1 - math.exp(-dt * 8))
 		visual.heading = if blended.Magnitude > 1e-3 then blended.Unit else heading
 		local frame = frameOf(position, visual.heading)
-		local speed = if #visual.samples >= 2
-			then (visual.samples[#visual.samples].position - visual.samples[#visual.samples - 1].position).Magnitude
-				/ math.max(visual.samples[#visual.samples].at - visual.samples[#visual.samples - 1].at, 1e-3)
-			else 0
-		local rate = 3 + math.min(speed / math.max(visual.def.speed, 1), 1.5) * 5
-		local beat = math.sin(now * rate + visual.index * 1.7) * 0.4
-		table.insert(parts, visual.body)
-		local tail = visual.tail
-		if tail then
+		local relative = speedOf(visual) / math.max(visual.def.speed, 1)
+		if visual.model then
+			swimBones(visual, dt, relative)
+			table.insert(parts, visual.body)
 			table.insert(frames, frame)
-			table.insert(parts, tail)
-			table.insert(
-				frames,
-				frame
-					* CFrame.new(0, 0, visual.bodySize.Z * 0.45)
-					* CFrame.Angles(0, beat, 0)
-					* CFrame.new(0, 0, tail.Size.Z * 0.4)
-			)
 		else
-			table.insert(
-				frames,
-				frame
-					* CFrame.new(0, 0, -visual.bodySize.Z * 0.3)
-					* CFrame.Angles(0, beat * 0.18, 0)
-					* CFrame.new(0, 0, visual.bodySize.Z * 0.3)
-			)
+			local rate = 3 + math.min(relative, 1.5) * 5
+			visual.phase += dt * rate
+			local beat = math.sin(visual.phase) * 0.4
+			table.insert(parts, visual.body)
+			local tail = visual.tail
+			if tail then
+				table.insert(frames, frame)
+				table.insert(parts, tail)
+				table.insert(
+					frames,
+					frame
+						* CFrame.new(0, 0, visual.bodySize.Z * 0.45)
+						* CFrame.Angles(0, beat, 0)
+						* CFrame.new(0, 0, tail.Size.Z * 0.4)
+				)
+			else
+				table.insert(
+					frames,
+					frame
+						* CFrame.new(0, 0, -visual.bodySize.Z * 0.3)
+						* CFrame.Angles(0, beat * 0.18, 0)
+						* CFrame.new(0, 0, visual.bodySize.Z * 0.3)
+				)
+			end
 		end
-		-- The tell: the jaw flashes faster as the bite comes; a hurt flash is white
+		-- The tells: a bite's jaw flashes red faster as it comes; a charge or sweep
+		-- tell flashes the eyes amber; a stagger glows gold; a hurt flash is white
+		local jaw, glow = visual.jaw, visual.glow
 		if visual.flashUntil > now then
-			visual.jaw.FillColor = Color3.new(1, 1, 1)
-			visual.jaw.FillTransparency = 0.35
-			visual.jaw.OutlineTransparency = 0.2
-			visual.glow.Brightness = 0
+			jaw.FillColor = Color3.new(1, 1, 1)
+			jaw.FillTransparency = 0.35
+			jaw.OutlineTransparency = 0.2
+			glow.Brightness = 0
+		elseif visual.staggerUntil > now then
+			local pulse = 0.5 + 0.5 * math.sin(now * 6)
+			jaw.FillColor = Ui.color.haul
+			jaw.FillTransparency = 0.6 + 0.3 * pulse
+			jaw.OutlineColor = Ui.color.haul
+			jaw.OutlineTransparency = 0.1
+			glow.Color = Ui.color.haul
+			glow.Brightness = 2 + pulse
 		elseif visual.windupUntil > now then
 			local left = visual.windupUntil - now
 			local pulse = 0.5
 				+ 0.5 * math.sin(now * (14 + (1 - math.clamp(left / visual.def.telegraph, 0, 1)) * 20))
-			visual.jaw.FillColor = Ui.color.danger
-			visual.jaw.FillTransparency = 0.45 + 0.4 * pulse
-			visual.jaw.OutlineTransparency = 0.1
-			visual.glow.Brightness = 1.5 + 2 * pulse
+			jaw.FillColor = Ui.color.danger
+			jaw.OutlineColor = Ui.color.danger
+			jaw.FillTransparency = 0.45 + 0.4 * pulse
+			jaw.OutlineTransparency = 0.1
+			glow.Color = Ui.color.danger
+			glow.Brightness = 1.5 + 2 * pulse
+		elseif visual.tellUntil > now then
+			local pulse = 0.5 + 0.5 * math.sin(now * 22)
+			jaw.FillColor = Color3.fromRGB(255, 170, 60)
+			jaw.OutlineColor = Color3.fromRGB(255, 170, 60)
+			jaw.FillTransparency = 0.7 + 0.25 * pulse
+			jaw.OutlineTransparency = 0.05
+			glow.Color = Color3.fromRGB(255, 120, 40)
+			glow.Brightness = 2 + 3 * pulse
+		elseif visual.markedUntil > now then
+			jaw.FillColor = Ui.color.danger
+			jaw.OutlineColor = Ui.color.danger
+			jaw.FillTransparency = 1
+			jaw.OutlineTransparency = 0.3
+			glow.Color = Ui.color.danger
+			glow.Brightness = 0.8
 		else
-			visual.jaw.FillTransparency = 1
-			visual.jaw.OutlineTransparency = 1
-			visual.glow.Brightness = 0
+			jaw.FillTransparency = 1
+			jaw.OutlineTransparency = 1
+			glow.Brightness = 0
 		end
-		-- The tag's status line
-		if visual.target == me then
-			visual.status.Text = "HUNTING YOU"
+		-- The tag: hidden inside a blood cloud (sonar only), else the status line
+		visual.tag.Enabled = not visual.hidden and visual.bloodUntil <= now
+		if visual.staggerUntil > now then
+			visual.status.Text = "STAGGERED · BITE IT"
+			visual.status.TextColor3 = Ui.color.haul
+		elseif visual.target == me then
+			visual.status.Text = if visual.markedUntil > now then "MARKED YOU FOR DEATH" else "HUNTING YOU"
 			visual.status.TextColor3 = Ui.color.danger
 		elseif visual.mode == "hunt" or visual.mode == "windup" or visual.mode == "recover" then
 			visual.status.Text = "HUNTING"
@@ -387,7 +691,7 @@ local function step(dt: number)
 	end
 end
 
--- A stream packet: { at, list = { {index, x, y, z, hx, hy, hz, mode, hp01, targetUserId}, ... } }
+-- A stream packet: { at, list = { {index, x, y, z, hx, hy, hz, mode, hp01, targetUserId, defId, meter}, ... } }
 local function onState(packet: any)
 	if typeof(packet) ~= "table" or typeof(packet.at) ~= "number" or typeof(packet.list) ~= "table" then
 		return
@@ -397,8 +701,8 @@ local function onState(packet: any)
 		if typeof(entry) ~= "table" or typeof(entry[1]) ~= "number" then
 			continue
 		end
-		local visual = visuals[entry[1]]
-		if visual == nil then
+		local visual = visualFor(entry[1], if typeof(entry[11]) == "string" then entry[11] else nil)
+		if visual == nil or visual.gone then
 			continue
 		end
 		local x, y, z = entry[2], entry[3], entry[4]
@@ -431,6 +735,8 @@ local function onState(packet: any)
 		end
 		local target = entry[10]
 		visual.target = if typeof(target) == "number" then target else 0
+		local meter = entry[12]
+		visual.meter = if typeof(meter) == "number" then math.clamp(meter, 0, 1) else 0
 		-- Joined mid-life, or missed an event: the mode says whether it's there
 		if visual.mode == "dead" then
 			setHidden(visual, true)
@@ -443,75 +749,152 @@ local function onState(packet: any)
 	end
 end
 
+local function warn(text: string, seconds: number)
+	warning.Text = text
+	warningUntil = Timing.clock() + seconds
+end
+
 local function onEvent(kind: any, index: any, payload: any)
 	if typeof(kind) ~= "string" or typeof(index) ~= "number" or typeof(payload) ~= "table" then
 		return
 	end
-	local visual = visuals[index]
+	local visual = visualFor(index, if typeof(payload.id) == "string" then payload.id else nil)
 	if visual == nil then
 		return
 	end
 	local now = Timing.clock()
 	local me = Players.LocalPlayer.UserId
-	if kind == "spawned" then
-		if
-			typeof(payload.x) == "number"
+	local def = visual.def
+	local at: Vector3? = if typeof(payload.x) == "number"
 			and typeof(payload.y) == "number"
 			and typeof(payload.z) == "number"
-		then
-			local position = Vector3.new(payload.x, payload.y, payload.z)
+		then Vector3.new(payload.x, payload.y, payload.z)
+		else nil
+	local myRoot = Players.LocalPlayer.Character
+		and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	local myDistance = if myRoot and myRoot:IsA("BasePart")
+		then (myRoot.Position - visual.position).Magnitude
+		else math.huge
+	if kind == "spawned" then
+		if at then
 			table.clear(visual.samples)
-			visual.position = position
+			visual.position = at
 			visual.mode = "roam"
 			visual.health = 1
 			visual.healthFill.Size = UDim2.fromScale(1, 1)
 		end
+		visual.gone = false
 		setHidden(visual, false)
 	elseif kind == "windup" then
-		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else visual.def.telegraph
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else def.telegraph
 		visual.windupUntil = now + seconds
 		if payload.target == me then
-			warning.Text = `{string.upper(visual.def.name)} · INCOMING`
-			warningUntil = now + seconds + 0.3
+			warn(`{string.upper(def.name)} · INCOMING`, seconds + 0.3)
 		end
 	elseif kind == "bite" then
 		visual.windupUntil = 0
-		if
-			typeof(payload.x) == "number"
-			and typeof(payload.y) == "number"
-			and typeof(payload.z) == "number"
-		then
-			bubbles(
-				Vector3.new(payload.x, payload.y, payload.z),
-				if payload.hit == true then visual.def.length * 0.5 else visual.def.length * 0.25
-			)
+		if at then
+			bubbles(at, if payload.hit == true then def.length * 0.5 else def.length * 0.25)
 		end
+	elseif kind == "charge" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 1.2
+		visual.tellUntil = now + seconds
+		if payload.target == me then
+			warn(`{string.upper(def.name)} · CHARGING · DODGE SIDEWAYS`, seconds + 0.6)
+		end
+	elseif kind == "rush" then
+		visual.tellUntil = 0
+		if myDistance < def.length * 3 then
+			CameraController.kick(0.35)
+		end
+	elseif kind == "charged" then
+		if at then
+			bubbles(at, def.length * 0.3)
+		end
+	elseif kind == "sweep" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 1
+		visual.tellUntil = now + seconds
+		local radius = if typeof(payload.radius) == "number" then payload.radius else 40
+		if myDistance <= radius + 8 then
+			warn("TAIL SWEEP · GET CLEAR", seconds + 0.4)
+		end
+	elseif kind == "swept" then
+		visual.tellUntil = 0
+		if at then
+			bubbles(at, def.length * 0.6)
+		end
+		local radius = if typeof(payload.radius) == "number" then payload.radius else 40
+		if myDistance <= radius * 1.6 then
+			CameraController.kick(0.6)
+		end
+	elseif kind == "marked" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 8
+		visual.markedUntil = now + seconds
+		if payload.target == me then
+			warn(`MARKED FOR DEATH · {math.floor(seconds)} s · FILL ITS STAGGER METER`, 3)
+		end
+	elseif kind == "unmarked" then
+		visual.markedUntil = 0
+	elseif kind == "stagger" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 4
+		visual.staggerUntil = now + seconds
+		visual.markedUntil = 0
+		visual.tellUntil = 0
+		visual.windupUntil = 0
+		bubbles(visual.position, def.length * 0.4, Ui.color.haul)
+	elseif kind == "blood" then
+		bloodCloud(visual, if typeof(payload.seconds) == "number" then payload.seconds else 10)
+	elseif kind == "breach" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 2
+		if payload.stage == "tell" then
+			visual.tellUntil = now + seconds
+			if myDistance < 160 then
+				warn("IT'S GOING TO BREACH · GO UP OR DOWN", seconds + 0.5)
+			end
+		elseif payload.stage == "rocket" then
+			visual.tellUntil = 0
+			if myDistance < 160 then
+				CameraController.kick(0.4)
+			end
+		end
+	elseif kind == "shock" then
+		local radius = if typeof(payload.radius) == "number" then payload.radius else 45
+		if at then
+			shockwave(at, radius)
+		end
+		if myDistance <= radius * 2.5 then
+			CameraController.kick(math.clamp(1 - myDistance / (radius * 2.5), 0.3, 1))
+		end
+	elseif kind == "exhausted" then
+		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 5
+		visual.staggerUntil = now + seconds
+	elseif kind == "laststand" then
+		visual.markedUntil = 0
 	elseif kind == "hurt" then
 		visual.flashUntil = now + 0.12
 		if typeof(payload.health) == "number" then
 			visual.health = math.clamp(payload.health, 0, 1)
 			visual.healthFill.Size = UDim2.fromScale(visual.health, 1)
 		end
-		local position = if typeof(payload.x) == "number"
-				and typeof(payload.y) == "number"
-				and typeof(payload.z) == "number"
-			then Vector3.new(payload.x, payload.y, payload.z)
-			else visual.position
-		bubbles(position, visual.def.length * 0.2)
+		local position = at or visual.position
+		bubbles(position, def.length * (if visual.boss then 0.08 else 0.2))
 		if payload.by == me and typeof(payload.damage) == "number" then
 			PredatorController.hit:fire(payload.damage, position)
 		end
 	elseif kind == "died" then
 		visual.mode = "dead"
-		bubbles(visual.position, visual.def.length * 0.9)
+		if payload.reason ~= "escaped" then
+			bubbles(visual.position, def.length * (if visual.boss then 0.5 else 0.9))
+		end
 		setHidden(visual, true)
-		if payload.by == me then
-			TweenService:Create(visual.jaw, TweenInfo.new(0.1), { FillTransparency = 1 }):Play()
+		if payload.gone == true then
+			visual.gone = true
 		end
 	end
+	PredatorController.event:fire(kind, index, payload)
 end
 
--- The index of the live predator whose body is within `reach` of `mouth` (nearest
+-- The index of the live creature whose body is within `reach` of `mouth` (nearest
 -- first), or nil. Distance is to the body's tail-to-nose line, like the server's.
 function PredatorController.nearest(mouth: Vector3, reach: number): number?
 	local best: number? = nil
@@ -532,28 +915,20 @@ function PredatorController.nearest(mouth: Vector3, reach: number): number?
 	return best
 end
 
--- The predator drawn at `index` (its position and whether it's alive), for other
--- controllers' effects.
-function PredatorController.get(index: number): (Vector3?, string?)
+-- The creature drawn at `index`: its position, mode, health (0..1) and stagger
+-- meter (0..1), for the boss HUD. Nil when it isn't known here.
+function PredatorController.get(index: number): (Vector3?, string?, number, number)
 	local visual = visuals[index]
-	if visual == nil then
-		return nil, nil
+	if visual == nil or visual.hidden then
+		return nil, nil, 0, 0
 	end
-	return visual.position, visual.mode
+	return visual.position, visual.mode, visual.health, visual.meter
 end
 
 function PredatorController.start()
 	folder = Instance.new("Folder")
 	folder.Name = "Predators"
 	folder.Parent = workspace
-	-- The same indices the server hands out: in list order, `count` each
-	local index = 0
-	for _, def in Predators.list do
-		for _ = 1, def.count do
-			index += 1
-			visuals[index] = build(index, def)
-		end
-	end
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	local gui = Ui.screen("Predators", playerGui, 6)
 	warning = Ui.label(
