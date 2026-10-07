@@ -63,6 +63,7 @@ local function buyCharm(player: Player, data: DataService.PlayerData, id: string
 	if charm.seconds then
 		local now = Timing.now()
 		data.boosts[id] = math.max(data.boosts[id] or 0, now) + charm.seconds
+		WardrobeService.refresh(player)
 	else
 		data.charms[id] = (data.charms[id] or 0) + 1
 	end

@@ -20,6 +20,16 @@
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/4eff942d-2b94-4088-b725-9899d642efeb.zip",
       "into": "assets/fbx",
       "contents": "bosses/Megalodon.fbx (7 spine segments), bosses/GiantSquid.fbx (6; the arms trail and wave); rigged like species, import to FishModels.<Id>"
+    },
+    "prey_fbx": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/6cd9c5a1-2c2c-422a-ad93-4e71e228b943.zip",
+      "into": "assets/fbx",
+      "contents": "prey/<PreyId>.fbx: Minnow, Sardine, Wrasse, Snapper, Grouper (rigged, 4 spine segments; replaces the static prey_glb set, which still works)"
+    },
+    "props2_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/92de7226-58e5-43b7-8b5b-d9622ff8b73e.zip",
+      "into": "assets/glb",
+      "contents": "props/TreasureChest.glb (the dig site's chest, half out of the sand)"
     }
   }
 }

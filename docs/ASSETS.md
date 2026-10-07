@@ -13,13 +13,15 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | Bundle | Files | Goes to |
 |---|---|---|
 | `species_fbx` | Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged FBX) | `ReplicatedStorage.FishModels.<SpeciesId>` |
-| `prey_glb` | Minnow, Sardine, Wrasse, Snapper, Grouper, Barracuda, ReefShark (static GLB) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `prey_fbx` | Minnow, Sardine, Wrasse, Snapper, Grouper (rigged FBX, 4 spine segments: their bones swim) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
+| `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
 Not yet made: species growth stages (Fry/Juvenile/Apex), the vendors, the other
 biomes' props. The Barracuda and Reef Shark predators reuse the prey
-meshes. The Tripo balance is about 1,580 credits (`python tools/tripo.py balance`).
+meshes. The Tripo balance is about 1,560 credits (`python tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -34,7 +36,8 @@ python tools/fetch_assets.py
 2. **File → Import 3D**, select **all** files in `assets/fbx/species/`, keep the rig
    (skinning) on and textures on, then **Import All**. Do the same for the two
    files in `assets/fbx/bosses/`.
-3. Do the same for all files in `assets/glb/prey/` and `assets/glb/props/` (no rig).
+3. Import `assets/fbx/prey/` with the rig on (like the species), then all files in
+   `assets/glb/props/` (no rig). The static `assets/glb/prey/` set is no longer needed.
 4. **View → Command Bar**, paste the contents of `tools/studio/organize_imports.luau`,
    press Enter. It moves every import into the folder the code reads and sets each
    model's PrimaryPart. It also copies the 'Cuda and Reef Shark into `PreyModels` for

@@ -8,6 +8,7 @@
 -- Each school loops round its own center on a tilted figure-eight, and each fish
 -- keeps an offset inside the school with a little wobble, so they read as a school.
 local Config = require(script.Parent.Config)
+local Seafloor = require(script.Parent.Seafloor)
 local Size = require(script.Parent.Size)
 
 local World = Config.World
@@ -47,10 +48,18 @@ do
 			local radius = rng:NextNumber(prey.pathRadius[1], prey.pathRadius[2])
 			local spread = prey.spread * length * math.sqrt(prey.perSchool)
 			local margin = radius + spread + 10
-			local angle = rng:NextNumber(0, 2 * math.pi)
-			local distance = rng:NextNumber(shallows.inner + margin, shallows.outer - margin)
+			local band = prey.band or { shallows.inner, shallows.outer }
+			local angle, distance = 0, 0
+			for _ = 1, 12 do
+				angle = rng:NextNumber(0, 2 * math.pi)
+				distance = rng:NextNumber(band[1] + margin, band[2] - margin)
+				if not Seafloor.inTrench(math.cos(angle) * distance, math.sin(angle) * distance, margin) then
+					break
+				end
+			end
 			local height = rng:NextNumber(4, 14)
-			local y = World.seabedY + rng:NextNumber(prey.depth[1] + height, prey.depth[2] - height)
+			local floor = Seafloor.y(math.cos(angle) * distance, math.sin(angle) * distance)
+			local y = floor + rng:NextNumber(prey.depth[1] + height, prey.depth[2] - height)
 			local direction = if rng:NextInteger(0, 1) == 0 then -1 else 1
 			local school: School = {
 				prey = prey.id,

@@ -536,6 +536,16 @@ function HuntService.damage(player: Player, fraction: number, source: string, qu
 	end
 end
 
+-- Heals a fish fully (the admin panel).
+function HuntService.healFull(player: Player)
+	local session = sessions[player]
+	local character = FishService.character(player)
+	if session and character and session.alive then
+		session.health = maxHealth(player)
+		character:SetAttribute("Health", session.health)
+	end
+end
+
 -- Hands a player Kelp Wraps (up to the carry cap). Returns whether any were added.
 function HuntService.giveWrap(player: Player, count: number): boolean
 	local data = DataService.get(player)

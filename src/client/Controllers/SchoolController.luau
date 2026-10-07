@@ -16,6 +16,7 @@ local Schools = require(ReplicatedStorage.Shared.Schools)
 local Ui = require(script.Parent.Parent.Ui)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
+local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local SwimController = require(script.Parent.SwimController)
@@ -26,6 +27,9 @@ local SchoolController = {
 }
 
 local DRAW_DISTANCE = 520 -- schools further than this from the camera aren't moved
+-- Static GLB prey meshes came in facing +Z (owner, 2026-10-07: "swimming backwards");
+-- they're turned round when drawn. Rigged FBX bodies face -Z already.
+local MESH_FLIP = CFrame.Angles(0, math.pi, 0)
 local SUCK_SECONDS = 0.14
 local CONFIRM_SECONDS = 1.2
 local SEND_INTERVAL = 0.06
@@ -33,6 +37,11 @@ local SEND_INTERVAL = 0.06
 type Visual = {
 	body: BasePart,
 	tail: BasePart?, -- the part body's tail fin (a mesh body has none)
+	model: Model?, -- a rigged body (its primary MeshPart is `body`); its bones swim
+	bones: { [string]: Bone },
+	spine: { string },
+	unitScale: number, -- the rigged model's scale at full size
+	phase: number, -- the swim wave
 	bodySize: Vector3,
 	tailSize: Vector3,
 	hidden: boolean,
@@ -73,19 +82,42 @@ local function makePart(parent: Instance, color: Color3, shape: "Ellipsoid" | "F
 	return part
 end
 
--- The imported prey mesh (docs/ASSETS.md): ReplicatedStorage.PreyModels.<PreyId>,
--- a MeshPart facing -Z. Nil while it isn't imported (the ellipsoid is drawn).
-local function preyTemplate(preyId: string): MeshPart?
+-- The imported prey (docs/ASSETS.md): ReplicatedStorage.PreyModels.<PreyId>, a rigged
+-- Model (bones swim it) or an older static MeshPart. Nothing while it isn't
+-- imported (the ellipsoid is drawn).
+local function preyTemplate(preyId: string): (MeshPart?, Model?)
 	local folder = ReplicatedStorage:FindFirstChild("PreyModels")
 	local template = folder and folder:FindFirstChild(preyId)
 	if template and template:IsA("MeshPart") then
-		return template
+		return template, nil
 	end
 	if template and template:IsA("Model") then
 		local mesh = template:FindFirstChildWhichIsA("MeshPart", true)
-		return mesh
+		if mesh and template:FindFirstChildWhichIsA("Bone", true) then
+			return mesh, template
+		end
+		return mesh, nil
 	end
-	return nil
+	return nil, nil
+end
+
+local function bonesOf(model: Model): ({ [string]: Bone }, { string })
+	local bones: { [string]: Bone } = {}
+	local spine: { string } = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Bone") then
+			bones[descendant.Name] = descendant
+		end
+	end
+	local i = 1
+	while bones[`Spine{i}`] do
+		table.insert(spine, `Spine{i}`)
+		i += 1
+	end
+	if bones.Tail then
+		table.insert(spine, "Tail")
+	end
+	return bones, spine
 end
 
 local function build()
@@ -96,10 +128,38 @@ local function build()
 		local length = fish.length
 		local bodySize = Vector3.new(length * prey.slim * 0.8, length * prey.slim, length * 0.78)
 		local tailSize = Vector3.new(length * 0.03, length * prey.slim * 1.1, length * 0.26)
-		local template = preyTemplate(prey.id)
+		local template, rigged = preyTemplate(prey.id)
 		local body: BasePart
 		local tail: BasePart? = nil
-		if template then
+		local model: Model? = nil
+		local bones: { [string]: Bone } = {}
+		local spine: { string } = {}
+		local unitScale = 1
+		if rigged then
+			-- A rigged body: anchored, scaled to the fish's length, its bones swim
+			local clone = rigged:Clone()
+			for _, descendant in clone:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanCollide = false
+					descendant.CanQuery = false
+					descendant.CanTouch = false
+					descendant.CastShadow = false
+				end
+			end
+			clone:ScaleTo(1)
+			unitScale = length / math.max(clone:GetExtentsSize().Z, 0.01)
+			clone:ScaleTo(unitScale)
+			clone:PivotTo(CFrame.new())
+			clone:PivotTo(CFrame.new(-clone:GetBoundingBox().Position))
+			local primary = clone.PrimaryPart or clone:FindFirstChildWhichIsA("MeshPart", true)
+			clone.PrimaryPart = primary
+			bodySize = clone:GetExtentsSize()
+			bones, spine = bonesOf(clone)
+			clone.Parent = folder
+			model = clone
+			body = primary :: BasePart
+		elseif template then
 			local mesh = template:Clone()
 			mesh.Anchored = true
 			mesh.CanCollide = false
@@ -130,6 +190,11 @@ local function build()
 			suckFrom = nil,
 			suckStart = 0,
 			fadeIn = 1,
+			model = model,
+			bones = bones,
+			spine = spine,
+			unitScale = unitScale,
+			phase = fish.phase * 3,
 			chase = nil,
 		}
 	end
@@ -142,12 +207,24 @@ local function setHidden(visual: Visual, hidden: boolean)
 	end
 	visual.hidden = hidden
 	local transparency = if hidden then 1 else 0
-	visual.body.Transparency = transparency
+	if visual.model then
+		for _, descendant in (visual.model :: Model):GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Transparency = transparency
+			end
+		end
+	else
+		visual.body.Transparency = transparency
+	end
 	if visual.tail then
 		visual.tail.Transparency = transparency
 	end
 	if not hidden then
-		visual.body.Size = visual.bodySize
+		if visual.model then
+			(visual.model :: Model):ScaleTo(visual.unitScale)
+		else
+			visual.body.Size = visual.bodySize
+		end
 		if visual.tail then
 			visual.tail.Size = visual.tailSize
 		end
@@ -234,7 +311,11 @@ local function step(dt: number)
 				local from = visual.suckFrom :: CFrame
 				frame = CFrame.new(from.Position:Lerp(target, alpha * alpha)) * from.Rotation
 				local shrink = 1 - alpha * 0.85
-				visual.body.Size = visual.bodySize * shrink
+				if visual.model then
+					(visual.model :: Model):ScaleTo(visual.unitScale * shrink)
+				else
+					visual.body.Size = visual.bodySize * shrink
+				end
 				if visual.tail then
 					visual.tail.Size = visual.tailSize * shrink
 				end
@@ -246,7 +327,11 @@ local function step(dt: number)
 				if visual.fadeIn < 1 then
 					visual.fadeIn = math.min(1, visual.fadeIn + dt * 2.5)
 					local grow = 0.3 + 0.7 * visual.fadeIn
-					visual.body.Size = visual.bodySize * grow
+					if visual.model then
+						(visual.model :: Model):ScaleTo(visual.unitScale * grow)
+					else
+						visual.body.Size = visual.bodySize * grow
+					end
 					if visual.tail then
 						visual.tail.Size = visual.tailSize * grow
 					end
@@ -271,7 +356,14 @@ local function step(dt: number)
 				local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
 				table.insert(parts, visual.body)
 				local tail = visual.tail
-				if tail then
+				if visual.model then
+					-- A rigged body: the head holds still and the wave runs down the spine
+					-- (Shared/SwimWave), faster for the quick little ones
+					local prey = Config.Prey.byId[fish.prey]
+					visual.phase += dt * 2 * math.pi * (0.9 + prey.speed * 0.22)
+					SwimWave.applyBones(visual.bones, visual.spine, visual.phase, 0.34, 0)
+					table.insert(frames, frame)
+				elseif tail then
 					table.insert(frames, frame)
 					table.insert(parts, tail)
 					table.insert(
@@ -282,13 +374,14 @@ local function step(dt: number)
 							* CFrame.new(0, 0, tail.Size.Z * 0.4)
 					)
 				else
-					-- A one-piece mesh: a small yaw wiggle about its head reads as swimming
+					-- A one-piece static mesh: a small yaw wiggle about its head, turned round
 					table.insert(
 						frames,
 						frame
 							* CFrame.new(0, 0, -visual.body.Size.Z * 0.3)
 							* CFrame.Angles(0, beat * 0.22, 0)
 							* CFrame.new(0, 0, visual.body.Size.Z * 0.3)
+							* MESH_FLIP
 					)
 				end
 			end

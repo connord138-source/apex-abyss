@@ -10,6 +10,8 @@ local RunService = game:GetService("RunService")
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Ui = require(script.Parent.Parent.Ui)
+local OceanController = require(script.Parent.OceanController)
+local Config = require(ReplicatedStorage.Shared.Config)
 local SwimController = require(script.Parent.SwimController)
 
 local BiomeController = {}
@@ -63,6 +65,9 @@ local function banner(biome: Biomes.Biome)
 	local text = if danger
 		then `TOO DANGEROUS FOR NOW · suggested level {biome.minLevel}–{biome.maxLevel}`
 		else `Suggested level {biome.minLevel}–{biome.maxLevel}`
+	if biome.dark then
+		text ..= "  ·  PITCH DARK · bring a light: an Anglerfish's lure or a Deep Lantern"
+	end
 	local sub = Ui.label(
 		holder,
 		"Sub",
@@ -121,7 +126,7 @@ local function updateChip()
 	end
 	local danger = Biomes.tooLow(biome, level())
 	chipName.Text = string.upper(biome.name)
-	chipLevels.Text = `LV {biome.minLevel}–{biome.maxLevel}`
+	chipLevels.Text = `LV {biome.minLevel}–{biome.maxLevel}{if biome.dark then " · DARK" else ""}`
 	chipLevels.TextColor3 = if danger then Ui.color.danger else biome.color
 	local stroke = chip:FindFirstChildOfClass("UIStroke")
 	if stroke then
@@ -137,6 +142,10 @@ local function step()
 	end
 	local biome = Biomes.at(root.Position)
 	local inHub = biome == nil
+	-- The pitch dark of a dark biome, once you're down in it
+	OceanController.setDark(
+		if biome and biome.dark and root.Position.Y < Config.World.deep.floorY + 40 then 1 else 0
+	)
 	if wasInHub and not inHub then
 		leftHubAt = os.clock()
 	end

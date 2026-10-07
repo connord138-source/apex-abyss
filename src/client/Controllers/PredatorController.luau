@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
 local Signal = require(ReplicatedStorage.Shared.Signal)
+local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Ui = require(script.Parent.Parent.Ui)
 local CameraController = require(script.Parent.CameraController)
@@ -33,6 +34,9 @@ local PredatorController = {
 }
 
 local HISTORY = 8 -- stream samples kept per creature
+-- Static prey meshes (PreyModels) came in facing +Z (owner, 2026-10-07: "swimming
+-- backwards"); they're turned round when drawn. Rigged FBX bodies face -Z already.
+local MESH_FLIP = CFrame.Angles(0, math.pi, 0)
 local EXTRAPOLATE = 0.25 -- seconds we keep moving past the last sample
 local FADE_SECONDS = 0.7
 local TAG_DISTANCE = 240
@@ -656,24 +660,12 @@ local function swimBones(visual: Visual, dt: number, relative: number)
 	visual.phase += 2 * math.pi * frequency * dt
 	local amplitude = 0.06 + 0.16 * math.min(relative, 1)
 	local p = visual.phase
-	local head = visual.bones.Head
-	if head then
-		head.Transform = CFrame.Angles(0, math.sin(p + 0.5) * amplitude * 0.15, 0)
-	end
 	local n = #visual.spine
 	if n == 0 then
 		return
 	end
 	local soften = (3 / n) ^ 0.6
-	local spread = 2.1 + 0.25 * math.max(n - 3, 0)
-	for i, name in visual.spine do
-		local bone = visual.bones[name]
-		if bone then
-			local t = i / n
-			bone.Transform =
-				CFrame.Angles(0, math.sin(p - spread * t) * amplitude * (0.45 + 0.8 * t) * soften * 1.3, 0)
-		end
-	end
+	SwimWave.applyBones(visual.bones, visual.spine, p, amplitude * 1.6 * soften, 0)
 end
 
 local function step(dt: number)
@@ -730,6 +722,7 @@ local function step(dt: number)
 						* CFrame.new(0, 0, -visual.bodySize.Z * 0.3)
 						* CFrame.Angles(0, beat * 0.18, 0)
 						* CFrame.new(0, 0, visual.bodySize.Z * 0.3)
+						* MESH_FLIP
 				)
 			end
 		end

@@ -353,6 +353,16 @@
   "task_id": "6637282b-cedb-40b1-917b-766b2adcc35d",
   "type": "text_to_model"
  },
+ "props/TreasureChest": {
+  "credits": 20,
+  "files": [
+   "TreasureChest.glb",
+   "TreasureChest_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "c8040d97-bfdb-4a04-b868-b3fa5812ec67",
+  "type": "text_to_model"
+ },
  "props/TubeSponge": {
   "credits": 20,
   "files": [

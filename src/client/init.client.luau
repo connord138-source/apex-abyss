@@ -15,6 +15,8 @@ local NametagController = require(script.Controllers.NametagController)
 local OceanController = require(script.Controllers.OceanController)
 local PredatorController = require(script.Controllers.PredatorController)
 local BossController = require(script.Controllers.BossController)
+local LampController = require(script.Controllers.LampController)
+local AdminController = require(script.Controllers.AdminController)
 local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
 local ShellController = require(script.Controllers.ShellController)
@@ -36,6 +38,8 @@ CameraController.start()
 FishAnimator.start()
 PredatorController.start() -- AI predators: interpolation, tells, tags
 BossController.start() -- world boss: HUD bar, dread, countdown, rewards
+LampController.start() -- lamps on fish (an Anglerfish's lure, Deep Lanterns) for the dark
+AdminController.start() -- the owner's admin panel (shows only for admins)
 HuntController.start()
 SchoolController.start()
 NametagController.start()

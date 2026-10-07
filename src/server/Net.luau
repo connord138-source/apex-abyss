@@ -143,6 +143,15 @@ function Net.onGetEaten(handler: (Player) -> { [string]: number })
 	getEaten.OnServerInvoke = handler
 end
 
+-- The admin panel (Admin.luau): (action, target, ...) → a line of text
+local adminRemote = Instance.new("RemoteFunction")
+adminRemote.Name = "Admin"
+adminRemote.Parent = folder
+
+function Net.onAdmin(handler: (Player, any, any, ...any) -> string)
+	adminRemote.OnServerInvoke = handler
+end
+
 function Net.onGetForage(handler: (Player) -> { [string]: any })
 	getForage.OnServerInvoke = handler
 end

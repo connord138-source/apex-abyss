@@ -182,6 +182,14 @@ local charms: { Charm } = {
 		max = 5,
 	},
 	{
+		id = "DeepLantern",
+		vendor = "Charms",
+		name = "Deep Lantern",
+		blurb = "Lights the pitch-dark Trench round you for 10 minutes",
+		price = 350,
+		seconds = 600,
+	},
+	{
 		id = "Magnet",
 		vendor = "Charms",
 		name = "Shell Magnet",

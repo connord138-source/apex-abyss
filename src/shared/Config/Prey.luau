@@ -11,7 +11,8 @@ export type PreyDef = {
 	spread: number, -- school size, in body lengths
 	speed: number, -- studs/s along its path
 	pathRadius: { number }, -- min, max radius of its loop
-	depth: { number }, -- min, max height above the seabed
+	depth: { number }, -- min, max height above the local floor (Shared/Seafloor)
+	band: { number }?, -- distance from the hub its schools roam (default: the shallows ring on the shelf)
 	respawn: number, -- seconds after being eaten
 	back: Color3,
 	belly: Color3,
@@ -89,6 +90,7 @@ local list: { PreyDef } = {
 		speed = 5,
 		pathRadius = { 20, 40 },
 		depth = { 8, 60 },
+		band = { 300, 580 },
 		respawn = 20,
 		back = Color3.fromRGB(96, 92, 70),
 		belly = Color3.fromRGB(176, 168, 130),
@@ -104,6 +106,7 @@ local list: { PreyDef } = {
 		speed = 12,
 		pathRadius = { 50, 90 },
 		depth = { 40, 180 },
+		band = { 500, 900 },
 		respawn = 25,
 		back = Color3.fromRGB(110, 124, 132),
 		belly = Color3.fromRGB(210, 216, 220),
@@ -119,6 +122,7 @@ local list: { PreyDef } = {
 		speed = 10,
 		pathRadius = { 70, 120 },
 		depth = { 40, 160 },
+		band = { 620, 940 },
 		respawn = 35,
 		back = Color3.fromRGB(92, 104, 114),
 		belly = Color3.fromRGB(222, 226, 228),

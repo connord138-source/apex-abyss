@@ -3,8 +3,9 @@
 -- folder the game code reads, by name:
 --   species (rigged FBX: Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler) and bosses (Megalodon, GiantSquid)
 --       -> ReplicatedStorage.FishModels.<SpeciesId>   (a Model holding the skinned MeshPart)
---   prey (static GLB: Minnow, Sardine, Wrasse, Snapper, Grouper, Barracuda, ReefShark)
---       -> ReplicatedStorage.PreyModels.<PreyId>      (the MeshPart itself)
+--   prey (rigged FBX: Minnow, Sardine, Wrasse, Snapper, Grouper; the Barracuda and
+--   ReefShark prey are copies of the 'Cuda and Reef Shark species models)
+--       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
 --   props and food (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
 -- Safe to run again: a re-import replaces the old copy. Then File → Save (Ctrl+S):
@@ -21,6 +22,7 @@ local PROPS = {
 	GiantKelp = true, KelpClump = true, BoulderRound = true, BoulderJagged = true,
 	BrainCoral = true, FanCoral = true, StaghornCoral = true, TubeSponge = true, Anemone = true,
 	Shrimp = true, Starfish = true, Shell = true, Lantern = true, CrystalCluster = true, MarketStall = true,
+	TreasureChest = true,
 }
 
 local function folder(name: string): Folder
@@ -73,23 +75,20 @@ for _, item in workspace:GetChildren() do
 			-- The same model also feeds the prey school of that species (the 'Cuda is the
 			-- Barracuda prey, the shark is the ReefShark prey)
 			local preyName = if name == "Cuda" then "Barracuda" elseif name == "ReefShark" then "ReefShark" else nil
-			if preyName and primary and not ReplicatedStorage:FindFirstChild("PreyModels") or (preyName and primary and ReplicatedStorage.PreyModels:FindFirstChild(preyName) == nil) then
-				local copy = primary:Clone()
-				for _, child in copy:GetChildren() do
-					if child:IsA("Bone") then
-						child:Destroy()
-					end
-				end
-				replaceIn(folder("PreyModels"), preyName, copy)
+			if preyName then
+				-- The same rigged model swims as that prey (bones and all)
+				replaceIn(folder("PreyModels"), preyName, item:Clone())
 			end
 			moved += 1
 		elseif PREY[name] then
-			-- Prey are one MeshPart each; unwrap the Model
-			if primary then
+			-- Rigged prey keep their Model and bones; an old static import is just the MeshPart
+			if item:FindFirstChildWhichIsA("Bone", true) then
+				replaceIn(folder("PreyModels"), name, item)
+			elseif primary then
 				replaceIn(folder("PreyModels"), name, primary)
 				item:Destroy()
-				moved += 1
 			end
+			moved += 1
 		elseif PROPS[name] then
 			replaceIn(folder("WorldProps"), name, item)
 			moved += 1

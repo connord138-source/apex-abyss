@@ -19,6 +19,7 @@ local RunService = game:GetService("RunService")
 
 local BossesConfig = require(ReplicatedStorage.Shared.Config.Bosses)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
@@ -118,11 +119,8 @@ local function patrolPoint(def: BossDef, depth: { number }?): Vector3
 	local base = math.atan2(patrol.direction.Z, patrol.direction.X)
 	local angle = base + rng:NextNumber(-patrol.spread, patrol.spread)
 	local distance = rng:NextNumber(patrol.band[1], patrol.band[2])
-	return Vector3.new(
-		math.cos(angle) * distance,
-		rng:NextNumber(band[1], band[2]),
-		math.sin(angle) * distance
-	)
+	local x, z = math.cos(angle) * distance, math.sin(angle) * distance
+	return Vector3.new(x, Seafloor.y(x, z) + rng:NextNumber(band[1], band[2]), z)
 end
 
 -- What the clients need to know about the event right now
@@ -504,7 +502,11 @@ local function jetTo(boss: Boss, now: number)
 		end
 	end
 	local band = depthBand(boss)
-	destination = Vector3.new(destination.X, rng:NextNumber(band[1], band[2]), destination.Z)
+	destination = Vector3.new(
+		destination.X,
+		Seafloor.y(destination.X, destination.Z) + rng:NextNumber(band[1], band[2]),
+		destination.Z
+	)
 	Net.predatorEvent("jetted", predator.index, {
 		fromX = from.X,
 		fromY = from.Y,
@@ -1346,7 +1348,7 @@ local function tick(boss: Boss, dt: number, now: number)
 		elseif def.kit == "shark" and boss.phase == 3 then
 			-- Making for the Trench, slowly, until the clock runs out
 			local trench = World.trench.center
-			local goal = Vector3.new(trench.X, 30, trench.Z)
+			local goal = Vector3.new(trench.X, Seafloor.y(trench.X, trench.Z) + 40, trench.Z)
 			local offset = goal - predator.position
 			local flat = Vector3.new(offset.X, 0, offset.Z)
 			if flat.Magnitude < 90 then
@@ -1377,7 +1379,8 @@ local function tick(boss: Boss, dt: number, now: number)
 		-- The squid keeps to its depth band: deep while it lurks, high in its mantle phase
 		if def.kit == "squid" then
 			local band = depthBand(boss)
-			local y = predator.position.Y
+			local floor = Seafloor.y(predator.position.X, predator.position.Z)
+			local y = predator.position.Y - floor
 			if y < band[1] then
 				desired = Vector3.new(desired.X, math.max(desired.Y, speed * 0.5), desired.Z)
 			elseif y > band[2] then
@@ -1401,6 +1404,22 @@ end
 
 function BossService.active(): Boss?
 	return active
+end
+
+-- Sends the boss away at once (the admin panel): like an escape, but the next event
+-- keeps its normal timing
+function BossService.dismiss()
+	local boss = active
+	if boss == nil then
+		return
+	end
+	local now = Timing.clock()
+	active = nil
+	releaseAll(boss, "dropped", now)
+	PredatorService.remove(boss.predator, if boss.def.kit == "squid" then "sunk" else "escaped")
+	Net.notifyAll(`The {string.upper(boss.def.name)} was sent away.`, "info")
+	schedule(now, interval(boss.def))
+	broadcast()
 end
 
 function BossService.start()

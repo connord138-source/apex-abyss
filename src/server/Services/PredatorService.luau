@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
 local Perks = require(ReplicatedStorage.Shared.Perks)
+local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
@@ -68,22 +69,16 @@ local rng = Random.new(World.seed + 41)
 local lastBite: { [Player]: number } = {}
 local accumulator = 0
 
-local function inTrench(x: number, z: number, margin: number): boolean
-	local trench = World.trench
-	return math.abs(x - trench.center.X) < trench.size.X / 2 + margin
-		and math.abs(z - trench.center.Z) < trench.size.Z / 2 + margin
-end
-
 local function randomWaypoint(def: Def): Vector3
 	for _ = 1, 20 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local distance = rng:NextNumber(def.band[1], def.band[2])
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
-		if not inTrench(x, z, 30) then
-			return Vector3.new(x, rng:NextNumber(def.depth[1], def.depth[2]), z)
+		if not Seafloor.inTrench(x, z, 30) then
+			return Vector3.new(x, Seafloor.y(x, z) + rng:NextNumber(def.depth[1], def.depth[2]), z)
 		end
 	end
-	return Vector3.new(def.band[1], def.depth[1] + 10, 0)
+	return Vector3.new(def.band[1], Seafloor.y(def.band[1], 0) + def.depth[1] + 10, 0)
 end
 
 local function spawn(predator: Predator, at: Vector3?)
@@ -181,7 +176,8 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		predator.heading = rotateToward(predator.heading, predator.velocity, (turnRate or def.turnRate) * dt)
 	end
 	local position = predator.position + predator.velocity * dt
-	local y = math.clamp(position.Y, math.max(def.depth[1] * 0.6, World.seabedY + 5), World.surfaceY - 12)
+	local floor = Seafloor.y(position.X, position.Z)
+	local y = math.clamp(position.Y, floor + math.max(def.depth[1] * 0.6, 5), World.surfaceY - 12)
 	predator.position = Vector3.new(position.X, y, position.Z)
 end
 

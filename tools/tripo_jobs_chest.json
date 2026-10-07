@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    {
+      "name": "TreasureChest",
+      "group": "props",
+      "type": "text_to_model",
+      "prompt": "A chunky stylized low-poly game-art treasure chest, closed, flat-shaded facets, bold clean colors: dark weathered wooden planks with rounded corners, thick brass bands and a big brass lock plate, a slightly domed lid, barnacles and a little green seaweed on one corner, sitting half-sunk in a small mound of pale sand, soft lighting, no background, no text."
+    }
+  ]
+}

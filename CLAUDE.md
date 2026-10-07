@@ -264,6 +264,60 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the dart on the shared path (`Schools.chaseBlend/chasePosition`, a red outline,
     a "TOO BIG TO EAT · SWIM!" warning for the target) and at 1.25 s the server nips
     for 7% + 0.3%/kg of max health (cap 20%) if the fish reached them.
+- **The world is an ocean shelf (owner, 2026-10-07: "a giant gaping hole", "biomes need
+  to be spread out and clearly different ... some dependent on depth off of a ocean
+  shelf that would be at the end of the lower level zones and begin the higher level
+  zones. coral zone being the last of the shallower zones", "far too open"):** the hub
+  seamount stands on a shallow sand SHELF (radius 600) that ends in a rock DROP-OFF
+  (60 wide) to a deep floor at −170. Shallow biomes on the shelf: Kelp Shallows ring
+  (150–340, LV 1–10, the open one), Shipwreck Graveyard in the west bay (340–600 @
+  135–225°, LV 10–25), Coral Reef as the shelf's outer band everywhere else (LV 25–40,
+  the last shallow zone). Deep biomes beyond: Open Blue north (LV 35–55), Sunken Ruins
+  east (50–70), Hydrothermal Vents south-west (65–85, basin at −230, chimneys), Abyssal
+  Trench south (80–100): a winding V-profile canyon down to −420, pitch dark. Map
+  radius 1000; the terrain runs 700 further so the floor fades into the fog instead of
+  showing an edge, and the Surface sheet is 3600 wide. `Config/World.luau`,
+  `Config/Biomes.luau` (sectors + `deep`/`dark`), `Shared/Seafloor.luau` (the nominal
+  floor height anywhere: shelf, slope, deep, vents, canyon; every placement and
+  creature uses it), `src/server/Shelf.luau` (Terrain fill ops: bedrock, mud floor,
+  shelf drum + sand cap, rim bulges/bays/notches/buttresses/ledges, 6 sand chutes,
+  dunes, outcrops, kelp ridges, reef flats, 16 reef heads with swim-through tunnels
+  and hollows, 10 stone arches, the canyon, the vents' basin and chimneys, the ruins'
+  stones, Open Blue ridges and pinnacles). `WorldService.buildBiomes` dresses each
+  biome on the Terrain by raycast (30 kelp forests, 90 rocks and 14 arches in the
+  Kelp; 8 wrecks; 44 coral gardens of 55; ruins with columns, statues and teal
+  lanterns; smoking glowing chimneys; 70 bioluminescent specks down the Trench; light
+  shafts). Preview from the cloud: `LUAU=<luau> bash tools/preview/run_world.sh <dir>`
+  (aerial, north, south, east). Prey `band`s and predator/boss depths are heights
+  above the local floor; big prey roam off the shelf.
+- **Fish facing and swim (owner, 2026-10-07: "swimming backwards", "more fluid and
+  natural like a fish, not the entire body swaying"):** the static GLB prey meshes
+  faced +Z and are turned round in code (`MESH_FLIP`); prey are now rigged FBX too
+  (`prey_fbx` bundle, 4 spine segments; `SchoolController` swims their bones;
+  `organize_imports` keeps the Models). `Shared/SwimWave.luau` is the one swim shape
+  for players, prey, predators and bosses: the head holds still, the wave's amplitude
+  grows as t^1.9 toward the tail, two thirds of a wavelength along the body.
+- **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
+  and radii scaled with them (`Config/Bosses.luau`).
+- **The Trench is pitch dark (owner: "clearly need a light source for abyssal trench
+  ... could be the perk of the angler fish"):** `Biomes` `dark`; `OceanController.setDark`
+  (BiomeController sets it below the deep floor in a dark biome: near-black, a lamp
+  keeps 45% of the light); the Anglerfish's lure is a lamp (`Lamp = "lure"` attribute
+  from WardrobeService) and the Tidecharm Trader sells a **Deep Lantern** (350 coral,
+  10 min, `Lamp = "lantern"`); `LampController` hangs PointLights on lit fish for
+  everyone; the biome banner and chip say PITCH DARK · bring a light.
+- **Treasure chest (owner: "a chest partially sticking out of the ground"):** the dig
+  site's X is now a chest half out of a sand mound (part-built planks and brass, or the
+  `WorldProps.TreasureChest` Tripo prop, `props2_glb`), seam glowing in the map's tier
+  color; the lid swings open and gold spills out when the dig completes
+  (`TreasureController`).
+- **Admin panel (owner, 2026-10-07; like Hatch & Snatch):** `src/server/Admin.luau`
+  (who: the experience's owner or group owner, `ADMIN_USER_IDS`, anyone in Studio;
+  re-checked on every call), `AdminActions.luau` (coral add/set, shells, set level,
+  Haul, DNA, boss trophies, Kelp Wraps, charms, unlock species, every shade, treasure
+  maps, heal, get eaten, title, restart tutorial, teleport to a biome, summon/hurt/
+  dismiss a boss), `AdminController` (ADMIN button bottom-left, target me/everyone/
+  next player). The `Admin` RemoteFunction answers a line of text.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -340,7 +394,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 ## Code map (graybox feel prototype, 2026-10-06)
 
 - **Server** (`src/server/Services`):
-  - `WorldService`: builds the graybox map (seabed and trench, surface ceiling, walls, hub ring with 12 dens, Haul Pools, 4 tunnels and the oculus, kelp, rocks, arches, coral, light shafts) and the base lighting. Gravity is 0.
+  - `WorldService`: builds the map (the Terrain seafloor from `Shelf.luau`, the surface ceiling, walls, the hub cavern from `Cave.luau` with 12 dens, Haul Pools, 4 tunnels and the oculus, and every biome's dressing) and the base lighting. Gravity is 0.
   - `FishService`: custom fish characters (a ball collider `HumanoidRootPart`, a Humanoid with `EvaluateStateMachine = false`, and a `FishBuilder` body), den assignment, respawns.
   - `HuntService`: validates prey eats, player eats and bites; the Haul; banking at your own den's pool; the hub safe zone, spawn protection and healing. It also exposes `mouth` and `feed` for other food sources.
   - `ForageService`: starfish and shrimp spots (placed by raycast) and server-checked eats.
@@ -429,7 +483,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - boats and hooks, depth pressure
   - models for the growth stages, vendors and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
-  - the biomes' Terrain (only the hub seamount is terrain so far)
+  - the den bases (owner, 2026-10-07: upgradable, deeper, furniture, trophies, visitors)
+  - the roll reveal redesign (owner, 2026-10-07)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
   - The progression numbers are placeholders: one full dive banks about 16 levels.

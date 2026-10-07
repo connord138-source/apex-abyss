@@ -24,7 +24,7 @@ export type PredatorDef = {
 	telegraph: number, -- seconds the jaw shows before it bites (the tell)
 	ignoreBelow: number, -- fish shorter than this × its length are left alone unless they bite it
 	band: { number }, -- distance from the hub's center it roams in (min, max)
-	depth: { number }, -- y range it roams in (min, max)
+	depth: { number }, -- height above the local floor it roams in (min, max; Shared/Seafloor)
 	count: number, -- alive at once
 	respawn: number, -- seconds after a kill
 	loot: { haulKg: number, dna: number, coral: number },
@@ -47,7 +47,7 @@ local list: { PredatorDef } = {
 		biteCooldown = 2.2,
 		telegraph = 0.9,
 		ignoreBelow = 0.25,
-		band = { 220, 400 },
+		band = { 220, 560 },
 		depth = { 8, 90 },
 		count = 3,
 		respawn = 90,
@@ -69,7 +69,7 @@ local list: { PredatorDef } = {
 		biteCooldown = 2.8,
 		telegraph = 1.1,
 		ignoreBelow = 0.3,
-		band = { 300, 420 },
+		band = { 380, 600 },
 		depth = { 10, 110 },
 		count = 2,
 		respawn = 150,

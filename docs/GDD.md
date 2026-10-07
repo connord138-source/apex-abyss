@@ -502,6 +502,44 @@ cartoonish Schedule I vibes, but the undersea horror aspect for the bosses."
   passes, red APEX PREDATOR tags, "SOMETHING STIRS BELOW". Menace from scale, light
   and sound; no gore.
 
+### The shelf layout (owner, 2026-10-07; built)
+
+The owner: "biomes need to be spread out and clearly different biomes with some
+dependent on depth off of a ocean shelf that would be at the end of the lower level
+zones and begin the higher level zones. coral zone being the last of the shallower
+zones." As built (`Config/World.luau`, `Config/Biomes.luau`, `Shared/Seafloor.luau`,
+`src/server/Shelf.luau`):
+
+- **The shelf** (radius 600, sand at 0): the Kelp Shallows ring round the hub
+  (150–340, LV 1–10; open sand, kelp forests, boulder fields, arches), the Shipwreck
+  Graveyard in the west bay (340–600, 135–225°, LV 10–25; eight listing hulls, dark
+  rocks, kelp fringe), and the Coral Reef as the outer band everywhere else (LV 25–40;
+  44 coral gardens, reef flats, 16 reef heads with tunnels bored through and hollows
+  under them, 10 stone arches: cover to swim through and under). It ends at the
+  **drop-off**, a 60-stud rock cliff with bulges, bays, notches, buttresses, ledges
+  and six sand chutes down to the deep floor at −170.
+- **Below the drop-off:** the Open Blue north (LV 35–55; ridges, three rock
+  pinnacles, long light shafts; the Megalodon's water), the Sunken Ruins east (50–70;
+  mounds, column stubs, temples with statues and teal lanterns), the Hydrothermal
+  Vents south-west (65–85; a basin at −230 with 14 basalt chimneys, glowing caps,
+  black smoke), and the **Abyssal Trench** south (80–100): a winding canyon with a V
+  profile from the rim down to −420, slate rims, bitten walls, bioluminescent specks,
+  and pitch dark unless you carry a light.
+- The map's wall is at 1000; the seafloor runs 700 further so it fades into the fog.
+- `Seafloor.y(x, z)` is the nominal floor height anywhere; schools, shells, forage,
+  treasure sites, predators and bosses all place from it (heights are above the local
+  floor), so the layout numbers live in one place.
+- Preview: `bash tools/preview/run_world.sh <dir>`.
+
+### Light in the dark (owner, 2026-10-07; built)
+
+"Clearly need a light source for abyssal trench too which needs to be noted to the
+player ... That could be the perk of the angler fish." The Trench is `dark`: below the
+deep floor the water goes near-black for a fish with no lamp. The Anglerfish's lure is
+a lamp (its species perk), and the Tidecharm Trader sells a Deep Lantern (350 coral,
+10 minutes). Lamps light the dark for everyone round the fish. The biome banner and
+chip warn PITCH DARK · bring a light.
+
 ### Healing (owner, 2026-10-07; built)
 
 "We need a healing element for players that they can use for boss fights as well as
