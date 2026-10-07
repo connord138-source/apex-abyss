@@ -469,7 +469,144 @@ Owner: "a giant squid that roams the map as well, they could be world events."
   - The **Giant Squid** rises from the Abyssal Trench and the deep edges (below).
 - **"Leviathan Rising"** in the tide events becomes these boss events.
 
-### World boss: the Megalodon (owner, 2026-10-06)
+**Boss rules (owner, 2026-10-07):** "designed to be taken on as a team, very hard but
+not impossible to defeat solo; attacks and separate phases; different attacks for
+different bosses; solo in 8–10 minutes is fine; nothing should be one-shot; a healing
+element players can use in boss fights, PvP and PvE; no minions in boss fights yet;
+cartoonish Schedule I vibes, but the undersea horror aspect for the bosses."
+
+- **Team-first, soloable:** health scales with attackers but not one for one. Base
+  health is tuned so a maxed solo fish wins in about 8–10 minutes of clean play; each
+  extra attacker (anyone who hit it in the last 20 s) adds +60% health, so teams
+  finish faster per head and solo stays possible.
+- **Solo is hard because of survival, not damage:** every attack has a 1–1.5 s tell
+  (visual, sound, HUD) and one correct answer. Alone you must answer all of them; a
+  team takes turns.
+- **No one-shots.** Boss damage is a share of the victim's max health, so two
+  mistakes in a row kill and a heal buys a third: Megalodon bite 55%, charge 35% plus
+  knockback, tail sweep 20% plus knockback, breach shockwave 30%; Squid grab 15% per
+  second held (up to 4 s), beak slam 45%, siphon blast 25% plus knockback. Being
+  killed by a boss costs the Haul like any death; Second Chance applies.
+- **Soft spots and Schooling:** gills, eye and tentacles take double damage, and
+  Schooling pools the mass of fish within ~20 studs, so six juveniles bite like one
+  adult. A **stagger meter** fills from soft-spot hits; full, the boss stalls 4 s with
+  its weak point wide open. Teams earn staggers; solo players get the same windows
+  from phase changes.
+- **Escape clock:** it roams 15 minutes and dives to escape at low health; finish it
+  or it heals and leaves.
+- **No minions** (owner): the fights are the boss alone, for now.
+- **Look:** stylized and chunky like everything else (the concepts already are), with
+  the horror in the presentation: the water darkens and loses color within ~300
+  studs, the music drops to a drone and a heartbeat, you see a silhouette through the
+  murk before the body, eyes and suckers glow in the dark, the camera shakes as it
+  passes, red APEX PREDATOR tags, "SOMETHING STIRS BELOW". Menace from scale, light
+  and sound; no gore.
+
+### Den bases (owner, 2026-10-07; v1 built)
+
+"I was also envisioning the dens being an upgradable base that gets bigger and
+deeper as it upgrades. Other players can go in and check out your base but can't
+take or do anything. You can display trophies from large fish killed/bosses killed
+and set up furniture so that it's your den. Upgrades and furniture/colors would cost
+currency. Coral lamps, etc."
+
+- **Levels:** Nook (start) → Burrow (2,500 coral: the room runs 6 studs further back,
+  two wall spots) → Hall (12,000: 12 back, a chamber 10 deep under the floor, three
+  chamber spots) → Grotto (45,000: 18 back, the chamber 14 deep and wider, two more
+  wall spots and one chamber spot). The sign reads "<NAME>'S GROTTO".
+- **Furniture:** 12 spots in all (4 floor, 4 wall, 4 chamber). Fourteen pieces, 150 to
+  1,200 coral, bought once and moved freely after: Coral Lamp, Kelp Bed, Shell Pile,
+  Anemone Garden, Brain Coral, Tube Sponges, Driftwood Table, Pearl Pedestal,
+  Treasure Chest, Bubble Column, Crystal Shard, Sea Glass Lantern, Sea Fan, Banner.
+- **Colors:** a glow color for the den's lamps, banners and trophy trims: Teal free,
+  Gold, Rose, Violet, Lime, Ice and Ember 300 each.
+- **Trophy wall:** three plaques on the back wall fill themselves: BIGGEST CATCH (the
+  heaviest prey ever eaten, its model mounted above), MEGALODON (teeth taken) and
+  GIANT SQUID (beaks taken); the worn title hangs over the door.
+- **Visiting:** anyone can swim into any den (dens stay safe zones) and look; only the
+  holder can bank there or change anything.
+- Later: free placement, den items won from bosses (the jaw arch, the Kraken-eye
+  lantern), more pieces and themes.
+
+### The shelf layout (owner, 2026-10-07; built)
+
+The owner: "biomes need to be spread out and clearly different biomes with some
+dependent on depth off of a ocean shelf that would be at the end of the lower level
+zones and begin the higher level zones. coral zone being the last of the shallower
+zones." As built (`Config/World.luau`, `Config/Biomes.luau`, `Shared/Seafloor.luau`,
+`src/server/Shelf.luau`):
+
+- **The shelf** (radius 600, sand at 0): the Kelp Shallows ring round the hub
+  (150–340, LV 1–10; open sand, kelp forests, boulder fields, arches), the Shipwreck
+  Graveyard in the west bay (340–600, 135–225°, LV 10–25; eight listing hulls, dark
+  rocks, kelp fringe), and the Coral Reef as the outer band everywhere else (LV 25–40;
+  44 coral gardens, reef flats, 16 reef heads with tunnels bored through and hollows
+  under them, 10 stone arches: cover to swim through and under). It ends at the
+  **drop-off**, a 60-stud rock cliff with bulges, bays, notches, buttresses, ledges
+  and six sand chutes down to the deep floor at −170.
+- **Below the drop-off:** the Open Blue north (LV 35–55; ridges, three rock
+  pinnacles, long light shafts; the Megalodon's water), the Sunken Ruins east (50–70;
+  mounds, column stubs, temples with statues and teal lanterns), the Hydrothermal
+  Vents south-west (65–85; a basin at −230 with 14 basalt chimneys, glowing caps,
+  black smoke), and the **Abyssal Trench** south (80–100): a winding canyon with a V
+  profile from the rim down to −420, slate rims, bitten walls, bioluminescent specks,
+  and pitch dark unless you carry a light.
+- The map's wall is at 1000; the seafloor runs 700 further so it fades into the fog.
+- `Seafloor.y(x, z)` is the nominal floor height anywhere; schools, shells, forage,
+  treasure sites, predators and bosses all place from it (heights are above the local
+  floor), so the layout numbers live in one place.
+- Preview: `bash tools/preview/run_world.sh <dir>`.
+
+### Light in the dark (owner, 2026-10-07; built)
+
+"Clearly need a light source for abyssal trench too which needs to be noted to the
+player ... That could be the perk of the angler fish." The Trench is `dark`: below the
+deep floor the water goes near-black for a fish with no lamp. The Anglerfish's lure is
+a lamp (its species perk), and the Tidecharm Trader sells a Deep Lantern (350 coral,
+10 minutes). Lamps light the dark for everyone round the fish. The biome banner and
+chip warn PITCH DARK · bring a light.
+
+### Healing (owner, 2026-10-07; built)
+
+"We need a healing element for players that they can use for boss fights as well as
+PvP and PvE fights."
+
+- **Kelp Wrap** (consumable): heals 40% of max health over 4 s, 18 s cooldown, carry up
+  to 5. Using one is a 0.6 s wrap (the fish glows green) and you swim 30% slower while
+  it heals, which is the counterplay in PvP: the attacker can catch you. Hotkey H on
+  keyboard, LB on a pad, a HEAL button on touch.
+- **Sources:** glowing medkelp fronds in the kelp forests (eaten like forage, one wrap
+  each, per player, back in 2 min), the Tidecharm Trader (120 coral, "safety" is
+  sellable), an occasional drop from prey, and a stack of three in Tattered and
+  Weathered treasure chests. Never sold for Robux (the rule: growth and safety for
+  coral, never bite damage).
+- **Eat to heal:** eating prey heals 2% plus 0.5% per kg, so snacking on the schools
+  around a boss arena matters in a long fight.
+- The den and the plaza keep their full regen.
+
+### AI predators (built 2026-10-07)
+
+The owner's "aggressive AI predators worth more" are the base the bosses stand on.
+`Config/Predators.luau` lists them; `PredatorService` simulates them on the server
+(10 Hz) and streams positions to every client, which interpolate them.
+
+- **Barracuda** (9 studs, 140 hp, 3 alive, 220–400 studs out, 8–90 deep): fast, bites
+  20% of max health every 2.2 s after a 0.9 s tell; ignores fish under a quarter of
+  its length unless they bite it. Loot 6 kg Haul, 3 DNA, 40 coral.
+- **Reef Shark** (14 studs, 320 hp, 2 alive, 300–420 out, 10–110 deep): slower, bites
+  30% every 2.8 s after a 1.1 s tell. Loot 18 kg, 6 DNA, 120 coral.
+- **Behaviour:** roam waypoints in their band; hunt the biggest worthwhile fish in
+  aggro range (not safe, not in the hub), leading it a little; inside bite reach the
+  jaw flashes red for the tell (the target's screen says INCOMING), then the bite
+  lands if the fish is still in reach, else it coasts past and comes round. A
+  provoked predator chases 1.7× further.
+- **Fighting back:** the bite button on a predator in reach bites it for
+  `biteDamage × (your length ÷ its length)^1.5` (clamped 0.08–1.2), ×(1 + 0.35 per
+  other player who bit it in the last 2.5 s), × upgrades and species. Everyone who
+  dealt damage gets a share of the loot (at least 10%; the killer +10%).
+- **Respawn** 90 s / 150 s after a kill, somewhere else in the band.
+
+### World boss: the Megalodon (owner, 2026-10-06; built 2026-10-07)
 
 The owner asked for "a massive megalodon that roams the map, mostly in deep blue.
 Killing it rewards something extreme but it is a very hard and scary boss." The
@@ -488,7 +625,8 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   - A HUD warning, "MEGALODON NEARBY", points toward it.
   - The camera shakes as it passes, and its tag reads APEX PREDATOR in red.
 - **Danger:**
-  - Its bite swallows any player whole: no bite fight, and the Haul is lost.
+  - Its bite takes 55% of any fish's max health (owner, 2026-10-07: nothing is a
+    one-shot); two bites kill, a Kelp Wrap buys a third.
   - It hunts the biggest fish around and mostly ignores tiny ones, so small players
     can school round it. That's the headline twist.
 - **The fight** takes the whole server:
@@ -498,11 +636,18 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   - Every attack is telegraphed: its jaw opens with a red glint before a bite, and its
     eyes flash before a charge.
   - Three phases:
-    1. **Hunting** (100–60%): it charges its target.
-    2. **Frenzy** (60–25%): it's faster, tail sweeps knock fish back, and a blood cloud
-       hides it.
-    3. **Last stand** (under 25%): it dives for the Trench. Catch it before it escapes,
-       or it heals and comes back later.
+    1. **Hunting** (100–60%): **Charge** (eyes flash red, a straight rush at the
+       biggest fish nearby; dodge sideways or up) and **Bite** (the jaw opens with a
+       red glint, a short lunge).
+    2. **Frenzy** (60–25%): faster. **Tail sweep**, a 360° knockback when three or more
+       fish bunch behind it, so nobody stacks. **Blood cloud** hides it; only sonar
+       pings show where it is. **Marked for death**: it locks onto the biggest fish
+       for 8 s with repeated short charges; the mark breaks when the stagger meter
+       fills, so the team's soft-spot hits save that player. (No minions, owner.)
+    3. **Last stand** (under 25%): it dives for the Trench on a 60 s clock. **Breach**:
+       it rockets up and crashes down with a shockwave ring (go vertical to dodge),
+       then lies exhausted 5 s with its gills glowing at triple damage, the solo kill
+       window. Catch it before it escapes, or it heals and comes back later.
 - **Rewards** (owner, 2026-10-06: no playable Megalodon; "specific skins unlocked from
   beating them... a pale green ghost skin or a certain item for their base. The reward
   needs to be something worth fighting it for"). Everyone who dealt at least 1% of the
@@ -524,8 +669,28 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   (positions streamed about 10 times a second, clients interpolate, attacks checked on
   the server). It gets one hero Tripo model with the procedural spine swim. It's built
   alongside the predators and the Open Blue.
+- **As built (2026-10-07, `Config/Bosses.luau`, `BossService`):** the event clock
+  raises it every 30 min (4 in Studio) with a 2 min warning; it patrols the Open
+  Blue (north, 330–620 studs out, 25–170 deep) and hunts the biggest fish within 200
+  studs, ignoring fish under 3.5% of its length. 6,000 hp, +60% per attacker beyond
+  the first (anyone who bit it in the last 20 s). Phases at 60% and 25%. Charge: 1.2 s
+  eye flash, then 2.2 s at ×2.2 speed, 35% to anything within 13 studs of its body,
+  9 s cooldown, used from 35–170 studs. Bite: 1.2 s jaw tell, 55%, 4 s cooldown.
+  Frenzy: ×1.3 speed, a 10 s blood cloud (its tag hides), Tail sweep when 3+ fish are
+  within 40 studs behind it (1 s tell, 20%, a 60 stud/s shove, 12 s cooldown), Marked
+  for death every 24 s (8 s, ×1.45 speed at the mark, a 0.5 s-tell lunge every 2.2 s
+  for 25%). Last stand: a 60 s clock toward the Trench, a Breach every 13 s (2.2 s
+  tell as it sinks, 1.3 s rocket, 0.9 s crash, a 48 stud ring 30% + shove to fish
+  within 16 studs of its depth, then 5 s exhausted at triple damage). Soft spots:
+  gills (60–80% along the body) and tail (0–22%) take double damage and fill a
+  700-point stagger meter; full → 4 s stagger at triple damage (18 s cooldown), which
+  breaks the mark. Rewards for everyone with ≥1% of the damage: Teeth 1 (+1 top three,
+  +1 killer), Haul 120 kg by share (min 10%), coral 5,000 by share (min 500), a Rare+
+  shade roll, the Megalodon Slayer title, a 1/15 (×2 for the top dealer) drop of the
+  Ghost shade. The Trophy Hunter stall sells Ghost for 12 Teeth. On escape it heals
+  and returns in 15 min.
 
-### World boss: the Giant Squid (owner, 2026-10-06; Claude's proposal)
+### World boss: the Giant Squid (owner, 2026-10-06; Claude's proposal; built 2026-10-07)
 
 Concept: `assets/concepts/GiantSquid.jpg`.
 
@@ -536,18 +701,21 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   - The HUD warns "SOMETHING STIRS BELOW".
   - It attacks from underneath.
 - **Danger:**
-  - **Tentacle grab:** a tentacle wraps a fish and drags it toward the beak. Mash to
-    break free, or nearby fish can bite the tentacle to free you; being dragged in
-    means you're eaten.
+  - **Tentacle grab:** a tentacle lights up 1 s before it strikes, wraps a fish and
+    drags it toward the beak, 15% of max health a second for up to 4 s. Mash to
+    break free, or a teammate bites the tentacle to free you (no one-shot, owner).
   - **Ink cloud:** blinds everyone in it and hides the squid.
   - **Jet:** it vanishes and reappears somewhere else.
-- **The fight:**
-  - Its health scales with the number of attackers.
-  - Its tentacles can be bitten off: each one lost makes it weaker and gives bonus
-    rewards.
-  - Its eye takes double damage while it's lit before a grab.
-  - At low health it sinks back into the Trench, so it has to be finished before it
-    escapes.
+- **The fight,** three phases:
+  1. **Lurker** (100–65%): it stays in the dark: grabs, ink, jets. Its eight tentacles
+     have their own health; biting one off removes a grab and pays bonus Beaks.
+  2. **Enraged** (65–30%): two grabs at once. **Whirlpool**: it jets water to pull
+     everyone toward the beak for 3 s; swim hard against it or get behind a rock. Its
+     eye lights before each grab and takes double damage then.
+  3. **Mantle** (under 30%): it rises into open water where everyone can see it,
+     exposed but fast: **beak slam** (45%) and a **siphon blast** cone that knocks
+     fish back. It sinks to escape after 90 s.
+  - Its health scales with attackers the same way as the Megalodon's.
 - **Rewards** follow the same rules as the Megalodon (no playable Kraken). Everyone who
   dealt at least 1% of the damage gets:
   - **Kraken Beaks**, spent at the Trophy Hunter.
@@ -558,6 +726,22 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   - A chance at a trophy straight from the kill.
   - Bonus Beaks for every tentacle you bit off.
   - A huge Haul, a coral jackpot, a Rare-or-better roll, and a Kraken Slayer title.
+
+- **As built (2026-10-07, `kit = "squid"` in `Config/Bosses.luau`):** 70 studs, 5,500 hp
+  (+60% per attacker), south patrol 280–560 studs out, lurking 10–55 up off the
+  floor. Lurker: tentacle grab (1 s tell, 60 stud range, 15%/s up to 4 s; the fish
+  is dragged to the beak; mash BITE/DASH 6 times, or 3 teammate bites on the squid,
+  break it; the biters earn a Kraken Beak), ink (6 s, 55 studs, blinds the camera
+  inside, hides its tag) then a jet 120 studs away; it also jets when two or more
+  are biting it. Enraged under 65%: two grabs, half the grab cooldown, whirlpool
+  (1.2 s tell, 3 s pull within 70 studs). Mantle under 30%: up to 90–140 off the
+  floor, beak slam (1.3 s tell, 45%) and siphon blast (1 s tell, 15% + a shove in a
+  cone), sinks away after 90 s. Soft spots: the eye and the tentacles (double
+  damage, stagger meter 650). Rewards: Kraken Beaks (1, +1 top three, +1 killer),
+  120 kg Haul and 5,000 coral by share, a Rare+ shade roll, Kraken Slayer, a 1/15
+  Abyss Ink drop; Abyss Ink costs 12 Beaks at the Trophy Hunter. The eight
+  individual tentacles with their own health are not modelled yet: biting the
+  tentacle zone is the soft spot, and bites free held fish.
 
 ### Tide events (the role the Moon Egg plays in Hatch & Snatch)
 

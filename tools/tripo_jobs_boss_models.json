@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    {
+      "name": "Megalodon",
+      "group": "bosses",
+      "type": "image_to_model",
+      "image": "assets/tripo/species_sheets/Megalodon.png"
+    }
+  ]
+}

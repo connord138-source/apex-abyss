@@ -12,6 +12,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
 local FishPlans = require(ReplicatedStorage.Shared.FishPlans)
 local Size = require(ReplicatedStorage.Shared.Size)
+local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local Spring = require(script.Parent.Parent.Spring)
 local SwimController = require(script.Parent.SwimController)
 
@@ -196,16 +197,18 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 		Spring.number(state.bend, state.bendVelocity, math.clamp(yawRate * 0.12, -0.4, 0.4), 10, dt)
 
 	local p, a, bend = state.phase, state.amplitude, state.bend
-	setTransform(state, "Head", CFrame.Angles(0, math.sin(p + 0.5) * a * 0.12 + bend * 0.3, 0))
-	-- The wave runs down the spine, growing toward the tail; long bodies (the eel)
-	-- carry more of it with a gentler bend at each joint
+	-- The head holds still; only a turn bends it (Shared/SwimWave: a real fish whips
+	-- its back half and keeps its shoulders steady). Long bodies (the eel) carry the
+	-- wave with a gentler bend at each joint.
+	setTransform(state, "Head", CFrame.Angles(0, SwimWave.headYaw(bend), 0))
 	local n = #state.spine
 	local soften = (3 / n) ^ 0.6
-	local spread = 2.1 + 0.25 * math.max(n - 3, 0)
 	for i, name in state.spine do
-		local t = i / n
-		local swing = math.sin(p - spread * t) * a * (0.45 + 0.8 * t) * soften * 1.3
-		setTransform(state, name, CFrame.Angles(0, swing + bend * 0.55 * soften, 0))
+		setTransform(
+			state,
+			name,
+			CFrame.Angles(0, SwimWave.yaw(i, n, p, a * 1.6 * soften, bend * 0.55 * soften), 0)
+		)
 	end
 	local flutter = math.sin(p * 0.5) * (0.15 + 0.25 * (1 - math.min(relative, 1)))
 	setTransform(state, "FinL", CFrame.Angles(0, 0, flutter))

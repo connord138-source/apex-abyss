@@ -14,6 +14,7 @@ local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local CameraController = require(script.Parent.CameraController)
+local PredatorController = require(script.Parent.PredatorController)
 local FishAnimator = require(script.Parent.FishAnimator)
 local SwimController = require(script.Parent.SwimController)
 
@@ -101,6 +102,10 @@ local function autoEat()
 end
 
 local function onBite()
+	if SwimController.isHeld() then
+		ClientState.request("Struggle")
+		return
+	end
 	if not SwimController.lunge() then
 		return
 	end
@@ -117,6 +122,15 @@ local function onBite()
 				ClientState.request("Bite", entry.player.UserId)
 			end
 			return
+		end
+	end
+	-- No fish in reach: a predator or boss, maybe
+	local root = SwimController.root()
+	if root then
+		local mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
+		local index = PredatorController.nearest(mouth, Size.reach(length) + length * 0.6 + 2)
+		if index then
+			ClientState.request("BitePredator", index)
 		end
 	end
 end

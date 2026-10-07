@@ -32,7 +32,7 @@ local swim = Config.Tuning.swim
 local economy = Config.Tuning.economy
 local hub = Config.World.hub
 
-type Session = {
+export type Session = {
 	haul: number,
 	health: number,
 	lastHitAt: number,
@@ -42,6 +42,10 @@ type Session = {
 	alive: boolean,
 	-- Who bit this fish recently (userId → clock), for the school bonus
 	bitBy: { [number]: number },
+	-- A Kelp Wrap healing: health a second until `healUntil`; the next wrap allowed
+	healRate: number,
+	healUntil: number,
+	wrapReadyAt: number,
 }
 
 local HuntService = {}
@@ -60,8 +64,13 @@ local function newSession(): Session
 		inHub = true,
 		alive = true,
 		bitBy = {},
+		healRate = 0,
+		healUntil = 0,
+		wrapReadyAt = 0,
 	}
 end
+
+local heal = Config.Tuning.heal
 
 local function finite(value: any): boolean
 	return typeof(value) == "number" and value == value and math.abs(value) < math.huge
@@ -187,9 +196,16 @@ local function onEatPrey(player: Player, batch: any)
 	end
 	local session = sessions[player]
 	local data = DataService.get(player)
-	local _, root = FishService.character(player)
+	local character, root = FishService.character(player)
 	local length = liveLength(player)
-	if session == nil or data == nil or root == nil or length == nil or not session.alive then
+	if
+		session == nil
+		or data == nil
+		or character == nil
+		or root == nil
+		or length == nil
+		or not session.alive
+	then
 		return
 	end
 	local now = Timing.clock()
@@ -222,6 +238,22 @@ local function onEatPrey(player: Player, batch: any)
 		gained += prey.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now())
 		data.stats.preyEaten += 1
 		count += 1
+		if prey.mass > data.stats.bestPreyMass then
+			data.stats.bestPrey = prey.id
+			data.stats.bestPreyMass = prey.mass
+			Events.trophies:fire(player)
+		end
+		-- Eating heals a little, so snacking matters in a long fight
+		local most = maxHealth(player)
+		if session.health < most then
+			session.health =
+				math.min(most, session.health + most * (heal.eatBase + heal.eatPerKg * prey.mass))
+			character:SetAttribute("Health", session.health)
+		end
+		-- A wrap tucked in the fish, sometimes
+		if math.random() < heal.preyDropChance and HuntService.giveWrap(player, 1) then
+			Net.notify(player, `The {prey.name} had a Kelp Wrap in it!`, "good")
+		end
 		-- DNA: big prey always carry some, small ones sometimes
 		local position = Schools.position(index, at)
 		if prey.mass >= economy.dnaBigMass then
@@ -398,6 +430,14 @@ local function tick()
 				session.health = math.min(most, session.health + hunt.regenPerSecond * 0.2)
 				character:SetAttribute("Health", session.health)
 			end
+			-- A Kelp Wrap heals through hits (that's what it's for)
+			if now < session.healUntil and session.health < most then
+				session.health = math.min(most, session.health + session.healRate * 0.2)
+				character:SetAttribute("Health", session.health)
+			elseif session.healUntil > 0 and now >= session.healUntil then
+				session.healUntil = 0
+				character:SetAttribute("Healing", 0)
+			end
 			local den = FishService.denOf(player)
 			if den and session.haul > 0 then
 				local length = liveLength(player) or 1
@@ -434,6 +474,17 @@ function HuntService.feed(player: Player, mass: number)
 	end
 end
 
+-- Every fish's session (alive, inHub, safeUntil, ...), for creatures choosing a
+-- target (PredatorService). Read only.
+function HuntService.sessions(): { [Player]: Session }
+	return sessions
+end
+
+-- Whether prey fish `index` is eaten (and waiting to respawn) at `now`.
+function HuntService.preyEaten(index: number, now: number): boolean
+	return (eatenUntil[index] or 0) > now
+end
+
 -- The Haul a player is carrying (0 if not swimming).
 function HuntService.haul(player: Player): number
 	local session = sessions[player]
@@ -441,6 +492,112 @@ function HuntService.haul(player: Player): number
 end
 
 -- Gives DNA of the biome at `position` (forage and other food sources).
+-- A creature (predator, boss) kills a fish: the Haul is lost like any death (a
+-- Second Chance keeps it), the fish respawns in its den.
+function HuntService.kill(player: Player, source: string)
+	local session = sessions[player]
+	local data = DataService.get(player)
+	if session == nil or data == nil or not session.alive then
+		return
+	end
+	local lost = session.haul
+	local saved = lost > 0 and (data.charms.SecondChance or 0) > 0
+	if saved then
+		data.charms.SecondChance -= 1
+		keptHaul[player] = lost
+		lost = 0
+	end
+	session.haul = 0
+	session.alive = false
+	data.stats.timesEaten += 1
+	Net.hitBy(player, -1, -1)
+	Net.eaten(player, {
+		by = source,
+		lost = lost,
+		saved = if saved then keptHaul[player] else nil,
+		respawn = hunt.respawnSeconds,
+	})
+	FishService.respawnIn(player, hunt.respawnSeconds)
+	DataService.markDirty(player)
+end
+
+-- Hurts a fish by a share of its max health (predators and bosses; nothing
+-- one-shots, owner 2026-10-07). `source` names the attacker for the death screen.
+function HuntService.damage(player: Player, fraction: number, source: string, quiet: boolean?)
+	local session = sessions[player]
+	local character = FishService.character(player)
+	if session == nil or character == nil or not session.alive or isSafe(session, Timing.clock()) then
+		return
+	end
+	local amount = maxHealth(player) * fraction
+	session.health -= amount
+	session.lastHitAt = Timing.clock()
+	character:SetAttribute("Health", math.max(session.health, 0))
+	if not quiet then
+		Net.hitBy(player, -1, amount)
+	end
+	if session.health <= 0 then
+		HuntService.kill(player, source)
+	end
+end
+
+-- Heals a fish fully (the admin panel).
+function HuntService.healFull(player: Player)
+	local session = sessions[player]
+	local character = FishService.character(player)
+	if session and character and session.alive then
+		session.health = maxHealth(player)
+		character:SetAttribute("Health", session.health)
+	end
+end
+
+-- Hands a player Kelp Wraps (up to the carry cap). Returns whether any were added.
+function HuntService.giveWrap(player: Player, count: number): boolean
+	local data = DataService.get(player)
+	if data == nil then
+		return false
+	end
+	local held = data.charms.KelpWrap or 0
+	if held >= heal.wrapMax then
+		return false
+	end
+	data.charms.KelpWrap = math.min(heal.wrapMax, held + count)
+	DataService.markDirty(player)
+	return true
+end
+
+-- Uses a Kelp Wrap: heals wrapFraction of max health over wrapSeconds, with the
+-- Healing attribute set until it ends (the client slows and glows).
+local function useWrap(player: Player)
+	local session = sessions[player]
+	local data = DataService.get(player)
+	local character = FishService.character(player)
+	if session == nil or data == nil or character == nil or not session.alive then
+		return
+	end
+	local now = Timing.clock()
+	if (data.charms.KelpWrap or 0) < 1 then
+		return Net.notify(
+			player,
+			"No Kelp Wraps. The Tidecharm Trader sells them, and medkelp grows in the shallows",
+			"bad"
+		)
+	end
+	if now < session.wrapReadyAt then
+		return Net.notify(player, `Kelp Wrap ready in {math.ceil(session.wrapReadyAt - now)}s`, "info")
+	end
+	if session.health >= maxHealth(player) then
+		return Net.notify(player, "You're at full health", "info")
+	end
+	data.charms.KelpWrap -= 1
+	session.healRate = maxHealth(player) * heal.wrapFraction / heal.wrapSeconds
+	session.healUntil = now + heal.wrapSeconds
+	session.wrapReadyAt = now + heal.wrapCooldown
+	character:SetAttribute("Healing", session.healUntil)
+	character:SetAttribute("WrapReadyAt", session.wrapReadyAt)
+	DataService.markDirty(player)
+end
+
 function HuntService.giveDna(player: Player, position: Vector3, amount: number)
 	giveDna(player, position, amount)
 end
@@ -465,6 +622,7 @@ function HuntService.start()
 	end)
 
 	Net.onRequest("EatPrey", onEatPrey)
+	Net.onRequest("UseWrap", useWrap)
 	Net.onRequest("EatPlayer", onEatPlayer)
 	Net.onRequest("Bite", onBite)
 	Net.onGetEaten(function(): { [string]: number }

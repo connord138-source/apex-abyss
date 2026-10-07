@@ -20,17 +20,21 @@ from skimage import measure
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
 DIR = os.path.abspath(argv[0])
-CELL = 2.0  # studs per voxel (Roblox uses 4; finer shows the shape better)
-BOUNDS = ((-190, 190), (-34, 150), (-190, 190))  # x, y, z in studs
+# --world: the whole seafloor (run_world.sh) at a coarse cell, from above and the sides
+WORLD = "--world" in argv
+CELL = 8.0 if WORLD else 2.0  # studs per voxel (Roblox uses 4; finer shows the shape better)
+BOUNDS = ((-1090, 1090), (-460, 60), (-1090, 1090)) if WORLD else ((-190, 190), (-34, 150), (-190, 190))
 
-MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5}
-# Roughly Cave.COLORS, in linear-ish RGB
+MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7}
+# Roughly Cave.COLORS and Shelf.COLORS, in linear-ish RGB
 COLORS = {
     1: (0.33, 0.44, 0.47),
     2: (0.23, 0.32, 0.37),
     3: (0.56, 0.50, 0.42),
     4: (0.78, 0.72, 0.56),
     5: (0.20, 0.25, 0.29),
+    6: (0.17, 0.19, 0.22),
+    7: (1.0, 0.42, 0.12),
 }
 
 M = mathutils.Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))  # Roblox (x, y, z) -> Blender (x, -z, y)
@@ -46,10 +50,22 @@ def grid_axes():
 def rasterize(ops):
     xs, ys, zs = grid_axes()
     grid = np.zeros((len(xs), len(ys), len(zs)), dtype=np.uint8)
-    X, Y, Z = np.meshgrid(xs, ys, zs, indexing="ij")
     for op in ops:
         material = MATERIALS[op["material"]]
         cx, cy, cz = op["center"]
+        # Only the cells the op can touch (a big world has hundreds of ops)
+        if op["kind"] == "ball":
+            ext = op["radius"]
+        elif op["kind"] == "block":
+            ext = math.sqrt(sum(s * s for s in op["size"])) / 2
+        else:
+            ext = math.sqrt(op["radius"] ** 2 + (op["height"] / 2) ** 2)
+        i0, i1 = np.searchsorted(xs, cx - ext), np.searchsorted(xs, cx + ext, side="right")
+        j0, j1 = np.searchsorted(ys, cy - ext), np.searchsorted(ys, cy + ext, side="right")
+        k0, k1 = np.searchsorted(zs, cz - ext), np.searchsorted(zs, cz + ext, side="right")
+        if i0 >= i1 or j0 >= j1 or k0 >= k1:
+            continue
+        X, Y, Z = np.meshgrid(xs[i0:i1], ys[j0:j1], zs[k0:k1], indexing="ij")
         if op["kind"] == "ball":
             r = op["radius"]
             mask = (X - cx) ** 2 + (Y - cy) ** 2 + (Z - cz) ** 2 <= r * r
@@ -65,7 +81,8 @@ def rasterize(ops):
             else:  # cylinder along the CFrame's up axis
                 r, h = op["radius"], op["height"]
                 mask = (np.abs(lu) <= h / 2) & (lr * lr + ll * ll <= r * r)
-        grid[mask] = material
+        sub = grid[i0:i1, j0:j1, k0:k1]
+        sub[mask] = material
     return grid
 
 
@@ -167,7 +184,7 @@ def camera(name, position, target, fov_deg):
     cam = bpy.data.cameras.new(name)
     cam.angle = math.radians(fov_deg)
     cam.clip_start = 0.5
-    cam.clip_end = 2000
+    cam.clip_end = 8000
     obj = bpy.data.objects.new(name, cam)
     bpy.context.scene.collection.objects.link(obj)
     pos = M @ mathutils.Vector(position)
@@ -178,7 +195,52 @@ def camera(name, position, target, fov_deg):
     return obj
 
 
+def render_world():
+    """The whole seafloor (run_world.sh): from above and from three sides."""
+    ops = [json.loads(line) for line in open(os.path.join(DIR, "world_ops.jsonl")) if line.strip()]
+    grid = rasterize(ops)
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 24
+    scene.cycles.use_denoising = True
+    scene.cycles.max_bounces = 3
+    scene.render.resolution_x, scene.render.resolution_y = 1280, 1280
+    world = bpy.data.worlds.new("W")
+    scene.world = world
+    world.use_nodes = True
+    bg = world.node_tree.nodes["Background"]
+    bg.inputs["Color"].default_value = (0.08, 0.3, 0.4, 1)
+    bg.inputs["Strength"].default_value = 0.5
+    sun = bpy.data.lights.new("Sun", "SUN")
+    sun.energy = 4.0
+    sun.color = (0.85, 0.95, 1.0)
+    sun.angle = math.radians(6)
+    so = bpy.data.objects.new("Sun", sun)
+    so.rotation_euler = (math.radians(35), math.radians(20), 0)
+    scene.collection.objects.link(so)
+    build_mesh(grid, "World")
+    views = {
+        "aerial": camera("Aerial", (0, 2200, 650), (0, -120, 0), 58),
+        "north": camera("North", (0, 700, -1900), (0, -120, 0), 60),
+        "south": camera("South", (0, 700, 1900), (0, -150, 100), 60),
+        "east": camera("East", (1900, 650, 0), (0, -120, 0), 60),
+    }
+    for name, cam in views.items():
+        scene.camera = cam
+        if name != "aerial":
+            scene.render.resolution_x, scene.render.resolution_y = 1400, 800
+        out = os.path.join(DIR, f"world_{name}.png")
+        scene.render.filepath = out
+        bpy.ops.render.render(write_still=True)
+        print("wrote", out)
+
+
 def main():
+    if WORLD:
+        render_world()
+        return
     ops = [json.loads(line) for line in open(os.path.join(DIR, "cave_ops.jsonl")) if line.strip()]
     grid = rasterize(ops)
     bpy.ops.wm.read_factory_settings(use_empty=True)

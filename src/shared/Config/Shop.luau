@@ -19,6 +19,20 @@ export type Upgrade = {
 	costs: { number }, -- coral for each level, in order
 }
 
+-- A world boss trophy (GDD §8): bought with that boss's Teeth or Beaks (data.trophies)
+export type Trophy = {
+	id: string,
+	vendor: string,
+	name: string,
+	blurb: string,
+	kind: "shade", -- more kinds (den pieces, body parts) when their systems exist
+	shade: string?, -- Config/Shades id
+	currency: string, -- data.trophies key
+	currencyName: string,
+	price: number,
+	boss: string, -- Config/Bosses id, for the row's color
+}
+
 export type Charm = {
 	id: string,
 	vendor: string,
@@ -61,6 +75,41 @@ local vendors: { Vendor } = {
 		blurb = "Fresh colors for your fish.",
 		angle = 315,
 		color = Color3.fromRGB(200, 120, 220),
+	},
+	{
+		id = "Trophies",
+		name = "Trophy Hunter",
+		keeper = "Scar",
+		blurb = "Boss trophies, for Teeth and Beaks.",
+		angle = 90,
+		color = Color3.fromRGB(196, 255, 170),
+	},
+}
+
+local trophies: { Trophy } = {
+	{
+		id = "GhostShade",
+		vendor = "Trophies",
+		name = "Ghost Shade",
+		blurb = "Pale green and see-through, like the drowned",
+		kind = "shade",
+		shade = "Ghost",
+		currency = "MegalodonTeeth",
+		currencyName = "Megalodon Teeth",
+		price = 12,
+		boss = "Megalodon",
+	},
+	{
+		id = "AbyssInkShade",
+		vendor = "Trophies",
+		name = "Abyss Ink Shade",
+		blurb = "Ink-black with glowing spots",
+		kind = "shade",
+		shade = "AbyssInk",
+		currency = "KrakenBeaks",
+		currencyName = "Kraken Beaks",
+		price = 12,
+		boss = "GiantSquid",
 	},
 }
 
@@ -125,6 +174,22 @@ local charms: { Charm } = {
 		max = 1,
 	},
 	{
+		id = "KelpWrap",
+		vendor = "Charms",
+		name = "Kelp Wrap",
+		blurb = "Heals 40% over 4 s (H). You swim slower while it works",
+		price = 120,
+		max = 5,
+	},
+	{
+		id = "DeepLantern",
+		vendor = "Charms",
+		name = "Deep Lantern",
+		blurb = "Lights the pitch-dark Trench round you for 10 minutes",
+		price = 350,
+		seconds = 600,
+	},
+	{
 		id = "Magnet",
 		vendor = "Charms",
 		name = "Shell Magnet",
@@ -157,6 +222,8 @@ return {
 	upgradesById = index(upgrades),
 	charms = charms,
 	charmsById = index(charms),
+	trophies = trophies,
+	trophiesById = index(trophies),
 	-- The Tidecharm Trader also sells shells, a few times a day
 	shellTrade = { vendor = "Charms", shells = 10, price = 400, perDay = 5 },
 	-- How close you must be to a stall to buy from it (studs)

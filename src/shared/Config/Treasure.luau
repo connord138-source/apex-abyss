@@ -7,7 +7,7 @@
 -- sonar, an arrow when close and an X only the holder sees. Digging (a hold) opens
 -- the treasure through the roll reveal. Three tiers: how far out the site is and how
 -- good the loot gets.
-export type RewardKind = "coral" | "shells" | "haul" | "dna" | "charm" | "shade" | "shaderoll"
+export type RewardKind = "coral" | "shells" | "haul" | "dna" | "charm" | "wraps" | "shade" | "shaderoll"
 
 export type Reward = {
 	id: string,
@@ -98,6 +98,18 @@ local function charm(weight: number): Reward
 	return copy
 end
 
+local function wraps(amount: number, weight: number): Reward
+	return {
+		id = `Wraps{amount}`,
+		name = "Kelp Wraps",
+		kind = "wraps",
+		tier = "Common",
+		weight = weight,
+		amount = amount,
+		blurb = `{amount} Kelp Wraps (heals)`,
+	}
+end
+
 local function shadeRoll(minTier: string, weight: number): Reward
 	return {
 		id = `ShadeRoll{minTier}`,
@@ -131,8 +143,9 @@ local tiers: { MapTier } = {
 		maxDistance = 320,
 		digSeconds = 2.5,
 		rewards = {
-			coral(120, 56),
-			shells(15, 22),
+			coral(120, 48),
+			shells(15, 20),
+			wraps(3, 10),
 			haul(1.5, 12),
 			dna(10, 7),
 			charm(3),
@@ -147,8 +160,9 @@ local tiers: { MapTier } = {
 		maxDistance = 500,
 		digSeconds = 3,
 		rewards = {
-			coral(320, 42),
-			shells(35, 20),
+			coral(320, 36),
+			shells(35, 18),
+			wraps(3, 8),
 			haul(2.5, 15),
 			dna(25, 10),
 			charm(7),

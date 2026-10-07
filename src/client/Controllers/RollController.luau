@@ -50,14 +50,227 @@ local function tierOf(id: string): Tier
 	return Tiers.byId[id] or Tiers.byId.Common
 end
 
--- Small icon text for a card (no image assets yet).
-local function glyph(outcome: RollOdds.Outcome): string
-	if outcome.kind == "coral" then
-		return "C"
-	elseif outcome.kind == "shade" then
-		return "◆"
+-- Card art (owner, 2026-10-07: "better designs for the random rolls"): drawn with
+-- frames, no image assets. A shade shows a little fish in its own colors (with its
+-- glow, glints or rainbow); coral shows a branching sprig and the amount; a part
+-- shows which slot it changes; a variant shows its species. Behind it all, a tier
+-- gradient, a diagonal sheen and a tier badge.
+local function box(
+	parent: Instance,
+	size: UDim2,
+	position: UDim2,
+	color: Color3,
+	radius: UDim?,
+	anchor: Vector2?
+): Frame
+	local frame = Instance.new("Frame")
+	frame.Size = size
+	frame.Position = position
+	frame.AnchorPoint = anchor or Vector2.zero
+	frame.BackgroundColor3 = color
+	frame.BorderSizePixel = 0
+	Ui.corner(frame, radius or UDim.new(0, 4))
+	frame.Parent = parent
+	return frame
+end
+
+local RAINBOW = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 0.65, 1)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromHSV(0.2, 0.65, 1)),
+	ColorSequenceKeypoint.new(0.4, Color3.fromHSV(0.4, 0.65, 1)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromHSV(0.6, 0.65, 1)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromHSV(0.8, 0.65, 1)),
+	ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 0.65, 1)),
+})
+
+-- A small fish in a shade's colors, facing right
+local function fishArt(parent: Instance, shade: typeof(Config.Shades.list[1]))
+	local holder = Instance.new("Frame")
+	holder.Name = "Fish"
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.new(0.5, 0, 0, 56)
+	holder.Size = UDim2.fromOffset(96, 56)
+	holder.Parent = parent
+	if shade.glow then
+		local halo = box(
+			holder,
+			UDim2.fromOffset(110, 70),
+			UDim2.new(0.5, 0, 0.5, 0),
+			shade.glow,
+			UDim.new(1, 0),
+			Vector2.new(0.5, 0.5)
+		)
+		halo.BackgroundTransparency = 0.72
+		halo.ZIndex = 0
 	end
-	return "★"
+	-- Tail: a rotated square behind the body's left end
+	local tail = box(
+		holder,
+		UDim2.fromOffset(22, 22),
+		UDim2.new(0, 4, 0.5, 0),
+		shade.fin,
+		UDim.new(0, 4),
+		Vector2.new(0.5, 0.5)
+	)
+	tail.Rotation = 45
+	-- Body and belly
+	local body = box(
+		holder,
+		UDim2.fromOffset(66, 32),
+		UDim2.new(0.5, 6, 0.5, 0),
+		shade.back,
+		UDim.new(1, 0),
+		Vector2.new(0.5, 0.5)
+	)
+	local belly = box(
+		body,
+		UDim2.new(0.78, 0, 0.42, 0),
+		UDim2.new(0.5, 0, 1, -3),
+		shade.belly,
+		UDim.new(1, 0),
+		Vector2.new(0.5, 1)
+	)
+	belly.BackgroundTransparency = 0.1
+	if shade.accent then
+		local band = box(
+			body,
+			UDim2.new(0.22, 0, 0.9, 0),
+			UDim2.new(0.42, 0, 0.5, 0),
+			shade.accent,
+			UDim.new(1, 0),
+			Vector2.new(0.5, 0.5)
+		)
+		band.BackgroundTransparency = 0.2
+	end
+	-- Dorsal fin
+	local fin = box(
+		holder,
+		UDim2.fromOffset(20, 14),
+		UDim2.new(0.5, 2, 0.5, -20),
+		shade.fin,
+		UDim.new(0, 3),
+		Vector2.new(0.5, 0.5)
+	)
+	fin.Rotation = -20
+	-- Eye
+	local eye = box(
+		body,
+		UDim2.fromOffset(9, 9),
+		UDim2.new(1, -14, 0.38, 0),
+		Color3.new(1, 1, 1),
+		UDim.new(1, 0),
+		Vector2.new(0.5, 0.5)
+	)
+	box(
+		eye,
+		UDim2.fromOffset(4, 4),
+		UDim2.new(0.6, 0, 0.5, 0),
+		Color3.new(0, 0, 0),
+		UDim.new(1, 0),
+		Vector2.new(0.5, 0.5)
+	)
+	if shade.cycle then
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = RAINBOW
+		gradient.Rotation = 15
+		gradient.Parent = body
+		belly.BackgroundTransparency = 0.5
+	end
+	if shade.reflectance and shade.reflectance > 0.2 then
+		local shine = box(
+			body,
+			UDim2.new(0.5, 0, 0.18, 0),
+			UDim2.new(0.45, 0, 0.18, 0),
+			Color3.new(1, 1, 1),
+			UDim.new(1, 0),
+			Vector2.new(0.5, 0.5)
+		)
+		shine.BackgroundTransparency = 0.45
+	end
+	if shade.sparkle then
+		for _, spot in { { 0.12, 0.2 }, { 0.3, 0.78 }, { 0.62, 0.12 }, { 0.84, 0.7 }, { 0.5, 0.45 } } do
+			local glint = box(
+				holder,
+				UDim2.fromOffset(4, 4),
+				UDim2.fromScale(spot[1], spot[2]),
+				shade.sparkle,
+				UDim.new(1, 0),
+				Vector2.new(0.5, 0.5)
+			)
+			glint.Rotation = 45
+		end
+	end
+	if shade.transparency and shade.transparency > 0.2 then
+		body.BackgroundTransparency = shade.transparency * 0.6
+		belly.BackgroundTransparency = shade.transparency * 0.6
+	end
+end
+
+-- A sprig of coral and the amount
+local function coralArt(parent: Instance, amount: number, color: Color3)
+	local holder = Instance.new("Frame")
+	holder.Name = "Coral"
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.new(0.5, 0, 0, 56)
+	holder.Size = UDim2.fromOffset(90, 60)
+	holder.Parent = parent
+	local trunk = box(
+		holder,
+		UDim2.fromOffset(12, 40),
+		UDim2.new(0.5, 0, 1, 0),
+		color,
+		UDim.new(1, 0),
+		Vector2.new(0.5, 1)
+	)
+	local _ = trunk
+	for _, arm in { { -14, 22, -35 }, { 14, 20, 35 }, { -4, 12, -70 }, { 6, 10, 65 } } do
+		local branch = box(
+			holder,
+			UDim2.fromOffset(10, arm[2] + 10),
+			UDim2.new(0.5, arm[1], 1, -arm[2]),
+			color,
+			UDim.new(1, 0),
+			Vector2.new(0.5, 1)
+		)
+		branch.Rotation = arm[3]
+	end
+	local label = Ui.label(
+		holder,
+		"Amount",
+		Ui.number(amount),
+		Ui.FONT_HEAVY,
+		18,
+		Color3.new(1, 1, 1),
+		UDim2.new(1, 0, 0, 22),
+		UDim2.new(0, 0, 1, -16)
+	)
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.TextStrokeTransparency = 0.4
+end
+
+-- A badge for a body part or a variant
+local function badgeArt(parent: Instance, text: string, color: Color3)
+	local holder = box(
+		parent,
+		UDim2.fromOffset(84, 40),
+		UDim2.new(0.5, 0, 0, 56),
+		color,
+		UDim.new(0, 10),
+		Vector2.new(0.5, 0.5)
+	)
+	holder.BackgroundTransparency = 0.15
+	holder.Rotation = -6
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(120, 120, 120))
+	gradient.Rotation = 60
+	gradient.Parent = holder
+	local label =
+		Ui.label(holder, "Text", text, Ui.FONT_HEAVY, 15, Color3.fromRGB(6, 20, 30), UDim2.fromScale(1, 1))
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.TextYAlignment = Enum.TextYAlignment.Center
+	label.TextWrapped = true
 end
 
 local function card(parent: Instance, outcome: RollOdds.Outcome, x: number): Frame
@@ -66,40 +279,56 @@ local function card(parent: Instance, outcome: RollOdds.Outcome, x: number): Fra
 	frame.Name = "Card"
 	frame.Size = UDim2.fromOffset(CARD_W, CARD_H)
 	frame.Position = UDim2.fromOffset(x, 0)
-	frame.BackgroundColor3 = Color3.fromRGB(12, 28, 42)
+	frame.BackgroundColor3 = tier.color:Lerp(Color3.fromRGB(6, 14, 24), 0.78)
 	frame.BorderSizePixel = 0
-	Ui.corner(frame, UDim.new(0, 12))
+	frame.ClipsDescendants = true
+	Ui.corner(frame, UDim.new(0, 14))
 	local stroke = Ui.stroke(frame, tier.color, 0.35, 2)
 	stroke.Name = "Edge"
-	local band = Instance.new("Frame")
-	band.Size = UDim2.new(1, 0, 0, 6)
-	band.BackgroundColor3 = tier.color
-	band.BorderSizePixel = 0
-	Ui.corner(band, UDim.new(0, 12))
-	band.Parent = frame
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
-	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
+	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(70, 80, 90))
 	gradient.Parent = frame
-	local icon = Ui.label(
+	-- A diagonal sheen across the top
+	local sheen = box(
 		frame,
-		"Icon",
-		glyph(outcome),
-		Ui.FONT_HEAVY,
-		44,
-		tier.color,
-		UDim2.new(1, 0, 0, 60),
-		UDim2.fromOffset(0, 22)
+		UDim2.fromOffset(CARD_W * 2, 26),
+		UDim2.new(0.5, 0, 0, 24),
+		Color3.new(1, 1, 1),
+		UDim.new(0, 2),
+		Vector2.new(0.5, 0.5)
 	)
-	icon.TextXAlignment = Enum.TextXAlignment.Center
+	sheen.BackgroundTransparency = 0.9
+	sheen.Rotation = -22
+	-- A tier-colored glow behind the art
+	local pool = box(
+		frame,
+		UDim2.fromOffset(CARD_W * 1.1, CARD_W * 1.1),
+		UDim2.new(0.5, 0, 0, 56),
+		tier.color,
+		UDim.new(1, 0),
+		Vector2.new(0.5, 0.5)
+	)
+	pool.BackgroundTransparency = 0.82
+	-- The art
 	if outcome.kind == "shade" then
 		local shade = Config.Shades.byId[outcome.id]
 		if shade then
-			icon.TextColor3 = shade.back
-			icon.TextStrokeColor3 = shade.fin
-			icon.TextStrokeTransparency = 0.2
+			fishArt(frame, shade)
 		end
+	elseif outcome.kind == "coral" then
+		coralArt(frame, outcome.amount or 0, tier.color)
+	elseif outcome.kind == "part" then
+		local part = Config.Exotics.partsById[outcome.id]
+		badgeArt(frame, string.upper(if part then part.slot else "PART"), tier.color)
+	elseif outcome.kind == "variant" then
+		local variant = Config.Exotics.variantsById[outcome.id]
+		local species = if variant then Config.Species.byId[variant.species] else nil
+		badgeArt(frame, string.upper(if species then species.name else "VARIANT"), tier.color)
+	else
+		badgeArt(frame, string.upper(outcome.kind), tier.color)
 	end
+	-- Name and tier badge
 	local name = Ui.label(
 		frame,
 		"Name",
@@ -108,21 +337,31 @@ local function card(parent: Instance, outcome: RollOdds.Outcome, x: number): Fra
 		15,
 		Ui.color.text,
 		UDim2.new(1, -12, 0, 36),
-		UDim2.fromOffset(6, 86)
+		UDim2.fromOffset(6, 92)
 	)
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.TextWrapped = true
-	local tierLabel = Ui.label(
+	name.TextStrokeTransparency = 0.7
+	local badge = box(
 		frame,
+		UDim2.fromOffset(CARD_W - 28, 18),
+		UDim2.new(0.5, 0, 1, -12),
+		tier.color,
+		UDim.new(1, 0),
+		Vector2.new(0.5, 1)
+	)
+	badge.BackgroundTransparency = 0.15
+	local tierLabel = Ui.label(
+		badge,
 		"Tier",
 		string.upper(tier.name),
-		Ui.FONT_SEMI,
-		12,
-		tier.color,
-		UDim2.new(1, 0, 0, 14),
-		UDim2.fromOffset(0, 126)
+		Ui.FONT_HEAVY,
+		11,
+		Color3.fromRGB(6, 20, 30),
+		UDim2.fromScale(1, 1)
 	)
 	tierLabel.TextXAlignment = Enum.TextXAlignment.Center
+	tierLabel.TextYAlignment = Enum.TextYAlignment.Center
 	frame.Parent = parent
 	return frame
 end
@@ -373,6 +612,8 @@ local function reveal(result: { [string]: any })
 		detail = `+{Format.mass(result.haul or 0)} of Haul, straight into your dive`
 	elseif result.kind == "dna" then
 		detail = `+{Ui.number(result.dna or 0)} DNA`
+	elseif result.kind == "wraps" then
+		detail = `+{result.wraps or 0} Kelp Wraps (H heals you)`
 	elseif result.kind == "charm" then
 		detail = "A Lucky Charm: your next roll's rare odds ×2"
 	elseif result.duplicate then
@@ -400,6 +641,51 @@ local function reveal(result: { [string]: any })
 		UDim2.fromOffset(0, 76)
 	)
 	detailLabel.TextXAlignment = Enum.TextXAlignment.Center
+	-- A shade's three colors, so the result reads at a glance
+	if result.kind == "shade" then
+		local shade = Config.Shades.byId[result.id]
+		if shade then
+			local swatches = Instance.new("Frame")
+			swatches.BackgroundTransparency = 1
+			swatches.AnchorPoint = Vector2.new(0.5, 0)
+			swatches.Position = UDim2.new(0.5, 0, 0, 100)
+			swatches.Size = UDim2.fromOffset(110, 20)
+			swatches.Parent = panel
+			local layout = Instance.new("UIListLayout")
+			layout.FillDirection = Enum.FillDirection.Horizontal
+			layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			layout.Padding = UDim.new(0, 8)
+			layout.Parent = swatches
+			for _, color in { shade.back, shade.belly, shade.fin } do
+				local swatch = box(swatches, UDim2.fromOffset(20, 20), UDim2.new(), color, UDim.new(0, 6))
+				Ui.stroke(swatch, Color3.new(1, 1, 1), 0.6, 1)
+			end
+		end
+	end
+	-- The winner bursts: tier-colored motes fly out of the card
+	if big then
+		for i = 1, 22 do
+			local mote = box(
+				overlay,
+				UDim2.fromOffset(6, 6),
+				UDim2.fromScale(0.5, 0.4),
+				tier.color,
+				UDim.new(1, 0),
+				Vector2.new(0.5, 0.5)
+			)
+			mote.ZIndex = 4
+			local angle = (i / 22) * 2 * math.pi + math.random() * 0.3
+			local distance = 220 + math.random() * 160
+			Ui.tween(mote, 0.9 + math.random() * 0.4, {
+				Position = UDim2.new(0.5, math.cos(angle) * distance, 0.4, math.sin(angle) * distance * 0.7),
+				BackgroundTransparency = 1,
+				Size = UDim2.fromOffset(2, 2),
+			}, Enum.EasingStyle.Quad)
+			task.delay(1.4, function()
+				mote:Destroy()
+			end)
+		end
+	end
 
 	-- Cosmetics land on your own fish
 	local cosmetic = result.kind == "shade" or result.kind == "part" or result.kind == "variant"

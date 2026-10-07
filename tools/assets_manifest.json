@@ -1,5 +1,5 @@
 {
-  "_comment": "Hosted bundles of the game's 3D models (docs/ASSETS.md). fetch_assets.py downloads and unzips each into assets/. Rebuilt 2026-10-07 from Tripo batch 1.",
+  "_comment": "Hosted bundles of the game's 3D models (docs/ASSETS.md). fetch_assets.py downloads and unzips each into assets/. Rebuilt 2026-10-07 from Tripo batch 1, plus the Megalodon boss.",
   "bundles": {
     "species_fbx": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/87744775-0fe7-4a82-b783-0349493adab1.zip",
@@ -15,6 +15,21 @@
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/63c1f02d-2b61-4180-a055-5b1ef404e18e.zip",
       "into": "assets/glb",
       "contents": "props/<Name>.glb: GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall"
+    },
+    "boss_fbx": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/4eff942d-2b94-4088-b725-9899d642efeb.zip",
+      "into": "assets/fbx",
+      "contents": "bosses/Megalodon.fbx (7 spine segments), bosses/GiantSquid.fbx (6; the arms trail and wave); rigged like species, import to FishModels.<Id>"
+    },
+    "prey_fbx": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/6cd9c5a1-2c2c-422a-ad93-4e71e228b943.zip",
+      "into": "assets/fbx",
+      "contents": "prey/<PreyId>.fbx: Minnow, Sardine, Wrasse, Snapper, Grouper (rigged, 4 spine segments; replaces the static prey_glb set, which still works)"
+    },
+    "props2_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/92de7226-58e5-43b7-8b5b-d9622ff8b73e.zip",
+      "into": "assets/glb",
+      "contents": "props/TreasureChest.glb (the dig site's chest, half out of the sand)"
     }
   }
 }

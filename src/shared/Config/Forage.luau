@@ -12,6 +12,7 @@ export type ForageDef = {
 	color: Color3,
 	accent: Color3,
 	hops: boolean, -- shrimp hop about a little; starfish stay put
+	wrap: boolean?, -- medkelp: gives a Kelp Wrap (Config/Tuning heal) instead of mass
 }
 
 local list: { ForageDef } = {
@@ -34,6 +35,17 @@ local list: { ForageDef } = {
 		color = Color3.fromRGB(236, 120, 60),
 		accent = Color3.fromRGB(255, 186, 110),
 		hops = false,
+	},
+	{
+		id = "Medkelp",
+		name = "Medkelp",
+		mass = 0,
+		spots = 60,
+		respawn = 120,
+		color = Color3.fromRGB(96, 200, 120),
+		accent = Color3.fromRGB(170, 255, 190),
+		hops = false,
+		wrap = true,
 	},
 }
 

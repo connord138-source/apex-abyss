@@ -8,6 +8,7 @@
 -- Each school loops round its own center on a tilted figure-eight, and each fish
 -- keeps an offset inside the school with a little wobble, so they read as a school.
 local Config = require(script.Parent.Config)
+local Seafloor = require(script.Parent.Seafloor)
 local Size = require(script.Parent.Size)
 
 local World = Config.World
@@ -47,10 +48,18 @@ do
 			local radius = rng:NextNumber(prey.pathRadius[1], prey.pathRadius[2])
 			local spread = prey.spread * length * math.sqrt(prey.perSchool)
 			local margin = radius + spread + 10
-			local angle = rng:NextNumber(0, 2 * math.pi)
-			local distance = rng:NextNumber(shallows.inner + margin, shallows.outer - margin)
+			local band = prey.band or { shallows.inner, shallows.outer }
+			local angle, distance = 0, 0
+			for _ = 1, 12 do
+				angle = rng:NextNumber(0, 2 * math.pi)
+				distance = rng:NextNumber(band[1] + margin, band[2] - margin)
+				if not Seafloor.inTrench(math.cos(angle) * distance, math.sin(angle) * distance, margin) then
+					break
+				end
+			end
 			local height = rng:NextNumber(4, 14)
-			local y = World.seabedY + rng:NextNumber(prey.depth[1] + height, prey.depth[2] - height)
+			local floor = Seafloor.y(math.cos(angle) * distance, math.sin(angle) * distance)
+			local y = floor + rng:NextNumber(prey.depth[1] + height, prey.depth[2] - height)
 			local direction = if rng:NextInteger(0, 1) == 0 then -1 else 1
 			local school: School = {
 				prey = prey.id,
@@ -130,6 +139,40 @@ end
 function Schools.position(index: number, t: number): Vector3
 	local f = fish[index]
 	return Schools.fishFrame(index, Schools.schoolFrame(f.school, t), t).Position
+end
+
+-- A chase (AggroService): how far along the dart a fish is at `elapsed` seconds
+-- into a chase of `seconds`: out to the target by `lungeAt`, a snap, then back to
+-- its path. 0 = on the path, 1 = at the target.
+function Schools.chaseBlend(elapsed: number, seconds: number, lungeAt: number): number
+	if elapsed <= 0 or elapsed >= seconds then
+		return 0
+	end
+	if elapsed <= lungeAt then
+		local t = elapsed / lungeAt
+		return t * t * (3 - 2 * t) -- ease out of the school
+	end
+	local back = (elapsed - lungeAt) / math.max(seconds - lungeAt, 0.01)
+	return 1 - back * back
+end
+
+-- Where a chasing fish is: between its path position and a point just short of the
+-- target (it stops at its own half-length plus the target's).
+function Schools.chasePosition(
+	index: number,
+	pathPosition: Vector3,
+	target: Vector3,
+	targetLength: number,
+	blend: number
+): Vector3
+	local f = fish[index]
+	local toward = target - pathPosition
+	local distance = toward.Magnitude
+	if distance < 1e-3 then
+		return pathPosition
+	end
+	local stop = math.max(distance - (f.length * 0.5 + targetLength * 0.35), 0)
+	return pathPosition + toward.Unit * stop * blend
 end
 
 return Schools

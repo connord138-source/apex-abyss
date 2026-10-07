@@ -57,6 +57,16 @@ local GRADES: { Grade } = {
 		exposure = -0.25,
 	},
 	{
+		y = World.deep.floorY,
+		color = Color3.fromRGB(14, 52, 88),
+		decay = Color3.fromRGB(6, 24, 46),
+		density = 0.58,
+		tint = Color3.fromRGB(176, 200, 230),
+		brightness = -0.06,
+		saturation = -0.1,
+		exposure = -0.8,
+	},
+	{
 		y = World.trench.floorY,
 		color = Color3.fromRGB(6, 20, 40),
 		decay = Color3.fromRGB(2, 8, 20),
@@ -69,6 +79,9 @@ local GRADES: { Grade } = {
 }
 
 local HUB_TINT = Color3.fromRGB(246, 236, 222)
+-- Dread (a world boss near): the water darkens and desaturates toward this, and
+-- the contrast beats like a heart
+local DREAD_TINT = Color3.fromRGB(150, 120, 130)
 
 local OceanController = {}
 
@@ -78,6 +91,17 @@ local bloom: BloomEffect
 local snowHolder: Part
 local current: Grade? = nil
 local hubBlend, hubVelocity = 0, 0
+local dreadTarget = 0
+local dread, dreadVelocity = 0, 0
+local heart = 0
+local blindTarget = 0
+local blind, blindVelocity = 0, 0
+local ink: ColorCorrectionEffect
+-- Pitch dark biomes (the Trench): near-black unless this fish carries a lamp
+local darkTarget = 0
+local dark, darkVelocity = 0, 0
+local lit = false
+local DARK_TINT = Color3.fromRGB(26, 30, 48)
 
 local function blendGrades(a: Grade, b: Grade, t: number): Grade
 	return {
@@ -122,11 +146,55 @@ local function step(dt: number)
 	else
 		atmosphere = Lighting:FindFirstChild("OceanAtmosphere") :: Atmosphere?
 	end
-	grade.TintColor = blended.tint:Lerp(HUB_TINT, hubBlend * 0.6)
-	grade.Brightness = blended.brightness
-	grade.Saturation = blended.saturation
-	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1
+	dread, dreadVelocity = Spring.number(dread, dreadVelocity, dreadTarget, 2.5, dt)
+	heart += dt * (0.9 + dread * 0.9) * 2 * math.pi
+	-- A double thump: lub-dub, then quiet
+	local cycle = heart % (2 * math.pi)
+	local beat = math.max(math.sin(cycle) ^ 6, math.sin(cycle - 0.9) ^ 6 * 0.6)
+	grade.TintColor = blended.tint:Lerp(HUB_TINT, hubBlend * 0.6):Lerp(DREAD_TINT, dread * 0.55)
+	grade.Brightness = blended.brightness - dread * 0.08
+	grade.Saturation = blended.saturation - dread * 0.45
+	grade.Contrast = 0.06 + dread * (0.1 + beat * 0.16)
+	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 - dread * 0.55
+	-- The dark: a lamp holds a little of the light; everyone else sees only the glow specks
+	dark, darkVelocity = Spring.number(dark, darkVelocity, darkTarget * (if lit then 0.45 else 1), 1.8, dt)
+	if dark > 0.001 then
+		grade.TintColor = grade.TintColor:Lerp(DARK_TINT, dark * 0.8)
+		grade.Brightness -= dark * 0.5
+		grade.Saturation -= dark * 0.5
+		Lighting.ExposureCompensation -= dark * 2.6
+		local atmosphereNow = atmosphere
+		if atmosphereNow and atmosphereNow.Parent then
+			atmosphereNow.Density = math.min(atmosphereNow.Density + dark * 0.25, 1)
+		end
+	end
+	-- Ink: inside a squid's cloud the water goes near-black
+	blind, blindVelocity = Spring.number(blind, blindVelocity, blindTarget, 4, dt)
+	ink.Enabled = blind > 0.01
+	ink.Brightness = -0.92 * blind
+	ink.Saturation = -0.8 * blind
+	ink.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(40, 24, 50), blind)
 	snowHolder.CFrame = CFrame.new(position)
+end
+
+-- Whether the camera is in a pitch-dark biome (0..1; BiomeController sets it) and
+-- whether this fish carries a lamp (LampController sets it)
+function OceanController.setDark(amount: number)
+	darkTarget = math.clamp(amount, 0, 1)
+end
+
+function OceanController.setLit(value: boolean)
+	lit = value
+end
+
+-- How deep in a boss's ink cloud the camera is (0..1); PredatorController sets it.
+function OceanController.setBlind(amount: number)
+	blindTarget = math.clamp(amount, 0, 1)
+end
+
+-- How much a world boss's presence darkens the water (0..1); BossController sets it.
+function OceanController.setDread(amount: number)
+	dreadTarget = math.clamp(amount, 0, 1)
 end
 
 function OceanController.start()
@@ -134,6 +202,10 @@ function OceanController.start()
 	grade.Name = "OceanGrade"
 	grade.Contrast = 0.06
 	grade.Parent = Lighting
+	ink = Instance.new("ColorCorrectionEffect")
+	ink.Name = "InkBlind"
+	ink.Enabled = false
+	ink.Parent = Lighting
 	bloom = Instance.new("BloomEffect")
 	bloom.Name = "OceanBloom"
 	bloom.Intensity = 0.55

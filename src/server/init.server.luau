@@ -15,6 +15,11 @@ local ShopService = require(Services.ShopService)
 local SpeciesService = require(Services.SpeciesService)
 local TutorialService = require(Services.TutorialService)
 local TreasureService = require(Services.TreasureService)
+local PredatorService = require(Services.PredatorService)
+local AggroService = require(Services.AggroService)
+local BossService = require(Services.BossService)
+local Admin = require(script.Admin)
+local DenService = require(Services.DenService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -30,6 +35,11 @@ ShopService.start() -- the plaza's vendors
 SpeciesService.start() -- switching and unlocking species
 TutorialService.start() -- loaded: skip steps already met
 TreasureService.start() -- treasure maps: drops, following, digging
+PredatorService.start() -- AI predators: roaming, hunting, bites, loot
+AggroService.start() -- oversized prey chase and nip the fish they outsize
+BossService.start() -- world boss events: the Megalodon's phases, attacks and rewards
+Admin.start() -- the owner's admin panel (checks who is asking on every call)
+DenService.start() -- den bases: levels, furniture, glow, trophy wall
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

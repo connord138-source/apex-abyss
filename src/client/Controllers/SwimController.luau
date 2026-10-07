@@ -15,6 +15,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
+local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
@@ -43,6 +44,7 @@ local lastBiteAt = -math.huge
 local dashUntil = 0
 local dashStarted = false
 local clock = 0
+local heldPoint: Vector3? = nil -- a boss's grab drags the fish here
 
 local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vector3
 	local dot = math.clamp(from:Dot(to), -1, 1)
@@ -106,6 +108,10 @@ end
 
 -- Starts a Dash if it has recharged; returns whether it did.
 function SwimController.dash(): boolean
+	if heldPoint then
+		ClientState.request("Struggle")
+		return false
+	end
 	if root == nil or SwimController.dashCharge < 1 then
 		return false
 	end
@@ -113,6 +119,27 @@ function SwimController.dash(): boolean
 	dashUntil = clock + swim.dashSeconds
 	dashStarted = true
 	return true
+end
+
+-- A push from a creature (a tail sweep, a breach's shockwave): the server tells us
+-- and we add it, since this client owns the fish's physics.
+function SwimController.shove(velocity: Vector3)
+	if root == nil then
+		return
+	end
+	SwimController.velocity += velocity
+	lungeUntil = 0
+end
+
+-- A grab: while `point` is set the fish is dragged toward it and can't swim (it
+-- can only struggle). Nil lets go. PredatorController sets it from the HeldBy
+-- attribute the server puts on the character.
+function SwimController.hold(point: Vector3?)
+	heldPoint = point
+end
+
+function SwimController.isHeld(): boolean
+	return heldPoint ~= nil
 end
 
 -- Starts a bite lunge if the cooldown allows; returns whether it did.
@@ -174,6 +201,11 @@ local function step(dt: number)
 	local upgrades = if ClientState.current then ClientState.current.upgrades else nil
 	local stats = SwimController.stats()
 	local top = Size.topSpeed(length) * Perks.speed(upgrades) * stats.speed
+	-- A Kelp Wrap slows you while it heals (the PvP counterplay)
+	local healing = if character then character:GetAttribute("Healing") else nil
+	if typeof(healing) == "number" and healing > Timing.clock() then
+		top *= Config.Tuning.heal.wrapSlow
+	end
 	local camera = workspace.CurrentCamera.CFrame
 
 	-- Where the player wants to go, relative to the camera: the keys as on PC, plus
@@ -205,7 +237,14 @@ local function step(dt: number)
 	local reversing = throttle < -0.05 and intent <= 0.05 and not boosting
 
 	local velocity = SwimController.velocity
-	if dashStarted then
+	local held = heldPoint
+	if held then
+		-- Dragged toward the beak: no swimming, just the pull
+		local pull = held - currentRoot.Position
+		velocity = if pull.Magnitude > 2 then pull.Unit * Config.Bosses.grabPull else Vector3.zero
+		dashStarted = false
+		lungeUntil = 0
+	elseif dashStarted then
 		-- The tail flick: jump straight to Dash speed, the way the player is steering
 		dashStarted = false
 		local direction = if intent > 0.05 then limitPitch(wish.Unit) else heading
@@ -213,7 +252,9 @@ local function step(dt: number)
 	end
 	local speed = velocity.Magnitude
 	local lunging = clock < lungeUntil
-	if lunging then
+	if held then
+		-- (the pull above stands)
+	elseif lunging then
 		-- A bite lunge: a straight dart along the heading
 		velocity = heading * math.max(speed, top * swim.lungeSpeed)
 	elseif reversing then
@@ -318,6 +359,12 @@ function SwimController.start()
 			currentRoot.AssemblyLinearVelocity = Vector3.zero
 			SwimController.velocity = Vector3.zero
 			heading = cframe.LookVector
+		end
+	end)
+	local shove = remotes:WaitForChild("Shove") :: RemoteEvent
+	shove.OnClientEvent:Connect(function(velocity: Vector3)
+		if typeof(velocity) == "Vector3" then
+			SwimController.shove(velocity)
 		end
 	end)
 end

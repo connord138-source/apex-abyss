@@ -31,7 +31,7 @@ local function placeSpots()
 	local rng = Random.new(World.seed + 10)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { workspace:WaitForChild("World") }
+	params.FilterDescendantsInstances = { workspace:WaitForChild("World"), workspace.Terrain }
 	local trench = World.trench
 	local function inTrench(x: number, z: number): boolean
 		return math.abs(x - trench.center.X) < trench.size.X / 2 + 12

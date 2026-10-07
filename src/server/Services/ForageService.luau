@@ -28,7 +28,7 @@ local function placeSpots()
 	local rng = Random.new(World.seed + 20)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { workspace:WaitForChild("World") }
+	params.FilterDescendantsInstances = { workspace:WaitForChild("World"), workspace.Terrain }
 	local trench = World.trench
 	for _, def in Forage.list do
 		local placed, tries = 0, 0
@@ -77,6 +77,14 @@ local function onEat(player: Player, batch: any)
 			continue
 		end
 		local def = Forage.byId[spot.kind]
+		if def.wrap then
+			-- Medkelp: a Kelp Wrap, if there's room to carry it (else it stays put)
+			if not HuntService.giveWrap(player, 1) then
+				Net.notify(player, "You can't carry more Kelp Wraps", "info")
+				continue
+			end
+			Net.notify(player, "Medkelp: +1 Kelp Wrap", "good")
+		end
 		local backAt = now + def.respawn
 		eatenUntil[index] = backAt
 		Net.forageEaten(index, backAt, player.UserId)

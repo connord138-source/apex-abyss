@@ -20,6 +20,7 @@ local stateUpdate = makeEvent("StateUpdate")
 local notify = makeEvent("Notify")
 local teleport = makeEvent("Teleport") -- (cframe) move your own fish there
 local preyEaten = makeEvent("PreyEaten") -- (index, backAt, eaterUserId) to everyone
+local preyChase = makeEvent("PreyChase") -- (index, targetUserId, startAt, seconds, hit) to everyone: a prey fish turns on a player
 local banked = makeEvent("Banked") -- (summary) to the banker
 local eaten = makeEvent("Eaten") -- (summary) to the fish that got eaten
 local hit = makeEvent("Hit") -- (attackerUserId, victimUserId, damage) to everyone, for effects
@@ -27,6 +28,14 @@ local shellResult = makeEvent("ShellResult") -- (index, backAt) 0 = not allowed,
 local rollResult = makeEvent("RollResult") -- (result) to the roller
 local forageEaten = makeEvent("ForageEaten") -- (index, backAt, eaterUserId) to everyone
 local treasureResult = makeEvent("TreasureResult") -- (result) to the digger
+local predatorEvent = makeEvent("PredatorEvent") -- (kind, index, payload) to everyone: windup, bite, hurt, died, spawned
+local bossState = makeEvent("BossState") -- (state) to everyone: the world boss event (warning, active, gone)
+local bossReward = makeEvent("BossReward") -- (summary) to a player who helped kill a boss
+local shove = makeEvent("Shove") -- (velocity) to a player: a push from a creature (its client adds it)
+-- Predator positions stream ~10 times a second; a dropped packet doesn't matter
+local predatorState = Instance.new("UnreliableRemoteEvent")
+predatorState.Name = "PredatorState"
+predatorState.Parent = folder
 
 -- Each request: its minimum seconds between calls from one player
 local REQUESTS: { [string]: number } = {
@@ -43,6 +52,12 @@ local REQUESTS: { [string]: number } = {
 	FollowMap = 0.3, -- (mapId or "") follow a treasure map, or stop
 	StartDig = 0.4, -- () begin digging at the followed map's X
 	FinishDig = 0.4, -- () the dig hold completed
+	UseWrap = 0.3, -- () use a Kelp Wrap (heal)
+	BitePredator = 0.35, -- (predator index) bite an AI predator or boss
+	Struggle = 0.12, -- () mash to break a boss's grab
+	DenUpgrade = 0.5, -- () the den's next level
+	DenPlace = 0.25, -- (slotId, itemId) furniture into a slot ("" clears it)
+	DenColor = 0.25, -- (glowId) the den's glow color
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -105,6 +120,11 @@ function Net.preyEaten(index: number, backAt: number, eaterUserId: number)
 	preyEaten:FireAllClients(index, backAt, eaterUserId)
 end
 
+-- A prey fish chases a player (AggroService): clients draw the dart.
+function Net.preyChase(index: number, targetUserId: number, startAt: number, seconds: number)
+	preyChase:FireAllClients(index, targetUserId, startAt, seconds)
+end
+
 function Net.banked(player: Player, summary: { [string]: any })
 	banked:FireClient(player, summary)
 end
@@ -117,8 +137,22 @@ function Net.hit(attacker: Player, victim: Player, damage: number)
 	hit:FireAllClients(attacker.UserId, victim.UserId, damage)
 end
 
+-- A hit from something that isn't a player (a creature): `sourceId` is negative.
+function Net.hitBy(victim: Player, sourceId: number, damage: number)
+	hit:FireAllClients(sourceId, victim.UserId, damage)
+end
+
 function Net.onGetEaten(handler: (Player) -> { [string]: number })
 	getEaten.OnServerInvoke = handler
+end
+
+-- The admin panel (Admin.luau): (action, target, ...) → a line of text
+local adminRemote = Instance.new("RemoteFunction")
+adminRemote.Name = "Admin"
+adminRemote.Parent = folder
+
+function Net.onAdmin(handler: (Player, any, any, ...any) -> string)
+	adminRemote.OnServerInvoke = handler
 end
 
 function Net.onGetForage(handler: (Player) -> { [string]: any })
@@ -143,6 +177,32 @@ end
 
 function Net.treasureResult(player: Player, result: { [string]: any })
 	treasureResult:FireClient(player, result)
+end
+
+function Net.predatorState(packet: { [string]: any })
+	predatorState:FireAllClients(packet)
+end
+
+function Net.predatorEvent(kind: string, index: number, payload: { [string]: any })
+	predatorEvent:FireAllClients(kind, index, payload)
+end
+
+function Net.bossState(state: { [string]: any })
+	bossState:FireAllClients(state)
+end
+
+function Net.bossStateTo(player: Player, state: { [string]: any })
+	bossState:FireClient(player, state)
+end
+
+function Net.bossReward(player: Player, summary: { [string]: any })
+	bossReward:FireClient(player, summary)
+end
+
+-- Pushes a player's fish (a tail sweep, a shockwave): the client owns its physics,
+-- so it adds the velocity itself.
+function Net.shove(player: Player, velocity: Vector3)
+	shove:FireClient(player, velocity)
 end
 
 -- A toast for everyone (rare rolls).

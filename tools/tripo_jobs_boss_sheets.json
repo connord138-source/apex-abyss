@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "name": "Megalodon",
+      "group": "species_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic in proportion and shading than a toy), draw ONE colossal megalodon shark alone, large and centered, filling the frame, body laid out STRAIGHT and horizontal, head at the viewer's left, in a three-quarter view with the whole body visible: a massive thick-bodied shark with a blunt wide head, a huge mouth slightly open showing rows of jagged pale teeth, small dead-looking pale eyes, battle scars and old harpoon marks on dark slate-grey skin with a paler belly, a tall dorsal fin and a big crescent tail, menacing but still stylized, on a plain flat pale grey background, no ground shadow, no water, no other objects, no text, no watermark. A clean model sheet for 3D conversion."
+    }
+  ]
+}

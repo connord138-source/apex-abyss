@@ -56,28 +56,104 @@ local function activeMap(): Map?
 	return nil
 end
 
--- The X on the seabed: two crossed neon bars and a soft light, only on this client
+-- The chest at the dig site, half out of the sand, only on this client (owner,
+-- 2026-10-07: "a chest partially sticking out of the ground to show them an actual
+-- physical spot"). The imported TreasureChest prop when it exists, else a chunky
+-- part-built chest in the same spirit: dark planks, brass bands, a domed lid.
+local chestLid: BasePart? = nil
+local chestHinge: CFrame? = nil
+local openUntil = 0
+
 local function buildMarker(position: Vector3, color: Color3)
 	local model = Instance.new("Model")
-	model.Name = "TreasureX"
-	for _, angle in { 45, -45 } do
-		local bar = Instance.new("Part")
-		bar.Anchored = true
-		bar.CanCollide = false
-		bar.CanQuery = false
-		bar.CanTouch = false
-		bar.CastShadow = false
-		bar.Material = Enum.Material.Neon
-		bar.Color = color
-		bar.Size = Vector3.new(0.5, 0.25, 7)
-		bar.CFrame = CFrame.new(position + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, math.rad(angle), 0)
-		bar.Parent = model
+	model.Name = "TreasureChest"
+	local yaw = (position.X * 0.37 + position.Z * 0.61) % (2 * math.pi)
+	local base = CFrame.new(position + Vector3.new(0, -0.9, 0))
+		* CFrame.Angles(0, yaw, 0)
+		* CFrame.Angles(math.rad(-9), 0, math.rad(6))
+	local function part(
+		name: string,
+		size: Vector3,
+		cframe: CFrame,
+		partColor: Color3,
+		material: Enum.Material
+	): Part
+		local made = Instance.new("Part")
+		made.Name = name
+		made.Anchored = true
+		made.CanCollide = false
+		made.CanQuery = false
+		made.CanTouch = false
+		made.CastShadow = false
+		made.Size = size
+		made.CFrame = cframe
+		made.Color = partColor
+		made.Material = material
+		made.Parent = model
+		return made
 	end
+	local wood = Color3.fromRGB(78, 54, 36)
+	local brass = Color3.fromRGB(212, 160, 70)
+	-- The sand it sits in
+	local mound = part(
+		"Mound",
+		Vector3.new(11, 2.6, 9),
+		base * CFrame.new(0, -0.6, 0),
+		Color3.fromRGB(206, 194, 156),
+		Enum.Material.Sand
+	)
+	mound.Shape = Enum.PartType.Ball
+	local body =
+		part("Body", Vector3.new(6.4, 3.4, 4.4), base * CFrame.new(0, 1.7, 0), wood, Enum.Material.WoodPlanks)
+	for _, x in { -2.2, 2.2 } do
+		part("Band", Vector3.new(0.6, 3.6, 4.6), base * CFrame.new(x, 1.7, 0), brass, Enum.Material.Metal)
+	end
+	part("Lock", Vector3.new(1.2, 1.3, 0.4), base * CFrame.new(0, 2.2, -2.3), brass, Enum.Material.Metal)
+	-- The lid hinges at the back edge
+	local hinge = base * CFrame.new(0, 3.4, 2.2)
+	local lid = part(
+		"Lid",
+		Vector3.new(6.6, 2.2, 4.6),
+		hinge * CFrame.new(0, 0.9, -2.2),
+		wood,
+		Enum.Material.WoodPlanks
+	)
+	lid.Shape = Enum.PartType.Cylinder
+	lid.Size = Vector3.new(6.6, 4.6, 4.6)
+	lid.CFrame = hinge * CFrame.new(0, 0, -2.2) * CFrame.Angles(0, 0, 0)
+	-- A seam of light where the lid meets the body, in the map's tier color
+	local seam =
+		part("Seam", Vector3.new(6.2, 0.15, 4.2), base * CFrame.new(0, 3.45, 0), color, Enum.Material.Neon)
 	local light = Instance.new("PointLight")
 	light.Color = color
 	light.Range = 18
 	light.Brightness = 1.4
-	light.Parent = model:FindFirstChildWhichIsA("BasePart")
+	light.Parent = seam
+	-- The imported prop replaces the planks when it exists
+	local props = ReplicatedStorage:FindFirstChild("WorldProps")
+	local template = props and props:FindFirstChild("TreasureChest")
+	if template and template:IsA("Model") and template:FindFirstChildWhichIsA("BasePart", true) then
+		local clone = template:Clone()
+		for _, descendant in clone:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Anchored = true
+				descendant.CanCollide = false
+				descendant.CanQuery = false
+				descendant.CanTouch = false
+			end
+		end
+		clone:ScaleTo(1)
+		clone:ScaleTo(7 / math.max(clone:GetExtentsSize().X, 0.01))
+		clone:PivotTo(base * CFrame.new(0, clone:GetExtentsSize().Y * 0.3, 0))
+		clone.Parent = model
+		body.Transparency = 1
+		lid.Transparency = 1
+		for _, child in model:GetChildren() do
+			if child.Name == "Band" or child.Name == "Lock" then
+				child:Destroy()
+			end
+		end
+	end
 	local sand = Instance.new("ParticleEmitter")
 	sand.Name = "Sand"
 	sand.Rate = 0
@@ -87,17 +163,49 @@ local function buildMarker(position: Vector3, color: Color3)
 	sand.Size = NumberSequence.new(0.6, 1.4)
 	sand.Transparency = NumberSequence.new(0.3, 1)
 	sand.Color = ColorSequence.new(Color3.fromRGB(214, 200, 160))
-	sand.Parent = model:FindFirstChildWhichIsA("BasePart")
+	sand.Parent = mound
 	model.Parent = workspace
 	marker = model
 	markerLight = light
+	chestLid = lid
+	chestHinge = hinge
+end
+
+-- The chest opens: the lid swings back and gold light spills out
+local function openChest()
+	local lid, hinge = chestLid, chestHinge
+	if lid == nil or hinge == nil then
+		return
+	end
+	openUntil = os.clock() + 2.5
+	local target = hinge * CFrame.Angles(math.rad(-105), 0, 0) * CFrame.new(0, 0, -2.2)
+	Ui.tween(lid, 0.5, { CFrame = target }, Enum.EasingStyle.Back)
+	local glow = Instance.new("ParticleEmitter")
+	glow.Rate = 0
+	glow.Lifetime = NumberRange.new(0.8, 1.6)
+	glow.Speed = NumberRange.new(4, 12)
+	glow.SpreadAngle = Vector2.new(50, 50)
+	glow.Size = NumberSequence.new(0.5, 0.1)
+	glow.Transparency = NumberSequence.new(0, 1)
+	glow.LightEmission = 1
+	glow.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120))
+	glow.Parent = lid
+	glow:Emit(40)
+	if markerLight then
+		Ui.tween(markerLight, 0.4, { Brightness = 4, Range = 30 })
+	end
 end
 
 local function clearMarker()
+	if openUntil > os.clock() then
+		return -- the lid is still swinging open
+	end
 	if marker then
 		marker:Destroy()
 		marker = nil
 		markerLight = nil
+		chestLid = nil
+		chestHinge = nil
 	end
 end
 
@@ -115,6 +223,7 @@ local function stopDig(finished: boolean)
 		end
 	end
 	if finished then
+		openChest()
 		ClientState.request("FinishDig")
 	end
 end

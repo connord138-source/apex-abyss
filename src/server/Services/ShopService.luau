@@ -63,6 +63,7 @@ local function buyCharm(player: Player, data: DataService.PlayerData, id: string
 	if charm.seconds then
 		local now = Timing.now()
 		data.boosts[id] = math.max(data.boosts[id] or 0, now) + charm.seconds
+		WardrobeService.refresh(player)
 	else
 		data.charms[id] = (data.charms[id] or 0) + 1
 	end
@@ -83,6 +84,29 @@ local function buyDye(player: Player, data: DataService.PlayerData, id: string)
 	data.shades[id] = true
 	WardrobeService.equip(player, "shade", id)
 	Net.notify(player, `{shade.name} shade bought and put on`, "good")
+end
+
+-- A boss trophy, paid for with that boss's Teeth or Beaks (BossService hands them out)
+local function buyTrophy(player: Player, data: DataService.PlayerData, id: string)
+	local trophy = Shop.trophiesById[id]
+	if trophy == nil or not atVendor(player, trophy.vendor) then
+		return
+	end
+	local held = data.trophies[trophy.currency] or 0
+	if held < trophy.price then
+		return fail(player, `You need {trophy.price} {trophy.currencyName} ({held} held)`)
+	end
+	if trophy.kind == "shade" then
+		local shadeId = trophy.shade or ""
+		if data.shades[shadeId] then
+			return fail(player, `You already have {trophy.name}`)
+		end
+		data.trophies[trophy.currency] = held - trophy.price
+		data.shades[shadeId] = true
+		WardrobeService.equip(player, "shade", shadeId)
+		Net.notify(player, `{trophy.name} bought and put on`, "good")
+		DataService.save(player)
+	end
 end
 
 local function buyShells(player: Player, data: DataService.PlayerData)
@@ -120,6 +144,8 @@ local function buy(player: Player, kind: any, id: any)
 		buyCharm(player, data, id)
 	elseif kind == "dye" then
 		buyDye(player, data, id)
+	elseif kind == "trophy" then
+		buyTrophy(player, data, id)
 	end
 	DataService.markDirty(player)
 end

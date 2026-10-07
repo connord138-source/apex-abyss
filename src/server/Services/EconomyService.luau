@@ -62,6 +62,9 @@ function EconomyService.start()
 		state.parts = data.parts
 		state.variants = data.variants
 		state.equipped = data.equipped
+		state.trophies = data.trophies
+		state.titles = data.titles
+		state.title = data.title
 		local trades = data.shellTrades
 		local used = if trades.day == EconomyService.today() then trades.count else 0
 		state.shellTradesLeft = Config.Shop.shellTrade.perDay - used

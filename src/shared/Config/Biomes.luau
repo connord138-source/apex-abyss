@@ -1,8 +1,16 @@
 --!strict
--- The biomes, where they are round the hub, and the level each is meant for
--- (owner, 2026-10-06: layout approved "as long as areas are gated by suggested
--- level"). Entering a biome shows its name and suggested levels; entering one above
--- your fish's level warns that it's too dangerous for now (BiomeController).
+-- The biomes, where they are, and the level each is meant for (owner, 2026-10-06:
+-- layout approved "as long as areas are gated by suggested level"; 2026-10-07:
+-- "spread out and clearly different ... some dependent on depth off of a ocean
+-- shelf ... coral zone being the last of the shallower zones"). Entering a biome
+-- shows its name and suggested levels; entering one above your fish's level warns
+-- that it's too dangerous for now (BiomeController).
+--
+-- The low-level biomes sit on the shelf (Config/World `shelf.radius`): the Kelp
+-- Shallows ring round the hub, the Shipwreck Graveyard in the shelf's west bay and
+-- the Coral Reef as the shelf's outer band everywhere else, ending at the drop-off.
+-- The high-level biomes lie on the deep floor beyond it: Open Blue north, Sunken
+-- Ruins east, Hydrothermal Vents south-west, and the Abyssal Trench canyon south.
 --
 -- Angles are degrees round the hub, measured from +X (east) toward +Z (south):
 -- 0 = east, 90 = south, 180 = west, 270 = north. Radii are studs from the hub's
@@ -18,7 +26,12 @@ export type Biome = {
 	radiusTo: number,
 	live: boolean,
 	color: Color3, -- the zone banner's accent
+	deep: boolean, -- below the drop-off
+	dark: boolean?, -- pitch dark: bring a light (an Anglerfish's lure, a Deep Lantern)
 }
+
+local SHELF = 600
+local EDGE = 1000
 
 local list: { Biome } = {
 	{
@@ -29,45 +42,37 @@ local list: { Biome } = {
 		angleFrom = 0,
 		angleTo = 360,
 		radiusFrom = 0,
-		radiusTo = 420,
+		radiusTo = 340,
 		live = true,
 		color = Color3.fromRGB(150, 220, 120),
-	},
-	{
-		id = "CoralReef",
-		name = "Coral Reef",
-		minLevel = 10,
-		maxLevel = 25,
-		angleFrom = -45,
-		angleTo = 45,
-		radiusFrom = 420,
-		radiusTo = 1100,
-		live = true,
-		color = Color3.fromRGB(255, 130, 170),
-	},
-	{
-		id = "AbyssalTrench",
-		name = "Abyssal Trench",
-		minLevel = 80,
-		maxLevel = 100,
-		angleFrom = 45,
-		angleTo = 135,
-		radiusFrom = 420,
-		radiusTo = 1100,
-		live = true,
-		color = Color3.fromRGB(110, 230, 255),
+		deep = false,
 	},
 	{
 		id = "ShipwreckGraveyard",
 		name = "Shipwreck Graveyard",
-		minLevel = 20,
-		maxLevel = 40,
+		minLevel = 10,
+		maxLevel = 25,
 		angleFrom = 135,
 		angleTo = 225,
-		radiusFrom = 420,
-		radiusTo = 1100,
+		radiusFrom = 340,
+		radiusTo = SHELF,
 		live = true,
 		color = Color3.fromRGB(150, 200, 150),
+		deep = false,
+	},
+	{
+		-- The last of the shallows: the shelf's outer band, north round to south
+		id = "CoralReef",
+		name = "Coral Reef",
+		minLevel = 25,
+		maxLevel = 40,
+		angleFrom = 225,
+		angleTo = 135,
+		radiusFrom = 340,
+		radiusTo = SHELF,
+		live = true,
+		color = Color3.fromRGB(255, 130, 170),
+		deep = false,
 	},
 	{
 		id = "OpenBlue",
@@ -76,36 +81,51 @@ local list: { Biome } = {
 		maxLevel = 55,
 		angleFrom = 225,
 		angleTo = 315,
-		radiusFrom = 420,
-		radiusTo = 1100,
+		radiusFrom = SHELF,
+		radiusTo = EDGE,
 		live = true,
 		color = Color3.fromRGB(100, 170, 255),
+		deep = true,
 	},
-	-- Later: beyond the Reef, and beyond (below) the Trench. Frozen Shelf was dropped
-	-- for now (owner: not much sea life there); it may come back in an update.
 	{
 		id = "SunkenRuins",
 		name = "Sunken Ruins",
 		minLevel = 50,
 		maxLevel = 70,
-		angleFrom = -45,
-		angleTo = 45,
-		radiusFrom = 1100,
-		radiusTo = 1600,
-		live = false,
+		angleFrom = 315,
+		angleTo = 68,
+		radiusFrom = SHELF,
+		radiusTo = EDGE,
+		live = true,
 		color = Color3.fromRGB(120, 240, 220),
+		deep = true,
+	},
+	{
+		id = "AbyssalTrench",
+		name = "Abyssal Trench",
+		minLevel = 80,
+		maxLevel = 100,
+		angleFrom = 68,
+		angleTo = 125,
+		radiusFrom = SHELF,
+		radiusTo = EDGE,
+		live = true,
+		color = Color3.fromRGB(110, 230, 255),
+		deep = true,
+		dark = true,
 	},
 	{
 		id = "HydrothermalVents",
 		name = "Hydrothermal Vents",
 		minLevel = 65,
 		maxLevel = 85,
-		angleFrom = 45,
-		angleTo = 135,
-		radiusFrom = 1100,
-		radiusTo = 1600,
-		live = false,
+		angleFrom = 125,
+		angleTo = 225,
+		radiusFrom = SHELF,
+		radiusTo = EDGE,
+		live = true,
 		color = Color3.fromRGB(255, 140, 70),
+		deep = true,
 	},
 }
 

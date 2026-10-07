@@ -7,11 +7,16 @@ local BiomeController = require(script.Controllers.BiomeController)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
+local HealController = require(script.Controllers.HealController)
 local HudController = require(script.Controllers.HudController)
 local HuntController = require(script.Controllers.HuntController)
 local MenuController = require(script.Controllers.MenuController)
 local NametagController = require(script.Controllers.NametagController)
 local OceanController = require(script.Controllers.OceanController)
+local PredatorController = require(script.Controllers.PredatorController)
+local BossController = require(script.Controllers.BossController)
+local LampController = require(script.Controllers.LampController)
+local AdminController = require(script.Controllers.AdminController)
 local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
 local ShellController = require(script.Controllers.ShellController)
@@ -28,8 +33,13 @@ RollController.start() -- wallet, Roll button and the reveal
 BiomeController.start() -- biome names, suggested levels and under-level warnings
 TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
+HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow
 CameraController.start()
 FishAnimator.start()
+PredatorController.start() -- AI predators: interpolation, tells, tags
+BossController.start() -- world boss: HUD bar, dread, countdown, rewards
+LampController.start() -- lamps on fish (an Anglerfish's lure, Deep Lanterns) for the dark
+AdminController.start() -- the owner's admin panel (shows only for admins)
 HuntController.start()
 SchoolController.start()
 NametagController.start()

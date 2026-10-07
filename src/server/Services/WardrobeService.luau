@@ -2,9 +2,13 @@
 -- Wearing shades, body parts and exotic variants. The choice is saved, and put on
 -- the fish as attributes (Shade, Parts, Variant) that every client dresses it
 -- from (Shared/Cosmetics).
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Perks = require(ReplicatedStorage.Shared.Perks)
+local Timing = require(ReplicatedStorage.Shared.Timing)
+local Progress = require(script.Parent.Parent.Progress)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
@@ -24,6 +28,19 @@ local function dress(player: Player)
 	local current = character:GetAttribute("Species")
 	character:SetAttribute("Variant", if variant and variant.species == current then variant.id else "")
 	character:SetAttribute("Parts", Cosmetics.partsText(data.equipped.parts))
+	character:SetAttribute("Title", data.title)
+	-- A light for the dark deeps: the Anglerfish's lure, or a Deep Lantern charm
+	local species = Progress.species(data)
+	local lamp = if species.id == "Anglerfish"
+		then "lure"
+		elseif Perks.active(data.boosts, "DeepLantern", Timing.now()) then "lantern"
+		else ""
+	character:SetAttribute("Lamp", lamp)
+end
+
+-- Re-reads a player's look (a charm bought or run out, a species switch).
+function WardrobeService.refresh(player: Player)
+	dress(player)
 end
 
 -- Puts something on ("" takes it off; for parts, `slot` says which).
@@ -65,6 +82,18 @@ end
 function WardrobeService.start()
 	FishService.spawned:connect(function(player: Player)
 		dress(player)
+	end)
+	-- Lanterns run out: re-read every fish's lamp now and then
+	task.spawn(function()
+		while true do
+			task.wait(5)
+			for _, player in Players:GetPlayers() do
+				local character = FishService.character(player)
+				if character and character:GetAttribute("Lamp") == "lantern" then
+					dress(player)
+				end
+			end
+		end
 	end)
 	Net.onRequest("Equip", function(player: Player, kind: any, id: any, slot: any)
 		if typeof(kind) == "string" and typeof(id) == "string" then

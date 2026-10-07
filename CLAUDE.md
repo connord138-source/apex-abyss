@@ -103,7 +103,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
       - Plus a huge Haul, a coral jackpot, a Rare-or-better roll and a title.
       - Boss shades have `boss` set in `Config/Shades.luau` and are kept out of the roll
         odds.
-    - It's built with the AI predators.
+    - It's built with the AI predators (not built yet, 2026-10-07).
+  - **Boss rules (owner, 2026-10-07):** team-first but soloable (solo in 8–10 min is
+    fine; health +60% per extra attacker), **nothing one-shots** (boss damage is a
+    share of max health: Megalodon bite 55%, Squid grab 15%/s), separate phases with
+    different attacks per boss, **no minions** in boss fights yet, and a **healing
+    element** for boss fights, PvP and PvE: Kelp Wraps (40% over 4 s, 18 s cooldown,
+    slower while healing; from medkelp fronds, the Tidecharm Trader for coral, prey
+    drops and chests; never Robux) plus eat-to-heal on prey. Look: Schedule I
+    stylization with undersea horror in the presentation (darkening water, drone,
+    silhouettes, glowing eyes; no gore). GDD §8 "Boss rules" and "Healing".
   - **Giant Squid world boss (owner):** "a giant squid that roams the map as well, they
     could be world events".
     - **Bosses are world events:** about every 30 minutes one rises, announced two
@@ -192,6 +201,157 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   shade roll, and from Captain's chests the treasure-only Sunken Gold and Drowned
   Pearl shades at ~3% each). `Config/Treasure.luau`, `TreasureService`,
   `TreasureController`, `MenuController.openSatchel`. GDD §7.
+- **Bosses and fights (owner, 2026-10-07):** bosses are team-first but soloable in
+  8–10 min, "nothing should be one shot", "no minions in boss fights yet", separate
+  phases and different attacks per boss, cartoonish Schedule I look with "that undersea
+  horror aspect". Rules and both boss designs are in GDD §8.
+  - **Healing (owner: "a healing element ... for boss fights as well as PvP and PvE"):**
+    built. **Kelp Wraps** heal 40% over 4 s (18 s cooldown, carry 5, swim 30% slower
+    while healing, green glow everyone sees); from glowing medkelp fronds in the kelp
+    (eaten like forage), the Tidecharm Trader (120 coral), a 3% prey drop and treasure
+    chests; H / LB / HEAL. Eating prey heals 2% + 0.5%/kg. `Config/Tuning.luau`
+    `heal`, `HuntService.giveWrap/useWrap/damage/kill`, `HealController`. Never sold
+    for Robux.
+  - **AI predators (owner, 2026-10-06: aggressive AI fish worth more):** built as the
+    base the bosses extend. `Config/Predators.luau` (Barracuda, Reef Shark) and
+    `PredatorService`: simulated at 10 Hz, roam a band round the hub, hunt the biggest
+    worthwhile fish in range, telegraph every bite (0.9–1.1 s jaw flash and an INCOMING
+    warning for the target), bite for a share of max health; players bite back
+    (`BitePredator`, damage scaled by the length ratio, +35% per other biter in 2.5 s);
+    a kill pays Haul, DNA and coral by damage share. Positions stream over an
+    UnreliableRemoteEvent; `PredatorController` interpolates 0.15 s behind, draws the
+    `PreyModels` mesh (parts until imported) with a red PREDATOR tag and health bar.
+    A predator with `custom` set skips the plain behaviour (bosses drive it).
+  - **Megalodon (built 2026-10-07):** `Config/Bosses.luau` + `BossService` on top of the
+    predators. A world event about every 30 min (4 min in Studio; 2 min warning,
+    `_G.ApexBoss.summon()` / `.hurt(0.5)` from the Server command bar), patrolling the
+    Open Blue (north, 330–620 out). 80 studs, 6,000 hp +60% per extra attacker (20 s
+    window). Three phases: Hunting (Charge 35%, Bite 55%, both telegraphed),
+    Frenzy under 60% (×1.3 speed, blood cloud hides the tag, Tail sweep 20% + a shove
+    when 3+ fish bunch behind it, Marked for death: 8 s of short lunges at one fish),
+    Last stand under 25% (makes for the Trench on a 60 s clock, Breach every 13 s:
+    sinks, rockets up, crashes with a shockwave 30% + shove, then 5 s exhausted at
+    triple damage; escapes when the clock runs out and returns in 15 min). Gills and
+    tail take double damage and fill the stagger meter (700); full → 4 s stagger at
+    triple damage, breaks the mark. Rewards for everyone with ≥1% of the damage:
+    Megalodon Teeth (1, +1 top three, +1 killer), a Haul (120 kg by share, min 10%),
+    coral (5,000 by share, min 500), a Rare+ shade roll, the Megalodon Slayer title
+    (worn on the nametag), and a 1/15 (×2 for the top dealer) direct drop of the
+    Ghost shade. The **Trophy Hunter** (fifth stall, angle 90) sells Ghost for 12
+    Teeth and Abyss Ink for 12 Kraken Beaks (`Config/Shop.luau` `trophies`,
+    `data.trophies`). Client: `BossController` (countdown, boss bar with stagger
+    meter and Last stand clock, dread: darker water + heartbeat contrast, NEARBY
+    arrow, camera shake; reward card then the shade reveal), `PredatorController`
+    draws the rigged `FishModels.Megalodon` with a spine wave and the tells (red jaw,
+    amber eyes for charge/sweep/breach, gold stagger, blood cloud, shockwave ring).
+    Pushes go through `Net.shove` → `SwimController.shove`.
+  - **Giant Squid (built 2026-10-07):** the second boss on the same service (`kit =
+    "squid"` in `Config/Bosses.luau`; the bosses take turns, `rotation`). 70 studs,
+    5,500 hp, lurks deep (10–55 up off the floor) in the south, patrol band 280–560.
+    Lurker: **tentacle grab** (1 s tell, range 60, 15%/s for up to 4 s; the victim's
+    fish is dragged to the beak: server sets `HeldBy`/`HeldUntil` on the character,
+    the client's SwimController.hold overrides the swim; mash BITE or DASH sends
+    `Struggle`, 6 breaks it; 3 bites on the squid by teammates break it too and pay
+    them a Kraken Beak each), **ink** (6 s black cloud, 55 studs; the camera inside
+    goes blind, `OceanController.setBlind`; its tag hides) straight into a **jet**
+    (120 studs away). Enraged under 65%: two grabs at once, half the grab cooldown,
+    **whirlpool** (1.2 s tell, 3 s pull of 30 stud/s² within 70 studs). Mantle under
+    30%: rises to 90–140 up, **beak slam** (1.3 s tell, 45%, reach 14) and **siphon
+    blast** (1 s tell, 15% + an 85 stud/s shove to everything in a 57° cone within 48
+    studs); sinks away after 90 s. Soft spots: the eye (52–70% along the body) and
+    the tentacles (0–25%). Rewards mirror the Megalodon's with Kraken Beaks, the
+    Kraken Slayer title and a 1/15 drop of Abyss Ink (12 Beaks at the Trophy Hunter).
+    Model: `FishModels.GiantSquid` (rigged, 6 segments, mantle forward).
+  - **Oversized prey fight back (owner, 2026-10-07):** `AggroService` + `Config/Tuning`
+    `aggro`: a prey fish at least 1.15× the player's length within 24 studs starts a
+    2.4 s chase (one per player at a time, 7 s per-fish cooldown): every client draws
+    the dart on the shared path (`Schools.chaseBlend/chasePosition`, a red outline,
+    a "TOO BIG TO EAT · SWIM!" warning for the target) and at 1.25 s the server nips
+    for 7% + 0.3%/kg of max health (cap 20%) if the fish reached them.
+- **The world is an ocean shelf (owner, 2026-10-07: "a giant gaping hole", "biomes need
+  to be spread out and clearly different ... some dependent on depth off of a ocean
+  shelf that would be at the end of the lower level zones and begin the higher level
+  zones. coral zone being the last of the shallower zones", "far too open"):** the hub
+  seamount stands on a shallow sand SHELF (radius 600) that ends in a rock DROP-OFF
+  (60 wide) to a deep floor at −170. Shallow biomes on the shelf: Kelp Shallows ring
+  (150–340, LV 1–10, the open one), Shipwreck Graveyard in the west bay (340–600 @
+  135–225°, LV 10–25), Coral Reef as the shelf's outer band everywhere else (LV 25–40,
+  the last shallow zone). Deep biomes beyond: Open Blue north (LV 35–55), Sunken Ruins
+  east (50–70), Hydrothermal Vents south-west (65–85, basin at −230, chimneys), Abyssal
+  Trench south (80–100): a winding V-profile canyon down to −420, pitch dark. Map
+  radius 1000; the terrain runs 700 further so the floor fades into the fog instead of
+  showing an edge, and the Surface sheet is 3600 wide. `Config/World.luau`,
+  `Config/Biomes.luau` (sectors + `deep`/`dark`), `Shared/Seafloor.luau` (the nominal
+  floor height anywhere: shelf, slope, deep, vents, canyon; every placement and
+  creature uses it), `src/server/Shelf.luau` (Terrain fill ops: bedrock, mud floor,
+  shelf drum + sand cap, rim bulges/bays/notches/buttresses/ledges, 6 sand chutes,
+  dunes, outcrops, kelp ridges, reef flats, 16 reef heads with swim-through tunnels
+  and hollows, 10 stone arches, the canyon, the vents' basin and chimneys, the ruins'
+  stones, Open Blue ridges and pinnacles). `WorldService.buildBiomes` dresses each
+  biome on the Terrain by raycast (30 kelp forests, 90 rocks and 14 arches in the
+  Kelp; 8 wrecks; 44 coral gardens of 55; ruins with columns, statues and teal
+  lanterns; smoking glowing chimneys; 70 bioluminescent specks down the Trench; light
+  shafts). Preview from the cloud: `LUAU=<luau> bash tools/preview/run_world.sh <dir>`
+  (aerial, north, south, east). Prey `band`s and predator/boss depths are heights
+  above the local floor; big prey roam off the shelf.
+- **Fish facing and swim (owner, 2026-10-07: "swimming backwards", "more fluid and
+  natural like a fish, not the entire body swaying"):** the static GLB prey meshes
+  faced +Z and are turned round in code (`MESH_FLIP`); prey are now rigged FBX too
+  (`prey_fbx` bundle, 4 spine segments; `SchoolController` swims their bones;
+  `organize_imports` keeps the Models). `Shared/SwimWave.luau` is the one swim shape
+  for players, prey, predators and bosses: the head holds still, the wave's amplitude
+  grows as t^1.9 toward the tail, two thirds of a wavelength along the body.
+- **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
+  and radii scaled with them (`Config/Bosses.luau`).
+- **The Trench is pitch dark (owner: "clearly need a light source for abyssal trench
+  ... could be the perk of the angler fish"):** `Biomes` `dark`; `OceanController.setDark`
+  (BiomeController sets it below the deep floor in a dark biome: near-black, a lamp
+  keeps 45% of the light); the Anglerfish's lure is a lamp (`Lamp = "lure"` attribute
+  from WardrobeService) and the Tidecharm Trader sells a **Deep Lantern** (350 coral,
+  10 min, `Lamp = "lantern"`); `LampController` hangs PointLights on lit fish for
+  everyone; the biome banner and chip say PITCH DARK · bring a light.
+- **Treasure chest (owner: "a chest partially sticking out of the ground"):** the dig
+  site's X is now a chest half out of a sand mound (part-built planks and brass, or the
+  `WorldProps.TreasureChest` Tripo prop, `props2_glb`), seam glowing in the map's tier
+  color; the lid swings open and gold spills out when the dig completes
+  (`TreasureController`).
+- **Admin panel (owner, 2026-10-07; like Hatch & Snatch):** `src/server/Admin.luau`
+  (who: the experience's owner or group owner, `ADMIN_USER_IDS`, anyone in Studio;
+  re-checked on every call), `AdminActions.luau` (coral add/set, shells, set level,
+  Haul, DNA, boss trophies, Kelp Wraps, charms, unlock species, every shade, treasure
+  maps, heal, get eaten, title, restart tutorial, teleport to a biome, summon/hurt/
+  dismiss a boss), `AdminController` (ADMIN button bottom-left, target me/everyone/
+  next player). The `Admin` RemoteFunction answers a line of text.
+- **Den bases (owner, 2026-10-07: "an upgradable base that gets bigger and deeper as
+  it upgrades. Other players can go in and check out your base but can't take or do
+  anything. You can display trophies ... set up furniture ... Upgrades and
+  furniture/colors would cost currency. Coral lamps, etc"):** built as v1.
+  `Config/Dens.luau`: four levels (Nook → Burrow 2,500 → Hall 12,000 → Grotto 45,000
+  coral) that carve the room 6/12/18 studs further back into the seamount and, from
+  Hall, sink a lower chamber under the floor (10 then 14 deep); 12 furniture slots
+  (floor, wall, chamber) unlocked by level; a catalog of 14 pieces (Coral Lamp, Kelp
+  Bed, Shell Pile, Anemone Garden, corals and sponges, Driftwood Table, Pearl
+  Pedestal, a decor Treasure Chest, Bubble Column, Crystal Shard, Sea Glass Lantern,
+  Sea Fan, Banner; 150–1,200 coral, bought once then free to move) and seven glow
+  colors (Teal free, the rest 300) that light the lamps, banners and trophy trims.
+  The record (`data.den`: level, furniture by slot, owned, glow) is in the save and
+  follows the player to whichever den they hold; `DenService` (requests DenUpgrade,
+  DenPlace, DenColor; only the holder can change it) builds it with `DenBuilder`
+  (Terrain carve: the rock is refilled first so a freed den goes back to a Nook; parts
+  with `Props.dress` for the Tripo props) when the den is assigned or changed. The
+  **trophy wall** on the back wall fills itself: the biggest catch (a mounted prey
+  model and its mass, `data.stats.bestPrey/bestPreyMass` from HuntService), Megalodon
+  teeth and Kraken beaks taken, and the worn title over the door
+  (`Events.trophies`). Visitors can swim in (dens are safe) and only look; banking
+  stays owner-only. Menu: the stall hint shows YOUR DEN at your own Haul Pool
+  (`MenuController.openDen`: upgrade, glow, slots → pick list). The seamount's foot
+  was widened (Cave terrace +36, down to −26) so upgraded dens stay inside the rock.
+- **Roll reveal cards (owner, 2026-10-07: "better designs for the random rolls"):**
+  the reel's cards are drawn art (`RollController` `fishArt`/`coralArt`/`badgeArt`):
+  a shade shows a little fish in its own back, belly, fin and accent colors with its
+  glow halo, glints, chrome shine or rainbow; coral a sprig and the amount; parts the
+  slot they change; variants their species; on a tier gradient with a sheen and a tier
+  badge. The result shows a shade's three swatches and Rare+ wins burst motes.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -268,7 +428,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 ## Code map (graybox feel prototype, 2026-10-06)
 
 - **Server** (`src/server/Services`):
-  - `WorldService`: builds the graybox map (seabed and trench, surface ceiling, walls, hub ring with 12 dens, Haul Pools, 4 tunnels and the oculus, kelp, rocks, arches, coral, light shafts) and the base lighting. Gravity is 0.
+  - `WorldService`: builds the map (the Terrain seafloor from `Shelf.luau`, the surface ceiling, walls, the hub cavern from `Cave.luau` with 12 dens, Haul Pools, 4 tunnels and the oculus, and every biome's dressing) and the base lighting. Gravity is 0.
   - `FishService`: custom fish characters (a ball collider `HumanoidRootPart`, a Humanoid with `EvaluateStateMachine = false`, and a `FishBuilder` body), den assignment, respawns.
   - `HuntService`: validates prey eats, player eats and bites; the Haul; banking at your own den's pool; the hub safe zone, spawn protection and healing. It also exposes `mouth` and `feed` for other food sources.
   - `ForageService`: starfish and shrimp spots (placed by raycast) and server-checked eats.
@@ -373,9 +533,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - models for the growth stages, vendors, predators, bosses and the other biomes;
+  - models for the growth stages, vendors and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
-  - the biomes' Terrain (only the hub seamount is terrain so far)
+  - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
   - The progression numbers are placeholders: one full dive banks about 16 levels.

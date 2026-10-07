@@ -182,12 +182,13 @@ function Ui.belowTopBar(gui: ScreenGui, piece: GuiObject, y: number)
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(place)
 end
 
-export type ButtonStyle = "primary" | "secondary" | "gold" | "disabled"
+export type ButtonStyle = "primary" | "secondary" | "gold" | "danger" | "disabled"
 
 local BUTTON_COLORS: { [string]: { bg: Color3, text: Color3 } } = {
 	primary = { bg = Color3.fromRGB(46, 170, 214), text = Color3.fromRGB(4, 20, 30) },
 	secondary = { bg = Color3.fromRGB(28, 56, 74), text = Color3.fromRGB(226, 244, 250) },
 	gold = { bg = Color3.fromRGB(255, 196, 76), text = Color3.fromRGB(40, 24, 4) },
+	danger = { bg = Color3.fromRGB(214, 70, 70), text = Color3.fromRGB(255, 236, 236) },
 	disabled = { bg = Color3.fromRGB(30, 44, 54), text = Color3.fromRGB(110, 136, 148) },
 }
 
