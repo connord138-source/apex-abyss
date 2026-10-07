@@ -81,6 +81,14 @@ local function showMarkers(kind: string?, s: { [string]: any })
 end
 
 local function celebrate()
+	-- The bank that finishes the tutorial has its own "+kg BANKED" in the same
+	-- spot; wait for it to clear (they once drew on top of each other)
+	local hud = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local hudGui = hud and hud:FindFirstChild("Hud")
+	local waited = task.wait(0.3) -- the bank's own event can land just after this one
+	while hudGui and hudGui:FindFirstChild("Banked") and waited < 4 do
+		waited += task.wait(0.1)
+	end
 	local holder = Instance.new("Frame")
 	holder.AnchorPoint = Vector2.new(0.5, 0.5)
 	holder.Position = UDim2.fromScale(0.5, 0.32)
@@ -132,7 +140,7 @@ local function onState(s: { [string]: any })
 		panel.Visible = false
 		showMarkers(nil, s)
 		if wasDone == false then
-			celebrate()
+			task.spawn(celebrate)
 		end
 		wasDone = true
 		return

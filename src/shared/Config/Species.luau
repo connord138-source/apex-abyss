@@ -30,6 +30,7 @@ export type Species = {
 	fin: Color3,
 	stats: Stats,
 	collider: number, -- collider thickness (the eel slips through gaps)
+	camera: number?, -- camera distance × this (thin fish sit closer so they read)
 	abilities: { string }, -- ability options (picked in its tree; the Nibbler has one)
 	unlock: Unlock,
 }
@@ -57,13 +58,14 @@ local list: { Species } = {
 		blurb = "The fastest fish in a straight line. Hits hard, turns wide.",
 		plan = "Cuda",
 		home = "KelpShallows",
-		-- Steel back, bright silver belly, yellow fins: plain grey vanished into the
-		-- water at speed (re-test 2026-10-06)
-		back = Color3.fromRGB(64, 92, 126),
-		belly = Color3.fromRGB(236, 242, 246),
-		fin = Color3.fromRGB(232, 188, 64),
+		-- Bright silver with yellow fins: plain grey (2026-10-06) and steel blue
+		-- (2026-10-07) both vanished into the water at speed
+		back = Color3.fromRGB(176, 192, 204),
+		belly = Color3.fromRGB(248, 250, 252),
+		fin = Color3.fromRGB(240, 192, 56),
 		stats = { speed = 1.25, turn = 0.8, health = 0.85, bite = 1.1 },
 		collider = 0.85,
+		camera = 0.8,
 		abilities = { "Torpedo", "RazorBite", "SilverFlash" },
 		unlock = { kind = "tutorial" },
 	},
@@ -94,6 +96,7 @@ local list: { Species } = {
 		fin = Color3.fromRGB(78, 128, 48),
 		stats = { speed = 1.1, turn = 1.25, health = 0.95, bite = 1.15 },
 		collider = 0.55,
+		camera = 0.8,
 		abilities = { "Strike", "Burrow", "Shock" },
 		unlock = { kind = "dna", biome = "ShipwreckGraveyard", dna = 120, coral = 6000 },
 	},

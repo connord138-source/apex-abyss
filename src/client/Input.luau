@@ -67,6 +67,12 @@ function Input.start()
 		setHeld(input.KeyCode, true)
 		setHeld(input.UserInputType, true)
 		local key = input.KeyCode
+		if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt then
+			-- Free the cursor now, not on the camera's next frame, so a click that
+			-- follows straight after lands where it's aimed
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			UserInputService.MouseIconEnabled = true
+		end
 		if
 			input.UserInputType == Enum.UserInputType.MouseButton1
 			or key == Enum.KeyCode.F

@@ -288,11 +288,18 @@ local function toast(text: string, kind: string)
 		elseif kind == "bad" then Ui.color.danger
 		elseif kind == "rare" then Ui.color.haul
 		else Ui.color.text
-	local item = Ui.panel(toastList, "Toast", UDim2.fromOffset(360, 36), UDim2.new())
+	local item = Ui.panel(toastList, "Toast", UDim2.fromOffset(0, 36), UDim2.new())
 	toastCount += 1
 	item.LayoutOrder = toastCount -- the newest sits lowest, nearest the Haul card
 	item.BackgroundTransparency = 1
-	local label = Ui.label(item, "Text", text, Ui.FONT_BOLD, 16, color, UDim2.fromScale(1, 1))
+	-- The pill grows with its text (a long one once ran out of a fixed 360 px pill)
+	item.AutomaticSize = Enum.AutomaticSize.X
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 18)
+	padding.PaddingRight = UDim.new(0, 18)
+	padding.Parent = item
+	local label = Ui.label(item, "Text", text, Ui.FONT_BOLD, 16, color, UDim2.fromOffset(0, 36))
+	label.AutomaticSize = Enum.AutomaticSize.X
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextTransparency = 1
 	local stroke = item:FindFirstChildOfClass("UIStroke")
@@ -744,7 +751,7 @@ function HudController.start()
 	-- fish outside the safe zone) is seen rather than hidden behind the window.
 	toastList.AnchorPoint = Vector2.new(0.5, 1)
 	toastList.Position = UDim2.new(0.5, 0, 1, -130)
-	toastList.Size = UDim2.fromOffset(360, 160)
+	toastList.Size = UDim2.fromOffset(640, 160)
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 6)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center

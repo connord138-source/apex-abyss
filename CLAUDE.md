@@ -237,8 +237,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `CameraController`: the spring camera, mouse lock, wheel zoom. It pulls the
       look-at point out of rock, then limits the distance with a ray plus a swept
       near-plane-sized box. Never rely on a sweep alone: Spherecast/Blockcast ignore
-      whatever they start touching (that let it through a den roof). The look-at
-      point trails the fish by at most `maxLag` × its length, and shake rotates.
+      whatever they start touching (that let it through a den roof). Stopped by a
+      ceiling or the seabed, it slides along the rock and looks back at the fish
+      instead of collapsing into it; very close up, your own fish fades
+      (`LocalTransparencyModifier`, skipping parts Cosmetics hid at 1). The look-at
+      point trails the fish by at most `maxLag` × its length, shake rotates, and
+      thin species sit closer (`Config/Species` `camera`).
     - `ForageController`: filler food is eaten from a generous reach
       (`Forage.REACH_SCALE`/`REACH_BONUS`) with a suction pull (`PULL`), and the
       server allows for both.
@@ -300,7 +304,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 
 ## Playtests
 
-- Reports go in `docs/playtests/` (`2026-10-06-pc.md`, then `2026-10-06-pc-retest.md`).
+- Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
+  `2026-10-07-pc.md`).
 - Toasts have their own ScreenGui above the menus, so refusals from menu buttons
   show. ROLL also has R on keyboards.
 - On the owner's PC, Rojo for this game runs on **port 34873** until the stale Hatch
