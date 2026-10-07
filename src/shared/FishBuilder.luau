@@ -6,6 +6,8 @@
 -- attributes, so applyScale can resize the whole fish to any length smoothly.
 -- Forward is -Z. The real creature models replace these later with the same joint
 -- names.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local FishPlans = require(script.Parent.FishPlans)
 
 local FishBuilder = {}
@@ -98,9 +100,14 @@ function FishBuilder.build(character: Model, root: BasePart, look: Look, length:
 	local body = Instance.new("Model")
 	body.Name = "Body"
 	body:SetAttribute("Plan", plan or "Nibbler")
-	local parts: { [string]: BasePart } = { Root = root }
-	for _, spec in FishPlans.get(plan) do
-		parts[spec.name] = FishBuilder.makePart(body, parts[spec.parent], spec, look, length)
+	local mesh = FishBuilder.meshTemplate(plan)
+	if mesh then
+		FishBuilder.buildMesh(body, root, mesh, length)
+	else
+		local parts: { [string]: BasePart } = { Root = root }
+		for _, spec in FishPlans.get(plan) do
+			parts[spec.name] = FishBuilder.makePart(body, parts[spec.parent], spec, look, length)
+		end
 	end
 	character:SetAttribute("LookBack", look.back)
 	character:SetAttribute("LookBelly", look.belly)
@@ -109,12 +116,92 @@ function FishBuilder.build(character: Model, root: BasePart, look: Look, length:
 	return body
 end
 
+-- The imported, rigged model for a species (docs/ASSETS.md):
+-- ReplicatedStorage.FishModels.<plan>, a Model holding one skinned MeshPart with
+-- Root/Head/Spine1..N/Tail bones, facing -Z. Nil while it isn't imported, and the
+-- graybox part body is built instead.
+function FishBuilder.meshTemplate(plan: string?): Model?
+	local folder = ReplicatedStorage:FindFirstChild("FishModels")
+	local template = folder and folder:FindFirstChild(plan or "Nibbler")
+	if template and template:IsA("Model") and template:FindFirstChildWhichIsA("MeshPart", true) then
+		return template
+	end
+	return nil
+end
+
+-- A mesh body: the template's parts, massless and welded to the root with a
+-- Motor6D named Mesh, centered on it, scaled so the body is `length` long.
+-- `UnitScale` (the model scale at 1 stud of length) and `Mesh` are stored for
+-- applyScale and the animator.
+function FishBuilder.buildMesh(body: Model, root: BasePart, template: Model, length: number)
+	local model = template:Clone()
+	model.Name = "Mesh"
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = false
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			descendant.CanTouch = false
+			descendant.Massless = true
+		end
+	end
+	model:ScaleTo(1)
+	local extents = model:GetExtentsSize()
+	local unitScale = 1 / math.max(extents.Z, 0.01)
+	model:ScaleTo(unitScale * length)
+	-- Center the body on the root, nose forward (-Z)
+	model:PivotTo(CFrame.new())
+	local box = model:GetBoundingBox()
+	model:PivotTo(CFrame.new(-box.Position))
+	local primary: BasePart? = model.PrimaryPart or model:FindFirstChildWhichIsA("MeshPart", true)
+	if primary == nil then
+		model:Destroy()
+		return
+	end
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant ~= primary then
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = primary
+			weld.Part1 = descendant
+			weld.Parent = descendant
+		end
+	end
+	local joint = Instance.new("Motor6D")
+	joint.Name = "Mesh"
+	joint.Part0 = root
+	joint.Part1 = primary
+	joint.C0 = CFrame.new()
+	joint.C1 = primary.CFrame -- the primary part's offset from the centered model
+	joint.Parent = primary
+	model.Parent = body
+	body:SetAttribute("Mesh", true)
+	body:SetAttribute("UnitScale", unitScale)
+	body:SetAttribute("Applied", length)
+end
+
 function FishBuilder.scaled(cframe: CFrame, scale: number): CFrame
 	return scaled(cframe, scale)
 end
 
 -- Resizes a built body to `length` studs (every client eases this as the fish grows).
 function FishBuilder.applyScale(body: Model, length: number)
+	local mesh = body:FindFirstChild("Mesh")
+	local unitScale = body:GetAttribute("UnitScale")
+	if mesh and mesh:IsA("Model") and typeof(unitScale) == "number" then
+		-- ScaleTo scales the bones with the mesh; the Motor6D's C1 follows the
+		-- primary part's offset
+		mesh:ScaleTo(unitScale * length)
+		local primary = mesh.PrimaryPart or mesh:FindFirstChildWhichIsA("MeshPart", true)
+		local joint = primary and primary:FindFirstChild("Mesh")
+		if primary and joint and joint:IsA("Motor6D") then
+			local applied = body:GetAttribute("Applied")
+			if typeof(applied) == "number" and applied > 0 then
+				local c1 = joint.C1
+				joint.C1 = CFrame.new(c1.Position * (length / applied)) * c1.Rotation
+			end
+		end
+		body:SetAttribute("Applied", length)
+	end
 	for _, child in body:GetChildren() do
 		if child:IsA("BasePart") then
 			local unit = child:GetAttribute("U")

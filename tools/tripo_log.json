@@ -314,7 +314,12 @@
   "type": "text_to_model"
  },
  "props/Shell": {
-  "status": "queued",
+  "credits": 20,
+  "files": [
+   "Shell.glb",
+   "Shell_preview.webp"
+  ],
+  "status": "success",
   "task_id": "b607a36f-28fd-4821-91b0-0b167cfb9717",
   "type": "text_to_model"
  },
@@ -356,6 +361,16 @@
   ],
   "status": "success",
   "task_id": "6d8cc448-d33f-410f-bca3-d9f17372877f",
+  "type": "image_to_model"
+ },
+ "species/MorayEel": {
+  "credits": 30,
+  "files": [
+   "MorayEel.glb",
+   "MorayEel_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e6227fac-903f-40f5-9760-0eacdf037962",
   "type": "image_to_model"
  },
  "species/Nibbler": {

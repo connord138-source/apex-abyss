@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    {
+      "name": "MorayEel",
+      "group": "species",
+      "type": "image_to_model",
+      "image": "assets/tripo/species_sheets/MorayEel.png"
+    }
+  ]
+}

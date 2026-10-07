@@ -1,6 +1,7 @@
 """Rigs a Tripo fish GLB with a spine for the procedural swim, and exports an FBX.
 
     <bpy python> tools/blender/rig_fish.py <in.glb> <out.fbx> [--flip] [--segments N]
+    <bpy python> tools/blender/rig_fish.py <in.glb> <out.glb> --static   (squared up, no rig)
 
 The fish is squared up (its long axis becomes the body axis), the head end is found
 (the deep, wide end; a tail fin is thin), and a chain of bones runs head to tail:
@@ -26,6 +27,9 @@ argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else sys.argv[1:
 IN_PATH, OUT_PATH = argv[0], argv[1]
 FLIP = "--flip" in argv
 SEGMENTS = int(argv[argv.index("--segments") + 1]) if "--segments" in argv else 5
+# --static: export a squared-up GLB with no armature (prey fish, which the client
+# moves whole), instead of the rigged FBX
+STATIC = "--static" in argv
 
 
 def log(*args):
@@ -83,12 +87,15 @@ def girth(lo, hi):
 head_at_low = girth(0.08, 0.3) > girth(0.7, 0.92)
 if FLIP:
     head_at_low = not head_at_low
-if head_at_low:
-    # Turn the fish round so the head is at +Y... then the export (Y -> -Z) faces -Z
+# Where the head must end up so the export faces -Z in Roblox: the FBX exporter maps
+# Blender's -Y (its forward) onto the forward axis we give it (-Z); the glTF exporter
+# maps Blender +Y onto -Z. So rigged fish keep the head at -Y, static ones at +Y.
+want_low = not STATIC
+if head_at_low != want_low:
     body.matrix_world = Matrix.Rotation(math.pi, 4, "Z") @ body.matrix_world
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     co = np.array([v.co[:] for v in body.data.vertices])
-log("head at +Y, length", round(length, 3), "flip" if FLIP else "")
+log("head at", "-Y" if want_low else "+Y", "length", round(length, 3), "flip" if FLIP else "")
 
 # Stand the body on the ground plane's centre (the root sits at the body's middle)
 co = np.array([v.co[:] for v in body.data.vertices])
@@ -101,14 +108,22 @@ co = np.array([v.co[:] for v in body.data.vertices])
 y_min, y_max = co[:, 1].min(), co[:, 1].max()
 length = y_max - y_min
 
+if STATIC:
+    # Face -Z in glTF (Y-up): Blender +Y (the head) -> glTF -Z, which the exporter does
+    bpy.ops.object.select_all(action="DESELECT")
+    body.select_set(True)
+    bpy.ops.export_scene.gltf(filepath=OUT_PATH, export_format="GLB", use_selection=True, export_yup=True)
+    log("wrote static", OUT_PATH)
+    sys.exit(0)
+
 # ---------- bones ----------
-# Spine stations head -> tail along Y (head at y_max). The head bone covers the front
+# Spine stations head -> tail along Y (head at y_min). The head bone covers the front
 # 28%, the tail bone the last 14% (the fin), spine segments share the middle.
-stations = [y_max, y_max - 0.28 * length]
+stations = [y_min, y_min + 0.28 * length]
 mid_len = (0.86 - 0.28) * length
 for i in range(1, SEGMENTS + 1):
-    stations.append(y_max - 0.28 * length - mid_len * i / SEGMENTS)
-stations.append(y_min)
+    stations.append(y_min + 0.28 * length + mid_len * i / SEGMENTS)
+stations.append(y_max)
 names = ["Head"] + [f"Spine{i}" for i in range(1, SEGMENTS + 1)] + ["Tail"]
 
 # The spine's height: follow the body's vertical middle in each stretch
@@ -155,9 +170,9 @@ ys = co[:, 1]
 cs = np.array([centres[n] for n in order])
 for i in range(len(co)):
     y = ys[i]
-    # Which two bone centres bracket this vertex (head end has the highest y)
+    # Which two bone centres bracket this vertex
     j = int(np.argmin(np.abs(cs - y)))
-    k = j + 1 if (j + 1 < len(cs) and y < cs[j]) else j - 1
+    k = j + 1 if (j + 1 < len(cs) and y > cs[j]) else j - 1
     if k < 0 or k >= len(cs):
         groups[order[j]].add([i], 1.0, "REPLACE")
         continue

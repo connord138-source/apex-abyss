@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Perks = require(ReplicatedStorage.Shared.Perks)
+local PropParts = require(ReplicatedStorage.Shared.PropParts)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -30,8 +31,10 @@ type Shell = {
 	index: number,
 	position: Vector3,
 	golden: boolean,
-	body: Part,
-	tip: Part,
+	body: BasePart,
+	tip: BasePart?, -- the part shell's darker spire (an imported shell may be one piece)
+	bodyOffset: CFrame, -- each piece's offset from the shell's frame
+	tipOffset: CFrame,
 	glint: ParticleEmitter,
 	bodySize: Vector3,
 	tipSize: Vector3,
@@ -78,12 +81,35 @@ local function build(positions: { Vector3 }, golden: { boolean })
 	for index, position in positions do
 		local isGolden = golden[index] == true
 		local scale = if isGolden then 1.35 else 1
-		local body = shellPart(folder, "Shell", if isGolden then GOLD else CREAM, isGolden)
-		local bodySize = Vector3.new(1.2, 0.8, 1.4) * scale
-		body.Size = bodySize
-		local tip = shellPart(folder, "Tip", if isGolden then GOLD_DARK else CREAM_DARK, isGolden)
-		local tipSize = Vector3.new(0.55, 0.6, 0.7) * scale
-		tip.Size = tipSize
+		local body: BasePart
+		local tip: BasePart? = nil
+		local bodySize: Vector3
+		local tipSize = Vector3.zero
+		local bodyOffset = CFrame.new()
+		local tipOffset = CFrame.new(0, 0.25, 0.45) * CFrame.Angles(-0.4, 0, 0)
+		-- The imported conch (docs/ASSETS.md), or the two-ball placeholder
+		local prop = PropParts.make("Shell", Vector3.new(1.5, 1.2, 1.8) * scale, folder)
+		if prop then
+			if isGolden then
+				PropParts.tint(prop, GOLD)
+			end
+			body = prop.parts[1]
+			bodySize = prop.sizes[1]
+			bodyOffset = prop.offsets[1]
+			if prop.parts[2] then
+				tip = prop.parts[2]
+				tipSize = prop.sizes[2]
+				tipOffset = prop.offsets[2]
+			end
+		else
+			body = shellPart(folder, "Shell", if isGolden then GOLD else CREAM, isGolden)
+			bodySize = Vector3.new(1.2, 0.8, 1.4) * scale
+			body.Size = bodySize
+			local spire = shellPart(folder, "Tip", if isGolden then GOLD_DARK else CREAM_DARK, isGolden)
+			tipSize = Vector3.new(0.55, 0.6, 0.7) * scale
+			spire.Size = tipSize
+			tip = spire
+		end
 		local glint = Instance.new("ParticleEmitter")
 		glint.Rate = if isGolden then 4 else 1.5
 		glint.Lifetime = NumberRange.new(0.5, 0.9)
@@ -105,6 +131,8 @@ local function build(positions: { Vector3 }, golden: { boolean })
 			golden = isGolden,
 			body = body,
 			tip = tip,
+			bodyOffset = bodyOffset,
+			tipOffset = tipOffset,
 			glint = glint,
 			bodySize = bodySize,
 			tipSize = tipSize,
@@ -115,8 +143,10 @@ local function build(positions: { Vector3 }, golden: { boolean })
 			suckStart = 0,
 			phase = (index * 1.7) % (2 * math.pi),
 		})
-		body.CFrame = CFrame.new(position)
-		tip.CFrame = CFrame.new(position)
+		body.CFrame = CFrame.new(position) * bodyOffset
+		if tip then
+			tip.CFrame = CFrame.new(position) * tipOffset
+		end
 	end
 	folder.Parent = workspace
 end
@@ -127,12 +157,16 @@ local function setHidden(shell: Shell, hidden: boolean)
 	end
 	shell.hidden = hidden
 	shell.body.Transparency = if hidden then 1 else 0
-	shell.tip.Transparency = if hidden then 1 else 0
+	if shell.tip then
+		shell.tip.Transparency = if hidden then 1 else 0
+	end
 	if hidden then
 		shell.glint.Enabled = false
 	else
 		shell.body.Size = shell.bodySize
-		shell.tip.Size = shell.tipSize
+		if shell.tip then
+			shell.tip.Size = shell.tipSize
+		end
 	end
 end
 
@@ -170,11 +204,13 @@ local function step(dt: number)
 			local target = mouth or shell.position
 			local at = (shell.suckFrom :: Vector3):Lerp(target, alpha * alpha)
 			shell.body.Size = shell.bodySize * (1 - alpha * 0.8)
-			shell.tip.Size = shell.tipSize * (1 - alpha * 0.8)
 			table.insert(parts, shell.body)
-			table.insert(frames, CFrame.new(at))
-			table.insert(parts, shell.tip)
-			table.insert(frames, CFrame.new(at))
+			table.insert(frames, CFrame.new(at) * shell.bodyOffset)
+			if shell.tip then
+				shell.tip.Size = shell.tipSize * (1 - alpha * 0.8)
+				table.insert(parts, shell.tip)
+				table.insert(frames, CFrame.new(at) * shell.tipOffset)
+			end
 			if alpha >= 1 then
 				shell.suckFrom = nil
 				setHidden(shell, true)
@@ -199,9 +235,11 @@ local function step(dt: number)
 			local frame = CFrame.new(shell.position + Vector3.new(0, math.sin(t * 1.8) * 0.25, 0))
 				* CFrame.Angles(0.35, t * 0.6, 0.15)
 			table.insert(parts, shell.body)
-			table.insert(frames, frame)
-			table.insert(parts, shell.tip)
-			table.insert(frames, frame * CFrame.new(0, 0.25, 0.45) * CFrame.Angles(-0.4, 0, 0))
+			table.insert(frames, frame * shell.bodyOffset)
+			if shell.tip then
+				table.insert(parts, shell.tip)
+				table.insert(frames, frame * shell.tipOffset)
+			end
 		end
 	end
 	if #parts > 0 then

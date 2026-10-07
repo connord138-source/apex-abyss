@@ -31,7 +31,7 @@ local SEND_INTERVAL = 0.06
 
 type Visual = {
 	body: BasePart,
-	tail: BasePart,
+	tail: BasePart?, -- the part body's tail fin (a mesh body has none)
 	bodySize: Vector3,
 	tailSize: Vector3,
 	hidden: boolean,
@@ -67,6 +67,21 @@ local function makePart(parent: Instance, color: Color3, shape: "Ellipsoid" | "F
 	return part
 end
 
+-- The imported prey mesh (docs/ASSETS.md): ReplicatedStorage.PreyModels.<PreyId>,
+-- a MeshPart facing -Z. Nil while it isn't imported (the ellipsoid is drawn).
+local function preyTemplate(preyId: string): MeshPart?
+	local folder = ReplicatedStorage:FindFirstChild("PreyModels")
+	local template = folder and folder:FindFirstChild(preyId)
+	if template and template:IsA("MeshPart") then
+		return template
+	end
+	if template and template:IsA("Model") then
+		local mesh = template:FindFirstChildWhichIsA("MeshPart", true)
+		return mesh
+	end
+	return nil
+end
+
 local function build()
 	local folder = Instance.new("Folder")
 	folder.Name = "Prey"
@@ -75,12 +90,29 @@ local function build()
 		local length = fish.length
 		local bodySize = Vector3.new(length * prey.slim * 0.8, length * prey.slim, length * 0.78)
 		local tailSize = Vector3.new(length * 0.03, length * prey.slim * 1.1, length * 0.26)
-		local body = makePart(folder, prey.back, "Ellipsoid")
+		local template = preyTemplate(prey.id)
+		local body: BasePart
+		local tail: BasePart? = nil
+		if template then
+			local mesh = template:Clone()
+			mesh.Anchored = true
+			mesh.CanCollide = false
+			mesh.CanQuery = false
+			mesh.CanTouch = false
+			mesh.CastShadow = false
+			bodySize = template.Size * (length / math.max(template.Size.Z, 0.01))
+			mesh.Size = bodySize
+			mesh.Parent = folder
+			body = mesh
+		else
+			body = makePart(folder, prey.back, "Ellipsoid")
+			body.Size = bodySize
+			local fin = makePart(folder, prey.back:Lerp(prey.belly, 0.3), "Fin")
+			fin.Name = "Tail"
+			fin.Size = tailSize
+			tail = fin
+		end
 		body.Name = prey.id
-		body.Size = bodySize
-		local tail = makePart(folder, prey.back:Lerp(prey.belly, 0.3), "Fin")
-		tail.Name = "Tail"
-		tail.Size = tailSize
 		visuals[index] = {
 			body = body,
 			tail = tail,
@@ -104,10 +136,14 @@ local function setHidden(visual: Visual, hidden: boolean)
 	visual.hidden = hidden
 	local transparency = if hidden then 1 else 0
 	visual.body.Transparency = transparency
-	visual.tail.Transparency = transparency
+	if visual.tail then
+		visual.tail.Transparency = transparency
+	end
 	if not hidden then
 		visual.body.Size = visual.bodySize
-		visual.tail.Size = visual.tailSize
+		if visual.tail then
+			visual.tail.Size = visual.tailSize
+		end
 		visual.fadeIn = 0
 	end
 end
@@ -164,7 +200,9 @@ local function step(dt: number)
 				frame = CFrame.new(from.Position:Lerp(target, alpha * alpha)) * from.Rotation
 				local shrink = 1 - alpha * 0.85
 				visual.body.Size = visual.bodySize * shrink
-				visual.tail.Size = visual.tailSize * shrink
+				if visual.tail then
+					visual.tail.Size = visual.tailSize * shrink
+				end
 				if alpha >= 1 then
 					visual.suckFrom = nil
 					setHidden(visual, true)
@@ -174,7 +212,9 @@ local function step(dt: number)
 					visual.fadeIn = math.min(1, visual.fadeIn + dt * 2.5)
 					local grow = 0.3 + 0.7 * visual.fadeIn
 					visual.body.Size = visual.bodySize * grow
-					visual.tail.Size = visual.tailSize * grow
+					if visual.tail then
+						visual.tail.Size = visual.tailSize * grow
+					end
 				end
 				-- Eat it if it's in reach and small enough
 				if
@@ -195,15 +235,27 @@ local function step(dt: number)
 			if not visual.hidden then
 				local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
 				table.insert(parts, visual.body)
-				table.insert(frames, frame)
-				table.insert(parts, visual.tail)
-				table.insert(
-					frames,
-					frame
-						* CFrame.new(0, 0, visual.body.Size.Z * 0.45)
-						* CFrame.Angles(0, beat, 0)
-						* CFrame.new(0, 0, visual.tail.Size.Z * 0.4)
-				)
+				local tail = visual.tail
+				if tail then
+					table.insert(frames, frame)
+					table.insert(parts, tail)
+					table.insert(
+						frames,
+						frame
+							* CFrame.new(0, 0, visual.body.Size.Z * 0.45)
+							* CFrame.Angles(0, beat, 0)
+							* CFrame.new(0, 0, tail.Size.Z * 0.4)
+					)
+				else
+					-- A one-piece mesh: a small yaw wiggle about its head reads as swimming
+					table.insert(
+						frames,
+						frame
+							* CFrame.new(0, 0, -visual.body.Size.Z * 0.3)
+							* CFrame.Angles(0, beat * 0.22, 0)
+							* CFrame.new(0, 0, visual.body.Size.Z * 0.3)
+					)
+				end
 			end
 		end
 	end

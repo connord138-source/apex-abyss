@@ -118,8 +118,9 @@ function Cave.ops(): { Op }
 	local center = hub.center
 
 	-- 1. The seamount: terraces of rock, widest at the foot (the den rooms sit inside
-	-- the lowest), stepping in with height under a domed cap, the shelf edges broken
-	-- up with lumps so no terrace reads as a perfect disc
+	-- the lowest), stepping in with height under a domed cap. Each terrace is a few
+	-- offset drums so its outline wavers, and its shelf is broken up with tilted
+	-- slabs and angular blocks (facets, not bubbles)
 	local terraces = {
 		{ y0 = -8, y1 = 36, r = hub.radius + hub.denDepth + 18 },
 		{ y0 = 36, y1 = 68, r = 132 },
@@ -128,38 +129,54 @@ function Cave.ops(): { Op }
 	}
 	for _, terrace in terraces do
 		local height = terrace.y1 - terrace.y0
-		cylinder(
-			ops,
-			ROCK,
-			center + Vector3.new(0, terrace.y0 + height / 2, 0),
-			Vector3.yAxis,
-			height,
-			terrace.r
-		)
-		for i = 1, 16 do
-			local angle = (i / 16) * 2 * math.pi + rng:NextNumber(-0.15, 0.15)
-			local r = rng:NextNumber(7, 15)
-			ball(
+		local mid = terrace.y0 + height / 2
+		cylinder(ops, ROCK, center + Vector3.new(0, mid, 0), Vector3.yAxis, height, terrace.r - 6)
+		for i = 1, 4 do
+			local angle = (i / 4) * 2 * math.pi + rng:NextNumber(-0.4, 0.4)
+			local shift = rng:NextNumber(6, 14)
+			cylinder(
 				ops,
 				ROCK,
-				at(angle, terrace.r - r * 0.3 + rng:NextNumber(-4, 4), terrace.y1 + rng:NextNumber(-6, 4)),
-				r
+				at(angle, shift, mid),
+				Vector3.yAxis,
+				height - rng:NextNumber(0, 6),
+				terrace.r - 6 + rng:NextNumber(-4, 6)
 			)
 		end
-		for i = 1, 10 do
-			local angle = (i / 10) * 2 * math.pi + rng:NextNumber(-0.25, 0.25)
-			ball(
+		for i = 1, 18 do
+			local angle = (i / 18) * 2 * math.pi + rng:NextNumber(-0.15, 0.15)
+			local spot = at(angle, terrace.r - rng:NextNumber(2, 12), terrace.y1 + rng:NextNumber(-4, 3))
+			local size = Vector3.new(rng:NextNumber(10, 22), rng:NextNumber(5, 10), rng:NextNumber(8, 16))
+			local tilt = CFrame.Angles(
+				rng:NextNumber(-0.25, 0.25),
+				angle + rng:NextNumber(-0.5, 0.5),
+				rng:NextNumber(-0.25, 0.25)
+			)
+			block(ops, ROCK, CFrame.new(spot) * tilt, size)
+		end
+		for i = 1, 8 do
+			local angle = (i / 8) * 2 * math.pi + rng:NextNumber(-0.3, 0.3)
+			local spot = at(angle, terrace.r + 2, rng:NextNumber(terrace.y0 + 8, terrace.y1 - 6))
+			block(
 				ops,
 				AIR,
-				at(angle, terrace.r + 4, rng:NextNumber(terrace.y0 + 8, terrace.y1 - 4)),
-				rng:NextNumber(6, 11)
+				CFrame.new(spot) * CFrame.Angles(rng:NextNumber(-0.4, 0.4), angle, rng:NextNumber(-0.4, 0.4)),
+				Vector3.new(rng:NextNumber(10, 18), rng:NextNumber(8, 14), rng:NextNumber(10, 16))
 			)
 		end
 	end
 	ball(ops, SLATE, center + Vector3.new(0, 8, 0), 122) -- the cap: top at 130
-	for i = 1, 12 do
-		local angle = (i / 12) * 2 * math.pi + rng:NextNumber(-0.2, 0.2)
-		ball(ops, SLATE, at(angle, rng:NextNumber(40, 76), rng:NextNumber(102, 118)), rng:NextNumber(14, 24))
+	for i = 1, 14 do
+		local angle = (i / 14) * 2 * math.pi + rng:NextNumber(-0.2, 0.2)
+		local spot = at(angle, rng:NextNumber(38, 78), rng:NextNumber(104, 118))
+		local size = Vector3.new(rng:NextNumber(14, 26), rng:NextNumber(8, 16), rng:NextNumber(12, 22))
+		block(
+			ops,
+			SLATE,
+			CFrame.new(spot)
+				* CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 6.28), rng:NextNumber(-0.5, 0.5)),
+			size
+		)
 	end
 	-- Sand banked against the foot, clear of the tunnel mouths
 	for i = 1, 14 do
@@ -239,8 +256,8 @@ function Cave.ops(): { Op }
 		local size = rng:NextNumber(18, 26)
 		ball(ops, AIR, at(angle, r, domeY + size * 0.75), size)
 	end
-	-- Drips hanging from the dome: mostly buried knobs (only a bump shows), a few
-	-- stacked into short stalactites, in groups so they read as rock, not bubbles
+	-- Drips hanging from the dome: angular knobs mostly buried in the rock so only
+	-- a facet shows, in groups, a few stacked into short stalactites
 	for _ = 1, 9 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local r = rng:NextNumber(hub.oculusRadius + 8, 74)
@@ -248,10 +265,12 @@ function Cave.ops(): { Op }
 			local spotAngle = angle + rng:NextNumber(-0.12, 0.12)
 			local spotR = r + rng:NextNumber(-8, 8)
 			local domeY = DOME_CENTER_Y + math.sqrt(math.max(DOME_RADIUS ^ 2 - spotR ^ 2, 0))
-			local size = rng:NextNumber(3.5, 7)
-			ball(ops, SLATE, at(spotAngle, spotR, domeY + size * 0.45), size)
+			local size = Vector3.new(rng:NextNumber(5, 10), rng:NextNumber(6, 12), rng:NextNumber(5, 10))
+			local spin =
+				CFrame.Angles(rng:NextNumber(-0.6, 0.6), rng:NextNumber(0, 6.28), rng:NextNumber(-0.6, 0.6))
+			block(ops, SLATE, CFrame.new(at(spotAngle, spotR, domeY + size.Y * 0.2)) * spin, size)
 			if rng:NextNumber() < 0.35 then
-				ball(ops, SLATE, at(spotAngle, spotR, domeY - size * 0.5), size * 0.55)
+				block(ops, SLATE, CFrame.new(at(spotAngle, spotR, domeY - size.Y * 0.35)) * spin, size * 0.55)
 			end
 		end
 	end

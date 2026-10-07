@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local PropParts = require(ReplicatedStorage.Shared.PropParts)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -66,9 +67,13 @@ local function ellipsoid(parent: Instance, color: Color3, size: Vector3): Part
 	return part
 end
 
--- A starfish: five arms round a middle, lying flat.
+-- A starfish: the imported model, or five arms round a middle, lying flat.
 local function starfish(parent: Instance, def: ForageDef, rng: Random): ({ BasePart }, { CFrame })
 	local scale = rng:NextNumber(0.85, 1.25)
+	local prop = PropParts.make("Starfish", Vector3.new(1.9, 0.6, 1.9) * scale, parent)
+	if prop then
+		return prop.parts, prop.offsets
+	end
 	local parts: { BasePart } = {}
 	local offsets: { CFrame } = {}
 	local middle = ellipsoid(parent, def.accent, Vector3.new(0.7, 0.22, 0.7) * scale)
@@ -82,9 +87,13 @@ local function starfish(parent: Instance, def: ForageDef, rng: Random): ({ BaseP
 	return parts, offsets
 end
 
--- A shrimp: a curled body and a tail fan.
+-- A shrimp: the imported model, or a curled body and a tail fan.
 local function shrimp(parent: Instance, def: ForageDef, rng: Random): ({ BasePart }, { CFrame })
 	local scale = rng:NextNumber(0.85, 1.2)
+	local prop = PropParts.make("Shrimp", Vector3.new(0.9, 0.7, 1.5) * scale, parent)
+	if prop then
+		return prop.parts, prop.offsets
+	end
 	local body = ellipsoid(parent, def.color, Vector3.new(0.32, 0.36, 0.95) * scale)
 	local tail = ellipsoid(parent, def.accent, Vector3.new(0.42, 0.12, 0.32) * scale)
 	return { body, tail }, {
