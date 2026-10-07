@@ -55,6 +55,9 @@ local REQUESTS: { [string]: number } = {
 	UseWrap = 0.3, -- () use a Kelp Wrap (heal)
 	BitePredator = 0.35, -- (predator index) bite an AI predator or boss
 	Struggle = 0.12, -- () mash to break a boss's grab
+	DenUpgrade = 0.5, -- () the den's next level
+	DenPlace = 0.25, -- (slotId, itemId) furniture into a slot ("" clears it)
+	DenColor = 0.25, -- (glowId) the den's glow color
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do

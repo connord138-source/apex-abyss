@@ -876,6 +876,7 @@ local function rewards(boss: Boss, killer: Player?)
 		Events.ate:fire(player, 1)
 		DataService.markDirty(player)
 		Net.bossReward(player, summary)
+		Events.trophies:fire(player)
 		if summary.trophy then
 			task.delay(6, function()
 				Net.notifyAll(

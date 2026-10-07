@@ -47,7 +47,11 @@ export type PlayerData = {
 		rolls: number,
 		coralEarned: number,
 		bossKills: number, -- world boss kills helped with
+		bestPrey: string, -- the biggest fish ever eaten (Config/Prey id) and its mass
+		bestPreyMass: number,
 	},
+	-- The den base (Config/Dens): level, furniture by slot, what's owned, the glow color
+	den: { level: number, furniture: { [string]: string }, owned: { [string]: boolean }, glow: string },
 	coral: number, -- the currency (vendors)
 	trophies: { [string]: number }, -- boss currencies (MegalodonTeeth, KrakenBeaks)
 	titles: { [string]: boolean }, -- earned titles
@@ -95,7 +99,10 @@ local TEMPLATE: PlayerData = {
 		rolls = 0,
 		coralEarned = 0,
 		bossKills = 0,
+		bestPrey = "",
+		bestPreyMass = 0,
 	},
+	den = { level = 1, furniture = {}, owned = {}, glow = "Teal" },
 	coral = 0,
 	trophies = {},
 	titles = {},

@@ -12,4 +12,6 @@ return {
 	leftHub = Signal.new(), -- (player) swam out of the safe zone
 	shells = Signal.new(), -- (player, count) shells picked up
 	unlocked = Signal.new(), -- (player, speciesId) a species unlocked
+	trophies = Signal.new(), -- (player) something on the den's trophy wall changed
+	denChanged = Signal.new(), -- (player, what) the den was upgraded or redecorated
 }

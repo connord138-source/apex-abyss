@@ -122,7 +122,7 @@ function Cave.ops(): { Op }
 	-- offset drums so its outline wavers, and its shelf is broken up with tilted
 	-- slabs and angular blocks (facets, not bubbles)
 	local terraces = {
-		{ y0 = -8, y1 = 36, r = hub.radius + hub.denDepth + 18 },
+		{ y0 = -26, y1 = 36, r = hub.radius + hub.denDepth + 36 },
 		{ y0 = 36, y1 = 68, r = 132 },
 		{ y0 = 68, y1 = 92, r = 120 },
 		{ y0 = 92, y1 = MOUND_TOP, r = 108 },

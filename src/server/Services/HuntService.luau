@@ -238,6 +238,11 @@ local function onEatPrey(player: Player, batch: any)
 		gained += prey.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now())
 		data.stats.preyEaten += 1
 		count += 1
+		if prey.mass > data.stats.bestPreyMass then
+			data.stats.bestPrey = prey.id
+			data.stats.bestPreyMass = prey.mass
+			Events.trophies:fire(player)
+		end
 		-- Eating heals a little, so snacking matters in a long fight
 		local most = maxHealth(player)
 		if session.health < most then

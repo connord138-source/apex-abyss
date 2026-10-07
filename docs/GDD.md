@@ -502,6 +502,32 @@ cartoonish Schedule I vibes, but the undersea horror aspect for the bosses."
   passes, red APEX PREDATOR tags, "SOMETHING STIRS BELOW". Menace from scale, light
   and sound; no gore.
 
+### Den bases (owner, 2026-10-07; v1 built)
+
+"I was also envisioning the dens being an upgradable base that gets bigger and
+deeper as it upgrades. Other players can go in and check out your base but can't
+take or do anything. You can display trophies from large fish killed/bosses killed
+and set up furniture so that it's your den. Upgrades and furniture/colors would cost
+currency. Coral lamps, etc."
+
+- **Levels:** Nook (start) → Burrow (2,500 coral: the room runs 6 studs further back,
+  two wall spots) → Hall (12,000: 12 back, a chamber 10 deep under the floor, three
+  chamber spots) → Grotto (45,000: 18 back, the chamber 14 deep and wider, two more
+  wall spots and one chamber spot). The sign reads "<NAME>'S GROTTO".
+- **Furniture:** 12 spots in all (4 floor, 4 wall, 4 chamber). Fourteen pieces, 150 to
+  1,200 coral, bought once and moved freely after: Coral Lamp, Kelp Bed, Shell Pile,
+  Anemone Garden, Brain Coral, Tube Sponges, Driftwood Table, Pearl Pedestal,
+  Treasure Chest, Bubble Column, Crystal Shard, Sea Glass Lantern, Sea Fan, Banner.
+- **Colors:** a glow color for the den's lamps, banners and trophy trims: Teal free,
+  Gold, Rose, Violet, Lime, Ice and Ember 300 each.
+- **Trophy wall:** three plaques on the back wall fill themselves: BIGGEST CATCH (the
+  heaviest prey ever eaten, its model mounted above), MEGALODON (teeth taken) and
+  GIANT SQUID (beaks taken); the worn title hangs over the door.
+- **Visiting:** anyone can swim into any den (dens stay safe zones) and look; only the
+  holder can bank there or change anything.
+- Later: free placement, den items won from bosses (the jaw arch, the Kraken-eye
+  lantern), more pieces and themes.
+
 ### The shelf layout (owner, 2026-10-07; built)
 
 The owner: "biomes need to be spread out and clearly different biomes with some

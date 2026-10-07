@@ -184,7 +184,7 @@ def camera(name, position, target, fov_deg):
     cam = bpy.data.cameras.new(name)
     cam.angle = math.radians(fov_deg)
     cam.clip_start = 0.5
-    cam.clip_end = 2000
+    cam.clip_end = 8000
     obj = bpy.data.objects.new(name, cam)
     bpy.context.scene.collection.objects.link(obj)
     pos = M @ mathutils.Vector(position)

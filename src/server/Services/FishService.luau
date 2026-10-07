@@ -30,6 +30,9 @@ end
 local FishService = {
 	-- (player, character) after a fish is spawned
 	spawned = Signal.new(),
+	-- (player, index) — a den was handed to a player; (index) — a den was freed
+	denAssigned = Signal.new(),
+	denFreed = Signal.new(),
 }
 
 local denOwners: { [number]: Player } = {}
@@ -154,6 +157,7 @@ local function assignDen(player: Player): number?
 			denOwners[index] = player
 			dens[player] = index
 			WorldService.setDenOwner(index, player.DisplayName)
+			FishService.denAssigned:fire(player, index)
 			return index
 		end
 	end
@@ -177,6 +181,7 @@ function FishService.start()
 			dens[player] = nil
 			denOwners[den] = nil
 			WorldService.setDenOwner(den, nil)
+			FishService.denFreed:fire(den)
 		end
 	end)
 end

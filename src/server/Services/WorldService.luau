@@ -1078,12 +1078,33 @@ local function buildBiomes(parent: Instance)
 	end
 end
 
+local denOwnerNames: { [number]: string? } = {}
+local denLevelNames: { [number]: string? } = {}
+
+local function refreshSign(index: number)
+	local label = denSigns[index]
+	if not label then
+		return
+	end
+	local owner = denOwnerNames[index]
+	local level = denLevelNames[index]
+	if owner then
+		label.Text = `{string.upper(owner)}'S {if level then string.upper(level) else "DEN"}`
+	else
+		label.Text = `DEN {index}`
+	end
+end
+
 -- Shows who owns a den on its sign (nil = free).
 function WorldService.setDenOwner(index: number, name: string?)
-	local label = denSigns[index]
-	if label then
-		label.Text = if name then `{string.upper(name)}'S DEN` else `DEN {index}`
-	end
+	denOwnerNames[index] = name
+	refreshSign(index)
+end
+
+-- The den's level name on its sign (nil = plain)
+function WorldService.setDenLevel(index: number, levelName: string?)
+	denLevelNames[index] = levelName
+	refreshSign(index)
 end
 
 function WorldService.start()

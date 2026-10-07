@@ -318,6 +318,30 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   maps, heal, get eaten, title, restart tutorial, teleport to a biome, summon/hurt/
   dismiss a boss), `AdminController` (ADMIN button bottom-left, target me/everyone/
   next player). The `Admin` RemoteFunction answers a line of text.
+- **Den bases (owner, 2026-10-07: "an upgradable base that gets bigger and deeper as
+  it upgrades. Other players can go in and check out your base but can't take or do
+  anything. You can display trophies ... set up furniture ... Upgrades and
+  furniture/colors would cost currency. Coral lamps, etc"):** built as v1.
+  `Config/Dens.luau`: four levels (Nook → Burrow 2,500 → Hall 12,000 → Grotto 45,000
+  coral) that carve the room 6/12/18 studs further back into the seamount and, from
+  Hall, sink a lower chamber under the floor (10 then 14 deep); 12 furniture slots
+  (floor, wall, chamber) unlocked by level; a catalog of 14 pieces (Coral Lamp, Kelp
+  Bed, Shell Pile, Anemone Garden, corals and sponges, Driftwood Table, Pearl
+  Pedestal, a decor Treasure Chest, Bubble Column, Crystal Shard, Sea Glass Lantern,
+  Sea Fan, Banner; 150–1,200 coral, bought once then free to move) and seven glow
+  colors (Teal free, the rest 300) that light the lamps, banners and trophy trims.
+  The record (`data.den`: level, furniture by slot, owned, glow) is in the save and
+  follows the player to whichever den they hold; `DenService` (requests DenUpgrade,
+  DenPlace, DenColor; only the holder can change it) builds it with `DenBuilder`
+  (Terrain carve: the rock is refilled first so a freed den goes back to a Nook; parts
+  with `Props.dress` for the Tripo props) when the den is assigned or changed. The
+  **trophy wall** on the back wall fills itself: the biggest catch (a mounted prey
+  model and its mass, `data.stats.bestPrey/bestPreyMass` from HuntService), Megalodon
+  teeth and Kraken beaks taken, and the worn title over the door
+  (`Events.trophies`). Visitors can swim in (dens are safe) and only look; banking
+  stays owner-only. Menu: the stall hint shows YOUR DEN at your own Haul Pool
+  (`MenuController.openDen`: upgrade, glow, slots → pick list). The seamount's foot
+  was widened (Cave terrace +36, down to −26) so upgraded dens stay inside the rock.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -483,7 +507,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - boats and hooks, depth pressure
   - models for the growth stages, vendors and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
-  - the den bases (owner, 2026-10-07: upgradable, deeper, furniture, trophies, visitors)
+  - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
   - the roll reveal redesign (owner, 2026-10-07)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
