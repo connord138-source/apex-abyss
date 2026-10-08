@@ -704,7 +704,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 
 - Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
   `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
-  `2026-10-08-pc.md`, which also covers the two world rounds before it).
+  `2026-10-08-pc.md`, which also covers the two world rounds before it,
+  `2026-10-08-pc-retest.md`).
+- Boss `Struggle` requests are rate-limited to one per 0.12 s, so a test that mashes
+  faster sees the grab hold; space presses ≥ 0.15 s apart (playtest 2026-10-08).
 - Engine limits the world hit (playtest 2026-10-08):
   - `Workspace.FallenPartsDestroyHeight` is −2000, set in `default.project.json`
     and the saved place. The default −500 sits above the Vents (−540) and the
