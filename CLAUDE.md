@@ -388,6 +388,35 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   skybox, and the atmosphere is thicker and bluer (server `setupLighting` and the
   client's `OceanController` grades, which drive it every frame). If the sky ever
   shows again, it's a gap in that box, not a lighting setting.
+- **Underwater presence (owner, 2026-10-08: "there's no feeling that you're
+  underwater. Something needs to be added"):** sound and motion.
+  - **Audio:** one synthesized pack, `assets/audio/apex_sfx.ogg` from
+    `tools/audio/make_sfx.py` (numpy, scipy, soundfile; nothing sampled or licensed),
+    uploaded once; its id goes in `Config/Sounds.luau` `id` (the script rewrites the
+    regions). `src/client/Sfx.luau` plays each stretch (`PlaybackRegion`) and loops the
+    beds (`Sfx.loop`); while the id is 0 the game is quiet apart from pinged fallbacks
+    for a few cues. `AmbienceController` crossfades three beds by camera depth
+    (shallow wash, deep drone, cavern drips; a boss near brings the drone up). Cues are
+    played where they happen: Dash, Snap/Bite/Chomp/Hurt/Eaten, Bank and LevelUp,
+    Shell/GoldenShell, Forage, Dig/ChestOpen, the roll reel's Reel, Tick and a
+    `Roll<Tier>` stinger, Warning (a predator's tell on you), TooBig, Banner, Heal,
+    Boss Warning/Rise/Phase/Defeat, Breach, Grab, Ink. Every sound is low-passed
+    ("heard through water"). Add a sound: a maker in `make_sfx.py`, rerun, re-upload,
+    paste the new id.
+  - **Motion:** `Bubbles.luau` is the one bubble look (bursts and mouth streams);
+    `BubbleController` streams bubbles off every fish's mouth by speed; vents and ~37
+    seeps on the shelf and deep floor send bubble columns up (`WorldService`
+    `bubbleColumn`); `KelpController` sways the kelp within 180 studs of the camera
+    (one BulkMoveTo a frame).
+- **Ghost is spectral (owner, 2026-10-08: "the whole fish needs a similar to ghost from
+  sea of thieves glow ... a very rare skin"):** a shade with `spectral = true` turns
+  the whole fish ghostly, not just its edges: ForceField see-through body, a breathing
+  Highlight fill and rim, rising wisps, glowing eyes, a brighter light; on a mesh fish
+  the texture is held aside (`HeldAppearance`) and put back when the shade changes
+  (`Cosmetics` `haunt`, `animate`).
+- **Distances read in feet (owner, 2026-10-08: "instead of studs it should say ft"):**
+  `Format.distance` (1 stud ≈ 0.92 ft; depth uses it too). Never show "studs" or
+  meters to players.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -559,7 +588,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
   - models for the growth stages and the other biomes;
-    rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
+    rolled parts and variants on mesh fish; caustics (needs a texture upload)
   - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks

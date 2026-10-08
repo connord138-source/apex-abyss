@@ -9,6 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local AmbienceController = require(script.Parent.AmbienceController)
+local Sfx = require(script.Parent.Parent.Sfx)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Ui = require(script.Parent.Parent.Ui)
 local CameraController = require(script.Parent.CameraController)
@@ -250,6 +253,7 @@ local function step(dt: number)
 		bar.Visible = false
 		nearby.Visible = false
 		OceanController.setDread(0)
+		AmbienceController.setDread(0)
 		return
 	end
 	local def = Bosses.byId[state.id]
@@ -260,6 +264,7 @@ local function step(dt: number)
 		bar.Visible = false
 		nearby.Visible = false
 		OceanController.setDread(0)
+		AmbienceController.setDread(0)
 		return
 	end
 	local from = if root then root.Position else camera.CFrame.Position
@@ -290,6 +295,7 @@ local function step(dt: number)
 	local range = def.dread.range
 	local dread = math.clamp(1 - (distance - 40) / math.max(range - 40, 1), 0, 1)
 	OceanController.setDread(dread)
+	AmbienceController.setDread(dread)
 	if distance < def.dread.shakeRange and now - lastShake > 0.35 then
 		lastShake = now
 		CameraController.kick(0.12 + 0.3 * (1 - distance / def.dread.shakeRange))
@@ -298,7 +304,7 @@ local function step(dt: number)
 	if dread > 0 and distance > 60 then
 		nearby.Visible = true
 		nearby.BackgroundTransparency = 0.5 + 0.5 * (1 - dread)
-		nearbyLabel.Text = `{def.dread.warning} · {math.floor(distance)} studs`
+		nearbyLabel.Text = `{def.dread.warning} · {Format.distance(distance)}`
 		nearbyLabel.TextTransparency = 1 - dread
 		local look = camera.CFrame.LookVector
 		local flatLook = Vector3.new(look.X, 0, look.Z)
@@ -322,12 +328,21 @@ function BossController.start()
 	local bossState = remotes:WaitForChild("BossState") :: RemoteEvent
 	bossState.OnClientEvent:Connect(function(incoming: any)
 		if typeof(incoming) == "table" then
+			local before = state.state
 			state = incoming
+			if state.state ~= before then
+				if state.state == "warning" then
+					Sfx.play("BossWarning", { volume = 0.8 })
+				elseif state.state == "active" then
+					Sfx.play("BossRise", { volume = 0.9 })
+				end
+			end
 		end
 	end)
 	local bossReward = remotes:WaitForChild("BossReward") :: RemoteEvent
 	bossReward.OnClientEvent:Connect(function(summary: any)
 		if typeof(summary) == "table" then
+			Sfx.play("BossDefeat", { volume = 0.9 })
 			rewardCard(summary)
 		end
 	end)

@@ -20,6 +20,7 @@ export type Shade = {
 	glow: Color3?, -- a soft light on the fish
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
+	spectral: boolean?, -- the whole fish turns ghostly: see-through, lit from within, haloed (Ghost)
 	boss: string?, -- won only by beating this world boss (never in rolls)
 	treasure: string?, -- found only in this map tier's treasure (never in rolls)
 	blurb: string,
@@ -181,10 +182,12 @@ local list: { Shade } = {
 		belly = Color3.fromRGB(226, 255, 232),
 		fin = Color3.fromRGB(140, 240, 170),
 		material = Enum.Material.ForceField, -- a shimmering, see-through haunt
+		transparency = 0.3,
+		spectral = true, -- the whole fish, not just its edges (owner, 2026-10-08: "a similar to ghost from sea of thieves glow")
 		glow = Color3.fromRGB(150, 255, 180),
 		sparkle = Color3.fromRGB(200, 255, 210),
 		boss = "Megalodon",
-		blurb = "Pale green and see-through, like the drowned. Won from the Megalodon.",
+		blurb = "Pale green and see-through, lit from within like the drowned. Won from the Megalodon.",
 	},
 	{
 		id = "AbyssInk",

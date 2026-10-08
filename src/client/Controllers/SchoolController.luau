@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Schools = require(ReplicatedStorage.Shared.Schools)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
@@ -420,6 +421,7 @@ local function onPreyChase(index: number, targetUserId: number, startAt: number,
 	if target == Players.LocalPlayer and chaseWarning then
 		local prey = Config.Prey.byId[Schools.fish[index].prey]
 		chaseWarning.Text = `{string.upper(prey.name)} · TOO BIG TO EAT · SWIM!`
+		Sfx.play("TooBig", { volume = 0.5 })
 		chaseWarningUntil = Timing.clock() + aggro.lungeAt + 0.4
 	end
 end
@@ -432,6 +434,13 @@ local function onPreyEaten(index: number, backAt: number, eaterUserId: number)
 	end
 	visual.backAt = backAt
 	visual.pendingUntil = 0
+	if eaterUserId == Players.LocalPlayer.UserId then
+		local length = Schools.fish[index].length
+		Sfx.play("Chomp", {
+			volume = math.clamp(0.25 + length * 0.04, 0.25, 0.7),
+			pitch = math.clamp(1.5 - length * 0.08, 0.7, 1.5),
+		})
+	end
 	if eaterUserId ~= Players.LocalPlayer.UserId and visual.suckFrom == nil then
 		setHidden(visual, true)
 	end

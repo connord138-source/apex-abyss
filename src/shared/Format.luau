@@ -14,9 +14,17 @@ function Format.mass(kg: number): string
 	return string.format("%d t", math.floor(kg / 1000 + 0.5))
 end
 
--- Depth in meters from studs below the surface (a stud is 0.28 m).
+-- Distances read in feet (owner, 2026-10-08: "instead of studs it should say ft");
+-- a stud is 0.28 m, about 0.92 ft
+local FEET_PER_STUD = 0.92
+
+function Format.distance(studs: number): string
+	return string.format("%d ft", math.max(0, math.floor(studs * FEET_PER_STUD + 0.5)))
+end
+
+-- Depth below the surface, in feet
 function Format.depth(studs: number): string
-	return string.format("%d m", math.max(0, math.floor(studs * 0.28 + 0.5)))
+	return Format.distance(studs)
 end
 
 return Format

@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sfx = require(script.Parent.Parent.Sfx)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Ui = require(script.Parent.Parent.Ui)
@@ -178,6 +179,7 @@ local function openChest()
 		return
 	end
 	openUntil = os.clock() + 2.5
+	Sfx.play("ChestOpen", { volume = 0.8, parent = lid :: Instance, range = 140 })
 	local target = hinge * CFrame.Angles(math.rad(-105), 0, 0) * CFrame.new(0, 0, -2.2)
 	Ui.tween(lid, 0.5, { CFrame = target }, Enum.EasingStyle.Back)
 	local glow = Instance.new("ParticleEmitter")
@@ -234,6 +236,7 @@ local function startDig()
 	end
 	digging = true
 	digStart = os.clock()
+	Sfx.play("Dig", { volume = 0.6 })
 	digRing.Visible = true
 	ClientState.request("StartDig")
 	if marker then

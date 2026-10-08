@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Ui = require(script.Parent.Parent.Ui)
+local Sfx = require(script.Parent.Parent.Sfx)
 local OceanController = require(script.Parent.OceanController)
 local Config = require(ReplicatedStorage.Shared.Config)
 local SwimController = require(script.Parent.SwimController)
@@ -40,6 +41,7 @@ local function speciesName(): string
 end
 
 local function banner(biome: Biomes.Biome)
+	Sfx.play("Banner", { volume = 0.45 })
 	local old = gui:FindFirstChild("BiomeBanner")
 	if old then
 		old:Destroy()

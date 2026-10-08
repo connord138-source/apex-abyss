@@ -11,6 +11,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -319,6 +320,15 @@ end
 
 -- The bank celebration: "+12.4 kg BANKED", and the new level if there is one.
 local function celebrate(summary: { [string]: any })
+	local leveled = typeof(summary.level) == "number"
+		and typeof(summary.levelBefore) == "number"
+		and summary.level > summary.levelBefore
+	Sfx.play("Bank", { volume = 0.7 })
+	if leveled then
+		task.delay(0.45, function()
+			Sfx.play("LevelUp", { volume = 0.75 })
+		end)
+	end
 	local holder = Instance.new("Frame")
 	holder.Name = "Banked"
 	holder.BackgroundTransparency = 1
@@ -375,6 +385,7 @@ end
 
 -- The eaten screen, with a countdown to respawning in the den.
 local function eatenScreen(summary: { [string]: any })
+	Sfx.play("Eaten", { volume = 0.9 })
 	local overlay = Instance.new("Frame")
 	overlay.Name = "Eaten"
 	overlay.Size = UDim2.fromScale(1, 1)

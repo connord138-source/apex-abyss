@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
@@ -109,6 +110,7 @@ local function onBite()
 	if not SwimController.lunge() then
 		return
 	end
+	Sfx.play("Snap", { volume = 0.35, pitch = math.clamp(1.3 - SwimController.length() * 0.03, 0.6, 1.3) })
 	if selfSafe() then
 		return
 	end
@@ -176,6 +178,18 @@ local function onHit(attackerId: number, victimId: number, damage: number)
 	if victimCharacter and victimRoot and victimRoot:IsA("BasePart") then
 		local size = lengthOf(victimCharacter)
 		bubbleBurst(victimRoot.Position, if damage < 0 then size * 1.6 else size * 0.6)
+		if victim ~= Players.LocalPlayer and attacker ~= Players.LocalPlayer then
+			-- Someone else's fight, heard from where it happens
+			Sfx.play(
+				if damage < 0 then "Chomp" else "Bite",
+				{ volume = 0.5, parent = victimRoot :: Instance, range = 160 }
+			)
+		end
+	end
+	if victim == Players.LocalPlayer and damage > 0 then
+		Sfx.play("Hurt", { volume = 0.8 })
+	elseif attacker == Players.LocalPlayer then
+		Sfx.play(if damage < 0 then "Chomp" else "Bite", { volume = 0.75 })
 	end
 	if victim == Players.LocalPlayer then
 		CameraController.kick(if damage < 0 then 1 else math.clamp(damage / hunt.biteDamage, 0.2, 0.8))

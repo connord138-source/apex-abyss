@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local PropParts = require(ReplicatedStorage.Shared.PropParts)
 local Signal = require(ReplicatedStorage.Shared.Signal)
@@ -259,6 +260,12 @@ local function onResult(index: number, backAt: number)
 	end
 	shell.pendingUntil = 0
 	shell.backAt = backAt
+	if backAt ~= 0 then
+		Sfx.play(
+			if shell.golden then "GoldenShell" else "Shell",
+			{ volume = if shell.golden then 0.7 else 0.5 }
+		)
+	end
 	if backAt == 0 and shell.suckFrom == nil then
 		setHidden(shell, false)
 	end

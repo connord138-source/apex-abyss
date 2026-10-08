@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -109,7 +110,7 @@ local function hintFor(tier: MapTier, site: Vector3): string
 		then "under the kelp"
 		elseif tier.id == "Weathered" then "among the boulders"
 		else "where the sand meets the open blue"
-	return `About {distance} studs {COMPASS[index]} of the hub, {where}`
+	return `About {Format.distance(distance)} {COMPASS[index]} of the hub, {where}`
 end
 
 -- Hands a player a map of `tier` (if they have room). Returns whether one was given.

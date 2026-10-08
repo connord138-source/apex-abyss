@@ -9,6 +9,7 @@
 -- on the variant, the parts and the shade, in that order. Afterwards the body
 -- needs FishBuilder.applyScale at its current length.
 local Config = require(script.Parent.Config)
+local ShadesConfig = require(script.Parent.Config.Shades)
 local FishBuilder = require(script.Parent.FishBuilder)
 
 type PartSpec = FishBuilder.PartSpec
@@ -290,6 +291,49 @@ local function reshape(body: Model, variant: VariantShape)
 	end
 end
 
+-- The spectral treatment (the Ghost shade; owner, 2026-10-08: "the whole fish needs
+-- a similar to ghost from sea of thieves glow"): the body goes see-through and
+-- shimmering, a Highlight fills it with pale light and rims it, wisps drift off it,
+-- and Cosmetics.animate breathes it. `holder` is where the Highlight lives (the body,
+-- or a mesh body's Mesh model so the mesh cleanup finds it).
+local function haunt(holder: Instance, core: BasePart, shade: ShadesConfig.Shade, length: number)
+	local old = holder:FindFirstChild("ShadeHaunt")
+	if old then
+		old:Destroy()
+	end
+	local halo = Instance.new("Highlight")
+	halo.Name = "ShadeHaunt"
+	halo.FillColor = shade.glow or shade.back
+	halo.FillTransparency = 0.55
+	halo.OutlineColor = shade.belly
+	halo.OutlineTransparency = 0.15
+	halo.DepthMode = Enum.HighlightDepthMode.Occluded
+	halo:SetAttribute("ShadeEffect", true)
+	halo.Parent = holder
+	local wisps = Instance.new("ParticleEmitter")
+	wisps.Name = "ShadeWisps"
+	wisps.Rate = 9
+	wisps.Lifetime = NumberRange.new(1.4, 2.6)
+	wisps.Speed = NumberRange.new(length * 0.05, length * 0.2)
+	wisps.SpreadAngle = Vector2.new(180, 180)
+	wisps.Acceleration = Vector3.new(0, length * 0.08, 0)
+	wisps.Drag = 1.5
+	wisps.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.25, length * 0.16),
+		NumberSequenceKeypoint.new(1, length * 0.05),
+	})
+	wisps.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.2, 0.55),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	wisps.LightEmission = 1
+	wisps.Color = ColorSequence.new(shade.belly, shade.glow or shade.back)
+	wisps:SetAttribute("ShadeEffect", true)
+	wisps.Parent = core
+end
+
 -- Paints the body in a shade (or its base look when `shadeId` is nil), and adds
 -- the shade's glow and glints. `length` sizes the effects.
 local function paint(body: Model, look: FishBuilder.Look, shadeId: string?, length: number)
@@ -299,7 +343,14 @@ local function paint(body: Model, look: FishBuilder.Look, shadeId: string?, leng
 			continue
 		end
 		local role = child:GetAttribute("Role")
-		if role == "eye" or role == "fixed" then
+		local isEye = role == "eye"
+		if isEye or role == "fixed" then
+			if shade and shade.spectral and isEye then
+				child.Color = shade.belly
+				child.Material = Enum.Material.Neon
+			elseif isEye and child.Material == Enum.Material.Neon then
+				child.Material = Enum.Material.SmoothPlastic
+			end
 			continue
 		end
 		if shade then
@@ -325,16 +376,23 @@ local function paint(body: Model, look: FishBuilder.Look, shadeId: string?, leng
 			if shade then shade.transparency or 0 else 0
 		)
 	end
+	local oldHaunt = body:FindFirstChild("ShadeHaunt")
+	if oldHaunt then
+		oldHaunt:Destroy()
+	end
 	local core = body:FindFirstChild("Body1")
 	if shade == nil or core == nil or not core:IsA("BasePart") then
 		return
+	end
+	if shade.spectral then
+		haunt(body, core, shade, length)
 	end
 	if shade.glow then
 		local light = Instance.new("PointLight")
 		light.Name = "ShadeGlow"
 		light.Color = shade.glow
 		light.Range = math.clamp(length * 4, 8, 60)
-		light.Brightness = 1.2
+		light.Brightness = if shade.spectral then 2.2 else 1.2
 		light:SetAttribute("ShadeEffect", true)
 		light.Parent = core
 	end
@@ -369,28 +427,56 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 		return
 	end
 	local shade = if shadeId then Config.Shades.byId[shadeId] else nil
+	local spectral = shade ~= nil and shade.spectral == true
 	local tint = if shade then shade.back:Lerp(Color3.new(1, 1, 1), 0.35) else Color3.new(1, 1, 1)
 	local core: BasePart? = nil
 	for _, descendant in mesh:GetDescendants() do
-		if descendant:IsA("SurfaceAppearance") then
+		if descendant:GetAttribute("ShadeEffect") then
+			descendant:Destroy()
+		elseif descendant:IsA("SurfaceAppearance") then
 			(descendant :: any).Color = tint
 		elseif descendant:IsA("BasePart") then
-			descendant.Color = tint
-			descendant.Transparency = if shade then shade.transparency or 0 else 0
+			-- A spectral shade puts the texture aside (a SurfaceAppearance only works
+			-- parented straight to its part) and shows the shimmering material instead
+			local held = descendant:FindFirstChild("HeldAppearance")
+			if spectral then
+				local appearance = descendant:FindFirstChildOfClass("SurfaceAppearance")
+				if appearance then
+					if held == nil then
+						local made = Instance.new("Folder")
+						made.Name = "HeldAppearance"
+						made.Parent = descendant
+						held = made
+					end
+					appearance.Parent = held
+				end
+				descendant.Color = (shade :: ShadesConfig.Shade).back
+				descendant.Material = Enum.Material.ForceField
+				descendant.Transparency = (shade :: ShadesConfig.Shade).transparency or 0.3
+			else
+				local heldAppearance = if held then held:FindFirstChildOfClass("SurfaceAppearance") else nil
+				if heldAppearance then
+					heldAppearance.Parent = descendant
+					descendant.Material = Enum.Material.Plastic
+				end
+				descendant.Color = tint
+				descendant.Transparency = if shade then shade.transparency or 0 else 0
+			end
 			core = core or descendant
-		elseif descendant:GetAttribute("ShadeEffect") then
-			descendant:Destroy()
 		end
 	end
 	if shade == nil or core == nil then
 		return
+	end
+	if spectral then
+		haunt(mesh, core, shade, length)
 	end
 	if shade.glow then
 		local light = Instance.new("PointLight")
 		light.Name = "ShadeGlow"
 		light.Color = shade.glow
 		light.Range = math.clamp(length * 4, 8, 60)
-		light.Brightness = 1.2
+		light.Brightness = if spectral then 2.2 else 1.2
 		light:SetAttribute("ShadeEffect", true)
 		light.Parent = core
 	end
@@ -443,7 +529,27 @@ end
 -- Per-frame shade animation (Prismatic's rolling colors). `t` is any clock.
 function Cosmetics.animate(body: Model, shadeId: string?, t: number)
 	local shade = if shadeId then Config.Shades.byId[shadeId] else nil
-	if shade == nil or not shade.cycle then
+	if shade == nil then
+		return
+	end
+	if shade.spectral then
+		-- The haunt breathes: the fill and the body's veil swell and fade slowly
+		local pulse = 0.5 + 0.5 * math.sin(t * 1.7)
+		local halo = body:FindFirstChild("ShadeHaunt", true)
+		if halo and halo:IsA("Highlight") then
+			halo.FillTransparency = 0.45 + 0.2 * pulse
+			halo.OutlineTransparency = 0.05 + 0.25 * pulse
+		end
+		local veil = (shade.transparency or 0.3) + 0.12 * pulse
+		for _, descendant in body:GetDescendants() do
+			if descendant:IsA("BasePart") and descendant.Material == Enum.Material.ForceField then
+				local base = descendant:GetAttribute("T0")
+				descendant.Transparency = math.max(if typeof(base) == "number" then base else 0, veil)
+			end
+		end
+		return
+	end
+	if not shade.cycle then
 		return
 	end
 	-- Glossy plastic at 0.65 saturation: Neon melts a fish into a blob (a lesson

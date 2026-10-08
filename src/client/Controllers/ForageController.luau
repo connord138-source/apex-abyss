@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sfx = require(script.Parent.Parent.Sfx)
 local PropParts = require(ReplicatedStorage.Shared.PropParts)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
@@ -310,6 +311,9 @@ local function onEaten(index: number, backAt: number, eaterUserId: number)
 	end
 	food.backAt = backAt
 	food.pendingUntil = 0
+	if eaterUserId == Players.LocalPlayer.UserId then
+		Sfx.play("Forage", { volume = 0.4, pitch = 0.9 + math.random() * 0.25 })
+	end
 	if eaterUserId ~= Players.LocalPlayer.UserId and food.suckFrom == nil then
 		setHidden(food, true)
 	end

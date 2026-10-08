@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Format = require(ReplicatedStorage.Shared.Format)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local ClientState = require(script.Parent.Parent.ClientState)
@@ -500,6 +501,7 @@ local function reveal(result: { [string]: any })
 		local index = math.clamp(math.floor(offset / STEP) + 1, 1, REEL_CARDS)
 		if index ~= lastIndex then
 			lastIndex = index
+			Sfx.play("Tick", { volume = 0.35, pitch = 0.95 + math.random() * 0.1 })
 			local scale = cards[index]:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 			scale.Parent = cards[index]
 			scale.Scale = 1.06
@@ -514,10 +516,12 @@ local function reveal(result: { [string]: any })
 			strip.Position = UDim2.fromOffset(landX, 10)
 		end
 	end)
+	Sfx.play("Reel", { volume = 0.5 })
 	tween:Play()
 	while tween.PlaybackState == Enum.PlaybackState.Playing and not skipped do
 		task.wait()
 	end
+	Sfx.play(`Roll{tier.id}`, { volume = 0.85 })
 	ticking:Disconnect()
 
 	-- Landing

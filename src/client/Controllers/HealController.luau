@@ -12,6 +12,7 @@ local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Ui = require(script.Parent.Parent.Ui)
+local Sfx = require(script.Parent.Parent.Sfx)
 local MenuController = require(script.Parent.MenuController)
 
 local heal = Config.Tuning.heal
@@ -52,6 +53,9 @@ local function updateGlows()
 		local active = typeof(healing) == "number" and healing > now
 		local glow = glows[character]
 		if active and not glow then
+			if player == Players.LocalPlayer then
+				Sfx.play("Heal", { volume = 0.6 })
+			end
 			local made = Instance.new("Highlight")
 			made.Name = "HealGlow"
 			made.FillColor = Color3.fromRGB(120, 255, 160)
