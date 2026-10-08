@@ -297,6 +297,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `organize_imports` keeps the Models). `Shared/SwimWave.luau` is the one swim shape
   for players, prey, predators and bosses: the head holds still, the wave's amplitude
   grows as t^1.9 toward the tail, two thirds of a wavelength along the body.
+  - **The rule (2026-10-08, after the Barracuda and Reef Shark predators still swam
+    backwards):** a rigged Model faces -Z and is never turned; only a bare static
+    MeshPart is turned, and only when it isn't stamped `Facing = "-Z"`
+    (`SwimWave.needsFlip`; `organize_imports` stamps static GLB prey `+Z`). Predators
+    draw rigged `PreyModels` (the 'Cuda and Reef Shark species models, copied there
+    by `organize_imports`) the way bosses draw `FishModels`. Never pull the MeshPart
+    out of a rigged Model and flip it.
 - **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
   and radii scaled with them (`Config/Bosses.luau`).
 - **The Trench is pitch dark (owner: "clearly need a light source for abyssal trench
@@ -410,6 +417,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   are still parts. Layout numbers are unchanged, so Layout/HuntService/FishService
   still agree. Preview from the cloud: `LUAU=<luau> bash tools/preview/run_cave.sh
   <dir>` (voxelizes the ops, marching cubes, Cycles on the CPU; no EGL here).
+- **Vendors (owner, 2026-10-08: "still just spheres with eyes"):** the five
+  shopkeepers are models now, `vendors_glb` (`WorldProps.Keeper<VendorId>`): the
+  hermit crab Outfitter, octopus Den Mason, sea turtle Tidecharm Trader, pufferfish
+  Shade Dyer and "Scar", the scarred grouper Trophy Hunter, from the approved
+  `assets/concepts/Vendors.jpg` (sheets `tripo_jobs_vendor_sheets.json`, models
+  `tripo_jobs_vendor_models.json`, 200 credits). `WorldService.keeper` dresses each
+  over its placeholder ball, facing the beacon. Balance ~1,360.
 - **Models come from Tripo, batch 1 done** (580 credits; balance ~1,660): 6 species
   (clean single-fish sheets from `assets/concepts/StyleSheet.jpg`, then
   image_to_model), 7 prey, 15 props/food. Reviews: contact sheets of
@@ -518,7 +532,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - models for the growth stages, vendors and the other biomes;
+  - models for the growth stages and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
   - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")

@@ -23,6 +23,7 @@ local PROPS = {
 	BrainCoral = true, FanCoral = true, StaghornCoral = true, TubeSponge = true, Anemone = true,
 	Shrimp = true, Starfish = true, Shell = true, Lantern = true, CrystalCluster = true, MarketStall = true,
 	TreasureChest = true,
+	KeeperOutfitter = true, KeeperMason = true, KeeperCharms = true, KeeperDyer = true, KeeperTrophies = true,
 }
 
 local function folder(name: string): Folder
@@ -85,6 +86,7 @@ for _, item in workspace:GetChildren() do
 			if item:FindFirstChildWhichIsA("Bone", true) then
 				replaceIn(folder("PreyModels"), name, item)
 			elseif primary then
+				primary:SetAttribute("Facing", "+Z") -- a static GLB: the code turns it round
 				replaceIn(folder("PreyModels"), name, primary)
 				item:Destroy()
 			end
@@ -95,6 +97,7 @@ for _, item in workspace:GetChildren() do
 		end
 	elseif item:IsA("MeshPart") then
 		if PREY[name] then
+			item:SetAttribute("Facing", "+Z") -- a static GLB: the code turns it round
 			replaceIn(folder("PreyModels"), name, item)
 			moved += 1
 		elseif PROPS[name] then
@@ -104,6 +107,17 @@ for _, item in workspace:GetChildren() do
 			replaceIn(folder("WorldProps"), name, model)
 			moved += 1
 		end
+	end
+end
+-- The Barracuda and Reef Shark prey (and predators) swim as copies of the 'Cuda and
+-- Reef Shark species models, bones and all, even if those were imported before
+local fishModels = ReplicatedStorage:FindFirstChild("FishModels")
+for speciesName, preyName in { Cuda = "Barracuda", ReefShark = "ReefShark" } do
+	local species = fishModels and fishModels:FindFirstChild(speciesName)
+	local existing = ReplicatedStorage:FindFirstChild("PreyModels") and ReplicatedStorage.PreyModels:FindFirstChild(preyName)
+	if species and species:IsA("Model") and (existing == nil or not existing:IsA("Model")) then
+		replaceIn(folder("PreyModels"), preyName, species:Clone())
+		moved += 1
 	end
 end
 print(`[organize_imports] moved {moved} model(s) into ReplicatedStorage`)

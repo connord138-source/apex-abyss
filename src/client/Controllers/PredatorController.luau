@@ -56,6 +56,7 @@ type Visual = {
 	spine: { string },
 	body: BasePart,
 	tail: BasePart?,
+	flip: boolean, -- a static mesh that came in facing +Z
 	bodySize: Vector3,
 	tailSize: Vector3,
 	samples: { Sample },
@@ -231,11 +232,17 @@ local function preyTemplate(name: string): MeshPart?
 	return nil
 end
 
--- A rigged body (FishModels.<model>, a Model holding a skinned MeshPart with bones)
-local function riggedTemplate(name: string): Model?
-	local models = ReplicatedStorage:FindFirstChild("FishModels")
+-- A rigged body (a Model holding a skinned MeshPart with bones): FishModels.<model>
+-- for the bosses, PreyModels.<model> for a predator whose prey model is rigged
+local function riggedTemplate(name: string, folderName: string): Model?
+	local models = ReplicatedStorage:FindFirstChild(folderName)
 	local found = models and models:FindFirstChild(name)
-	if found and found:IsA("Model") and found:FindFirstChildWhichIsA("MeshPart", true) then
+	if
+		found
+		and found:IsA("Model")
+		and found:FindFirstChildWhichIsA("MeshPart", true)
+		and found:FindFirstChildWhichIsA("Bone", true)
+	then
 		return found
 	end
 	return nil
@@ -324,8 +331,9 @@ local function build(index: number, def: Def, boss: boolean): Visual
 	local model: Model? = nil
 	local bones: { [string]: Bone } = {}
 	local spine: { string } = {}
-	if boss then
-		local rigged = riggedTemplate(def.model)
+	local flip = false
+	local rigged = riggedTemplate(def.model, if boss then "FishModels" else "PreyModels")
+	do
 		if rigged then
 			local clone = rigged:Clone()
 			clone.Name = def.id
@@ -369,6 +377,7 @@ local function build(index: number, def: Def, boss: boolean): Visual
 			clone.Size = bodySize
 			clone.Parent = folder
 			body = clone
+			flip = SwimWave.needsFlip(mesh)
 		else
 			local made = makePart(folder, def.back)
 			made.Size = bodySize
@@ -407,6 +416,7 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		spine = spine,
 		body = part,
 		tail = tail,
+		flip = flip,
 		bodySize = bodySize,
 		tailSize = tailSize,
 		samples = {},
@@ -722,7 +732,7 @@ local function step(dt: number)
 						* CFrame.new(0, 0, -visual.bodySize.Z * 0.3)
 						* CFrame.Angles(0, beat * 0.18, 0)
 						* CFrame.new(0, 0, visual.bodySize.Z * 0.3)
-						* MESH_FLIP
+						* (if visual.flip then MESH_FLIP else CFrame.identity)
 				)
 			end
 		end

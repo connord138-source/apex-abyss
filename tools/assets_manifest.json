@@ -30,6 +30,11 @@
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/92de7226-58e5-43b7-8b5b-d9622ff8b73e.zip",
       "into": "assets/glb",
       "contents": "props/TreasureChest.glb (the dig site's chest, half out of the sand)"
+    },
+    "vendors_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/ea78d41d-e7ec-40b9-a8ec-ee11dea5f531.zip",
+      "into": "assets/glb",
+      "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept"
     }
   }
 }

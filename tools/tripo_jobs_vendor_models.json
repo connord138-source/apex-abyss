@@ -1,0 +1,34 @@
+{
+  "jobs": [
+    {
+      "name": "KeeperOutfitter",
+      "group": "vendors",
+      "type": "image_to_model",
+      "image": "assets/tripo/vendor_sheets/KeeperOutfitter.png"
+    },
+    {
+      "name": "KeeperMason",
+      "group": "vendors",
+      "type": "image_to_model",
+      "image": "assets/tripo/vendor_sheets/KeeperMason.png"
+    },
+    {
+      "name": "KeeperCharms",
+      "group": "vendors",
+      "type": "image_to_model",
+      "image": "assets/tripo/vendor_sheets/KeeperCharms.png"
+    },
+    {
+      "name": "KeeperDyer",
+      "group": "vendors",
+      "type": "image_to_model",
+      "image": "assets/tripo/vendor_sheets/KeeperDyer.png"
+    },
+    {
+      "name": "KeeperTrophies",
+      "group": "vendors",
+      "type": "image_to_model",
+      "image": "assets/tripo/vendor_sheets/KeeperTrophies.png"
+    }
+  ]
+}

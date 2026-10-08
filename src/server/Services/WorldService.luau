@@ -384,7 +384,7 @@ local WOOD = Color3.fromRGB(132, 96, 66)
 local LANTERN = Color3.fromRGB(255, 196, 120)
 
 -- A placeholder shopkeeper until the vendor models arrive: a round body with eyes.
-local function keeper(parent: Instance, at: CFrame, color: Color3)
+local function keeper(parent: Instance, at: CFrame, color: Color3, vendorId: string)
 	local body = Instance.new("Part")
 	body.Name = "Keeper"
 	body.Anchored = true
@@ -395,6 +395,17 @@ local function keeper(parent: Instance, at: CFrame, color: Color3)
 	body.Color = color
 	body.Material = Enum.Material.SmoothPlastic
 	body.Parent = parent
+	-- The keeper's own model (WorldProps.Keeper<VendorId>, from the approved Vendors
+	-- concept) replaces the placeholder ball and eyes when it's imported. A GLB
+	-- prop's front is +Z, so it's turned round to face the beacon like the stall.
+	local dressed = Props.dress(body, `Keeper{vendorId}`, {
+		cframe = at * CFrame.new(0, 1.2, 0) * CFrame.Angles(0, math.pi, 0),
+		size = Vector3.new(6.5, 7, 6.5),
+	})
+	if dressed then
+		body.Transparency = 1
+		return
+	end
 	for side = -1, 1, 2 do
 		local eye = Instance.new("Part")
 		eye.Name = "Eye"
@@ -494,7 +505,7 @@ local function buildVendors(parent: Instance)
 		label.TextColor3 = Color3.fromRGB(255, 240, 214)
 		label.Text = string.upper(vendor.name)
 		label.Parent = gui
-		keeper(stall, at(36.2, plazaTop + 4.2), vendor.color:Lerp(Color3.new(1, 1, 1), 0.25))
+		keeper(stall, at(36.2, plazaTop + 4.2), vendor.color:Lerp(Color3.new(1, 1, 1), 0.25), vendor.id)
 		-- The imported stall stands where the counter is, facing the beacon; the
 		-- block posts and awning go when it's in (the sign and keeper stay)
 		local stallModel = Props.dress(counter, "MarketStall", {

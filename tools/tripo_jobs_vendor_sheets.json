@@ -1,0 +1,44 @@
+{
+  "jobs": [
+    {
+      "name": "KeeperOutfitter",
+      "group": "vendor_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/Vendors.jpg",
+      "prompt": "Using the attached image only as a STYLE and CHARACTER reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic than a toy), draw ONLY the old hermit crab shopkeeper with the round spectacles and the tape measure from it, alone, large and centered, filling the frame, standing upright in a relaxed neutral pose with limbs slightly apart and nothing overlapping the body, in a three-quarter front view, a patched spiral shell on its back, a sandy orange body, one claw holding a small coiled tape measure close to the body, on a plain flat pale grey background, no ground shadow, no water, no other characters, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "KeeperMason",
+      "group": "vendor_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/Vendors.jpg",
+      "prompt": "Using the attached image only as a STYLE and CHARACTER reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic than a toy), draw ONLY the orange octopus mason with the tool belt from it, alone, large and centered, filling the frame, standing upright in a relaxed neutral pose with limbs slightly apart and nothing overlapping the body, in a three-quarter front view, a brown leather tool belt with a chisel, one arm holding a stone hammer up near its head, the other arms curled under it, on a plain flat pale grey background, no ground shadow, no water, no other characters, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "KeeperCharms",
+      "group": "vendor_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/Vendors.jpg",
+      "prompt": "Using the attached image only as a STYLE and CHARACTER reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic than a toy), draw ONLY the old green sea turtle trader draped in bead and shell necklaces from it, alone, large and centered, filling the frame, standing upright in a relaxed neutral pose with limbs slightly apart and nothing overlapping the body, in a three-quarter front view, a mossy green shell, several colorful bead and shell necklaces with one glowing pearl, a kind wrinkled face, on a plain flat pale grey background, no ground shadow, no water, no other characters, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "KeeperDyer",
+      "group": "vendor_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/Vendors.jpg",
+      "prompt": "Using the attached image only as a STYLE and CHARACTER reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic than a toy), draw ONLY the round yellow pufferfish painter from it, alone, large and centered, filling the frame, standing upright in a relaxed neutral pose with limbs slightly apart and nothing overlapping the body, in a three-quarter front view, puffed up and round, a small apron belt with paint pots and brushes tucked in it, a happy open mouth, big round eyes, on a plain flat pale grey background, no ground shadow, no water, no other characters, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "KeeperTrophies",
+      "group": "vendor_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/Vendors.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic than a toy), draw ONE new character in exactly that style: a grizzled old grouper fish trophy hunter named Scar, alone, large and centered, filling the frame, upright in a relaxed neutral pose, three-quarter front view: a heavy mottled grey-green body, a pale scar across one eye with a small leather eyepatch, a necklace of big white shark teeth, a weathered rope harness, a stern proud face, on a plain flat pale grey background, no ground shadow, no water, no other characters, no text, no watermark. A clean model sheet for 3D conversion."
+    }
+  ]
+}
