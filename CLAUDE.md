@@ -334,6 +334,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   from WardrobeService) and the Tidecharm Trader sells a **Deep Lantern** (350 coral,
   10 min, `Lamp = "lantern"`); `LampController` hangs PointLights on lit fish for
   everyone; the biome banner and chip say PITCH DARK · bring a light.
+- **Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
+  luminescense such as photoplankton etc to give very very faint light"):**
+  `PlanktonController` fills the water round the camera with faint twinkling
+  blue-green specks below the drop-off's foot (none on the shelf, 55% on the deep
+  floor, all of it at the Trench's bottom; `glowAt`), every fish swimming through
+  leaves a brief sparkling wake (by speed, within 260 studs), and
+  `OceanController.setGlow` gives the pitch dark a very faint teal lift (+0.45
+  exposure at most). WorldService lays glowing plankton mats on the deep floors
+  (`PlanktonMats`: Trench 46, Vents 18, Open Blue 16, Ruins 12; every other one a dim
+  PointLight). A lamp is still the real light; this only keeps the deep from being
+  dead black.
 - **Treasure chest (owner: "a chest partially sticking out of the ground"):** the dig
   site's X is now a chest half out of a sand mound (part-built planks and brass, or the
   `WorldProps.TreasureChest` Tripo prop, `props2_glb`), seam glowing in the map's tier
@@ -409,7 +420,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `shade_skins` bundle (gitignored like the models). Rules learned: a soft blend of
   orange or gold into white makes peach or beige (flagged as skin tone), so use hard
   edges and golds without blue; a near-white shade on a fish with dark parts (the
-  Angler) trips the classifier, so keep pale shades mid-toned. Never upload a skin
+  Angler) trips the classifier, so keep pale shades mid-toned; thin near-white
+  lines on black (lightning, a skeleton, a mostly black glow map) trip it too, so
+  tint them blue or violet with a wide soft glow. Never upload a skin
   that a full `screen_shades.py` run didn't clear.
 - **Visibility by depth (owner, 2026-10-08: "swimming to the surface allows you to see
   all the way down ... you shouldn't be able to see all depths at once ... similar to

@@ -13,6 +13,7 @@ local HuntController = require(script.Controllers.HuntController)
 local MenuController = require(script.Controllers.MenuController)
 local NametagController = require(script.Controllers.NametagController)
 local OceanController = require(script.Controllers.OceanController)
+local PlanktonController = require(script.Controllers.PlanktonController)
 local PredatorController = require(script.Controllers.PredatorController)
 local BossController = require(script.Controllers.BossController)
 local LampController = require(script.Controllers.LampController)
@@ -46,6 +47,7 @@ AdminController.start() -- the owner's admin panel (shows only for admins)
 AmbienceController.start() -- the water's sound: shallow, deep and cavern beds by depth
 BubbleController.start() -- bubbles off every fish's mouth as it swims
 KelpController.start() -- kelp near the camera sways in the current
+PlanktonController.start() -- glowing plankton in the deepest water, wakes through it
 HuntController.start()
 SchoolController.start()
 NametagController.start()

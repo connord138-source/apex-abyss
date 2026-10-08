@@ -1190,6 +1190,60 @@ local function buildBiomes(parent: Instance)
 		)
 	end
 
+	-- Glowing plankton mats on the deepest floors (owner, 2026-10-08: "deepest depths
+	-- should have light luminescense such as photoplankton etc to give very very faint
+	-- light"): a patch of tiny glowing dots just off the floor, every other one faintly
+	-- lit. The plankton drifting in the water round the camera is PlanktonController's.
+	local mats = folder("PlanktonMats", parent)
+	local matColors =
+		{ Color3.fromRGB(90, 255, 214), Color3.fromRGB(86, 168, 255), Color3.fromRGB(150, 120, 255) }
+	local matCounts = {
+		{ id = "AbyssalTrench", count = 46 },
+		{ id = "HydrothermalVents", count = 18 },
+		{ id = "OpenBlue", count = 16 },
+		{ id = "SunkenRuins", count = 12 },
+	}
+	for _, entry in matCounts do
+		for i = 1, entry.count do
+			local ground = spotIn(rng, entry.id, 8)
+			if ground == nil or ground.Y > World.deep.floorY + 20 then
+				continue
+			end
+			local color = matColors[rng:NextInteger(1, #matColors)]
+			local spread = rng:NextNumber(4, 9)
+			local first: Part? = nil
+			for _ = 1, rng:NextInteger(5, 10) do
+				local dot = Instance.new("Part")
+				dot.Name = "Plankton"
+				dot.Anchored = true
+				dot.CanCollide = false
+				dot.CanQuery = false
+				dot.CanTouch = false
+				dot.Shape = Enum.PartType.Ball
+				dot.Size = Vector3.one * rng:NextNumber(0.25, 0.7)
+				local offset = Vector3.new(
+					rng:NextNumber(-spread, spread),
+					rng:NextNumber(0.2, 2.5),
+					rng:NextNumber(-spread, spread)
+				)
+				dot.CFrame = CFrame.new(ground + offset)
+				dot.Color = color
+				dot.Material = Enum.Material.Neon
+				dot.Transparency = 0.25
+				dot.Parent = mats
+				first = first or dot
+			end
+			if first and i % 2 == 0 then
+				local light = Instance.new("PointLight")
+				light.Color = color
+				light.Brightness = 0.35
+				light.Range = 16
+				light.Shadows = false
+				light.Parent = first
+			end
+		end
+	end
+
 	-- Seeps: thin bubble columns out of the sand on the shelf and the deep floor
 	local seeps = folder("Seeps", parent)
 	for _, biomeId in { "KelpShallows", "CoralReef", "ShipwreckGraveyard", "SunkenRuins", "OpenBlue" } do

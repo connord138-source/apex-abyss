@@ -613,6 +613,15 @@ a lamp (its species perk), and the Tidecharm Trader sells a Deep Lantern (350 co
 10 minutes). Lamps light the dark for everyone round the fish. The biome banner and
 chip warn PITCH DARK · bring a light.
 
+**Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
+luminescense such as photoplankton etc to give very very faint light"; built).** Below
+the shelf the water holds glowing plankton: faint blue-green specks twinkle round you,
+thickening from the drop-off's foot to the Trench floor, and any fish swimming through
+leaves a brief sparkling wake, the way real plankton flashes when disturbed. Patches
+of glowing plankton sit on the deep floors (Trench, Vents, Open Blue, Ruins), and the
+pitch dark gets a very faint teal light. It is never enough to see by: a lamp is
+still what lights the Trench.
+
 ### Healing (owner, 2026-10-07; built)
 
 "We need a healing element for players that they can use for boss fights as well as

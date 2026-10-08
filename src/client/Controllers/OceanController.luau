@@ -133,7 +133,11 @@ local ink: ColorCorrectionEffect
 local darkTarget = 0
 local dark, darkVelocity = 0, 0
 local lit = false
+local glow = 0
 local DARK_TINT = Color3.fromRGB(26, 30, 48)
+-- Plankton glow in the deepest water (PlanktonController): a very faint blue-green
+-- light, most noticeable in the pitch dark
+local GLOW_TINT = Color3.fromRGB(70, 150, 150)
 
 local function blendGrades(a: Grade, b: Grade, t: number): Grade
 	return {
@@ -206,6 +210,12 @@ local function step(dt: number)
 			atmosphereNow.Density = math.min(atmosphereNow.Density + dark * 0.25, 1)
 		end
 	end
+	-- The plankton's light: very faint, and only felt where it's darkest (owner: "to
+	-- give very very faint light")
+	if glow > 0.001 then
+		grade.TintColor = grade.TintColor:Lerp(GLOW_TINT, glow * (0.06 + dark * 0.14))
+		Lighting.ExposureCompensation += glow * dark * 0.45
+	end
 	-- Ink: inside a squid's cloud the water goes near-black
 	blind, blindVelocity = Spring.number(blind, blindVelocity, blindTarget, 4, dt)
 	ink.Enabled = blind > 0.01
@@ -223,6 +233,12 @@ end
 
 function OceanController.setLit(value: boolean)
 	lit = value
+end
+
+-- How thick the glowing plankton is around the camera (0..1); PlanktonController
+-- sets it
+function OceanController.setGlow(amount: number)
+	glow = math.clamp(amount, 0, 1)
 end
 
 -- How deep in a boss's ink cloud the camera is (0..1); PredatorController sets it.
