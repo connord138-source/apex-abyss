@@ -87,7 +87,10 @@ all six at once). The screen sees every image in the GLB: colors, glow maps and 
 roughness/metal maps (packed with no red, so they never read as orange). A soft blend of orange or gold into white comes out peach or
 beige and is flagged as skin tone: use hard edges and golds with no blue. Near-white
 shades on fish with dark parts (the Angler's teeth) can trip the classifier: keep
-pale shades mid-toned. Eyes are picked on the side face renders (`find_eyes.py`,
+pale shades mid-toned. Thin near-white or cyan lines on black (lightning, an x-ray
+skeleton, a glow map that is mostly black) score high on the NSFW classifier even
+with no skin tone in them (0.23-0.49 in v3): tint them blue or violet and give them
+a wide soft glow, which brought them under 0.12. Eyes are picked on the side face renders (`find_eyes.py`,
 then checked by hand in `eyes.json`); the teeth, mouth and the Angler's lure are
 kept from the fish's own texture.
 

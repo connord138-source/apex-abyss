@@ -777,10 +777,13 @@ def xray(m):  # A glowing skeleton seen through a dark body
     scan = 0.15 * (0.5 + 0.5 * np.sin(m.ez * 80))  # faint scanlines
     rgb = mix(rgb, (0.05, 0.18, 0.30), scan)
     bones = skeleton(m)
-    halo = glow_halo(bones, 4)
-    rgb = mix(rgb, (0.20, 0.70, 1.0), halo * 0.5)
-    rgb = mix(rgb, (0.78, 0.96, 1.0), bones)
-    emit = bones[..., None] * C(0.5, 0.9, 1.0) + (halo * 0.3)[..., None] * C(0.1, 0.5, 1.0)
+    halo = glow_halo(bones, 6)
+    # Electric blue bones in a wide inner glow, not thin near-white lines on black:
+    # those scored high on the moderation classifier (screen, 2026-10-08)
+    rgb = mix(rgb, (0.15, 0.45, 1.0), halo * 0.65)
+    rgb = mix(rgb, (0.45, 0.72, 1.0), bones)
+    emit = bones[..., None] * C(0.35, 0.6, 1.0) + (halo * 0.3)[..., None] * C(0.15, 0.3, 1.0)
+    emit = emit + ndimage.gaussian_filter(emit, (4, 4, 0)) * 1.6
     return done(m, rgb, "satin", emit=emit, detail=0.6)
 
 
@@ -813,14 +816,15 @@ def aurora(m):
 
 
 def thunder(m):
-    rgb = coat(m, (0.18, 0.21, 0.30), (0.40, 0.46, 0.58), (0.14, 0.17, 0.26))
+    rgb = coat(m, (0.16, 0.19, 0.30), (0.26, 0.31, 0.46), (0.12, 0.15, 0.26))
     ridge = 1 - np.abs(fbm_at(body_coords(m), 6, 40) * 2 - 1)
     lo, hi = np.percentile(ridge[m.cov], [93.5, 97.5])  # forked lines, never blotches
     bolt = smoothstep(lo, hi, ridge)
     halo = glow_halo(bolt, 5)
-    rgb = mix(rgb, (0.30, 0.55, 1.0), halo * 0.7)
-    rgb = mix(rgb, (0.85, 0.95, 1.0), bolt)
-    emit = bolt[..., None] * C(0.8, 0.92, 1.0) + (halo * 0.4)[..., None] * C(0.3, 0.55, 1.0)
+    # Violet-blue bolts: near-white lines on black trip the moderation classifier
+    rgb = mix(rgb, (0.38, 0.32, 1.0), halo * 0.7)
+    rgb = mix(rgb, (0.72, 0.68, 1.0), bolt)
+    emit = bolt[..., None] * C(0.55, 0.48, 1.0) + (halo * 0.45)[..., None] * C(0.35, 0.25, 1.0)
     return done(m, rgb, "satin", emit=emit, detail=0.9)
 
 
