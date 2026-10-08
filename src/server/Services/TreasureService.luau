@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
@@ -74,16 +75,12 @@ end
 local function pickSite(tier: MapTier): Vector3
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	local world = workspace:FindFirstChild("World")
-	params.FilterDescendantsInstances = if world then { world, workspace.Terrain } else { workspace.Terrain }
-	local trench = World.trench
+	params.FilterDescendantsInstances = { workspace.Terrain } -- the floor itself: the chest sits in the sand
 	for _ = 1, 40 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local distance = rng:NextNumber(tier.minDistance, tier.maxDistance)
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
-		local inTrench = math.abs(x - trench.center.X) < trench.size.X / 2 + 16
-			and math.abs(z - trench.center.Z) < trench.size.Z / 2 + 16
-		if inTrench then
+		if Seafloor.inTrench(x, z, 16) then
 			continue
 		end
 		local hit = workspace:Raycast(
@@ -91,7 +88,7 @@ local function pickSite(tier: MapTier): Vector3
 			Vector3.new(0, -(World.surfaceY + 40), 0),
 			params
 		)
-		if hit and hit.Normal.Y > 0.7 and hit.Instance.Name ~= "Surface" and hit.Position.Y < 40 then
+		if hit and hit.Normal.Y > 0.7 and hit.Position.Y < 40 then
 			return hit.Position
 		end
 	end

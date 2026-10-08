@@ -271,29 +271,37 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **The world is an ocean shelf (owner, 2026-10-07: "a giant gaping hole", "biomes need
   to be spread out and clearly different ... some dependent on depth off of a ocean
   shelf that would be at the end of the lower level zones and begin the higher level
-  zones. coral zone being the last of the shallower zones", "far too open"):** the hub
-  seamount stands on a shallow sand SHELF (radius 600) that ends in a rock DROP-OFF
-  (60 wide) to a deep floor at −170. Shallow biomes on the shelf: Kelp Shallows ring
-  (150–340, LV 1–10, the open one), Shipwreck Graveyard in the west bay (340–600 @
-  135–225°, LV 10–25), Coral Reef as the shelf's outer band everywhere else (LV 25–40,
-  the last shallow zone). Deep biomes beyond: Open Blue north (LV 35–55), Sunken Ruins
-  east (50–70), Hydrothermal Vents south-west (65–85, basin at −230, chimneys), Abyssal
-  Trench south (80–100): a winding V-profile canyon down to −420, pitch dark. Map
-  radius 1000; the terrain runs 700 further so the floor fades into the fog instead of
-  showing an edge, and the Surface sheet is 3600 wide. `Config/World.luau`,
+  zones. coral zone being the last of the shallower zones", "far too open"; scaled up
+  2026-10-08: "the entirety of the map is still too small ... each biome made larger
+  ... MUCH MUCH more depth too. Far too shallow of a map", "the lower areas are far too
+  underdeveloped"):** the hub seamount stands on a shallow sand SHELF (radius 850,
+  440 studs under the surface) that ends in a rock DROP-OFF (90 wide, 430 tall) to a
+  deep floor at −430. Shallow biomes on the shelf: Kelp Shallows ring (150–480, LV
+  1–10, the open one), Shipwreck Graveyard in the west bay (480–850 @ 135–225°, LV
+  10–25), Coral Reef as the shelf's outer band everywhere else (LV 25–40, the last
+  shallow zone; owner: "more larger rock structures and arches to go under", so 44
+  reef heads with tunnels, 14 ridges with swim-throughs and 26 arches, with the corals
+  growing on and round them, `Features.reefRocks`). Deep biomes beyond (850–1,500):
+  Open Blue north (LV 35–55; owner: "a deep blue ocean that is mainly traversed for the
+  megalodon and sharks with some other good haul fish like grouper and snapper", so a
+  blue-grey floor, knolls and seven pinnacles, the Reef Shark predators and the
+  shark/grouper/snapper schools keep to its sector), Sunken Ruins east (50–70, plus a
+  temple ring), Hydrothermal Vents south-west (65–85; ten basins at −540 placed by
+  `Seafloor.ventBasins`, 26 chimneys), Abyssal Trench south (80–100): a winding canyon
+  in three stepped cuts from −430 down to −920 (`Seafloor.trenchAxis` and
+  `trenchHalfWidths` drive both the Terrain and the nominal floor, so fish never swim
+  in its walls), with ledges and basalt pillars, pitch dark. Map radius 1,500; the
+  terrain runs 700 further so the floor fades into the water instead of showing an
+  edge. The deep floor is a 30-stud mud slab with rock only under the canyon and the
+  basins, and the shelf is a hollow drum, so the Terrain stays light. `Config/World.luau`,
   `Config/Biomes.luau` (sectors + `deep`/`dark`), `Shared/Seafloor.luau` (the nominal
-  floor height anywhere: shelf, slope, deep, vents, canyon; every placement and
-  creature uses it), `src/server/Shelf.luau` (Terrain fill ops: bedrock, mud floor,
-  shelf drum + sand cap, rim bulges/bays/notches/buttresses/ledges, 6 sand chutes,
-  dunes, outcrops, kelp ridges, reef flats, 16 reef heads with swim-through tunnels
-  and hollows, 10 stone arches, the canyon, the vents' basin and chimneys, the ruins'
-  stones, Open Blue ridges and pinnacles). `WorldService.buildBiomes` dresses each
-  biome on the Terrain by raycast (30 kelp forests, 90 rocks and 14 arches in the
-  Kelp; 8 wrecks; 44 coral gardens of 55; ruins with columns, statues and teal
-  lanterns; smoking glowing chimneys; 70 bioluminescent specks down the Trench; light
-  shafts). Preview from the cloud: `LUAU=<luau> bash tools/preview/run_world.sh <dir>`
-  (aerial, north, south, east). Prey `band`s and predator/boss depths are heights
-  above the local floor; big prey roam off the shelf.
+  floor height anywhere; every placement and creature uses it), `src/server/Shelf.luau`
+  (the Terrain fill ops). `WorldService.buildBiomes` dresses each biome on the Terrain
+  by raycast. Preview from the cloud: `LUAU=<luau> bash tools/preview/run_world.sh
+  <dir>` (aerial, north, south, east). Prey `zones` (band, sector, schools, depth) and
+  predator `angles` put fish where a biome wants them; depths are heights above the
+  local floor. Shells, forage and treasure sites raycast the Terrain only (a shell on
+  a kelp blade "floated above the sea floor", owner 2026-10-08).
 - **Fish facing and swim (owner, 2026-10-07: "swimming backwards", "more fluid and
   natural like a fish, not the entire body swaying"):** the static GLB prey meshes
   faced +Z and are turned round in code (`MESH_FLIP`); prey are now rigged FBX too
@@ -301,6 +309,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `organize_imports` keeps the Models). `Shared/SwimWave.luau` is the one swim shape
   for players, prey, predators and bosses: the head holds still, the wave's amplitude
   grows as t^1.9 toward the tail, two thirds of a wavelength along the body.
+  - **The rule (2026-10-08, after the Barracuda and Reef Shark predators still swam
+    backwards):** a rigged Model faces -Z and is never turned; only a bare static
+    MeshPart is turned, and only when it isn't stamped `Facing = "-Z"`
+    (`SwimWave.needsFlip`; `organize_imports` stamps static GLB prey `+Z`). Predators
+    draw rigged `PreyModels` (the 'Cuda and Reef Shark species models, copied there
+    by `organize_imports`) the way bosses draw `FishModels`. Never pull the MeshPart
+    out of a rigged Model and flip it.
 - **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
   and radii scaled with them (`Config/Bosses.luau`).
 - **The Trench is pitch dark (owner: "clearly need a light source for abyssal trench
@@ -352,6 +367,31 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   glow halo, glints, chrome shine or rainbow; coral a sprig and the amount; parts the
   slot they change; variants their species; on a tier gradient with a sheen and a tier
   badge. The result shows a shade's three swatches and Rare+ wins burst motes.
+- **Visibility by depth (owner, 2026-10-08: "swimming to the surface allows you to see
+  all the way down ... you shouldn't be able to see all depths at once ... similar to
+  the underwater feel of Subnautica"; "the open blue is just a large black
+  wasteland"):** `OceanController`'s grades thicken and darken the water with depth
+  (Atmosphere density 0.68 at the surface → 0.76 on the shelf → 0.88 on the deep floor
+  → 0.97 in the Trench, exposure down to −1.5, plus classic fog with a `sight` per
+  grade in case the Atmosphere ever goes), and the deep floor grade is a deep blue
+  (the Mud material is blue-grey), never black; only the Trench's `dark` goes
+  near-black. The sky, surface and upper atmosphere are the other (PC) chat's
+  (owner: "I have the other chat working on the sky/upper atmosphere"); don't touch
+  `setupLighting`'s Sky or the Surface sheet from this branch.
+- **Exits (owner, 2026-10-08: "a flashing blue box that says EXIT in black on every
+  exit ... needs to be more subtle and built in"):** each tunnel mouth has a carved
+  slate lintel with EXIT on it and a teal lantern either side, and four lanterns ring
+  the oculus (`WorldService` `exitDressing`, tag `ExitLight`). The tutorial's
+  find-the-exit step breathes those lanterns brighter (`TutorialController`
+  `pulseExits`) instead of drawing chips, and its remaining marker (BANK HERE) is thin
+  text with a short line, breathing slowly, no box.
+- **Underwater look (owner, 2026-10-08: "still has that sky look, it needs to look like
+  it's underwater"):** nothing above the water may read as a sky. The Surface sheet is
+  opaque pale water (seen from below), four deep-blue Horizon walls box the map far
+  past the barrier, an `OceanSky` with no sun, moon or stars replaces the default
+  skybox, and the atmosphere is thicker and bluer (server `setupLighting` and the
+  client's `OceanController` grades, which drive it every frame). If the sky ever
+  shows again, it's a gap in that box, not a lighting setting.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -407,6 +447,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   are still parts. Layout numbers are unchanged, so Layout/HuntService/FishService
   still agree. Preview from the cloud: `LUAU=<luau> bash tools/preview/run_cave.sh
   <dir>` (voxelizes the ops, marching cubes, Cycles on the CPU; no EGL here).
+- **Vendors (owner, 2026-10-08: "still just spheres with eyes"):** the five
+  shopkeepers are models now, `vendors_glb` (`WorldProps.Keeper<VendorId>`): the
+  hermit crab Outfitter, octopus Den Mason, sea turtle Tidecharm Trader, pufferfish
+  Shade Dyer and "Scar", the scarred grouper Trophy Hunter, from the approved
+  `assets/concepts/Vendors.jpg` (sheets `tripo_jobs_vendor_sheets.json`, models
+  `tripo_jobs_vendor_models.json`, 200 credits). `WorldService.keeper` dresses each
+  over its placeholder ball, facing the beacon. Balance ~1,360.
 - **Models come from Tripo, batch 1 done** (580 credits; balance ~1,660): 6 species
   (clean single-fish sheets from `assets/concepts/StyleSheet.jpg`, then
   image_to_model), 7 prey, 15 props/food. Reviews: contact sheets of
@@ -533,7 +580,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - models for the growth stages, vendors and the other biomes;
+  - models for the growth stages and the other biomes;
     rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
   - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")

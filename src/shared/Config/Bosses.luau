@@ -154,8 +154,8 @@ local megalodon: BossDef = {
 		biteCooldown = 4,
 		telegraph = 1.2,
 		ignoreBelow = 0.035, -- a Fry (2–3 studs) is too small to bother with
-		band = { 680, 960 },
-		depth = { 20, 150 },
+		band = { 1000, 1440 },
+		depth = { 30, 280 },
 		count = 0, -- never spawned by the predator roster; BossService summons it
 		respawn = 0,
 		loot = { haulKg = 0, dna = 0, coral = 0 }, -- BossService pays the real rewards
@@ -207,8 +207,8 @@ local megalodon: BossDef = {
 	patrol = {
 		direction = Vector3.new(0, 0, -1), -- the Open Blue is north, off the drop-off
 		spread = math.rad(42),
-		band = { 680, 960 },
-		depth = { 20, 150 },
+		band = { 1000, 1440 },
+		depth = { 30, 280 },
 	},
 	stagger = { need = 700, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
 	softSpots = { { from = 0.6, to = 0.8 }, { from = 0, to = 0.22 } }, -- gills, tail
@@ -253,8 +253,8 @@ local giantSquid: BossDef = {
 		biteCooldown = 6,
 		telegraph = 1.3,
 		ignoreBelow = 0.035,
-		band = { 660, 940 },
-		depth = { 10, 150 },
+		band = { 980, 1420 },
+		depth = { 15, 260 },
 		count = 0,
 		respawn = 0,
 		loot = { haulKg = 0, dna = 0, coral = 0 },
@@ -291,7 +291,7 @@ local giantSquid: BossDef = {
 	patrol = {
 		direction = Vector3.new(0, 0, 1), -- the Trench and the Vents are south, off the drop-off
 		spread = math.rad(70),
-		band = { 660, 940 },
+		band = { 980, 1420 },
 		depth = { 10, 55 },
 	},
 	stagger = { need = 650, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
@@ -330,7 +330,7 @@ return {
 	byId = byId,
 	rotation = { "Megalodon", "GiantSquid" }, -- the order the events take turns in
 	-- Clients: the boss HUD bar shows within this distance of a boss
-	hudRange = 700,
+	hudRange = 1000,
 	-- A grabbed fish is dragged toward the beak at this speed (studs/s); its own
 	-- swimming is overridden until it breaks free
 	grabPull = 22,

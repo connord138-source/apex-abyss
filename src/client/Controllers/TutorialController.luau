@@ -3,6 +3,7 @@
 -- its progress, markers that point the way (the hub's exits, your den's pool), and
 -- a celebration when it's done (the 'Cuda unlocked, a first roll ready). The
 -- server counts the steps (TutorialService).
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -13,7 +14,6 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local Ui = require(script.Parent.Parent.Ui)
 
 local Tutorial = Config.Tutorial
-local hub = Config.World.hub
 
 local TutorialController = {}
 
@@ -28,7 +28,9 @@ local shownStep = 0
 local shownMarker: string? = nil
 local wasDone: boolean? = nil
 
--- A floating marker in the world, visible through walls, gently pulsing.
+-- A floating label in the world, visible through walls: thin text and a short
+-- line, breathing slowly (owner, 2026-10-08: the old chips were "a flashing blue
+-- box ... in black"; markers must be subtle)
 local function marker(position: Vector3, text: string)
 	local anchor = Instance.new("Part")
 	anchor.Anchored = true
@@ -40,23 +42,71 @@ local function marker(position: Vector3, text: string)
 	anchor.CFrame = CFrame.new(position)
 	anchor.Parent = markers
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(150, 46)
+	billboard.Size = UDim2.fromOffset(160, 30)
 	billboard.AlwaysOnTop = true
 	billboard.LightInfluence = 0
+	billboard.MaxDistance = 240
 	billboard.Adornee = anchor
 	billboard.Parent = anchor
-	local chip = Ui.panel(billboard, "Chip", UDim2.fromScale(1, 1), UDim2.new())
-	chip.BackgroundColor3 = Ui.color.accent
-	chip.BackgroundTransparency = 0.1
-	local label = Ui.label(chip, "Text", text, Ui.FONT_HEAVY, 18, Ui.color.panel, UDim2.fromScale(1, 1))
+	local label = Ui.label(billboard, "Text", text, Ui.FONT_BOLD, 15, Ui.color.accent, UDim2.new(1, 0, 0, 22))
 	label.TextXAlignment = Enum.TextXAlignment.Center
-	local scale = Instance.new("UIScale")
-	scale.Parent = chip
-	TweenService:Create(
-		scale,
-		TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Scale = 1.12 }
-	):Play()
+	label.TextTransparency = 0.1
+	local line = Instance.new("Frame")
+	line.Name = "Line"
+	line.BackgroundColor3 = Ui.color.accent
+	line.BorderSizePixel = 0
+	line.AnchorPoint = Vector2.new(0.5, 0)
+	line.Position = UDim2.new(0.5, 0, 0, 24)
+	line.Size = UDim2.fromOffset(36, 2)
+	line.Parent = billboard
+	local info = TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	TweenService:Create(label, info, { TextTransparency = 0.5 }):Play()
+	TweenService:Create(line, info, { BackgroundTransparency = 0.5 }):Play()
+end
+
+-- The exits are built into the rock (lintels and lanterns, WorldService). When the
+-- tutorial asks for the way out, the lanterns breathe brighter instead of a chip.
+type Pulsed = { light: PointLight, brightness: number, range: number, part: BasePart, transparency: number }
+local pulses: { Tween } = {}
+local pulsed: { Pulsed } = {}
+
+local function stopPulses()
+	for _, tween in pulses do
+		tween:Cancel()
+	end
+	for _, entry in pulsed do
+		entry.light.Brightness = entry.brightness
+		entry.light.Range = entry.range
+		entry.part.Transparency = entry.transparency
+	end
+	table.clear(pulses)
+	table.clear(pulsed)
+end
+
+local function pulseExits()
+	local info = TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	for _, part in CollectionService:GetTagged("ExitLight") do
+		local light = if part:IsA("BasePart") then part:FindFirstChildOfClass("PointLight") else nil
+		if part:IsA("BasePart") and light then
+			table.insert(pulsed, {
+				light = light,
+				brightness = light.Brightness,
+				range = light.Range,
+				part = part,
+				transparency = part.Transparency,
+			})
+			local brighter = TweenService:Create(
+				light,
+				info,
+				{ Brightness = light.Brightness * 3.2, Range = light.Range * 1.5 }
+			)
+			local solid = TweenService:Create(part, info, { Transparency = 0 })
+			brighter:Play()
+			solid:Play()
+			table.insert(pulses, brighter)
+			table.insert(pulses, solid)
+		end
+	end
 end
 
 local function showMarkers(kind: string?, s: { [string]: any })
@@ -65,16 +115,9 @@ local function showMarkers(kind: string?, s: { [string]: any })
 	end
 	shownMarker = kind
 	markers:ClearAllChildren()
+	stopPulses()
 	if kind == "exits" then
-		for segment = 1, hub.segments do
-			if Layout.segmentKind(segment) == "tunnel" then
-				local angle = Layout.segmentAngle(segment)
-				local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
-				local reach = hub.radius + hub.wallThickness + hub.tunnelLength
-				marker(hub.center + out * reach + Vector3.new(0, hub.tunnelHeight / 2, 0), "EXIT")
-			end
-		end
-		marker(hub.center + Vector3.new(0, hub.height + 14, 0), "EXIT")
+		pulseExits()
 	elseif kind == "den" and typeof(s.den) == "number" then
 		marker(Layout.poolPosition(s.den) + Vector3.new(0, 4, 0), "BANK HERE")
 	end

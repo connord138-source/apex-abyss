@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
@@ -28,8 +29,7 @@ local function placeSpots()
 	local rng = Random.new(World.seed + 20)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { workspace:WaitForChild("World"), workspace.Terrain }
-	local trench = World.trench
+	params.FilterDescendantsInstances = { workspace.Terrain } -- the floor itself, never a kelp blade
 	for _, def in Forage.list do
 		local placed, tries = 0, 0
 		while placed < def.spots and tries < def.spots * 6 do
@@ -37,13 +37,11 @@ local function placeSpots()
 			local angle = rng:NextNumber(0, 2 * math.pi)
 			local distance = rng:NextNumber(World.shallows.inner - 20, World.shallows.outer)
 			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
-			local inTrench = math.abs(x - trench.center.X) < trench.size.X / 2 + 10
-				and math.abs(z - trench.center.Z) < trench.size.Z / 2 + 10
-			if not inTrench then
+			if not Seafloor.inTrench(x, z, 10) then
 				local from = Vector3.new(x, World.surfaceY - 10, z)
 				local hit = workspace:Raycast(from, Vector3.new(0, -(World.surfaceY + 40), 0), params)
 				-- Only on the floor or gentle tops, not up the side of a rock
-				if hit and hit.Normal.Y > 0.6 and hit.Instance.Name ~= "Surface" then
+				if hit and hit.Normal.Y > 0.6 then
 					table.insert(spots, { position = hit.Position + hit.Normal * 0.35, kind = def.id })
 					placed += 1
 				end

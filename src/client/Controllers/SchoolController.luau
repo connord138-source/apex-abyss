@@ -42,6 +42,7 @@ type Visual = {
 	spine: { string },
 	unitScale: number, -- the rigged model's scale at full size
 	phase: number, -- the swim wave
+	flip: boolean, -- a static mesh that came in facing +Z
 	bodySize: Vector3,
 	tailSize: Vector3,
 	hidden: boolean,
@@ -135,6 +136,7 @@ local function build()
 		local bones: { [string]: Bone } = {}
 		local spine: { string } = {}
 		local unitScale = 1
+		local flip = false
 		if rigged then
 			-- A rigged body: anchored, scaled to the fish's length, its bones swim
 			local clone = rigged:Clone()
@@ -170,6 +172,7 @@ local function build()
 			mesh.Size = bodySize
 			mesh.Parent = folder
 			body = mesh
+			flip = SwimWave.needsFlip(template)
 		else
 			body = makePart(folder, prey.back, "Ellipsoid")
 			body.Size = bodySize
@@ -195,6 +198,7 @@ local function build()
 			spine = spine,
 			unitScale = unitScale,
 			phase = fish.phase * 3,
+			flip = flip,
 			chase = nil,
 		}
 	end
@@ -381,7 +385,7 @@ local function step(dt: number)
 							* CFrame.new(0, 0, -visual.body.Size.Z * 0.3)
 							* CFrame.Angles(0, beat * 0.22, 0)
 							* CFrame.new(0, 0, visual.body.Size.Z * 0.3)
-							* MESH_FLIP
+							* (if visual.flip then MESH_FLIP else CFrame.identity)
 					)
 				end
 			end

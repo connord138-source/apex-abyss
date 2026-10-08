@@ -140,7 +140,7 @@ local tiers: { MapTier } = {
 		name = "Tattered",
 		color = Color3.fromRGB(196, 176, 140),
 		minDistance = 170,
-		maxDistance = 320,
+		maxDistance = 460,
 		digSeconds = 2.5,
 		rewards = {
 			coral(120, 48),
@@ -156,8 +156,8 @@ local tiers: { MapTier } = {
 		id = "Weathered",
 		name = "Weathered",
 		color = Color3.fromRGB(120, 196, 220),
-		minDistance = 300,
-		maxDistance = 500,
+		minDistance = 460,
+		maxDistance = 830,
 		digSeconds = 3,
 		rewards = {
 			coral(320, 36),
@@ -174,8 +174,8 @@ local tiers: { MapTier } = {
 		id = "Captain",
 		name = "Captain's",
 		color = Color3.fromRGB(255, 204, 92),
-		minDistance = 460,
-		maxDistance = 630,
+		minDistance = 700,
+		maxDistance = 1150,
 		digSeconds = 3.5,
 		rewards = {
 			coral(900, 28),

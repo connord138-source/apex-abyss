@@ -17,11 +17,13 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
+| `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
-Not yet made: species growth stages (Fry/Juvenile/Apex), the vendors, the other
-biomes' props. The Barracuda and Reef Shark predators reuse the prey
-meshes. The Tripo balance is about 1,560 credits (`python tools/tripo.py balance`).
+Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
+The Barracuda and Reef Shark predators (and prey schools) are the rigged 'Cuda and
+Reef Shark species models, copied into `PreyModels` by `organize_imports`. The Tripo
+balance is about 1,360 credits (`python tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -54,10 +56,17 @@ Don't scale or position anything; the code does it:
 |---|---|
 | Species | `FishBuilder.buildMesh` welds the skinned MeshPart to the fish's root, nose on -Z, and scales it with `ScaleTo` to the fish's length (growth re-scales it). `FishAnimator` waves the `Spine1..N` and `Tail` bones and nods `Head`. A shade tints the texture (`Cosmetics`); rolled parts and variants show on part bodies only for now. |
 | Prey | One MeshPart each, scaled to the fish's length, moved with `BulkMoveTo`, with a small yaw wiggle. |
+| Keepers | `WorldService.keeper` fits `WorldProps.Keeper<VendorId>` over the placeholder ball behind each counter (the ball and eyes hide), turned to face the beacon like the stall (a GLB prop's front is +Z). |
 | Props | `Props.dress` fits a copy over its placeholder part (kelp, boulders, coral, the beacon, stalls, lanterns) and hides the part. Shrimp, starfish and shells go through `PropParts` and keep the client's bulk movement. |
 
 ## Checks
 
+- **Facing in code:** a rigged Model (bones) faces -Z and is never turned. A bare
+  MeshPart from a static GLB faces +Z, so `organize_imports` stamps it `Facing = "+Z"`
+  and the drawers turn it round (`SwimWave.needsFlip`). The Barracuda and Reef Shark
+  predators swam backwards (owner, 2026-10-08) because `PredatorController` pulled
+  the MeshPart out of their rigged Model and turned it; predators now draw rigged
+  `PreyModels` like the bosses do.
 - **Facing:** a rigged fish must swim nose first. `tools/blender/rig_fish.py` finds the
   head as the deep, wide end (a tail fin is thin) and puts it at -Y for FBX (Blender's
   exporter maps -Y onto the -Z we ask for) or +Y for `--static` GLBs (glTF maps +Y onto

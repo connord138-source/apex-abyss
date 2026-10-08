@@ -504,5 +504,100 @@
   "status": "success",
   "task_id": "a2f96c21-dac9-42f2-9d50-25abb92f68f1",
   "type": "generate_image"
+ },
+ "vendor_sheets/KeeperCharms": {
+  "credits": 10,
+  "files": [
+   "KeeperCharms.png"
+  ],
+  "status": "success",
+  "task_id": "ec55e9e9-7c2a-42af-865d-61d21d31a511",
+  "type": "generate_image"
+ },
+ "vendor_sheets/KeeperDyer": {
+  "credits": 10,
+  "files": [
+   "KeeperDyer.png"
+  ],
+  "status": "success",
+  "task_id": "d8992721-0fad-4f6b-a535-6f922c25329b",
+  "type": "generate_image"
+ },
+ "vendor_sheets/KeeperMason": {
+  "credits": 10,
+  "files": [
+   "KeeperMason.png"
+  ],
+  "status": "success",
+  "task_id": "cfcc27ba-71fc-4e5f-b6d1-185db4b498cb",
+  "type": "generate_image"
+ },
+ "vendor_sheets/KeeperOutfitter": {
+  "credits": 10,
+  "files": [
+   "KeeperOutfitter.png"
+  ],
+  "status": "success",
+  "task_id": "27622ad2-40fd-45f1-9bbe-3fc3368895f4",
+  "type": "generate_image"
+ },
+ "vendor_sheets/KeeperTrophies": {
+  "credits": 10,
+  "files": [
+   "KeeperTrophies.png"
+  ],
+  "status": "success",
+  "task_id": "607ca640-94bb-4a56-b4e8-b7baebef3f3d",
+  "type": "generate_image"
+ },
+ "vendors/KeeperCharms": {
+  "credits": 30,
+  "files": [
+   "KeeperCharms.glb",
+   "KeeperCharms_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "b64c274a-e5ba-42ef-8ab6-8d1de05d4a81",
+  "type": "image_to_model"
+ },
+ "vendors/KeeperDyer": {
+  "credits": 30,
+  "files": [
+   "KeeperDyer.glb",
+   "KeeperDyer_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e6c06ff3-e656-4b64-b72e-5879e7e12a15",
+  "type": "image_to_model"
+ },
+ "vendors/KeeperMason": {
+  "credits": 30,
+  "files": [
+   "KeeperMason.glb",
+   "KeeperMason_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "7c7364a7-11b6-41ae-aafd-ba8bcf68ee54",
+  "type": "image_to_model"
+ },
+ "vendors/KeeperOutfitter": {
+  "credits": 30,
+  "files": [
+   "KeeperOutfitter.glb",
+   "KeeperOutfitter_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "fdf92eec-cc99-4e5f-9048-a00402d069ef",
+  "type": "image_to_model"
+ },
+ "vendors/KeeperTrophies": {
+  "credits": 30,
+  "files": [
+   "KeeperTrophies.glb",
+   "KeeperTrophies_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "60149ce2-9bf8-421d-a99f-6e1dd6088d2e",
+  "type": "image_to_model"
  }
 }

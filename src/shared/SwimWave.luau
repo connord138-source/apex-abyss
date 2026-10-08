@@ -84,4 +84,12 @@ function SwimWave.applyBones(
 	end
 end
 
+-- Whether a bare imported MeshPart needs turning round: the static GLB prey came in
+-- facing +Z (owner, 2026-10-07: "swimming backwards"), while meshes cut from a
+-- rigged FBX face -Z. The importer stamps `Facing`; without a stamp, a bare mesh is
+-- taken as a static GLB.
+function SwimWave.needsFlip(mesh: BasePart): boolean
+	return mesh:GetAttribute("Facing") ~= "-Z"
+end
+
 return SwimWave

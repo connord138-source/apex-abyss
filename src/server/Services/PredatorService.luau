@@ -72,13 +72,20 @@ local accumulator = 0
 local function randomWaypoint(def: Def): Vector3
 	for _ = 1, 20 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
+		local sector = def.angles
+		if sector then
+			local span = (sector[2] - sector[1]) % 360
+			angle = math.rad(sector[1] + rng:NextNumber(0, if span == 0 then 360 else span))
+		end
 		local distance = rng:NextNumber(def.band[1], def.band[2])
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 		if not Seafloor.inTrench(x, z, 30) then
 			return Vector3.new(x, Seafloor.y(x, z) + rng:NextNumber(def.depth[1], def.depth[2]), z)
 		end
 	end
-	return Vector3.new(def.band[1], Seafloor.y(def.band[1], 0) + def.depth[1] + 10, 0)
+	local fallback = math.rad(if def.angles then (def.angles[1] + def.angles[2]) / 2 else 0)
+	local x, z = math.cos(fallback) * def.band[1], math.sin(fallback) * def.band[1]
+	return Vector3.new(x, Seafloor.y(x, z) + def.depth[1] + 10, z)
 end
 
 local function spawn(predator: Predator, at: Vector3?)

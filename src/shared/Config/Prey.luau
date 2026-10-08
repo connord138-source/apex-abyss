@@ -2,6 +2,15 @@
 -- NPC prey for the Kelp Shallows graybox. Mass is in kg; body length comes from
 -- mass the same way as for players (Size.length). Schools are placed from these
 -- by Shared/Schools.luau.
+-- Where some of a prey's schools live: a distance band, a sector round the hub
+-- (degrees from +X toward +Z, clockwise; nil = all round) and a depth band
+export type Zone = {
+	band: { number },
+	angles: { number }?,
+	schools: number,
+	depth: { number }?,
+}
+
 export type PreyDef = {
 	id: string,
 	name: string,
@@ -13,6 +22,7 @@ export type PreyDef = {
 	pathRadius: { number }, -- min, max radius of its loop
 	depth: { number }, -- min, max height above the local floor (Shared/Seafloor)
 	band: { number }?, -- distance from the hub its schools roam (default: the shallows ring on the shelf)
+	zones: { Zone }?, -- instead of one band: several places, each with its own schools (and depth)
 	respawn: number, -- seconds after being eaten
 	back: Color3,
 	belly: Color3,
@@ -24,7 +34,7 @@ local list: { PreyDef } = {
 		id = "Minnow",
 		name = "Minnow",
 		mass = 0.1,
-		schools = 8,
+		schools = 14,
 		perSchool = 14,
 		spread = 3.2,
 		speed = 7,
@@ -39,7 +49,7 @@ local list: { PreyDef } = {
 		id = "Sardine",
 		name = "Sardine",
 		mass = 0.3,
-		schools = 8,
+		schools = 14,
 		perSchool = 10,
 		spread = 3,
 		speed = 9,
@@ -54,7 +64,7 @@ local list: { PreyDef } = {
 		id = "Wrasse",
 		name = "Kelp Wrasse",
 		mass = 0.9,
-		schools = 7,
+		schools = 12,
 		perSchool = 6,
 		spread = 2.6,
 		speed = 7,
@@ -75,6 +85,10 @@ local list: { PreyDef } = {
 		speed = 8,
 		pathRadius = { 26, 48 },
 		depth = { 20, 120 },
+		zones = {
+			{ band = { 150, 830 }, schools = 8 },
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 4, depth = { 80, 300 } }, -- Open Blue haul
+		} :: { Zone },
 		respawn = 15,
 		back = Color3.fromRGB(200, 72, 70),
 		belly = Color3.fromRGB(240, 186, 170),
@@ -90,7 +104,11 @@ local list: { PreyDef } = {
 		speed = 5,
 		pathRadius = { 20, 40 },
 		depth = { 8, 60 },
-		band = { 300, 580 },
+		zones = {
+			{ band = { 520, 830 }, schools = 5 },
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 5, depth = { 60, 260 } }, -- Open Blue haul
+			{ band = { 980, 1440 }, angles = { 318, 64 }, schools = 2 }, -- the Ruins
+		} :: { Zone },
 		respawn = 20,
 		back = Color3.fromRGB(96, 92, 70),
 		belly = Color3.fromRGB(176, 168, 130),
@@ -106,7 +124,10 @@ local list: { PreyDef } = {
 		speed = 12,
 		pathRadius = { 50, 90 },
 		depth = { 40, 180 },
-		band = { 500, 900 },
+		zones = {
+			{ band = { 700, 1250 }, schools = 4 },
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 2, depth = { 60, 300 } },
+		} :: { Zone },
 		respawn = 25,
 		back = Color3.fromRGB(110, 124, 132),
 		belly = Color3.fromRGB(210, 216, 220),
@@ -122,7 +143,10 @@ local list: { PreyDef } = {
 		speed = 10,
 		pathRadius = { 70, 120 },
 		depth = { 40, 160 },
-		band = { 620, 940 },
+		zones = {
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 4, depth = { 60, 330 } }, -- the Open Blue is shark water
+			{ band = { 980, 1440 }, angles = { 318, 64 }, schools = 1 },
+		} :: { Zone },
 		respawn = 35,
 		back = Color3.fromRGB(92, 104, 114),
 		belly = Color3.fromRGB(222, 226, 228),
