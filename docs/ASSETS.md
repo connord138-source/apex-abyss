@@ -18,6 +18,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
+| `shade_skins` | `<Fish>_Shades.glb` ×6: every shade's skin for each fish (28 quads each; tools/shades, screened 2026-10-08) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
@@ -54,6 +55,35 @@ Don't scale or position anything; the code does it:
 | Prey | One MeshPart each, scaled to the fish's length, moved with `BulkMoveTo`, with a small yaw wiggle. |
 | Keepers | `WorldService.keeper` fits `WorldProps.Keeper<VendorId>` over the placeholder ball behind each counter (the ball and eyes hide), turned to face the beacon like the stall (a GLB prop's front is +Z). |
 | Props | `Props.dress` fits a copy over its placeholder part (kelp, boulders, coral, the beacon, stalls, lanterns) and hides the part. Shrimp, starfish and shells go through `PropParts` and keep the client's bulk movement. |
+
+## Shade skins (tools/shades)
+
+Every shade is a texture per fish, made offline from the fish's own texture
+(owner, 2026-10-08: shades need "much much more variance and depth"). To change or
+add one, edit its recipe in `tools/shades/make_shades.py` (`RECIPES`) and its entry
+in `Config/Shades.luau`, then from the repo root (Python 3.11 with bpy, numpy,
+scipy, pillow; torch and transformers for the screen):
+
+```
+python3.11 tools/shades/bake_maps.py -- assets/tripo/species/<Fish>.glb assets/shades/maps/<Fish>.npz   # once per fish
+python3.11 tools/shades/make_shades.py assets/shades/maps assets/shades/skins [Fish ...] [--only=Shade,Shade]
+python3.11 tools/shades/render_shades.py -- assets/tripo/species/<Fish>.glb assets/shades/skins <renders> [Shade ...]
+python3.11 tools/shades/contact_sheet.py <renders> sheet.jpg <Fish>
+python3.11 tools/shades/pack_shades.py -- assets/tripo/species/<Fish>.glb assets/shades/skins/<Fish> assets/shades/glb/<Fish>_Shades.glb
+python3.11 tools/shades/screen_shades.py assets/shades/glb/<Fish>_Shades.glb --base assets/shades/maps
+```
+
+Upload only GLBs whose screen exits 0 (one fish at a time; it ran out of memory on
+all six at once). A soft blend of orange or gold into white comes out peach or
+beige and is flagged as skin tone: use hard edges and golds with no blue. Near-white
+shades on fish with dark parts (the Angler's teeth) can trip the classifier: keep
+pale shades mid-toned. Eyes are picked on the side face renders (`find_eyes.py`,
+then checked by hand in `eyes.json`); the teeth, mouth and the Angler's lure are
+kept from the fish's own texture.
+
+In Studio: File → Import 3D, one `assets/shades/glb/<Fish>_Shades.glb` at a time
+(wait a few minutes between them for moderation), then run
+`tools/studio/organize_shades.luau` in the Command Bar and save the place.
 
 ## Checks
 

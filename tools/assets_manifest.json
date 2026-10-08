@@ -35,6 +35,11 @@
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/ea78d41d-e7ec-40b9-a8ec-ee11dea5f531.zip",
       "into": "assets/glb",
       "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept"
+    },
+    "shade_skins": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/a822584e-9e03-4e71-9520-6f6982c9e845.zip",
+      "into": "assets/shades/glb",
+      "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per shade (28 each, 168 skins), made by tools/shades and cleared by screen_shades.py (color rules + classifier) on 2026-10-08. Import one fish at a time, then tools/studio/organize_shades.luau."
     }
   }
 }
