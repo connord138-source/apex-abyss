@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local AmbienceController = require(script.Parent.AmbienceController)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -23,6 +24,18 @@ local SwimController = require(script.Parent.SwimController)
 local Bosses = Config.Bosses
 
 local BossController = {}
+
+-- Where a boss rises: the biome at the middle of its patrol (the countdown said
+-- OPEN BLUE for the Giant Squid too, playtest 2026-10-08)
+local function haunt(id: any): string
+	local def = if typeof(id) == "string" then Bosses.byId[id] else nil
+	if def == nil then
+		return "THE DEEP"
+	end
+	local patrol = def.patrol
+	local biome = Biomes.at(patrol.direction * (patrol.band[1] + patrol.band[2]) / 2)
+	return if biome then string.upper(biome.name) else "THE DEEP"
+end
 
 local gui: ScreenGui
 local bar: Frame
@@ -244,7 +257,7 @@ local function step(dt: number)
 		countdown.Visible = left > -1
 		local name = if typeof(state.name) == "string" then string.upper(state.name) else "THE BOSS"
 		countdownLabel.Text = if left > 0
-			then `THE {name} RISES IN {clockText(left)} · OPEN BLUE`
+			then `THE {name} RISES IN {clockText(left)} · {haunt(state.id)}`
 			else `THE {name} IS RISING`
 	else
 		countdown.Visible = false
