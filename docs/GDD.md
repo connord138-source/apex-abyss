@@ -608,7 +608,10 @@ Open Blue "a large black wasteland"): the map's radius went 1,000 → 1,500, the
 
 "Clearly need a light source for abyssal trench too which needs to be noted to the
 player ... That could be the perk of the angler fish." The Trench is `dark`: below the
-deep floor the water goes near-black for a fish with no lamp. The Anglerfish's lure is
+deep floor the light goes out (no sun, ambient or reflections), so all you see is what
+glows or is lit: your lamp's pool of light, glowing shades, the plankton, the glow
+clusters on the canyon walls, and the bosses' own eerie glow (playtest 2026-10-08:
+done with fog and exposure instead, it was pure black even with a lantern). The Anglerfish's lure is
 a lamp (its species perk), and the Tidecharm Trader sells a Deep Lantern (350 coral,
 10 minutes). Lamps light the dark for everyone round the fish. The biome banner and
 chip warn PITCH DARK · bring a light.

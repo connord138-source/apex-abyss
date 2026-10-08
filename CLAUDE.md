@@ -265,7 +265,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     fish is dragged to the beak: server sets `HeldBy`/`HeldUntil` on the character,
     the client's SwimController.hold overrides the swim; mash BITE or DASH sends
     `Struggle`, 6 breaks it; 3 bites on the squid by teammates break it too and pay
-    them a Kraken Beak each), **ink** (6 s black cloud, 55 studs; the camera inside
+    them a Kraken Beak each; hunting, it rises to meet its prey up to 260 studs off
+    the floor, since clamped to its lurk band it sank away from everyone and never
+    grabbed, playtest 2026-10-08), **ink** (6 s black cloud, 55 studs; the camera inside
     goes blind, `OceanController.setBlind`; its tag hides) straight into a **jet**
     (120 studs away). Enraged under 65%: two grabs at once, half the grab cooldown,
     **whirlpool** (1.2 s tell, 3 s pull of 30 stud/s² within 70 studs). Mantle under
@@ -330,11 +332,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     by `organize_imports`) the way bosses draw `FishModels`. Never pull the MeshPart
     out of a rigged Model and flip it.
 - **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
-  and radii scaled with them (`Config/Bosses.luau`).
+  and radii scaled with them (`Config/Bosses.luau`). **Bosses are solid** (playtest
+  2026-10-08: the Megalodon and fish phased through each other): your own fish is
+  pushed out of a boss's body capsule on the client (`PredatorController` `solid`),
+  writing the swim velocity directly so a bite lunge into it still lands.
 - **The Trench is pitch dark (owner: "clearly need a light source for abyssal trench
   ... could be the perk of the angler fish"):** `Biomes` `dark`; `OceanController.setDark`
-  (BiomeController sets it below the deep floor in a dark biome: near-black, a lamp
-  keeps 45% of the light); the Anglerfish's lure is a lamp (`Lamp = "lure"` attribute
+  (BiomeController sets it below the deep floor in a dark biome). **The dark is the
+  light going out, never fog or exposure** (playtest 2026-10-08: Atmosphere density
+  1.0 and exposure −3.6 made it pure black even with a lantern, hiding glow skins and
+  plankton): in the dark the client fades `Lighting.Brightness`, `Ambient`,
+  `OutdoorAmbient` and the environment scales to near zero (the server's values are
+  kept and put back), turns the haze black, and leaves the Trench grade at density
+  0.88 and exposure −0.75, so lamps, glowing skins, plankton and the walls' glow
+  clusters (plain Neon, never `Props.dress`ed) all read. Bosses glow faintly in the
+  dark (`PredatorController` `DARK_GLOW`, violet for the squid) so they're
+  silhouettes, not invisible. A lamp holder's view is 15% less dark. The Anglerfish's
+  lure is a lamp (`Lamp = "lure"` attribute
   from WardrobeService) and the Tidecharm Trader sells a **Deep Lantern** (350 coral,
   10 min, `Lamp = "lantern"`); `LampController` hangs PointLights on lit fish for
   everyone; the biome banner and chip say PITCH DARK · bring a light.
@@ -344,8 +358,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   blue-green specks below the drop-off's foot (none on the shelf, 55% on the deep
   floor, all of it at the Trench's bottom; `glowAt`), every fish swimming through
   leaves a brief sparkling wake (by speed, within 260 studs), and
-  `OceanController.setGlow` gives the pitch dark a very faint teal lift (+0.45
-  exposure at most). WorldService lays glowing plankton mats on the deep floors
+  `OceanController.setGlow` gives the pitch dark a very faint teal ambient light
+  (`GLOW_AMBIENT`). WorldService lays glowing plankton mats on the deep floors
   (`PlanktonMats`: Trench 46, Vents 18, Open Blue 16, Ruins 12; every other one a dim
   PointLight). A lamp is still the real light; this only keeps the deep from being
   dead black.
@@ -358,8 +372,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   (who: the experience's owner or group owner, `ADMIN_USER_IDS`, anyone in Studio;
   re-checked on every call), `AdminActions.luau` (coral add/set, shells, set level,
   Haul, DNA, boss trophies, Kelp Wraps, charms, unlock species, every shade, treasure
-  maps, heal, get eaten, title, restart tutorial, teleport to a biome, summon/hurt/
-  dismiss a boss), `AdminController` (ADMIN button bottom-left, target me/everyone/
+  maps, heal, get eaten, title, restart or finish the tutorial (testers: species
+  select at once), teleport to a biome, summon/hurt/dismiss a boss), `AdminController` (ADMIN button bottom-left, target me/everyone/
   next player). The `Admin` RemoteFunction answers a line of text.
 - **Den bases (owner, 2026-10-07: "an upgradable base that gets bigger and deeper as
   it upgrades. Other players can go in and check out your base but can't take or do
@@ -382,7 +396,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   model and its mass, `data.stats.bestPrey/bestPreyMass` from HuntService), Megalodon
   teeth and Kraken beaks taken, and the worn title over the door
   (`Events.trophies`). Visitors can swim in (dens are safe) and only look; banking
-  stays owner-only. Menu: the stall hint shows YOUR DEN at your own Haul Pool
+  stays owner-only. The whole carved room is safe however far it was upgraded back
+  (`Layout.denAt`, used by `Layout.inHub`; the back of a Burrow was outside the safe
+  zone, playtest 2026-10-08). Menu: the stall hint shows YOUR DEN at your own Haul Pool
   (`MenuController.openDen`: upgrade, glow, slots → pick list). The seamount's foot
   was widened (Cave terrace +36, down to −26) so upgraded dens stay inside the rock.
 - **Roll reveal cards are photos (owner, 2026-10-07: "better designs for the random
@@ -396,7 +412,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   the tier's color, a spotlight, a floor shadow, a nameplate with a tier gem, a
   hairline, a foil sweep from Epic up and a holographic edge from Mythic up; losers
   dim. Subjects are built once per reel and cloned; a card gets its shot only when it
-  nears the window (`attachPhoto`). The result shows a shade's swatches and Rare+
+  nears the window (`attachPhoto`). The current fish's shade skins preload on spawn
+  (`CardPhoto.warm`) and a shade card fades in once its skin has loaded, never a bare
+  white fish first; parts and variants are shot nearly side-on so their shape reads.
+  A boss reward's reveal (`from`) rolls a reel of Rare+ shades and says "won from the
+  Megalodon", not "dug up from treasure". The result shows a shade's swatches and Rare+
   wins burst motes.
 - **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "All of
   the shades in general need much much more variance and depth than just a slight
@@ -433,7 +453,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   the underwater feel of Subnautica"; "the open blue is just a large black
   wasteland"):** `OceanController`'s grades thicken and darken the water with depth
   (Atmosphere density 0.68 at the surface → 0.76 on the shelf → 0.88 on the deep floor
-  → 0.97 in the Trench, exposure down to −1.5, plus classic fog with a `sight` per
+  and in the Trench, exposure down to −0.75; the Trench's black is the dark, above, plus classic fog with a `sight` per
   grade in case the Atmosphere ever goes), and the deep floor grade is a deep blue
   (the Mud material is blue-grey), never black; only the Trench's `dark` goes
   near-black. The sky, surface and upper atmosphere are the other (PC) chat's
@@ -442,7 +462,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Exits (owner, 2026-10-08: "a flashing blue box that says EXIT in black on every
   exit ... needs to be more subtle and built in"):** each tunnel mouth has a carved
   slate lintel with EXIT on it and a teal lantern either side, and four lanterns ring
-  the oculus (`WorldService` `exitDressing`, tag `ExitLight`). The tutorial's
+  the oculus (`WorldService` `exitDressing`, tag `ExitLight`). They're placed by
+  raycast on the real rock face (`wallAt`) after `awaitTerrain`: at a fixed radius
+  the lintel sank into the ragged cave wall and the lanterns sat in the next dens'
+  doorways (playtest 2026-10-08). The tutorial's
   find-the-exit step breathes those lanterns brighter (`TutorialController`
   `pulseExits`) instead of drawing chips, and its remaining marker (BANK HERE) is thin
   text with a short line, breathing slowly, no box.
@@ -471,8 +494,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Motion:** `Bubbles.luau` is the one bubble look (bursts and mouth streams);
     `BubbleController` streams bubbles off every fish's mouth by speed; vents and ~37
     seeps on the shelf and deep floor send bubble columns up (`WorldService`
-    `bubbleColumn`); `KelpController` sways the kelp within 180 studs of the camera
-    (one BulkMoveTo a frame).
+    `bubbleColumn`); `KelpController` sways the kelp (in `World.Biomes.Kelp`) within
+    180 studs of the camera (one BulkMoveTo a frame).
 - **Ghost is spectral (owner, 2026-10-08: "the whole fish needs a similar to ghost from
   sea of thieves glow ... a very rare skin"):** a shade with `spectral = true` turns
   the whole fish ghostly, not just its edges: ForceField see-through body, a breathing

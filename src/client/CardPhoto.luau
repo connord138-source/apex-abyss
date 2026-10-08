@@ -8,8 +8,10 @@
 -- helix, rolled Kelp Wraps, a Lucky Charm. Imported props are used where they exist
 -- (WorldProps, PreyModels). Each subject is built once per reel and cloned into the
 -- cards that show it.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
@@ -473,6 +475,25 @@ local function master(outcome: Outcome): Model?
 	return model
 end
 
+-- Loads the current fish's shade skins in the background, so a reel's shade cards
+-- don't show a bare white fish while their textures download (playtest
+-- 2026-10-08). Once per fish per session.
+local warmed: { [string]: boolean } = {}
+function CardPhoto.warm()
+	local id = myFish(nil)
+	local root = ReplicatedStorage:FindFirstChild("ShadeSkins")
+	local folder = if root then root:FindFirstChild(id) else nil
+	if folder == nil or warmed[id] then
+		return
+	end
+	warmed[id] = true
+	task.spawn(function()
+		pcall(function()
+			ContentProvider:PreloadAsync({ folder })
+		end)
+	end)
+end
+
 -- Forget the built subjects (the player's fish or look changed)
 function CardPhoto.reset()
 	for _, model in masters do
@@ -500,10 +521,40 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	world.Parent = frame
 	local model = source:Clone()
 	model.Parent = world
+	-- A shade card waits for its skin's textures and fades in, instead of showing a
+	-- bare white fish until they arrive (at most a few seconds)
+	local skins: { Instance } = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("SurfaceAppearance") and d.Name == "ShadeSkin" then
+			table.insert(skins, d)
+		end
+	end
+	if #skins > 0 then
+		frame.ImageTransparency = 1
+		local shown = false
+		local function show()
+			if shown or frame.Parent == nil then
+				return
+			end
+			shown = true
+			TweenService:Create(frame, TweenInfo.new(0.18), { ImageTransparency = 0 }):Play()
+		end
+		task.spawn(function()
+			pcall(function()
+				ContentProvider:PreloadAsync(skins)
+			end)
+			show()
+		end)
+		task.delay(4, show)
+	end
 	local root = model.PrimaryPart
 	if root and model:GetAttribute("Pose") == "fish" then
-		-- Three-quarter, head to the left and toward us, nose lifted: a hero pose
-		root.CFrame = CFrame.Angles(0, math.rad(118), 0) * CFrame.Angles(math.rad(8), 0, math.rad(-5))
+		-- Three-quarter, head to the left and toward us, nose lifted: a hero pose. A
+		-- part or variant is about its shape, so it's shown nearly side-on (a snout
+		-- pointing at the camera read as a white blob, playtest 2026-10-08)
+		local profile = outcome.kind == "part" or outcome.kind == "variant"
+		root.CFrame = CFrame.Angles(0, math.rad(if profile then 98 else 118), 0)
+			* CFrame.Angles(math.rad(if profile then 4 else 8), 0, math.rad(-5))
 	elseif root then
 		model:PivotTo(CFrame.Angles(0, math.rad(-18), 0) * model:GetPivot())
 	end

@@ -31,6 +31,17 @@ local function finish(player: Player, data: DataService.PlayerData)
 	Net.notify(player, `Tutorial complete! The {species.name} is yours, and so is your first roll`, "rare")
 end
 
+-- Finishes the tutorial now, with its reward (Admin: testers skip straight to
+-- species select). False if it was already done.
+function TutorialService.complete(player: Player): boolean
+	local data = DataService.get(player)
+	if data == nil or data.tutorial.done then
+		return false
+	end
+	finish(player, data)
+	return true
+end
+
 -- The Nibbler's level, for the level step.
 local function nibblerLevel(data: DataService.PlayerData): number
 	return Size.level(Progress.mass(data, Config.Species.STARTER))

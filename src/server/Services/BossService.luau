@@ -1376,14 +1376,21 @@ local function tick(boss: Boss, dt: number, now: number)
 			desired = (boss.waypoint - predator.position).Unit * speed * 0.55
 			predator.mode = "roam"
 		end
-		-- The squid keeps to its depth band: deep while it lurks, high in its mantle phase
+		-- The squid keeps to its depth band: deep while it lurks, high in its mantle
+		-- phase. Hunting, it rises to meet its prey (up to its predator depth limit):
+		-- clamped to the band, it sank away from every fish above the Trench floor and
+		-- never grabbed (playtest 2026-10-08).
 		if def.kit == "squid" then
 			local band = depthBand(boss)
 			local floor = Seafloor.y(predator.position.X, predator.position.Z)
 			local y = predator.position.Y - floor
+			local top = band[2]
+			if root then
+				top = math.clamp(root.Position.Y - floor + 20, band[2], def.predator.depth[2])
+			end
 			if y < band[1] then
 				desired = Vector3.new(desired.X, math.max(desired.Y, speed * 0.5), desired.Z)
-			elseif y > band[2] then
+			elseif y > top then
 				desired = Vector3.new(desired.X, math.min(desired.Y, -speed * 0.5), desired.Z)
 			end
 		end

@@ -129,17 +129,25 @@ local function card(parent: Instance, outcome: RollOdds.Outcome, x: number): Fra
 		glow.BackgroundTransparency = ring[2]
 		glow.ZIndex = 1
 	end
-	-- The floor shadow under it
+	-- A soft contact shadow just under the subject, fading out at its ends (a hard
+	-- bar further down read as an empty dark pill, playtest 2026-10-08)
 	local shadow = box(
 		frame,
-		UDim2.fromOffset(112, 16),
-		UDim2.fromOffset(CARD_W / 2, 150),
+		UDim2.fromOffset(124, 12),
+		UDim2.fromOffset(CARD_W / 2, 136),
 		Color3.new(0, 0, 0),
 		UDim.new(1, 0),
 		Vector2.new(0.5, 0.5)
 	)
-	shadow.BackgroundTransparency = 0.55
+	shadow.BackgroundTransparency = 0
 	shadow.ZIndex = 2
+	local soft = Instance.new("UIGradient")
+	soft.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0.62),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	soft.Parent = shadow
 	-- Where the photo goes
 	local slot = Instance.new("Frame")
 	slot.Name = "Shot"
@@ -331,6 +339,20 @@ local function spinSeconds(tier: Tier): number
 	return 3.4
 end
 
+-- Filler for a boss reward's reel: the Rare-or-better shades a kill can roll
+local function bossFiller(rng: Random): RollOdds.Outcome
+	local pool: { RollOdds.Outcome } = {}
+	for _, shade in Config.Shades.list do
+		if shade.chance > 0 and tierOf(shade.tier).order >= Tiers.byId.Rare.order then
+			table.insert(
+				pool,
+				{ id = shade.id, kind = "shade", name = `{shade.name} Shade`, tier = shade.tier }
+			)
+		end
+	end
+	return pool[rng:NextInteger(1, #pool)]
+end
+
 -- Filler for a treasure reel: the rewards a map tier can hold (Config/Treasure).
 local function treasureFiller(rng: Random, poolTier: string): RollOdds.Outcome
 	local tier = Config.Treasure.byId[poolTier]
@@ -363,6 +385,8 @@ local function reveal(result: { [string]: any })
 		return
 	end
 	local treasurePool: string? = if typeof(result.pool) == "string" then result.pool else nil
+	-- A boss's reward (BossController): won from it, not dug up (playtest 2026-10-08)
+	local bossFrom: string? = if typeof(result.from) == "string" then result.from else nil
 	local tier = tierOf(outcome.tier)
 	local big = tier.order >= Tiers.byId.Rare.order
 	Input.cursorWanted = true
@@ -414,9 +438,11 @@ local function reveal(result: { [string]: any })
 	local cards: { Frame } = {}
 	local outcomes: { RollOdds.Outcome } = {}
 	CardPhoto.reset() -- shots of this fish, as it is now
+	CardPhoto.warm()
 	for i = 1, REEL_CARDS do
 		local shown = if i == LAND_INDEX
 			then outcome
+			elseif bossFrom then bossFiller(rng)
 			elseif treasurePool then treasureFiller(rng, treasurePool)
 			else filler(rng)
 		outcomes[i] = shown
@@ -574,10 +600,11 @@ local function reveal(result: { [string]: any })
 		detail = "A Lucky Charm: your next roll's rare odds ×2"
 	elseif result.duplicate then
 		detail = `Already yours · +{Ui.number(result.coral or 0)} Coral instead`
-			.. (if treasurePool then "" else ` · {RollOdds.oneIn(probability)}`)
+			.. (if treasurePool or bossFrom then "" else ` · {RollOdds.oneIn(probability)}`)
 	else
-		detail = if treasurePool
-			then "NEW · dug up from treasure"
+		detail = if bossFrom
+			then `NEW · won from the {bossFrom}`
+			elseif treasurePool then "NEW · dug up from treasure"
 			else `NEW · {RollOdds.oneIn(probability)}`
 	end
 	if (result.luck or 1) > 1 then
@@ -855,6 +882,12 @@ function RollController.start()
 	hud = Ui.screen("Wallet", playerGui, 6)
 	revealGui = Ui.screen("RollReveal", playerGui, 20)
 	buildWallet()
+	-- This fish's shade skins load ahead of any roll (a species switch respawns, so
+	-- each new fish gets its own)
+	Players.LocalPlayer.CharacterAdded:Connect(function()
+		task.delay(2, CardPhoto.warm)
+	end)
+	task.delay(2, CardPhoto.warm)
 	ClientState.changed:connect(onState)
 	if ClientState.current then
 		onState(ClientState.current)

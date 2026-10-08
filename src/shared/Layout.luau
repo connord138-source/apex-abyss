@@ -94,12 +94,45 @@ function Layout.counterDistance(angleDegrees: number, point: Vector3): number
 	return (localPoint - closest).Magnitude
 end
 
+-- How far back from the cavern wall a den's room can reach once fully upgraded: the
+-- room's own depth, DenBuilder's carve behind it (ROOM_BACK 21 from the den's
+-- middle, then up to Dens.maxExtend more and a rounded back), plus a margin
+local DEN_REACH = hub.radius + hub.denDepth / 2 + 21 + Config.Dens.maxExtend + 12
+local DEN_BOTTOM = hub.denFloorY - Config.Dens.maxPit - 4
+local DEN_TOP = hub.denFloorY + hub.denHeight + 6
+local SEGMENT_HALF = math.pi / hub.segments
+
+-- The den a position is inside (its index), or nil. The whole room counts, however
+-- far an upgrade carved it back (playtest 2026-10-08: the back of a Burrow was
+-- outside the safe zone).
+function Layout.denAt(position: Vector3): number?
+	local offset = position - hub.center
+	if offset.Y < DEN_BOTTOM or offset.Y > DEN_TOP then
+		return nil
+	end
+	local flat = Vector2.new(offset.X, offset.Z).Magnitude
+	if flat < hub.radius or flat > DEN_REACH then
+		return nil
+	end
+	local angle = math.atan2(offset.Z, offset.X)
+	for index, segment in denSegments do
+		local delta = (angle - Layout.segmentAngle(segment) + math.pi) % (2 * math.pi) - math.pi
+		if math.abs(delta) <= SEGMENT_HALF then
+			return index
+		end
+	end
+	return nil
+end
+
 -- Whether a position is inside the hub (the cavern, its dens or its tunnels), where
 -- nobody can be eaten.
 function Layout.inHub(position: Vector3): boolean
 	local offset = position - hub.center
 	local flat = Vector2.new(offset.X, offset.Z).Magnitude
-	return offset.Y < hub.height + 4 and flat < hub.radius + hub.wallThickness + hub.tunnelLength * 0.5
+	if offset.Y < hub.height + 4 and flat < hub.radius + hub.wallThickness + hub.tunnelLength * 0.5 then
+		return true
+	end
+	return Layout.denAt(position) ~= nil
 end
 
 return Layout

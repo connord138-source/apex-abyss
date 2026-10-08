@@ -90,23 +90,26 @@ local GRADES: { Grade } = {
 		y = World.deep.ventsFloorY,
 		color = Color3.fromRGB(10, 48, 92),
 		decay = Color3.fromRGB(4, 22, 52),
-		density = 0.92,
+		density = 0.9,
 		tint = Color3.fromRGB(166, 190, 226),
-		brightness = -0.08,
+		brightness = -0.07,
 		saturation = -0.12,
-		exposure = -0.85,
+		exposure = -0.7,
 		sight = 180,
 	},
 	{
 		y = World.trench.floorY,
+		-- Thick, not opaque: the Trench's black is the dark (no light), not fog, so
+		-- what glows or is lit can still be seen (playtest 2026-10-08: density 1.0 and
+		-- exposure -3.6 left it pure black even with a lantern)
 		color = Color3.fromRGB(5, 18, 38),
 		decay = Color3.fromRGB(2, 8, 20),
-		density = 0.97,
+		density = 0.88,
 		tint = Color3.fromRGB(150, 172, 214),
-		brightness = -0.12,
+		brightness = -0.06,
 		saturation = -0.2,
-		exposure = -1.5,
-		sight = 120,
+		exposure = -0.75,
+		sight = 160,
 	},
 }
 
@@ -129,7 +132,8 @@ local heart = 0
 local blindTarget = 0
 local blind, blindVelocity = 0, 0
 local ink: ColorCorrectionEffect
--- Pitch dark biomes (the Trench): near-black unless this fish carries a lamp
+-- Pitch dark biomes (the Trench): the light goes out, so only lamps and glowing
+-- things show
 local darkTarget = 0
 local dark, darkVelocity = 0, 0
 local lit = false
@@ -138,6 +142,15 @@ local DARK_TINT = Color3.fromRGB(26, 30, 48)
 -- Plankton glow in the deepest water (PlanktonController): a very faint blue-green
 -- light, most noticeable in the pitch dark
 local GLOW_TINT = Color3.fromRGB(70, 150, 150)
+-- What's left of the light in the full dark, and the plankton's very faint share
+local BLACK_AMBIENT = Color3.fromRGB(2, 3, 6)
+local GLOW_AMBIENT = Color3.fromRGB(12, 30, 34)
+local DARK_WATER, DARK_DECAY = Color3.fromRGB(3, 7, 14), Color3.fromRGB(1, 3, 6)
+
+-- The light the server set (WorldService.setupLighting), read when the dark comes
+-- and put back when it lifts
+type Light = { brightness: number, ambient: Color3, outdoor: Color3, diffuse: number, specular: number }
+local daylight: Light? = nil
 
 local function blendGrades(a: Grade, b: Grade, t: number): Grade
 	return {
@@ -198,23 +211,54 @@ local function step(dt: number)
 	grade.Saturation = blended.saturation - dread * 0.45
 	grade.Contrast = 0.06 + dread * (0.1 + beat * 0.16)
 	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 - dread * 0.55
-	-- The dark: a lamp holds a little of the light; everyone else sees only the glow specks
-	dark, darkVelocity = Spring.number(dark, darkVelocity, darkTarget * (if lit then 0.45 else 1), 1.8, dt)
+	-- The dark: the light itself goes out (sun, ambient, the environment's
+	-- reflections), so only what glows or is lit shows: lamps, glowing skins, the
+	-- plankton, the walls' glow specks. Fog and a crushed exposure hid all of those
+	-- too (playtest 2026-10-08). A lamp holder's own view is a touch less dark.
+	dark, darkVelocity = Spring.number(dark, darkVelocity, darkTarget * (if lit then 0.85 else 1), 1.8, dt)
 	if dark > 0.001 then
-		grade.TintColor = grade.TintColor:Lerp(DARK_TINT, dark * 0.8)
-		grade.Brightness -= dark * 0.5
-		grade.Saturation -= dark * 0.5
-		Lighting.ExposureCompensation -= dark * 2.6
+		local day: Light = daylight
+			or {
+				brightness = Lighting.Brightness,
+				ambient = Lighting.Ambient,
+				outdoor = Lighting.OutdoorAmbient,
+				diffuse = Lighting.EnvironmentDiffuseScale,
+				specular = Lighting.EnvironmentSpecularScale,
+			}
+		daylight = day
+		local d = math.min(dark, 1)
+		-- The plankton's very faint light is all that's left (owner: "to give very
+		-- very faint light")
+		local floor = BLACK_AMBIENT:Lerp(GLOW_AMBIENT, glow)
+		Lighting.Brightness = day.brightness * (1 - d)
+		Lighting.Ambient = day.ambient:Lerp(floor, d)
+		Lighting.OutdoorAmbient = day.outdoor:Lerp(floor, d)
+		Lighting.EnvironmentDiffuseScale = day.diffuse * (1 - d)
+		Lighting.EnvironmentSpecularScale = day.specular * (1 - d)
+		grade.TintColor = grade.TintColor:Lerp(DARK_TINT, d * 0.3)
+		grade.Saturation -= d * 0.15
+		Lighting.ExposureCompensation -= d * 0.3
 		local atmosphereNow = atmosphere
 		if atmosphereNow and atmosphereNow.Parent then
-			atmosphereNow.Density = math.min(atmosphereNow.Density + dark * 0.25, 1)
+			atmosphereNow.Color = atmosphereNow.Color:Lerp(DARK_WATER, d)
+			atmosphereNow.Decay = atmosphereNow.Decay:Lerp(DARK_DECAY, d)
 		end
+		-- Glowing things bloom a little more in the dark
+		bloom.Intensity = 0.55 + d * 0.35
+		bloom.Threshold = 1.35 - d * 0.25
+	elseif daylight then
+		local day = daylight :: Light
+		Lighting.Brightness = day.brightness
+		Lighting.Ambient = day.ambient
+		Lighting.OutdoorAmbient = day.outdoor
+		Lighting.EnvironmentDiffuseScale = day.diffuse
+		Lighting.EnvironmentSpecularScale = day.specular
+		bloom.Intensity = 0.55
+		bloom.Threshold = 1.35
+		daylight = nil
 	end
-	-- The plankton's light: very faint, and only felt where it's darkest (owner: "to
-	-- give very very faint light")
 	if glow > 0.001 then
-		grade.TintColor = grade.TintColor:Lerp(GLOW_TINT, glow * (0.06 + dark * 0.14))
-		Lighting.ExposureCompensation += glow * dark * 0.45
+		grade.TintColor = grade.TintColor:Lerp(GLOW_TINT, glow * 0.06)
 	end
 	-- Ink: inside a squid's cloud the water goes near-black
 	blind, blindVelocity = Spring.number(blind, blindVelocity, blindTarget, 4, dt)
@@ -233,6 +277,11 @@ end
 
 function OceanController.setLit(value: boolean)
 	lit = value
+end
+
+-- How dark the water round the camera is right now (0..1)
+function OceanController.darkness(): number
+	return math.clamp(dark, 0, 1)
 end
 
 -- How thick the glowing plankton is around the camera (0..1); PlanktonController

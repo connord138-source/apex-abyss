@@ -216,7 +216,7 @@ local function rewardCard(summary: { [string]: any })
 				kind = "shade",
 				id = shade.id,
 				outcome = { id = shade.id, kind = "shade", name = `{shade.name} Shade`, tier = shade.tier },
-				pool = `{name} trophy`,
+				from = name,
 			})
 		end
 		local rolled = summary.shade
@@ -229,7 +229,7 @@ local function rewardCard(summary: { [string]: any })
 					outcome = { id = def.id, kind = "shade", name = `{def.name} Shade`, tier = def.tier },
 					duplicate = rolled.duplicate == true,
 					coral = if rolled.duplicate == true then rolled.coral else nil,
-					pool = `{name} kill`,
+					from = name,
 				})
 			end
 		end

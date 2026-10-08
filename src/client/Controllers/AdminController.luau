@@ -305,6 +305,7 @@ local function build()
 	actionRow("Heal fully", "heal", "HEAL", "secondary")
 	actionRow("Get eaten (lose the Haul)", "kill", "EAT", "danger")
 	actionRow("Restart the tutorial", "resetTutorial", "RESTART", "secondary")
+	actionRow("Finish the tutorial (species select)", "finishTutorial", "FINISH", "secondary")
 	pickRow("Teleport to", biomes, "goTo", "GO")
 
 	header("WORLD BOSSES")

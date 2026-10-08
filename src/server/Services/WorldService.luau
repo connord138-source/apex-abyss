@@ -361,12 +361,50 @@ local function exitLantern(parent: Instance, position: Vector3)
 	})
 end
 
-local function exitDressing(parent: Instance, at: (number, number) -> CFrame)
+-- Where the rock face is along `radial` from inside the cavern (the nearest of a
+-- few rays round `center`), or nil. The cavern wall is ragged Terrain, so a sign
+-- placed at a fixed radius sank into it (playtest 2026-10-08: the EXIT lintel was
+-- half inside the rock).
+local wallRays = RaycastParams.new()
+wallRays.FilterType = Enum.RaycastFilterType.Include
+local function wallAt(radial: Vector3, right: Vector3, center: Vector3, spread: number): number?
+	wallRays.FilterDescendantsInstances = { workspace.Terrain }
+	local nearest: number? = nil
+	for _, dx in { -spread, 0, spread } do
+		for _, dy in { -2, 2 } do
+			local origin = hub.center + radial * 50 + right * dx + Vector3.new(0, center.Y + dy, 0)
+			local hit = workspace:Raycast(origin, radial * 90, wallRays)
+			if hit then
+				local r = (hit.Position - hub.center):Dot(radial)
+				if r < hub.radius + 12 then
+					nearest = if nearest then math.min(nearest, r) else r
+				end
+			end
+		end
+	end
+	return nearest
+end
+
+-- A tunnel mouth's dressing: a slate lintel with EXIT on it on the rock above the
+-- opening, and a teal lantern on the rock either side of it. Built once the Terrain
+-- answers raycasts.
+local TUNNEL_RADIUS = hub.tunnelHeight / 2 - 2 -- Cave.luau's tube
+local function exitDressing(parent: Instance, segment: number)
+	local angle = Layout.segmentAngle(segment)
+	local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
+	local right = radial:Cross(Vector3.yAxis).Unit
+	local function at(r: number, y: number, side: number): CFrame
+		local position = hub.center + radial * r + right * side + Vector3.new(0, y, 0)
+		return CFrame.lookAt(position, position + radial)
+	end
+	-- Just above the tube's top (it's centered TUNNEL_RADIUS + 1 up)
+	local lintelY = TUNNEL_RADIUS * 2 + 1 + 4
+	local face = wallAt(radial, right, Vector3.new(0, lintelY, 0), 11) or (hub.radius - 1)
 	local lintel = block(
 		parent,
 		"ExitLintel",
-		Vector3.new(28, 4, 3),
-		at(hub.radius - 1, hub.tunnelHeight + 4),
+		Vector3.new(26, 4, 3),
+		at(face - 1.7, lintelY, 0),
 		ROCK_DARK,
 		Enum.Material.Slate
 	)
@@ -386,11 +424,20 @@ local function exitDressing(parent: Instance, at: (number, number) -> CFrame)
 	label.TextTransparency = 0.2
 	label.Text = "E X I T"
 	label.Parent = gui
+	-- The lanterns flank the opening on its own rock, not in the dens' doorways
+	-- beside it (they were 13 degrees out, in the next den's door)
+	local lanternY = TUNNEL_RADIUS + 1
 	for side = -1, 1, 2 do
-		local frame = at(hub.radius - 1, hub.tunnelHeight / 2 + 4) * CFrame.new(side * 21, 0, 0)
-		exitLantern(parent, frame.Position)
+		local offset = side * (TUNNEL_RADIUS + 3)
+		local sideRight = right * offset
+		local rockAt = wallAt(radial, right, Vector3.new(0, lanternY, 0) + sideRight, 0)
+		-- (a ray off the mouth's edge can run on down the tube: then the wall's radius)
+		local r = if rockAt then math.min(rockAt, hub.radius + 4) else hub.radius
+		exitLantern(parent, at(r - 1.6, lanternY, offset).Position)
 	end
 end
+
+local tunnelSegments: { number } = {}
 
 local function buildHub(parent: Instance)
 	local hubFolder = folder("Hub", parent)
@@ -408,7 +455,7 @@ local function buildHub(parent: Instance)
 			denIndex += 1
 			buildDen(hubFolder, denIndex, segment)
 		elseif kind == "tunnel" then
-			exitDressing(hubFolder, at)
+			table.insert(tunnelSegments, segment)
 		elseif kind == "wall" then
 			-- A sconce between openings, just proud of the rock
 			local sconce =
@@ -1184,29 +1231,37 @@ local function buildBiomes(parent: Instance)
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
 		local x, z = Seafloor.trenchPoint(r, side * rng:NextNumber(halfBottom + 6, halfTop - 30))
 		local position = Vector3.new(x, rng:NextNumber(trench.floorY + 10, World.deep.floorY - 15), z)
+		-- A glowing cluster: one bright bead and a few small ones round it. Never
+		-- dressed as a prop: the CrystalCluster mesh doesn't glow, and swapping it in
+		-- hid every speck in the dark (playtest 2026-10-08)
+		local color = if i % 4 == 0 then Color3.fromRGB(150, 120, 255) else Color3.fromRGB(110, 230, 255)
+		local size = rng:NextNumber(0.8, 2.2)
 		local speck = Instance.new("Part")
 		speck.Name = "Glow"
 		speck.Anchored = true
 		speck.CanCollide = false
 		speck.CanQuery = false
+		speck.CanTouch = false
 		speck.Shape = Enum.PartType.Ball
-		speck.Size = Vector3.one * rng:NextNumber(0.8, 2.2)
+		speck.Size = Vector3.one * size
 		speck.CFrame = CFrame.new(position)
-		speck.Color = Color3.fromRGB(110, 230, 255)
+		speck.Color = color
 		speck.Material = Enum.Material.Neon
 		speck.Parent = trenchGlow
+		for _ = 1, rng:NextInteger(2, 4) do
+			local bead = speck:Clone()
+			bead.Size = Vector3.one * size * rng:NextNumber(0.25, 0.5)
+			bead.CFrame = CFrame.new(position + rng:NextUnitVector() * size * rng:NextNumber(1.2, 2.4))
+			bead.Parent = trenchGlow
+		end
 		if i % 3 == 0 then
 			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(110, 230, 255)
+			light.Color = color
 			light.Brightness = 0.9
 			light.Range = 30
+			light.Shadows = false
 			light.Parent = speck
 		end
-		Props.dress(
-			speck,
-			"CrystalCluster",
-			{ cframe = speck.CFrame, size = Vector3.one * speck.Size.X * 2.5 }
-		)
 	end
 
 	-- Glowing plankton mats on the deepest floors (owner, 2026-10-08: "deepest depths
@@ -1376,6 +1431,10 @@ function WorldService.start()
 	buildHub(root)
 	buildVendors(root:FindFirstChild("Hub") :: Folder)
 	awaitTerrain()
+	local hubFolder = root:FindFirstChild("Hub") :: Folder
+	for _, segment in tunnelSegments do
+		exitDressing(hubFolder, segment)
+	end
 	buildBiomes(folder("Biomes", root))
 end
 

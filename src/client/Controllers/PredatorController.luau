@@ -22,6 +22,13 @@ local CameraController = require(script.Parent.CameraController)
 local OceanController = require(script.Parent.OceanController)
 local SwimController = require(script.Parent.SwimController)
 
+-- A boss's own light in the pitch dark (OceanController.darkness): bioluminescent
+-- violet for the squid, a cold blue otherwise
+local DARK_GLOW: { [string]: Color3 } = {
+	GiantSquid = Color3.fromRGB(130, 90, 255),
+	default = Color3.fromRGB(90, 160, 255),
+}
+
 local Predators = Config.Predators
 local Bosses = Config.Bosses
 
@@ -679,6 +686,33 @@ local function swimBones(visual: Visual, dt: number, relative: number)
 	SwimWave.applyBones(visual.bones, visual.spine, p, amplitude * 1.6 * soften, 0)
 end
 
+-- Bosses are solid: your own fish is pushed out of the body (a capsule from tail to
+-- nose, thickest mid-body) instead of swimming through it (playtest 2026-10-08: the
+-- Megalodon and fish phased through each other). It writes the swim velocity
+-- itself rather than shoving, so a bite lunge into the boss still lands.
+local function solid(visual: Visual)
+	local mine = SwimController.root()
+	if mine == nil or SwimController.isHeld() then
+		return
+	end
+	local half = visual.heading * visual.def.length * 0.42
+	local tail, span = visual.position - half, half * 2
+	local point = mine.Position
+	local t = math.clamp((point - tail):Dot(span) / math.max(span:Dot(span), 1e-4), 0, 1)
+	local girth = math.max(visual.bodySize.X, visual.bodySize.Y) * 0.5
+	local radius = girth * (0.45 + 0.55 * math.sin(math.pi * t)) + mine.Size.X * 0.5
+	local offset = point - (tail + span * t)
+	local distance = offset.Magnitude
+	if distance >= radius then
+		return
+	end
+	local out = if distance > 1e-3 then offset / distance else Vector3.yAxis
+	local velocity = SwimController.velocity
+	local into = velocity:Dot(out)
+	-- Stop moving into the body, then ease out of it
+	SwimController.velocity = velocity + out * (math.max(-into, 0) + (radius - distance) * 4)
+end
+
 local function step(dt: number)
 	local now = Timing.clock()
 	local renderAt = now - Predators.interpolationDelay
@@ -704,6 +738,9 @@ local function step(dt: number)
 		-- Turn smoothly toward the streamed heading
 		local blended = visual.heading:Lerp(heading, 1 - math.exp(-dt * 8))
 		visual.heading = if blended.Magnitude > 1e-3 then blended.Unit else heading
+		if visual.boss and not visual.hidden then
+			solid(visual)
+		end
 		local frame = frameOf(position, visual.heading)
 		local relative = speedOf(visual) / math.max(visual.def.speed, 1)
 		if visual.model then
@@ -779,9 +816,22 @@ local function step(dt: number)
 			glow.Color = Ui.color.danger
 			glow.Brightness = 0.8
 		else
+			-- In the dark a boss shows by its own eerie light, a faint pulsing glow and
+			-- rim, so it reads as a silhouette instead of vanishing (playtest
+			-- 2026-10-08: the Giant Squid couldn't be seen without a lamp)
+			local dark = if visual.boss then OceanController.darkness() else 0
 			jaw.FillTransparency = 1
-			jaw.OutlineTransparency = 1
-			glow.Brightness = 0
+			if dark > 0.05 then
+				local pulse = 0.5 + 0.5 * math.sin(now * 1.3)
+				local eerie = DARK_GLOW[visual.def.id] or DARK_GLOW.default
+				jaw.OutlineColor = eerie
+				jaw.OutlineTransparency = 1 - dark * (0.3 + 0.15 * pulse)
+				glow.Color = eerie
+				glow.Brightness = dark * (0.8 + 0.6 * pulse)
+			else
+				jaw.OutlineTransparency = 1
+				glow.Brightness = 0
+			end
 		end
 		-- The tag: hidden inside a blood cloud (sonar only), else the status line
 		visual.tag.Enabled = not visual.hidden and visual.bloodUntil <= now

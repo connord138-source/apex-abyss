@@ -97,8 +97,11 @@ end
 
 function KelpController.start()
 	task.spawn(function()
-		local world = Workspace:WaitForChild("World", 30)
-		local folder = if world then world:WaitForChild("Kelp", 30) else nil
+		-- The kelp lives in World.Biomes.Kelp, built once the Terrain answers raycasts
+		-- (looking for World.Kelp left every plant still, playtest 2026-10-08)
+		local world = Workspace:WaitForChild("World", 60)
+		local biomes = if world then world:WaitForChild("Biomes", 120) else nil
+		local folder = if biomes then biomes:WaitForChild("Kelp", 120) else nil
 		if folder == nil then
 			return
 		end

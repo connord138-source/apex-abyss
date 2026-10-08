@@ -18,6 +18,7 @@ local EconomyService = require(script.Parent.Services.EconomyService)
 local FishService = require(script.Parent.Services.FishService)
 local HuntService = require(script.Parent.Services.HuntService)
 local TreasureService = require(script.Parent.Services.TreasureService)
+local TutorialService = require(script.Parent.Services.TutorialService)
 local WardrobeService = require(script.Parent.Services.WardrobeService)
 
 type PlayerData = DataService.PlayerData
@@ -136,7 +137,9 @@ local function trophies(_admin: Player, targets: { Player }, currency: any, amou
 	each(targets, function(_, data)
 		data.trophies[currency] = (data.trophies[currency] or 0) + n
 	end)
-	return `+{n} {currency} for {names(targets)}`
+	-- "MegalodonTeeth" reads "Megalodon Teeth"
+	local label = string.gsub(currency, "(%l)(%u)", "%1 %2")
+	return `+{n} {label} for {names(targets)}`
 end
 
 local function wraps(_admin: Player, targets: { Player }, amount: any): string
@@ -255,6 +258,17 @@ local function resetTutorial(_admin: Player, targets: { Player }): string
 	return `Tutorial restarted for {names(targets)}`
 end
 
+-- Testers: finish the tutorial now (its reward too), so species can be switched
+local function finishTutorial(_admin: Player, targets: { Player }): string
+	local finished = 0
+	for _, player in targets do
+		if TutorialService.complete(player) then
+			finished += 1
+		end
+	end
+	return if finished > 0 then `Tutorial finished for {names(targets)}` else "Already finished"
+end
+
 -- Teleport: to a biome's middle, up off its floor
 local function goTo(_admin: Player, targets: { Player }, biomeId: any): string
 	local biome = if typeof(biomeId) == "string" then Config.Biomes.byId[biomeId] else nil
@@ -318,6 +332,7 @@ AdminActions.byName = {
 	kill = kill :: Handler,
 	title = title :: Handler,
 	resetTutorial = resetTutorial :: Handler,
+	finishTutorial = finishTutorial :: Handler,
 	goTo = goTo :: Handler,
 	summonBoss = summonBoss :: Handler,
 	hurtBoss = hurtBoss :: Handler,
