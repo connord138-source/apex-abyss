@@ -289,6 +289,15 @@ local function step(dt: number)
 		if outward > 0 then
 			velocity -= out * outward
 		end
+		-- And off the heading: from nearly still the fish turns from its heading, so
+		-- one left pointing out of the map turned a little, was clamped back to a
+		-- crawl and never came round (playtest 2026-10-07: stuck at the edge, every
+		-- key dead)
+		local facing = heading:Dot(out)
+		if facing > 0 then
+			local along = heading - out * facing
+			heading = if along.Magnitude > 1e-3 then along.Unit else out:Cross(Vector3.yAxis)
+		end
 	end
 	SwimController.velocity = velocity
 
