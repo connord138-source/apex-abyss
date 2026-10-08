@@ -192,8 +192,10 @@ end
 
 local function allShades(_admin: Player, targets: { Player }): string
 	each(targets, function(_, data)
-		for _, shade in Config.Shades.list do
-			data.shades[shade.id] = true
+		for _, species in Config.Species.list do
+			for _, shade in Config.Shades.list do
+				Progress.grantShade(data, shade.id, species.id)
+			end
 		end
 		for _, part in Config.Exotics.parts do
 			data.parts[part.id] = true

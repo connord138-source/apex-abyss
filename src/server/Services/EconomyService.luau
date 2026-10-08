@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local DataService = require(script.Parent.DataService)
+local Progress = require(script.Parent.Parent.Progress)
 local StateService = require(script.Parent.StateService)
 
 local EconomyService = {}
@@ -58,7 +59,8 @@ function EconomyService.start()
 		state.upgrades = data.upgrades
 		state.charms = data.charms
 		state.boosts = data.boosts
-		state.shades = data.shades
+		state.shades = Progress.shades(data) -- the current fish's (shades are per fish)
+		state.otherShades = Progress.otherShades(data)
 		state.parts = data.parts
 		state.variants = data.variants
 		state.equipped = data.equipped

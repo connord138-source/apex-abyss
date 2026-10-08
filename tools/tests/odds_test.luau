@@ -30,3 +30,38 @@ for _, e in RollOdds.table(1) do
 	end
 end
 print("sampling OK")
+-- Shades are per fish: a shade the fish has drops out of its table, the total is
+-- still exactly 100%, every other non-coral chance is unchanged, and coral takes
+-- the freed share
+local owned = {}
+local ownedCount = 0
+for _, e in RollOdds.table(1) do
+	if e.outcome.kind == "shade" and ownedCount < 6 then
+		owned[e.outcome.id] = true
+		ownedCount += 1
+	end
+end
+local base, without = {}, {}
+local baseCoral, withoutCoral, total = 0, 0, 0
+for _, e in RollOdds.table(1) do
+	base[e.outcome.kind .. ":" .. e.outcome.id] = e.probability
+	if e.outcome.kind == "coral" then baseCoral += e.probability end
+end
+for _, e in RollOdds.table(1, owned) do
+	assert(not (e.outcome.kind == "shade" and owned[e.outcome.id]), "an owned shade is still in the table")
+	without[e.outcome.kind .. ":" .. e.outcome.id] = e.probability
+	total += e.probability
+	if e.outcome.kind == "coral" then
+		withoutCoral += e.probability
+	else
+		local key = e.outcome.kind .. ":" .. e.outcome.id
+		assert(math.abs(e.probability - base[key]) < 1e-12, key .. " changed when shades were excluded")
+	end
+end
+assert(math.abs(total - 1) < 1e-9, "per-fish odds must add to 100%")
+assert(withoutCoral > baseCoral, "coral should take the excluded shades' share")
+for _ = 1, 200000 do
+	local o = RollOdds.pick(1, math.random(), owned)
+	assert(not (o.kind == "shade" and owned[o.id]), "an owned shade was rolled")
+end
+print(string.format("per-fish: %d owned shades out, total=%.12f, coral %.4f%% -> %.4f%%", ownedCount, total, baseCoral * 100, withoutCoral * 100))

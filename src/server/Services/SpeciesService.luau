@@ -11,6 +11,7 @@ local Layout = require(ReplicatedStorage.Shared.Layout)
 local Events = require(script.Parent.Parent.Events)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
+local Progress = require(script.Parent.Parent.Progress)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
 local HuntService = require(script.Parent.HuntService)
@@ -39,6 +40,7 @@ local function selectSpecies(player: Player, id: any)
 		return Net.notify(player, "Bank your Haul first", "bad")
 	end
 	data.current = id
+	Progress.syncShade(data) -- each fish wears its own shade, if it has one
 	DataService.markDirty(player)
 	FishService.spawn(player)
 	Net.notify(player, `You're a {species.name} now`, "good")

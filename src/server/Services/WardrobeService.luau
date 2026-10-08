@@ -51,10 +51,10 @@ function WardrobeService.equip(player: Player, kind: string, id: string, slot: s
 	end
 	local equipped = data.equipped
 	if kind == "shade" then
-		if id ~= "" and not data.shades[id] then
+		if id ~= "" and not Progress.ownsShade(data, id) then
 			return
 		end
-		equipped.shade = id
+		Progress.wearShade(data, id)
 	elseif kind == "variant" then
 		if id ~= "" and not data.variants[id] then
 			return

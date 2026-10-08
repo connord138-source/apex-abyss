@@ -9,6 +9,7 @@ local Timing = require(ReplicatedStorage.Shared.Timing)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local Progress = require(script.Parent.Parent.Progress)
 local FishService = require(script.Parent.FishService)
 local WardrobeService = require(script.Parent.WardrobeService)
 local WorldService = require(script.Parent.WorldService)
@@ -75,13 +76,13 @@ local function buyDye(player: Player, data: DataService.PlayerData, id: string)
 	if shade == nil or shade.price == nil or not atVendor(player, "Dyer") then
 		return
 	end
-	if data.shades[id] then
-		return fail(player, `You already have {shade.name}`)
+	if Progress.ownsShade(data, id) then
+		return fail(player, `This fish already has {shade.name}`)
 	end
 	if not EconomyService.spendCoral(player, shade.price) then
 		return fail(player, "Not enough coral")
 	end
-	data.shades[id] = true
+	Progress.grantShade(data, id)
 	WardrobeService.equip(player, "shade", id)
 	Net.notify(player, `{shade.name} shade bought and put on`, "good")
 end
@@ -98,11 +99,11 @@ local function buyTrophy(player: Player, data: DataService.PlayerData, id: strin
 	end
 	if trophy.kind == "shade" then
 		local shadeId = trophy.shade or ""
-		if data.shades[shadeId] then
-			return fail(player, `You already have {trophy.name}`)
+		if Progress.ownsShade(data, shadeId) then
+			return fail(player, `This fish already has {trophy.name}`)
 		end
 		data.trophies[trophy.currency] = held - trophy.price
-		data.shades[shadeId] = true
+		Progress.grantShade(data, shadeId)
 		WardrobeService.equip(player, "shade", shadeId)
 		Net.notify(player, `{trophy.name} bought and put on`, "good")
 		DataService.save(player)

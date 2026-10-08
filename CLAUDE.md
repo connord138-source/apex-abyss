@@ -149,6 +149,19 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - The exact odds add up to 100% (`Shared/RollOdds`, tested by
     `tools/tests/run_odds.sh`).
   - Add more shades and exotics as we build (table entries plus Cosmetics geometry).
+  - **Shades are per fish (owner, 2026-10-08: "the shades will also apply to all fish
+    interchangeably. They will just need to be unlocked again for that fish. Once a
+    shade is unlocked for a playable fish it will not roll again"):** each species
+    record holds its own `shades` set and the `shade` it wears (`Server/Progress`
+    `shades/ownsShade/grantShade/wearShade/syncShade`); a switch puts on that fish's
+    own shade. Rolls, the Dyer, the Trophy Hunter, boss drops and treasure all unlock
+    for the fish you're swimming as. `RollOdds.table(luck, owned)` leaves the fish's
+    shades out and gives their share to coral, so every other chance stays the same
+    and the odds panel (this fish's table) still sums to 100%
+    (`tools/tests/run_odds.sh` checks it). Boss and treasure shade rolls skip owned
+    ones too. The wardrobe names a shade another of your fish has ("unlock it again
+    for this one", `state.otherShades`). Old saves: the global `data.shades` was
+    copied to every unlocked fish and emptied.
 - **Coral and vendors (owner, 2026-10-06):** Coral is the currency. Four vendor stalls
   round the hub plaza, near the dens, sell with it:
   - Outfitter: upgrades.

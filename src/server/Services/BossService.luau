@@ -27,6 +27,7 @@ local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local Progress = require(script.Parent.Parent.Progress)
 local FishService = require(script.Parent.FishService)
 local HuntService = require(script.Parent.HuntService)
 local PredatorService = require(script.Parent.PredatorService)
@@ -766,13 +767,14 @@ local function pickWeighted<T>(list: { T }, weight: (T) -> number): T?
 	return list[#list]
 end
 
-local function rollShade(minTier: string)
+local function rollShade(minTier: string, owned: { [string]: boolean })
 	local floor = Tiers.byId[minTier]
 	local pool = {}
 	for _, shade in Config.Shades.list do
 		local tier = Tiers.byId[shade.tier]
 		if
 			shade.chance > 0
+			and not owned[shade.id]
 			and not shade.boss
 			and not shade.treasure
 			and tier
@@ -831,13 +833,11 @@ local function rewards(boss: Boss, killer: Player?)
 		EconomyService.addCoral(player, coral)
 		summary.coral = coral
 		-- A shade roll, Rare or better
-		local shade = rollShade(reward.shadeRollMin)
+		local shade = rollShade(reward.shadeRollMin, Progress.shades(data))
 		if shade then
-			local duplicate = data.shades[shade.id] == true
+			local duplicate = not Progress.grantShade(data, shade.id)
 			if duplicate then
 				EconomyService.addCoral(player, shade.refund)
-			else
-				data.shades[shade.id] = true
 			end
 			summary.shade = {
 				id = shade.id,
@@ -850,12 +850,11 @@ local function rewards(boss: Boss, killer: Player?)
 		-- The trophy straight from the kill, sometimes (twice as often for the top dealer)
 		local chance = reward.dropChance * (if rank == 1 then 2 else 1)
 		if rng:NextNumber() < chance then
-			if data.shades[reward.dropShade] then
+			if Progress.grantShade(data, reward.dropShade) then
+				summary.trophy = reward.dropShade
+			else
 				teeth += 3
 				summary.extraTeeth = 3
-			else
-				data.shades[reward.dropShade] = true
-				summary.trophy = reward.dropShade
 			end
 		end
 		data.trophies[reward.trophyCurrency] = (data.trophies[reward.trophyCurrency] or 0) + teeth

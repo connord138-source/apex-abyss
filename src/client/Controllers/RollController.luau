@@ -369,18 +369,22 @@ end
 
 -- Filler for the reel: mostly what's likely, with rare cards sprinkled in so the
 -- reel teases (the odds panel shows the real chances).
+local fishShades: { [string]: boolean } = {} -- the current fish's (they never roll again for it)
+
 local function filler(rng: Random): RollOdds.Outcome
 	local outcomes = RollOdds.outcomes
 	if rng:NextNumber() < 0.35 then
 		local rare: { RollOdds.Outcome } = {}
 		for _, outcome in outcomes do
-			if outcome.kind ~= "coral" then
+			if outcome.kind ~= "coral" and not (outcome.kind == "shade" and fishShades[outcome.id]) then
 				table.insert(rare, outcome)
 			end
 		end
-		return rare[rng:NextInteger(1, #rare)]
+		if #rare > 0 then
+			return rare[rng:NextInteger(1, #rare)]
+		end
 	end
-	return RollOdds.pick(1, rng:NextNumber())
+	return RollOdds.pick(1, rng:NextNumber(), fishShades)
 end
 
 local function spinSeconds(tier: Tier): number
@@ -880,6 +884,7 @@ local function buildWallet()
 end
 
 local function onState(s: { [string]: any })
+	fishShades = if typeof(s.shades) == "table" then s.shades else {}
 	local perRoll = s.shellsPerRoll or Config.Rolls.shellsPerRoll
 	local shells = s.shells or 0
 	local ready = s.rollsReady or 0

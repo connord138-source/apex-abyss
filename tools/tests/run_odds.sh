@@ -11,6 +11,8 @@ cp -r "$src/Config" "$tmp/"
 cp "$src/RollOdds.luau" "$here/odds_test.luau" "$tmp/"
 sed -i 's/require(script\.Parent\.Config)/require(".\/Config")/' "$tmp/RollOdds.luau"
 sed -i -E 's/require\(script\.([A-Za-z]+)\)/require("@self\/\1")/' "$tmp/Config/init.luau"
+# Config modules that require a sibling (Bosses needs Predators)
+for f in "$tmp"/Config/*.luau; do sed -i -E 's/require\(script\.Parent\.([A-Za-z]+)\)/require(".\/\1")/' "$f"; done
 stub='local __s = setmetatable({}, { __index = function() return 0 end }); local Color3 = { fromRGB = function() return __s end, new = function() return __s end }; local Vector3 = { new = function() return __s end, one = __s, zero = __s }; local Enum = setmetatable({}, { __index = function() return __s end })'
 for f in "$tmp"/Config/*.luau; do sed -i "1a $stub" "$f"; done
 cd "$tmp" && "${LUAU:-luau}" odds_test.luau

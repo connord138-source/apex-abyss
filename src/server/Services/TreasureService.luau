@@ -209,13 +209,14 @@ end
 
 -- Rolls the shade for a Shade Roll reward: any rollable shade at `minTier` or
 -- rarer, weighted by its roll chance (rarer ones stay rarer).
-local function rollShade(minTier: string): Shade?
+local function rollShade(minTier: string, owned: { [string]: boolean }): Shade?
 	local floor = Tiers.byId[minTier]
 	local pool: { Shade } = {}
 	for _, shade in Config.Shades.list do
 		local tier = Tiers.byId[shade.tier]
 		if
 			shade.chance > 0
+			and not owned[shade.id]
 			and not shade.boss
 			and not shade.treasure
 			and tier
@@ -267,17 +268,15 @@ local function grant(
 	elseif reward.kind == "shade" or reward.kind == "shaderoll" then
 		local shade = if reward.kind == "shade"
 			then Config.Shades.byId[reward.shade or ""]
-			else rollShade(reward.minShadeTier or "Rare")
+			else rollShade(reward.minShadeTier or "Rare", Progress.shades(data))
 		if shade then
 			result.kind = "shade"
 			result.id = shade.id
 			result.outcome = { id = shade.id, kind = "shade", name = `{shade.name} Shade`, tier = shade.tier }
-			if data.shades[shade.id] then
+			if not Progress.grantShade(data, shade.id) then
 				result.duplicate = true
 				result.coral = shade.refund
 				EconomyService.addCoral(player, shade.refund)
-			else
-				data.shades[shade.id] = true
 			end
 		else
 			EconomyService.addCoral(player, 300)
