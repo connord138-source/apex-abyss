@@ -76,10 +76,18 @@ local function part(
 	return made
 end
 
--- The den's frame at floor level: x right, y up, z toward the hub
+-- The den's frame at floor level, facing the hub
 local function floorFrame(index: number): CFrame
 	local frame = Layout.denFrame(index)
 	return CFrame.new(Vector3.new(frame.Position.X, hub.denFloorY, frame.Position.Z)) * frame.Rotation
+end
+
+-- A spot in the den (x right, y up from the floor, z toward the hub), facing the
+-- hub. The frame looks at the hub and a CFrame's own +z points behind it, so z is
+-- flipped here (playtest 2026-10-07: the trophy wall stood out in the plaza and the
+-- furniture sat mirrored front to back)
+local function denSpot(frame: CFrame, x: number, y: number, z: number): CFrame
+	return frame * CFrame.new(x, y, -z)
 end
 
 -- Rock back, then the room carved for the level
@@ -150,7 +158,8 @@ local function furnish(folder: Folder, index: number, record: Record)
 		if slot == nil or item == nil then
 			continue
 		end
-		local at = frame * CFrame.new(slot.offset) * CFrame.Angles(0, slot.facing, 0)
+		local at = denSpot(frame, slot.offset.X, slot.offset.Y, slot.offset.Z)
+			* CFrame.Angles(0, slot.facing, 0)
 		local model = Instance.new("Model")
 		model.Name = item.id
 		model.Parent = folder
@@ -275,7 +284,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 	local backZ = -(ROOM_BACK + def.extend) + 2.5
 	local glow = Dens.glowsById[record.glow] or Dens.glows[1]
 	local function plaque(x: number, title: string, line: string, accent: Color3): Part
-		local at = frame * CFrame.new(x, 11, backZ)
+		local at = denSpot(frame, x, 11, backZ)
 		local board = part(
 			folder,
 			"Plaque",
@@ -335,7 +344,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 				true
 			)
 			else nil
-		local at = frame * CFrame.new(-7, 14.6, backZ + 1.5) * CFrame.Angles(0, math.rad(90), 0)
+		local at = denSpot(frame, -7, 14.6, backZ + 1.5) * CFrame.Angles(0, math.rad(90), 0)
 		if mesh then
 			local clone = mesh:Clone()
 			for _, child in clone:GetChildren() do
@@ -367,7 +376,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			folder,
 			"Tooth",
 			Vector3.new(1.4, 3.2, 0.8),
-			frame * CFrame.new(0, 14.4, backZ + 1) * CFrame.Angles(0, 0, math.rad(180)),
+			denSpot(frame, 0, 14.4, backZ + 1) * CFrame.Angles(0, 0, math.rad(180)),
 			Color3.fromRGB(236, 232, 220),
 			Enum.Material.SmoothPlastic
 		)
@@ -384,7 +393,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			folder,
 			"Beak",
 			Vector3.new(2, 2, 2),
-			frame * CFrame.new(7, 14.4, backZ + 1),
+			denSpot(frame, 7, 14.4, backZ + 1),
 			Color3.fromRGB(40, 30, 36),
 			Enum.Material.SmoothPlastic
 		)
@@ -398,7 +407,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			folder,
 			"Title",
 			Vector3.new(10, 1.6, 0.4),
-			frame * CFrame.new(0, hub.denHeight - 3, 12),
+			denSpot(frame, 0, hub.denHeight - 3, 12),
 			Color3.fromRGB(60, 66, 74),
 			Enum.Material.Slate
 		)
