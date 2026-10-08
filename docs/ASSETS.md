@@ -18,7 +18,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
-| `shade_skins` | `<Fish>_Shades.glb` ×6: every shade's skin for each fish (28 quads each; tools/shades, screened 2026-10-08) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
+| `shade_skins` | `<Fish>_Shades.glb` ×6: every shade's skin for each fish (33 quads each with color, finish/metal and glow maps; tools/shades v3, screened 2026-10-08) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
@@ -73,8 +73,18 @@ python3.11 tools/shades/pack_shades.py -- assets/tripo/species/<Fish>.glb assets
 python3.11 tools/shades/screen_shades.py assets/shades/glb/<Fish>_Shades.glb --base assets/shades/maps
 ```
 
+`make_shades.py` writes, per fish, `<Shade>.png` (color), `<Shade>_emit.png` (glow,
+for glowing shades), `<Shade>_metal.png` and `<Shade>_rough.png` (metal shades),
+`finish_<matte|satin|gloss|mirror>.png` (the roughness every other shade shares) and
+`skins.json` (which maps each shade has). `render_shades.py` shows them all wired up;
+`pack_shades.py` turns them into glTF materials (green roughness, blue metal, the
+glow as the emissive texture, which Studio's importer turns into the
+SurfaceAppearance's glow mask). How bright a skin glows in game, and how it pulses,
+is `Config/Shades.luau` (`emissive`, `pulse`), not the texture.
+
 Upload only GLBs whose screen exits 0 (one fish at a time; it ran out of memory on
-all six at once). A soft blend of orange or gold into white comes out peach or
+all six at once). The screen sees every image in the GLB: colors, glow maps and the
+roughness/metal maps (packed with no red, so they never read as orange). A soft blend of orange or gold into white comes out peach or
 beige and is flagged as skin tone: use hard edges and golds with no blue. Near-white
 shades on fish with dark parts (the Angler's teeth) can trip the classifier: keep
 pale shades mid-toned. Eyes are picked on the side face renders (`find_eyes.py`,

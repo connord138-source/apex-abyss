@@ -3,9 +3,11 @@
     <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [Shade ...]
 
 Writes <out_dir>/<Fish>_<Shade>.png (the fish's own texture as <Fish>_Base.png).
-contact_sheet.py lays them out.
+contact_sheet.py lays them out. Each skin is shown the way it ships: its finish's
+roughness map (or its own), its metal map and its glow map, from skins.json.
 """
 
+import json
 import math
 import pathlib
 import sys
@@ -64,10 +66,25 @@ mid = Vector(((mn + mx) / 2).tolist())
 # The color texture node, to swap skins into
 bsdf = next(n for n in body.material_slots[0].material.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
 tex = bsdf.inputs["Base Color"].links[0].from_node
+tree = body.material_slots[0].material.node_tree
+for name in ("Metallic", "Roughness", "Emission Color"):
+    for link in list(bsdf.inputs[name].links):
+        tree.links.remove(link)
 bsdf.inputs["Metallic"].default_value = 0.0
-if bsdf.inputs["Metallic"].links:
-    body.material_slots[0].material.node_tree.links.remove(bsdf.inputs["Metallic"].links[0])
 own = tex.image
+
+
+def map_node(label):
+    node = tree.nodes.new("ShaderNodeTexImage")
+    node.label = label
+    node.interpolation = tex.interpolation
+    if tex.inputs["Vector"].links:
+        tree.links.new(tex.inputs["Vector"].links[0].from_socket, node.inputs["Vector"])
+    return node
+
+
+rough_tex, metal_tex, emit_tex = map_node("rough"), map_node("metal"), map_node("emit")
+own_rough = bsdf.inputs["Roughness"].default_value
 
 scene = bpy.context.scene
 scene.render.engine = "CYCLES"
@@ -98,16 +115,52 @@ cam.location = mid + direction * length * 3
 cam.rotation_euler = (mid - cam.location).to_track_quat("-Z", "Y").to_euler()
 
 
+def grey(path):
+    image = bpy.data.images.load(str(path))
+    image.colorspace_settings.name = "Non-Color"
+    return image
+
+
+def wear(spec, folder, shade):
+    """Wires a skin's roughness, metal and glow maps (none for the fish's own look)."""
+    for link in list(bsdf.inputs["Roughness"].links) + list(bsdf.inputs["Metallic"].links):
+        tree.links.remove(link)
+    for link in list(bsdf.inputs["Emission Color"].links):
+        tree.links.remove(link)
+    bsdf.inputs["Roughness"].default_value = own_rough
+    bsdf.inputs["Metallic"].default_value = 0.0
+    bsdf.inputs["Emission Strength"].default_value = 0.0
+    if spec is None:
+        return
+    rough = folder / (f"{shade}_rough.png" if spec.get("rough") else f"finish_{spec['finish']}.png")
+    if rough.exists():
+        rough_tex.image = grey(rough)
+        tree.links.new(rough_tex.outputs["Color"], bsdf.inputs["Roughness"])
+    if spec.get("metal"):
+        metal_tex.image = grey(folder / f"{shade}_metal.png")
+        tree.links.new(metal_tex.outputs["Color"], bsdf.inputs["Metallic"])
+    if spec.get("emit"):
+        emit_tex.image = bpy.data.images.load(str(folder / f"{shade}_emit.png"))
+        tree.links.new(emit_tex.outputs["Color"], bsdf.inputs["Emission Color"])
+        bsdf.inputs["Emission Strength"].default_value = 3.0
+
+
 def shoot(label, image):
     tex.image = image
     scene.render.filepath = str(OUT / f"{NAME}_{label}.png")
     bpy.ops.render.render(write_still=True)
 
 
+FOLDER = SKINS / NAME
+specs = json.loads((FOLDER / "skins.json").read_text()) if (FOLDER / "skins.json").exists() else {}
+wear(None, FOLDER, "Base")
 shoot("Base", own)
-shades = rest or sorted(p.stem for p in (SKINS / NAME).glob("*.png") if p.stem != "eyes_debug")
+shades = rest or sorted(specs) or sorted(
+    p.stem for p in FOLDER.glob("*.png") if p.stem != "eyes_debug" and "_" not in p.stem
+)
 for shade in shades:
-    path = SKINS / NAME / f"{shade}.png"
+    path = FOLDER / f"{shade}.png"
     if path.exists():
+        wear(specs.get(shade, {"finish": "satin"}), FOLDER, shade)
         shoot(shade, bpy.data.images.load(str(path)))
 print(f"[render] {NAME}: {len(shades)} shades")

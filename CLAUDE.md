@@ -383,14 +383,22 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   dim. Subjects are built once per reel and cloned; a card gets its shot only when it
   nears the window (`attachPhoto`). The result shows a shade's swatches and Rare+
   wins burst motes.
-- **Shades are real skins (owner, 2026-10-08: "All of the shades in general need much
-  much more variance and depth than just a slight reshape to the existing colors"):**
-  28 shades (12 commons with real patterns: Mint saddles, Sunset gradient, Ink net,
-  Sandbar camo, Ember tiger stripes, Lilac polka dots, Moss net, Ocean swoosh, Tiger,
-  Bumblebee, Neon Tetra, Leopard rosettes; Rare Lunar, Glowspot, Tidepool; Epic
-  Diamond facets, Magma cracks, Glacier frost; Legendary Divine filigree, Aurora,
-  Thunder; Mythic Exotic, Prismatic, Nebula, Void; plus the trophy and treasure
-  shades). Each is a texture per fish made offline from the fish's own texture
+- **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "All of
+  the shades in general need much much more variance and depth than just a slight
+  reshape to the existing colors"):** 33 shades (v3), no two sharing a pattern:
+  Seafoam foam rings (id `Mint`), Sunset, Ink wash, Sandbar ripples, Ember flames,
+  Lilac, Moss lichen, Ocean, Tiger, Bumblebee fuzz, Neon Tetra, Leopard, Rust, Toxic;
+  Rare Lunar moon face, Glowspot, Tidepool, Mandarin maze, Lanternfish; Epic Diamond,
+  Magma, Glacier strata, X-Ray skeleton; Legendary Divine, Aurora, Thunder; Mythic
+  Exotic parrotfish mosaic, Prismatic, Nebula gas clouds, Void spiral; plus the
+  trophy and treasure shades. Every skin ships a finish (matte/satin/gloss/mirror
+  roughness), metal where the shade is metal, and a glow map for 14 shades (the
+  Angler's lure glows in all); in game `Cosmetics` drives the glow
+  (`EmissiveStrength`, `Config/Shades` `emissive`), pulses it (`pulse`: breathe,
+  heartbeat, flicker, wave, twinkle, strobe, scan; with the shade's light) and sheds
+  an `aura` (embers, frost, sparks, stars, motes, bubbles, ink, glints). A new shade
+  needs a recipe with its own pattern, an entry and, if it glows, a pulse. Each is a
+  texture per fish made offline from the fish's own texture
   (`tools/shades`: `bake_maps.py` bakes every texel's 3D place on the body,
   `find_eyes.py` + hand-checked `eyes.json`, `make_shades.py` recipes, 
   `render_shades.py` + `contact_sheet.py` previews, `pack_shades.py` one GLB per

@@ -3,6 +3,13 @@
 -- also be bought from the Shade Dyer; the named shades only come from rolls.
 -- `chance` is "1 in N" per roll; `refund` is the coral a duplicate turns into.
 -- Add new shades here (and a look in Shared/Cosmetics.luau if it needs effects).
+-- How a shade's glow moves (Cosmetics.pulse): a slow breath, a double heartbeat
+-- thump, a fire's flicker, a rolling wave, blinking lights, lightning flashes, or a
+-- scan sweeping past
+export type Pulse = "breathe" | "heartbeat" | "flicker" | "wave" | "twinkle" | "strobe" | "scan"
+-- What drifts off a fish in the shade (Cosmetics.aura)
+export type Aura = "glints" | "embers" | "frost" | "sparks" | "stars" | "motes" | "bubbles" | "ink"
+
 export type Shade = {
 	id: string,
 	name: string,
@@ -20,11 +27,19 @@ export type Shade = {
 	glow: Color3?, -- a soft light on the fish
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
+	-- Living shades (owner, 2026-10-08: "much much more variance and depth"): how
+	-- bright the skin's glow map burns (SurfaceAppearance.EmissiveStrength), how the
+	-- glow moves, and what drifts off the fish. Cosmetics reads them.
+	emissive: number?,
+	pulse: Pulse?,
+	aura: Aura?,
 	spectral: boolean?, -- the whole fish turns ghostly: see-through, lit from within, haloed (Ghost)
 	boss: string?, -- won only by beating this world boss (never in rolls)
 	treasure: string?, -- found only in this map tier's treasure (never in rolls)
 	blurb: string,
 }
+
+type Extra = { glow: Color3?, emissive: number?, pulse: Pulse?, aura: Aura?, sparkle: Color3? }
 
 local function common(
 	id: string,
@@ -33,7 +48,8 @@ local function common(
 	back: Color3,
 	belly: Color3,
 	fin: Color3,
-	blurb: string
+	blurb: string,
+	extra: Extra?
 ): Shade
 	return {
 		id = id,
@@ -45,6 +61,11 @@ local function common(
 		back = back,
 		belly = belly,
 		fin = fin,
+		glow = extra and extra.glow,
+		emissive = extra and extra.emissive,
+		pulse = extra and extra.pulse,
+		aura = extra and extra.aura,
+		sparkle = extra and extra.sparkle,
 		blurb = blurb,
 	}
 end
@@ -56,13 +77,13 @@ end
 -- depth than just a slight reshape to the existing colors."
 local list: { Shade } = {
 	common(
-		"Mint",
-		"Mint",
+		"Mint", -- the id stays for old saves
+		"Seafoam",
 		100,
-		Color3.fromRGB(92, 199, 158),
-		Color3.fromRGB(204, 245, 235),
-		Color3.fromRGB(41, 148, 138),
-		"Mint green with dark saddles and freckles."
+		Color3.fromRGB(15, 128, 122),
+		Color3.fromRGB(77, 199, 179),
+		Color3.fromRGB(10, 97, 107),
+		"Sea green spattered with rings of foam."
 	),
 	common(
 		"Sunset",
@@ -80,7 +101,8 @@ local list: { Shade } = {
 		Color3.fromRGB(23, 31, 66),
 		Color3.fromRGB(102, 122, 173),
 		Color3.fromRGB(46, 56, 128),
-		"Midnight navy, a fine net and a glowing lateral line."
+		"Ink wash pooling dark at the edges, and a glowing lateral line.",
+		{ emissive = 0.8, pulse = "wave" }
 	),
 	common(
 		"Sand",
@@ -89,16 +111,17 @@ local list: { Shade } = {
 		Color3.fromRGB(148, 153, 128),
 		Color3.fromRGB(204, 212, 209),
 		Color3.fromRGB(82, 89, 71),
-		"Seabed camouflage: blotched and speckled like a flounder."
+		"A sandbar: ripple marks, shell grit and weed shadows."
 	),
 	common(
 		"Ember",
 		"Ember",
 		100,
-		Color3.fromRGB(204, 23, 18),
-		Color3.fromRGB(255, 148, 26),
-		Color3.fromRGB(18, 15, 23),
-		"Fire red with black tiger stripes."
+		Color3.fromRGB(26, 20, 23),
+		Color3.fromRGB(255, 110, 20),
+		Color3.fromRGB(230, 61, 10),
+		"Charcoal licked by flames from the belly up, the tips still glowing.",
+		{ emissive = 0.9, pulse = "flicker", aura = "embers", glow = Color3.fromRGB(255, 120, 40) }
 	),
 	common(
 		"Lilac",
@@ -107,7 +130,7 @@ local list: { Shade } = {
 		Color3.fromRGB(163, 133, 224),
 		Color3.fromRGB(235, 242, 255),
 		Color3.fromRGB(117, 77, 204),
-		"Lilac with white polka dots."
+		"Glossy lilac with pale bubbles rising along it."
 	),
 	common(
 		"Moss",
@@ -116,7 +139,7 @@ local list: { Shade } = {
 		Color3.fromRGB(56, 102, 41),
 		Color3.fromRGB(168, 204, 51),
 		Color3.fromRGB(77, 117, 46),
-		"Forest green under a lime net, like a moray."
+		"Lichen patches with bright rims, and algae trailing off the back."
 	),
 	common(
 		"Ocean",
@@ -143,7 +166,7 @@ local list: { Shade } = {
 		Color3.fromRGB(255, 204, 13),
 		Color3.fromRGB(255, 224, 64),
 		Color3.fromRGB(15, 15, 23),
-		"Yellow and black bands."
+		"Fuzzy yellow and black bands, matte as velvet."
 	),
 	common(
 		"Tetra",
@@ -152,7 +175,8 @@ local list: { Shade } = {
 		Color3.fromRGB(13, 26, 71),
 		Color3.fromRGB(242, 31, 26),
 		Color3.fromRGB(31, 250, 255),
-		"An electric cyan stripe over a red tail half."
+		"An electric cyan stripe over a red tail half.",
+		{ emissive = 0.8, pulse = "breathe" }
 	),
 	common(
 		"Leopard",
@@ -163,18 +187,39 @@ local list: { Shade } = {
 		Color3.fromRGB(15, 15, 23),
 		"Gold with black rosettes."
 	),
+	common(
+		"Rust",
+		"Rust",
+		140,
+		Color3.fromRGB(143, 51, 0),
+		Color3.fromRGB(102, 110, 120),
+		Color3.fromRGB(61, 66, 77),
+		"Shipwreck iron: bare gunmetal and rivets under flaking rust."
+	),
+	common(
+		"Toxic",
+		"Toxic",
+		140,
+		Color3.fromRGB(102, 242, 0),
+		Color3.fromRGB(179, 255, 56),
+		Color3.fromRGB(13, 13, 20),
+		"Poison-frog lime with gloss black blotches and blue flecks."
+	),
 	{
 		id = "Lunar",
 		name = "Lunar",
 		tier = "Rare",
 		chance = 120,
 		refund = 1000,
-		back = Color3.fromRGB(189, 204, 240),
-		belly = Color3.fromRGB(235, 242, 255),
-		fin = Color3.fromRGB(140, 158, 219),
+		back = Color3.fromRGB(128, 143, 173),
+		belly = Color3.fromRGB(158, 173, 204),
+		fin = Color3.fromRGB(102, 117, 158),
 		glow = Color3.fromRGB(170, 200, 255),
 		sparkle = Color3.fromRGB(220, 236, 255),
-		blurb = "Pearl moonlight with crescent marks and drifting stars.",
+		emissive = 0.8,
+		pulse = "breathe",
+		aura = "motes",
+		blurb = "The moon's face: silver dust, dark seas and craters, lit from above.",
 	},
 	{
 		id = "Glowspot",
@@ -186,7 +231,11 @@ local list: { Shade } = {
 		belly = Color3.fromRGB(15, 51, 77),
 		fin = Color3.fromRGB(51, 242, 255),
 		glow = Color3.fromRGB(60, 220, 255),
-		blurb = "Deep-sea navy covered in glowing cyan spots.",
+		sparkle = Color3.fromRGB(150, 245, 255),
+		emissive = 1.2,
+		pulse = "twinkle",
+		aura = "motes",
+		blurb = "Deep-sea navy covered in glowing cyan spots that blink.",
 	},
 	{
 		id = "Tidepool",
@@ -198,7 +247,35 @@ local list: { Shade } = {
 		belly = Color3.fromRGB(107, 71, 204),
 		fin = Color3.fromRGB(140, 255, 242),
 		sparkle = Color3.fromRGB(170, 255, 240),
-		blurb = "Teal fading to violet under rippling light.",
+		aura = "bubbles",
+		blurb = "Ripples spreading over teal and violet.",
+	},
+	{
+		id = "Mandarin",
+		name = "Mandarin",
+		tier = "Rare",
+		chance = 200,
+		refund = 1300,
+		back = Color3.fromRGB(10, 56, 209),
+		belly = Color3.fromRGB(20, 102, 235),
+		fin = Color3.fromRGB(255, 115, 0),
+		accent = Color3.fromRGB(26, 204, 77),
+		sparkle = Color3.fromRGB(255, 190, 90),
+		blurb = "The mandarinfish's maze: orange lines edged green on electric blue.",
+	},
+	{
+		id = "Lanternfish",
+		name = "Lanternfish",
+		tier = "Rare",
+		chance = 220,
+		refund = 1400,
+		back = Color3.fromRGB(15, 23, 46),
+		belly = Color3.fromRGB(158, 173, 204),
+		fin = Color3.fromRGB(20, 28, 51),
+		glow = Color3.fromRGB(100, 190, 255),
+		emissive = 1.4,
+		pulse = "twinkle",
+		blurb = "Navy and mirror silver, with rows of light organs that blink.",
 	},
 	{
 		id = "Diamond",
@@ -211,6 +288,7 @@ local list: { Shade } = {
 		fin = Color3.fromRGB(176, 224, 250),
 		reflectance = 0.35,
 		sparkle = Color3.fromRGB(255, 255, 255),
+		aura = "glints",
 		blurb = "Cut crystal facets that throw rainbow fire.",
 	},
 	{
@@ -224,7 +302,10 @@ local list: { Shade } = {
 		fin = Color3.fromRGB(255, 140, 13),
 		glow = Color3.fromRGB(255, 110, 30),
 		sparkle = Color3.fromRGB(255, 170, 60),
-		blurb = "Black basalt split by glowing lava cracks.",
+		emissive = 1.6,
+		pulse = "heartbeat",
+		aura = "embers",
+		blurb = "Black basalt split by lava cracks that throb with heat.",
 	},
 	{
 		id = "Glacier",
@@ -237,7 +318,22 @@ local list: { Shade } = {
 		fin = Color3.fromRGB(102, 179, 240),
 		reflectance = 0.2,
 		sparkle = Color3.fromRGB(220, 245, 255),
-		blurb = "Ice blue with frost drifts and hairline cracks.",
+		aura = "frost",
+		blurb = "Ice in layers: teal and cyan strata, a frosted cap, rime falling off it.",
+	},
+	{
+		id = "Xray",
+		name = "X-Ray",
+		tier = "Epic",
+		chance = 350,
+		refund = 2500,
+		back = Color3.fromRGB(8, 18, 41),
+		belly = Color3.fromRGB(13, 31, 61),
+		fin = Color3.fromRGB(51, 179, 255),
+		glow = Color3.fromRGB(110, 210, 255),
+		emissive = 1.4,
+		pulse = "scan",
+		blurb = "A dark body with its glowing skeleton showing through, swept by a scan.",
 	},
 	{
 		id = "Divine",
@@ -251,7 +347,8 @@ local list: { Shade } = {
 		reflectance = 0.25,
 		glow = Color3.fromRGB(255, 220, 140),
 		sparkle = Color3.fromRGB(255, 226, 150),
-		blurb = "Pearl white edged in gold filigree, wrapped in a halo.",
+		aura = "glints",
+		blurb = "Pearl white edged in real gold filigree, wrapped in a halo.",
 	},
 	{
 		id = "Aurora",
@@ -264,6 +361,9 @@ local list: { Shade } = {
 		fin = Color3.fromRGB(158, 77, 255),
 		glow = Color3.fromRGB(90, 255, 170),
 		sparkle = Color3.fromRGB(200, 255, 230),
+		emissive = 1.5,
+		pulse = "wave",
+		aura = "motes",
 		blurb = "Northern lights rippling over a night-dark body.",
 	},
 	{
@@ -277,7 +377,10 @@ local list: { Shade } = {
 		fin = Color3.fromRGB(217, 242, 255),
 		glow = Color3.fromRGB(120, 180, 255),
 		sparkle = Color3.fromRGB(200, 230, 255),
-		blurb = "Storm slate forked with live lightning.",
+		emissive = 1.8,
+		pulse = "strobe",
+		aura = "sparks",
+		blurb = "Storm slate forked with live lightning that flashes.",
 	},
 	{
 		id = "Exotic",
@@ -285,12 +388,13 @@ local list: { Shade } = {
 		tier = "Mythic",
 		chance = 900,
 		refund = 7000,
-		back = Color3.fromRGB(20, 92, 255),
-		belly = Color3.fromRGB(255, 219, 13),
-		fin = Color3.fromRGB(255, 107, 15),
-		accent = Color3.fromRGB(89, 255, 64),
+		back = Color3.fromRGB(0, 217, 184),
+		belly = Color3.fromRGB(255, 194, 0),
+		fin = Color3.fromRGB(158, 41, 255),
+		accent = Color3.fromRGB(107, 255, 20),
 		sparkle = Color3.fromRGB(180, 255, 120),
-		blurb = "Tropical neon: blue, gold spots, lime stripes, orange fins.",
+		aura = "bubbles",
+		blurb = "A parrotfish mosaic: every scale its own reef color, edged in cobalt.",
 	},
 	{
 		id = "Prismatic",
@@ -305,6 +409,9 @@ local list: { Shade } = {
 		glow = Color3.fromRGB(255, 255, 255),
 		sparkle = Color3.fromRGB(255, 255, 255),
 		cycle = true,
+		emissive = 1.0,
+		pulse = "breathe",
+		aura = "stars",
 		blurb = "Every color, rolling across the body.",
 	},
 	{
@@ -313,12 +420,15 @@ local list: { Shade } = {
 		tier = "Mythic",
 		chance = 1800,
 		refund = 14000,
-		back = Color3.fromRGB(10, 8, 26),
-		belly = Color3.fromRGB(107, 51, 230),
-		fin = Color3.fromRGB(26, 217, 217),
-		glow = Color3.fromRGB(140, 110, 255),
+		back = Color3.fromRGB(15, 8, 36),
+		belly = Color3.fromRGB(235, 46, 235),
+		fin = Color3.fromRGB(31, 217, 255),
+		glow = Color3.fromRGB(170, 110, 255),
 		sparkle = Color3.fromRGB(255, 255, 255),
-		blurb = "Deep space: violet clouds and a field of stars.",
+		emissive = 1.4,
+		pulse = "breathe",
+		aura = "stars",
+		blurb = "Magenta, violet and cyan gas clouds, dust lanes and newborn stars.",
 	},
 	{
 		id = "Void",
@@ -330,7 +440,10 @@ local list: { Shade } = {
 		belly = Color3.fromRGB(97, 26, 204),
 		fin = Color3.fromRGB(158, 77, 255),
 		glow = Color3.fromRGB(150, 70, 255),
-		blurb = "Blacker than the Trench, cracked with violet light.",
+		emissive = 1.6,
+		pulse = "wave",
+		aura = "ink",
+		blurb = "An event horizon: a black core, a glowing spiral, a violet rim.",
 	},
 	-- World boss trophies (owner, 2026-10-06: "specific skins unlocked from beating
 	-- them... a pale green ghost skin"). Never rolled.
@@ -363,8 +476,11 @@ local list: { Shade } = {
 		reflectance = 0.1,
 		glow = Color3.fromRGB(150, 90, 255),
 		sparkle = Color3.fromRGB(110, 230, 255),
+		emissive = 1.5,
+		pulse = "wave",
+		aura = "ink",
 		boss = "GiantSquid",
-		blurb = "Ink-black with glowing spots. Won from the Giant Squid.",
+		blurb = "The Kraken's skin: ink pigment, glowing violet veins, sucker rings. Won from the Giant Squid.",
 	},
 	-- Treasure-only shades (owner, 2026-10-07: "a super rare skin at a low drop
 	-- rate" from treasure maps). Only a Captain's chest holds them. Never rolled.
@@ -382,6 +498,7 @@ local list: { Shade } = {
 		reflectance = 0.45,
 		glow = Color3.fromRGB(255, 200, 90),
 		sparkle = Color3.fromRGB(255, 236, 170),
+		aura = "glints",
 		treasure = "Captain",
 		blurb = "Doubloon gold with a verdigris tail. Dug up from a Captain's chest.",
 	},
@@ -398,7 +515,8 @@ local list: { Shade } = {
 		material = Enum.Material.Glass,
 		reflectance = 0.3,
 		glow = Color3.fromRGB(220, 230, 255),
-		sparkle = Color3.fromRGB(255, 240, 255),
+		sparkle = Color3.fromRGB(240, 246, 255),
+		aura = "bubbles",
 		treasure = "Captain",
 		blurb = "Nacre white with a lilac sheen. Dug up from a Captain's chest.",
 	},

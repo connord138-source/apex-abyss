@@ -265,11 +265,11 @@ This replaced the finish and mutation plan.
 
 | Outcome | Tier | Chance |
 |---|---|---|
-| Coral: Handful 25 / Pouch 60 / Chest 150 / Jackpot 600 | Coral | 85.2% of a fresh fish's roll in all (70/22/6.5/1.5 of it); more as the fish collects shades |
-| 8 patterned commons (Mint, Sunset, Ink, Sandbar, Ember, Lilac, Moss, Ocean) | Common | 1 in 100 each |
-| 4 bolder commons (Tiger, Bumblebee, Neon Tetra, Leopard) | Common | 1 in 140 each |
-| Lunar / Glowspot / Tidepool | Rare | 1 in 120 / 160 / 180 |
-| Diamond / Magma / Glacier | Epic | 1 in 250 / 300 / 320 |
+| Coral: Handful 25 / Pouch 60 / Chest 150 / Jackpot 600 | Coral | 82.5% of a fresh fish's roll in all (70/22/6.5/1.5 of it); more as the fish collects shades |
+| 8 commons (Seafoam, Sunset, Ink, Sandbar, Ember, Lilac, Moss, Ocean) | Common | 1 in 100 each |
+| 6 bolder commons (Tiger, Bumblebee, Neon Tetra, Leopard, Rust, Toxic) | Common | 1 in 140 each |
+| Lunar / Glowspot / Tidepool / Mandarin / Lanternfish | Rare | 1 in 120 / 160 / 180 / 200 / 220 |
+| Diamond / Magma / Glacier / X-Ray | Epic | 1 in 250 / 300 / 320 / 350 |
 | Divine / Aurora / Thunder | Legendary | 1 in 500 / 650 / 700 |
 | Exotic / Prismatic / Nebula / Void | Mythic | 1 in 900 / 1,500 / 1,800 / 2,200 |
 | Body parts: Angler Lure, Narwhal Horn, Sawblade Snout, Sail Fin, Veil Tail | Abyssal | 1 in 4,000 to 1 in 6,000 each |
@@ -283,14 +283,27 @@ This replaced the finish and mutation plan.
   15,000–30,000 for an Abyssal outcome.
 - **Announcements:** Rare and rarer results are announced to the whole server once
   the roller's reveal has landed.
-- **Shades are real skins (owner, 2026-10-08: "much much more variance and depth than
-  just a slight reshape to the existing colors"):** every shade is a texture made for
-  each fish from its own texture (`tools/shades`): the body countershaded, the fins
-  apart, patterns laid on the body in 3D (stripes, bands, spots, rosettes, nets,
-  scales, cut facets, lava cracks, frost, aurora curtains, star fields), finishes
-  baked in (pearl films, metal sheens, glow halos), the fish's painted strokes, eyes,
-  teeth and the Angler's lure kept. 28 shades × 6 fish = 168 skins, screened for
-  moderation before upload and imported as `ReplicatedStorage.ShadeSkins`.
+- **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "much
+  much more variance and depth than just a slight reshape to the existing colors"):**
+  every shade is a texture made for each fish from its own texture (`tools/shades`),
+  and no two share a pattern: foam rings, an ink wash, sand ripples, flames, lichen
+  and trailing algae, velvet fuzz, rust flaking off gunmetal, poison-frog blotches,
+  a cratered moon face, blinking spots, ripples, the mandarinfish maze, rows of light
+  organs, cut facets, lava cracks, ice strata, a glowing skeleton, gold filigree,
+  aurora curtains, lightning, a parrotfish mosaic, nebula gas clouds, an accretion
+  spiral, Kraken skin.
+  - **Surface depth:** every skin also ships a finish (matte, satin, wet gloss or
+    mirror roughness), real metal where the shade is metal (Divine's gilding, Sunken
+    Gold, Rust's iron, the Lanternfish's silver) and, for 14 shades, a glow map
+    (SurfaceAppearance emissive; the Angler's lure glows in every skin).
+  - **Living depth:** in game the glow moves: each glowing shade pulses its own way (a
+    breath, a heartbeat, a flicker, a wave, blinking, lightning flashes, a scan), and
+    shades shed their own aura (embers, frost, sparks, stars, motes, bubbles, ink),
+    more of it the rarer the shade (`Config/Shades` `emissive`, `pulse`, `aura`;
+    `Cosmetics`).
+  - The fish's painted strokes, eyes, teeth and mouth are kept. 33 shades × 6 fish =
+    198 skins, screened for moderation before upload and imported as
+    `ReplicatedStorage.ShadeSkins`.
 - **Shades are per fish (owner, 2026-10-08):** a shade works on every fish, but each
   fish unlocks it for itself, and once a fish has a shade it never rolls again for
   that fish (its chance goes to coral; the odds panel shows that fish's table).
@@ -357,7 +370,7 @@ map can uncover it. The map is in their inventory."
 | **Fin & Gill Outfitter** (Old Hermit) | 5-level upgrades: Strong Fins +4% speed, Deep Gills +12% boost, Shell Sense +20% pickup reach, Iron Jaw +6% bite. 150–11,000 coral a level. |
 | **Den Mason** (Octavio) | Haul Chamber: +6% to every banked Haul per level, 300–15,000 |
 | **Tidecharm Trader** (Old Tortuga) | Lucky Charm 800 (hold 3), Second Chance 1,200 (keep your Haul once), Shell Magnet 250 (×2 reach, 10 min), Feast Charm 400 (+25% Haul, 10 min); 10 Shells for 400, 5 times a day |
-| **Shade Dyer** (Puff) | The 8 tints at 1,500 each, previewed on your fish. Rare shades only come from rolls. |
+| **Shade Dyer** (Puff) | The 14 common shades at 1,500 each, previewed on your fish. Rare shades only come from rolls. |
 
 - **Later ways to spend coral:** den decor and the Den Designer, riptide currents
   (fast travel), bounties, and coral-only cosmetic rolls.
@@ -754,7 +767,7 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   dealt at least 1% of the damage gets:
   - **Kraken Beaks**, spent at the Trophy Hunter.
   - **Trophies:**
-    - the **Abyss Ink** shade: ink-black with glowing spots (built)
+    - the **Abyss Ink** shade: Kraken skin, ink pigment with glowing veins and sucker rings (built)
     - Kraken Tentacles body part
     - a glowing **Kraken-eye lantern** for your den
   - A chance at a trophy straight from the kill.

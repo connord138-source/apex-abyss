@@ -6,6 +6,8 @@
 --   ReplicatedStorage.ShadeSkins.<Fish>.<Shade>
 -- where Cosmetics wears it on that fish, and removes the imported model. Safe to run
 -- again: a re-import replaces that fish's skins. Then File → Save (Ctrl+S).
+-- Each skin keeps the maps it was packed with: roughness from its finish, metal only
+-- where the shade is metal (the rest carry none), and a glow mask for glowing shades.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local root = ReplicatedStorage:FindFirstChild("ShadeSkins")
@@ -39,7 +41,6 @@ for _, model in workspace:GetChildren() do
 		local appearance = part:FindFirstChildWhichIsA("SurfaceAppearance")
 		if appearance then
 			appearance.Name = shade
-			appearance.MetalnessMap = "" -- skins are non-metallic
 			appearance.Parent = folder
 			skins += 1
 		elseif part.TextureID ~= "" then
