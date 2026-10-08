@@ -26,7 +26,8 @@
     },
     "Workspace": {
       "$properties": {
-        "Gravity": 0
+        "Gravity": 0,
+        "FallenPartsDestroyHeight": -2000
       }
     },
     "Lighting": {
