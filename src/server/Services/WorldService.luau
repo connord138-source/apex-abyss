@@ -7,6 +7,7 @@
 -- trench glow, light shafts). The dressing is placeholder geometry until the Tripo
 -- props land; layout numbers live in Config/World.luau, Shared/Seafloor.luau and
 -- Shared/Layout.luau.
+local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -307,6 +308,71 @@ end
 -- The hub: the cavern is Terrain (Cave.luau: the seamount, the dome and oculus,
 -- the den rooms and tunnels); parts add what terrain can't (pools, lamps, signs,
 -- sconces, the plaza, the beacon, light shafts).
+-- The way out, built into the rock (owner, 2026-10-08: the EXIT chips were "a
+-- flashing blue box that says EXIT in black on every exit"): a carved lintel over
+-- each tunnel mouth with EXIT cut into it, a teal lantern either side, and lanterns
+-- round the oculus. The tutorial breathes the `ExitLight` lanterns brighter when it
+-- asks the player to find the way out; nothing floats and nothing flashes.
+local EXIT_GLOW = Color3.fromRGB(110, 220, 235)
+
+local function exitLantern(parent: Instance, position: Vector3)
+	local lantern = Instance.new("Part")
+	lantern.Name = "ExitLantern"
+	lantern.Anchored = true
+	lantern.CanCollide = false
+	lantern.CanQuery = false
+	lantern.CanTouch = false
+	lantern.Shape = Enum.PartType.Ball
+	lantern.Size = Vector3.one * 1.6
+	lantern.CFrame = CFrame.new(position)
+	lantern.Color = EXIT_GLOW
+	lantern.Material = Enum.Material.Neon
+	lantern.Transparency = 0.3
+	lantern.Parent = parent
+	local light = Instance.new("PointLight")
+	light.Color = EXIT_GLOW
+	light.Range = 26
+	light.Brightness = 0.7
+	light.Parent = lantern
+	CollectionService:AddTag(lantern, "ExitLight")
+	Props.dress(lantern, "Lantern", {
+		cframe = CFrame.new(position),
+		size = Vector3.new(2.4, 3.2, 2.4),
+		keepVisible = true,
+	})
+end
+
+local function exitDressing(parent: Instance, at: (number, number) -> CFrame)
+	local lintel = block(
+		parent,
+		"ExitLintel",
+		Vector3.new(28, 4, 3),
+		at(hub.radius - 1, hub.tunnelHeight + 4),
+		ROCK_DARK,
+		Enum.Material.Slate
+	)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Back -- toward the plaza (the frame looks out along the tunnel)
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0.6
+	gui.Brightness = 1.3
+	gui.Parent = lintel
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.SemiBold)
+	label.TextScaled = true
+	label.TextColor3 = EXIT_GLOW
+	label.TextTransparency = 0.2
+	label.Text = "E X I T"
+	label.Parent = gui
+	for side = -1, 1, 2 do
+		local frame = at(hub.radius - 1, hub.tunnelHeight / 2 + 4) * CFrame.new(side * 21, 0, 0)
+		exitLantern(parent, frame.Position)
+	end
+end
+
 local function buildHub(parent: Instance)
 	local hubFolder = folder("Hub", parent)
 	Cave.apply(workspace.Terrain, Cave.ops())
@@ -322,6 +388,8 @@ local function buildHub(parent: Instance)
 		if kind == "den" then
 			denIndex += 1
 			buildDen(hubFolder, denIndex, segment)
+		elseif kind == "tunnel" then
+			exitDressing(hubFolder, at)
 		elseif kind == "wall" then
 			-- A sconce between openings, just proud of the rock
 			local sconce =
@@ -365,6 +433,20 @@ local function buildHub(parent: Instance)
 	glow.Range = 60
 	glow.Brightness = 1.2
 	glow.Parent = crystal
+
+	-- Lanterns round the oculus: the way out through the roof
+	for i = 0, 3 do
+		local a = math.rad(45 + i * 90)
+		exitLantern(
+			hubFolder,
+			hub.center
+				+ Vector3.new(
+					math.cos(a) * (hub.oculusRadius + 6),
+					hub.height - 4,
+					math.sin(a) * (hub.oculusRadius + 6)
+				)
+		)
+	end
 
 	-- Light falling through the oculus
 	local rng = Random.new(World.seed + 2)
@@ -937,26 +1019,26 @@ local function buildBiomes(parent: Instance)
 	local trenchGlow = folder("TrenchGlow", parent)
 	local shafts = folder("Shafts", parent)
 
-	-- Kelp Shallows: forests, boulder fields, arches
-	for _ = 1, 30 do
+	-- Kelp Shallows: forests, boulder fields, arches (the open biome, by design)
+	for _ = 1, 52 do
 		local ground = spotIn(rng, "KelpShallows", 40)
 		if ground then
 			kelpCluster(kelpFolder, rng, ground, 20, 1)
 		end
 	end
-	for _ = 1, 90 do
+	for _ = 1, 150 do
 		local ground = spotIn(rng, "KelpShallows", 16)
 		if ground then
 			rock(rocks, rng, ground, 1)
 		end
 	end
-	for _ = 1, 14 do
+	for _ = 1, 24 do
 		local ground = spotIn(rng, "KelpShallows", 40)
 		if ground then
 			arch(rocks, rng, ground)
 		end
 	end
-	for _ = 1, 6 do
+	for _ = 1, 10 do
 		local ground = spotIn(rng, "KelpShallows", 50)
 		if ground then
 			coralGarden(corals, rng, ground, 24, 30)
@@ -964,42 +1046,57 @@ local function buildBiomes(parent: Instance)
 	end
 
 	-- Shipwreck Graveyard: wrecks in a kelp fringe, dark rocks
-	for _ = 1, 8 do
+	for _ = 1, 14 do
 		local ground = spotIn(rng, "ShipwreckGraveyard", 70)
 		if ground then
 			wreck(wrecks, rng, ground)
 		end
 	end
-	for _ = 1, 10 do
+	for _ = 1, 18 do
 		local ground = spotIn(rng, "ShipwreckGraveyard", 40)
 		if ground then
 			kelpCluster(kelpFolder, rng, ground, 14, 0.8)
 		end
 	end
-	for _ = 1, 60 do
+	for _ = 1, 100 do
 		local ground = spotIn(rng, "ShipwreckGraveyard", 16)
 		if ground then
 			rock(rocks, rng, ground, 1.1, true)
 		end
 	end
 
-	-- Coral Reef: gardens everywhere, reef rocks, arches
-	for _ = 1, 44 do
+	-- Coral Reef: corals grow on and round every reef head and ridge the Terrain laid
+	-- (owner, 2026-10-08: "just a bunch of scattered coral laying around"), with more
+	-- gardens between, reef rocks and arches
+	for _, reef in features.reefRocks do
+		coralGarden(corals, rng, reef.center, 36, reef.radius * 1.25)
+	end
+	for _ = 1, 60 do
 		local ground = spotIn(rng, "CoralReef", 60)
 		if ground then
-			coralGarden(corals, rng, ground, 55, 60)
+			coralGarden(corals, rng, ground, 50, 60)
 		end
 	end
-	for _ = 1, 70 do
+	for _ = 1, 120 do
 		local ground = spotIn(rng, "CoralReef", 16)
 		if ground then
-			rock(rocks, rng, ground, 1.2)
+			rock(rocks, rng, ground, 1.3)
 		end
 	end
-	for _ = 1, 8 do
+	for _ = 1, 16 do
 		local ground = spotIn(rng, "CoralReef", 40)
 		if ground then
 			arch(rocks, rng, ground)
+		end
+	end
+
+	-- Open Blue: deep blue water over a blue floor with big dark rocks, knolls and the
+	-- pinnacles; the sharks, the grouper and snapper schools and the Megalodon are its
+	-- content (owner, 2026-10-08), so the water itself stays open
+	for _ = 1, 40 do
+		local ground = spotIn(rng, "OpenBlue", 20)
+		if ground then
+			rock(rocks, rng, ground, 1.8, true)
 		end
 	end
 
@@ -1007,13 +1104,13 @@ local function buildBiomes(parent: Instance)
 	for _, anchor in features.ruinAnchors do
 		ruin(ruins, rng, anchor)
 	end
-	for _ = 1, 4 do
+	for _ = 1, 8 do
 		local ground = spotIn(rng, "SunkenRuins", 60)
 		if ground then
 			ruin(ruins, rng, ground)
 		end
 	end
-	for _ = 1, 40 do
+	for _ = 1, 80 do
 		local ground = spotIn(rng, "SunkenRuins", 16)
 		if ground then
 			rock(rocks, rng, ground, 1.3, true)
@@ -1024,26 +1121,22 @@ local function buildBiomes(parent: Instance)
 	for _, chimney in features.chimneys do
 		ventSmoke(vents, chimney)
 	end
-	for _ = 1, 50 do
+	for _ = 1, 90 do
 		local ground = spotIn(rng, "HydrothermalVents", 16)
 		if ground then
 			rock(rocks, rng, ground, 1.2, true)
 		end
 	end
 
-	-- Abyssal Trench: bioluminescent specks along the canyon, faint blue lights
-	for i = 1, 70 do
+	-- Abyssal Trench: bioluminescent specks down the canyon's walls, faint blue lights
+	for i = 1, 130 do
 		local trench = World.trench
-		local angle = (trench.angles[1] + trench.angles[2]) / 2 + rng:NextNumber(-1, 1) * 2
 		local r = rng:NextNumber(trench.radii[1] + 20, trench.radii[2] - 20)
+		local _, width = Seafloor.trenchAxis(r)
+		local halfTop, _, halfBottom = Seafloor.trenchHalfWidths(width)
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		local acrossDeg = math.deg((trench.width / 2 + rng:NextNumber(10, 40)) / r)
-		local a = math.rad(angle + side * acrossDeg)
-		local position = Vector3.new(
-			math.cos(a) * r,
-			rng:NextNumber(trench.floorY + 10, World.deep.floorY - 15),
-			math.sin(a) * r
-		)
+		local x, z = Seafloor.trenchPoint(r, side * rng:NextNumber(halfBottom + 6, halfTop - 30))
+		local position = Vector3.new(x, rng:NextNumber(trench.floorY + 10, World.deep.floorY - 15), z)
 		local speck = Instance.new("Part")
 		speck.Name = "Glow"
 		speck.Anchored = true
@@ -1070,43 +1163,43 @@ local function buildBiomes(parent: Instance)
 	end
 
 	-- Light shafts from the surface over the shelf, and a few long ones in the Open Blue
-	for _ = 1, 30 do
+	for _ = 1, 50 do
 		local ground = spotIn(rng, "KelpShallows", 0)
 		if ground then
-			local slant = Vector3.new(rng:NextNumber(-40, 40), 0, rng:NextNumber(-40, 40))
+			local slant = Vector3.new(rng:NextNumber(-50, 50), 0, rng:NextNumber(-50, 50))
 			lightShaft(
 				shafts,
 				Vector3.new(ground.X, World.surfaceY - 2, ground.Z),
 				ground + Vector3.new(0, 10, 0) + slant,
-				rng:NextNumber(10, 22),
+				rng:NextNumber(12, 26),
 				0.22
 			)
 		end
 	end
 	for _, biomeId in { "CoralReef", "ShipwreckGraveyard" } do
-		for _ = 1, 10 do
+		for _ = 1, 16 do
 			local ground = spotIn(rng, biomeId, 0)
 			if ground then
-				local slant = Vector3.new(rng:NextNumber(-40, 40), 0, rng:NextNumber(-40, 40))
+				local slant = Vector3.new(rng:NextNumber(-50, 50), 0, rng:NextNumber(-50, 50))
 				lightShaft(
 					shafts,
 					Vector3.new(ground.X, World.surfaceY - 2, ground.Z),
 					ground + Vector3.new(0, 10, 0) + slant,
-					rng:NextNumber(10, 22),
+					rng:NextNumber(12, 26),
 					0.2
 				)
 			end
 		end
 	end
-	for _ = 1, 8 do
+	for _ = 1, 14 do
 		local ground = spotIn(rng, "OpenBlue", 0)
 		if ground then
-			local slant = Vector3.new(rng:NextNumber(-60, 60), 0, rng:NextNumber(-60, 60))
+			local slant = Vector3.new(rng:NextNumber(-80, 80), 0, rng:NextNumber(-80, 80))
 			lightShaft(
 				shafts,
 				Vector3.new(ground.X, World.surfaceY - 2, ground.Z),
-				Vector3.new(ground.X, -120, ground.Z) + slant,
-				rng:NextNumber(16, 30),
+				Vector3.new(ground.X, -260, ground.Z) + slant,
+				rng:NextNumber(18, 34),
 				0.14
 			)
 		end
@@ -1118,7 +1211,7 @@ local function buildBiomes(parent: Instance)
 			shafts,
 			Vector3.new(top.X, World.surfaceY - 2, top.Z),
 			top + Vector3.new(0, 4, 0) + slant,
-			14,
+			16,
 			0.2
 		)
 	end

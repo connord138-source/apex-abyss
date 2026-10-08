@@ -22,59 +22,91 @@ type Grade = {
 	brightness: number,
 	saturation: number,
 	exposure: number,
+	sight: number, -- studs of water you can see through (classic fog, for when no Atmosphere drives the look)
 }
 
--- From the surface down; heights in between blend
+-- From the surface down; heights in between blend. The water thickens and darkens
+-- with depth so no depth ever sees every other (owner, 2026-10-08: "swimming to the
+-- surface allows you to see all the way down ... similar to the underwater feel of
+-- Subnautica"); the deep floor is a deep blue, never black ("a large black
+-- wasteland"); only the Trench goes near-black, and that is OceanController.setDark.
 local GRADES: { Grade } = {
 	{
 		y = World.surfaceY,
-		color = Color3.fromRGB(58, 150, 176),
-		decay = Color3.fromRGB(22, 80, 110),
-		density = 0.5,
-		tint = Color3.fromRGB(198, 234, 246),
+		color = Color3.fromRGB(54, 146, 172),
+		decay = Color3.fromRGB(18, 72, 104),
+		density = 0.68,
+		tint = Color3.fromRGB(196, 232, 244),
 		brightness = 0.02,
 		saturation = 0.06,
 		exposure = 0,
+		sight = 420,
 	},
 	{
-		y = 120,
-		color = Color3.fromRGB(40, 118, 152),
-		decay = Color3.fromRGB(14, 56, 90),
-		density = 0.56,
-		tint = Color3.fromRGB(184, 222, 240),
+		y = World.surfaceY * 0.55,
+		color = Color3.fromRGB(40, 122, 156),
+		decay = Color3.fromRGB(12, 56, 92),
+		density = 0.72,
+		tint = Color3.fromRGB(186, 222, 240),
 		brightness = 0,
 		saturation = 0.03,
-		exposure = -0.12,
+		exposure = -0.1,
+		sight = 360,
 	},
 	{
 		y = World.seabedY,
-		color = Color3.fromRGB(28, 92, 132),
-		decay = Color3.fromRGB(10, 40, 72),
-		density = 0.5,
-		tint = Color3.fromRGB(204, 228, 246),
+		color = Color3.fromRGB(26, 96, 138),
+		decay = Color3.fromRGB(8, 42, 78),
+		density = 0.76,
+		tint = Color3.fromRGB(200, 226, 246),
 		brightness = -0.02,
 		saturation = 0,
-		exposure = -0.25,
+		exposure = -0.28,
+		sight = 300,
+	},
+	{
+		y = World.deep.floorY * 0.5,
+		color = Color3.fromRGB(18, 76, 124),
+		decay = Color3.fromRGB(6, 34, 72),
+		density = 0.82,
+		tint = Color3.fromRGB(184, 208, 236),
+		brightness = -0.04,
+		saturation = -0.04,
+		exposure = -0.48,
+		sight = 250,
 	},
 	{
 		y = World.deep.floorY,
-		color = Color3.fromRGB(14, 52, 88),
-		decay = Color3.fromRGB(6, 24, 46),
-		density = 0.58,
-		tint = Color3.fromRGB(176, 200, 230),
+		color = Color3.fromRGB(12, 58, 108),
+		decay = Color3.fromRGB(4, 28, 64),
+		density = 0.88,
+		tint = Color3.fromRGB(172, 198, 232),
 		brightness = -0.06,
-		saturation = -0.1,
-		exposure = -0.8,
+		saturation = -0.08,
+		exposure = -0.62,
+		sight = 210,
+	},
+	{
+		y = World.deep.ventsFloorY,
+		color = Color3.fromRGB(10, 48, 92),
+		decay = Color3.fromRGB(4, 22, 52),
+		density = 0.92,
+		tint = Color3.fromRGB(166, 190, 226),
+		brightness = -0.08,
+		saturation = -0.12,
+		exposure = -0.85,
+		sight = 180,
 	},
 	{
 		y = World.trench.floorY,
-		color = Color3.fromRGB(6, 20, 40),
+		color = Color3.fromRGB(5, 18, 38),
 		decay = Color3.fromRGB(2, 8, 20),
-		density = 0.64,
+		density = 0.97,
 		tint = Color3.fromRGB(150, 172, 214),
 		brightness = -0.12,
 		saturation = -0.2,
-		exposure = -1.4,
+		exposure = -1.5,
+		sight = 120,
 	},
 }
 
@@ -113,6 +145,7 @@ local function blendGrades(a: Grade, b: Grade, t: number): Grade
 		brightness = a.brightness + (b.brightness - a.brightness) * t,
 		saturation = a.saturation + (b.saturation - a.saturation) * t,
 		exposure = a.exposure + (b.exposure - a.exposure) * t,
+		sight = a.sight + (b.sight - a.sight) * t,
 	}
 end
 
@@ -146,6 +179,11 @@ local function step(dt: number)
 	else
 		atmosphere = Lighting:FindFirstChild("OceanAtmosphere") :: Atmosphere?
 	end
+	-- Classic fog as well: Roblox ignores it while an Atmosphere exists, and it takes
+	-- over with the same sight line if the Atmosphere ever goes
+	Lighting.FogColor = blended.decay
+	Lighting.FogStart = blended.sight * 0.15
+	Lighting.FogEnd = blended.sight * (1 + hubBlend * 0.5)
 	dread, dreadVelocity = Spring.number(dread, dreadVelocity, dreadTarget, 2.5, dt)
 	heart += dt * (0.9 + dread * 0.9) * 2 * math.pi
 	-- A double thump: lub-dub, then quiet

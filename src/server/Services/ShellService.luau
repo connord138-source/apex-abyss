@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -31,16 +32,17 @@ local function placeSpots()
 	local rng = Random.new(World.seed + 10)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { workspace:WaitForChild("World"), workspace.Terrain }
+	-- Only the Terrain: a shell on a kelp blade or a rock's placeholder part floated
+	-- above the floor (owner, 2026-10-08)
+	params.FilterDescendantsInstances = { workspace.Terrain }
 	local trench = World.trench
 	local function inTrench(x: number, z: number): boolean
-		return math.abs(x - trench.center.X) < trench.size.X / 2 + 12
-			and math.abs(z - trench.center.Z) < trench.size.Z / 2 + 12
+		return Seafloor.inTrench(x, z, 12)
 	end
 	local function drop(x: number, z: number, golden: boolean): boolean
 		local from = Vector3.new(x, World.surfaceY - 10, z)
 		local hit = workspace:Raycast(from, Vector3.new(0, -(World.surfaceY - trench.floorY + 20), 0), params)
-		if hit == nil or hit.Instance.Name == "Surface" then
+		if hit == nil then
 			return false
 		end
 		table.insert(spots, { position = hit.Position + hit.Normal * 0.7, golden = golden })
@@ -57,8 +59,11 @@ local function placeSpots()
 		end
 	end
 	for _ = 1, Shells.goldenSpots do
-		local x = trench.center.X + rng:NextNumber(-0.4, 0.4) * trench.size.X
-		local z = trench.center.Z + rng:NextNumber(-0.4, 0.4) * trench.size.Z
+		-- Down in the canyon, near its floor line
+		local r = rng:NextNumber(trench.radii[1] + 40, trench.radii[2] - 40)
+		local _, width = Seafloor.trenchAxis(r)
+		local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
+		local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-halfBottom * 0.7, halfBottom * 0.7))
 		drop(x, z, true)
 	end
 end

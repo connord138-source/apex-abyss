@@ -23,7 +23,7 @@ DIR = os.path.abspath(argv[0])
 # --world: the whole seafloor (run_world.sh) at a coarse cell, from above and the sides
 WORLD = "--world" in argv
 CELL = 8.0 if WORLD else 2.0  # studs per voxel (Roblox uses 4; finer shows the shape better)
-BOUNDS = ((-1090, 1090), (-460, 60), (-1090, 1090)) if WORLD else ((-190, 190), (-34, 150), (-190, 190))
+BOUNDS = ((-1600, 1600), (-960, 130), (-1600, 1600)) if WORLD else ((-190, 190), (-34, 150), (-190, 190))
 
 MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7}
 # Roughly Cave.COLORS and Shelf.COLORS, in linear-ish RGB
@@ -33,7 +33,7 @@ COLORS = {
     3: (0.56, 0.50, 0.42),
     4: (0.78, 0.72, 0.56),
     5: (0.20, 0.25, 0.29),
-    6: (0.17, 0.19, 0.22),
+    6: (0.17, 0.24, 0.33),
     7: (1.0, 0.42, 0.12),
 }
 
@@ -222,10 +222,10 @@ def render_world():
     scene.collection.objects.link(so)
     build_mesh(grid, "World")
     views = {
-        "aerial": camera("Aerial", (0, 2200, 650), (0, -120, 0), 58),
-        "north": camera("North", (0, 700, -1900), (0, -120, 0), 60),
-        "south": camera("South", (0, 700, 1900), (0, -150, 100), 60),
-        "east": camera("East", (1900, 650, 0), (0, -120, 0), 60),
+        "aerial": camera("Aerial", (0, 3400, 1000), (0, -200, 0), 58),
+        "north": camera("North", (0, 1000, -2900), (0, -250, 0), 60),
+        "south": camera("South", (0, 1000, 2900), (0, -350, 150), 60),
+        "east": camera("East", (2900, 950, 0), (0, -250, 0), 60),
     }
     for name, cam in views.items():
         scene.camera = cam

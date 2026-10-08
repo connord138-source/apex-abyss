@@ -30,8 +30,8 @@ export type Biome = {
 	dark: boolean?, -- pitch dark: bring a light (an Anglerfish's lure, a Deep Lantern)
 }
 
-local SHELF = 600
-local EDGE = 1000
+local SHELF = 850 -- Config/World shelf.radius
+local EDGE = 1500 -- Config/World boundsRadius
 
 local list: { Biome } = {
 	{
@@ -42,7 +42,7 @@ local list: { Biome } = {
 		angleFrom = 0,
 		angleTo = 360,
 		radiusFrom = 0,
-		radiusTo = 340,
+		radiusTo = 480,
 		live = true,
 		color = Color3.fromRGB(150, 220, 120),
 		deep = false,
@@ -54,7 +54,7 @@ local list: { Biome } = {
 		maxLevel = 25,
 		angleFrom = 135,
 		angleTo = 225,
-		radiusFrom = 340,
+		radiusFrom = 480,
 		radiusTo = SHELF,
 		live = true,
 		color = Color3.fromRGB(150, 200, 150),
@@ -68,7 +68,7 @@ local list: { Biome } = {
 		maxLevel = 40,
 		angleFrom = 225,
 		angleTo = 135,
-		radiusFrom = 340,
+		radiusFrom = 480,
 		radiusTo = SHELF,
 		live = true,
 		color = Color3.fromRGB(255, 130, 170),

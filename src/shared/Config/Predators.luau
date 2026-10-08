@@ -24,6 +24,7 @@ export type PredatorDef = {
 	telegraph: number, -- seconds the jaw shows before it bites (the tell)
 	ignoreBelow: number, -- fish shorter than this × its length are left alone unless they bite it
 	band: { number }, -- distance from the hub's center it roams in (min, max)
+	angles: { number }?, -- the sector it keeps to (degrees from +X toward +Z, clockwise; nil = all round)
 	depth: { number }, -- height above the local floor it roams in (min, max; Shared/Seafloor)
 	count: number, -- alive at once
 	respawn: number, -- seconds after a kill
@@ -47,9 +48,9 @@ local list: { PredatorDef } = {
 		biteCooldown = 2.2,
 		telegraph = 0.9,
 		ignoreBelow = 0.25,
-		band = { 220, 560 },
-		depth = { 8, 90 },
-		count = 3,
+		band = { 300, 820 },
+		depth = { 8, 120 },
+		count = 4,
 		respawn = 90,
 		loot = { haulKg = 6, dna = 3, coral = 40 },
 		back = Color3.fromRGB(176, 192, 204),
@@ -69,9 +70,10 @@ local list: { PredatorDef } = {
 		biteCooldown = 2.8,
 		telegraph = 1.1,
 		ignoreBelow = 0.3,
-		band = { 380, 600 },
-		depth = { 10, 110 },
-		count = 2,
+		band = { 980, 1440 },
+		angles = { 228, 312 }, -- the Open Blue is shark water (owner, 2026-10-08)
+		depth = { 40, 330 },
+		count = 4,
 		respawn = 150,
 		loot = { haulKg = 18, dna = 6, coral = 120 },
 		back = Color3.fromRGB(110, 124, 138),

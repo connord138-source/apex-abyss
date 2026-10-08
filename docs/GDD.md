@@ -304,8 +304,8 @@ map can uncover it. The map is in their inventory."
   a Grouper 4.5%); every shell 1.2%, a golden shell 12%; banking a Haul of 4 kg or
   more 4%. You hold at most 3; more don't drop until one is dug up. A found map is
   followed automatically if nothing else is.
-- **Tiers:** Tattered (170–320 studs from the hub), Weathered (300–500), Captain's
-  (460–630, out by the drop-off). Small prey and plain shells mostly give Tattered;
+- **Tiers:** Tattered (170–460 studs from the hub), Weathered (460–830), Captain's
+  (700–1,150, out past the drop-off onto the deep floor). Small prey and plain shells mostly give Tattered;
   big prey, golden shells and big banks skew to Weathered and Captain's.
 - **The satchel** (MAPS on the wallet row): each map with its tier and a hint ("About
   320 studs north-east of the hub, among the boulders"), FOLLOW/STOP, the treasure
@@ -536,22 +536,42 @@ zones and begin the higher level zones. coral zone being the last of the shallow
 zones." As built (`Config/World.luau`, `Config/Biomes.luau`, `Shared/Seafloor.luau`,
 `src/server/Shelf.luau`):
 
-- **The shelf** (radius 600, sand at 0): the Kelp Shallows ring round the hub
-  (150–340, LV 1–10; open sand, kelp forests, boulder fields, arches), the Shipwreck
-  Graveyard in the west bay (340–600, 135–225°, LV 10–25; eight listing hulls, dark
-  rocks, kelp fringe), and the Coral Reef as the outer band everywhere else (LV 25–40;
-  44 coral gardens, reef flats, 16 reef heads with tunnels bored through and hollows
-  under them, 10 stone arches: cover to swim through and under). It ends at the
-  **drop-off**, a 60-stud rock cliff with bulges, bays, notches, buttresses, ledges
-  and six sand chutes down to the deep floor at −170.
-- **Below the drop-off:** the Open Blue north (LV 35–55; ridges, three rock
-  pinnacles, long light shafts; the Megalodon's water), the Sunken Ruins east (50–70;
-  mounds, column stubs, temples with statues and teal lanterns), the Hydrothermal
-  Vents south-west (65–85; a basin at −230 with 14 basalt chimneys, glowing caps,
-  black smoke), and the **Abyssal Trench** south (80–100): a winding canyon with a V
-  profile from the rim down to −420, slate rims, bitten walls, bioluminescent specks,
-  and pitch dark unless you carry a light.
-- The map's wall is at 1000; the seafloor runs 700 further so it fades into the fog.
+Scaled up 2026-10-08 (owner: "the entirety of the map is still too small ... each
+biome made larger ... MUCH MUCH more depth too. Far too shallow of a map"; "the lower
+areas are far too underdeveloped"; the reef "just a bunch of scattered coral"; the
+Open Blue "a large black wasteland"): the map's radius went 1,000 → 1,500, the surface
+300 → 440 over the shelf, the deep floor −170 → −430, the Trench floor −420 → −920.
+
+- **The shelf** (radius 850, sand at 0, 440 studs under the surface): the Kelp
+  Shallows ring round the hub (150–480, LV 1–10; open sand, kelp forests, boulder
+  fields, arches: the open biome by design), the Shipwreck Graveyard in the west bay
+  (480–850, 135–225°, LV 10–25; fourteen listing hulls, dark rocks, kelp fringe), and
+  the Coral Reef as the outer band everywhere else (LV 25–40; 44 reef heads with
+  tunnels bored through and hollows under them, 14 long reef ridges with
+  swim-throughs, 26 big stone arches, reef flats, and corals growing on and round
+  every one of those rocks plus 60 gardens between). It ends at the **drop-off**, a
+  90-stud rock cliff 430 studs tall with bulges, bays, notches, buttresses, ledges and
+  eight sand chutes down to the deep floor at −430.
+- **Below the drop-off** (850–1,500 out): the Open Blue north (LV 35–55; deep blue
+  water over a blue-grey floor with ridges, knolls and seven rock pinnacles up to 280
+  tall; shark water: the Reef Shark predators and the shark, grouper and snapper
+  schools live here, and the Megalodon patrols it), the Sunken Ruins east (50–70;
+  mounds, column stubs, broken walls, temples with statues and teal lanterns, and a
+  temple ring), the Hydrothermal Vents south-west (65–85; ten basins sunk to −540
+  with 26 basalt chimneys, glowing caps, black smoke), and the **Abyssal Trench**
+  south (80–100): a winding canyon 440 long and 210 wide at the floor, three stepped
+  cuts from the rim at −430 down to −920 (`Seafloor.trenchAxis`), slate rims, bitten
+  walls, ledges, basalt pillars, 130 bioluminescent specks, and pitch dark unless you
+  carry a light.
+- The map's wall is at 1,500; the seafloor runs 700 further so it fades into the
+  water. The deep floor is a 30-stud mud slab with rock only under the canyon and
+  the basins, and the shelf is a hollow drum, so the Terrain stays light at this size.
+- **Visibility by depth** (`OceanController` grades): the water thickens and darkens
+  from the surface (sight ~420) to the shelf (~300), the deep floor (~210) and the
+  Trench (~120), so no depth ever sees every other; the deep floor is deep blue, never
+  black. The sky and surface look belong to the other (PC) chat.
+- **Prey zones** (`Config/Prey` `zones`): a prey can list several places (band,
+  sector, school count, depth); predators can keep to a sector (`angles`).
 - `Seafloor.y(x, z)` is the nominal floor height anywhere; schools, shells, forage,
   treasure sites, predators and bosses all place from it (heights are above the local
   floor), so the layout numbers live in one place.
