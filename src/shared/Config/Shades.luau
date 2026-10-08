@@ -26,77 +26,142 @@ export type Shade = {
 	blurb: string,
 }
 
-local function tint(id: string, name: string, back: Color3, belly: Color3, fin: Color3): Shade
+local function common(
+	id: string,
+	name: string,
+	chance: number,
+	back: Color3,
+	belly: Color3,
+	fin: Color3,
+	blurb: string
+): Shade
 	return {
 		id = id,
 		name = name,
 		tier = "Common",
-		chance = 100,
+		chance = chance,
 		refund = 120,
 		price = 1500,
 		back = back,
 		belly = belly,
 		fin = fin,
-		blurb = "A fresh tint.",
+		blurb = blurb,
 	}
 end
 
+-- Every shade is a real skin on a mesh fish (tools/shades: patterns laid on the body
+-- in 3D, ReplicatedStorage.ShadeSkins.<Fish>.<Shade>); the colors below are its
+-- swatches in menus and the look on a part fish or before the skins are imported.
+-- Owner, 2026-10-08: "All of the shades in general need much much more variance and
+-- depth than just a slight reshape to the existing colors."
 local list: { Shade } = {
-	tint(
+	common(
 		"Mint",
 		"Mint",
-		Color3.fromRGB(120, 214, 176),
-		Color3.fromRGB(226, 248, 238),
-		Color3.fromRGB(96, 196, 160)
+		100,
+		Color3.fromRGB(92, 199, 158),
+		Color3.fromRGB(204, 245, 235),
+		Color3.fromRGB(41, 148, 138),
+		"Mint green with dark saddles and freckles."
 	),
-	tint(
+	common(
 		"Sunset",
 		"Sunset",
-		Color3.fromRGB(255, 132, 84),
-		Color3.fromRGB(255, 222, 168),
-		Color3.fromRGB(240, 100, 84)
+		100,
+		Color3.fromRGB(255, 160, 30),
+		Color3.fromRGB(255, 230, 77),
+		Color3.fromRGB(209, 26, 66),
+		"Gold melting into red, with a crimson horizon."
 	),
-	tint(
+	common(
 		"Ink",
 		"Ink",
-		Color3.fromRGB(38, 44, 70),
-		Color3.fromRGB(122, 132, 162),
-		Color3.fromRGB(70, 82, 124)
+		100,
+		Color3.fromRGB(23, 31, 66),
+		Color3.fromRGB(102, 122, 173),
+		Color3.fromRGB(46, 56, 128),
+		"Midnight navy, a fine net and a glowing lateral line."
 	),
-	tint(
+	common(
 		"Sand",
-		"Sand",
-		Color3.fromRGB(212, 188, 136),
-		Color3.fromRGB(246, 236, 212),
-		Color3.fromRGB(188, 158, 108)
+		"Sandbar",
+		100,
+		Color3.fromRGB(148, 153, 128),
+		Color3.fromRGB(204, 212, 209),
+		Color3.fromRGB(82, 89, 71),
+		"Seabed camouflage: blotched and speckled like a flounder."
 	),
-	tint(
+	common(
 		"Ember",
 		"Ember",
-		Color3.fromRGB(196, 58, 40),
-		Color3.fromRGB(250, 182, 120),
-		Color3.fromRGB(240, 112, 50)
+		100,
+		Color3.fromRGB(204, 23, 18),
+		Color3.fromRGB(255, 148, 26),
+		Color3.fromRGB(18, 15, 23),
+		"Fire red with black tiger stripes."
 	),
-	tint(
+	common(
 		"Lilac",
 		"Lilac",
-		Color3.fromRGB(166, 136, 220),
-		Color3.fromRGB(234, 226, 250),
-		Color3.fromRGB(146, 118, 210)
+		100,
+		Color3.fromRGB(163, 133, 224),
+		Color3.fromRGB(235, 242, 255),
+		Color3.fromRGB(117, 77, 204),
+		"Lilac with white polka dots."
 	),
-	tint(
+	common(
 		"Moss",
 		"Moss",
-		Color3.fromRGB(88, 120, 60),
-		Color3.fromRGB(200, 216, 160),
-		Color3.fromRGB(120, 150, 80)
+		100,
+		Color3.fromRGB(56, 102, 41),
+		Color3.fromRGB(168, 204, 51),
+		Color3.fromRGB(77, 117, 46),
+		"Forest green under a lime net, like a moray."
 	),
-	tint(
+	common(
 		"Ocean",
 		"Ocean",
-		Color3.fromRGB(38, 108, 190),
-		Color3.fromRGB(200, 230, 250),
-		Color3.fromRGB(60, 150, 222)
+		100,
+		Color3.fromRGB(20, 82, 209),
+		Color3.fromRGB(148, 199, 250),
+		Color3.fromRGB(255, 209, 20),
+		"Royal blue with a black swoosh and a yellow tail."
+	),
+	common(
+		"Tiger",
+		"Tiger",
+		140,
+		Color3.fromRGB(255, 117, 10),
+		Color3.fromRGB(235, 242, 255),
+		Color3.fromRGB(15, 15, 23),
+		"Blazing orange with bold black stripes."
+	),
+	common(
+		"Bumblebee",
+		"Bumblebee",
+		140,
+		Color3.fromRGB(255, 204, 13),
+		Color3.fromRGB(255, 224, 64),
+		Color3.fromRGB(15, 15, 23),
+		"Yellow and black bands."
+	),
+	common(
+		"Tetra",
+		"Neon Tetra",
+		140,
+		Color3.fromRGB(13, 26, 71),
+		Color3.fromRGB(242, 31, 26),
+		Color3.fromRGB(31, 250, 255),
+		"An electric cyan stripe over a red tail half."
+	),
+	common(
+		"Leopard",
+		"Leopard",
+		140,
+		Color3.fromRGB(250, 184, 26),
+		Color3.fromRGB(255, 224, 112),
+		Color3.fromRGB(15, 15, 23),
+		"Gold with black rosettes."
 	),
 	{
 		id = "Lunar",
@@ -104,13 +169,36 @@ local list: { Shade } = {
 		tier = "Rare",
 		chance = 120,
 		refund = 1000,
-		back = Color3.fromRGB(190, 206, 236),
-		belly = Color3.fromRGB(242, 247, 255),
-		fin = Color3.fromRGB(150, 172, 228),
-		reflectance = 0.15,
+		back = Color3.fromRGB(189, 204, 240),
+		belly = Color3.fromRGB(235, 242, 255),
+		fin = Color3.fromRGB(140, 158, 219),
 		glow = Color3.fromRGB(170, 200, 255),
 		sparkle = Color3.fromRGB(220, 236, 255),
-		blurb = "Pale moonlight, with a soft glow and drifting stars.",
+		blurb = "Pearl moonlight with crescent marks and drifting stars.",
+	},
+	{
+		id = "Glowspot",
+		name = "Glowspot",
+		tier = "Rare",
+		chance = 160,
+		refund = 1100,
+		back = Color3.fromRGB(8, 15, 46),
+		belly = Color3.fromRGB(15, 51, 77),
+		fin = Color3.fromRGB(51, 242, 255),
+		glow = Color3.fromRGB(60, 220, 255),
+		blurb = "Deep-sea navy covered in glowing cyan spots.",
+	},
+	{
+		id = "Tidepool",
+		name = "Tidepool",
+		tier = "Rare",
+		chance = 180,
+		refund = 1200,
+		back = Color3.fromRGB(10, 143, 158),
+		belly = Color3.fromRGB(107, 71, 204),
+		fin = Color3.fromRGB(140, 255, 242),
+		sparkle = Color3.fromRGB(170, 255, 240),
+		blurb = "Teal fading to violet under rippling light.",
 	},
 	{
 		id = "Diamond",
@@ -121,11 +209,35 @@ local list: { Shade } = {
 		back = Color3.fromRGB(206, 240, 255),
 		belly = Color3.fromRGB(246, 252, 255),
 		fin = Color3.fromRGB(176, 224, 250),
-		material = Enum.Material.Glass,
 		reflectance = 0.35,
-		transparency = 0.12,
 		sparkle = Color3.fromRGB(255, 255, 255),
-		blurb = "Clear crystal that throws sparkles.",
+		blurb = "Cut crystal facets that throw rainbow fire.",
+	},
+	{
+		id = "Magma",
+		name = "Magma",
+		tier = "Epic",
+		chance = 300,
+		refund = 2200,
+		back = Color3.fromRGB(26, 20, 20),
+		belly = Color3.fromRGB(46, 31, 26),
+		fin = Color3.fromRGB(255, 140, 13),
+		glow = Color3.fromRGB(255, 110, 30),
+		sparkle = Color3.fromRGB(255, 170, 60),
+		blurb = "Black basalt split by glowing lava cracks.",
+	},
+	{
+		id = "Glacier",
+		name = "Glacier",
+		tier = "Epic",
+		chance = 320,
+		refund = 2300,
+		back = Color3.fromRGB(61, 133, 204),
+		belly = Color3.fromRGB(235, 242, 255),
+		fin = Color3.fromRGB(102, 179, 240),
+		reflectance = 0.2,
+		sparkle = Color3.fromRGB(220, 245, 255),
+		blurb = "Ice blue with frost drifts and hairline cracks.",
 	},
 	{
 		id = "Divine",
@@ -133,13 +245,39 @@ local list: { Shade } = {
 		tier = "Legendary",
 		chance = 500,
 		refund = 4000,
-		back = Color3.fromRGB(255, 244, 214),
-		belly = Color3.fromRGB(255, 255, 246),
-		fin = Color3.fromRGB(255, 204, 88),
+		back = Color3.fromRGB(235, 242, 255),
+		belly = Color3.fromRGB(250, 252, 255),
+		fin = Color3.fromRGB(255, 194, 41),
 		reflectance = 0.25,
 		glow = Color3.fromRGB(255, 220, 140),
 		sparkle = Color3.fromRGB(255, 226, 150),
-		blurb = "White and gold, wrapped in a warm halo.",
+		blurb = "Pearl white edged in gold filigree, wrapped in a halo.",
+	},
+	{
+		id = "Aurora",
+		name = "Aurora",
+		tier = "Legendary",
+		chance = 650,
+		refund = 4500,
+		back = Color3.fromRGB(8, 26, 41),
+		belly = Color3.fromRGB(51, 255, 140),
+		fin = Color3.fromRGB(158, 77, 255),
+		glow = Color3.fromRGB(90, 255, 170),
+		sparkle = Color3.fromRGB(200, 255, 230),
+		blurb = "Northern lights rippling over a night-dark body.",
+	},
+	{
+		id = "Thunder",
+		name = "Thunder",
+		tier = "Legendary",
+		chance = 700,
+		refund = 4800,
+		back = Color3.fromRGB(46, 54, 77),
+		belly = Color3.fromRGB(117, 133, 163),
+		fin = Color3.fromRGB(217, 242, 255),
+		glow = Color3.fromRGB(120, 180, 255),
+		sparkle = Color3.fromRGB(200, 230, 255),
+		blurb = "Storm slate forked with live lightning.",
 	},
 	{
 		id = "Exotic",
@@ -147,13 +285,12 @@ local list: { Shade } = {
 		tier = "Mythic",
 		chance = 900,
 		refund = 7000,
-		back = Color3.fromRGB(30, 110, 255),
-		belly = Color3.fromRGB(255, 232, 60),
-		fin = Color3.fromRGB(255, 108, 30),
-		accent = Color3.fromRGB(110, 255, 90),
-		reflectance = 0.06,
+		back = Color3.fromRGB(20, 92, 255),
+		belly = Color3.fromRGB(255, 219, 13),
+		fin = Color3.fromRGB(255, 107, 15),
+		accent = Color3.fromRGB(89, 255, 64),
 		sparkle = Color3.fromRGB(180, 255, 120),
-		blurb = "Tropical neon in four colors at once.",
+		blurb = "Tropical neon: blue, gold spots, lime stripes, orange fins.",
 	},
 	{
 		id = "Prismatic",
@@ -169,6 +306,31 @@ local list: { Shade } = {
 		sparkle = Color3.fromRGB(255, 255, 255),
 		cycle = true,
 		blurb = "Every color, rolling across the body.",
+	},
+	{
+		id = "Nebula",
+		name = "Nebula",
+		tier = "Mythic",
+		chance = 1800,
+		refund = 14000,
+		back = Color3.fromRGB(10, 8, 26),
+		belly = Color3.fromRGB(107, 51, 230),
+		fin = Color3.fromRGB(26, 217, 217),
+		glow = Color3.fromRGB(140, 110, 255),
+		sparkle = Color3.fromRGB(255, 255, 255),
+		blurb = "Deep space: violet clouds and a field of stars.",
+	},
+	{
+		id = "Void",
+		name = "Void",
+		tier = "Mythic",
+		chance = 2200,
+		refund = 16000,
+		back = Color3.fromRGB(8, 5, 15),
+		belly = Color3.fromRGB(97, 26, 204),
+		fin = Color3.fromRGB(158, 77, 255),
+		glow = Color3.fromRGB(150, 70, 255),
+		blurb = "Blacker than the Trench, cracked with violet light.",
 	},
 	-- World boss trophies (owner, 2026-10-06: "specific skins unlocked from beating
 	-- them... a pale green ghost skin"). Never rolled.

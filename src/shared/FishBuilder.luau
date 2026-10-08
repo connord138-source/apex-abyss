@@ -96,11 +96,20 @@ end
 -- Builds the fish's body under `character`, jointed to `root`, at `length` studs.
 -- Returns the Body model. The base colors go on the character too (LookBack,
 -- LookBelly, LookFin), so a shade can be taken off again.
-function FishBuilder.build(character: Model, root: BasePart, look: Look, length: number, plan: string?): Model
+-- `partBody` builds the graybox part body even when a mesh is imported (rolled parts
+-- and variants only show on part bodies; the roll cards use it).
+function FishBuilder.build(
+	character: Model,
+	root: BasePart,
+	look: Look,
+	length: number,
+	plan: string?,
+	partBody: boolean?
+): Model
 	local body = Instance.new("Model")
 	body.Name = "Body"
 	body:SetAttribute("Plan", plan or "Nibbler")
-	local mesh = FishBuilder.meshTemplate(plan)
+	local mesh = if partBody then nil else FishBuilder.meshTemplate(plan)
 	if mesh then
 		FishBuilder.buildMesh(body, root, mesh, length)
 	else
@@ -175,6 +184,7 @@ function FishBuilder.buildMesh(body: Model, root: BasePart, template: Model, len
 	joint.Parent = primary
 	model.Parent = body
 	body:SetAttribute("Mesh", true)
+	body:SetAttribute("MeshPlan", template.Name) -- which fish's shade skins fit it (Cosmetics)
 	body:SetAttribute("UnitScale", unitScale)
 	body:SetAttribute("Applied", length)
 end

@@ -16,3 +16,8 @@ assets/fbx/
 __pycache__/
 # tools/tripo.py outputs (concept PNGs are committed separately under assets/concepts/)
 assets/tripo/
+
+# Shade skins: baked maps, generated textures and packed GLBs (hosted, tools/assets_manifest.json `shade_skins`)
+assets/shades/maps/
+assets/shades/skins/
+assets/shades/glb/

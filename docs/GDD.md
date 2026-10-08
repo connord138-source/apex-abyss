@@ -255,20 +255,23 @@ This replaced the finish and mutation plan.
   - Big prey sometimes carry 1–4 (`Config/Shells.luau`).
   - Shells are never lost when you're eaten.
 - **50 Shells = 1 roll**, from the HUD's ROLL button. The reveal is a case-opening
-  reel, and it lasts longer and lands bigger the rarer the result.
+  reel, and it lasts longer and lands bigger the rarer the result. Every card is a
+  studio photo (owner, 2026-10-08: "photos for the rolls need to be dialed way up"):
+  your own fish in the shade, lit, on a spotlit backdrop in the tier's color, with a
+  nameplate, foil from Epic up and a holo edge from Mythic up (`CardPhoto`).
 - **The roll table** (`Config/Rolls.luau`, `Shades.luau`, `Exotics.luau`;
   `Shared/RollOdds.luau`). Exact odds per roll, which add up to exactly 100%
   (`tools/tests/run_odds.sh`):
 
 | Outcome | Tier | Chance |
 |---|---|---|
-| Coral: Handful 25 / Pouch 60 / Chest 150 / Jackpot 600 | Coral | 63.2% / 19.9% / 5.9% / 1.35% |
-| 8 tints (Mint, Sunset, Ink, Sand, Ember, Lilac, Moss, Ocean) | Common | 1 in 100 each |
-| Lunar shade | Rare | 1 in 120 |
-| Diamond shade | Epic | 1 in 250 |
-| Divine shade | Legendary | 1 in 500 |
-| Exotic shade | Mythic | 1 in 900 |
-| Prismatic shade | Mythic | 1 in 1,500 |
+| Coral: Handful 25 / Pouch 60 / Chest 150 / Jackpot 600 | Coral | 85.2% of a fresh fish's roll in all (70/22/6.5/1.5 of it); more as the fish collects shades |
+| 8 patterned commons (Mint, Sunset, Ink, Sandbar, Ember, Lilac, Moss, Ocean) | Common | 1 in 100 each |
+| 4 bolder commons (Tiger, Bumblebee, Neon Tetra, Leopard) | Common | 1 in 140 each |
+| Lunar / Glowspot / Tidepool | Rare | 1 in 120 / 160 / 180 |
+| Diamond / Magma / Glacier | Epic | 1 in 250 / 300 / 320 |
+| Divine / Aurora / Thunder | Legendary | 1 in 500 / 650 / 700 |
+| Exotic / Prismatic / Nebula / Void | Mythic | 1 in 900 / 1,500 / 1,800 / 2,200 |
 | Body parts: Angler Lure, Narwhal Horn, Sawblade Snout, Sail Fin, Veil Tail | Abyssal | 1 in 4,000 to 1 in 6,000 each |
 | Exotic variants: Puffer, Hammerhead | Abyssal | 1 in 8,000 / 1 in 10,000 |
 
@@ -280,9 +283,20 @@ This replaced the finish and mutation plan.
   15,000–30,000 for an Abyssal outcome.
 - **Announcements:** Rare and rarer results are announced to the whole server once
   the roller's reveal has landed.
+- **Shades are real skins (owner, 2026-10-08: "much much more variance and depth than
+  just a slight reshape to the existing colors"):** every shade is a texture made for
+  each fish from its own texture (`tools/shades`): the body countershaded, the fins
+  apart, patterns laid on the body in 3D (stripes, bands, spots, rosettes, nets,
+  scales, cut facets, lava cracks, frost, aurora curtains, star fields), finishes
+  baked in (pearl films, metal sheens, glow halos), the fish's painted strokes, eyes,
+  teeth and the Angler's lure kept. 28 shades × 6 fish = 168 skins, screened for
+  moderation before upload and imported as `ReplicatedStorage.ShadeSkins`.
+- **Shades are per fish (owner, 2026-10-08):** a shade works on every fish, but each
+  fish unlocks it for itself, and once a fish has a shade it never rolls again for
+  that fish (its chance goes to coral; the odds panel shows that fish's table).
 - **Wearing them:**
-  - Shades, parts and variants are owned per player and worn on any fish, from the
-    Wardrobe or straight from the reveal.
+  - Shades are owned per fish; parts and variants per player. Worn from the Wardrobe
+    or straight from the reveal.
   - A fish wears one shade, one variant and one part per slot (Head, Back, Tail).
   - The server sets the character's Shade, Parts and Variant attributes, and every
     client dresses the fish from them (`Shared/Cosmetics.luau`).

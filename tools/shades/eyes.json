@@ -1,0 +1,99 @@
+{
+ "Angler": {
+  "picks": [
+   [
+    3,
+    291,
+    193,
+    24
+   ],
+   [
+    4,
+    220,
+    195,
+    24
+   ]
+  ]
+ },
+ "Cuda": {
+  "picks": [
+   [
+    3,
+    287,
+    221,
+    32
+   ],
+   [
+    4,
+    224,
+    220,
+    32
+   ]
+  ]
+ },
+ "MorayEel": {
+  "picks": [
+   [
+    3,
+    156,
+    240,
+    16
+   ],
+   [
+    4,
+    364,
+    237,
+    16
+   ]
+  ]
+ },
+ "Nibbler": {
+  "picks": [
+   [
+    3,
+    225,
+    239,
+    70
+   ],
+   [
+    4,
+    288,
+    243,
+    70
+   ]
+  ]
+ },
+ "Puffer": {
+  "picks": [
+   [
+    3,
+    213,
+    199,
+    24
+   ],
+   [
+    4,
+    292,
+    200,
+    26
+   ]
+  ]
+ },
+ "ReefShark": {
+  "picks": [
+   [
+    3,
+    184,
+    241,
+    13
+   ],
+   [
+    4,
+    309,
+    245,
+    13
+   ]
+  ]
+ },
+ "_note": "Hand-checked 2026-10-08 on find_eyes.py's debug sheet: each pick covers the whole eye (Nibbler's googly white, the Angler's glowing iris)."
+}

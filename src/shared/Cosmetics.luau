@@ -8,6 +8,8 @@
 -- it takes off the old ones (cosmetic parts, reshaping, hidden parts), then puts
 -- on the variant, the parts and the shade, in that order. Afterwards the body
 -- needs FishBuilder.applyScale at its current length.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Config = require(script.Parent.Config)
 local ShadesConfig = require(script.Parent.Config.Shades)
 local FishBuilder = require(script.Parent.FishBuilder)
@@ -421,6 +423,47 @@ end
 -- (SurfaceAppearance.Color and the part color multiply, so this only ever darkens
 -- or colors; whitening looks need their own textures later) and gets the shade's
 -- glow and glints. Rolled parts and variants don't fit a mesh yet.
+-- A fish's skin for a shade: ReplicatedStorage.ShadeSkins.<Fish>.<Shade>, a
+-- SurfaceAppearance (or a StringValue holding a texture id), made by tools/shades and
+-- filed by tools/studio/organize_shades.luau. Nil until it's imported.
+local function skinFor(plan: string?, shadeId: string): Instance?
+	local root = ReplicatedStorage:FindFirstChild("ShadeSkins")
+	local folder = if root and plan then root:FindFirstChild(plan) else nil
+	local skin = if folder then folder:FindFirstChild(shadeId) else nil
+	if skin and (skin:IsA("SurfaceAppearance") or skin:IsA("StringValue")) then
+		return skin
+	end
+	return nil
+end
+
+-- Puts the part's own texture aside (a SurfaceAppearance only works parented
+-- straight to its part), or back
+local function holdOwn(part: BasePart, hold: boolean)
+	local held = part:FindFirstChild("HeldAppearance")
+	if hold then
+		local own: Instance? = nil
+		for _, child in part:GetChildren() do
+			if child:IsA("SurfaceAppearance") and child.Name ~= "ShadeSkin" then
+				own = child
+			end
+		end
+		if own then
+			if held == nil then
+				local made = Instance.new("Folder")
+				made.Name = "HeldAppearance"
+				made.Parent = part
+				held = made
+			end
+			own.Parent = held
+		end
+	elseif held then
+		local own = held:FindFirstChildOfClass("SurfaceAppearance")
+		if own then
+			own.Parent = part
+		end
+	end
+end
+
 local function paintMesh(body: Model, shadeId: string?, length: number)
 	local mesh = body:FindFirstChild("Mesh")
 	if mesh == nil then
@@ -428,41 +471,60 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 	end
 	local shade = if shadeId then Config.Shades.byId[shadeId] else nil
 	local spectral = shade ~= nil and shade.spectral == true
-	local tint = if shade then shade.back:Lerp(Color3.new(1, 1, 1), 0.35) else Color3.new(1, 1, 1)
+	local plan = body:GetAttribute("MeshPlan")
+	local skin = if shade and not spectral
+		then skinFor(if typeof(plan) == "string" then plan else nil, shade.id)
+		else nil
+	-- Without its skin imported yet, a shade tints the texture (multiplies, so it can
+	-- only darken; the skin is the real look)
+	local tint = if shade and skin == nil
+		then shade.back:Lerp(Color3.new(1, 1, 1), 0.35)
+		else Color3.new(1, 1, 1)
 	local core: BasePart? = nil
 	for _, descendant in mesh:GetDescendants() do
-		if descendant:GetAttribute("ShadeEffect") then
+		if descendant:GetAttribute("ShadeEffect") or descendant.Name == "ShadeSkin" then
 			descendant:Destroy()
-		elseif descendant:IsA("SurfaceAppearance") then
-			(descendant :: any).Color = tint
-		elseif descendant:IsA("BasePart") then
-			-- A spectral shade puts the texture aside (a SurfaceAppearance only works
-			-- parented straight to its part) and shows the shimmering material instead
-			local held = descendant:FindFirstChild("HeldAppearance")
-			if spectral then
-				local appearance = descendant:FindFirstChildOfClass("SurfaceAppearance")
-				if appearance then
-					if held == nil then
-						local made = Instance.new("Folder")
-						made.Name = "HeldAppearance"
-						made.Parent = descendant
-						held = made
-					end
-					appearance.Parent = held
+		end
+	end
+	for _, descendant in mesh:GetDescendants() do
+		if not descendant:IsA("MeshPart") then
+			continue
+		end
+		local part = descendant :: MeshPart
+		core = core or part
+		local ownTexture = part:GetAttribute("OwnTexture")
+		if spectral then
+			holdOwn(part, true)
+			part.Color = (shade :: ShadesConfig.Shade).back
+			part.Material = Enum.Material.ForceField
+			part.Transparency = (shade :: ShadesConfig.Shade).transparency or 0.3
+		elseif skin then
+			holdOwn(part, true)
+			if skin:IsA("SurfaceAppearance") then
+				local worn = skin:Clone()
+				worn.Name = "ShadeSkin"
+				worn.Parent = part
+			elseif skin:IsA("StringValue") then
+				if ownTexture == nil then
+					part:SetAttribute("OwnTexture", part.TextureID)
 				end
-				descendant.Color = (shade :: ShadesConfig.Shade).back
-				descendant.Material = Enum.Material.ForceField
-				descendant.Transparency = (shade :: ShadesConfig.Shade).transparency or 0.3
-			else
-				local heldAppearance = if held then held:FindFirstChildOfClass("SurfaceAppearance") else nil
-				if heldAppearance then
-					heldAppearance.Parent = descendant
-					descendant.Material = Enum.Material.Plastic
-				end
-				descendant.Color = tint
-				descendant.Transparency = if shade then shade.transparency or 0 else 0
+				part.TextureID = skin.Value
 			end
-			core = core or descendant
+			part.Color = Color3.new(1, 1, 1)
+			part.Material = Enum.Material.Plastic
+			part.Transparency = (shade :: ShadesConfig.Shade).transparency or 0
+		else
+			holdOwn(part, false)
+			if typeof(ownTexture) == "string" then
+				part.TextureID = ownTexture
+			end
+			part.Material = Enum.Material.Plastic
+			part.Color = tint
+			part.Transparency = if shade then shade.transparency or 0 else 0
+			local own = part:FindFirstChildOfClass("SurfaceAppearance")
+			if own then
+				(own :: any).Color = tint
+			end
 		end
 	end
 	if shade == nil or core == nil then

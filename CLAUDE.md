@@ -370,12 +370,39 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   stays owner-only. Menu: the stall hint shows YOUR DEN at your own Haul Pool
   (`MenuController.openDen`: upgrade, glow, slots → pick list). The seamount's foot
   was widened (Cave terrace +36, down to −26) so upgraded dens stay inside the rock.
-- **Roll reveal cards (owner, 2026-10-07: "better designs for the random rolls"):**
-  the reel's cards are drawn art (`RollController` `fishArt`/`coralArt`/`badgeArt`):
-  a shade shows a little fish in its own back, belly, fin and accent colors with its
-  glow halo, glints, chrome shine or rainbow; coral a sprig and the amount; parts the
-  slot they change; variants their species; on a tier gradient with a sheen and a tier
-  badge. The result shows a shade's three swatches and Rare+ wins burst motes.
+- **Roll reveal cards are photos (owner, 2026-10-07: "better designs for the random
+  rolls"; 2026-10-08: "photos for the rolls need to be dialed way up and look much
+  more professional"):** every reel card is a lit 3D shot (`src/client/CardPhoto.luau`
+  in a ViewportFrame): a shade is your own current fish wearing it (the real skin),
+  a part or variant a fish wearing that (`FishBuilder.build(..., partBody)`), coral
+  a still life of sprigs (a chest and coins for the big amounts), and the treasure
+  outcomes shells, a bundle of prey, a DNA helix, Kelp Wraps or a Lucky Charm
+  (imported props used where they exist). Cards are 168×228: a backdrop fading into
+  the tier's color, a spotlight, a floor shadow, a nameplate with a tier gem, a
+  hairline, a foil sweep from Epic up and a holographic edge from Mythic up; losers
+  dim. Subjects are built once per reel and cloned; a card gets its shot only when it
+  nears the window (`attachPhoto`). The result shows a shade's swatches and Rare+
+  wins burst motes.
+- **Shades are real skins (owner, 2026-10-08: "All of the shades in general need much
+  much more variance and depth than just a slight reshape to the existing colors"):**
+  28 shades (12 commons with real patterns: Mint saddles, Sunset gradient, Ink net,
+  Sandbar camo, Ember tiger stripes, Lilac polka dots, Moss net, Ocean swoosh, Tiger,
+  Bumblebee, Neon Tetra, Leopard rosettes; Rare Lunar, Glowspot, Tidepool; Epic
+  Diamond facets, Magma cracks, Glacier frost; Legendary Divine filigree, Aurora,
+  Thunder; Mythic Exotic, Prismatic, Nebula, Void; plus the trophy and treasure
+  shades). Each is a texture per fish made offline from the fish's own texture
+  (`tools/shades`: `bake_maps.py` bakes every texel's 3D place on the body,
+  `find_eyes.py` + hand-checked `eyes.json`, `make_shades.py` recipes, 
+  `render_shades.py` + `contact_sheet.py` previews, `pack_shades.py` one GLB per
+  fish, `screen_shades.py` the moderation gate ported from Hatch & Snatch).
+  `Cosmetics` wears `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` on a mesh fish
+  (its own texture held aside) and falls back to the old tint until imported
+  (`tools/studio/organize_shades.luau` files them). The skins ship as the
+  `shade_skins` bundle (gitignored like the models). Rules learned: a soft blend of
+  orange or gold into white makes peach or beige (flagged as skin tone), so use hard
+  edges and golds without blue; a near-white shade on a fish with dark parts (the
+  Angler) trips the classifier, so keep pale shades mid-toned. Never upload a skin
+  that a full `screen_shades.py` run didn't clear.
 - **Visibility by depth (owner, 2026-10-08: "swimming to the surface allows you to see
   all the way down ... you shouldn't be able to see all depths at once ... similar to
   the underwater feel of Subnautica"; "the open blue is just a large black
