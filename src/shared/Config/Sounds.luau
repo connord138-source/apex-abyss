@@ -14,7 +14,7 @@
 export type Region = { number } -- { start, length } in seconds
 
 local Sounds: { id: number, regions: { [string]: Region }, loops: { [string]: boolean } } = {
-	id = 0, -- the uploaded apex_sfx.ogg (Creator Hub → Development Items → Audio)
+	id = 93236042897066, -- the uploaded apex_sfx.ogg (Creator Hub → Development Items → Audio)
 	regions = {
 		-- BEGIN REGIONS (written by tools/audio/make_sfx.py; { start, length } in seconds)
 		AmbientShallow = { 0.100, 14.500 },
