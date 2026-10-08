@@ -6,12 +6,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ProfileStore = require(script.Parent.Parent.Packages.ProfileStore)
 local Signal = require(ReplicatedStorage.Shared.Signal)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 
 -- One species' own progress (owner: every species levels up separately)
 export type SpeciesRecord = {
 	mass: number, -- banked mass: the size every dive as this species starts at
 	bestMass: number,
+	-- Shades are unlocked per fish (owner, 2026-10-08: "the shades will also apply to
+	-- all fish interchangeably. They will just need to be unlocked again for that
+	-- fish"), and each fish remembers the one it wears (Server/Progress)
+	shades: { [string]: boolean }?,
+	shade: string?,
 }
 
 export type TreasureMap = {
@@ -57,7 +63,7 @@ export type PlayerData = {
 	titles: { [string]: boolean }, -- earned titles
 	title: string, -- the worn title ("" = none)
 	shells: number, -- every Config.Rolls.shellsPerRoll is one roll
-	shades: { [string]: boolean }, -- owned (Config/Shades)
+	shades: { [string]: boolean }, -- retired: shades before they were per fish (migrated into each record)
 	parts: { [string]: boolean }, -- owned body parts (Config/Exotics)
 	variants: { [string]: boolean }, -- owned exotic variants
 	-- What's worn ("" = nothing); parts by slot
@@ -277,6 +283,29 @@ local function onPlayerAdded(player: Player)
 		data.species.Nibbler = { mass = math.max(data.mass, 1), bestMass = math.max(data.bestMass, 1) }
 	end
 	data.unlocked.Nibbler = true
+	-- Saves from before shades were per fish: every fish the player has gets the
+	-- shades they owned, and the current one keeps wearing its shade
+	if next(data.shades) ~= nil then
+		for id in data.unlocked do
+			local record = data.species[id]
+			if record == nil then
+				local start = Config.Tuning.size.startMass
+				record = { mass = start, bestMass = start }
+				data.species[id] = record
+			end
+			local owned = record.shades or {}
+			for shadeId in data.shades do
+				owned[shadeId] = true
+			end
+			record.shades = owned
+		end
+		local worn = data.equipped.shade
+		local current = data.species[data.current]
+		if current and worn ~= "" then
+			current.shade = worn
+		end
+		table.clear(data.shades)
+	end
 
 	profiles[player] = profile
 	DataService.loaded:fire(player, data)

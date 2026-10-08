@@ -359,7 +359,7 @@ local function dyeRows(list: ScrollingFrame, preview: FishPreview.Preview)
 			order,
 			shade.id,
 			shade.name,
-			if has then "Yours" else "A fresh tint",
+			if has then "This fish has it" else "A fresh tint for this fish",
 			nil,
 			action,
 			style,
@@ -669,12 +669,14 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 		has: boolean,
 		worn: boolean,
 		slot: string?,
-		color: Color3?
+		color: Color3?,
+		elsewhere: boolean?
 	)
 		order += 1
 		local tierInfo = Tiers.byId[tier]
 		local blurb = if has
 			then `{tierInfo.name}{if slot then ` · {slot}` else ""}`
+			elseif elsewhere then `{tierInfo.name} · on another of your fish · unlock it again for this one`
 			elseif chance <= 0 then `{tierInfo.name} · beat the world boss to win it`
 			else `{tierInfo.name} · roll to find · {RollOdds.oneIn(1 / chance)}`
 		local action = if not has then "LOCKED" elseif worn then "TAKE OFF" else "WEAR"
@@ -683,7 +685,7 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 			list,
 			order,
 			id,
-			if has then name else "???",
+			if has or elsewhere then name else "???",
 			blurb,
 			nil,
 			action,
@@ -702,7 +704,9 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 	end
 	if tab == "Shades" then
 		for _, shade in Config.Shades.list do
+			-- Shades are per fish: this list is the current fish's
 			local has = (s.shades or {})[shade.id] == true
+			local elsewhere = not has and (s.otherShades or {})[shade.id] == true
 			add(
 				"shade",
 				shade.id,
@@ -712,7 +716,8 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 				has,
 				equipped.shade == shade.id,
 				nil,
-				if has then shade.back else nil
+				if has or elsewhere then shade.back else nil,
+				elsewhere
 			)
 		end
 	elseif tab == "Parts" then
@@ -1181,14 +1186,15 @@ function MenuController.openOdds()
 	local luck = if lucky > 0 then 2 else 1
 	local subtitle = if luck > 1
 		then "Your next roll uses a Lucky Charm: ×2 on everything but coral"
-		else "Every outcome of one roll; they add up to 100%"
+		else "Every outcome of one roll for this fish; they add up to 100%"
 	open("Roll Odds", subtitle, Vector2.new(620, 520), function(window)
 		local list = Ui.list(window.content, 6)
 		return {
 			window = window,
 			render = function()
 				rerender(list, function()
-					local odds = RollOdds.table(luck)
+					-- Shades this fish already has never roll again for it
+					local odds = RollOdds.table(luck, s.shades)
 					table.sort(odds, function(a, b)
 						return a.probability > b.probability
 					end)

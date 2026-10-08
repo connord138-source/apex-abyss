@@ -40,7 +40,7 @@ end
 local restFrames: { [any]: { [string]: CFrame } } = setmetatable({}, { __mode = "k" }) :: any
 
 local function restOf(bones: { [string]: Bone }): { [string]: CFrame }?
-	local root = bones.Root
+	local root: Bone? = bones.Root
 	if root == nil then
 		return nil
 	end

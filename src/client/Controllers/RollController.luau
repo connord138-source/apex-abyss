@@ -13,9 +13,11 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Format = require(ReplicatedStorage.Shared.Format)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local ClientState = require(script.Parent.Parent.ClientState)
+local CardPhoto = require(script.Parent.Parent.CardPhoto)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
 local Ui = require(script.Parent.Parent.Ui)
@@ -26,7 +28,8 @@ type Tier = typeof(Tiers.list[1])
 
 local RollController = {}
 
-local CARD_W, CARD_H, GAP = 128, 150, 10
+local CARD_W, CARD_H, GAP = 168, 228, 12
+local VISIBLE = 5 -- cards across the reel's window
 local STEP = CARD_W + GAP
 local REEL_CARDS = 46
 local LAND_INDEX = 40
@@ -74,204 +77,25 @@ local function box(
 	return frame
 end
 
-local RAINBOW = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 0.65, 1)),
-	ColorSequenceKeypoint.new(0.2, Color3.fromHSV(0.2, 0.65, 1)),
-	ColorSequenceKeypoint.new(0.4, Color3.fromHSV(0.4, 0.65, 1)),
-	ColorSequenceKeypoint.new(0.6, Color3.fromHSV(0.6, 0.65, 1)),
-	ColorSequenceKeypoint.new(0.8, Color3.fromHSV(0.8, 0.65, 1)),
-	ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 0.65, 1)),
-})
-
--- A small fish in a shade's colors, facing right
-local function fishArt(parent: Instance, shade: typeof(Config.Shades.list[1]))
-	local holder = Instance.new("Frame")
-	holder.Name = "Fish"
-	holder.BackgroundTransparency = 1
-	holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.new(0.5, 0, 0, 56)
-	holder.Size = UDim2.fromOffset(96, 56)
-	holder.Parent = parent
-	if shade.glow then
-		local halo = box(
-			holder,
-			UDim2.fromOffset(110, 70),
-			UDim2.new(0.5, 0, 0.5, 0),
-			shade.glow,
-			UDim.new(1, 0),
-			Vector2.new(0.5, 0.5)
-		)
-		halo.BackgroundTransparency = 0.72
-		halo.ZIndex = 0
-	end
-	-- Tail: a rotated square behind the body's left end
-	local tail = box(
-		holder,
-		UDim2.fromOffset(22, 22),
-		UDim2.new(0, 4, 0.5, 0),
-		shade.fin,
-		UDim.new(0, 4),
-		Vector2.new(0.5, 0.5)
-	)
-	tail.Rotation = 45
-	-- Body and belly
-	local body = box(
-		holder,
-		UDim2.fromOffset(66, 32),
-		UDim2.new(0.5, 6, 0.5, 0),
-		shade.back,
-		UDim.new(1, 0),
-		Vector2.new(0.5, 0.5)
-	)
-	local belly = box(
-		body,
-		UDim2.new(0.78, 0, 0.42, 0),
-		UDim2.new(0.5, 0, 1, -3),
-		shade.belly,
-		UDim.new(1, 0),
-		Vector2.new(0.5, 1)
-	)
-	belly.BackgroundTransparency = 0.1
-	if shade.accent then
-		local band = box(
-			body,
-			UDim2.new(0.22, 0, 0.9, 0),
-			UDim2.new(0.42, 0, 0.5, 0),
-			shade.accent,
-			UDim.new(1, 0),
-			Vector2.new(0.5, 0.5)
-		)
-		band.BackgroundTransparency = 0.2
-	end
-	-- Dorsal fin
-	local fin = box(
-		holder,
-		UDim2.fromOffset(20, 14),
-		UDim2.new(0.5, 2, 0.5, -20),
-		shade.fin,
-		UDim.new(0, 3),
-		Vector2.new(0.5, 0.5)
-	)
-	fin.Rotation = -20
-	-- Eye
-	local eye = box(
-		body,
-		UDim2.fromOffset(9, 9),
-		UDim2.new(1, -14, 0.38, 0),
-		Color3.new(1, 1, 1),
-		UDim.new(1, 0),
-		Vector2.new(0.5, 0.5)
-	)
-	box(
-		eye,
-		UDim2.fromOffset(4, 4),
-		UDim2.new(0.6, 0, 0.5, 0),
-		Color3.new(0, 0, 0),
-		UDim.new(1, 0),
-		Vector2.new(0.5, 0.5)
-	)
-	if shade.cycle then
-		local gradient = Instance.new("UIGradient")
-		gradient.Color = RAINBOW
-		gradient.Rotation = 15
-		gradient.Parent = body
-		belly.BackgroundTransparency = 0.5
-	end
-	if shade.reflectance and shade.reflectance > 0.2 then
-		local shine = box(
-			body,
-			UDim2.new(0.5, 0, 0.18, 0),
-			UDim2.new(0.45, 0, 0.18, 0),
-			Color3.new(1, 1, 1),
-			UDim.new(1, 0),
-			Vector2.new(0.5, 0.5)
-		)
-		shine.BackgroundTransparency = 0.45
-	end
-	if shade.sparkle then
-		for _, spot in { { 0.12, 0.2 }, { 0.3, 0.78 }, { 0.62, 0.12 }, { 0.84, 0.7 }, { 0.5, 0.45 } } do
-			local glint = box(
-				holder,
-				UDim2.fromOffset(4, 4),
-				UDim2.fromScale(spot[1], spot[2]),
-				shade.sparkle,
-				UDim.new(1, 0),
-				Vector2.new(0.5, 0.5)
-			)
-			glint.Rotation = 45
-		end
-	end
-	if shade.transparency and shade.transparency > 0.2 then
-		body.BackgroundTransparency = shade.transparency * 0.6
-		belly.BackgroundTransparency = shade.transparency * 0.6
-	end
-end
-
--- A sprig of coral and the amount
-local function coralArt(parent: Instance, amount: number, color: Color3)
-	local holder = Instance.new("Frame")
-	holder.Name = "Coral"
-	holder.BackgroundTransparency = 1
-	holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.new(0.5, 0, 0, 56)
-	holder.Size = UDim2.fromOffset(90, 60)
-	holder.Parent = parent
-	local trunk = box(
-		holder,
-		UDim2.fromOffset(12, 40),
-		UDim2.new(0.5, 0, 1, 0),
-		color,
-		UDim.new(1, 0),
-		Vector2.new(0.5, 1)
-	)
-	local _ = trunk
-	for _, arm in { { -14, 22, -35 }, { 14, 20, 35 }, { -4, 12, -70 }, { 6, 10, 65 } } do
-		local branch = box(
-			holder,
-			UDim2.fromOffset(10, arm[2] + 10),
-			UDim2.new(0.5, arm[1], 1, -arm[2]),
-			color,
-			UDim.new(1, 0),
-			Vector2.new(0.5, 1)
-		)
-		branch.Rotation = arm[3]
-	end
-	local label = Ui.label(
-		holder,
-		"Amount",
-		Ui.number(amount),
-		Ui.FONT_HEAVY,
-		18,
-		Color3.new(1, 1, 1),
-		UDim2.new(1, 0, 0, 22),
-		UDim2.new(0, 0, 1, -16)
-	)
-	label.TextXAlignment = Enum.TextXAlignment.Center
-	label.TextStrokeTransparency = 0.4
-end
-
--- A badge for a body part or a variant
-local function badgeArt(parent: Instance, text: string, color: Color3)
-	local holder = box(
-		parent,
-		UDim2.fromOffset(84, 40),
-		UDim2.new(0.5, 0, 0, 56),
-		color,
-		UDim.new(0, 10),
-		Vector2.new(0.5, 0.5)
-	)
-	holder.BackgroundTransparency = 0.15
-	holder.Rotation = -6
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(120, 120, 120))
-	gradient.Rotation = 60
-	gradient.Parent = holder
-	local label =
-		Ui.label(holder, "Text", text, Ui.FONT_HEAVY, 15, Color3.fromRGB(6, 20, 30), UDim2.fromScale(1, 1))
-	label.TextXAlignment = Enum.TextXAlignment.Center
-	label.TextYAlignment = Enum.TextYAlignment.Center
-	label.TextWrapped = true
-end
+-- A card in the reel (owner, 2026-10-08: "photos for the rolls need to be dialed way
+-- up and look much more professional"): a studio shot of the outcome (CardPhoto: your
+-- own fish wearing the shade, or a still life) under a spotlight on a backdrop that
+-- fades into the tier's color, a floor shadow, a nameplate with the tier gem, an
+-- inner hairline, a moving foil sheen from Epic up and a holographic edge from
+-- Mythic up. The photo itself is attached when the card nears the window
+-- (`attachPhoto`), so a reel of 46 cards builds only the shots that are seen.
+local INK = Color3.fromRGB(8, 15, 25)
+local KIND_LABEL: { [string]: string } = {
+	shade = "SHADE",
+	coral = "CORAL",
+	part = "ABYSSAL PART",
+	variant = "VARIANT",
+	shells = "SHELLS",
+	haul = "HAUL",
+	dna = "DNA",
+	wraps = "KELP WRAPS",
+	charm = "CHARM",
+}
 
 local function card(parent: Instance, outcome: RollOdds.Outcome, x: number): Frame
 	local tier = tierOf(outcome.tier)
@@ -279,107 +103,223 @@ local function card(parent: Instance, outcome: RollOdds.Outcome, x: number): Fra
 	frame.Name = "Card"
 	frame.Size = UDim2.fromOffset(CARD_W, CARD_H)
 	frame.Position = UDim2.fromOffset(x, 0)
-	frame.BackgroundColor3 = tier.color:Lerp(Color3.fromRGB(6, 14, 24), 0.78)
+	frame.BackgroundColor3 = Color3.new(1, 1, 1)
 	frame.BorderSizePixel = 0
 	frame.ClipsDescendants = true
-	Ui.corner(frame, UDim.new(0, 14))
-	local stroke = Ui.stroke(frame, tier.color, 0.35, 2)
-	stroke.Name = "Edge"
-	local gradient = Instance.new("UIGradient")
-	gradient.Rotation = 90
-	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(70, 80, 90))
-	gradient.Parent = frame
-	-- A diagonal sheen across the top
-	local sheen = box(
+	Ui.corner(frame, UDim.new(0, 12))
+	-- The backdrop: night-blue at the top into the tier's color at the floor
+	local backdrop = Instance.new("UIGradient")
+	backdrop.Rotation = 90
+	backdrop.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, INK),
+		ColorSequenceKeypoint.new(0.5, tier.color:Lerp(INK, 0.8)),
+		ColorSequenceKeypoint.new(1, tier.color:Lerp(INK, 0.5)),
+	})
+	backdrop.Parent = frame
+	-- The spotlight behind the subject: soft rings, brightest in the middle
+	for i, ring in { { 170, 0.9 }, { 124, 0.86 }, { 80, 0.82 } } do
+		local glow = box(
+			frame,
+			UDim2.fromOffset(ring[1], ring[1]),
+			UDim2.fromOffset(CARD_W / 2, 84),
+			tier.color:Lerp(Color3.new(1, 1, 1), 0.35 + i * 0.1),
+			UDim.new(1, 0),
+			Vector2.new(0.5, 0.5)
+		)
+		glow.BackgroundTransparency = ring[2]
+		glow.ZIndex = 1
+	end
+	-- The floor shadow under it
+	local shadow = box(
 		frame,
-		UDim2.fromOffset(CARD_W * 2, 26),
-		UDim2.new(0.5, 0, 0, 24),
-		Color3.new(1, 1, 1),
-		UDim.new(0, 2),
-		Vector2.new(0.5, 0.5)
-	)
-	sheen.BackgroundTransparency = 0.9
-	sheen.Rotation = -22
-	-- A tier-colored glow behind the art
-	local pool = box(
-		frame,
-		UDim2.fromOffset(CARD_W * 1.1, CARD_W * 1.1),
-		UDim2.new(0.5, 0, 0, 56),
-		tier.color,
+		UDim2.fromOffset(112, 16),
+		UDim2.fromOffset(CARD_W / 2, 150),
+		Color3.new(0, 0, 0),
 		UDim.new(1, 0),
 		Vector2.new(0.5, 0.5)
 	)
-	pool.BackgroundTransparency = 0.82
-	-- The art
-	if outcome.kind == "shade" then
-		local shade = Config.Shades.byId[outcome.id]
-		if shade then
-			fishArt(frame, shade)
-		end
-	elseif outcome.kind == "coral" then
-		coralArt(frame, outcome.amount or 0, tier.color)
-	elseif outcome.kind == "part" then
-		local part = Config.Exotics.partsById[outcome.id]
-		badgeArt(frame, string.upper(if part then part.slot else "PART"), tier.color)
-	elseif outcome.kind == "variant" then
-		local variant = Config.Exotics.variantsById[outcome.id]
-		local species = if variant then Config.Species.byId[variant.species] else nil
-		badgeArt(frame, string.upper(if species then species.name else "VARIANT"), tier.color)
-	else
-		badgeArt(frame, string.upper(outcome.kind), tier.color)
-	end
-	-- Name and tier badge
-	local name = Ui.label(
+	shadow.BackgroundTransparency = 0.55
+	shadow.ZIndex = 2
+	-- Where the photo goes
+	local slot = Instance.new("Frame")
+	slot.Name = "Shot"
+	slot.BackgroundTransparency = 1
+	slot.Size = UDim2.new(1, 0, 0, 160)
+	slot.Position = UDim2.fromOffset(0, 6)
+	slot.ZIndex = 3
+	slot.Parent = frame
+	-- What it is, small, top left
+	local kind = Ui.label(
 		frame,
+		"Kind",
+		KIND_LABEL[outcome.kind] or string.upper(outcome.kind),
+		Ui.FONT_HEAVY,
+		10,
+		Color3.new(1, 1, 1),
+		UDim2.new(1, -20, 0, 14),
+		UDim2.fromOffset(10, 8)
+	)
+	kind.TextTransparency = 0.35
+	kind.ZIndex = 5
+	-- The nameplate
+	local plate = Instance.new("Frame")
+	plate.Name = "Plate"
+	plate.AnchorPoint = Vector2.new(0, 1)
+	plate.Position = UDim2.fromScale(0, 1)
+	plate.Size = UDim2.new(1, 0, 0, 66)
+	plate.BackgroundColor3 = Color3.fromRGB(4, 9, 16)
+	plate.BorderSizePixel = 0
+	plate.ZIndex = 4
+	local plateFade = Instance.new("UIGradient")
+	plateFade.Rotation = 90
+	plateFade.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.35, 0.25),
+		NumberSequenceKeypoint.new(1, 0.05),
+	})
+	plateFade.Parent = plate
+	plate.Parent = frame
+	local name = Ui.label(
+		plate,
 		"Name",
-		outcome.name,
-		Ui.FONT_BOLD,
-		15,
+		string.upper(outcome.name),
+		Ui.FONT_HEAVY,
+		14,
 		Ui.color.text,
-		UDim2.new(1, -12, 0, 36),
-		UDim2.fromOffset(6, 92)
+		UDim2.new(1, -14, 0, 32),
+		UDim2.fromOffset(7, 12)
 	)
 	name.TextXAlignment = Enum.TextXAlignment.Center
+	name.TextYAlignment = Enum.TextYAlignment.Bottom
 	name.TextWrapped = true
-	name.TextStrokeTransparency = 0.7
-	local badge = box(
-		frame,
-		UDim2.fromOffset(CARD_W - 28, 18),
-		UDim2.new(0.5, 0, 1, -12),
+	name.ZIndex = 5
+	local gem = box(
+		plate,
+		UDim2.fromOffset(8, 8),
+		UDim2.new(0.5, 0, 1, -14),
 		tier.color,
-		UDim.new(1, 0),
-		Vector2.new(0.5, 1)
+		UDim.new(0, 1),
+		Vector2.new(0.5, 0.5)
 	)
-	badge.BackgroundTransparency = 0.15
-	local tierLabel = Ui.label(
-		badge,
+	gem.Rotation = 45
+	gem.ZIndex = 5
+	local tierRow = Ui.label(
+		plate,
 		"Tier",
 		string.upper(tier.name),
 		Ui.FONT_HEAVY,
 		11,
-		Color3.fromRGB(6, 20, 30),
-		UDim2.fromScale(1, 1)
+		tier.color,
+		UDim2.new(0.5, -12, 0, 14),
+		UDim2.new(0, 0, 1, -21)
 	)
-	tierLabel.TextXAlignment = Enum.TextXAlignment.Center
-	tierLabel.TextYAlignment = Enum.TextYAlignment.Center
+	tierRow.TextXAlignment = Enum.TextXAlignment.Right
+	tierRow.ZIndex = 5
+	local tierRight = tierRow:Clone()
+	tierRight.Text = if tier.order >= Tiers.byId.Rare.order then "RARE FIND" else "REEF STOCK"
+	tierRight.Position = UDim2.new(0.5, 12, 1, -21)
+	tierRight.TextXAlignment = Enum.TextXAlignment.Left
+	tierRight.TextColor3 = Ui.color.muted
+	tierRight.Parent = plate
+	-- The frame: the tier's edge and a white hairline just inside it
+	local stroke = Ui.stroke(frame, tier.color, 0.15, 2)
+	stroke.Name = "Edge"
+	local hairline = Instance.new("Frame")
+	hairline.Name = "Hairline"
+	hairline.BackgroundTransparency = 1
+	hairline.Position = UDim2.fromOffset(5, 5)
+	hairline.Size = UDim2.new(1, -10, 1, -10)
+	hairline.ZIndex = 6
+	Ui.corner(hairline, UDim.new(0, 9))
+	Ui.stroke(hairline, Color3.new(1, 1, 1), 0.82, 1)
+	hairline.Parent = frame
+	-- Foil from Epic up: a soft band of light sweeping across now and then
+	if tier.order >= Tiers.byId.Epic.order then
+		local foil = Instance.new("Frame")
+		foil.Name = "Foil"
+		foil.BackgroundColor3 = Color3.new(1, 1, 1)
+		foil.BorderSizePixel = 0
+		foil.AnchorPoint = Vector2.new(0.5, 0.5)
+		foil.Size = UDim2.new(0, 46, 1.8, 0)
+		foil.Position = UDim2.new(0, -60, 0.5, 0)
+		foil.Rotation = 18
+		foil.ZIndex = 7
+		local band = Instance.new("UIGradient")
+		band.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 0.72),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		band.Parent = foil
+		foil.Parent = frame
+		TweenService:Create(
+			foil,
+			TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, 1.6),
+			{ Position = UDim2.new(1, 60, 0.5, 0) }
+		):Play()
+	end
+	-- Holo from Mythic up: the edge runs through every color
+	if tier.order >= Tiers.byId.Mythic.order then
+		local holo = Instance.new("UIGradient")
+		holo.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 92, 146)),
+			ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 214, 90)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 255, 200)),
+			ColorSequenceKeypoint.new(0.75, Color3.fromRGB(90, 160, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 92, 146)),
+		})
+		holo.Parent = stroke
+		stroke.Color = Color3.new(1, 1, 1)
+		stroke.Thickness = 3
+		TweenService:Create(
+			holo,
+			TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+			{ Rotation = 360 }
+		):Play()
+	end
+	-- Dimmed when another card wins
+	local dim = Instance.new("Frame")
+	dim.Name = "Dim"
+	dim.BackgroundColor3 = Color3.new(0, 0, 0)
+	dim.BackgroundTransparency = 1
+	dim.BorderSizePixel = 0
+	dim.Size = UDim2.fromScale(1, 1)
+	dim.ZIndex = 9
+	dim.Parent = frame
 	frame.Parent = parent
 	return frame
 end
 
+-- Puts the studio shot on a card (once)
+local function attachPhoto(frame: Frame, outcome: RollOdds.Outcome)
+	if frame:GetAttribute("Shot") then
+		return
+	end
+	frame:SetAttribute("Shot", true)
+	local slot = frame:FindFirstChild("Shot")
+	if slot and slot:IsA("GuiObject") then
+		CardPhoto.new(slot, outcome :: any, tierOf(outcome.tier).color)
+	end
+end
+
 -- Filler for the reel: mostly what's likely, with rare cards sprinkled in so the
 -- reel teases (the odds panel shows the real chances).
+local fishShades: { [string]: boolean } = {} -- the current fish's (they never roll again for it)
+
 local function filler(rng: Random): RollOdds.Outcome
 	local outcomes = RollOdds.outcomes
 	if rng:NextNumber() < 0.35 then
 		local rare: { RollOdds.Outcome } = {}
 		for _, outcome in outcomes do
-			if outcome.kind ~= "coral" then
+			if outcome.kind ~= "coral" and not (outcome.kind == "shade" and fishShades[outcome.id]) then
 				table.insert(rare, outcome)
 			end
 		end
-		return rare[rng:NextInteger(1, #rare)]
+		if #rare > 0 then
+			return rare[rng:NextInteger(1, #rare)]
+		end
 	end
-	return RollOdds.pick(1, rng:NextNumber())
+	return RollOdds.pick(1, rng:NextNumber(), fishShades)
 end
 
 local function spinSeconds(tier: Tier): number
@@ -442,7 +382,7 @@ local function reveal(result: { [string]: any })
 	window.Name = "Reel"
 	window.AnchorPoint = Vector2.new(0.5, 0.5)
 	window.Position = UDim2.fromScale(0.5, 0.4)
-	window.Size = UDim2.fromOffset(STEP * 6, CARD_H + 20)
+	window.Size = UDim2.fromOffset(STEP * VISIBLE, CARD_H + 24)
 	window.BackgroundTransparency = 1
 	window.ClipsDescendants = true
 	window.Parent = overlay
@@ -472,15 +412,26 @@ local function reveal(result: { [string]: any })
 
 	local rng = Random.new()
 	local cards: { Frame } = {}
+	local outcomes: { RollOdds.Outcome } = {}
+	CardPhoto.reset() -- shots of this fish, as it is now
 	for i = 1, REEL_CARDS do
 		local shown = if i == LAND_INDEX
 			then outcome
 			elseif treasurePool then treasureFiller(rng, treasurePool)
 			else filler(rng)
+		outcomes[i] = shown
 		cards[i] = card(strip, shown, (i - 1) * STEP)
 	end
+	-- Shots for the cards in (or about to enter) the window, and the winner's
+	local function shoot(from: number, to: number)
+		for i = math.max(from, 1), math.min(to, REEL_CARDS) do
+			attachPhoto(cards[i], outcomes[i])
+		end
+	end
+	shoot(1, VISIBLE + 2)
+	shoot(LAND_INDEX - 3, LAND_INDEX + 3)
 	-- Land somewhere inside the winning card, not dead center every time
-	local windowWidth = STEP * 6
+	local windowWidth = STEP * VISIBLE
 	local landX = -((LAND_INDEX - 1) * STEP + CARD_W / 2 - windowWidth / 2)
 		+ rng:NextNumber(-CARD_W * 0.35, CARD_W * 0.35)
 	local seconds = spinSeconds(tier)
@@ -500,6 +451,8 @@ local function reveal(result: { [string]: any })
 		local index = math.clamp(math.floor(offset / STEP) + 1, 1, REEL_CARDS)
 		if index ~= lastIndex then
 			lastIndex = index
+			shoot(index - 3, index + 4)
+			Sfx.play("Tick", { volume = 0.35, pitch = 0.95 + math.random() * 0.1 })
 			local scale = cards[index]:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 			scale.Parent = cards[index]
 			scale.Scale = 1.06
@@ -514,17 +467,20 @@ local function reveal(result: { [string]: any })
 			strip.Position = UDim2.fromOffset(landX, 10)
 		end
 	end)
+	Sfx.play("Reel", { volume = 0.5 })
 	tween:Play()
 	while tween.PlaybackState == Enum.PlaybackState.Playing and not skipped do
 		task.wait()
 	end
+	Sfx.play(`Roll{tier.id}`, { volume = 0.85 })
 	ticking:Disconnect()
 
 	-- Landing
 	local winner = cards[LAND_INDEX]
 	for i, other in cards do
-		if i ~= LAND_INDEX then
-			Ui.tween(other, 0.3, { BackgroundTransparency = 0.6 })
+		local dim = other:FindFirstChild("Dim")
+		if i ~= LAND_INDEX and dim and dim:IsA("Frame") then
+			Ui.tween(dim, 0.3, { BackgroundTransparency = 0.45 })
 		end
 	end
 	local winScale = winner:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
@@ -878,6 +834,7 @@ local function buildWallet()
 end
 
 local function onState(s: { [string]: any })
+	fishShades = if typeof(s.shades) == "table" then s.shades else {}
 	local perRoll = s.shellsPerRoll or Config.Rolls.shellsPerRoll
 	local shells = s.shells or 0
 	local ready = s.rollsReady or 0

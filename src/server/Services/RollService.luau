@@ -1,7 +1,8 @@
 --!strict
 -- Rolls: 50 Shells buys one. The server rolls (Shared/RollOdds, the same table
 -- the odds panel shows), grants the outcome, and sends the result for the reveal.
--- A shade, part or variant you already own turns into coral instead. Rare results
+-- Shades are per fish: one the rolling fish has is out of its table. A part or
+-- variant you already own turns into coral instead. Rare results
 -- are announced to the whole server and saved straight away.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,6 +11,7 @@ local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local Progress = require(script.Parent.Parent.Progress)
 
 local Rolls = Config.Rolls
 local Tiers = Config.Tiers
@@ -20,7 +22,7 @@ local rng = Random.new()
 
 local function owned(data: DataService.PlayerData, outcome: RollOdds.Outcome): { [string]: boolean }?
 	if outcome.kind == "shade" then
-		return data.shades
+		return Progress.shades(data)
 	elseif outcome.kind == "part" then
 		return data.parts
 	elseif outcome.kind == "variant" then
@@ -42,9 +44,11 @@ local function roll(player: Player)
 		data.charms.Lucky -= 1
 		luck = 2
 	end
-	local outcome = RollOdds.pick(luck, rng:NextNumber())
+	-- This fish's shades are out of its table (they never roll again for it)
+	local fishShades = Progress.shades(data)
+	local outcome = RollOdds.pick(luck, rng:NextNumber(), fishShades)
 	local probability = 0
-	for _, entry in RollOdds.table(luck) do
+	for _, entry in RollOdds.table(luck, fishShades) do
 		if entry.outcome == outcome then
 			probability = entry.probability
 		end

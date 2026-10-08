@@ -17,6 +17,7 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Ui = require(script.Parent.Parent.Ui)
+local Sfx = require(script.Parent.Parent.Sfx)
 local CameraController = require(script.Parent.CameraController)
 local OceanController = require(script.Parent.OceanController)
 local SwimController = require(script.Parent.SwimController)
@@ -952,9 +953,18 @@ local function onEvent(kind: any, index: any, payload: any)
 		visual.windupUntil = now + seconds
 		if payload.target == me then
 			warn(`{string.upper(def.name)} · INCOMING`, seconds + 0.3)
+			Sfx.play("Warning", { volume = 0.6 })
 		end
 	elseif kind == "bite" then
 		visual.windupUntil = 0
+		if myDistance < def.length * 4 + 80 then
+			Sfx.play("Bite", {
+				volume = 0.7,
+				pitch = math.clamp(1.1 - def.length * 0.004, 0.55, 1),
+				parent = visual.body :: Instance,
+				range = 260,
+			})
+		end
 		if at then
 			bubbles(at, if payload.hit == true then def.length * 0.5 else def.length * 0.25)
 		end
@@ -1020,6 +1030,7 @@ local function onEvent(kind: any, index: any, payload: any)
 			end
 		end
 	elseif kind == "shock" then
+		Sfx.play("Breach", { volume = 0.95, parent = visual.body :: Instance, range = 500 })
 		local radius = if typeof(payload.radius) == "number" then payload.radius else 45
 		if at then
 			shockwave(at, radius)
@@ -1031,6 +1042,7 @@ local function onEvent(kind: any, index: any, payload: any)
 		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 5
 		visual.staggerUntil = now + seconds
 	elseif kind == "laststand" then
+		Sfx.play("BossPhase", { volume = 0.85 })
 		visual.markedUntil = 0
 	elseif kind == "grab" then
 		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 1
@@ -1045,6 +1057,9 @@ local function onEvent(kind: any, index: any, payload: any)
 			end
 		end
 	elseif kind == "grabbed" then
+		if payload.target == me then
+			Sfx.play("Grab", { volume = 0.9 })
+		end
 		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 4
 		if typeof(payload.target) == "number" then
 			visual.grabs[payload.target] = now + seconds
@@ -1067,6 +1082,7 @@ local function onEvent(kind: any, index: any, payload: any)
 			warn(if payload.how == "eaten" then "" else "FREE", 0.8)
 		end
 	elseif kind == "ink" then
+		Sfx.play("Ink", { volume = 0.8, parent = visual.body :: Instance, range = 300 })
 		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else 6
 		local radius = if typeof(payload.radius) == "number" then payload.radius else 50
 		inkCloud(at or visual.position, radius, seconds)
@@ -1121,6 +1137,7 @@ local function onEvent(kind: any, index: any, payload: any)
 		bubbles(origin + heading * range * 0.3, def.length * 0.5)
 		bubbles(origin + heading * range * 0.7, def.length * 0.5)
 	elseif kind == "enraged" or kind == "mantle" then
+		Sfx.play("BossPhase", { volume = 0.85 })
 		visual.flashUntil = now + 0.3
 	elseif kind == "hurt" then
 		visual.flashUntil = now + 0.12

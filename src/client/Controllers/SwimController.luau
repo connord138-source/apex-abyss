@@ -19,6 +19,8 @@ local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
+local Bubbles = require(script.Parent.Parent.Bubbles)
+local Sfx = require(script.Parent.Parent.Sfx)
 
 local swim = Config.Tuning.swim
 local World = Config.World
@@ -118,6 +120,9 @@ function SwimController.dash(): boolean
 	SwimController.dashCharge = 0
 	dashUntil = clock + swim.dashSeconds
 	dashStarted = true
+	local length = SwimController.length()
+	Sfx.play("Dash", { volume = 0.55, pitch = math.clamp(1.25 - length * 0.02, 0.7, 1.2) })
+	Bubbles.burst(root.CFrame:PointToWorldSpace(Vector3.new(0, 0, length * 0.4)), length, 14)
 	return true
 end
 

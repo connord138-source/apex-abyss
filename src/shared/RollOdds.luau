@@ -81,12 +81,20 @@ function RollOdds.get(kind: string, id: string): Outcome?
 	return byKey[`{kind}:{id}`]
 end
 
--- Every outcome with its probability for one roll at `luck` (1 = normal). The
--- probabilities add up to exactly 1.
-function RollOdds.table(luck: number): { Odds }
+-- Whether an outcome is out of the table: a shade the fish already has never rolls
+-- again for it (owner, 2026-10-08); its share goes to coral, so every other chance
+-- stays exactly as it was.
+local function excluded(outcome: Outcome, owned: { [string]: boolean }?): boolean
+	return owned ~= nil and outcome.kind == "shade" and owned[outcome.id] == true
+end
+
+-- Every outcome with its probability for one roll at `luck` (1 = normal), leaving
+-- out the shades in `owned` (the rolling fish's). The probabilities add up to
+-- exactly 1.
+function RollOdds.table(luck: number, owned: { [string]: boolean }?): { Odds }
 	local special = 0
 	for _, outcome in outcomes do
-		if outcome.chance then
+		if outcome.chance and not excluded(outcome, owned) then
 			special += luck / outcome.chance
 		end
 	end
@@ -95,6 +103,9 @@ function RollOdds.table(luck: number): { Odds }
 	local coralTotal = 1 - special * scale
 	local result: { Odds } = {}
 	for _, outcome in outcomes do
+		if excluded(outcome, owned) then
+			continue
+		end
 		local probability = if outcome.chance
 			then luck / outcome.chance * scale
 			else coralTotal * (outcome.share or 0)
@@ -104,8 +115,8 @@ function RollOdds.table(luck: number): { Odds }
 end
 
 -- Picks an outcome for a uniform random number `r` in [0, 1).
-function RollOdds.pick(luck: number, r: number): Outcome
-	local odds = RollOdds.table(luck)
+function RollOdds.pick(luck: number, r: number, owned: { [string]: boolean }?): Outcome
+	local odds = RollOdds.table(luck, owned)
 	local total = 0
 	for _, entry in odds do
 		total += entry.probability

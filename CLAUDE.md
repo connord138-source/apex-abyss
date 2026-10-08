@@ -150,6 +150,19 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - The exact odds add up to 100% (`Shared/RollOdds`, tested by
     `tools/tests/run_odds.sh`).
   - Add more shades and exotics as we build (table entries plus Cosmetics geometry).
+  - **Shades are per fish (owner, 2026-10-08: "the shades will also apply to all fish
+    interchangeably. They will just need to be unlocked again for that fish. Once a
+    shade is unlocked for a playable fish it will not roll again"):** each species
+    record holds its own `shades` set and the `shade` it wears (`Server/Progress`
+    `shades/ownsShade/grantShade/wearShade/syncShade`); a switch puts on that fish's
+    own shade. Rolls, the Dyer, the Trophy Hunter, boss drops and treasure all unlock
+    for the fish you're swimming as. `RollOdds.table(luck, owned)` leaves the fish's
+    shades out and gives their share to coral, so every other chance stays the same
+    and the odds panel (this fish's table) still sums to 100%
+    (`tools/tests/run_odds.sh` checks it). Boss and treasure shade rolls skip owned
+    ones too. The wardrobe names a shade another of your fish has ("unlock it again
+    for this one", `state.otherShades`). Old saves: the global `data.shades` was
+    copied to every unlocked fish and emptied.
 - **Coral and vendors (owner, 2026-10-06):** Coral is the currency. Four vendor stalls
   round the hub plaza, near the dens, sell with it:
   - Outfitter: upgrades.
@@ -325,6 +338,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   from WardrobeService) and the Tidecharm Trader sells a **Deep Lantern** (350 coral,
   10 min, `Lamp = "lantern"`); `LampController` hangs PointLights on lit fish for
   everyone; the biome banner and chip say PITCH DARK · bring a light.
+- **Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
+  luminescense such as photoplankton etc to give very very faint light"):**
+  `PlanktonController` fills the water round the camera with faint twinkling
+  blue-green specks below the drop-off's foot (none on the shelf, 55% on the deep
+  floor, all of it at the Trench's bottom; `glowAt`), every fish swimming through
+  leaves a brief sparkling wake (by speed, within 260 studs), and
+  `OceanController.setGlow` gives the pitch dark a very faint teal lift (+0.45
+  exposure at most). WorldService lays glowing plankton mats on the deep floors
+  (`PlanktonMats`: Trench 46, Vents 18, Open Blue 16, Ruins 12; every other one a dim
+  PointLight). A lamp is still the real light; this only keeps the deep from being
+  dead black.
 - **Treasure chest (owner: "a chest partially sticking out of the ground"):** the dig
   site's X is now a chest half out of a sand mound (part-built planks and brass, or the
   `WorldProps.TreasureChest` Tripo prop, `props2_glb`), seam glowing in the map's tier
@@ -361,12 +385,49 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   stays owner-only. Menu: the stall hint shows YOUR DEN at your own Haul Pool
   (`MenuController.openDen`: upgrade, glow, slots → pick list). The seamount's foot
   was widened (Cave terrace +36, down to −26) so upgraded dens stay inside the rock.
-- **Roll reveal cards (owner, 2026-10-07: "better designs for the random rolls"):**
-  the reel's cards are drawn art (`RollController` `fishArt`/`coralArt`/`badgeArt`):
-  a shade shows a little fish in its own back, belly, fin and accent colors with its
-  glow halo, glints, chrome shine or rainbow; coral a sprig and the amount; parts the
-  slot they change; variants their species; on a tier gradient with a sheen and a tier
-  badge. The result shows a shade's three swatches and Rare+ wins burst motes.
+- **Roll reveal cards are photos (owner, 2026-10-07: "better designs for the random
+  rolls"; 2026-10-08: "photos for the rolls need to be dialed way up and look much
+  more professional"):** every reel card is a lit 3D shot (`src/client/CardPhoto.luau`
+  in a ViewportFrame): a shade is your own current fish wearing it (the real skin),
+  a part or variant a fish wearing that (`FishBuilder.build(..., partBody)`), coral
+  a still life of sprigs (a chest and coins for the big amounts), and the treasure
+  outcomes shells, a bundle of prey, a DNA helix, Kelp Wraps or a Lucky Charm
+  (imported props used where they exist). Cards are 168×228: a backdrop fading into
+  the tier's color, a spotlight, a floor shadow, a nameplate with a tier gem, a
+  hairline, a foil sweep from Epic up and a holographic edge from Mythic up; losers
+  dim. Subjects are built once per reel and cloned; a card gets its shot only when it
+  nears the window (`attachPhoto`). The result shows a shade's swatches and Rare+
+  wins burst motes.
+- **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "All of
+  the shades in general need much much more variance and depth than just a slight
+  reshape to the existing colors"):** 33 shades (v3), no two sharing a pattern:
+  Seafoam foam rings (id `Mint`), Sunset, Ink wash, Sandbar ripples, Ember flames,
+  Lilac, Moss lichen, Ocean, Tiger, Bumblebee fuzz, Neon Tetra, Leopard, Rust, Toxic;
+  Rare Lunar moon face, Glowspot, Tidepool, Mandarin maze, Lanternfish; Epic Diamond,
+  Magma, Glacier strata, X-Ray skeleton; Legendary Divine, Aurora, Thunder; Mythic
+  Exotic parrotfish mosaic, Prismatic, Nebula gas clouds, Void spiral; plus the
+  trophy and treasure shades. Every skin ships a finish (matte/satin/gloss/mirror
+  roughness), metal where the shade is metal, and a glow map for 14 shades (the
+  Angler's lure glows in all); in game `Cosmetics` drives the glow
+  (`EmissiveStrength`, `Config/Shades` `emissive`), pulses it (`pulse`: breathe,
+  heartbeat, flicker, wave, twinkle, strobe, scan; with the shade's light) and sheds
+  an `aura` (embers, frost, sparks, stars, motes, bubbles, ink, glints). A new shade
+  needs a recipe with its own pattern, an entry and, if it glows, a pulse. Each is a
+  texture per fish made offline from the fish's own texture
+  (`tools/shades`: `bake_maps.py` bakes every texel's 3D place on the body,
+  `find_eyes.py` + hand-checked `eyes.json`, `make_shades.py` recipes, 
+  `render_shades.py` + `contact_sheet.py` previews, `pack_shades.py` one GLB per
+  fish, `screen_shades.py` the moderation gate ported from Hatch & Snatch).
+  `Cosmetics` wears `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` on a mesh fish
+  (its own texture held aside) and falls back to the old tint until imported
+  (`tools/studio/organize_shades.luau` files them). The skins ship as the
+  `shade_skins` bundle (gitignored like the models). Rules learned: a soft blend of
+  orange or gold into white makes peach or beige (flagged as skin tone), so use hard
+  edges and golds without blue; a near-white shade on a fish with dark parts (the
+  Angler) trips the classifier, so keep pale shades mid-toned; thin near-white
+  lines on black (lightning, a skeleton, a mostly black glow map) trip it too, so
+  tint them blue or violet with a wide soft glow. Never upload a skin
+  that a full `screen_shades.py` run didn't clear.
 - **Visibility by depth (owner, 2026-10-08: "swimming to the surface allows you to see
   all the way down ... you shouldn't be able to see all depths at once ... similar to
   the underwater feel of Subnautica"; "the open blue is just a large black
@@ -392,6 +453,35 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   skybox, and the atmosphere is thicker and bluer (server `setupLighting` and the
   client's `OceanController` grades, which drive it every frame). If the sky ever
   shows again, it's a gap in that box, not a lighting setting.
+- **Underwater presence (owner, 2026-10-08: "there's no feeling that you're
+  underwater. Something needs to be added"):** sound and motion.
+  - **Audio:** one synthesized pack, `assets/audio/apex_sfx.ogg` from
+    `tools/audio/make_sfx.py` (numpy, scipy, soundfile; nothing sampled or licensed),
+    uploaded once; its id goes in `Config/Sounds.luau` `id` (the script rewrites the
+    regions). `src/client/Sfx.luau` plays each stretch (`PlaybackRegion`) and loops the
+    beds (`Sfx.loop`); while the id is 0 the game is quiet apart from pinged fallbacks
+    for a few cues. `AmbienceController` crossfades three beds by camera depth
+    (shallow wash, deep drone, cavern drips; a boss near brings the drone up). Cues are
+    played where they happen: Dash, Snap/Bite/Chomp/Hurt/Eaten, Bank and LevelUp,
+    Shell/GoldenShell, Forage, Dig/ChestOpen, the roll reel's Reel, Tick and a
+    `Roll<Tier>` stinger, Warning (a predator's tell on you), TooBig, Banner, Heal,
+    Boss Warning/Rise/Phase/Defeat, Breach, Grab, Ink. Every sound is low-passed
+    ("heard through water"). Add a sound: a maker in `make_sfx.py`, rerun, re-upload,
+    paste the new id.
+  - **Motion:** `Bubbles.luau` is the one bubble look (bursts and mouth streams);
+    `BubbleController` streams bubbles off every fish's mouth by speed; vents and ~37
+    seeps on the shelf and deep floor send bubble columns up (`WorldService`
+    `bubbleColumn`); `KelpController` sways the kelp within 180 studs of the camera
+    (one BulkMoveTo a frame).
+- **Ghost is spectral (owner, 2026-10-08: "the whole fish needs a similar to ghost from
+  sea of thieves glow ... a very rare skin"):** a shade with `spectral = true` turns
+  the whole fish ghostly, not just its edges: ForceField see-through body, a breathing
+  Highlight fill and rim, rising wisps, glowing eyes, a brighter light; on a mesh fish
+  the texture is held aside (`HeldAppearance`) and put back when the shade changes
+  (`Cosmetics` `haunt`, `animate`).
+- **Distances read in feet (owner, 2026-10-08: "instead of studs it should say ft"):**
+  `Format.distance` (1 stud ≈ 0.92 ft; depth uses it too). Never show "studs" or
+  meters to players.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.
@@ -581,7 +671,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
   - models for the growth stages and the other biomes;
-    rolled parts and variants on mesh fish; audio; caustics (needs a texture upload)
+    rolled parts and variants on mesh fish; caustics (needs a texture upload)
   - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
   - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks

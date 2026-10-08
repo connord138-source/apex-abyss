@@ -984,6 +984,33 @@ local function ruin(parent: Instance, rng: Random, anchor: Vector3)
 end
 
 -- A vent chimney's dressing: the glow at its cap and the black smoke it breathes
+-- A column of bubbles rising from a spot (vents, seeps in the sand): the water
+-- always has something moving in it (owner, 2026-10-08)
+local function bubbleColumn(holder: BasePart, strength: number)
+	local bubbles = Instance.new("ParticleEmitter")
+	bubbles.Name = "BubbleColumn"
+	bubbles.Rate = 6 * strength
+	bubbles.Lifetime = NumberRange.new(6, 10)
+	bubbles.Speed = NumberRange.new(5, 9)
+	bubbles.SpreadAngle = Vector2.new(6, 6)
+	bubbles.Acceleration = Vector3.new(0, 1.5, 0)
+	bubbles.Drag = 0.3
+	bubbles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15 * strength),
+		NumberSequenceKeypoint.new(0.5, 0.35 * strength),
+		NumberSequenceKeypoint.new(1, 0.5 * strength),
+	})
+	bubbles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(0.85, 0.5),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	bubbles.Color = ColorSequence.new(Color3.fromRGB(222, 250, 255))
+	bubbles.LightEmission = 0.5
+	bubbles.LightInfluence = 0.7
+	bubbles.Parent = holder
+end
+
 local function ventSmoke(parent: Instance, chimney: { position: Vector3, height: number })
 	local top = chimney.position + Vector3.new(0, chimney.height, 0)
 	local holder = Instance.new("Part")
@@ -1021,6 +1048,7 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	smoke.Color = ColorSequence.new(Color3.fromRGB(30, 26, 30), Color3.fromRGB(14, 12, 16))
 	smoke.LightInfluence = 0.3
 	smoke.Parent = holder
+	bubbleColumn(holder, 1.4)
 end
 
 -- The biomes' dressing, placed on the Terrain by raycast: dense kelp, rocks and
@@ -1179,6 +1207,81 @@ local function buildBiomes(parent: Instance)
 			"CrystalCluster",
 			{ cframe = speck.CFrame, size = Vector3.one * speck.Size.X * 2.5 }
 		)
+	end
+
+	-- Glowing plankton mats on the deepest floors (owner, 2026-10-08: "deepest depths
+	-- should have light luminescense such as photoplankton etc to give very very faint
+	-- light"): a patch of tiny glowing dots just off the floor, every other one faintly
+	-- lit. The plankton drifting in the water round the camera is PlanktonController's.
+	local mats = folder("PlanktonMats", parent)
+	local matColors =
+		{ Color3.fromRGB(90, 255, 214), Color3.fromRGB(86, 168, 255), Color3.fromRGB(150, 120, 255) }
+	local matCounts = {
+		{ id = "AbyssalTrench", count = 46 },
+		{ id = "HydrothermalVents", count = 18 },
+		{ id = "OpenBlue", count = 16 },
+		{ id = "SunkenRuins", count = 12 },
+	}
+	for _, entry in matCounts do
+		for i = 1, entry.count do
+			local ground = spotIn(rng, entry.id, 8)
+			if ground == nil or ground.Y > World.deep.floorY + 20 then
+				continue
+			end
+			local color = matColors[rng:NextInteger(1, #matColors)]
+			local spread = rng:NextNumber(4, 9)
+			local first: Part? = nil
+			for _ = 1, rng:NextInteger(5, 10) do
+				local dot = Instance.new("Part")
+				dot.Name = "Plankton"
+				dot.Anchored = true
+				dot.CanCollide = false
+				dot.CanQuery = false
+				dot.CanTouch = false
+				dot.Shape = Enum.PartType.Ball
+				dot.Size = Vector3.one * rng:NextNumber(0.25, 0.7)
+				local offset = Vector3.new(
+					rng:NextNumber(-spread, spread),
+					rng:NextNumber(0.2, 2.5),
+					rng:NextNumber(-spread, spread)
+				)
+				dot.CFrame = CFrame.new(ground + offset)
+				dot.Color = color
+				dot.Material = Enum.Material.Neon
+				dot.Transparency = 0.25
+				dot.Parent = mats
+				first = first or dot
+			end
+			if first and i % 2 == 0 then
+				local light = Instance.new("PointLight")
+				light.Color = color
+				light.Brightness = 0.35
+				light.Range = 16
+				light.Shadows = false
+				light.Parent = first
+			end
+		end
+	end
+
+	-- Seeps: thin bubble columns out of the sand on the shelf and the deep floor
+	local seeps = folder("Seeps", parent)
+	for _, biomeId in { "KelpShallows", "CoralReef", "ShipwreckGraveyard", "SunkenRuins", "OpenBlue" } do
+		for _ = 1, if biomeId == "OpenBlue" then 5 else 8 do
+			local ground = spotIn(rng, biomeId, 10)
+			if ground then
+				local seep = Instance.new("Part")
+				seep.Name = "Seep"
+				seep.Anchored = true
+				seep.CanCollide = false
+				seep.CanQuery = false
+				seep.CanTouch = false
+				seep.Transparency = 1
+				seep.Size = Vector3.new(1.5, 0.5, 1.5)
+				seep.CFrame = CFrame.new(ground + Vector3.new(0, 0.4, 0))
+				seep.Parent = seeps
+				bubbleColumn(seep, rng:NextNumber(0.6, 1))
+			end
+		end
 	end
 
 	-- Light shafts from the surface over the shelf, and a few long ones in the Open Blue
