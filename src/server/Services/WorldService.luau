@@ -160,6 +160,25 @@ local function groundAt(x: number, z: number): (Vector3?, Vector3?)
 	return nil, nil
 end
 
+-- Terrain filled this frame doesn't answer a raycast until a later one (playtest
+-- 2026-10-07: every kelp forest, rock, coral garden and wreck is placed by raycast,
+-- and none were there; nor were the shell and forage spots placed next). Waits until
+-- the shelf and the deep floor both answer, for at most a few seconds.
+local function awaitTerrain()
+	local probes = { Vector2.new(400, 0), Vector2.new(0, 400), Vector2.new(-400, 0), Vector2.new(0, -800) }
+	local deadline = os.clock() + 5
+	repeat
+		task.wait()
+		local ready = true
+		for _, probe in probes do
+			if groundAt(probe.X, probe.Y) == nil then
+				ready = false
+				break
+			end
+		end
+	until ready or os.clock() > deadline
+end
+
 local function buildBounds(parent: Instance)
 	local r = World.boundsRadius
 	local bottom = World.trench.floorY - 20
@@ -1114,6 +1133,7 @@ function WorldService.start()
 	buildBounds(folder("Bounds", root))
 	buildHub(root)
 	buildVendors(root:FindFirstChild("Hub") :: Folder)
+	awaitTerrain()
 	buildBiomes(folder("Biomes", root))
 end
 
