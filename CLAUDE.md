@@ -680,13 +680,31 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 ## Playtests
 
 - Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
-  `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`).
+  `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
+  `2026-10-08-pc.md`, which also covers the two world rounds before it).
+- Engine limits the world hit (playtest 2026-10-08):
+  - `Workspace.FallenPartsDestroyHeight` is −2000, set in `default.project.json`
+    and the saved place. The default −500 sits above the Vents (−540) and the
+    Trench (−920), and a fish taken there lost its replication.
+  - Terrain filled in a frame doesn't answer raycasts until a later one
+    (`WorldService` `awaitTerrain`).
+  - An UnreliableRemoteEvent drops a packet over its size limit whole, so the
+    predator stream goes out 4 creatures a packet.
+- Uploading assets from Studio:
+  - The sound pack went up through Studio's own importer (Asset Manager →
+    Import → Import Queue → Start Import, which shows a rights-and-fee dialog).
+  - The Import Queue row's right-click → Copy AssetId gives the id.
+  - Shade-skin GLBs come in through File → Import; right after upload a texture can
+    fail with `HttpError: NetFail` and then load fine.
 - On the owner's PC, format with `stylua --line-endings Windows src --glob
   "!**/Packages/**"` (the clone checks out CRLF, so a plain check flags every file).
 - Studio testing lessons: the command bar `require`s its own copy of a
   ModuleScript, so calling a service from it changes nothing in the running game;
   in the Device Simulator, typing into the command bar flips `KeyboardEnabled` on
-  until the next touch, so `Input.isTouch()` reads false meanwhile.
+  until the next touch, so `Input.isTouch()` reads false meanwhile. Studio's
+  2026-10-08 build has a multi-line command bar: Enter adds a line and the Run
+  button executes (it moves up when the script is long). Its Rojo panel
+  defaults to port 34872, so set 34873 before connecting.
 - Toasts have their own ScreenGui above the menus, so refusals from menu buttons
   show. ROLL also has R on keyboards.
 - On the owner's PC, Rojo for this game runs on **port 34873** until the stale Hatch
