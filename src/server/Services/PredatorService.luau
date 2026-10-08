@@ -68,6 +68,7 @@ local nextIndex = 1
 local rng = Random.new(World.seed + 41)
 local lastBite: { [Player]: number } = {}
 local accumulator = 0
+local STREAM_BATCH = 4 -- creatures per position packet (an entry is ~130 bytes)
 
 local function randomWaypoint(def: Def): Vector3
 	for _ = 1, 20 do
@@ -289,7 +290,13 @@ local function stream(now: number)
 		}
 		table.insert(list, entry)
 	end
-	Net.predatorState({ at = now, list = list })
+	-- An unreliable packet over its size limit is dropped whole (playtest 2026-10-08:
+	-- with the bigger map's predators and a boss up, every update was dropped), so the
+	-- list goes out a few creatures at a time; the client takes each entry on its own
+	for first = 1, #list, STREAM_BATCH do
+		local last = math.min(first + STREAM_BATCH - 1, #list)
+		Net.predatorState({ at = now, list = table.move(list, first, last, 1, {}) })
+	end
 end
 
 local function payOut(predator: Predator, killer: Player?)
