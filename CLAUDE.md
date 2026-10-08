@@ -348,6 +348,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   glow halo, glints, chrome shine or rainbow; coral a sprig and the amount; parts the
   slot they change; variants their species; on a tier gradient with a sheen and a tier
   badge. The result shows a shade's three swatches and Rare+ wins burst motes.
+- **Underwater look (owner, 2026-10-08: "still has that sky look, it needs to look like
+  it's underwater"):** nothing above the water may read as a sky. The Surface sheet is
+  opaque pale water (seen from below), four deep-blue Horizon walls box the map far
+  past the barrier, an `OceanSky` with no sun, moon or stars replaces the default
+  skybox, and the atmosphere is thicker and bluer (server `setupLighting` and the
+  client's `OceanController` grades, which drive it every frame). If the sky ever
+  shows again, it's a gap in that box, not a lighting setting.
 - **Quality bar (owner: "very very fluid ... EXTREMELY professional")**: see GDD §12.
   - Abzû-level swimming: momentum, roll into turns, size-scaled handling.
   - A spring camera.

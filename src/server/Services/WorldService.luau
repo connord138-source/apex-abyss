@@ -102,19 +102,29 @@ local function setupLighting()
 		if
 			(child:IsA("PostEffect") or child:IsA("Atmosphere") or child:IsA("Sky") or child:IsA("Clouds"))
 			and child.Name ~= "OceanAtmosphere"
+			and child.Name ~= "OceanSky"
 		then
 			child:Destroy()
 		end
 	end
-	Lighting.ClockTime = 13.5
+	Lighting.ClockTime = 12
 	Lighting.GeographicLatitude = 20
-	Lighting.Brightness = 2.4
-	Lighting.Ambient = Color3.fromRGB(34, 62, 80)
-	Lighting.OutdoorAmbient = Color3.fromRGB(70, 120, 140)
-	Lighting.EnvironmentDiffuseScale = 0.35
-	Lighting.EnvironmentSpecularScale = 0.25
+	Lighting.Brightness = 1.7
+	Lighting.Ambient = Color3.fromRGB(26, 58, 82)
+	Lighting.OutdoorAmbient = Color3.fromRGB(56, 108, 136)
+	Lighting.EnvironmentDiffuseScale = 0.3
+	Lighting.EnvironmentSpecularScale = 0.2
 	Lighting.GlobalShadows = true
-	Lighting.ShadowSoftness = 0.45
+	Lighting.ShadowSoftness = 0.6
+	-- No sun, moon or stars: nothing above the water should read as a sky (owner,
+	-- 2026-10-08: "still has that sky look, it needs to look like it's underwater")
+	local sky = Instance.new("Sky")
+	sky.Name = "OceanSky"
+	sky.CelestialBodiesShown = false
+	sky.StarCount = 0
+	sky.SunAngularSize = 0
+	sky.MoonAngularSize = 0
+	sky.Parent = Lighting
 	local atmosphere = Lighting:FindFirstChild("OceanAtmosphere") :: Atmosphere?
 	if atmosphere == nil then
 		local made = Instance.new("Atmosphere")
@@ -124,12 +134,12 @@ local function setupLighting()
 	end
 	assert(atmosphere)
 	-- The client's OceanController grades these by depth; this is the shallows look
-	atmosphere.Density = 0.42
-	atmosphere.Offset = 0.12
-	atmosphere.Color = Color3.fromRGB(56, 140, 168)
-	atmosphere.Decay = Color3.fromRGB(18, 64, 96)
+	atmosphere.Density = 0.56
+	atmosphere.Offset = 0.2
+	atmosphere.Color = Color3.fromRGB(44, 126, 156)
+	atmosphere.Decay = Color3.fromRGB(14, 56, 88)
 	atmosphere.Glare = 0
-	atmosphere.Haze = 1.6
+	atmosphere.Haze = 2.8
 	workspace.Gravity = 0 -- everything swims
 end
 
@@ -176,17 +186,42 @@ local function buildBounds(parent: Instance)
 	wall(Vector3.new(r * 2 + 16, height, 8), Vector3.new(0, midY, r + 4))
 	wall(Vector3.new(r * 2 + 16, height, 8), Vector3.new(0, midY, -r - 4))
 
-	-- The surface: the map's ceiling, seen from below as a bright, rippling sheet
+	-- The surface: the map's ceiling, seen from below as a pale sheet of water (opaque:
+	-- the skybox must never show through it)
+	local span = r * 2 + 2800
 	local surface = block(
 		parent,
 		"Surface",
-		Vector3.new(r * 2 + 1600, 2, r * 2 + 1600),
+		Vector3.new(span, 2, span),
 		CFrame.new(0, World.surfaceY + 1, 0),
-		Color3.fromRGB(150, 224, 236),
+		Color3.fromRGB(142, 206, 224),
 		Enum.Material.SmoothPlastic
 	)
-	surface.Transparency = 0.25
+	surface.Transparency = 0
+	surface.Reflectance = 0.08
 	surface.CastShadow = false
+	surface.CanCollide = false
+	surface.CanQuery = false
+	-- The horizon: deep-blue walls far past the barrier, so the water fades into
+	-- water in every direction instead of a sky
+	local horizonY = (World.trench.floorY - 200 + World.surfaceY + 20) / 2
+	local horizonHeight = World.surfaceY + 20 - (World.trench.floorY - 200)
+	for _, side in
+		{ Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 0, -1) }
+	do
+		local center = side * (span / 2) + Vector3.new(0, horizonY, 0)
+		local horizon = block(
+			parent,
+			"Horizon",
+			Vector3.new(if side.X ~= 0 then 4 else span, horizonHeight, if side.X ~= 0 then span else 4),
+			CFrame.new(center),
+			Color3.fromRGB(16, 62, 92),
+			Enum.Material.SmoothPlastic
+		)
+		horizon.CastShadow = false
+		horizon.CanCollide = false
+		horizon.CanQuery = false
+	end
 end
 
 -- One den's furniture; the room itself is carved from the Terrain (Cave.luau).
