@@ -112,6 +112,7 @@ def task_body(job: dict) -> dict:
         body = {"type": kind, "prompt": job["prompt"], "model_version": job.get("model", IMAGE_MODEL)}
         if job.get("ref"):
             body["file"] = image_input(job["ref"])
+        body.update(job.get("settings", {}))  # e.g. aspect_ratio for the store art
         return body
     raise ValueError(f"unknown job type {kind}")
 

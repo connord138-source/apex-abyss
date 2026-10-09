@@ -593,6 +593,20 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `StartController.afterStart`: the controls hint, WELCOME BACK, the Daily panel
   (1.5 s after) and a pop of the tutorial panel. Models come from `FishModels` /
   `PreyModels` (oriented by their main mesh), with ellipsoid fish while not imported.
+- **Store page art (owner, 2026-10-09: "generate our page photo and some
+  thumbnails"; built):** `marketing/` (committed) holds the files to upload: the icon
+  (`icon_512.png`, the Nibbler fleeing a Megalodon's jaws; `icon_512_alt.png`), the
+  keyed `logo.png`, and thumbnails 1–7 from generated key art (eat/grow hero, world
+  bosses, the dark Trench, growth, rare shades, treasure maps, seven biomes); 8–10 come
+  from in-game captures (`marketing/raw/shot_*.png`, taken by the PC session). Key art:
+  Nano Banana Pro through the Tripo API (`tools/tripo_jobs_marketing.json`, 10 credits
+  each) with reference sheets of approved concepts; the API returns 1024² only (an
+  aspect setting is ignored), so scenes are painted in a letterboxed 16:9 strip, cropped
+  and upscaled 2× with EDSR (`tools/marketing/compose.py refs | sr | (default) |
+  shots`). All text is set by the script; the logo is keyed off magenta. Asking the
+  model for "a calm corner for the title" paints a hard box into the scene. The list,
+  the shot list and the description draft are in `docs/STORE_PAGE.md`. Uploading and
+  making the experience public stay Connor's call.
 - **Eating vs biting made clear (owner, 2026-10-09: "needs to be clear mechanics on
   how to actually bite fish ... are the other fish the same way or do they need to be
   eaten by hitting a bite key?"):** anything under ~70% of your length (prey, shrimp,

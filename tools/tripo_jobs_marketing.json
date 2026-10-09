@@ -1,0 +1,107 @@
+{
+  "jobs": [
+    {
+      "name": "Hero",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Widescreen 16:9 landscape Roblox game thumbnail. Sunlit Kelp Shallows: god rays, golden kelp forest, white sand with starfish. Right of center in the foreground, a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) lunges with its mouth wide open to gulp a tiny silver minnow, bubbles bursting around it. Behind it, out of the deep blue haze in the background, looms the colossal dark silhouette of a megalodon shark with a glowing eye and huge open jaws, so the scene reads 'eat or be eaten'. Keep the upper-left third of the frame calm open water (no fish there) for a title. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefHero.jpg"
+    },
+    {
+      "name": "HeroWide",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Widescreen 16:9 landscape Roblox game thumbnail. Sunlit Kelp Shallows: god rays, golden kelp forest, white sand with starfish. Right of center in the foreground, a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) lunges with its mouth wide open to gulp a tiny silver minnow, bubbles bursting around it. Behind it, out of the deep blue haze in the background, looms the colossal dark silhouette of a megalodon shark with a glowing eye and huge open jaws, so the scene reads 'eat or be eaten'. Keep the upper-left third of the frame calm open water (no fish there) for a title. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefHero.jpg"
+    },
+    {
+      "name": "Boss",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Roblox game thumbnail key art. The Open Blue: deep blue open ocean with sun shafts from above. A colossal battle-scarred megalodon shark (slate grey, pale belly, jagged teeth, one glowing eye) charges across the frame from right to left with its mouth open. A team of six small player fish swarm it and bite its flanks and tail: a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler), a silver barracuda, a spiky brown pufferfish, a green moray eel, a grey reef shark and a dark anglerfish with a glowing lure. White bubble bursts and bright impact sparks where they bite. Epic team boss fight. Keep the upper-left quarter calmer for a title. Compose it for a wide crop: keep every important subject inside the middle horizontal band of the square image; the top and bottom fifths are only water, light or seabed and will be cropped away. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefBoss.jpg"
+    },
+    {
+      "name": "Squid",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Roblox game thumbnail key art. The Abyssal Trench: a pitch-dark canyon lit only by bioluminescence: glowing blue-green plankton specks, cyan crystal clusters and glowing tube anemones on the floor. A giant deep-red squid with glowing blue spots and huge glowing orange eyes rises out of the dark on the right, tentacles with glowing yellow suckers reaching toward two small fish on the left: a dark anglerfish whose glowing lure lights the scene and a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) carrying a small warm lantern. Undersea horror, but cartoonish. Keep the upper-left quarter dark and calm for a title. Compose it for a wide crop: keep every important subject inside the middle horizontal band of the square image; the top and bottom fifths are only water, light or seabed and will be cropped away. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefSquid.jpg"
+    },
+    {
+      "name": "Grow",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Roblox game thumbnail key art. A bright tropical coral reef. Along a diagonal from the lower left to the upper right, the same orange fish at four life stages, like the growth chart in the reference: a tiny googly-eyed fry, a young fish, a grumpy adult, and a huge toothy apex fish at the upper right. Each one chases and gulps a smaller fish in front of it, with bubble trails. Energetic and funny. Keep the upper-left quarter calm open water for a title. Compose it for a wide crop: keep every important subject inside the middle horizontal band of the square image; the top and bottom fifths are only water, light or seabed and will be cropped away. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefGrow.jpg"
+    },
+    {
+      "name": "Shades",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Roblox game thumbnail key art. A dark navy display stage with soft spotlights and floating sparkles. A row of five identical chunky low-poly fish, each wearing a different rare glowing skin: holographic rainbow prismatic, ghostly see-through pale green spectral with wisps, black with glowing orange lava cracks, deep purple nebula with tiny stars, and polished shiny gold. Each glows and sparkles like a rare collectible. Keep the top fifth of the frame empty for a title. Compose it for a wide crop: keep every important subject inside the middle horizontal band of the square image; the top and bottom fifths are only water, light or seabed and will be cropped away. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefShades.jpg"
+    },
+    {
+      "name": "Treasure",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Roblox game thumbnail key art. A sunken shipwreck graveyard with broken masts and warm lanterns. In the foreground a wooden treasure chest half buried in a sand mound bursts open, gold coins, pearls and golden light spilling out. a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) and a silver barracuda dig at the sand beside it, and an old treasure map with a red X drifts in the water nearby. Adventurous. Keep the upper-left quarter calmer for a title. Compose it for a wide crop: keep every important subject inside the middle horizontal band of the square image; the top and bottom fifths are only water, light or seabed and will be cropped away. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefTreasure.jpg"
+    },
+    {
+      "name": "World",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Roblox game thumbnail key art. A wide panoramic underwater vista of different biomes side by side: on the left a sunlit golden kelp forest, in the center a vivid coral reef with natural rock arches to swim through, on the right a dark shipwreck graveyard, and in the distance a cliff edge dropping into a deep blue abyss with faint glowing lights far below. Schools of small fish. a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) swims through a coral arch in the middle ground. Keep the top fifth calmer for a title. Compose it for a wide crop: keep every important subject inside the middle horizontal band of the square image; the top and bottom fifths are only water, light or seabed and will be cropped away. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefWorld.jpg"
+    },
+    {
+      "name": "IconA",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. A square Roblox game icon. Close-up: a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) in the lower left, eyes wide in panic, swimming away fast toward the viewer, while the gigantic open jaws of a megalodon shark full of jagged teeth fill the upper right of the frame behind it, emerging from bright blue water with light rays and bubbles, one glowing eye. Bold, simple, readable at very small sizes, strong silhouettes, saturated colors. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefIcon.jpg"
+    },
+    {
+      "name": "IconB",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. A square Roblox game icon. Close-up front view: a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) charging straight at the viewer with its mouth wide open to chomp, tiny silver fish scattering in panic around it, bright blue water with light rays and bubbles, and the dark silhouette of a megalodon far behind. Bold, simple, readable at very small sizes, strong silhouette, saturated colors. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefIcon.jpg"
+    },
+    {
+      "name": "Logo",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "A bold Roblox game logo that reads exactly \"APEX ABYSS\" and nothing else, spelled A-P-E-X and A-B-Y-S-S. Two stacked lines: \"APEX\" on top, \"ABYSS\" below. Chunky angular 3D letters with faceted low-poly bevels and a thick dark navy outline. APEX is bright white fading to aqua, with sharp shark-tooth points on the A and the X. ABYSS is deep ocean blue fading to glowing teal at the bottom, with a few small bubbles rising off it. A small grey shark fin cuts through the top of the letter A. Readable at small sizes, centered with generous margins, on a completely flat pure magenta (#FF00FF) background with no shadows, gradients, scenery or other objects."
+    },
+    {
+      "name": "Squid2",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Format: a cinematic 16:9 widescreen scene letterboxed inside the square image: the scene fills a centered full-width 16:9 strip, and the strips above and below it are plain flat dark navy (#04162A) with nothing in them. The Abyssal Trench: a pitch-dark rocky canyon lit only by bioluminescence: glowing blue-green plankton specks, cyan crystal clusters and glowing tube anemones on the floor and walls. On the right half a giant deep-red squid with glowing blue spots and huge glowing orange eyes rises out of the dark, its tentacles with glowing yellow suckers curling toward two small fish on the left half: a dark anglerfish whose glowing lure casts a pool of light, and a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) holding a small warm lantern, looking scared. Undersea horror, but cartoonish and fun. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefSquid.jpg"
+    },
+    {
+      "name": "Grow2",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game Apex Abyss: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). Do not copy its compositions. Format: a cinematic 16:9 widescreen scene letterboxed inside the square image: the scene fills a centered full-width 16:9 strip, and the strips above and below it are plain flat dark navy (#04162A) with nothing in them. A bright tropical coral reef with sun rays. From left to right across the strip, the same orange fish at four life stages, each bigger than the last, like the growth chart in the reference: a tiny googly-eyed fry at the far left, a young fish, a grumpy adult, and a huge toothy apex fish at the far right. Each one is chasing and gulping a smaller fish in front of it, with bubble trails. All four stages fit fully inside the strip with space around them. Energetic and funny. Vivid, high contrast, crisp, cinematic, professional key art. No text, no letters, no numbers, no logos, no UI, no watermark, no blood.",
+      "ref": "assets/tripo/marketing_refs/RefGrow.jpg"
+    }
+  ]
+}

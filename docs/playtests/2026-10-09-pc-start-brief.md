@@ -83,16 +83,47 @@ The rule: anything under ~70% of your length (prey, shrimp, starfish, small play
 - **T6 Garden footing:** at Nook and Burrow, the footing goes only as deep as the floor drops, with rubble stones on the low side, and no gap from any side. Screenshot it from the low side.
 - **T7 Output:** 0 game errors.
 
-## 5. Before going live (Connor's call; just report the status)
+## 5. Store captures (for thumbnails 8–10)
 
-- The place isn't published to universe 10769954850 yet.
+Connor asked for in-game shots for the store page; docs/STORE_PAGE.md has the list. For each:
+- Use a 1920×1080 or larger view: the Device Simulator's 1080p preset if there is one, otherwise the largest Studio viewport.
+- Hide the HUD (set every ScreenGui under PlayerGui to Enabled = false, from the client), the nametags and Roblox's own UI (`StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)` on the client). The script adds the text.
+- Save as PNG with exactly these names, in `marketing/raw/`:
+  - **shot_8_den.png:** an upgraded den.
+    - Admin coral, then Den Mason to Grotto.
+    - Furniture in every slot, lamps glowing, the trophy wall, a full Coral Garden (Admin "Coral Garden: grow hours" 8).
+    - Your fish in front, lit, from a low three-quarter angle.
+  - **shot_9_megalodon.png:** the Megalodon in the Open Blue (`_G.ApexBoss.summon()`).
+    - Mouth open, low and dramatic.
+    - 2–3 player fish beside it for scale (Local Server with 2–3 clients if you can).
+  - **shot_10_reveal.png:** the roll reveal landing on a Mythic or Legendary shade (Admin shells, roll until one lands).
+    - This shot keeps the reveal's own UI; hide everything else.
+- Commit them. Don't run the compose script; the cloud session makes the thumbnails from them.
+
+## 6. Publish, then the store page
+
+Do this after the tests above.
+1. Publish the current place to the existing private experience "Apex Abyss" (universe 10769954850, place 83646578075996): File → Publish to Roblox As → pick the experience and its place → Update existing experience.
+   - Keep the experience private.
+   - Report the published version number.
+2. Then in Studio, Game Settings → Basic Info (or the experience's page in Creator Hub):
+   1. Upload `marketing/icon_512.png` as the icon. Wait until moderation passes before the next step.
+   2. Upload thumbnails 1–7 in order (`marketing/thumb_1_eat.jpg` … `thumb_7_biomes.jpg`).
+   3. Paste the description from docs/STORE_PAGE.md.
+   4. Report anything moderation rejects. Never re-upload a rejected image, and never upload from another account.
+
+## 7. Before going live (Connor's call; just report the status)
+
+- Making the experience public stays Connor's call.
 - A pass purchase still needs a non-owner account.
 
-## 6. Report
+## 8. Report
 
 Write docs/playtests/2026-10-09-pc-start.md:
 - S1–S5, H1–H5 and T1–T7 pass/fail, with the logged values
 - screenshots: the start screen (PC and phone), the dive mid-way, each hint chip, the T2 re-rank
+- the three store captures committed in marketing/raw/
+- the published version, and whether the icon, thumbnails and description went up
 - any Output errors, verbatim
 
 Commit and push to claude/core-systems.

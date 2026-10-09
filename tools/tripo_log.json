@@ -183,6 +183,123 @@
   "task_id": "345434c0-d8f4-4e38-b230-4ffea5f59d5e",
   "type": "text_to_model"
  },
+ "marketing/Boss": {
+  "credits": 10,
+  "files": [
+   "Boss.png"
+  ],
+  "status": "success",
+  "task_id": "02d4f3ee-392f-454e-b6a1-3986320d37ff",
+  "type": "generate_image"
+ },
+ "marketing/Grow": {
+  "credits": 10,
+  "files": [
+   "Grow.png"
+  ],
+  "status": "success",
+  "task_id": "90d6b395-e6d1-4587-9751-62e108590061",
+  "type": "generate_image"
+ },
+ "marketing/Grow2": {
+  "credits": 10,
+  "files": [
+   "Grow2.png"
+  ],
+  "status": "success",
+  "task_id": "a541c9f4-df49-4131-9dfd-22ae7d936151",
+  "type": "generate_image"
+ },
+ "marketing/Hero": {
+  "credits": 10,
+  "files": [
+   "Hero.png"
+  ],
+  "status": "success",
+  "task_id": "d4b53e39-5a0b-44b8-ae73-e3931dc2b41b",
+  "type": "generate_image"
+ },
+ "marketing/HeroWide": {
+  "credits": 10,
+  "files": [
+   "HeroWide.png"
+  ],
+  "status": "success",
+  "task_id": "8a623f6d-fb92-4103-a23b-301a1930bcf2",
+  "type": "generate_image"
+ },
+ "marketing/IconA": {
+  "credits": 10,
+  "files": [
+   "IconA.png"
+  ],
+  "status": "success",
+  "task_id": "f8cc6941-9280-4698-bc0f-38c12ee3ff5f",
+  "type": "generate_image"
+ },
+ "marketing/IconB": {
+  "credits": 10,
+  "files": [
+   "IconB.png"
+  ],
+  "status": "success",
+  "task_id": "8b03ee10-a67d-4daf-aa9c-195adb8e02ec",
+  "type": "generate_image"
+ },
+ "marketing/Logo": {
+  "credits": 10,
+  "files": [
+   "Logo.png"
+  ],
+  "status": "success",
+  "task_id": "cac3cea2-f84f-4aa3-acce-772a5b1d3b31",
+  "type": "generate_image"
+ },
+ "marketing/Shades": {
+  "credits": 10,
+  "files": [
+   "Shades.png"
+  ],
+  "status": "success",
+  "task_id": "bc53b5d4-aee7-49a0-aee8-f20e42f32831",
+  "type": "generate_image"
+ },
+ "marketing/Squid": {
+  "credits": 10,
+  "files": [
+   "Squid.png"
+  ],
+  "status": "success",
+  "task_id": "1b2c8ee2-e024-4418-818c-f7bbe98369c2",
+  "type": "generate_image"
+ },
+ "marketing/Squid2": {
+  "credits": 10,
+  "files": [
+   "Squid2.png"
+  ],
+  "status": "success",
+  "task_id": "d11eb076-0a9b-48d0-a797-1b4587b58947",
+  "type": "generate_image"
+ },
+ "marketing/Treasure": {
+  "credits": 10,
+  "files": [
+   "Treasure.png"
+  ],
+  "status": "success",
+  "task_id": "2d672529-4b93-43c8-8eca-4cbe8bf059ac",
+  "type": "generate_image"
+ },
+ "marketing/World": {
+  "credits": 10,
+  "files": [
+   "World.png"
+  ],
+  "status": "success",
+  "task_id": "2d392912-4944-446c-a09f-55c2ae9dd423",
+  "type": "generate_image"
+ },
  "prey/Grouper": {
   "credits": 20,
   "files": [
