@@ -180,16 +180,53 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - The whole map is underwater, and the surface is the ceiling.
 - **Tide events:** Blood Tide, Sardine Run, Whale Fall, Leviathan Rising and
   Bioluminescent Night.
-- **Monetization:**
-  - **Second Chance:** keep your Haul when eaten.
-  - **Double Haul** (the owner's idea): offered at banking above a minimum, one tap, no
-    countdown. Small/Big/Huge versions by haul size. A rewarded ad doubles small hauls
-    up to a cap. It doubles after other multipliers, and `lastHaul` in the save makes
-    the receipt pay exactly once.
-  - **Server Frenzy:** ×2 growth for the whole server.
-  - **Passes:** VIP, ×2 Mass, extra den slots.
-  - **Pearl crates:** odds shown before buying.
-  - **Rule:** sell growth and safety, never bite damage.
+- **Monetization (built 2026-10-09; owner: "ready for monetization"):**
+  `Config/Monetization.luau` (names, prices, descriptions, Creator Hub ids, tuning),
+  `MonetizationService` (ported from Hatch & Snatch: passes checked with Roblox on join
+  and after a purchase, ProcessReceipt → `DataService.processPurchase`, PolicyService,
+  rewarded ads), `Store` + `OfferController` + `MenuController.openStore` on the client.
+  **Every id is 0 until the owner creates it in Creator Hub**: a live game hides id-0
+  items, Studio shows them greyed out, and the admin panel grants passes and runs
+  product effects without Robux. Full table in GDD §9.
+  - **Rule:** sell growth and safety, never bite damage. Coral (it buys Iron Jaw) and
+    Kelp Wraps are never sold for Robux.
+  - **Passes:** ×2 Mass 399 (every Haul gain ×2), VIP 299 (gold nametag tag, +10%
+    coral), Den Expansion 149 (the "extra den slots": spots X1–X4 at any level, `pass`
+    on a `Config/Dens` slot), Deep Garden 129 (Coral Garden ×1.5 and 16 h).
+  - **Second Chance** 39: bought on the eaten screen it returns the Haul just lost
+    (`data.lostHaul`, once, within 3 min of being eaten); otherwise it's a charm (hold up to 5).
+  - **Double Haul** (the owner's idea) 19/49/99 by the Haul's size (≤ 60 kg, ≤ 2.5 t,
+    more): offered on the bank screen after the tutorial when doubling adds ≥ 2 levels;
+    one tap, WATCH AD for ≤ 60 kg, SKIP, **no countdown**. It doubles after ×2 Mass and
+    Server Frenzy. `lastHaul` (with its species) makes a late receipt double that haul
+    once, capped at the tier paid for; a second receipt becomes a Second Chance charm.
+  - **Server Frenzy** 99: ×2 growth for the server, 15 min a purchase (up to 2 h
+    ahead), announced; `Workspace` attributes `Frenzy`/`FrenzyUntil` drive the HUD chip.
+  - **Shell packs** 49/199 (100/600 shells): paid random items (shells buy rolls), so
+    hidden for `ArePaidRandomItemsRestricted` players and with ODDS on the row.
+  - Every Haul gain goes through `HuntService` `addHaul` × `MonetizationService.growth`
+    (`HuntService.feed` returns what was added). Coral from play goes through
+    `EconomyService.earnCoral` (VIP 1.1 × Premium 1.1 × group 1.05); fixed rewards that
+    show their amount (rolls, treasure, daily, admin) use `addCoral`.
+  - Cards (Double Haul, Second Chance) free the cursor, B or SKIP closes, and they go
+    away when you swim out of the hub. SHOP and DAILY sit beside the wallet card; the View button
+    opens the Shop on a controller.
+  - **Later:** codes, Pearl crates, the Roblox group (id 0 in `tuning.group`).
+- **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
+  `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
+  restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
+  and a Captain's map) with +25% per finished week (up to +100%). The panel opens by
+  itself once a session when a reward waits (after the tutorial); DAILY glows.
+- **AFK income: the Coral Garden (owner, 2026-10-09: "an afk aspect of the game to earn
+  something to keep players coming back"; built):** a garden bed in every den, under
+  the trophy plaques, grows coral and shells over real time, online or off, up to 8 h
+  (16 with Deep Garden). Per hour by den level: 60/100/160/250 coral and 4/6/9/12
+  shells. Resting in your own den grows it ×2 and collects every minute; swimming in
+  collects it; a returning player spawns in the den and sees WELCOME BACK.
+  `Config/Dens` `garden`, `Shared/Garden` (rates, grow, fill; luau-testable),
+  `GardenService`, `DenBuilder.garden` (corals grow as it fills, sparkle when full),
+  `GardenController` (the sign, payout pops, the welcome banner). Admin: "Coral
+  Garden: grow hours".
 - **Controls (owner, 2026-10-07):**
   - **PC stays as built** (the owner likes it): WASD swims relative to the camera (A/D
     slide sideways), the mouse aims, Space/C go up and down.
@@ -433,7 +470,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   A boss reward's reveal (`from`) rolls a reel of Rare+ shades and says "won from the
   Megalodon", not "dug up from treasure"; a fish that already has every Rare+
   shade gets half the boss's coral instead, shown as a Coral Jackpot. The result shows a shade's swatches and Rare+
-  wins burst motes.
+  wins burst motes. A game script can't read `SurfaceAppearance.ColorMap` ("lacking
+  capability Plugin"; reading it froze every roll, 950903f): read `ColorMapContent.Uri`
+  inside a `pcall` (`CardPhoto` `skinTexture`).
 - **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "All of
   the shades in general need much much more variance and depth than just a slight
   reshape to the existing colors"):** 33 shades (v3), no two sharing a pattern:
@@ -559,8 +598,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Player data:** ProfileStore, vendored at `src/server/Packages` (Apache-2.0). Studio
   sessions use `PlayerData_Studio_v1`, so Studio testing never touches live saves. Team
   Test servers probably report `IsStudio() == false` and would use the live store.
-- **Purchases:** `MonetizationService` owns ProcessReceipt (to be built).
-  `DataService.processPurchase` grants once per PurchaseId and confirms after a save.
+- **Purchases:** `MonetizationService` owns ProcessReceipt. A product's effect is
+  registered with `MonetizationService.onProduct(key, fn)` by the service that owns it
+  (Double Haul and Second Chance: HuntService; shell packs: EconomyService; Server
+  Frenzy: MonetizationService), and `fn` may only change that player's data (plus
+  things fine to repeat). `DataService.processPurchase` grants once per PurchaseId and
+  confirms after a save. Check passes with `MonetizationService.hasPass(player, key)`.
 - **Remotes:** `src/server/Net.luau`. Client requests are rate-limited, and every
   argument is untrusted.
 - **Loops:** wrap server loops in `Guard.loop` or `Guard.run`, so one bad record can't
@@ -611,6 +654,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - `FishService`: custom fish characters (a ball collider `HumanoidRootPart`, a Humanoid with `EvaluateStateMachine = false`, and a `FishBuilder` body), den assignment, respawns.
   - `HuntService`: validates prey eats, player eats and bites; the Haul; banking at your own den's pool; the hub safe zone, spawn protection and healing. It also exposes `mouth` and `feed` for other food sources.
   - `ForageService`: starfish and shrimp spots (placed by raycast) and server-checked eats.
+  - `MonetizationService` (passes, receipts, Server Frenzy, ads, PolicyService),
+    `GardenService` (the den's Coral Garden), `RewardsService` (daily streak, group
+    perk). Client: `Store` (Roblox prompts), `Ads`, `OfferController` (SHOP/DAILY,
+    growth chip, Double Haul and Second Chance cards), `GardenController`.
 - **Shared** (`src/shared`):
   - `Config/` (Tuning, Prey, World).
   - `Size`: mass ↔ length, levels and stages, speed and turn rate.
@@ -709,7 +756,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   2026-10-06, and 2,350 were left after the biome and boss concepts. The budget plan is in GDD
   §8.
 - **Not built yet:**
-  - MonetizationService, Double Haul, the Robux Second Chance and Shell packs
+  - codes, Pearl crates, the Roblox group perk (id 0), pass and product icons
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
   - models for the growth stages and the other biomes;

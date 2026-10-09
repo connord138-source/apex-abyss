@@ -321,6 +321,34 @@ local function build()
 	}
 	pickRow("Hurt the boss", fractions, "hurtBoss", "HURT")
 	actionRow("Send the boss away", "endBoss", "DISMISS", "danger")
+
+	header("MONETIZATION (NO ROBUX)")
+	local passes: { { label: string, value: any } } = {}
+	for _, pass in Config.Monetization.passes do
+		table.insert(passes, { label = pass.name, value = pass.key })
+	end
+	pickRow("Grant a pass", passes, "grantPass", "GRANT")
+	pickRow("Take a pass away", passes, "revokePass", "TAKE")
+	local products: { { label: string, value: any } } = {}
+	for _, product in Config.Monetization.products do
+		table.insert(products, { label = product.name, value = product.key })
+	end
+	pickRow("Run a product's effect", products, "runProduct", "RUN")
+	local perks: { { label: string, value: any } } = {
+		{ label = "Premium ON", value = "premium:on" },
+		{ label = "Premium OFF", value = "premium:off" },
+		{ label = "Restricted ON", value = "restricted:on" },
+		{ label = "Restricted OFF", value = "restricted:off" },
+		{ label = "Group ON", value = "group:on" },
+		{ label = "Group OFF", value = "group:off" },
+	}
+	pickRow("Test as (perks, policy)", perks, "perk", "SET")
+
+	header("DAILY STREAK · CORAL GARDEN")
+	actionRow("Daily: claim again today", "dailyReset", "RESET", "secondary")
+	amountRow("Daily: set the streak", "days", "dailyStreak", 0, "SET")
+	actionRow("Daily: miss a day (streak resets)", "dailyBreak", "BREAK", "danger")
+	amountRow("Coral Garden: grow hours", "hours (max 48)", "gardenHours", 0, "GROW")
 end
 
 function AdminController.start()

@@ -5,6 +5,7 @@
 local Services = script.Services
 local WorldService = require(Services.WorldService)
 local FishService = require(Services.FishService)
+local MonetizationService = require(Services.MonetizationService)
 local HuntService = require(Services.HuntService)
 local EconomyService = require(Services.EconomyService)
 local ShellService = require(Services.ShellService)
@@ -20,11 +21,14 @@ local AggroService = require(Services.AggroService)
 local BossService = require(Services.BossService)
 local Admin = require(script.Admin)
 local DenService = require(Services.DenService)
+local GardenService = require(Services.GardenService)
+local RewardsService = require(Services.RewardsService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
 WorldService.start() -- the graybox map and the ocean lighting
 FishService.start() -- loaded: hand out a den and spawn the fish
+MonetizationService.start() -- passes, product receipts, Server Frenzy, rewarded ads
 HuntService.start() -- eats, bites, Haul and banking
 EconomyService.start() -- coral and shells on the HUD
 ShellService.start() -- shell spots (after the world exists)
@@ -40,6 +44,8 @@ AggroService.start() -- oversized prey chase and nip the fish they outsize
 BossService.start() -- world boss events: the Megalodon's phases, attacks and rewards
 Admin.start() -- the owner's admin panel (checks who is asking on every call)
 DenService.start() -- den bases: levels, furniture, glow, trophy wall
+GardenService.start() -- the den's Coral Garden: AFK and offline coral and shells
+RewardsService.start() -- the daily login streak and the group perk
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

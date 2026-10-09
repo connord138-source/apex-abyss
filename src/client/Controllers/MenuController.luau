@@ -11,12 +11,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
+local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local ClientState = require(script.Parent.Parent.ClientState)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
+local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
 
 local Shop = Config.Shop
@@ -549,6 +552,40 @@ local function denRows(list: ScrollingFrame)
 	else
 		row(list, next(), "Upgrade", `A {level.name}`, level.blurb, "Fully upgraded", nil, nil, Ui.color.haul)
 	end
+	-- The Coral Garden: what it grows here, and the Deep Garden pass
+	local passes = s.passes or {}
+	local garden = s.garden
+	if typeof(garden) == "table" then
+		local nextRates = if upgrade then Garden.rates(upgrade.level, passes.DeepGarden == true) else nil
+		local blurb = `{Ui.number(garden.coralPerHour)} coral and {Ui.number(garden.shellsPerHour)} shells an hour, `
+			.. `holds {garden.hours} h · ×{garden.rest} while you rest here`
+		if nextRates and upgrade then
+			blurb ..= ` · a {upgrade.name} grows {Ui.number(nextRates.coralPerHour)}/h`
+		end
+		local deepPass = Config.Monetization.passesByKey.DeepGarden
+		local canBuy = not passes.DeepGarden and deepPass and Store.listed(deepPass.id)
+		local frame, button = row(
+			list,
+			next(),
+			"Garden",
+			"Coral Garden",
+			blurb,
+			`{Ui.number(garden.coral)} / {Ui.number(garden.capCoral)} grown`,
+			if canBuy and deepPass then `DEEP GARDEN · {Store.price(deepPass.price)}` else nil,
+			"gold",
+			Color3.fromRGB(255, 120, 140)
+		)
+		local blurbLabel = frame:FindFirstChild("Blurb") :: TextLabel?
+		if blurbLabel then
+			blurbLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		end
+		if button then
+			button.TextSize = 13
+			button.Activated:Connect(function()
+				Store.buyPass("DeepGarden")
+			end)
+		end
+	end
 	-- The glow color
 	for _, glow in Dens.glows do
 		local owned = glow.price == 0 or den.owned[`Glow:{glow.id}`] == true
@@ -607,6 +644,52 @@ local function denRows(list: ScrollingFrame)
 					"disabled"
 				)
 			end
+		end
+	end
+	-- The Den Expansion pass's spots (open at any level)
+	local expansion = Config.Monetization.passesByKey.DenExpansion
+	local hasExpansion = passes.DenExpansion == true
+	if hasExpansion then
+		for _, slot in Dens.slots do
+			if slot.pass ~= "DenExpansion" then
+				continue
+			end
+			local itemId = den.furniture[slot.id]
+			local item = if itemId then Dens.itemsById[itemId] else nil
+			local _, button = row(
+				list,
+				next(),
+				`Slot{slot.id}`,
+				`Spot {slot.id} · {slot.kind}`,
+				if item then item.name else "Empty · Den Expansion",
+				nil,
+				"CHANGE",
+				"secondary",
+				if item then item.color else nil
+			)
+			if button then
+				button.Activated:Connect(function()
+					denPickSlot = slot.id
+					MenuController.rerenderCurrent()
+				end)
+			end
+		end
+	elseif expansion and Store.listed(expansion.id) then
+		local _, button = row(
+			list,
+			next(),
+			"Expansion",
+			"Den Expansion",
+			"Four more spots (two on the floor, two on the walls), open at any level",
+			nil,
+			Store.price(expansion.price),
+			"gold",
+			Ui.color.haul
+		)
+		if button then
+			button.Activated:Connect(function()
+				Store.buyPass("DenExpansion")
+			end)
 		end
 	end
 end
@@ -1220,6 +1303,355 @@ function MenuController.openOdds()
 						end
 					end
 				end)
+			end,
+		}
+	end)
+end
+
+-- A list heading (the Shop's sections)
+local function heading(list: ScrollingFrame, order: number, text: string)
+	local label =
+		Ui.label(list, `Heading{order}`, text, Ui.FONT_HEAVY, 15, Ui.color.haul, UDim2.new(1, -8, 0, 24))
+	label.LayoutOrder = order
+	label.TextYAlignment = Enum.TextYAlignment.Bottom
+end
+
+-- A taller row whose blurb wraps onto two lines (the Shop's descriptions)
+local function tallRow(
+	list: ScrollingFrame,
+	order: number,
+	name: string,
+	title: string,
+	blurb: string,
+	status: string?,
+	action: string?,
+	style: Ui.ButtonStyle?,
+	accent: Color3?
+): (Frame, TextButton?)
+	local frame, button = row(list, order, name, title, blurb, status, action, style, accent)
+	frame.Size = UDim2.new(1, -8, 0, 80)
+	local blurbLabel = frame:FindFirstChild("Blurb") :: TextLabel?
+	if blurbLabel then
+		blurbLabel.Size = UDim2.new(1, -320, 0, 38)
+		blurbLabel.TextWrapped = true
+		blurbLabel.TextYAlignment = Enum.TextYAlignment.Top
+	end
+	return frame, button
+end
+
+-- The Shop (SHOP on the HUD, or the View button on a controller): Robux boosts and
+-- passes, the daily reward and the free perks. Roblox's own prompts do the buying;
+-- the server grants (MonetizationService). Shell packs are paid random items (they
+-- buy rolls): hidden where the player's policy restricts them, with the roll odds
+-- one tap away.
+function MenuController.openStore()
+	local Monetization = Config.Monetization
+	local tune = Monetization.tuning
+	open(
+		"Shop",
+		"Growth and safety, never bite damage · everything here can be earned in play too",
+		Vector2.new(720, 540),
+		function(window)
+			local list = Ui.list(window.content, 6)
+			return {
+				window = window,
+				ticking = true,
+				render = function()
+					local s = state()
+					local passes = s.passes or {}
+					local now = workspace:GetServerTimeNow()
+					local order = 0
+					local function next(): number
+						order += 1
+						return order
+					end
+					rerender(list, function()
+						-- Daily
+						local daily = s.daily
+						if typeof(daily) == "table" then
+							local _, button = row(
+								list,
+								next(),
+								"Daily",
+								"Daily reward",
+								`Come back every day: the rewards build to Day 7 · best streak {daily.best or 0}`,
+								if daily.claimable
+									then `Day {daily.day} is ready!`
+									else `Next in {Format.duration(
+										(daily.nextAt or 0) - workspace:GetServerTimeNow()
+									)}`,
+								if daily.claimable then "CLAIM" else "OPEN",
+								if daily.claimable then "gold" else "secondary",
+								Ui.color.haul
+							)
+							if button then
+								button.Activated:Connect(MenuController.openDaily)
+							end
+						end
+						-- Boosts (developer products)
+						heading(list, next(), "BOOSTS")
+						for _, product in Monetization.products do
+							if product.shop == false or not Store.listed(product.id) then
+								continue
+							end
+							if product.paidRandom and s.paidRandomRestricted then
+								continue
+							end
+							local status: string? = nil
+							local style: Ui.ButtonStyle = if product.id == 0 then "disabled" else "gold"
+							if product.key == "ServerFrenzy" then
+								local left = (workspace:GetAttribute("FrenzyUntil") or 0) - now
+								status = if left > 0 then `Active {clockText(left)}` else nil
+							elseif product.key == "SecondChance" then
+								local held = (s.charms or {}).SecondChance or 0
+								status = `Have {held} / {tune.secondChance.maxCharms}`
+								if held >= tune.secondChance.maxCharms then
+									style = "disabled"
+								end
+							end
+							local blurb = product.description
+							if product.paidRandom then
+								blurb ..= " Every roll's odds are in ODDS."
+							end
+							local frame, button = tallRow(
+								list,
+								next(),
+								product.key,
+								product.name,
+								blurb,
+								status,
+								Store.price(product.price),
+								style,
+								if product.paidRandom then Color3.fromRGB(242, 228, 204) else Ui.color.haul
+							)
+							if button and style ~= "disabled" then
+								button.Activated:Connect(function()
+									Store.buyProduct(product.key)
+								end)
+							end
+							-- Paid random: the odds before buying, one tap away
+							if product.paidRandom then
+								local odds = Ui.button(
+									frame,
+									"Odds",
+									"ODDS",
+									UDim2.fromOffset(64, 30),
+									UDim2.new(1, -236, 0.5, -15),
+									"secondary"
+								)
+								odds.TextSize = 13
+								odds.Activated:Connect(MenuController.openOdds)
+							end
+						end
+						-- Passes
+						heading(list, next(), "GAME PASSES")
+						for _, pass in Monetization.passes do
+							if not Store.listed(pass.id) then
+								continue
+							end
+							local has = passes[pass.key] == true
+							local _, button = tallRow(
+								list,
+								next(),
+								pass.key,
+								pass.name,
+								pass.description,
+								if has then "Owned" else nil,
+								if has then "OWNED" else Store.price(pass.price),
+								if has or pass.id == 0 then "disabled" else "gold",
+								Ui.color.accent
+							)
+							if button and not has and pass.id ~= 0 then
+								button.Activated:Connect(function()
+									Store.buyPass(pass.key)
+								end)
+							end
+						end
+						-- Free perks
+						heading(list, next(), "FREE PERKS")
+						local premium = s.premium == true
+						local _, premiumButton = tallRow(
+							list,
+							next(),
+							"Premium",
+							"Roblox Premium",
+							`Premium members earn +{math.floor((tune.premiumCoral - 1) * 100 + 0.5)}% coral from everything.`,
+							if premium then "Active" else nil,
+							if premium then "ACTIVE" else "GET PREMIUM",
+							if premium then "disabled" else "secondary",
+							Ui.color.safe
+						)
+						if premiumButton and not premium then
+							premiumButton.Activated:Connect(Store.buyPremium)
+						end
+						if tune.group.id ~= 0 then
+							local member = s.inGroup == true
+							tallRow(
+								list,
+								next(),
+								"Group",
+								"Join the group",
+								`Members earn +{math.floor((tune.group.coral - 1) * 100 + 0.5)}% coral, and joining gives {tune.group.shells} shells once (rejoin the game after joining).`,
+								if member then "Member" else nil,
+								nil,
+								nil,
+								Ui.color.safe
+							)
+						end
+					end)
+				end,
+			}
+		end
+	)
+end
+
+-- The daily login streak (DAILY on the HUD; it opens by itself on joining when a
+-- reward is waiting): seven days that build to a big Day 7, then loop with a bonus
+-- for each finished week.
+function MenuController.openDaily()
+	local Daily = Config.Daily
+	open("Daily Reward", "", Vector2.new(780, 400), function(window)
+		local holder = Instance.new("Frame")
+		holder.Name = "Days"
+		holder.BackgroundTransparency = 1
+		holder.Size = UDim2.new(1, 0, 0, 200)
+		holder.Parent = window.content
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		layout.Padding = UDim.new(0, 8)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Parent = holder
+		local footer = Ui.label(
+			window.content,
+			"Footer",
+			"",
+			Ui.FONT_SEMI,
+			15,
+			Ui.color.muted,
+			UDim2.new(1, 0, 0, 20),
+			UDim2.fromOffset(0, 212)
+		)
+		footer.TextXAlignment = Enum.TextXAlignment.Center
+		local claim = Ui.button(
+			window.content,
+			"Claim",
+			"CLAIM",
+			UDim2.fromOffset(240, 48),
+			UDim2.new(0.5, -120, 0, 240),
+			"gold"
+		)
+		claim.TextSize = 20
+		claim.FontFace = Ui.FONT_HEAVY
+		claim.Activated:Connect(function()
+			ClientState.request("ClaimDaily")
+		end)
+		local function lines(reward: typeof(Daily.days[1]), bonus: number): string
+			local parts: { string } = {}
+			if reward.coral then
+				table.insert(parts, `{Ui.number(reward.coral * bonus)} CORAL`)
+			end
+			if reward.shells then
+				table.insert(parts, `{Ui.number(reward.shells * bonus)} SHELLS`)
+			end
+			if reward.wraps then
+				table.insert(parts, `{reward.wraps} KELP WRAP`)
+			end
+			if reward.charms then
+				for id, count in reward.charms do
+					local charm = Config.Shop.charmsById[id]
+					table.insert(parts, `{count} {string.upper(if charm then charm.name else id)}`)
+				end
+			end
+			if reward.map then
+				local tier = Config.Treasure.byId[reward.map]
+				table.insert(parts, `{string.upper(if tier then tier.name else reward.map)} MAP`)
+			end
+			return table.concat(parts, "\n")
+		end
+		return {
+			window = window,
+			ticking = true,
+			render = function()
+				local daily = state().daily
+				if typeof(daily) ~= "table" then
+					return
+				end
+				local today = daily.day or 1
+				local bonus = daily.bonus or 1
+				local week = math.floor(((daily.streak or 1) - 1) / #Daily.days) + 1
+				window.subtitle.Text = if daily.broken
+					then "You missed a day, so the streak starts again at Day 1"
+					else `Streak: {daily.streak} day{if daily.streak == 1 then "" else "s"} · best {daily.best}`
+						.. (
+							if bonus > 1
+								then ` · week {week} bonus +{math.floor((bonus - 1) * 100 + 0.5)}%`
+								else ""
+						)
+				for _, child in holder:GetChildren() do
+					if child:IsA("GuiObject") then
+						child:Destroy()
+					end
+				end
+				for i, reward in Daily.days do
+					local done = i < today or (i == today and not daily.claimable)
+					local ready = i == today and daily.claimable
+					local tile = Ui.panel(
+						holder,
+						`Day{i}`,
+						UDim2.fromOffset(if reward.big then 128 else 92, 196),
+						UDim2.new()
+					)
+					tile.LayoutOrder = i
+					tile.BackgroundTransparency = if done then 0.55 else 0.15
+					local stroke = tile:FindFirstChildOfClass("UIStroke")
+					if stroke and (ready or reward.big) then
+						stroke.Color = Ui.color.haul
+						stroke.Transparency = if ready then 0 else 0.4
+						stroke.Thickness = if ready then 2.5 else 1.5
+					end
+					local dayLabel = Ui.label(
+						tile,
+						"Day",
+						`DAY {i}`,
+						Ui.FONT_HEAVY,
+						16,
+						if ready then Ui.color.haul else Ui.color.text,
+						UDim2.new(1, 0, 0, 22),
+						UDim2.fromOffset(0, 10)
+					)
+					dayLabel.TextXAlignment = Enum.TextXAlignment.Center
+					local body = Ui.label(
+						tile,
+						"Reward",
+						lines(reward, bonus),
+						Ui.FONT_BOLD,
+						if reward.big then 15 else 14,
+						if done then Ui.color.muted else Ui.color.text,
+						UDim2.new(1, -10, 1, -76),
+						UDim2.fromOffset(5, 40)
+					)
+					body.TextXAlignment = Enum.TextXAlignment.Center
+					body.TextYAlignment = Enum.TextYAlignment.Center
+					body.TextWrapped = true
+					local foot = Ui.label(
+						tile,
+						"State",
+						if done then "✓ CLAIMED" elseif ready then "TODAY" else "",
+						Ui.FONT_HEAVY,
+						13,
+						if done then Ui.color.safe else Ui.color.haul,
+						UDim2.new(1, 0, 0, 18),
+						UDim2.new(0, 0, 1, -28)
+					)
+					foot.TextXAlignment = Enum.TextXAlignment.Center
+				end
+				claim.Visible = daily.claimable == true
+				footer.Text = if daily.claimable
+					then "Claim today's reward"
+					else `Come back in {Format.duration(
+						(daily.nextAt or 0) - workspace:GetServerTimeNow()
+					)} for Day {today % #Daily.days + 1}`
 			end,
 		}
 	end)

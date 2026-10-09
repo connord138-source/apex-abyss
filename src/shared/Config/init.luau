@@ -20,4 +20,6 @@ return {
 	Predators = require(script.Predators),
 	Bosses = require(script.Bosses),
 	Dens = require(script.Dens),
+	Monetization = require(script.Monetization),
+	Daily = require(script.Daily),
 }

@@ -27,4 +27,28 @@ function Format.depth(studs: number): string
 	return Format.distance(studs)
 end
 
+-- A span of time: "45s", "12m", "3h 20m", "2d 5h"
+function Format.duration(seconds: number): string
+	seconds = math.max(0, math.floor(seconds))
+	if seconds < 60 then
+		return `{seconds}s`
+	elseif seconds < 3600 then
+		return `{seconds // 60}m`
+	elseif seconds < 86400 then
+		local minutes = (seconds % 3600) // 60
+		return if minutes > 0 then `{seconds // 3600}h {minutes}m` else `{seconds // 3600}h`
+	end
+	local hours = (seconds % 86400) // 3600
+	return if hours > 0 then `{seconds // 86400}d {hours}h` else `{seconds // 86400}d`
+end
+
+-- A countdown clock: "4:05", "1:02:09"
+function Format.clock(seconds: number): string
+	seconds = math.max(0, math.floor(seconds))
+	if seconds >= 3600 then
+		return string.format("%d:%02d:%02d", seconds // 3600, (seconds % 3600) // 60, seconds % 60)
+	end
+	return string.format("%d:%02d", seconds // 60, seconds % 60)
+end
+
 return Format

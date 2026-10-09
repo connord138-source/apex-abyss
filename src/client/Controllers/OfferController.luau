@@ -1,0 +1,385 @@
+--!strict
+-- The Shop's faces on the HUD and the moments it's offered (GDD §9):
+--
+--  * DAILY and SHOP buttons beside the wallet (the View button opens the Shop on a
+--    controller). DAILY glows while today's reward waits, and the Daily panel opens
+--    by itself once per session when one does (after the tutorial).
+--  * A chip under them while growth is boosted: ×2 Mass, a Server Frenzy (with its
+--    clock), or both.
+--  * Double Haul on the bank screen: one tap to double the Haul just banked (the
+--    price by its size), WATCH AD for a small one, and SKIP. No countdown (owner).
+--  * Second Chance after being eaten with a Haul worth having: one tap to get it
+--    back, or SKIP.
+--
+-- Both cards free the cursor while they're up and go away when you swim out of the
+-- hub. The server decides when an offer is made (HuntService) and grants every
+-- purchase (MonetizationService).
+local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
+local Ads = require(script.Parent.Parent.Ads)
+local ClientState = require(script.Parent.Parent.ClientState)
+local Input = require(script.Parent.Parent.Input)
+local Store = require(script.Parent.Parent.Store)
+local Ui = require(script.Parent.Parent.Ui)
+local HudController = require(script.Parent.HudController)
+local MenuController = require(script.Parent.MenuController)
+local SwimController = require(script.Parent.SwimController)
+
+local Monetization = Config.Monetization
+
+local OfferController = {}
+
+local gui: ScreenGui
+local dailyButton: TextButton
+local dailyScale: UIScale
+local chip: Frame
+local chipText: TextLabel
+local card: Frame? = nil
+local cardKind: string? = nil
+local dailyShown = false
+
+local function state(): { [string]: any }
+	return ClientState.current or {}
+end
+
+-- Takes the open card down (and gives the mouse back to looking)
+local function closeCard()
+	local old = card
+	if old == nil then
+		return
+	end
+	card = nil
+	cardKind = nil
+	ContextActionService:UnbindAction("ApexOfferSkip")
+	if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(old) then
+		GuiService.SelectedObject = nil
+	end
+	if not MenuController.isOpen() then
+		Input.cursorWanted = false
+	end
+	local scale = old:FindFirstChildOfClass("UIScale")
+	if scale then
+		Ui.tween(scale, 0.18, { Scale = 0.9 })
+	end
+	Ui.tween(old, 0.18, { BackgroundTransparency = 1 })
+	task.delay(0.2, function()
+		old:Destroy()
+	end)
+end
+
+-- A card under the screen's middle: a title, a line, and up to three buttons
+type Choice = { text: string, style: Ui.ButtonStyle, width: number, pressed: () -> () }
+
+local function openCard(kind: string, title: string, line: string, accent: Color3, choices: { Choice })
+	closeCard()
+	local frame =
+		Ui.panel(gui, "Offer", UDim2.fromOffset(460, 132), UDim2.fromScale(0.5, 0.62), Vector2.new(0.5, 0.5))
+	frame.BackgroundTransparency = 0.12
+	local stroke = frame:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = accent
+		stroke.Transparency = 0.25
+		stroke.Thickness = 1.5
+	end
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.85
+	scale.Parent = frame
+	local heading = Ui.label(
+		frame,
+		"Title",
+		title,
+		Ui.FONT_HEAVY,
+		22,
+		accent,
+		UDim2.new(1, -24, 0, 28),
+		UDim2.fromOffset(12, 10)
+	)
+	heading.TextXAlignment = Enum.TextXAlignment.Center
+	local sub = Ui.label(
+		frame,
+		"Line",
+		line,
+		Ui.FONT_SEMI,
+		15,
+		Ui.color.text,
+		UDim2.new(1, -24, 0, 20),
+		UDim2.fromOffset(12, 40)
+	)
+	sub.TextXAlignment = Enum.TextXAlignment.Center
+	local row = Instance.new("Frame")
+	row.Name = "Choices"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, -24, 0, 44)
+	row.Position = UDim2.fromOffset(12, 74)
+	row.Parent = frame
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local first: TextButton? = nil
+	for i, choice in choices do
+		local button = Ui.button(
+			row,
+			`Choice{i}`,
+			choice.text,
+			UDim2.fromOffset(choice.width, 42),
+			UDim2.new(),
+			choice.style
+		)
+		button.LayoutOrder = i
+		button.TextSize = 15
+		button.Activated:Connect(choice.pressed)
+		first = first or button
+	end
+	card = frame
+	cardKind = kind
+	Ui.tween(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	Input.cursorWanted = true
+	if Input.isGamepad() and first then
+		GuiService.SelectedObject = first
+	end
+	-- B skips on a controller
+	ContextActionService:BindActionAtPriority("ApexOfferSkip", function(_, inputState)
+		if inputState == Enum.UserInputState.Begin and not MenuController.isOpen() then
+			closeCard()
+			return Enum.ContextActionResult.Sink
+		end
+		return Enum.ContextActionResult.Pass
+	end, false, 2900, Enum.KeyCode.ButtonB)
+end
+
+-- Double Haul, after banking (the server sends `offer` with the summary)
+local function onBanked(summary: { [string]: any })
+	if summary.doubled then
+		if cardKind == "double" then
+			closeCard()
+		end
+		return
+	end
+	local offer = summary.offer
+	if typeof(offer) ~= "table" then
+		return
+	end
+	local product = Monetization.productsByKey[offer.product]
+	if product == nil or not Store.listed(product.id) then
+		return
+	end
+	local amount = typeof(summary.amount) == "number" and summary.amount or 0
+	local levels = typeof(offer.levels) == "number" and offer.levels or 0
+	local choices: { Choice } = {
+		{
+			text = `DOUBLE IT · {Store.price(product.price)}`,
+			style = "gold",
+			width = 190,
+			pressed = function()
+				Store.buyProduct(product.key)
+			end,
+		},
+	}
+	if offer.ad and Ads.available then
+		table.insert(choices, {
+			text = "WATCH AD",
+			style = "primary",
+			width = 120,
+			pressed = function()
+				Ads.watch()
+				closeCard()
+			end,
+		})
+	end
+	table.insert(choices, { text = "SKIP", style = "secondary", width = 90, pressed = closeCard })
+	-- Shown once the banked banner has had its moment
+	task.delay(1.1, function()
+		openCard(
+			"double",
+			"DOUBLE THIS HAUL?",
+			if levels > 0
+				then `+{Format.mass(amount)} more · {levels} more level{if levels == 1 then "" else "s"}`
+				else `+{Format.mass(amount)} more`,
+			Ui.color.haul,
+			choices
+		)
+	end)
+end
+
+-- Second Chance, after being eaten with a Haul worth having
+local function onEaten(summary: { [string]: any })
+	local lost = summary.offer
+	local product = Monetization.productsByKey.SecondChance
+	if typeof(lost) ~= "number" or product == nil or not Store.listed(product.id) then
+		return
+	end
+	local respawn = typeof(summary.respawn) == "number" and summary.respawn or 3
+	task.delay(respawn + 0.4, function()
+		openCard(
+			"second",
+			"GET YOUR HAUL BACK?",
+			`You lost {Format.mass(lost)} · Second Chance returns all of it`,
+			Ui.color.accent,
+			{
+				{
+					text = `GET IT BACK · {Store.price(product.price)}`,
+					style = "gold",
+					width = 220,
+					pressed = function()
+						Store.buyProduct("SecondChance")
+					end,
+				},
+				{ text = "SKIP", style = "secondary", width = 90, pressed = closeCard },
+			}
+		)
+	end)
+end
+
+local function buildButtons()
+	local holder = Instance.new("Frame")
+	holder.Name = "StoreButtons"
+	holder.BackgroundTransparency = 1
+	-- Beside the wallet card, clear of the boss bar, the treasure sonar and the depth
+	-- gauge on every screen size
+	holder.Position = UDim2.fromOffset(258, 144)
+	holder.Size = UDim2.fromOffset(196, 34)
+	holder.Parent = gui
+	Ui.belowTopBar(gui, holder, 144)
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = holder
+	dailyButton = Ui.button(holder, "Daily", "DAILY", UDim2.fromOffset(90, 34), UDim2.new(), "secondary")
+	dailyButton.LayoutOrder = 1
+	dailyButton.TextSize = 14
+	dailyButton.Activated:Connect(MenuController.openDaily)
+	dailyScale = dailyButton:FindFirstChildOfClass("UIScale") :: UIScale
+	local shop = Ui.button(holder, "Shop", "SHOP", UDim2.fromOffset(90, 34), UDim2.new(), "gold")
+	shop.LayoutOrder = 2
+	shop.TextSize = 14
+	shop.Activated:Connect(MenuController.openStore)
+	-- Not selectable, like the other HUD buttons (the View button opens the Shop)
+	dailyButton.Selectable = false
+	shop.Selectable = false
+
+	chip = Ui.panel(gui, "Growth", UDim2.fromOffset(196, 26), UDim2.fromOffset(258, 184))
+	Ui.belowTopBar(gui, chip, 184)
+	chip.Visible = false
+	chipText = Ui.label(
+		chip,
+		"Text",
+		"",
+		Ui.FONT_HEAVY,
+		14,
+		Ui.color.haul,
+		UDim2.new(1, -16, 1, 0),
+		UDim2.fromOffset(8, 0)
+	)
+	chipText.TextXAlignment = Enum.TextXAlignment.Center
+	chipText.TextYAlignment = Enum.TextYAlignment.Center
+end
+
+local function onState(s: { [string]: any })
+	local daily = s.daily
+	local ready = typeof(daily) == "table" and daily.claimable == true
+	Ui.setButtonStyle(dailyButton, if ready then "gold" else "secondary")
+	dailyButton.Selectable = false
+	dailyButton.Text = if ready then "DAILY !" else "DAILY"
+	-- Swimming out of the hub takes an open offer down
+	if card and s.inHub == false then
+		closeCard()
+	end
+end
+
+-- The Daily panel opens by itself once a session, when a reward waits
+local function maybeShowDaily()
+	if dailyShown then
+		return
+	end
+	local s = state()
+	local daily = s.daily
+	local tutorial = s.tutorial
+	if typeof(daily) ~= "table" or not daily.claimable then
+		return
+	end
+	if typeof(tutorial) == "table" and not tutorial.done then
+		return
+	end
+	if MenuController.isOpen() then
+		return
+	end
+	dailyShown = true
+	MenuController.openDaily()
+end
+
+local function step()
+	local s = state()
+	-- The growth chip
+	local mass = s.massMultiplier or 1
+	local frenzyLeft = (workspace:GetAttribute("FrenzyUntil") or 0) - workspace:GetServerTimeNow()
+	local frenzy = if frenzyLeft > 0 then (workspace:GetAttribute("Frenzy") or 2) else 1
+	if mass > 1 or frenzy > 1 then
+		chip.Visible = true
+		if frenzy > 1 and mass > 1 then
+			chipText.Text = `×{mass * frenzy} GROWTH · FRENZY {Format.clock(frenzyLeft)}`
+		elseif frenzy > 1 then
+			chipText.Text = `SERVER FRENZY ×{frenzy} · {Format.clock(frenzyLeft)}`
+		else
+			chipText.Text = `×{mass} MASS`
+		end
+	else
+		chip.Visible = false
+	end
+	-- DAILY breathes while a reward waits
+	if dailyButton.Text ~= "DAILY" then
+		dailyScale.Scale = 1 + math.sin(os.clock() * 4) * 0.05
+	else
+		dailyScale.Scale = 1
+	end
+end
+
+function OfferController.start()
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	gui = Ui.screen("Offers", playerGui, 7)
+	buildButtons()
+	Store.said:connect(function(text: string)
+		HudController.toast(text, "info")
+	end)
+	Store.productClosed:connect(function(key: string, _bought: boolean)
+		if
+			(cardKind == "double" and string.find(key, "DoubleHaul") ~= nil)
+			or (cardKind == "second" and key == "SecondChance")
+		then
+			closeCard()
+		end
+	end)
+	ClientState.changed:connect(onState)
+	if ClientState.current then
+		onState(ClientState.current)
+	end
+	local remotes = ReplicatedStorage:WaitForChild("Remotes")
+	local banked = remotes:WaitForChild("Banked") :: RemoteEvent
+	banked.OnClientEvent:Connect(onBanked)
+	local eaten = remotes:WaitForChild("Eaten") :: RemoteEvent
+	eaten.OnClientEvent:Connect(onEaten)
+	SwimController.spawned:connect(function()
+		task.delay(3, maybeShowDaily)
+	end)
+	-- Controllers: the View button opens the Shop
+	ContextActionService:BindAction("ApexShopButton", function(_, inputState)
+		if inputState ~= Enum.UserInputState.Begin or MenuController.isOpen() then
+			return Enum.ContextActionResult.Pass
+		end
+		MenuController.openStore()
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.ButtonSelect)
+	RunService.Heartbeat:Connect(step)
+end
+
+return OfferController

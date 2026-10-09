@@ -320,18 +320,15 @@ local function payOut(predator: Predator, killer: Player?)
 		if data == nil then
 			continue
 		end
-		HuntService.feed(player, def.loot.haulKg * share)
+		local gained = HuntService.feed(player, def.loot.haulKg * share)
 		HuntService.giveDna(player, predator.position, math.max(1, math.floor(def.loot.dna * share + 0.5)))
-		EconomyService.addCoral(player, math.floor(def.loot.coral * share + 0.5))
+		EconomyService.earnCoral(player, def.loot.coral * share)
 		Events.ate:fire(player, 1)
 		Net.notify(
 			player,
 			if player == killer
-				then `You killed the {def.name}! +{string.format("%.1f", def.loot.haulKg * share)} kg Haul`
-				else `The {def.name} is dead · your share: +{string.format(
-					"%.1f",
-					def.loot.haulKg * share
-				)} kg Haul`,
+				then `You killed the {def.name}! +{string.format("%.1f", gained)} kg Haul`
+				else `The {def.name} is dead · your share: +{string.format("%.1f", gained)} kg Haul`,
 			"good"
 		)
 	end

@@ -69,6 +69,14 @@ local function state(): { [string]: any }
 	return ClientState.current or {}
 end
 
+-- What a Haul gain is multiplied by right now (×2 Mass, Server Frenzy), for the pops
+local function growthNow(): number
+	local frenzy = if (workspace:GetAttribute("FrenzyUntil") or 0) > workspace:GetServerTimeNow()
+		then workspace:GetAttribute("Frenzy") or 1
+		else 1
+	return (state().massMultiplier or 1) * (if typeof(frenzy) == "number" then frenzy else 1)
+end
+
 local function buildLevelCard()
 	local card = Ui.panel(gui, "Level", UDim2.fromOffset(232, 70), UDim2.fromOffset(18, 66))
 	Ui.belowTopBar(gui, card, 66)
@@ -348,7 +356,7 @@ local function celebrate(summary: { [string]: any })
 	local title = Ui.label(
 		holder,
 		"Title",
-		`+{Format.mass(amount)} BANKED`,
+		if summary.doubled then `HAUL DOUBLED · +{Format.mass(amount)}` else `+{Format.mass(amount)} BANKED`,
 		Ui.FONT_HEAVY,
 		46,
 		Ui.color.haul,
@@ -387,6 +395,13 @@ local function celebrate(summary: { [string]: any })
 		task.wait(0.55)
 		holder:Destroy()
 	end)
+end
+
+-- A toast from the client itself (the Shop's notes)
+function HudController.toast(text: string, kind: string?)
+	if toastList then
+		toast(text, kind or "info")
+	end
 end
 
 -- The eaten screen, with a countdown to respawning in the den.
@@ -816,7 +831,8 @@ function HudController.start()
 	if ClientState.current then
 		onState(ClientState.current)
 	end
-	SchoolController.ate:connect(function(_preyId: string, mass: number, position: Vector3)
+	SchoolController.ate:connect(function(_preyId: string, eaten: number, position: Vector3)
+		local mass = eaten * growthNow()
 		pop(
 			`+{if mass < 10 then string.format("%.1f", mass) else tostring(math.floor(mass))}`,
 			Ui.color.haul,
@@ -824,7 +840,7 @@ function HudController.start()
 		)
 	end)
 	ForageController.ate:connect(function(mass: number, position: Vector3)
-		pop(`+{string.format("%.2f", mass)}`, Ui.color.haul, position)
+		pop(`+{string.format("%.2f", mass * growthNow())}`, Ui.color.haul, position)
 	end)
 	PredatorController.hit:connect(function(damage: number, position: Vector3)
 		pop(`-{math.floor(damage + 0.5)}`, Ui.color.danger, position)

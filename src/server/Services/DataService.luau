@@ -41,8 +41,11 @@ export type PlayerData = {
 	tutorial: { step: number, progress: number, done: boolean },
 	-- The last haul banked, so a Double Haul receipt that lands late (or after a
 	-- rejoin) still doubles exactly that amount, once
-	lastHaul: { id: number, amount: number, doubled: boolean },
+	lastHaul: { id: number, amount: number, doubled: boolean, species: string? },
 	nextHaulId: number,
+	-- The Haul lost when last eaten (no Second Chance charm), so a Second Chance
+	-- bought on the eaten screen gives exactly that back, once (amount 0 = none)
+	lostHaul: { amount: number, at: number },
 	stats: {
 		preyEaten: number,
 		playersEaten: number,
@@ -76,8 +79,15 @@ export type PlayerData = {
 	maps: { TreasureMap },
 	activeMap: string,
 	treasures: { found: number, byTier: { [string]: number } },
+	-- The daily login streak (Config/Daily): the UTC day last claimed, the streak
+	-- then, and the longest ever
+	daily: { day: number, streak: number, best: number },
+	-- The den's Coral Garden (Config/Dens garden): what's grown and not yet
+	-- collected, and the Unix time it was last grown to
+	garden: { coral: number, shells: number, at: number },
 	-- Monetization
 	passes: { [string]: boolean },
+	groupRewarded: boolean, -- got the one-time Roblox group reward
 	purchaseIds: { string }, -- developer-product receipts already granted (newest last)
 	onboarding: number,
 }
@@ -95,6 +105,7 @@ local TEMPLATE: PlayerData = {
 	tutorial = { step = 1, progress = 0, done = false },
 	lastHaul = { id = 0, amount = 0, doubled = false },
 	nextHaulId = 1,
+	lostHaul = { amount = 0, at = 0 },
 	stats = {
 		preyEaten = 0,
 		playersEaten = 0,
@@ -125,7 +136,10 @@ local TEMPLATE: PlayerData = {
 	maps = {},
 	activeMap = "",
 	treasures = { found = 0, byTier = {} },
+	daily = { day = 0, streak = 0, best = 0 },
+	garden = { coral = 0, shells = 0, at = 0 },
 	passes = {},
+	groupRewarded = false,
 	purchaseIds = {},
 	onboarding = 0,
 }
