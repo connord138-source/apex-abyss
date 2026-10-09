@@ -119,8 +119,10 @@ def upscale_bands():
 def band(name: str) -> Image.Image:
     """The scene's strip at 1920x1080: the EDSR upscale when there is one."""
     cached = SR / f"{name}.png"
-    im = Image.open(cached).convert("RGB") if cached.exists() else src(name).crop(BANDS[name])
-    return cover(im, W, H)
+    if cached.exists():
+        return cover(Image.open(cached).convert("RGB"), W, H)
+    # Without the upscale: Lanczos and a light sharpen
+    return cover(src(name).crop(BANDS[name]), W, H).filter(ImageFilter.UnsharpMask(2, 70, 2))
 
 
 def cover(im: Image.Image, w: int, h: int, focus: tuple[float, float] = (0.5, 0.5)) -> Image.Image:

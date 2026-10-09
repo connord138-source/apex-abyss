@@ -103,10 +103,11 @@ Connor asked for in-game shots for the store page; docs/STORE_PAGE.md has the li
 ## 6. Publish, then the store page
 
 Do this after the tests above.
-1. Publish the current place to the existing private experience "Apex Abyss" (universe 10769954850, place 83646578075996): File → Publish to Roblox As → pick the experience and its place → Update existing experience.
+1. Fetch and merge origin/claude/world again first, so you upload the final art (the cloud session may have sharpened the thumbnails since you started).
+2. Publish the current place to the existing private experience "Apex Abyss" (universe 10769954850, place 83646578075996): File → Publish to Roblox As → pick the experience and its place → Update existing experience.
    - Keep the experience private.
    - Report the published version number.
-2. Then in Studio, Game Settings → Basic Info (or the experience's page in Creator Hub):
+3. Then in Studio, Game Settings → Basic Info (or the experience's page in Creator Hub):
    1. Upload `marketing/icon_512.png` as the icon. Wait until moderation passes before the next step.
    2. Upload thumbnails 1–7 in order (`marketing/thumb_1_eat.jpg` … `thumb_7_biomes.jpg`).
    3. Paste the description from docs/STORE_PAGE.md.
