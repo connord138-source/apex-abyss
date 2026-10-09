@@ -484,6 +484,29 @@ local function loaded(id: string): boolean
 end
 local WAIT_SKIN = 1.2
 
+-- A skin's colour texture id. A game script may not read SurfaceAppearance.ColorMap
+-- (it needs Plugin capability: "The current thread cannot read 'ColorMap'", which
+-- broke every roll, retest 2026-10-09), so try the Content form first and never
+-- let a read throw; nil means the card just doesn't wait.
+local function skinTexture(skin: SurfaceAppearance): string?
+	local ok, content = pcall(function()
+		return (skin :: any).ColorMapContent
+	end)
+	if ok and typeof(content) == "Content" then
+		local uri = (content :: any).Uri
+		if typeof(uri) == "string" and uri ~= "" then
+			return uri
+		end
+	end
+	local okMap, map = pcall(function()
+		return (skin :: any).ColorMap
+	end)
+	if okMap and typeof(map) == "string" and map ~= "" then
+		return map
+	end
+	return nil
+end
+
 -- Loads the current fish's shade skins in the background, so a reel's shade cards
 -- don't show a bare white fish while their textures download (playtest
 -- 2026-10-08). Once per fish per session.
@@ -537,8 +560,8 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	local pending: { string } = {}
 	for _, d in model:GetDescendants() do
 		if d:IsA("SurfaceAppearance") and d.Name == "ShadeSkin" then
-			local id = (d :: any).ColorMap
-			if typeof(id) == "string" and id ~= "" and not loaded(id) then
+			local id = skinTexture(d)
+			if id and not loaded(id) then
 				table.insert(pending, id)
 			end
 		end
