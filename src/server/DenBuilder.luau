@@ -373,7 +373,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 	end
 	-- Boss trophies
 	local teethLine = if trophies.teeth > 0
-		then `{trophies.teeth} tooth{if trophies.teeth == 1 then "" else "s"} taken`
+		then `{trophies.teeth} {if trophies.teeth == 1 then "tooth" else "teeth"} taken`
 		else "No kill yet"
 	plaque(0, "MEGALODON", teethLine, Color3.fromRGB(196, 255, 170))
 	if trophies.teeth > 0 then
