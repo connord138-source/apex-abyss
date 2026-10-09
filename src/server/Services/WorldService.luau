@@ -1059,7 +1059,14 @@ local function bubbleColumn(holder: BasePart, strength: number)
 end
 
 local function ventSmoke(parent: Instance, chimney: { position: Vector3, height: number })
-	local top = chimney.position + Vector3.new(0, chimney.height, 0)
+	-- The cap's real top, by raycast: the chimney is capped by a ball of lava rock up
+	-- to 8 studs round, and a throat at the nominal top sat buried in it (retest
+	-- 2026-10-09: 25 of 26 throats were inside CrackedLava, so none showed)
+	local top = chimney.position + Vector3.new(0, chimney.height + 8, 0)
+	local hit = groundAt(chimney.position.X, chimney.position.Z)
+	if hit and math.abs(hit.Y - (chimney.position.Y + chimney.height)) < 20 then
+		top = hit
+	end
 	local holder = Instance.new("Part")
 	holder.Name = "VentSmoke"
 	holder.Anchored = true
@@ -1068,7 +1075,7 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	holder.CanTouch = false
 	holder.Transparency = 1
 	holder.Size = Vector3.new(4, 2, 4)
-	holder.CFrame = CFrame.new(top + Vector3.new(0, 2, 0))
+	holder.CFrame = CFrame.new(top + Vector3.new(0, 4, 0))
 	holder.Parent = parent
 	-- The glowing throat: a light alone didn't read through the basin's water
 	-- (retest 2026-10-08: a chimney 45 studs off was only a silhouette)
@@ -1079,8 +1086,9 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	throat.CanQuery = false
 	throat.CanTouch = false
 	throat.Shape = Enum.PartType.Ball
-	throat.Size = Vector3.one * 4
-	throat.CFrame = CFrame.new(top + Vector3.new(0, 0.6, 0))
+	throat.Size = Vector3.one * 5
+	-- Sitting in the cap, most of it above the rock
+	throat.CFrame = CFrame.new(top + Vector3.new(0, 1.2, 0))
 	throat.Color = Color3.fromRGB(255, 112, 36)
 	throat.Material = Enum.Material.Neon
 	throat.Parent = parent

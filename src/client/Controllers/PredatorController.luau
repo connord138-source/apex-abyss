@@ -690,10 +690,13 @@ local function swimBones(visual: Visual, dt: number, relative: number)
 	SwimWave.applyBones(visual.bones, visual.spine, p, amplitude * 1.6 * soften, 0)
 end
 
--- Bosses are solid: your own fish is pushed out of the body (a capsule from tail to
+-- Bosses are solid: your own fish is kept out of the body (a capsule from tail to
 -- nose, thickest mid-body) instead of swimming through it (playtest 2026-10-08: the
--- Megalodon and fish phased through each other). It writes the swim velocity
--- itself rather than shoving, so a bite lunge into the boss still lands.
+-- Megalodon and fish phased through each other). The fish is set back onto the
+-- body's surface and only its speed into the body is taken away: no push is added,
+-- so it rests against the flank, in bite reach (retest 2026-10-09: a push added to
+-- the velocity carried on after the fish was out and threw it 37-42 studs off the
+-- axis, past the bite reach).
 local function solid(visual: Visual)
 	local mine = SwimController.root()
 	if mine == nil or SwimController.isHeld() then
@@ -717,8 +720,10 @@ local function solid(visual: Visual)
 	local out = if distance > 1e-3 then offset / distance else Vector3.yAxis
 	local velocity = SwimController.velocity
 	local into = velocity:Dot(out)
-	-- Stop moving into the body, then ease out of it
-	SwimController.velocity = velocity + out * (math.max(-into, 0) + (radius - distance) * 4)
+	if into < 0 then
+		SwimController.velocity = velocity - out * into
+	end
+	mine.CFrame += out * (radius - distance)
 end
 
 local function step(dt: number)

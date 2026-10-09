@@ -375,10 +375,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   and radii scaled with them (`Config/Bosses.luau`). **Bosses are solid** (playtest
   2026-10-08: the Megalodon and fish phased through each other): your own fish is
   pushed out of a boss's body capsule on the client (`PredatorController` `solid`),
-  writing the swim velocity directly so a bite lunge into it still lands. The capsule
-  is the same body radius biting measures to (`BODY_RADIUS`, 18% of length): sized
-  from the model's full width it held fish ~40 studs off a Megalodon's axis, out of
-  bite reach (retest 2026-10-08).
+  set back onto the capsule's surface with only its speed into the body taken away
+  (no push added, so it rests against the flank; retest 2026-10-09: a push added to
+  the velocity carried on and threw fish 37–42 studs off the axis, past bite reach).
+  The capsule is the same body radius biting measures to (`BODY_RADIUS`, 18% of
+  length): sized from the model's full width it held fish ~40 studs off a
+  Megalodon's axis (retest 2026-10-08). The server's bite check allows for the
+  creature's own movement over the stream delay plus latency (`PredatorService`
+  `drift`), since the biter sees it where it was a moment ago.
 - **The Trench is pitch dark (owner: "clearly need a light source for abyssal trench
   ... could be the perk of the angler fish"):** `Biomes` `dark`; `OceanController.setDark`
   (BiomeController sets it below the deep floor in a dark biome). **The dark is the
@@ -394,7 +398,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   are a PointLight at Roblox's 60-stud maximum range (the 80–90 asked for before was
   clamped) plus a forward SpotLight beam, bright, since in the dark they're the only
   light. The Vents grade is thinner (0.84) and every chimney has a Neon glowing
-  throat (`VentGlow`), since a light alone didn't read across a basin. Bosses glow faintly in the
+  throat (`VentGlow`), since a light alone didn't read across a basin; it's seated on
+  the lava cap's real top by raycast (at the nominal top 25 of 26 sat buried inside
+  the cap, retest 2026-10-09). Bosses glow faintly in the
   dark (`PredatorController` `DARK_GLOW`, violet for the squid) so they're
   silhouettes, not invisible. A lamp holder's view is 15% less dark. The Anglerfish's
   lure is a lamp (`Lamp = "lure"` attribute
@@ -461,18 +467,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   the tier's color, a spotlight, a floor shadow, a nameplate with a tier gem, a
   hairline, a foil sweep from Epic up and a holographic edge from Mythic up; losers
   dim. Subjects are built once per reel and cloned; a card gets its shot only when it
-  nears the window (`attachPhoto`). The current fish's shade skins preload on spawn
-  (`CardPhoto.warm`) and a shade card whose texture hasn't arrived waits for it (its
-  `GetAssetFetchStatus`, at most 1.2 s) and fades in, never a bare white fish
-  (waiting on `PreloadAsync` left every card empty until the reel stopped); parts and
-  variants are shot nearly side-on, and a card's fish is posed with one `PivotTo` (a
-  root-only turn left the jointed body behind and the Sawblade card a close-up).
+  nears the window (`attachPhoto`). **Skins are ready before the first roll**
+  (`CardPhoto.warm`, on spawn): it preloads every skin texture by id, then draws
+  every shade card's fish once in a tiny 98.5%-transparent corner viewport so the
+  textures are decoded too. A texture counts as `ready` 0.7 s after it has both
+  downloaded and been in front of a camera (retest 2026-10-09: a folder preload
+  fetched nothing, so every card sat empty for its 1.2 s wait; with the ids
+  preloaded, a downloaded texture still drew white for 0.3–0.5 s). A card whose skin
+  isn't ready stays 98.5% transparent (so it's drawn) for at most 1.5 s, then fades
+  in. Parts and variants are shot nearly side-on, a card's fish is posed with one
+  `PivotTo`, and the camera frames `solvedBounds`: the box of every visible part
+  where its Motor6D puts it (outside the Workspace the joints aren't solved until the
+  viewport draws, so a part body framed by `GetBoundingBox` was a close-up of its
+  root: the Sawblade, Sail Fin and Narwhal Horn cards).
   A boss reward's reveal (`from`) rolls a reel of Rare+ shades and says "won from the
   Megalodon", not "dug up from treasure"; a fish that already has every Rare+
   shade gets half the boss's coral instead, shown as a Coral Jackpot. The result shows a shade's swatches and Rare+
-  wins burst motes. A game script can't read `SurfaceAppearance.ColorMap` ("lacking
-  capability Plugin"; reading it froze every roll, 950903f): read `ColorMapContent.Uri`
-  inside a `pcall` (`CardPhoto` `skinTexture`).
+  wins burst motes.
 - **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "All of
   the shades in general need much much more variance and depth than just a slight
   reshape to the existing colors"):** 33 shades (v3), no two sharing a pattern:
@@ -771,7 +782,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
   `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
   `2026-10-08-pc.md`, which also covers the two world rounds before it,
-  `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`).
+  `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`; briefs for the PC session sit
+  beside them as `*-brief.md`).
 - A game script can't read `SurfaceAppearance.ColorMap` (it needs Plugin
   capability, and the read throws); read `ColorMapContent.Uri` in a pcall
   (2026-10-09). `ContentProvider:PreloadAsync` on a folder of SurfaceAppearances

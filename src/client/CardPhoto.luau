@@ -30,6 +30,7 @@ local DEFAULT_LOOK: FishBuilder.Look = {
 export type Outcome = { id: string, kind: string, name: string, tier: string, amount: number? }
 
 local masters: { [string]: Model } = {}
+local solvedBounds: (Model) -> (Vector3, Vector3) -- (below)
 
 local function part(
 	parent: Instance,
@@ -482,21 +483,55 @@ local function loaded(id: string): boolean
 	end)
 	return not ok or status == Enum.AssetFetchStatus.Success or status == Enum.AssetFetchStatus.Failure
 end
-local WAIT_SKIN = 1.2
+local WAIT_SKIN = 1.5
+-- A texture that has downloaded still draws white for a moment the first time a
+-- camera sees it (retest 2026-10-09: with the ids preloaded, X-Ray, Leopard and
+-- Seafoam cards were white for 0.3-0.5 s). A skin counts as ready this long after it
+-- has both downloaded and been in front of a camera.
+local DRAW_DELAY = 0.7
 
--- A skin's colour texture id. A game script may not read SurfaceAppearance.ColorMap
--- (it needs Plugin capability: "The current thread cannot read 'ColorMap'", which
--- broke every roll, retest 2026-10-09), so try the Content form first and never
--- let a read throw; nil means the card just doesn't wait.
-local function skinTexture(skin: SurfaceAppearance): string?
+local fetchedAt: { [string]: number } = {} -- when each texture was first seen downloaded
+local seenAt: { [string]: number } = {} -- when each texture was first put in front of a camera
+
+-- Notes that `id` is in front of a camera now (a card, or the warm-up below)
+local function seen(id: string)
+	if seenAt[id] == nil then
+		seenAt[id] = os.clock()
+	end
+end
+
+-- Whether a skin texture has downloaded and had time to be drawn
+local function ready(id: string): boolean
+	if not loaded(id) then
+		return false
+	end
+	local now = os.clock()
+	fetchedAt[id] = fetchedAt[id] or now
+	local since = math.max(fetchedAt[id], seenAt[id] or now)
+	return now - since >= DRAW_DELAY
+end
+
+local function contentUri(skin: SurfaceAppearance, property: string): string?
 	local ok, content = pcall(function()
-		return (skin :: any).ColorMapContent
+		return (skin :: any)[property]
 	end)
 	if ok and typeof(content) == "Content" then
 		local uri = (content :: any).Uri
 		if typeof(uri) == "string" and uri ~= "" then
 			return uri
 		end
+	end
+	return nil
+end
+
+-- A skin's colour texture id. A game script may not read SurfaceAppearance.ColorMap
+-- (it needs Plugin capability: "The current thread cannot read 'ColorMap'", which
+-- broke every roll, retest 2026-10-09), so try the Content form first and never
+-- let a read throw; nil means the card just doesn't wait.
+local function skinTexture(skin: SurfaceAppearance): string?
+	local uri = contentUri(skin, "ColorMapContent")
+	if uri then
+		return uri
 	end
 	local okMap, map = pcall(function()
 		return (skin :: any).ColorMap
@@ -507,23 +542,174 @@ local function skinTexture(skin: SurfaceAppearance): string?
 	return nil
 end
 
--- Loads the current fish's shade skins in the background, so a reel's shade cards
--- don't show a bare white fish while their textures download (playtest
--- 2026-10-08). Once per fish per session.
+-- Every texture id a skin uses (colour, normal, roughness, metal, glow)
+local MAPS = {
+	"ColorMapContent",
+	"NormalMapContent",
+	"RoughnessMapContent",
+	"MetalnessMapContent",
+	"EmissiveMaskContent",
+}
+local function skinTextures(skin: SurfaceAppearance): { string }
+	local ids: { string } = {}
+	for _, property in MAPS do
+		local uri = contentUri(skin, property)
+		if uri then
+			table.insert(ids, uri)
+		end
+	end
+	local color = skinTexture(skin)
+	if color and not table.find(ids, color) then
+		table.insert(ids, color)
+	end
+	return ids
+end
+
+-- Gets the current fish's shade skins ready before any roll needs them (once per
+-- fish per session): downloads every texture by its id (a PreloadAsync on the folder
+-- of SurfaceAppearances fetched nothing, retest 2026-10-09), then draws every shade
+-- card's subject once in a tiny, nearly invisible viewport so the textures are
+-- decoded too, and the reel's cards come up textured from their first frame.
 local warmed: { [string]: boolean } = {}
 function CardPhoto.warm()
 	local id = myFish(nil)
+	-- Skins are filed by the mesh's name (MorayEel, Puffer, ...), as Cosmetics wears them
+	local species = Config.Species.byId[id]
+	local template = if species then FishBuilder.meshTemplate(species.plan) else nil
 	local root = ReplicatedStorage:FindFirstChild("ShadeSkins")
-	local folder = if root then root:FindFirstChild(id) else nil
+	local folder = if root then root:FindFirstChild(if template then template.Name else id) else nil
 	if folder == nil or warmed[id] then
 		return
 	end
 	warmed[id] = true
 	task.spawn(function()
+		local ids: { string } = {}
+		local shades: { string } = {}
+		for _, d in folder:GetDescendants() do
+			if d:IsA("SurfaceAppearance") then
+				for _, uri in skinTextures(d) do
+					if not table.find(ids, uri) then
+						table.insert(ids, uri)
+					end
+				end
+				if Config.Shades.byId[d.Name] and not table.find(shades, d.Name) then
+					table.insert(shades, d.Name)
+				end
+			end
+		end
 		pcall(function()
-			ContentProvider:PreloadAsync({ folder })
+			ContentProvider:PreloadAsync(ids)
 		end)
+		local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+		if playerGui == nil or #shades == 0 then
+			return
+		end
+		-- The warm-up: every shade card's fish in one corner viewport at 98.5%
+		-- transparency (a hidden or fully transparent viewport isn't drawn)
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "CardWarmup"
+		gui.ResetOnSpawn = false
+		gui.IgnoreGuiInset = true
+		gui.DisplayOrder = -50
+		local frame = Instance.new("ViewportFrame")
+		frame.BackgroundTransparency = 1
+		frame.ImageTransparency = 0.985
+		frame.AnchorPoint = Vector2.new(1, 1)
+		frame.Position = UDim2.new(1, -2, 1, -2)
+		frame.Size = UDim2.fromOffset(160, 120)
+		frame.Parent = gui
+		local world = Instance.new("WorldModel")
+		world.Parent = frame
+		local columns = 6
+		for i, shadeId in shades do
+			local source = master({ id = shadeId, kind = "shade", name = shadeId, tier = "" })
+			if source then
+				local model = source:Clone()
+				local x, y = (i - 1) % columns, (i - 1) // columns
+				model:PivotTo(CFrame.new(x * LENGTH * 1.3, -y * LENGTH * 0.8, 0))
+				model.Parent = world
+				for _, d in model:GetDescendants() do
+					if d:IsA("SurfaceAppearance") then
+						local color = skinTexture(d)
+						if color then
+							seen(color)
+						end
+					end
+				end
+			end
+		end
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 40
+		local rows = math.ceil(#shades / columns)
+		local center = Vector3.new((columns - 1) * LENGTH * 0.65, -(rows - 1) * LENGTH * 0.4, 0)
+		camera.CFrame = CFrame.lookAt(center + Vector3.new(0, 0, LENGTH * 9), center)
+		camera.Parent = frame
+		frame.CurrentCamera = camera
+		gui.Parent = playerGui
+		task.wait(DRAW_DELAY + 2)
+		gui:Destroy()
 	end)
+end
+
+-- The world box round a subject's visible parts, with every jointed part where its
+-- Motor6D puts it. Outside the Workspace the joints aren't solved until the viewport
+-- draws, so a part body's pieces all still sat at its root and the camera framed
+-- that one point (retest 2026-10-09: the Sail Fin and Narwhal Horn cards were
+-- close-ups of orange spheres).
+function solvedBounds(model: Model): (Vector3, Vector3)
+	local frames: { [BasePart]: CFrame } = {}
+	local joints: { Motor6D } = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("Motor6D") and d.Part0 and d.Part1 then
+			table.insert(joints, d)
+		end
+	end
+	local root = model.PrimaryPart
+	if root then
+		frames[root] = root.CFrame
+	end
+	local moved = true
+	while moved do
+		moved = false
+		for _, joint in joints do
+			local p0, p1 = joint.Part0 :: BasePart, joint.Part1 :: BasePart
+			local from: CFrame? = frames[p0]
+			local placed: CFrame? = frames[p1]
+			if from and placed == nil then
+				frames[p1] = from * joint.C0 * joint.Transform * joint.C1:Inverse()
+				moved = true
+			end
+		end
+	end
+	local low = Vector3.one * math.huge
+	local high = -Vector3.one * math.huge
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 0.99 then
+			local cframe = frames[d] or d.CFrame
+			local half = d.Size / 2
+			for _, corner in
+				{
+					Vector3.new(1, 1, 1),
+					Vector3.new(1, 1, -1),
+					Vector3.new(1, -1, 1),
+					Vector3.new(1, -1, -1),
+					Vector3.new(-1, 1, 1),
+					Vector3.new(-1, 1, -1),
+					Vector3.new(-1, -1, 1),
+					Vector3.new(-1, -1, -1),
+				}
+			do
+				local point = cframe:PointToWorldSpace(half * corner)
+				low = low:Min(point)
+				high = high:Max(point)
+			end
+		end
+	end
+	if low.X > high.X then
+		local box, size = model:GetBoundingBox()
+		return box.Position, size
+	end
+	return (low + high) / 2, high - low
 end
 
 -- Forget the built subjects (the player's fish or look changed)
@@ -553,32 +739,35 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	world.Parent = frame
 	local model = source:Clone()
 	model.Parent = world
-	-- A shade card whose skin texture hasn't arrived yet waits for it (at most
-	-- WAIT_SKIN) and fades in, instead of showing a bare white fish. It asks the
-	-- texture's own fetch status: waiting on PreloadAsync left every shade card
-	-- empty until the reel stopped (retest 2026-10-08).
+	-- A shade card whose skin isn't ready yet (downloaded and drawn once: `ready`)
+	-- waits for it, at most WAIT_SKIN, and fades in, instead of showing a bare white
+	-- fish. It stays a hair visible meanwhile, so it is drawn and the texture decodes.
+	-- CardPhoto.warm normally has every skin ready before the first roll.
 	local pending: { string } = {}
 	for _, d in model:GetDescendants() do
 		if d:IsA("SurfaceAppearance") and d.Name == "ShadeSkin" then
 			local id = skinTexture(d)
-			if id and not loaded(id) then
-				table.insert(pending, id)
+			if id then
+				seen(id)
+				if not ready(id) then
+					table.insert(pending, id)
+				end
 			end
 		end
 	end
 	if #pending > 0 then
-		frame.ImageTransparency = 1
+		frame.ImageTransparency = 0.985
 		task.spawn(function()
 			local waited = 0
 			while waited < WAIT_SKIN do
-				local ready = true
+				local all = true
 				for _, id in pending do
-					if not loaded(id) then
-						ready = false
+					if not ready(id) then
+						all = false
 						break
 					end
 				end
-				if ready then
+				if all then
 					break
 				end
 				waited += task.wait(0.05)
@@ -604,7 +793,7 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	elseif root then
 		model:PivotTo(CFrame.Angles(0, math.rad(-18), 0) * model:GetPivot())
 	end
-	local box, extents = model:GetBoundingBox()
+	local center, extents = solvedBounds(model)
 	local camera = Instance.new("Camera")
 	camera.FieldOfView = FOV
 	camera.Parent = frame
@@ -617,7 +806,7 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	local distance = math.max(reach / (tanV * aspect), half / tanV) * 1.25
 		+ math.max(extents.X, extents.Z) / 2
 	local look = (Vector3.new(0, 0.22, 1)).Unit
-	camera.CFrame = CFrame.lookAt(box.Position + look * distance, box.Position)
+	camera.CFrame = CFrame.lookAt(center + look * distance, center)
 	frame.Parent = parent
 	return frame
 end

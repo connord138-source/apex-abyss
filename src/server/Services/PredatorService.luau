@@ -358,7 +358,11 @@ local function onBite(player: Player, index: any)
 	local ab = b - a
 	local t = math.clamp((mouth - a):Dot(ab) / math.max(ab:Dot(ab), 1e-4), 0, 1)
 	local nearest = a + ab * t
-	if (nearest - mouth).Magnitude > Size.reach(length) + def.length * 0.18 + slack then
+	-- The biter's client draws the creature where it was a moment ago (the stream's
+	-- interpolation delay plus latency), so a fast boss gets that much room too
+	-- (retest 2026-10-09: bites on a swimming Megalodon's flank missed)
+	local drift = predator.velocity.Magnitude * (Predators.interpolationDelay + hunt.latencySeconds)
+	if (nearest - mouth).Magnitude > Size.reach(length) + def.length * 0.18 + slack + drift then
 		return
 	end
 	lastBite[player] = now

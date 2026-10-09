@@ -1,17 +1,31 @@
 Apex Abyss — PC session brief: monetization, daily streak, Coral Garden (2026-10-09)
 
-Finish and push the C1–C8 retest report first. Then do this round. Work in C:\Users\neos1\Desktop\apex-abyss on claude/core-systems. Read CLAUDE.md (the "Monetization", "Daily login streak" and "AFK income: the Coral Garden" entries) and GDD §9–10 before starting.
+The C1–C8 report is in (thanks). This round has two parts: retest the three fixes from that report (section 2, R1–R3), then monetization, the daily streak and the Coral Garden (A–F). Work in C:\Users\neos1\Desktop\apex-abyss on claude/core-systems. Read CLAUDE.md (the "Monetization", "Daily login streak" and "AFK income: the Coral Garden" entries) and GDD §9–10 before starting.
 
 ## 1. Merge and sync
 
 1. git fetch origin claude/world
-2. git merge origin/claude/world  (it fast-forwards to e4f8477 "Monetization, daily login streak and the Coral Garden"; if you pushed report commits since, it's a plain merge with no conflicts expected)
+2. git merge origin/claude/world  (it fast-forwards: claude/world already contains your 57b198e report, then "Monetization, daily login streak and the Coral Garden" and the fix round for C2/C4/C6)
 3. stylua --line-endings Windows src --glob "!**/Packages/**"
 4. rojo serve on port 34873, connect the plugin, Play Solo. The Output must show "[ApexAbyss] Server started" and "Client ready" with no errors.
 
 Every pass and product id is 0 for now. In Studio the Shop lists them greyed out, and the cards still appear. The admin panel's new MONETIZATION (NO ROBUX) and DAILY STREAK · CORAL GARDEN sections grant passes and run product effects without Robux.
 
 ## 2. Test in Studio (keyboard, then Controller Emulator, then Device Simulator phone)
+
+R. Retest of the 2026-10-09 fixes (do these first)
+- R1 Vents (C2): every chimney's orange VentGlow ball now sits on top of its lava cap, found by raycast.
+  - Count how many of the 26 are inside terrain (occupancy > 0.5); expect 0.
+  - From 45 and 64 studs at a −540 basin, the orange throat shows. Screenshot it.
+- R2 Megalodon flank bites (C6): the push-out now sets the fish back onto the body's surface and only removes its speed into the body; it adds no push. The server also allows for the boss's own movement.
+  - Place the fish 20 studs off the axis. Log its distance at 0.1/0.2/0.3/0.4 s: expect ~24–26 and no climbing to 37–42.
+  - Press F against the flank 12 times while it swims; count the hits (expect most).
+  - No jitter, and the fish never ends up inside it.
+- R3 Roll cards (C4):
+  - About 3 s after spawning, a 160×120 nearly invisible viewport in the bottom-right corner draws every shade card once, then goes away.
+  - Wait 5 s after spawning, then roll 10+ times: every shade card should be textured from its first frame. No empty discs and no white fish. Note any you see, with the time from roll start.
+  - Roll immediately after a species switch too: a card may sit faint for up to 1.5 s, but it must never show white.
+  - Part cards (Sail Fin, Narwhal Horn, Sawblade Snout, Jaw if it comes up) and variant cards show the whole fish side-on, not a close-up. They pass through the reel as filler cards. Screenshot what you get.
 
 Use Admin → "Finish the tutorial" first. The offers and the auto-opening Daily panel only start after the tutorial.
 
@@ -108,7 +122,7 @@ Don't publish the place until I've reviewed the report.
 ## 4. Report
 
 Write docs/playtests/2026-10-09-pc-monetization.md:
-- each item A–F and section 3: pass/fail
+- R1–R3, each item A–F and section 3: pass/fail
 - screenshots of the garden (empty/half/full), the Daily panel, the Shop, both cards and the phone layout
 - any Output errors, verbatim
 - the ids you pasted
