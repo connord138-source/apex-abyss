@@ -489,6 +489,7 @@ local WAIT_SKIN = 1.5
 -- Seafoam cards were white for 0.3-0.5 s). A skin counts as ready this long after it
 -- has both downloaded and been in front of a camera.
 local DRAW_DELAY = 0.7
+local WARM_LIMIT = 12 -- the longest the warm-up waits for its downloads
 
 local fetchedAt: { [string]: number } = {} -- when each texture was first seen downloaded
 local seenAt: { [string]: number } = {} -- when each texture was first put in front of a camera
@@ -646,7 +647,30 @@ function CardPhoto.warm()
 		camera.Parent = frame
 		frame.CurrentCamera = camera
 		gui.Parent = playerGui
-		task.wait(DRAW_DELAY + 2)
+		-- PreloadAsync returns once the downloads are queued (all still Loading), not
+		-- when they finish, and `ready` only stamped a download on its own first
+		-- call, so every skin's first card in a session waited DRAW_DELAY as an empty
+		-- disc (retest 2026-10-09). Watch them here instead: each is stamped the
+		-- moment it has downloaded, and the warm-up stays up until all of them have
+		-- been drawn loaded (at most WARM_LIMIT).
+		local shown = os.clock()
+		local allAt: number? = nil
+		while os.clock() - shown < WARM_LIMIT do
+			local all = true
+			for _, uri in ids do
+				ready(uri)
+				if not loaded(uri) then
+					all = false
+				end
+			end
+			if all then
+				allAt = allAt or os.clock()
+				if os.clock() - (allAt :: number) >= DRAW_DELAY + 0.3 then
+					break
+				end
+			end
+			task.wait(0.1)
+		end
 		gui:Destroy()
 	end)
 end
