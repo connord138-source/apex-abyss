@@ -52,6 +52,12 @@ local function banner(biome: Biomes.Biome)
 	holder.AnchorPoint = Vector2.new(0.5, 0)
 	holder.Position = UDim2.new(0.5, 0, 0.18, 0)
 	holder.Size = UDim2.fromOffset(640, 96)
+	local bossBottom = Ui.bossBottom()
+	if bossBottom > 0 then
+		-- Below the boss bar (on a phone 18% down is inside it)
+		local height = gui.AbsoluteSize.Y / Ui.scaleOf(gui)
+		holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.18, bossBottom + 10))
+	end
 	holder.BackgroundTransparency = 1
 	local title = Ui.label(
 		holder,

@@ -156,8 +156,10 @@ local function zoneBanner(leaving: boolean)
 	local color = if leaving then Ui.color.danger else Ui.color.safe
 	local holder = Instance.new("Frame")
 	holder.Name = "ZoneBanner"
+	-- Below the boss bar while a boss is up
+	local top = math.max(56, Ui.bossBottom() + 10)
 	holder.AnchorPoint = Vector2.new(0.5, 0)
-	holder.Position = UDim2.new(0.5, 0, 0, 40)
+	holder.Position = UDim2.new(0.5, 0, 0, top - 16)
 	holder.Size = UDim2.fromOffset(560, 70)
 	holder.BackgroundTransparency = 1
 	local title = Ui.label(
@@ -189,7 +191,7 @@ local function zoneBanner(leaving: boolean)
 	sub.TextStrokeTransparency = 0.6
 	sub.TextTransparency = 1
 	holder.Parent = gui
-	Ui.tween(holder, 0.35, { Position = UDim2.new(0.5, 0, 0, 56) }, Enum.EasingStyle.Back)
+	Ui.tween(holder, 0.35, { Position = UDim2.new(0.5, 0, 0, top) }, Enum.EasingStyle.Back)
 	Ui.tween(title, 0.25, { TextTransparency = 0 })
 	Ui.tween(sub, 0.25, { TextTransparency = 0 })
 	task.delay(2.8, function()

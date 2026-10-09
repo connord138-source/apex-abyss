@@ -3,6 +3,7 @@
 -- helpers that build elements the same way everywhere. Keep new UI on these so
 -- the game reads as one product.
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -151,6 +152,25 @@ function Ui.tween(
 	)
 	tween:Play()
 	return tween
+end
+
+-- The bottom of the boss bar or the boss countdown at the top centre, in design
+-- units (every Ui.screen shares them), or 0 while neither is up. Centre banners
+-- start below it (playtest 2026-10-09: on a phone the biome title touched the boss
+-- bar and LEAVING THE SAFE ZONE was drawn under it).
+function Ui.bossBottom(): number
+	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	local hud = playerGui and playerGui:FindFirstChild("BossHud")
+	local bottom = 0
+	if hud then
+		for _, name in { "Boss", "Countdown" } do
+			local panel = hud:FindFirstChild(name)
+			if panel and panel:IsA("GuiObject") and panel.Visible then
+				bottom = math.max(bottom, panel.Position.Y.Offset + panel.Size.Y.Offset)
+			end
+		end
+	end
+	return bottom
 end
 
 -- The safe area's top inset (the Roblox top bar), in screen pixels.

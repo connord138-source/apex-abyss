@@ -77,15 +77,45 @@ end
 -- A card under the screen's middle: a title, a line, and up to three buttons
 type Choice = { text: string, style: Ui.ButtonStyle, width: number, pressed: () -> () }
 
+-- Phones: the card sits in the gap between the HUD button row and the health bar,
+-- measured on screen (a fixed spot overlapped the row by 2-4 px on an iPhone 14,
+-- playtests 2026-10-09). Returns the card's height and the centre's shift in design
+-- units, or nil when either piece isn't there.
+local CARD_MARGIN = 6
+local function phoneGap(frame: Frame): (number?, number?)
+	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	local wallet = playerGui and playerGui:FindFirstChild("Wallet")
+	local row = wallet and wallet:FindFirstChild("Buttons")
+	local hud = playerGui and playerGui:FindFirstChild("Hud")
+	local health = hud and hud:FindFirstChild("Health")
+	if row == nil or health == nil or not health:IsA("GuiObject") then
+		return nil, nil
+	end
+	local top = -math.huge
+	for _, button in row:GetChildren() do
+		if button:IsA("GuiObject") and button.Visible then
+			top = math.max(top, button.AbsolutePosition.Y + button.AbsoluteSize.Y)
+		end
+	end
+	if top == -math.huge then
+		return nil, nil
+	end
+	local bottom = health.AbsolutePosition.Y
+	local scale = Ui.scaleOf(gui)
+	local height = math.clamp((bottom - top) / scale - CARD_MARGIN * 2, 100, 124)
+	-- Both are measured on screen like the card itself, so only the difference counts
+	local centre = frame.AbsolutePosition.Y + frame.AbsoluteSize.Y / 2
+	return height, ((top + bottom) / 2 - centre) / scale
+end
+
 local function openCard(kind: string, title: string, line: string, accent: Color3, choices: { Choice })
 	closeCard()
 	local frame =
 		Ui.panel(gui, "Offer", UDim2.fromOffset(460, 132), UDim2.fromScale(0.5, 0.62), Vector2.new(0.5, 0.5))
-	if Ui.isTouch() then
-		-- Phones: clear of the HUD row above it (its top edge sat 2-3 px over the
-		-- buttons, 2026-10-09)
-		frame.Size = UDim2.fromOffset(460, 124)
-		frame.Position = UDim2.fromScale(0.5, 0.635)
+	local touch = Ui.isTouch()
+	if touch then
+		frame.Size = UDim2.fromOffset(460, 108)
+		frame.Position = UDim2.fromScale(0.5, 0.64)
 	end
 	frame.BackgroundTransparency = 0.12
 	local stroke = frame:FindFirstChildOfClass("UIStroke")
@@ -105,7 +135,7 @@ local function openCard(kind: string, title: string, line: string, accent: Color
 		22,
 		accent,
 		UDim2.new(1, -24, 0, 28),
-		UDim2.fromOffset(12, 10)
+		UDim2.fromOffset(12, if touch then 4 else 10)
 	)
 	heading.TextXAlignment = Enum.TextXAlignment.Center
 	local sub = Ui.label(
@@ -116,14 +146,14 @@ local function openCard(kind: string, title: string, line: string, accent: Color
 		15,
 		Ui.color.text,
 		UDim2.new(1, -24, 0, 20),
-		UDim2.fromOffset(12, 40)
+		UDim2.fromOffset(12, if touch then 31 else 40)
 	)
 	sub.TextXAlignment = Enum.TextXAlignment.Center
 	local row = Instance.new("Frame")
 	row.Name = "Choices"
 	row.BackgroundTransparency = 1
 	row.Size = UDim2.new(1, -24, 0, 44)
-	row.Position = UDim2.fromOffset(12, 74)
+	row.Position = if touch then UDim2.new(0, 12, 1, -50) else UDim2.fromOffset(12, 74)
 	row.Parent = frame
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -145,6 +175,21 @@ local function openCard(kind: string, title: string, line: string, accent: Color
 		button.TextSize = 15
 		button.Activated:Connect(choice.pressed)
 		first = first or button
+	end
+	if touch then
+		-- Again a frame later, once the new card has been laid out on screen
+		local function fit()
+			local height, shift = phoneGap(frame)
+			if height and shift and card == frame then
+				frame.Size = UDim2.fromOffset(460, height)
+				frame.Position += UDim2.fromOffset(0, shift)
+			end
+		end
+		task.defer(function()
+			fit()
+			RunService.RenderStepped:Wait()
+			fit()
+		end)
 	end
 	card = frame
 	cardKind = kind

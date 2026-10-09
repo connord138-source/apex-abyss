@@ -7,13 +7,16 @@
 --  * its `Lamp` attribute (the server's WardrobeService): "lantern" while a Deep
 --    Lantern charm runs (350 coral, the weakest), "lure" for an Anglerfish;
 --  * its shade, if the shade glows (Config/Shades `emissive`, or the spectral
---    Ghost): Rare, Epic, Legendary, Mythic and boss shades light further each tier.
+--    Ghost): Common (Ember, Ink, Neon Tetra), Rare, Epic, Legendary, Mythic and boss
+--    shades light further each tier.
 --
 -- Each source's range, brightness, beam and how much of the dark it lifts from the
 -- holder's own view are in Config/Tuning `light.sources`. Every client hangs the
 -- light on every lit fish, so a lit fish lights the dark for everyone round it. A
 -- glowing shade's light only comes up as the water darkens (it's a skin, not a lamp,
--- so it doesn't flood the shallows).
+-- so it doesn't flood the shallows). A deep-coloured light (violet) is brightened to
+-- light as much as a pale one of its tier (playtest 2026-10-09: Abyss Ink read
+-- weaker than Nebula).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -31,6 +34,7 @@ type Lamp = {
 	bulb: Part?,
 	source: Source,
 	fromShade: boolean,
+	boost: number, -- makes up for a deep colour lighting less
 }
 
 local SOURCES = Config.Tuning.light.sources
@@ -40,6 +44,18 @@ local LAMP_COLORS: { [string]: Color3 } = {
 }
 
 local lamps: { [Model]: Lamp } = {}
+
+-- How much light a colour carries (linear luminance), and the brightness boost that
+-- makes a deep colour light as much as a warm orange one does (Magma's ~0.33)
+local REFERENCE_LUMINANCE = 0.32
+local MAX_BOOST = 1.6
+local function linear(c: number): number
+	return if c <= 0.04045 then c / 12.92 else ((c + 0.055) / 1.055) ^ 2.4
+end
+local function boostFor(color: Color3): number
+	local luminance = 0.2126 * linear(color.R) + 0.7152 * linear(color.G) + 0.0722 * linear(color.B)
+	return math.clamp(REFERENCE_LUMINANCE / math.max(luminance, 0.01), 1, MAX_BOOST)
+end
 
 -- The fish's best light: its key (for rebuilding when it changes), the source, its
 -- colour and whether it comes from the shade
@@ -60,7 +76,7 @@ local function bestLight(character: Model): (string?, Source?, Color3?, boolean)
 			local tier = Config.Tiers.byId[shade.tier]
 			bestKey = `shade:{shade.id}`
 			best = source
-			color = shade.glow or (if tier then tier.color else Color3.new(1, 1, 1))
+			color = shade.glow or shade.light or (if tier then tier.color else Color3.new(1, 1, 1))
 			fromShade = true
 		end
 	end
@@ -117,7 +133,15 @@ local function attach(
 		made.Parent = character
 		bulb = made
 	end
-	return { key = key, light = light, beam = beam, bulb = bulb, source = source, fromShade = fromShade }
+	return {
+		key = key,
+		light = light,
+		beam = beam,
+		bulb = bulb,
+		source = source,
+		fromShade = fromShade,
+		boost = boostFor(color),
+	}
 end
 
 local function detach(character: Model)
@@ -137,7 +161,9 @@ end
 local function step()
 	local me = Players.LocalPlayer
 	local myReveal = 0
-	-- A glowing skin's light comes up with the dark round the camera
+	-- A glowing skin's light comes up with the dark round the camera: the water's
+	-- own dark, never lessened by this fish's light (that dimmed a rare shade on its
+	-- holder's screen, playtest 2026-10-09)
 	local darkness = OceanController.darkness()
 	for _, player in Players:GetPlayers() do
 		local character = player.Character
@@ -159,7 +185,7 @@ local function step()
 		local lamp = current
 		if lamp then
 			local scale = if lamp.fromShade then 0.2 + 0.8 * darkness else 1
-			lamp.light.Brightness = lamp.source.brightness * scale
+			lamp.light.Brightness = lamp.source.brightness * lamp.boost * scale
 			if player == me then
 				myReveal = lamp.source.reveal
 			end

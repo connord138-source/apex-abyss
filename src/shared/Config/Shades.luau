@@ -25,6 +25,7 @@ export type Shade = {
 	reflectance: number?,
 	transparency: number?,
 	glow: Color3?, -- a soft light on the fish
+	light: Color3?, -- the colour it lights the dark with, when it glows but has no `glow` (LampController)
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
 	-- Living shades (owner, 2026-10-08: "much much more variance and depth"): how
@@ -39,7 +40,7 @@ export type Shade = {
 	blurb: string,
 }
 
-type Extra = { glow: Color3?, emissive: number?, pulse: Pulse?, aura: Aura?, sparkle: Color3? }
+type Extra = { glow: Color3?, light: Color3?, emissive: number?, pulse: Pulse?, aura: Aura?, sparkle: Color3? }
 
 local function common(
 	id: string,
@@ -62,6 +63,7 @@ local function common(
 		belly = belly,
 		fin = fin,
 		glow = extra and extra.glow,
+		light = extra and extra.light,
 		emissive = extra and extra.emissive,
 		pulse = extra and extra.pulse,
 		aura = extra and extra.aura,
@@ -102,7 +104,7 @@ local list: { Shade } = {
 		Color3.fromRGB(102, 122, 173),
 		Color3.fromRGB(46, 56, 128),
 		"Ink wash pooling dark at the edges, and a glowing lateral line.",
-		{ emissive = 0.8, pulse = "wave" }
+		{ emissive = 0.8, pulse = "wave", light = Color3.fromRGB(115, 217, 255) }
 	),
 	common(
 		"Sand",
@@ -176,7 +178,7 @@ local list: { Shade } = {
 		Color3.fromRGB(242, 31, 26),
 		Color3.fromRGB(31, 250, 255),
 		"An electric cyan stripe over a red tail half.",
-		{ emissive = 0.8, pulse = "breathe" }
+		{ emissive = 0.8, pulse = "breathe", light = Color3.fromRGB(26, 230, 255) }
 	),
 	common(
 		"Leopard",

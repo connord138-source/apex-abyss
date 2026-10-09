@@ -38,9 +38,11 @@ local STONE = Color3.fromRGB(150, 138, 118)
 local WOOD = Color3.fromRGB(110, 86, 60)
 
 local folders: { [number]: Folder } = {}
--- The garden's floor height found by raycast, per den and level (DenBuilder.garden)
-local gardenFloors: { [number]: { level: number, y: number } } = {}
-local floorUnder: (Vector3, number) -> number? -- (below)
+-- The garden's floor found by raycast, per den and level (DenBuilder.garden): the
+-- height the bed rests at, and the floor's height in a ring round the bed's edge
+type GardenFloor = { level: number, y: number, ring: { number } }
+local gardenFloors: { [number]: GardenFloor } = {}
+local floorUnder: (CFrame, number) -> (number?, { number }) -- (below)
 
 local function denFolder(index: number): Folder
 	local existing = folders[index]
@@ -482,16 +484,50 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 	)
 	bed.Shape = Enum.PartType.Cylinder
 	-- A footing under it: the bed rests on the floor's high side, and on a sloping
-	-- floor the low side showed a 2-3 stud gap (retest 2026-10-09)
+	-- floor the low side showed a 2-3 stud gap (retest 2026-10-09). It goes only as
+	-- deep as the floor falls away, with rubble where it falls most, so it reads as
+	-- rock and not a flower pot (playtest 2026-10-09)
+	local depth = 4
+	local ring: { number } = if known and known.level == record.level then known.ring else {}
+	if #ring > 0 then
+		local low = math.huge
+		for _, y in ring do
+			low = math.min(low, y)
+		end
+		depth = math.clamp(base.Position.Y - low + 0.9, 0.8, 6)
+	end
 	local footing = part(
 		model,
 		"Footing",
-		Vector3.new(4, 7.2, 7.2),
-		base * CFrame.new(0, -1.9, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Vector3.new(depth, 7.0, 7.0),
+		base * CFrame.new(0, 0.1 - depth / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
 		STONE:Lerp(Color3.new(0, 0, 0), 0.15),
-		Enum.Material.Slate
+		Enum.Material.Rock
 	)
 	footing.Shape = Enum.PartType.Cylinder
+	for i, y in ring do
+		local drop = base.Position.Y - y
+		if drop > 0.35 then
+			local angle = (i - 1) / #ring * 2 * math.pi
+			local size =
+				Vector3.new(1.5 + (i % 3) * 0.45, math.min(drop + 0.7, 4.6), 1.3 + ((i + 1) % 3) * 0.4)
+			part(
+				model,
+				"Rubble",
+				size,
+				base
+					* CFrame.Angles(0, angle, 0)
+					* CFrame.new(0, -drop + size.Y / 2 - 0.35, -3.45)
+					* CFrame.Angles(
+						math.rad(9 * (i % 3 - 1)),
+						math.rad(23 * i),
+						math.rad(7 * ((i + 1) % 3 - 1))
+					),
+				STONE:Lerp(Color3.new(0, 0, 0), 0.08 + (i % 2) * 0.1),
+				Enum.Material.Rock
+			)
+		end
+	end
 	local sand = part(
 		model,
 		"Sand",
@@ -597,19 +633,24 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 		-- Terrain carved this frame doesn't answer a raycast until a later one, so
 		-- the floor is found a moment after the den is built
 		task.delay(0.5, function()
-			local floorY = floorUnder(base.Position, nominal)
+			local floorY, floorRing = floorUnder(base, nominal)
 			if floorY == nil or model.Parent == nil then
 				return
 			end
-			gardenFloors[index] = { level = record.level, y = floorY }
-			model:PivotTo(CFrame.new(0, floorY - base.Position.Y, 0) * model:GetPivot())
+			gardenFloors[index] = { level = record.level, y = floorY, ring = floorRing }
+			-- Again, on the floor now, with a footing cut to its slope
+			DenBuilder.garden(index, record, fill, shellFill)
 		end)
 	end
 end
 
 -- The top of the Terrain floor round `at` (the highest of five rays, so nothing is
--- buried), or nil when none of them finds the floor near `nominal`
-function floorUnder(at: Vector3, nominal: number): number?
+-- buried), or nil when none of them finds the floor near `nominal`; and the floor's
+-- height in eight directions just outside the bed's edge (the top where a ray
+-- misses), for the footing
+local RING_RADIUS = 3.8
+function floorUnder(spot: CFrame, nominal: number): (number?, { number })
+	local at = spot.Position
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { workspace.Terrain }
@@ -629,7 +670,24 @@ function floorUnder(at: Vector3, nominal: number): number?
 			best = math.max(best or -math.huge, hit.Position.Y)
 		end
 	end
-	return if best then best - 0.15 else nil
+	if best == nil then
+		return nil, {}
+	end
+	local top = best - 0.15
+	local ring: { number } = {}
+	for i = 1, 8 do
+		local angle = (i - 1) / 8 * 2 * math.pi
+		-- The same directions the footing's rubble is laid in
+		local edge = (spot * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0, -RING_RADIUS)).Position
+		local origin = Vector3.new(edge.X, nominal + 12, edge.Z)
+		local hit = workspace:Raycast(origin, Vector3.new(0, -24, 0), params)
+		ring[i] = if hit
+				and hit.Position.Y > nominal - 8
+				and hit.Position.Y < top
+			then hit.Position.Y
+			else top
+	end
+	return top, ring
 end
 
 -- Builds (or rebuilds) den `index` from its owner's record (`fill` and `shellFill`:

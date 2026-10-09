@@ -137,7 +137,8 @@ local ink: ColorCorrectionEffect
 -- Pitch dark biomes (the Trench): the light goes out, so only lamps and glowing
 -- things show
 local darkTarget = 0
-local dark, darkVelocity = 0, 0
+local dark, darkVelocity = 0, 0 -- the dark this player sees (less where their own light lifts it)
+local water, waterVelocity = 0, 0 -- the water's own dark, before anyone's light
 local reveal = 0 -- how much of the dark this fish's own light lifts (LampController)
 local glow = 0
 -- Plankton glow in the deepest water (PlanktonController): a very faint blue-green
@@ -222,6 +223,7 @@ local function step(dt: number)
 	-- too (playtest 2026-10-08). A fish's own light lifts its view of the dark by
 	-- how rare the light is (Config/Tuning light.sources `reveal`).
 	dark, darkVelocity = Spring.number(dark, darkVelocity, darkTarget * (1 - reveal), 1.8, dt)
+	water, waterVelocity = Spring.number(water, waterVelocity, darkTarget, 1.8, dt)
 	if dark > 0.001 then
 		local day: Light = daylight
 			or {
@@ -292,9 +294,12 @@ function OceanController.setReveal(amount: number)
 	reveal = math.clamp(amount, 0, 0.9)
 end
 
--- How dark the water round the camera is right now (0..1)
+-- How dark the water round the camera is right now (0..1), before this fish's own
+-- light lifts it: glowing skins and bosses scale by it, so a rare light never dims
+-- itself on its holder's screen (playtest 2026-10-09: Legendary, Mythic and Trophy
+-- shades came out 2.07 / 2.34 / 2.37 instead of 2.6 / 3.2 / 3.4)
 function OceanController.darkness(): number
-	return math.clamp(dark, 0, 1)
+	return math.clamp(water, 0, 1)
 end
 
 -- How thick the glowing plankton is around the camera (0..1); PlanktonController
