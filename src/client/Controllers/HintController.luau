@@ -46,6 +46,7 @@ local swallowRatio = Config.Tuning.hunt.swallowRatio
 
 local gui: ScreenGui
 local chip: Frame? = nil
+local chipKind: Kind? = nil
 local shownAt: { [string]: number } = {}
 local shownCount: { [string]: number } = {}
 local swallowed = 0 -- prey and forage eaten this session
@@ -71,12 +72,22 @@ local function textFor(kind: Kind): string
 	return "Too big to swallow yet. Eat smaller fish and grow first."
 end
 
+-- Phones: the hint line's width, wrapped to fit the room between the tutorial card
+-- (its right edge 318 from the left) and the HEAL button (281 from the right), less
+-- the tag and the padding
+local function touchLineWidth(): number
+	local width = gui.AbsoluteSize.X / Ui.scaleOf(gui)
+	local half = math.min(width / 2 - 318, width / 2 - 281) - 8
+	return math.clamp(half * 2 - 120, 200, 320)
+end
+
 local function hide()
 	local old = chip
 	if old == nil then
 		return
 	end
 	chip = nil
+	chipKind = nil
 	for _, descendant in old:GetDescendants() do
 		if descendant:IsA("TextLabel") then
 			Ui.tween(descendant, 0.3, { TextTransparency = 1 })
@@ -143,11 +154,22 @@ local function show(kind: Kind)
 		Ui.label(frame, "Line", textFor(kind), Ui.FONT_SEMI, 16, Ui.color.text, UDim2.fromOffset(0, 28))
 	line.AutomaticSize = Enum.AutomaticSize.X
 	line.LayoutOrder = 2
+	if Input.isTouch() then
+		-- Phones: wrapped between the tutorial card and the HEAL button (on one line
+		-- it ran over both, playtest 2026-10-09)
+		frame.AutomaticSize = Enum.AutomaticSize.XY
+		padding.PaddingTop = UDim.new(0, 6)
+		padding.PaddingBottom = UDim.new(0, 6)
+		line.AutomaticSize = Enum.AutomaticSize.Y
+		line.Size = UDim2.fromOffset(touchLineWidth(), 0)
+		line.TextWrapped = true
+	end
 	local pop = Instance.new("UIScale")
 	pop.Scale = 0.8
 	pop.Parent = frame
 	Ui.tween(pop, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
 	chip = frame
+	chipKind = kind
 	task.delay(HOLD, function()
 		if chip == frame then
 			hide()
@@ -209,7 +231,9 @@ function HintController.start()
 	gui = Ui.screen("Hints", Players.LocalPlayer:WaitForChild("PlayerGui"), 6)
 	local function ate()
 		swallowed += 1
-		if chip and swallowed >= 3 then
+		-- Only the EAT hint has done its job; a shrimp swallowed under a DANGER chip
+		-- took the warning down with it (playtest 2026-10-09)
+		if chip and chipKind == "eat" and swallowed >= 3 then
 			hide()
 		end
 	end
