@@ -103,6 +103,14 @@ local function refresh()
 	end
 end
 
+-- `studs` straight up from a part, as a billboard offset. StudsOffsetWorldSpace is
+-- in the adornee's own frame, and the Sand is a cylinder turned on its side, so a
+-- plain (0, 6.5, 0) put the sign sideways at floor height, over the YOUR DEN hint
+-- (playtest 2026-10-09).
+local function above(part: BasePart, studs: number): Vector3
+	return part.CFrame:VectorToObjectSpace(Vector3.new(0, studs, 0))
+end
+
 -- A rising "+48 CORAL" over the garden
 local function pop(text: string, color: Color3, delay: number)
 	local at = gardenPart
@@ -112,7 +120,7 @@ local function pop(text: string, color: Color3, delay: number)
 	task.delay(delay, function()
 		local tag = Instance.new("BillboardGui")
 		tag.Size = UDim2.fromOffset(200, 30)
-		tag.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
+		tag.StudsOffsetWorldSpace = above(at, 3)
 		tag.LightInfluence = 0
 		tag.MaxDistance = 80
 		tag.Adornee = at
@@ -120,8 +128,12 @@ local function pop(text: string, color: Color3, delay: number)
 		label.TextXAlignment = Enum.TextXAlignment.Center
 		label.TextStrokeTransparency = 0.5
 		tag.Parent = board.Parent
-		Ui.tween(tag, 1.6, { StudsOffsetWorldSpace = Vector3.new(0, 8, 0) })
-		Ui.tween(label, 1.6, { TextTransparency = 1, TextStrokeTransparency = 1 })
+		Ui.tween(tag, 1.6, { StudsOffsetWorldSpace = above(at, 8) })
+		-- Hold the text, then fade it: fading over the whole rise left it 76% gone
+		-- after 0.4 s, so the pop was barely seen (playtest 2026-10-09)
+		task.delay(1, function()
+			Ui.tween(label, 0.6, { TextTransparency = 1, TextStrokeTransparency = 1 })
+		end)
 		task.delay(1.7, function()
 			tag:Destroy()
 		end)
@@ -208,6 +220,9 @@ function GardenController.start()
 			gardenPart = findGarden()
 			board.Adornee = gardenPart :: any
 			board.Enabled = gardenPart ~= nil
+			if gardenPart then
+				board.StudsOffsetWorldSpace = above(gardenPart, 6.5)
+			end
 		end
 	end)
 end
