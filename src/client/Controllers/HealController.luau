@@ -23,6 +23,7 @@ local gui: ScreenGui
 local chip: Frame
 local countLabel: TextLabel
 local cooldownFill: Frame
+local healButton: TextButton? = nil -- phones: the count and the cooldown are on it
 local glows: { [Model]: Highlight } = {}
 
 local function count(): number
@@ -80,16 +81,24 @@ end
 
 local function step()
 	local held = count()
-	chip.Visible = held > 0 or Input.isTouch()
+	-- Phones show the count and cooldown on the HEAL button itself: the chip sat on
+	-- BITE (playtest 2026-10-09)
+	chip.Visible = held > 0 and healButton == nil
 	local keyHint = if Input.isTouch() then "" elseif Input.isGamepad() then " (LB)" else " (H)"
 	countLabel.Text = `{held} KELP WRAP{if held == 1 then "" else "S"}{keyHint}`
 	local character = Players.LocalPlayer.Character
 	local readyAt = if character then character:GetAttribute("WrapReadyAt") else nil
 	local now = Timing.clock()
-	if typeof(readyAt) == "number" and readyAt > now then
+	local cooling = typeof(readyAt) == "number" and readyAt > now
+	if cooling then
 		cooldownFill.Size = UDim2.fromScale(1 - (readyAt - now) / heal.wrapCooldown, 1)
 	else
 		cooldownFill.Size = UDim2.fromScale(1, 1)
+	end
+	local button = healButton
+	if button then
+		button.Text = if cooling then `HEAL\n{math.ceil(readyAt - now)}s` else `HEAL\n×{held}`
+		button.BackgroundTransparency = if cooling or held == 0 then 0.55 else 0
 	end
 	updateGlows()
 end
@@ -117,7 +126,8 @@ function HealController.start()
 		button.Name = "Heal"
 		button.Text = "HEAL"
 		button.FontFace = Ui.FONT_HEAVY
-		button.TextSize = 15
+		button.TextSize = 13
+		button.LineHeight = 0.95
 		button.TextColor3 = Ui.color.panel
 		button.AutoButtonColor = false
 		button.Selectable = false
@@ -129,6 +139,7 @@ function HealController.start()
 		Ui.stroke(button, Ui.color.stroke, 0.5, 1.5)
 		button.Activated:Connect(use)
 		button.Parent = gui
+		healButton = button
 	end
 	ContextActionService:BindAction("ApexHeal", function(_, inputState)
 		if inputState ~= Enum.UserInputState.Begin then

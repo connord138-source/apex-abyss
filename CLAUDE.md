@@ -216,14 +216,21 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `EconomyService.earnCoral` (VIP 1.1 × Premium 1.1 × group 1.05); fixed rewards that
     show their amount (rolls, treasure, daily, admin) use `addCoral`.
   - Cards (Double Haul, Second Chance) free the cursor, B or SKIP closes, and they go
-    away when you swim out of the hub. SHOP and DAILY sit beside the wallet card; the View button
-    opens the Shop on a controller.
+    away when you swim out of the hub; the phone's stall/den button hides while one is
+    up (`MenuController.stallButtonHidden`). SHOP and DAILY sit beside the wallet card
+    on PC and console, and at the end of the HUD button row on phones (the centre
+    banners' second lines ran across them there); the View button opens the Shop on
+    a controller. The growth note (×2 MASS, FRENZY ×2 · 14:03) is in the Haul card's
+    top-right corner on every screen. `Ads.luau` doesn't poll in Studio (Studio
+    never serves ads, and each check logged a warning).
   - **Later:** codes, Pearl crates, the Roblox group (id 0 in `tuning.group`).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
   and a Captain's map) with +25% per finished week (up to +100%). The panel opens by
-  itself once a session when a reward waits (after the tutorial); DAILY glows.
+  itself once a session when a reward waits (after the tutorial, and never over an
+  open offer card); DAILY glows. A claim shows in the panel's own footer (a toast
+  covered it) with the Bank sound.
 - **AFK income: the Coral Garden (owner, 2026-10-09: "an afk aspect of the game to earn
   something to keep players coming back"; built):** a garden bed in every den, under
   the trophy plaques, grows coral and shells over real time, online or off, up to 8 h
@@ -231,7 +238,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   shells. Resting in your own den grows it ×2 and collects every minute; swimming in
   collects it; a returning player spawns in the den and sees WELCOME BACK.
   `Config/Dens` `garden`, `Shared/Garden` (rates, grow, fill; luau-testable),
-  `GardenService`, `DenBuilder.garden` (corals grow as it fills, sparkle when full),
+  `GardenService`, `DenBuilder.garden` (corals grow as it fills, sparkle when full;
+  the bed sits on the Terrain floor found by raycast, `floorUnder`, half a second
+  after the den is carved, since the voxel floor rises 0.6–4.6 studs above the den's
+  nominal floor and a bed at the nominal height was buried, playtest 2026-10-09),
   `GardenController` (the sign, payout pops, the welcome banner). Admin: "Coral
   Garden: grow hours".
 - **Controls (owner, 2026-10-07):**

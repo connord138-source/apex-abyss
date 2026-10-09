@@ -4,8 +4,8 @@
 --  * DAILY and SHOP buttons beside the wallet (the View button opens the Shop on a
 --    controller). DAILY glows while today's reward waits, and the Daily panel opens
 --    by itself once per session when one does (after the tutorial).
---  * A chip under them while growth is boosted: ×2 Mass, a Server Frenzy (with its
---    clock), or both.
+--  * A note in the Haul card's corner while growth is boosted: ×2 Mass, a Server
+--    Frenzy (with its clock), or both.
 --  * Double Haul on the bank screen: one tap to double the Haul just banked (the
 --    price by its size), WATCH AD for a small one, and SKIP. No countdown (owner).
 --  * Second Chance after being eaten with a Haul worth having: one tap to get it
@@ -56,6 +56,7 @@ local function closeCard()
 	end
 	card = nil
 	cardKind = nil
+	MenuController.stallButtonHidden = false
 	ContextActionService:UnbindAction("ApexOfferSkip")
 	if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(old) then
 		GuiService.SelectedObject = nil
@@ -141,6 +142,7 @@ local function openCard(kind: string, title: string, line: string, accent: Color
 	end
 	card = frame
 	cardKind = kind
+	MenuController.stallButtonHidden = true -- it sat on the card's edge on phones
 	Ui.tween(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
 	Input.cursorWanted = true
 	if Input.isGamepad() and first then
@@ -240,48 +242,58 @@ local function onEaten(summary: { [string]: any })
 end
 
 local function buildButtons()
-	local holder = Instance.new("Frame")
-	holder.Name = "StoreButtons"
-	holder.BackgroundTransparency = 1
-	-- Beside the wallet card, clear of the boss bar, the treasure sonar and the depth
-	-- gauge on every screen size
-	holder.Position = UDim2.fromOffset(258, 144)
-	holder.Size = UDim2.fromOffset(196, 34)
-	holder.Parent = gui
-	Ui.belowTopBar(gui, holder, 144)
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	layout.Padding = UDim.new(0, 8)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = holder
+	local holder: Frame
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local wallet = playerGui:FindFirstChild("Wallet")
+	local row = wallet and wallet:FindFirstChild("Buttons")
+	if Ui.isTouch() and row and row:IsA("Frame") then
+		-- Phones: at the end of the HUD button row. Beside the wallet, the centre
+		-- banners' second lines ran across them (playtest 2026-10-09)
+		holder = row
+	else
+		-- Beside the wallet card, clear of the boss bar, the treasure sonar and the
+		-- depth gauge
+		holder = Instance.new("Frame")
+		holder.Name = "StoreButtons"
+		holder.BackgroundTransparency = 1
+		holder.Position = UDim2.fromOffset(258, 144)
+		holder.Size = UDim2.fromOffset(196, 34)
+		holder.Parent = gui
+		Ui.belowTopBar(gui, holder, 144)
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+		layout.Padding = UDim.new(0, 8)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Parent = holder
+	end
 	dailyButton = Ui.button(holder, "Daily", "DAILY", UDim2.fromOffset(90, 34), UDim2.new(), "secondary")
-	dailyButton.LayoutOrder = 1
+	dailyButton.LayoutOrder = 11
 	dailyButton.TextSize = 14
 	dailyButton.Activated:Connect(MenuController.openDaily)
 	dailyScale = dailyButton:FindFirstChildOfClass("UIScale") :: UIScale
 	local shop = Ui.button(holder, "Shop", "SHOP", UDim2.fromOffset(90, 34), UDim2.new(), "gold")
-	shop.LayoutOrder = 2
+	shop.LayoutOrder = 12
 	shop.TextSize = 14
 	shop.Activated:Connect(MenuController.openStore)
 	-- Not selectable, like the other HUD buttons (the View button opens the Shop)
 	dailyButton.Selectable = false
 	shop.Selectable = false
 
-	chip = Ui.panel(gui, "Growth", UDim2.fromOffset(196, 26), UDim2.fromOffset(258, 184))
-	Ui.belowTopBar(gui, chip, 184)
+	-- The growth chip lives in the Haul card's top-right corner, on every screen:
+	-- growth is about the Haul, and nothing else draws there
+	local hud = playerGui:WaitForChild("Hud", 10)
+	local haul = hud and hud:WaitForChild("Haul", 10)
+	chip = Instance.new("Frame")
+	chip.Name = "Growth"
+	chip.BackgroundTransparency = 1
+	chip.Size = UDim2.fromOffset(200, 16)
+	chip.AnchorPoint = Vector2.new(1, 0)
+	chip.Position = UDim2.new(1, -16, 0, 10)
 	chip.Visible = false
-	chipText = Ui.label(
-		chip,
-		"Text",
-		"",
-		Ui.FONT_HEAVY,
-		14,
-		Ui.color.haul,
-		UDim2.new(1, -16, 1, 0),
-		UDim2.fromOffset(8, 0)
-	)
-	chipText.TextXAlignment = Enum.TextXAlignment.Center
+	chip.Parent = haul or gui
+	chipText = Ui.label(chip, "Text", "", Ui.FONT_HEAVY, 13, Ui.color.haul, UDim2.fromScale(1, 1))
+	chipText.TextXAlignment = Enum.TextXAlignment.Right
 	chipText.TextYAlignment = Enum.TextYAlignment.Center
 end
 
@@ -338,9 +350,9 @@ local function step()
 	if mass > 1 or frenzy > 1 then
 		chip.Visible = true
 		if frenzy > 1 and mass > 1 then
-			chipText.Text = `×{mass * frenzy} GROWTH · FRENZY {Format.clock(frenzyLeft)}`
+			chipText.Text = `×{mass * frenzy} GROWTH · {Format.clock(frenzyLeft)}`
 		elseif frenzy > 1 then
-			chipText.Text = `SERVER FRENZY ×{frenzy} · {Format.clock(frenzyLeft)}`
+			chipText.Text = `FRENZY ×{frenzy} · {Format.clock(frenzyLeft)}`
 		else
 			chipText.Text = `×{mass} MASS`
 		end

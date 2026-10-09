@@ -38,6 +38,9 @@ local STONE = Color3.fromRGB(150, 138, 118)
 local WOOD = Color3.fromRGB(110, 86, 60)
 
 local folders: { [number]: Folder } = {}
+-- The garden's floor height found by raycast, per den and level (DenBuilder.garden)
+local gardenFloors: { [number]: { level: number, y: number } } = {}
+local floorUnder: (Vector3, number) -> number? -- (below)
 
 local function denFolder(index: number): Folder
 	local existing = folders[index]
@@ -459,6 +462,14 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 	local glow = Dens.glowsById[record.glow] or Dens.glows[1]
 	local z = -(ROOM_BACK + def.extend) + Dens.garden.fromBack
 	local base = denSpot(floorFrame(index), 0, 0, z)
+	-- The bed sits on the Terrain floor where it really is: the voxel floor rises
+	-- above the den's nominal floor (retest 2026-10-09: the bed was 0.6 studs under
+	-- it in a Nook and 1.7-4.6 under in the bigger dens, out of sight)
+	local nominal = base.Position.Y
+	local known = gardenFloors[index]
+	if known and known.level == record.level then
+		base = CFrame.new(0, known.y - nominal, 0) * base
+	end
 	local model = Instance.new("Model")
 	model.Name = "Garden"
 	local bed = part(
@@ -571,6 +582,43 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 		sparkle.Parent = sand
 	end
 	model.Parent = folder
+	if known == nil or known.level ~= record.level then
+		-- Terrain carved this frame doesn't answer a raycast until a later one, so
+		-- the floor is found a moment after the den is built
+		task.delay(0.5, function()
+			local floorY = floorUnder(base.Position, nominal)
+			if floorY == nil or model.Parent == nil then
+				return
+			end
+			gardenFloors[index] = { level = record.level, y = floorY }
+			model:PivotTo(CFrame.new(0, floorY - base.Position.Y, 0) * model:GetPivot())
+		end)
+	end
+end
+
+-- The top of the Terrain floor round `at` (the highest of five rays, so nothing is
+-- buried), or nil when none of them finds the floor near `nominal`
+function floorUnder(at: Vector3, nominal: number): number?
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+	local best: number? = nil
+	for _, offset in
+		{
+			Vector3.zero,
+			Vector3.new(2.6, 0, 0),
+			Vector3.new(-2.6, 0, 0),
+			Vector3.new(0, 0, 2.6),
+			Vector3.new(0, 0, -2.6),
+		}
+	do
+		local origin = Vector3.new(at.X, nominal + 12, at.Z) + offset
+		local hit = workspace:Raycast(origin, Vector3.new(0, -24, 0), params)
+		if hit and hit.Position.Y > nominal - 3 and hit.Position.Y < nominal + 9 then
+			best = math.max(best or -math.huge, hit.Position.Y)
+		end
+	end
+	return if best then best - 0.15 else nil
 end
 
 -- Builds (or rebuilds) den `index` from its owner's record (`fill` and `shellFill`:
@@ -597,6 +645,7 @@ function DenBuilder.clear(index: number, refill: boolean)
 		folder:Destroy()
 		folders[index] = nil
 	end
+	gardenFloors[index] = nil
 	if refill then
 		carve(index, 1)
 	end

@@ -6,6 +6,7 @@
 -- experiences, so until then it stays false and the button never shows.
 local AdService = game:GetService("AdService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ClientState = require(script.Parent.ClientState)
@@ -35,7 +36,9 @@ end
 
 function Ads.start()
 	local product = Config.Monetization.productsByKey.AdDoubleHaul
-	if product == nil or product.id == 0 then
+	-- Studio never serves ads, and each check there logged "ad system not
+	-- initialized yet" (playtest 2026-10-09)
+	if product == nil or product.id == 0 or RunService:IsStudio() then
 		return
 	end
 	while true do

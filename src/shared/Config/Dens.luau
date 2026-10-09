@@ -97,8 +97,9 @@ local slots: { Slot } = {
 	{ id = "P3", kind = "pit", offset = Vector3.new(0, -9, -5), facing = 0 },
 	{ id = "P4", kind = "pit", offset = Vector3.new(0, -13, 6), facing = math.rad(180) },
 	-- The Den Expansion pass's spots, open at any level: the back corners of the
-	-- floor (clear of the pool and the Coral Garden) and low on the side walls by
-	-- the doorway
+	-- floor (clear of the pool and the Coral Garden) and on the side walls between
+	-- the W spots and the doorway (at z 9 a Banner's edge sank into the doorway rock,
+	-- retest 2026-10-09)
 	{
 		id = "X1",
 		kind = "floor",
@@ -116,14 +117,14 @@ local slots: { Slot } = {
 	{
 		id = "X3",
 		kind = "wall",
-		offset = Vector3.new(-10.5, 7, 9),
+		offset = Vector3.new(-10.3, 8, 6),
 		facing = math.rad(90),
 		pass = "DenExpansion",
 	},
 	{
 		id = "X4",
 		kind = "wall",
-		offset = Vector3.new(10.5, 7, 9),
+		offset = Vector3.new(10.3, 8, 6),
 		facing = math.rad(-90),
 		pass = "DenExpansion",
 	},

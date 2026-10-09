@@ -27,6 +27,20 @@ function Format.depth(studs: number): string
 	return Format.distance(studs)
 end
 
+-- Thousands separators: "2,500"
+function Format.number(value: number): string
+	local text = tostring(math.floor(value + 0.5))
+	local sign = ""
+	if string.sub(text, 1, 1) == "-" then
+		sign, text = "-", string.sub(text, 2)
+	end
+	local formatted = string.reverse((string.gsub(string.reverse(text), "(%d%d%d)", "%1,")))
+	if string.sub(formatted, 1, 1) == "," then
+		formatted = string.sub(formatted, 2)
+	end
+	return sign .. formatted
+end
+
 -- A span of time: "45s", "12m", "3h 20m", "2d 5h"
 function Format.duration(seconds: number): string
 	seconds = math.max(0, math.floor(seconds))

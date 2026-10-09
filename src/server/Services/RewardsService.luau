@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
@@ -63,12 +64,12 @@ local function claim(player: Player)
 	if reward.coral then
 		local coral = math.floor(reward.coral * bonus + 0.5)
 		EconomyService.addCoral(player, coral)
-		table.insert(got, `{coral} coral`)
+		table.insert(got, `{Format.number(coral)} coral`)
 	end
 	if reward.shells then
 		local shells = math.floor(reward.shells * bonus + 0.5)
 		EconomyService.addShells(player, shells)
-		table.insert(got, `{shells} shells`)
+		table.insert(got, `{Format.number(shells)} shells`)
 	end
 	if reward.wraps then
 		HuntService.giveWrap(player, reward.wraps)
@@ -94,7 +95,8 @@ local function claim(player: Player)
 	lastClaimable[player] = false
 	DataService.markDirty(player)
 	Net.dailyClaimed(player, { streak = streak, day = day, got = got })
-	Net.notify(player, `Day {streak} reward: {table.concat(got, ", ")}`, "rare")
+	-- The Daily panel shows what was claimed (a toast covered its footer, playtest
+	-- 2026-10-09)
 end
 
 -- Pays the one-time group reward

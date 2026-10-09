@@ -19,13 +19,17 @@ local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local ClientState = require(script.Parent.Parent.ClientState)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
 
 local Shop = Config.Shop
 local Tiers = Config.Tiers
 
-local MenuController = {}
+local MenuController = {
+	-- Set while an offer card is up: the phone's stall button sat on its edge
+	stallButtonHidden = false,
+}
 
 type Menu = {
 	window: Ui.Window,
@@ -302,7 +306,9 @@ local function charmRows(list: ScrollingFrame)
 			local left = (boosts[charm.id] or 0) - now
 			status = if left > 0 then `Active {clockText(left)}` else nil
 		else
-			status = `Have {charms[charm.id] or 0} / {charm.max or 1}`
+			local held = charms[charm.id] or 0
+			-- (Robux Second Chances can take you past the trader's cap: no "2 / 1")
+			status = if held > (charm.max or 1) then `Have {held}` else `Have {held} / {charm.max or 1}`
 		end
 		local full = charm.max ~= nil and (charms[charm.id] or 0) >= charm.max
 		local _, button = row(
@@ -1550,6 +1556,18 @@ function MenuController.openDaily()
 		claim.Activated:Connect(function()
 			ClientState.request("ClaimDaily")
 		end)
+		-- What was claimed shows in the footer for a few seconds
+		local claimedText, claimedUntil = "", 0
+		local claimed = (ReplicatedStorage:WaitForChild("Remotes") :: Instance):WaitForChild(
+				"DailyClaimed"
+			) :: RemoteEvent
+		local connection = claimed.OnClientEvent:Connect(function(summary: { [string]: any })
+			local got = if typeof(summary.got) == "table" then table.concat(summary.got, " · ") else ""
+			claimedText = `Day {summary.streak} claimed: {got}`
+			claimedUntil = os.clock() + 4
+			Sfx.play("Bank", { volume = 0.6 })
+			MenuController.rerenderCurrent()
+		end)
 		local function lines(reward: typeof(Daily.days[1]), bonus: number): string
 			local parts: { string } = {}
 			if reward.coral then
@@ -1576,6 +1594,9 @@ function MenuController.openDaily()
 		return {
 			window = window,
 			ticking = true,
+			cleanup = function()
+				connection:Disconnect()
+			end,
 			render = function()
 				local daily = state().daily
 				if typeof(daily) ~= "table" then
@@ -1586,6 +1607,7 @@ function MenuController.openDaily()
 				local week = math.floor(((daily.streak or 1) - 1) / #Daily.days) + 1
 				window.subtitle.Text = if daily.broken
 					then "You missed a day, so the streak starts again at Day 1"
+					elseif (daily.best or 0) == 0 then "Claim Day 1 to start your streak"
 					else `Streak: {daily.streak} day{if daily.streak == 1 then "" else "s"} · best {daily.best}`
 						.. (
 							if bonus > 1
@@ -1651,8 +1673,10 @@ function MenuController.openDaily()
 					foot.TextXAlignment = Enum.TextXAlignment.Center
 				end
 				claim.Visible = daily.claimable == true
-				footer.Text = if daily.claimable
-					then "Claim today's reward"
+				footer.TextColor3 = if os.clock() < claimedUntil then Ui.color.haul else Ui.color.muted
+				footer.Text = if os.clock() < claimedUntil
+					then claimedText
+					elseif daily.claimable then "Claim today's reward"
 					else `Come back in {Format.duration(
 						(daily.nextAt or 0) - workspace:GetServerTimeNow()
 					)} for Day {today % #Daily.days + 1}`
@@ -1734,10 +1758,11 @@ local function buildHint(playerGui: Instance)
 	chip.Activated:Connect(openNearShop)
 	hintGui.Parent = playerGui
 
-	-- Phones: above BITE, left of the depth gauge, clear of the Haul card
+	-- Phones: above BITE and HEAL, left of the depth gauge, clear of the Haul card
+	-- (at -168 its bottom edge sat on the HEAL button)
 	local buttonGui = Ui.screen("StallButton", playerGui, 9)
 	shopButton =
-		Ui.button(buttonGui, "Shop", "", UDim2.fromOffset(230, 44), UDim2.new(1, -96, 1, -168), "primary")
+		Ui.button(buttonGui, "Shop", "", UDim2.fromOffset(230, 44), UDim2.new(1, -96, 1, -204), "primary")
 	shopButton.AnchorPoint = Vector2.new(1, 1)
 	shopButton.Selectable = false
 	shopButton.TextScaled = true
@@ -1778,7 +1803,7 @@ local function updateHint(root: BasePart?)
 	local show = best ~= nil and current == nil
 	local touch = Input.isTouch()
 	hintGui.Enabled = show and not touch
-	shopButton.Visible = show and touch
+	shopButton.Visible = show and touch and not MenuController.stallButtonHidden
 	if show and best then
 		local label = if best == "__den" then "YOUR DEN" else `SHOP · {Shop.vendorsById[best].name}`
 		if touch then
