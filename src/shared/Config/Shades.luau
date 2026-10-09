@@ -26,6 +26,7 @@ export type Shade = {
 	transparency: number?,
 	glow: Color3?, -- a soft light on the fish
 	light: Color3?, -- the colour it lights the dark with, when it glows but has no `glow` (LampController)
+	lampBoost: number?, -- its light is this much brighter in the dark (a colour that reads weak there)
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
 	-- Living shades (owner, 2026-10-08: "much much more variance and depth"): how
@@ -104,7 +105,7 @@ local list: { Shade } = {
 		Color3.fromRGB(102, 122, 173),
 		Color3.fromRGB(46, 56, 128),
 		"Ink wash pooling dark at the edges, and a glowing lateral line.",
-		{ emissive = 0.8, pulse = "wave", light = Color3.fromRGB(115, 217, 255) }
+		{ emissive = 0.8, pulse = "wave", light = Color3.fromRGB(80, 150, 255) }
 	),
 	common(
 		"Sand",
@@ -178,7 +179,7 @@ local list: { Shade } = {
 		Color3.fromRGB(242, 31, 26),
 		Color3.fromRGB(31, 250, 255),
 		"An electric cyan stripe over a red tail half.",
-		{ emissive = 0.8, pulse = "breathe", light = Color3.fromRGB(26, 230, 255) }
+		{ emissive = 0.8, pulse = "breathe", light = Color3.fromRGB(30, 245, 230) }
 	),
 	common(
 		"Leopard",
@@ -362,6 +363,8 @@ local list: { Shade } = {
 		belly = Color3.fromRGB(51, 255, 140),
 		fin = Color3.fromRGB(158, 77, 255),
 		glow = Color3.fromRGB(90, 255, 170),
+		-- Green on the Trench's teal floor read weaker than Epic Magma (playtest 2026-10-09)
+		lampBoost = 1.15,
 		sparkle = Color3.fromRGB(200, 255, 230),
 		emissive = 1.5,
 		pulse = "wave",
@@ -462,6 +465,8 @@ local list: { Shade } = {
 		transparency = 0.3,
 		spectral = true, -- the whole fish, not just its edges (owner, 2026-10-08: "a similar to ghost from sea of thieves glow")
 		glow = Color3.fromRGB(150, 255, 180),
+		-- Pale green on the teal floor read below Nebula, though it's a trophy (playtest 2026-10-09)
+		lampBoost = 1.25,
 		sparkle = Color3.fromRGB(200, 255, 210),
 		boss = "Megalodon",
 		blurb = "Pale green and see-through, lit from within like the drowned. Won from the Megalodon.",

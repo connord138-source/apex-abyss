@@ -364,19 +364,40 @@ end
 
 -- Screen ---------------------------------------------------------------------------
 
+-- The device, read when the screen opens and changed only by real input of another
+-- kind: the Device Simulator turns its keyboard flag on ~2 s in, which flipped a
+-- phone's prompt to PRESS ANY KEY (playtest 2026-10-09)
+type Device = "touch" | "gamepad" | "keys"
+local device: Device = "keys"
+
+local function deviceFromInput(kind: Enum.UserInputType): Device?
+	if kind == Enum.UserInputType.Touch then
+		return "touch"
+	elseif kind.Name:sub(1, 7) == "Gamepad" then
+		return "gamepad"
+	elseif
+		kind == Enum.UserInputType.Keyboard
+		or kind == Enum.UserInputType.MouseButton1
+		or kind == Enum.UserInputType.MouseButton2
+	then
+		return "keys"
+	end
+	return nil
+end
+
 local function promptText(): string
-	if Input.isTouch() then
+	if device == "touch" then
 		return "TAP TO START"
-	elseif Input.isGamepad() then
+	elseif device == "gamepad" then
 		return "PRESS ANY BUTTON"
 	end
 	return "PRESS ANY KEY"
 end
 
 local function biteKey(): string
-	if Input.isTouch() then
+	if device == "touch" then
 		return "the BITE button"
-	elseif Input.isGamepad() then
+	elseif device == "gamepad" then
 		return "RB or X"
 	end
 	return "Click or F"
@@ -406,6 +427,7 @@ local function gradient(
 end
 
 function StartController.start()
+	device = (if Input.isTouch() then "touch" elseif Input.isGamepad() then "gamepad" else "keys") :: Device
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	up = true
 	Input.locked = true
@@ -1073,7 +1095,12 @@ function StartController.start()
 		end
 	end)
 	tapConnection = cover.Activated:Connect(go)
-	inputTypeConnection = UserInputService.LastInputTypeChanged:Connect(function()
+	inputTypeConnection = UserInputService.LastInputTypeChanged:Connect(function(kind)
+		local now = deviceFromInput(kind)
+		if now == nil or now == device then
+			return
+		end
+		device = now :: Device
 		refreshBite()
 		if promptAt then
 			prompt.Text = promptText()

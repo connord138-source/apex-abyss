@@ -120,11 +120,14 @@ return {
 	-- with how rare the light source is"). OceanController keeps `ambient` (and the
 	-- plankton's `plankton` where it's thickest) when the light goes out, and the haze
 	-- turns `water`, so rock and fish read as dim shapes; LampController lights each
-	-- fish by its best source.
+	-- fish by its best source. Raised a step (owner, 2026-10-09: "the abyss can't be
+	-- completely black how the hell will anyone fight anything in pitch black or low
+	-- visibility let alone a boss"); near a boss the dark lifts much further
+	-- (OceanController.setBossLight).
 	light = {
-		ambient = Color3.fromRGB(24, 34, 50),
-		plankton = Color3.fromRGB(32, 58, 68),
-		water = Color3.fromRGB(8, 15, 28),
+		ambient = Color3.fromRGB(32, 46, 66),
+		plankton = Color3.fromRGB(44, 74, 88),
+		water = Color3.fromRGB(10, 20, 36),
 		decay = Color3.fromRGB(4, 8, 16),
 		-- Each light source, rarest last: the glow's range and brightness, the forward
 		-- beam's brightness (0 = none: a glowing skin shines all round), and how much
@@ -133,15 +136,15 @@ return {
 		-- Trench species); the rest are glowing shades by tier (Config/Shades
 		-- `emissive`, and the spectral Ghost).
 		sources = {
-			Common = { range = 18, brightness = 1.0, beam = 0, reveal = 0.05 },
+			Common = { range = 24, brightness = 1.3, beam = 0, reveal = 0.05 },
 			lantern = { range = 30, brightness = 1.6, beam = 2.2, reveal = 0.1 },
 			Rare = { range = 28, brightness = 1.4, beam = 0, reveal = 0.1 },
 			Epic = { range = 36, brightness = 1.9, beam = 0, reveal = 0.16 },
 			lure = { range = 46, brightness = 2.6, beam = 3.6, reveal = 0.24 },
 			Legendary = { range = 48, brightness = 2.6, beam = 0, reveal = 0.26 },
 			Mythic = { range = 60, brightness = 3.2, beam = 0, reveal = 0.34 },
-			Trophy = { range = 60, brightness = 3.4, beam = 0, reveal = 0.38 },
-			Abyssal = { range = 60, brightness = 3.4, beam = 0, reveal = 0.38 },
+			Trophy = { range = 60, brightness = 3.6, beam = 0, reveal = 0.38 },
+			Abyssal = { range = 60, brightness = 3.6, beam = 0, reveal = 0.38 },
 		} :: { [string]: { range: number, brightness: number, beam: number, reveal: number } },
 	},
 

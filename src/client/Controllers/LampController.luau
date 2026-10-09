@@ -14,9 +14,10 @@
 -- holder's own view are in Config/Tuning `light.sources`. Every client hangs the
 -- light on every lit fish, so a lit fish lights the dark for everyone round it. A
 -- glowing shade's light only comes up as the water darkens (it's a skin, not a lamp,
--- so it doesn't flood the shallows). A deep-coloured light (violet) is brightened to
--- light as much as a pale one of its tier (playtest 2026-10-09: Abyss Ink read
--- weaker than Nebula).
+-- so it doesn't flood the shallows). A deep-coloured light (violet) is brightened a
+-- little to light as much as a pale one of its tier (playtest 2026-10-09: Abyss Ink
+-- read weaker than Nebula; at x1.6 the purples outshone everything, retest
+-- 2026-10-09, so x1.2 at most), and a shade can carry its own `lampBoost`.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -48,7 +49,7 @@ local lamps: { [Model]: Lamp } = {}
 -- How much light a colour carries (linear luminance), and the brightness boost that
 -- makes a deep colour light as much as a warm orange one does (Magma's ~0.33)
 local REFERENCE_LUMINANCE = 0.32
-local MAX_BOOST = 1.6
+local MAX_BOOST = 1.2
 local function linear(c: number): number
 	return if c <= 0.04045 then c / 12.92 else ((c + 0.055) / 1.055) ^ 2.4
 end
@@ -58,12 +59,13 @@ local function boostFor(color: Color3): number
 end
 
 -- The fish's best light: its key (for rebuilding when it changes), the source, its
--- colour and whether it comes from the shade
-local function bestLight(character: Model): (string?, Source?, Color3?, boolean)
+-- colour, whether it comes from the shade, and the shade's own lamp boost
+local function bestLight(character: Model): (string?, Source?, Color3?, boolean, number)
 	local bestKey: string? = nil
 	local best: Source? = nil
 	local color: Color3? = nil
 	local fromShade = false
+	local extra = 1
 	local kind = character:GetAttribute("Lamp")
 	if typeof(kind) == "string" and SOURCES[kind] then
 		bestKey, best, color = kind, SOURCES[kind], LAMP_COLORS[kind]
@@ -78,9 +80,10 @@ local function bestLight(character: Model): (string?, Source?, Color3?, boolean)
 			best = source
 			color = shade.glow or shade.light or (if tier then tier.color else Color3.new(1, 1, 1))
 			fromShade = true
+			extra = shade.lampBoost or 1
 		end
 	end
-	return bestKey, best, color, fromShade
+	return bestKey, best, color, fromShade, extra
 end
 
 local function attach(
@@ -89,7 +92,8 @@ local function attach(
 	key: string,
 	source: Source,
 	color: Color3,
-	fromShade: boolean
+	fromShade: boolean,
+	extra: number
 ): Lamp
 	local light = Instance.new("PointLight")
 	light.Name = "Lamp"
@@ -140,7 +144,7 @@ local function attach(
 		bulb = bulb,
 		source = source,
 		fromShade = fromShade,
-		boost = boostFor(color),
+		boost = boostFor(color) * extra,
 	}
 end
 
@@ -171,14 +175,14 @@ local function step()
 		if character == nil or root == nil or not root:IsA("BasePart") then
 			continue
 		end
-		local key, source, color, fromShade = bestLight(character)
+		local key, source, color, fromShade, extra = bestLight(character)
 		local current: Lamp? = lamps[character]
 		if current and current.key ~= key then
 			detach(character)
 			current = nil
 		end
 		if key and source and color and current == nil then
-			local made = attach(character, root, key, source, color, fromShade)
+			local made = attach(character, root, key, source, color, fromShade, extra)
 			lamps[character] = made
 			current = made
 		end

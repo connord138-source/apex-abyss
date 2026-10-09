@@ -466,8 +466,10 @@ function Shelf.ops(): ({ Op }, Features)
 		table.insert(features.ruinAnchors, templeCenter + Vector3.new(0, 10, 0))
 	end
 
-	-- The Open Blue: long mud ridges, rock knolls and tall pinnacles for the
-	-- Megalodon and the sharks to circle; the rest is open deep water by design
+	-- The Open Blue: long mud ridges, rock knolls and low rock spires on a floor lost
+	-- in the blue far below; above it is open ocean (owner, 2026-10-09: "deep blue
+	-- where there's no ground or anything just open ocean"), so the spires stay
+	-- under ~70 studs and the Megalodon and the sharks keep to the water above
 	for _ = 1, 16 do
 		local angle = sectorAngle(rng, 228, 312)
 		local r = rng:NextNumber(deepInner + 40, World.boundsRadius - 60)
@@ -483,7 +485,7 @@ function Shelf.ops(): ({ Op }, Features)
 	for _ = 1, 7 do
 		local angle = sectorAngle(rng, 235, 305)
 		local r = rng:NextNumber(deepInner + 90, World.boundsRadius - 120)
-		local height = rng:NextNumber(150, 280)
+		local height = rng:NextNumber(150, 280) * 0.25
 		local base = at(angle, r, floor)
 		cylinder(ops, ROCK, base + Vector3.new(0, height / 2 - 4, 0), rng:NextNumber(24, 38), height)
 		ball(ops, ROCK, base + Vector3.new(0, height * 0.55, 0), rng:NextNumber(30, 44))

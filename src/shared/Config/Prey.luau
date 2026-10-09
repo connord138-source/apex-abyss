@@ -87,7 +87,7 @@ local list: { PreyDef } = {
 		depth = { 20, 120 },
 		zones = {
 			{ band = { 150, 830 }, schools = 8 },
-			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 4, depth = { 80, 300 } }, -- Open Blue haul
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 4, depth = { 150, 420 } }, -- Open Blue haul, mid-water
 		} :: { Zone },
 		respawn = 15,
 		back = Color3.fromRGB(200, 72, 70),
@@ -106,7 +106,7 @@ local list: { PreyDef } = {
 		depth = { 8, 60 },
 		zones = {
 			{ band = { 520, 830 }, schools = 5 },
-			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 5, depth = { 60, 260 } }, -- Open Blue haul
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 5, depth = { 140, 380 } }, -- Open Blue haul, mid-water
 			{ band = { 980, 1440 }, angles = { 318, 64 }, schools = 2 }, -- the Ruins
 		} :: { Zone },
 		respawn = 20,
@@ -126,7 +126,7 @@ local list: { PreyDef } = {
 		depth = { 40, 180 },
 		zones = {
 			{ band = { 700, 1250 }, schools = 4 },
-			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 2, depth = { 60, 300 } },
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 2, depth = { 150, 400 } },
 		} :: { Zone },
 		respawn = 25,
 		back = Color3.fromRGB(110, 124, 132),
@@ -144,7 +144,7 @@ local list: { PreyDef } = {
 		pathRadius = { 70, 120 },
 		depth = { 40, 160 },
 		zones = {
-			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 4, depth = { 60, 330 } }, -- the Open Blue is shark water
+			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 4, depth = { 150, 430 } }, -- the Open Blue is shark water, mid-water
 			{ band = { 980, 1440 }, angles = { 318, 64 }, schools = 1 },
 		} :: { Zone },
 		respawn = 35,

@@ -72,7 +72,7 @@ local list: { PredatorDef } = {
 		ignoreBelow = 0.3,
 		band = { 980, 1440 },
 		angles = { 228, 312 }, -- the Open Blue is shark water (owner, 2026-10-08)
-		depth = { 40, 330 },
+		depth = { 150, 430 }, -- open water, well off the floor (owner, 2026-10-09)
 		count = 4,
 		respawn = 150,
 		loot = { haulKg = 18, dna = 6, coral = 120 },

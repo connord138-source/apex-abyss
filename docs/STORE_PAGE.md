@@ -17,7 +17,9 @@ Connor makes it public. Everything to upload is in `marketing/` (committed); reb
 | `thumb_5_shades.jpg` | Thumbnail 5 | Prismatic, Ghost, Magma, Nebula, Divine. "RARE SHADES!" |
 | `thumb_6_treasure.jpg` | Thumbnail 6 | A chest dug up in the shipwrecks, the map beside it. "TREASURE MAPS!" |
 | `thumb_7_biomes.jpg` | Thumbnail 7 | Kelp, reef arches and wrecks side by side. "EXPLORE 7 BIOMES!" |
-| `thumb_8_den.jpg` … `thumb_10_reveal.jpg` | Thumbnails 8–10 | From in-game captures (below), once they're in `marketing/raw/` |
+| `thumb_8_den.jpg` | Thumbnail 8 | In-game: a furnished Grotto, the full Coral Garden. "BUILD YOUR DEN!" |
+| `thumb_9_megalodon.jpg` | Thumbnail 9 | In-game: the Megalodon's jaws. "FIGHT THE MEGALODON!" Provisional: retake it after the open-water rework (it's murky and staged) |
+| `thumb_10_reveal.jpg` | Thumbnail 10 | In-game: the roll reveal landing on Nebula. "ROLL RARE SHADES!" |
 | `logo.png` | Anywhere (transparent) | APEX ABYSS |
 
 Roblox shows up to 10 thumbnails; the lead one matters most. Everything shown is in the game

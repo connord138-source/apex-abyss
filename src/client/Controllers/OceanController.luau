@@ -66,25 +66,28 @@ local GRADES: { Grade } = {
 	},
 	{
 		y = World.deep.floorY * 0.5,
-		color = Color3.fromRGB(18, 76, 124),
-		decay = Color3.fromRGB(6, 34, 72),
-		density = 0.82,
-		tint = Color3.fromRGB(184, 208, 236),
-		brightness = -0.04,
-		saturation = -0.04,
-		exposure = -0.48,
-		sight = 250,
+		-- Open water (the Open Blue's middle depths, where the Megalodon roams): a
+		-- rich deep blue that swallows things a few hundred studs off, never black
+		-- (owner, 2026-10-09)
+		color = Color3.fromRGB(20, 84, 138),
+		decay = Color3.fromRGB(8, 40, 86),
+		density = 0.8,
+		tint = Color3.fromRGB(186, 212, 240),
+		brightness = -0.03,
+		saturation = -0.02,
+		exposure = -0.4,
+		sight = 260,
 	},
 	{
 		y = World.deep.floorY,
-		color = Color3.fromRGB(12, 58, 108),
-		decay = Color3.fromRGB(4, 28, 64),
-		density = 0.88,
-		tint = Color3.fromRGB(172, 198, 232),
-		brightness = -0.06,
-		saturation = -0.08,
-		exposure = -0.62,
-		sight = 210,
+		color = Color3.fromRGB(14, 64, 118),
+		decay = Color3.fromRGB(5, 30, 70),
+		density = 0.86,
+		tint = Color3.fromRGB(176, 202, 236),
+		brightness = -0.05,
+		saturation = -0.06,
+		exposure = -0.52,
+		sight = 220,
 	},
 	{
 		y = World.deep.ventsFloorY,
@@ -116,9 +119,12 @@ local GRADES: { Grade } = {
 }
 
 local HUB_TINT = Color3.fromRGB(246, 236, 222)
--- Dread (a world boss near): the water darkens and desaturates toward this, and
--- the contrast beats like a heart
-local DREAD_TINT = Color3.fromRGB(150, 120, 130)
+-- Dread (a world boss near): the water turns colder and greyer toward this and the
+-- contrast beats like a heart. It never darkens the picture: near a boss the fight
+-- has to be seen (owner, 2026-10-09: "how the hell will anyone fight anything in
+-- pitch black or low visibility let alone a boss"); the edges darken instead
+-- (BossController's vignette)
+local DREAD_TINT = Color3.fromRGB(170, 192, 218)
 
 local OceanController = {}
 
@@ -131,6 +137,11 @@ local hubBlend, hubVelocity = 0, 0
 local dreadTarget = 0
 local dread, dreadVelocity = 0, 0
 local heart = 0
+local beatNow = 0
+-- A world boss's fight light (BossController): near one the water clears and the
+-- dark lifts, so the fight reads
+local bossLightTarget = 0
+local bossLight, bossLightVelocity = 0, 0
 local blindTarget = 0
 local blind, blindVelocity = 0, 0
 local ink: ColorCorrectionEffect
@@ -198,7 +209,7 @@ local function step(dt: number)
 	if atmo and atmo.Parent then
 		atmo.Color = blended.color
 		atmo.Decay = blended.decay
-		atmo.Density = blended.density * (1 - hubBlend * 0.25)
+		atmo.Density = blended.density * (1 - hubBlend * 0.25) * (1 - bossLight * 0.22)
 	else
 		atmosphere = Lighting:FindFirstChild("OceanAtmosphere") :: Atmosphere?
 	end
@@ -212,17 +223,21 @@ local function step(dt: number)
 	-- A double thump: lub-dub, then quiet
 	local cycle = heart % (2 * math.pi)
 	local beat = math.max(math.sin(cycle) ^ 6, math.sin(cycle - 0.9) ^ 6 * 0.6)
-	grade.TintColor = blended.tint:Lerp(HUB_TINT, hubBlend * 0.6):Lerp(DREAD_TINT, dread * 0.55)
-	grade.Brightness = blended.brightness - dread * 0.08
-	grade.Saturation = blended.saturation - dread * 0.45
-	grade.Contrast = 0.06 + dread * (0.1 + beat * 0.16)
-	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 - dread * 0.55
+	beatNow = beat * dread
+	bossLight, bossLightVelocity = Spring.number(bossLight, bossLightVelocity, bossLightTarget, 2, dt)
+	grade.TintColor = blended.tint:Lerp(HUB_TINT, hubBlend * 0.6):Lerp(DREAD_TINT, dread * 0.4)
+	grade.Brightness = blended.brightness + bossLight * 0.03
+	grade.Saturation = blended.saturation - dread * 0.3 + bossLight * 0.12
+	grade.Contrast = 0.06 + dread * (0.06 + beat * 0.12)
+	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 + bossLight * 0.35
 	-- The dark: the light itself goes out (sun, ambient, the environment's
 	-- reflections), so only what glows or is lit shows: lamps, glowing skins, the
 	-- plankton, the walls' glow specks. Fog and a crushed exposure hid all of those
 	-- too (playtest 2026-10-08). A fish's own light lifts its view of the dark by
 	-- how rare the light is (Config/Tuning light.sources `reveal`).
-	dark, darkVelocity = Spring.number(dark, darkVelocity, darkTarget * (1 - reveal), 1.8, dt)
+	-- Near a boss the dark lifts by more than half, whatever light you carry
+	dark, darkVelocity =
+		Spring.number(dark, darkVelocity, darkTarget * (1 - reveal) * (1 - bossLight * 0.6), 1.8, dt)
 	water, waterVelocity = Spring.number(water, waterVelocity, darkTarget, 1.8, dt)
 	if dark > 0.001 then
 		local day: Light = daylight
@@ -313,9 +328,21 @@ function OceanController.setBlind(amount: number)
 	blindTarget = math.clamp(amount, 0, 1)
 end
 
--- How much a world boss's presence darkens the water (0..1); BossController sets it.
+-- How strongly a world boss is felt (0..1; BossController sets it): colder,
+-- greyer water and a heartbeat in the contrast, never a darker picture
 function OceanController.setDread(amount: number)
 	dreadTarget = math.clamp(amount, 0, 1)
+end
+
+-- The heartbeat's pulse right now, scaled by the dread (0..1), for the vignette
+function OceanController.heartbeat(): number
+	return beatNow
+end
+
+-- How close the camera is to a boss fight (0..1; BossController sets it): the water
+-- round it clears and the dark lifts so the boss can be seen and fought
+function OceanController.setBossLight(amount: number)
+	bossLightTarget = math.clamp(amount, 0, 1)
 end
 
 function OceanController.start()

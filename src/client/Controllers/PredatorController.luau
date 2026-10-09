@@ -36,6 +36,15 @@ local DARK_GLOW: { [string]: Color3 } = {
 local Predators = Config.Predators
 local Bosses = Config.Bosses
 
+-- How each boss shows itself (Config/Bosses `sight`), by its creature's id
+local SIGHT: { [string]: { far: number?, near: number?, light: number } } = {}
+for _, boss in Bosses.list do
+	SIGHT[boss.predator.id] = boss.sight
+end
+-- The rim that keeps a boss readable in a fight (owner, 2026-10-09: "once he is upon
+-- them he needs to be seeable to be fightable")
+local FIGHT_RIM = Color3.fromRGB(190, 225, 255)
+
 type Def = PredatorsConfig.PredatorDef
 
 local PredatorController = {
@@ -89,6 +98,8 @@ type Visual = {
 	staggerUntil: number,
 	bloodUntil: number,
 	grabs: { [number]: number }, -- a squid's held fish: userId → when the grab times out
+	presence: number, -- 0..1: how far a boss has faded in out of the water (Config/Bosses `sight`)
+	shown: number, -- the opacity last applied to the body
 	jaw: Highlight,
 	glow: PointLight,
 	blood: ParticleEmitter?,
@@ -449,6 +460,9 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		staggerUntil = 0,
 		bloodUntil = 0,
 		grabs = {},
+		-- A boss that fades in starts unseen, wherever it rises
+		presence = if SIGHT[def.id] and SIGHT[def.id].far then 0 else 1,
+		shown = 0,
 		jaw = jaw,
 		glow = glow,
 		blood = nil,
@@ -697,6 +711,19 @@ end
 -- so it rests against the flank, in bite reach (retest 2026-10-09: a push added to
 -- the velocity carried on after the fish was out and threw it 37-42 studs off the
 -- axis, past the bite reach).
+-- How far `point` is from a creature's body: its axis, less the body radius
+local function bodyGap(visual: Visual, point: Vector3): number
+	local half = visual.heading * visual.def.length * 0.42
+	local tail, span = visual.position - half, half * 2
+	local t = math.clamp((point - tail):Dot(span) / math.max(span:Dot(span), 1e-4), 0, 1)
+	return math.max((point - (tail + span * t)).Magnitude - visual.def.length * BODY_RADIUS, 0)
+end
+
+local function smoothstep(t: number): number
+	t = math.clamp(t, 0, 1)
+	return t * t * (3 - 2 * t)
+end
+
 local function solid(visual: Visual)
 	local mine = SwimController.root()
 	if mine == nil or SwimController.isHeld() then
@@ -732,13 +759,34 @@ local function step(dt: number)
 	local me = Players.LocalPlayer.UserId
 	table.clear(parts)
 	table.clear(frames)
+	local cameraAt = workspace.CurrentCamera.CFrame.Position
 	for _, visual in visuals do
 		-- Fade in and out
 		local goal = if visual.hidden then 0 else 1
 		if visual.fade ~= goal then
 			visual.fade =
 				math.clamp(visual.fade + (if goal > visual.fade then dt else -dt) / FADE_SECONDS, 0, 1)
-			setTransparency(visual, 1 - visual.fade)
+		end
+		-- A boss that hunts out of the blue fades into view as it closes in and fades
+		-- back out as it leaves (owner, 2026-10-09: "unseen until he slowly fades into
+		-- view of players"); its tells and fight rim follow
+		local sight = SIGHT[visual.def.id]
+		local far, near = if sight then sight.far else nil, if sight then sight.near else nil
+		if far and near then
+			-- (left as it was while it leaves, so a boss that was out of sight never
+			-- flashes into view as it goes)
+			if not visual.hidden then
+				local gap = bodyGap(visual, cameraAt)
+				local target = smoothstep((far - gap) / math.max(far - near, 1))
+				visual.presence += (target - visual.presence) * math.min(1, dt * 2.5)
+			end
+		else
+			visual.presence = 1
+		end
+		local opacity = visual.fade * visual.presence
+		if math.abs(opacity - visual.shown) > 0.006 or (opacity == 0) ~= (visual.shown == 0) then
+			visual.shown = opacity
+			setTransparency(visual, 1 - opacity)
 		end
 		if visual.fade <= 0 then
 			if visual.gone then
@@ -832,7 +880,10 @@ local function step(dt: number)
 			-- In the dark a boss shows by its own eerie light, a faint pulsing glow and
 			-- rim, so it reads as a silhouette instead of vanishing (playtest
 			-- 2026-10-08: the Giant Squid couldn't be seen without a lamp)
-			local dark = if visual.boss then OceanController.darkness() else 0
+			-- Every hunter shows faintly in the dark, a boss most (owner, 2026-10-09: "how
+			-- the hell will anyone fight anything in pitch black"), as far as it has
+			-- faded in
+			local dark = OceanController.darkness() * (if visual.boss then 1 else 0.6) * visual.presence
 			jaw.FillTransparency = 1
 			if dark > 0.05 then
 				-- A tinted fill and a bright rim, so the whole body reads as a glowing
@@ -845,13 +896,21 @@ local function step(dt: number)
 				jaw.OutlineTransparency = 1 - dark * (0.75 + 0.2 * pulse)
 				glow.Color = eerie
 				glow.Brightness = dark * (1.6 + 1.2 * pulse)
+			elseif visual.boss and sight then
+				-- In open water a faint cool rim keeps its outline readable up close
+				local close = 1
+					- smoothstep((bodyGap(visual, cameraAt) - sight.light * 0.4) / (sight.light * 0.6))
+				jaw.OutlineColor = FIGHT_RIM
+				jaw.OutlineTransparency = 1 - 0.4 * close * visual.presence
+				glow.Brightness = 0
 			else
 				jaw.OutlineTransparency = 1
 				glow.Brightness = 0
 			end
 		end
-		-- The tag: hidden inside a blood cloud (sonar only), else the status line
-		visual.tag.Enabled = not visual.hidden and visual.bloodUntil <= now
+		-- The tag: hidden inside a blood cloud (sonar only), and until a boss has faded
+		-- most of the way in; else the status line
+		visual.tag.Enabled = not visual.hidden and visual.bloodUntil <= now and visual.presence > 0.5
 		if visual.staggerUntil > now then
 			visual.status.Text = "STAGGERED · BITE IT"
 			visual.status.TextColor3 = Ui.color.haul
@@ -897,7 +956,6 @@ local function step(dt: number)
 		end
 	end
 	-- Ink: the camera inside a cloud goes blind
-	local cameraAt = workspace.CurrentCamera.CFrame.Position
 	local blind = 0
 	for i = #inks, 1, -1 do
 		local cloud = inks[i]
@@ -1258,6 +1316,16 @@ end
 
 -- The creature drawn at `index`: its position, mode, health (0..1) and stagger
 -- meter (0..1), for the boss HUD. Nil when it isn't known here.
+-- How far `point` is from a creature's body (nil while it isn't drawn), and how far
+-- it has faded into view (0..1)
+function PredatorController.gap(index: number, point: Vector3): (number?, number)
+	local visual = visuals[index]
+	if visual == nil or visual.hidden then
+		return nil, 0
+	end
+	return bodyGap(visual, point), visual.presence
+end
+
 function PredatorController.get(index: number): (Vector3?, string?, number, number)
 	local visual = visuals[index]
 	if visual == nil or visual.hidden then

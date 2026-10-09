@@ -134,6 +134,13 @@ export type BossDef = {
 		title: string,
 	},
 	dread: { range: number, shakeRange: number, warning: string },
+	-- How it shows itself (owner, 2026-10-09: the Megalodon is "an eerie figure" that
+	-- "slowly fades into view of players. Once he is upon them he needs to be seeable
+	-- to be fightable"; "how the hell will anyone fight anything in pitch black or low
+	-- visibility let alone a boss"). Distances are studs from its body: beyond `far` it
+	-- can't be seen and by `near` it's solid (no fade when nil); within `light` the
+	-- water round it clears (and the dark lifts), so the fight reads.
+	sight: { far: number?, near: number?, light: number },
 	event: { interval: number, warning: number, studioInterval: number, escapeDelay: number },
 }
 
@@ -157,7 +164,7 @@ local megalodon: BossDef = {
 		telegraph = 1.2,
 		ignoreBelow = 0.035, -- a Fry (2–3 studs) is too small to bother with
 		band = { 1000, 1440 },
-		depth = { 30, 280 },
+		depth = { 170, 470 },
 		count = 0, -- never spawned by the predator roster; BossService summons it
 		respawn = 0,
 		loot = { haulKg = 0, dna = 0, coral = 0 }, -- BossService pays the real rewards
@@ -210,7 +217,10 @@ local megalodon: BossDef = {
 		direction = Vector3.new(0, 0, -1), -- the Open Blue is north, off the drop-off
 		spread = math.rad(42),
 		band = { 1000, 1440 },
-		depth = { 30, 280 },
+		-- Open water (owner, 2026-10-09: "not for deepest darkest ocean just deep blue
+		-- where there's no ground or anything just open ocean"): 170–470 studs over
+		-- the deep floor, where the floor is lost in the blue below
+		depth = { 170, 470 },
 	},
 	stagger = { need = 700, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
 	softSpots = { { from = 0.6, to = 0.8 }, { from = 0, to = 0.22 } }, -- gills, tail
@@ -232,7 +242,9 @@ local megalodon: BossDef = {
 		shadeRollMin = "Rare",
 		title = "Megalodon Slayer",
 	},
-	dread = { range = 300, shakeRange = 70, warning = "MEGALODON NEARBY" },
+	-- Felt before it's seen: the dread starts well outside the fade-in
+	dread = { range = 460, shakeRange = 70, warning = "SOMETHING CIRCLES IN THE BLUE" },
+	sight = { far = 280, near = 110, light = 190 },
 	event = { interval = 1800, warning = 120, studioInterval = 240, escapeDelay = 900 },
 }
 
@@ -322,6 +334,8 @@ local giantSquid: BossDef = {
 		title = "Kraken Slayer",
 	},
 	dread = { range = 300, shakeRange = 60, warning = "SOMETHING STIRS BELOW" },
+	-- The deep dark is the squid's: it doesn't fade, but near it the dark lifts
+	sight = { light = 200 },
 	event = { interval = 1800, warning = 120, studioInterval = 240, escapeDelay = 900 },
 }
 
@@ -336,7 +350,8 @@ return {
 	list = list,
 	byId = byId,
 	rotation = { "Megalodon", "GiantSquid" }, -- the order the events take turns in
-	-- Clients: the boss HUD bar shows within this distance of a boss
+	-- Clients: the boss HUD bar shows within this distance of a boss (a boss that
+	-- fades in shows its bar once it starts to appear)
 	hudRange = 1000,
 	-- A grabbed fish is dragged toward the beak at this speed (studs/s); its own
 	-- swimming is overridden until it breaks free

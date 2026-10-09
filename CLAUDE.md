@@ -294,7 +294,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Megalodon (built 2026-10-07):** `Config/Bosses.luau` + `BossService` on top of the
     predators. A world event about every 30 min (4 min in Studio; 2 min warning,
     `_G.ApexBoss.summon()` / `.hurt(0.5)` from the Server command bar), patrolling the
-    Open Blue (north, 330–620 out). 80 studs, 6,000 hp +60% per extra attacker (20 s
+    Open Blue (north, 1,000–1,440 out, 170–470 studs over the floor). 6,000 hp +60% per extra attacker (20 s
     window). Three phases: Hunting (Charge 35%, Bite 55%, both telegraphed),
     Frenzy under 60% (×1.3 speed, blood cloud hides the tag, Tail sweep 20% + a shove
     when 3+ fish bunch behind it, Marked for death: 8 s of short lunges at one fish),
@@ -357,9 +357,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   reef heads with tunnels, 14 ridges with swim-throughs and 26 arches, with the corals
   growing on and round them, `Features.reefRocks`). Deep biomes beyond (850–1,500):
   Open Blue north (LV 35–55; owner: "a deep blue ocean that is mainly traversed for the
-  megalodon and sharks with some other good haul fish like grouper and snapper", so a
-  blue-grey floor, knolls and seven pinnacles, the Reef Shark predators and the
-  shark/grouper/snapper schools keep to its sector), Sunken Ruins east (50–70, plus a
+  megalodon and sharks with some other good haul fish like grouper and snapper", and
+  2026-10-09 "just open ocean", so open water over a blue-grey floor far below with
+  knolls and low spires; the Reef Shark predators and the shark/grouper/snapper
+  schools keep to its sector, mid-water), Sunken Ruins east (50–70, plus a
   temple ring), Hydrothermal Vents south-west (65–85; ten basins at −540 placed by
   `Seafloor.ventBasins`, 26 chimneys), Abyssal Trench south (80–100): a winding canyon
   in three stepped cuts from −430 down to −920 (`Seafloor.trenchAxis` and
@@ -390,6 +391,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     draw rigged `PreyModels` (the 'Cuda and Reef Shark species models, copied there
     by `organize_imports`) the way bosses draw `FishModels`. Never pull the MeshPart
     out of a rigged Model and flip it.
+- **The Megalodon comes out of the deep blue (owner, 2026-10-09: "an eerie figure
+  that sort of appears from the deep blue ... not for deepest darkest ocean just deep
+  blue where there's no ground or anything just open ocean ... unseen until he slowly
+  fades into view of players. Once he is upon them he needs to be seeable to be
+  fightable"):** it roams the Open Blue's open water (`patrol.depth` 170–470 over the
+  floor); the Open Blue's fish and Reef Sharks keep to 140–430, and its old 150–280
+  stud pinnacles are 37–70 stud spires on the floor far below (`Shelf.luau`).
+  `Config/Bosses` `sight` (studs from its body): unseen beyond `far` 280, solid by
+  `near` 110 (`PredatorController` fades the body's transparency by camera distance,
+  eased; tag and boss bar only once it shows), and within `light` 190 the fight light
+  (`OceanController.setBossLight`: exposure +0.35, haze ×0.78, and in the dark the dark
+  ×0.4) plus a faint cool Highlight rim. The dread (range 460) never darkens the
+  picture any more (it made the Open Blue near-black, playtest 2026-10-09): colder,
+  greyer water, a heartbeat in the contrast and a vignette of the screen's edges
+  (`BossController`); while it's unseen the warning reads SOMETHING CIRCLES IN THE
+  BLUE with no arrow or distance. The squid has no fade (the dark is its own) but the
+  same fight light.
 - **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
   and radii scaled with them (`Config/Bosses.luau`). **Bosses are solid** (playtest
   2026-10-08: the Megalodon and fish phased through each other): your own fish is
@@ -439,9 +457,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   wearer's screen, playtest 2026-10-09). A deep-coloured light gets up to ×1.6
   brightness by luminance (Abyss Ink, Void, Nebula read weaker than their tier).
   Common glowing shades: Ember, Ink and Neon Tetra (`light` in `Config/Shades` gives
-  the colour when there's no `glow`). The Trench reads the plankton level (32, 58,
-  68) nearly everywhere at its bottom; the base shows higher up. The biome banner
-  and chip say PITCH DARK · bring a light.
+  the colour when there's no `glow`). The Trench reads the plankton level nearly
+  everywhere at its bottom; the base shows higher up. The biome banner and chip say
+  PITCH DARK · bring a light. **Retuned after the owner's "the abyss can't be
+  completely black how the hell will anyone fight anything in pitch black or low
+  visibility let alone a boss" (2026-10-09):** `light.ambient` (32, 46, 66),
+  `plankton` (44, 74, 88); the deep-colour boost tops out at ×1.2 (×1.6 made the
+  purples outshine everything); `lampBoost` in `Config/Shades` lifts Aurora (×1.15) and
+  Ghost (×1.25), which read weak on the teal floor; Common is range 24, brightness
+  1.3; Trophy 3.6. Every predator shows the eerie rim in the dark (non-bosses at 60%),
+  and near a boss the fight light lifts the dark (above).
 - **Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
   luminescense such as photoplankton etc to give very very faint light"):**
   `PlanktonController` fills the water round the camera with faint twinkling
@@ -586,7 +611,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   Pufferfish swimming past with the SwimWave, a sardine school), light shafts, marine
   snow, rising bubbles, the APEX ABYSS title with a shine, and three how-to-play cards
   (EAT, BITE with the device's key, BANK). LOADING THE REEF until the fish has spawned
-  and the state arrived (at least 2.4 s), then PRESS ANY KEY / BUTTON / TAP TO START.
+  and the state arrived (at least 2.4 s), then PRESS ANY KEY / BUTTON / TAP TO START
+  (the device is read when the screen opens and changes only on real input of another
+  kind: the Device Simulator turns its keyboard flag on ~2 s in).
   Any key (not Escape), click, tap or pad button dives in: the cameras rush ahead,
   bubbles burst and the water clears onto the fish in its den. `Input.locked` holds the
   fish still meanwhile; chat and the player list are hidden. Join-time UI waits with

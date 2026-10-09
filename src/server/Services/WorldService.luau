@@ -1210,9 +1210,9 @@ local function buildBiomes(parent: Instance)
 		end
 	end
 
-	-- Open Blue: deep blue water over a blue floor with big dark rocks, knolls and the
-	-- pinnacles; the sharks, the grouper and snapper schools and the Megalodon are its
-	-- content (owner, 2026-10-08), so the water itself stays open
+	-- Open Blue: open ocean (owner, 2026-10-09) over a blue floor far below with big
+	-- dark rocks, knolls and low spires; the sharks, the grouper and snapper schools
+	-- and the Megalodon swim the water above it (owner, 2026-10-08)
 	for _ = 1, 40 do
 		local ground = spotIn(rng, "OpenBlue", 20)
 		if ground then
@@ -1471,17 +1471,6 @@ local function buildBiomes(parent: Instance)
 				0.14
 			)
 		end
-	end
-	-- The pinnacles' tops catch a light
-	for _, top in features.pinnacles do
-		local slant = Vector3.new(rng:NextNumber(-20, 20), 0, rng:NextNumber(-20, 20))
-		lightShaft(
-			shafts,
-			Vector3.new(top.X, World.surfaceY - 2, top.Z),
-			top + Vector3.new(0, 4, 0) + slant,
-			16,
-			0.2
-		)
 	end
 end
 

@@ -341,19 +341,27 @@ def shots():
         vignette(c, 70)
         return c
 
+    # (headline, line, where the words go: "top" for the logo and headline along the
+    # top, "bottom" for shots whose top is busy, like the roll reveal's reel)
     lines = {
-        "shot_8_den": ("BUILD YOUR\nDEN!", "TROPHIES · FURNITURE · CORAL GARDEN"),
-        "shot_9_megalodon": ("FIGHT THE\nMEGALODON!", "A WORLD BOSS EVERY 30 MINUTES"),
-        "shot_10_reveal": ("ROLL RARE\nSHADES!", "COLLECT SHELLS · 30+ SHADES TO FIND"),
+        "shot_8_den": ("BUILD YOUR\nDEN!", "TROPHIES · FURNITURE · CORAL GARDEN", "top"),
+        "shot_9_megalodon": ("FIGHT THE\nMEGALODON!", "A WORLD BOSS EVERY 30 MINUTES", "top"),
+        "shot_10_reveal": ("ROLL RARE\nSHADES!", "COLLECT SHELLS · 30+ SHADES TO FIND", "bottom"),
     }
-    for name, (headline, sub) in lines.items():
+    for name, (headline, sub, where) in lines.items():
         c = shot(name)
         if c is None:
             continue
-        scrim(c, "tl", 140)
-        scrim(c, "b", 120, 0.3)
-        place(c, logo_at(420, logo), 10, 0)
-        place(c, text_layer(headline, BIG, 116, angle=-3), W - 50, 40, "rt")
+        if where == "top":
+            scrim(c, "tl", 140)
+            scrim(c, "b", 120, 0.3)
+            place(c, logo_at(420, logo), 10, 0)
+            place(c, text_layer(headline, BIG, 116, angle=-3), W - 50, 40, "rt")
+        else:
+            scrim(c, "bl", 150, 0.5)
+            scrim(c, "br", 150, 0.5)
+            place(c, logo_at(340, logo), 10, H - 70, "lb")
+            place(c, text_layer(headline, BIG, 100, angle=-3), W - 50, H - 100, "rb")
         place(c, text_layer(sub, SUB, 50), W // 2, H - 34, "mb")
         number, label = name.split("_")[1], name.split("_", 2)[2]
         save(c, f"thumb_{number}_{label}.jpg")

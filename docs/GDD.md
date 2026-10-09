@@ -585,10 +585,12 @@ Open Blue "a large black wasteland"): the map's radius went 1,000 → 1,500, the
   every one of those rocks plus 60 gardens between). It ends at the **drop-off**, a
   90-stud rock cliff 430 studs tall with bulges, bays, notches, buttresses, ledges and
   eight sand chutes down to the deep floor at −430.
-- **Below the drop-off** (850–1,500 out): the Open Blue north (LV 35–55; deep blue
-  water over a blue-grey floor with ridges, knolls and seven rock pinnacles up to 280
-  tall; shark water: the Reef Shark predators and the shark, grouper and snapper
-  schools live here, and the Megalodon patrols it), the Sunken Ruins east (50–70;
+- **Below the drop-off** (850–1,500 out): the Open Blue north (LV 35–55; open ocean,
+  owner 2026-10-09: "deep blue where there's no ground or anything just open ocean":
+  its life keeps to the water 150–470 studs over a blue-grey floor that's lost in the
+  blue far below, with ridges, knolls and low spires; shark water: the Reef Shark
+  predators and the shark, grouper and snapper schools live here, and the Megalodon
+  roams it), the Sunken Ruins east (50–70;
   mounds, column stubs, broken walls, temples with statues and teal lanterns, and a
   temple ring), the Hydrothermal Vents south-west (65–85; ten basins sunk to −540
   with 26 basalt chimneys, glowing caps, black smoke), and the **Abyssal Trench**
@@ -642,7 +644,7 @@ view the rarer it is:
 
 | Source | Range | Holder's view |
 |---|---|---|
-| Common glowing shade (Ember, Ink, Neon Tetra) | 18 | 5% clearer |
+| Common glowing shade (Ember, Ink, Neon Tetra) | 24 | 5% clearer |
 | Deep Lantern (350 coral) | 30 + beam | 10% |
 | Rare glowing shade | 28 | 10% |
 | Epic glowing shade | 36 | 16% |
@@ -653,8 +655,16 @@ view the rarer it is:
 
 A fish uses its best source, and everyone round it sees its light. A glowing shade's
 light comes up as the water darkens (it's a skin, not a lamp), measured before its
-holder's own light clears the view, and deep colours (violet) are brightened so they
-light as much as their tier says. `Config/Tuning` `light`.
+holder's own light clears the view; deep colours (violet) get up to ×1.2, and Aurora
+and Ghost carry their own boost (green reads weak on the teal floor), so the order
+by eye follows the tiers. `Config/Tuning` `light`.
+
+**Fights are never fought in the dark (owner, 2026-10-09: "the abyss can't be
+completely black how the hell will anyone fight anything in pitch black or low
+visibility let alone a boss").** The no-light level was raised a step, every hunter
+shows a faint eerie rim in the dark, and near a boss the dark lifts by more than half
+and the water clears (`OceanController.setBossLight`), whatever light you carry: the
+Giant Squid's bioluminescence lights the abyss round it.
 
 ### Healing (owner, 2026-10-07; built)
 
@@ -709,11 +719,23 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
     the Wreck.
   - It never enters the hub or the Kelp Shallows ring. Shallows players can still see
     its silhouette pass along the edge.
-- **Dread before you see it:**
-  - Within about 300 studs, a low drone and a heartbeat swell under the music, and the
-    water darkens.
-  - A HUD warning, "MEGALODON NEARBY", points toward it.
+- **Out of the deep blue (owner, 2026-10-09: "an eerie figure ... not for deepest
+  darkest ocean just deep blue where there's no ground or anything just open ocean ...
+  he should roam around the deep blue ... unseen until he slowly fades into view of
+  players. Once he is upon them he needs to be seeable to be fightable"; built):**
+  - It roams the Open Blue's open water, 170–470 studs over the deep floor, which is
+    lost in the blue below it.
+  - **Felt before it's seen:** within ~460 studs a low drone and a heartbeat swell,
+    the screen's edges darken and beat, the water turns cold and grey, and a warning
+    reads SOMETHING CIRCLES IN THE BLUE (no arrow, no distance).
+  - **It fades in:** from ~280 studs off its body it materialises out of the blue,
+    solid by ~110. Its tag and boss bar appear as it shows, and then MEGALODON NEARBY
+    points at it.
+  - **Seen to be fought:** within ~190 studs the water round it clears (no darkening
+    ever), and a faint cool rim keeps its outline readable.
   - The camera shakes as it passes, and its tag reads APEX PREDATOR in red.
+  - `Config/Bosses` `sight` and `dread`; `PredatorController` (the fade, the rim),
+    `BossController` (dread, vignette, the fight light).
 - **Danger:**
   - Its bite takes 55% of any fish's max health (owner, 2026-10-07: nothing is a
     one-shot); two bites kill, a Kelp Wrap buys a third.

@@ -1,9 +1,12 @@
 --!strict
 -- The world boss on this client (Config/Bosses, BossService): the event countdown
 -- when one is about to rise, the boss bar (name, phase, health, stagger meter, the
--- Last stand clock) while it's near, the dread as it closes in (the water darkens
--- and beats like a heart, a NEARBY warning points at it, the camera shakes as it
--- passes) and the reward card when it dies. PredatorController draws the body.
+-- Last stand clock) while it's near, the dread as it closes in (felt before it's
+-- seen: the screen's edges darken and beat like a heart, the water turns cold and
+-- grey, a warning names it; once it shows, the NEARBY arrow points at it and the
+-- camera shakes as it passes), the fight light up close (the water clears and the
+-- dark lifts, OceanController.setBossLight) and the reward card when it dies.
+-- PredatorController draws the body and fades a boss in out of the blue.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -48,6 +51,9 @@ local countdownLabel: TextLabel
 local nearby: Frame
 local nearbyLabel: TextLabel
 local nearbyArrow: TextLabel
+-- The dread's vignette: the screen's edges darken, never its middle (owner,
+-- 2026-10-09: a fight must be seen)
+local vignette: { Frame } = {}
 
 local state: { [string]: any } = { state = "gone" }
 local lastShake = 0
@@ -258,6 +264,45 @@ local function rewardCard(summary: { [string]: any })
 	end)
 end
 
+-- No boss near: no dread, no fight light, no vignette
+local function calm()
+	OceanController.setDread(0)
+	OceanController.setBossLight(0)
+	AmbienceController.setDread(0)
+	for _, frame in vignette do
+		frame.BackgroundTransparency = 1
+	end
+end
+
+-- Four soft dark edges on their own full-screen layer (not the HUD's scaled one)
+local function buildVignette(playerGui: Instance)
+	local layer = Instance.new("ScreenGui")
+	layer.Name = "BossVignette"
+	layer.ResetOnSpawn = false
+	layer.IgnoreGuiInset = true
+	layer.ScreenInsets = Enum.ScreenInsets.None
+	layer.DisplayOrder = 1
+	layer.Parent = playerGui
+	local function side(size: UDim2, position: UDim2, rotation: number)
+		local frame = Instance.new("Frame")
+		frame.Size = size
+		frame.Position = position
+		frame.BackgroundColor3 = Color3.fromRGB(2, 8, 18)
+		frame.BackgroundTransparency = 1
+		frame.BorderSizePixel = 0
+		local fade = Instance.new("UIGradient")
+		fade.Rotation = rotation
+		fade.Transparency = NumberSequence.new(0, 1)
+		fade.Parent = frame
+		frame.Parent = layer
+		table.insert(vignette, frame)
+	end
+	side(UDim2.fromScale(1, 0.24), UDim2.fromScale(0, 0), 90)
+	side(UDim2.fromScale(1, 0.24), UDim2.fromScale(0, 0.76), 270)
+	side(UDim2.fromScale(0.2, 1), UDim2.fromScale(0, 0), 0)
+	side(UDim2.fromScale(0.2, 1), UDim2.fromScale(0.8, 0), 180)
+end
+
 local function step(dt: number)
 	local now = Timing.clock()
 	local me = Players.LocalPlayer.UserId
@@ -274,8 +319,7 @@ local function step(dt: number)
 	if state.state ~= "active" or typeof(state.index) ~= "number" then
 		bar.Visible = false
 		nearby.Visible = false
-		OceanController.setDread(0)
-		AmbienceController.setDread(0)
+		calm()
 		return
 	end
 	local def = Bosses.byId[state.id]
@@ -285,14 +329,18 @@ local function step(dt: number)
 	if def == nil or position == nil then
 		bar.Visible = false
 		nearby.Visible = false
-		OceanController.setDread(0)
-		AmbienceController.setDread(0)
+		calm()
 		return
 	end
 	local from = if root then root.Position else camera.CFrame.Position
 	local distance = (position - from).Magnitude
-	-- The bar, while it's within range
-	local show = distance <= Bosses.hudRange and mode ~= "dead"
+	-- Distances to its body, not its middle (the Megalodon is 130 studs long)
+	local measured = PredatorController.gap(state.index, from)
+	local gap = measured or math.max(distance - def.predator.length * 0.4, 0)
+	local sight = def.sight
+	local unseen = sight.far ~= nil and gap > (sight.far :: number)
+	-- The bar, while it's within range (a boss that fades in: once it starts to show)
+	local show = mode ~= "dead" and not unseen and distance <= Bosses.hudRange
 	barAlpha = math.clamp(barAlpha + (if show then dt else -dt) * 4, 0, 1)
 	bar.Visible = barAlpha > 0
 	bar.BackgroundTransparency = 1 - (1 - Ui.PANEL_TRANSPARENCY) * barAlpha
@@ -313,21 +361,32 @@ local function step(dt: number)
 	phaseLabel.TextColor3 = if phase == 3 or state.mark == me then Ui.color.danger else Ui.color.text
 	healthFill.Size = UDim2.fromScale(health, 1)
 	meterFill.Size = UDim2.fromScale(meter, 1)
-	-- Dread: the water darkens as it closes in, the camera shakes as it passes
+	-- Dread: felt before it's seen. The edges darken and beat like a heart and the
+	-- water turns cold; the camera shakes as it passes
 	local range = def.dread.range
-	local dread = math.clamp(1 - (distance - 40) / math.max(range - 40, 1), 0, 1)
+	local dread = math.clamp(1 - (gap - 30) / math.max(range - 30, 1), 0, 1)
 	OceanController.setDread(dread)
 	AmbienceController.setDread(dread)
-	if distance < def.dread.shakeRange and now - lastShake > 0.35 then
-		lastShake = now
-		CameraController.kick(0.12 + 0.3 * (1 - distance / def.dread.shakeRange))
+	-- The fight light: up close the water clears and the dark lifts
+	local fight = math.clamp(1 - (gap - sight.light * 0.45) / math.max(sight.light * 0.55, 1), 0, 1)
+	OceanController.setBossLight(fight)
+	local edge = dread * (0.5 + 0.3 * OceanController.heartbeat()) * (1 - fight * 0.5)
+	for _, frame in vignette do
+		frame.BackgroundTransparency = 1 - edge
 	end
-	-- The NEARBY warning points at it
-	if dread > 0 and distance > 60 then
+	if gap < def.dread.shakeRange and now - lastShake > 0.35 then
+		lastShake = now
+		CameraController.kick(0.12 + 0.3 * (1 - gap / def.dread.shakeRange))
+	end
+	-- The warning names it; once it shows, NEARBY points at it
+	if dread > 0 and gap > 50 then
 		nearby.Visible = true
 		nearby.BackgroundTransparency = 0.5 + 0.5 * (1 - dread)
-		nearbyLabel.Text = `{def.dread.warning} · {Format.distance(distance)}`
+		nearbyLabel.Text = if unseen
+			then def.dread.warning
+			else `{string.upper(def.name)} NEARBY · {Format.distance(gap)}`
 		nearbyLabel.TextTransparency = 1 - dread
+		nearbyArrow.Visible = not unseen
 		local look = camera.CFrame.LookVector
 		local flatLook = Vector3.new(look.X, 0, look.Z)
 		local toward = position - from
@@ -346,6 +405,7 @@ function BossController.start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	gui = Ui.screen("BossHud", playerGui, 5)
 	buildBar()
+	buildVignette(playerGui)
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local bossState = remotes:WaitForChild("BossState") :: RemoteEvent
 	bossState.OnClientEvent:Connect(function(incoming: any)
