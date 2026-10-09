@@ -149,9 +149,9 @@ local function zoneBanner(leaving: boolean)
 	if old then
 		old:Destroy()
 	end
-	-- On phones the controls hint shares this spot; the banner takes over
+	-- The controls hint shares this spot; the banner takes over
 	local controls = gui:FindFirstChild("Controls")
-	if controls and Input.isTouch() then
+	if controls then
 		controls:Destroy()
 	end
 	local color = if leaving then Ui.color.danger else Ui.color.safe
@@ -636,25 +636,25 @@ local function showControlsHint()
 			Input.isGamepad()
 		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites fish your size · RT dash · LB heal · Y at a stall"
 		else "Mouse to look · WASD swim · swim into smaller fish to eat · Click or F bites fish your size · Shift dash · Space/Ctrl up/down · E at a stall · H heal"
-	local label = Ui.label(
-		gui,
-		"Controls",
-		text,
-		Ui.FONT_SEMI,
-		14,
-		Ui.color.muted,
-		UDim2.fromOffset(700, 18),
-		UDim2.new(0, 18, 1, -36)
-	)
+	local label = Ui.label(gui, "Controls", text, Ui.FONT_SEMI, 14, Ui.color.muted, UDim2.fromOffset(800, 18))
+	-- Top centre under the safe-zone pill, and below the boss bar or the boss
+	-- countdown while one is up (the countdown sits at the same spot and covered it,
+	-- playtest 2026-10-09). Bottom left it ran into the Haul card: on phones
+	-- (playtest 2026-10-07), and on PC at 1280×720 once it named the bite key
+	-- (2026-10-09).
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.TextXAlignment = Enum.TextXAlignment.Center
 	if Input.isTouch() then
-		-- Phones: top centre under the safe-zone pill, wrapped (bottom left it ran
-		-- into the Haul card, playtest 2026-10-07)
-		label.AnchorPoint = Vector2.new(0.5, 0)
-		label.Position = UDim2.new(0.5, 0, 0, 52)
+		-- Phones: wrapped to two lines
 		label.Size = UDim2.fromOffset(520, 38)
 		label.TextWrapped = true
-		label.TextXAlignment = Enum.TextXAlignment.Center
 	end
+	task.spawn(function()
+		while label.Parent do
+			label.Position = UDim2.new(0.5, 0, 0, math.max(52, Ui.bossBottom() + 6))
+			task.wait(0.25)
+		end
+	end)
 	label.TextStrokeTransparency = 0.75
 	task.delay(14, function()
 		Ui.tween(label, 1, { TextTransparency = 1, TextStrokeTransparency = 1 })
