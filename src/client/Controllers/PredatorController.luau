@@ -22,6 +22,10 @@ local CameraController = require(script.Parent.CameraController)
 local OceanController = require(script.Parent.OceanController)
 local SwimController = require(script.Parent.SwimController)
 
+-- A creature's body radius as a share of its length, for biting it and for bumping
+-- into a boss
+local BODY_RADIUS = 0.18
+
 -- A boss's own light in the pitch dark (OceanController.darkness): bioluminescent
 -- violet for the squid, a cold blue otherwise
 local DARK_GLOW: { [string]: Color3 } = {
@@ -699,8 +703,12 @@ local function solid(visual: Visual)
 	local tail, span = visual.position - half, half * 2
 	local point = mine.Position
 	local t = math.clamp((point - tail):Dot(span) / math.max(span:Dot(span), 1e-4), 0, 1)
-	local girth = math.max(visual.bodySize.X, visual.bodySize.Y) * 0.5
-	local radius = girth * (0.45 + 0.55 * math.sin(math.pi * t)) + mine.Size.X * 0.5
+	-- The same body radius biting measures to (PredatorController.nearest), so a
+	-- fish held against the flank is always in bite range (the model's full width,
+	-- fins and all, held fish ~40 studs off a Megalodon's axis, out of reach of a
+	-- bite, playtest 2026-10-08)
+	local girth = visual.def.length * BODY_RADIUS
+	local radius = girth * (0.45 + 0.55 * math.sin(math.pi * t)) + mine.Size.X * 0.4
 	local offset = point - (tail + span * t)
 	local distance = offset.Magnitude
 	if distance >= radius then
@@ -822,12 +830,16 @@ local function step(dt: number)
 			local dark = if visual.boss then OceanController.darkness() else 0
 			jaw.FillTransparency = 1
 			if dark > 0.05 then
+				-- A tinted fill and a bright rim, so the whole body reads as a glowing
+				-- silhouette (a faint rim alone was a grey blob, playtest 2026-10-08)
 				local pulse = 0.5 + 0.5 * math.sin(now * 1.3)
 				local eerie = DARK_GLOW[visual.def.id] or DARK_GLOW.default
+				jaw.FillColor = eerie
+				jaw.FillTransparency = 1 - dark * (0.22 + 0.1 * pulse)
 				jaw.OutlineColor = eerie
-				jaw.OutlineTransparency = 1 - dark * (0.3 + 0.15 * pulse)
+				jaw.OutlineTransparency = 1 - dark * (0.75 + 0.2 * pulse)
 				glow.Color = eerie
-				glow.Brightness = dark * (0.8 + 0.6 * pulse)
+				glow.Brightness = dark * (1.6 + 1.2 * pulse)
 			else
 				jaw.OutlineTransparency = 1
 				glow.Brightness = 0
@@ -1202,6 +1214,11 @@ local function onEvent(kind: any, index: any, payload: any)
 		end
 	elseif kind == "died" then
 		visual.mode = "dead"
+		-- A boss's last warning goes with it (a "GOING TO BREACH" line stayed up
+		-- behind the slain card, retest 2026-10-08)
+		if visual.boss then
+			warningUntil = 0
+		end
 		if payload.reason ~= "escaped" and payload.reason ~= "sunk" then
 			bubbles(visual.position, def.length * (if visual.boss then 0.5 else 0.9))
 		end
@@ -1226,7 +1243,7 @@ function PredatorController.nearest(mouth: Vector3, reach: number): number?
 		local a, b = visual.position - half, visual.position + half
 		local ab = b - a
 		local t = math.clamp((mouth - a):Dot(ab) / math.max(ab:Dot(ab), 1e-4), 0, 1)
-		local gap = (a + ab * t - mouth).Magnitude - visual.def.length * 0.18
+		local gap = (a + ab * t - mouth).Magnitude - visual.def.length * BODY_RADIUS
 		if gap <= reach and gap < bestGap then
 			best, bestGap = index, gap
 		end

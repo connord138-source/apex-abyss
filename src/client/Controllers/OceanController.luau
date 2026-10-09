@@ -88,13 +88,15 @@ local GRADES: { Grade } = {
 	},
 	{
 		y = World.deep.ventsFloorY,
+		-- Thinner than the floor above it, so the chimneys' glow reads across a basin
+		-- (playtest 2026-10-08: a chimney 45 studs off was only a silhouette)
 		color = Color3.fromRGB(10, 48, 92),
 		decay = Color3.fromRGB(4, 22, 52),
-		density = 0.9,
-		tint = Color3.fromRGB(166, 190, 226),
-		brightness = -0.07,
-		saturation = -0.12,
-		exposure = -0.7,
+		density = 0.84,
+		tint = Color3.fromRGB(176, 196, 228),
+		brightness = -0.04,
+		saturation = -0.08,
+		exposure = -0.5,
 		sight = 180,
 	},
 	{
@@ -138,7 +140,6 @@ local darkTarget = 0
 local dark, darkVelocity = 0, 0
 local lit = false
 local glow = 0
-local DARK_TINT = Color3.fromRGB(26, 30, 48)
 -- Plankton glow in the deepest water (PlanktonController): a very faint blue-green
 -- light, most noticeable in the pitch dark
 local GLOW_TINT = Color3.fromRGB(70, 150, 150)
@@ -146,6 +147,7 @@ local GLOW_TINT = Color3.fromRGB(70, 150, 150)
 local BLACK_AMBIENT = Color3.fromRGB(2, 3, 6)
 local GLOW_AMBIENT = Color3.fromRGB(12, 30, 34)
 local DARK_WATER, DARK_DECAY = Color3.fromRGB(3, 7, 14), Color3.fromRGB(1, 3, 6)
+local DARK_DENSITY = 0.6
 
 -- The light the server set (WorldService.setupLighting), read when the dark comes
 -- and put back when it lifts
@@ -235,13 +237,20 @@ local function step(dt: number)
 		Lighting.OutdoorAmbient = day.outdoor:Lerp(floor, d)
 		Lighting.EnvironmentDiffuseScale = day.diffuse * (1 - d)
 		Lighting.EnvironmentSpecularScale = day.specular * (1 - d)
-		grade.TintColor = grade.TintColor:Lerp(DARK_TINT, d * 0.3)
-		grade.Saturation -= d * 0.15
-		Lighting.ExposureCompensation -= d * 0.3
+		-- With the light gone, no colour grade or exposure cut on top: they only
+		-- crushed what glows (retest 2026-10-08: tint x0.5 and exposure -1 left the
+		-- lantern's pool, glowing skins and plankton barely visible). The water thins
+		-- too, so a lamp's pool and the glow round you read; the black haze still
+		-- swallows anything unlit.
+		grade.TintColor = grade.TintColor:Lerp(Color3.new(1, 1, 1), d * 0.9)
+		grade.Brightness *= 1 - d
+		grade.Saturation *= 1 - d * 0.7
+		Lighting.ExposureCompensation = Lighting.ExposureCompensation * (1 - d) + d * 0.25
 		local atmosphereNow = atmosphere
 		if atmosphereNow and atmosphereNow.Parent then
 			atmosphereNow.Color = atmosphereNow.Color:Lerp(DARK_WATER, d)
 			atmosphereNow.Decay = atmosphereNow.Decay:Lerp(DARK_DECAY, d)
+			atmosphereNow.Density = atmosphereNow.Density + (DARK_DENSITY - atmosphereNow.Density) * d
 		end
 		-- Glowing things bloom a little more in the dark
 		bloom.Intensity = 0.55 + d * 0.35

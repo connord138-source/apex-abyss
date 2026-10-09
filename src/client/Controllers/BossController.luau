@@ -233,7 +233,16 @@ local function rewardCard(summary: { [string]: any })
 			})
 		end
 		local rolled = summary.shade
-		if typeof(rolled) == "table" and typeof(rolled.id) == "string" then
+		if typeof(summary.shadeCoral) == "number" then
+			-- Every Rare-or-better shade is already this fish's: coral instead
+			RollController.revealTreasure({
+				kind = "coral",
+				id = "CoralJackpot",
+				outcome = { id = "CoralJackpot", kind = "coral", name = "Coral Jackpot", tier = "Coral" },
+				coral = summary.shadeCoral,
+				from = name,
+			})
+		elseif typeof(rolled) == "table" and typeof(rolled.id) == "string" then
 			local def = Config.Shades.byId[rolled.id]
 			if def then
 				RollController.revealTreasure({

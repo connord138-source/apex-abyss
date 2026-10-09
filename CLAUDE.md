@@ -267,7 +267,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `Struggle`, 6 breaks it; 3 bites on the squid by teammates break it too and pay
     them a Kraken Beak each; hunting, it rises to meet its prey up to 260 studs off
     the floor, since clamped to its lurk band it sank away from everyone and never
-    grabbed, playtest 2026-10-08), **ink** (6 s black cloud, 55 studs; the camera inside
+    grabbed, playtest 2026-10-08; aggro 280 so it notices fish well above it; a grab
+    lets go after taking 45% (`grab.maxShare`) and a fish just let go can't be
+    grabbed again for 10 s (`grab.recover`): two grabs back to back killed a full
+    fish, retest 2026-10-08), **ink** (6 s black cloud, 55 studs; the camera inside
     goes blind, `OceanController.setBlind`; its tag hides) straight into a **jet**
     (120 studs away). Enraged under 65%: two grabs at once, half the grab cooldown,
     **whirlpool** (1.2 s tell, 3 s pull of 30 stud/s² within 70 studs). Mantle under
@@ -335,7 +338,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   and radii scaled with them (`Config/Bosses.luau`). **Bosses are solid** (playtest
   2026-10-08: the Megalodon and fish phased through each other): your own fish is
   pushed out of a boss's body capsule on the client (`PredatorController` `solid`),
-  writing the swim velocity directly so a bite lunge into it still lands.
+  writing the swim velocity directly so a bite lunge into it still lands. The capsule
+  is the same body radius biting measures to (`BODY_RADIUS`, 18% of length): sized
+  from the model's full width it held fish ~40 studs off a Megalodon's axis, out of
+  bite reach (retest 2026-10-08).
 - **The Trench is pitch dark (owner: "clearly need a light source for abyssal trench
   ... could be the perk of the angler fish"):** `Biomes` `dark`; `OceanController.setDark`
   (BiomeController sets it below the deep floor in a dark biome). **The dark is the
@@ -343,9 +349,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   1.0 and exposure −3.6 made it pure black even with a lantern, hiding glow skins and
   plankton): in the dark the client fades `Lighting.Brightness`, `Ambient`,
   `OutdoorAmbient` and the environment scales to near zero (the server's values are
-  kept and put back), turns the haze black, and leaves the Trench grade at density
-  0.88 and exposure −0.75, so lamps, glowing skins, plankton and the walls' glow
-  clusters (plain Neon, never `Props.dress`ed) all read. Bosses glow faintly in the
+  kept and put back), turns the haze black, and **adds no colour grade or exposure
+  cut on top** (the grade goes neutral, exposure eases to +0.25) while the water thins
+  to density 0.6 (`DARK_DENSITY`), so lamps, glowing skins, plankton and the walls'
+  glow clusters (plain Neon, never `Props.dress`ed) all read (retest 2026-10-08: a
+  ×0.5 tint and −1 exposure on top still left it black). Lamps (`LampController`)
+  are a PointLight at Roblox's 60-stud maximum range (the 80–90 asked for before was
+  clamped) plus a forward SpotLight beam, bright, since in the dark they're the only
+  light. The Vents grade is thinner (0.84) and every chimney has a Neon glowing
+  throat (`VentGlow`), since a light alone didn't read across a basin. Bosses glow faintly in the
   dark (`PredatorController` `DARK_GLOW`, violet for the squid) so they're
   silhouettes, not invisible. A lamp holder's view is 15% less dark. The Anglerfish's
   lure is a lamp (`Lamp = "lure"` attribute
@@ -413,10 +425,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   hairline, a foil sweep from Epic up and a holographic edge from Mythic up; losers
   dim. Subjects are built once per reel and cloned; a card gets its shot only when it
   nears the window (`attachPhoto`). The current fish's shade skins preload on spawn
-  (`CardPhoto.warm`) and a shade card fades in once its skin has loaded, never a bare
-  white fish first; parts and variants are shot nearly side-on so their shape reads.
+  (`CardPhoto.warm`) and a shade card whose texture hasn't arrived waits for it (its
+  `GetAssetFetchStatus`, at most 1.2 s) and fades in, never a bare white fish
+  (waiting on `PreloadAsync` left every card empty until the reel stopped); parts and
+  variants are shot nearly side-on, and a card's fish is posed with one `PivotTo` (a
+  root-only turn left the jointed body behind and the Sawblade card a close-up).
   A boss reward's reveal (`from`) rolls a reel of Rare+ shades and says "won from the
-  Megalodon", not "dug up from treasure". The result shows a shade's swatches and Rare+
+  Megalodon", not "dug up from treasure"; a fish that already has every Rare+
+  shade gets half the boss's coral instead, shown as a Coral Jackpot. The result shows a shade's swatches and Rare+
   wins burst motes.
 - **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "All of
   the shades in general need much much more variance and depth than just a slight
@@ -495,7 +511,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `BubbleController` streams bubbles off every fish's mouth by speed; vents and ~37
     seeps on the shelf and deep floor send bubble columns up (`WorldService`
     `bubbleColumn`); `KelpController` sways the kelp (in `World.Biomes.Kelp`) within
-    180 studs of the camera (one BulkMoveTo a frame).
+    180 studs of the camera (one BulkMoveTo a frame). It collects plants as they
+    come into reach, never once at the start: with streaming a plant's Model arrives
+    before its parts (retest 2026-10-08: the first start swayed nothing). Each part's
+    rest pose is kept (`KelpRest`), so re-collecting mid-sway can't drift.
 - **Ghost is spectral (owner, 2026-10-08: "the whole fish needs a similar to ghost from
   sea of thieves glow ... a very rare skin"):** a shade with `spectral = true` turns
   the whole fish ghostly, not just its edges: ForceField see-through body, a breathing
@@ -706,8 +725,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
   `2026-10-08-pc.md`, which also covers the two world rounds before it,
   `2026-10-08-pc-retest.md`).
-- Boss `Struggle` requests are rate-limited to one per 0.12 s, so a test that mashes
-  faster sees the grab hold; space presses ≥ 0.15 s apart (playtest 2026-10-08).
+- Boss `Struggle` requests are rate-limited to one per 0.05 s (it was 0.12 s, which
+  dropped real fast mashing, retest 2026-10-08).
 - Engine limits the world hit (playtest 2026-10-08):
   - `Workspace.FallenPartsDestroyHeight` is −2000, set in `default.project.json`
     and the saved place. The default −500 sits above the Vents (−540) and the

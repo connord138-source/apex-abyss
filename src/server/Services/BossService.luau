@@ -52,6 +52,7 @@ type Attack = {
 
 type Grab = {
 	endsAt: number,
+	dealt: number, -- share of the fish's health taken so far (stops at grab.maxShare)
 	struggles: number,
 	bites: number,
 	biters: { [Player]: boolean },
@@ -67,6 +68,7 @@ type Boss = {
 	nextTargetAt: number,
 	mark: { target: Player, endsAt: number, nextLungeAt: number }?,
 	grabs: { [Player]: Grab },
+	grabFree: { [Player]: number }, -- when a fish let go can be grabbed again
 	whirl: { endsAt: number, center: Vector3 }?,
 	inkUntil: number,
 	stagger: number, -- damage on soft spots toward a stagger
@@ -217,6 +219,10 @@ local function release(boss: Boss, player: Player, how: string, now: number)
 		return
 	end
 	boss.grabs[player] = nil
+	local squidKit = boss.def.squid
+	if squidKit then
+		boss.grabFree[player] = now + squidKit.grab.recover
+	end
 	local character, root = FishService.character(player)
 	if character then
 		character:SetAttribute("HeldBy", nil)
@@ -546,10 +552,16 @@ local function runSquid(boss: Boss, attack: Attack, now: number, root: BasePart?
 					and session.alive
 					and not session.inHub
 					and session.safeUntil <= now
+					and (boss.grabFree[target] or 0) <= now
 					and (root.Position - beak).Magnitude <= squid.grab.range + fishLength * 0.5
 				if caught then
-					boss.grabs[target] =
-						{ endsAt = now + squid.grab.seconds, struggles = 0, bites = 0, biters = {} }
+					boss.grabs[target] = {
+						endsAt = now + squid.grab.seconds,
+						dealt = 0,
+						struggles = 0,
+						bites = 0,
+						biters = {},
+					}
 					local character = FishService.character(target)
 					if character then
 						character:SetAttribute("HeldBy", index)
@@ -832,8 +844,14 @@ local function rewards(boss: Boss, killer: Player?)
 		local coral = math.floor(math.max(reward.coral * share, reward.coralMin) + 0.5)
 		EconomyService.addCoral(player, coral)
 		summary.coral = coral
-		-- A shade roll, Rare or better
+		-- A shade roll, Rare or better (a fish that has them all gets coral instead:
+		-- it got nothing at all, playtest 2026-10-08)
 		local shade = rollShade(reward.shadeRollMin, Progress.shades(data))
+		if shade == nil then
+			local instead = math.floor(reward.coral * 0.5)
+			EconomyService.addCoral(player, instead)
+			summary.shadeCoral = instead
+		end
 		if shade then
 			local duplicate = not Progress.grantShade(data, shade.id)
 			if duplicate then
@@ -1005,6 +1023,7 @@ local function summon(def: BossDef, now: number)
 		nextTargetAt = 0,
 		mark = nil,
 		grabs = {},
+		grabFree = {},
 		whirl = nil,
 		inkUntil = 0,
 		stagger = 0,
@@ -1210,6 +1229,7 @@ local function chooseSquid(boss: Boss, now: number)
 		local distance = (root.Position - beakOf(predator)).Magnitude
 		if
 			(cooldowns.grab or 0) <= now
+			and (boss.grabFree[target] or 0) <= now
 			and grabCount(boss) < maxGrabs
 			and distance <= squid.grab.range * 1.2 + fishLength * 0.5
 		then
@@ -1250,7 +1270,12 @@ local function tickGrabs(boss: Boss, dt: number, now: number)
 			release(boss, player, "dropped", now)
 			continue
 		end
-		HuntService.damage(player, squid.grab.fraction * dt, boss.def.name, true)
+		local take = math.min(squid.grab.fraction * dt, squid.grab.maxShare - grab.dealt)
+		grab.dealt += take
+		HuntService.damage(player, take, boss.def.name, true)
+		if grab.dealt >= squid.grab.maxShare - 1e-6 then
+			release(boss, player, "dropped", now)
+		end
 	end
 	local whirl = boss.whirl
 	if whirl then
@@ -1426,6 +1451,7 @@ function BossService.dismiss()
 	PredatorService.remove(boss.predator, if boss.def.kit == "squid" then "sunk" else "escaped")
 	Net.notifyAll(`The {string.upper(boss.def.name)} was sent away.`, "info")
 	schedule(now, interval(boss.def))
+	rotationIndex += 1 -- the other boss is next, as after a kill
 	broadcast()
 end
 

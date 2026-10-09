@@ -586,7 +586,9 @@ local function reveal(result: { [string]: any })
 	title.TextStrokeTransparency = 0.55
 	local probability = if typeof(result.probability) == "number" then result.probability else 0
 	local detail
-	if result.kind == "coral" then
+	if result.kind == "coral" and bossFrom then
+		detail = `Every rare shade is this fish's already · +{Ui.number(result.coral or 0)} Coral instead`
+	elseif result.kind == "coral" then
 		detail = `+{Ui.number(result.coral or 0)} Coral`
 	elseif result.kind == "shells" then
 		detail = `+{Ui.number(result.shells or 0)} Shells`

@@ -68,6 +68,8 @@ export type SquidKit = {
 		biteFree: number,
 		cooldown: number,
 		freeBeaks: number, -- Kraken Beaks for everyone whose bites broke a grab
+		maxShare: number, -- a grab lets go once it has taken this much of a fish's health
+		recover: number, -- seconds a released fish can't be grabbed again
 	},
 	ink: { seconds: number, radius: number, cooldown: number },
 	jet: { distance: number, telegraph: number, cooldown: number },
@@ -247,7 +249,7 @@ local giantSquid: BossDef = {
 		health = 5500,
 		speed = 26,
 		turnRate = 1.1,
-		aggroRange = 190,
+		aggroRange = 280, -- it rises to fish well above its lurk band (190 missed one 180 up)
 		biteReach = 9,
 		biteFraction = 0.45,
 		biteCooldown = 6,
@@ -274,6 +276,11 @@ local giantSquid: BossDef = {
 			biteFree = 3,
 			cooldown = 7,
 			freeBeaks = 1,
+			-- Nothing one-shots (owner): two grabs back to back took a full fish to 0
+			-- (playtest 2026-10-08), so a grab takes at most 45% and a fish just let go
+			-- can't be grabbed again for 10 s
+			maxShare = 0.45,
+			recover = 10,
 		},
 		ink = { seconds = 6, radius = 70, cooldown = 20 },
 		jet = { distance = 120, telegraph = 0.6, cooldown = 22 },

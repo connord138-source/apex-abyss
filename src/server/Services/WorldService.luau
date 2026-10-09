@@ -1070,10 +1070,25 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	holder.Size = Vector3.new(4, 2, 4)
 	holder.CFrame = CFrame.new(top + Vector3.new(0, 2, 0))
 	holder.Parent = parent
+	-- The glowing throat: a light alone didn't read through the basin's water
+	-- (retest 2026-10-08: a chimney 45 studs off was only a silhouette)
+	local throat = Instance.new("Part")
+	throat.Name = "VentGlow"
+	throat.Anchored = true
+	throat.CanCollide = false
+	throat.CanQuery = false
+	throat.CanTouch = false
+	throat.Shape = Enum.PartType.Ball
+	throat.Size = Vector3.one * 4
+	throat.CFrame = CFrame.new(top + Vector3.new(0, 0.6, 0))
+	throat.Color = Color3.fromRGB(255, 112, 36)
+	throat.Material = Enum.Material.Neon
+	throat.Parent = parent
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 130, 50)
-	light.Brightness = 2.2
-	light.Range = 40
+	light.Brightness = 3
+	light.Range = 50
+	light.Shadows = false
 	light.Parent = holder
 	local smoke = Instance.new("ParticleEmitter")
 	smoke.Rate = 14

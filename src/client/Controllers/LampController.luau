@@ -12,13 +12,17 @@ local OceanController = require(script.Parent.OceanController)
 
 local LampController = {}
 
-type Lamp = { light: PointLight, kind: string, bulb: Part? }
+type Lamp = { light: PointLight, beam: SpotLight, kind: string, bulb: Part? }
 
 local lamps: { [Model]: Lamp } = {}
 
+-- A glow all round the fish plus a beam where it's looking. Roblox caps a light's
+-- range at 60 (the 80-90 asked for before was clamped), and in the pitch dark the
+-- lamp is the only light, so it's bright (retest 2026-10-08: the floor 8 studs
+-- under a lantern stayed black)
 local LOOKS = {
-	lure = { color = Color3.fromRGB(150, 240, 255), range = 80, brightness = 2.6 },
-	lantern = { color = Color3.fromRGB(255, 214, 150), range = 90, brightness = 2.2 },
+	lure = { color = Color3.fromRGB(150, 240, 255), range = 60, brightness = 3.2, beam = 5 },
+	lantern = { color = Color3.fromRGB(255, 214, 150), range = 60, brightness = 3.6, beam = 4 },
 }
 
 local function attach(character: Model, root: BasePart, kind: string): Lamp?
@@ -33,6 +37,15 @@ local function attach(character: Model, root: BasePart, kind: string): Lamp?
 	light.Brightness = look.brightness
 	light.Shadows = false
 	light.Parent = root
+	local beam = Instance.new("SpotLight")
+	beam.Name = "LampBeam"
+	beam.Color = look.color
+	beam.Range = look.range
+	beam.Brightness = look.beam
+	beam.Angle = 80
+	beam.Face = Enum.NormalId.Front -- the root faces the fish's heading
+	beam.Shadows = false
+	beam.Parent = root
 	local bulb: Part? = nil
 	if kind == "lantern" then
 		-- A small glowing lantern slung under the fish
@@ -55,13 +68,14 @@ local function attach(character: Model, root: BasePart, kind: string): Lamp?
 		made.Parent = character
 		bulb = made
 	end
-	return { light = light, kind = kind, bulb = bulb }
+	return { light = light, beam = beam, kind = kind, bulb = bulb }
 end
 
 local function detach(character: Model)
 	local lamp = lamps[character]
 	if lamp then
 		lamp.light:Destroy()
+		lamp.beam:Destroy()
 		if lamp.bulb then
 			(lamp.bulb :: Part):Destroy()
 		end

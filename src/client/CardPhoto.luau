@@ -475,6 +475,15 @@ local function master(outcome: Outcome): Model?
 	return model
 end
 
+-- Whether a texture has finished downloading
+local function loaded(id: string): boolean
+	local ok, status = pcall(function()
+		return ContentProvider:GetAssetFetchStatus(id)
+	end)
+	return not ok or status == Enum.AssetFetchStatus.Success or status == Enum.AssetFetchStatus.Failure
+end
+local WAIT_SKIN = 1.2
+
 -- Loads the current fish's shade skins in the background, so a reel's shade cards
 -- don't show a bare white fish while their textures download (playtest
 -- 2026-10-08). Once per fish per session.
@@ -521,40 +530,54 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	world.Parent = frame
 	local model = source:Clone()
 	model.Parent = world
-	-- A shade card waits for its skin's textures and fades in, instead of showing a
-	-- bare white fish until they arrive (at most a few seconds)
-	local skins: { Instance } = {}
+	-- A shade card whose skin texture hasn't arrived yet waits for it (at most
+	-- WAIT_SKIN) and fades in, instead of showing a bare white fish. It asks the
+	-- texture's own fetch status: waiting on PreloadAsync left every shade card
+	-- empty until the reel stopped (retest 2026-10-08).
+	local pending: { string } = {}
 	for _, d in model:GetDescendants() do
 		if d:IsA("SurfaceAppearance") and d.Name == "ShadeSkin" then
-			table.insert(skins, d)
+			local id = (d :: any).ColorMap
+			if typeof(id) == "string" and id ~= "" and not loaded(id) then
+				table.insert(pending, id)
+			end
 		end
 	end
-	if #skins > 0 then
+	if #pending > 0 then
 		frame.ImageTransparency = 1
-		local shown = false
-		local function show()
-			if shown or frame.Parent == nil then
-				return
-			end
-			shown = true
-			TweenService:Create(frame, TweenInfo.new(0.18), { ImageTransparency = 0 }):Play()
-		end
 		task.spawn(function()
-			pcall(function()
-				ContentProvider:PreloadAsync(skins)
-			end)
-			show()
+			local waited = 0
+			while waited < WAIT_SKIN do
+				local ready = true
+				for _, id in pending do
+					if not loaded(id) then
+						ready = false
+						break
+					end
+				end
+				if ready then
+					break
+				end
+				waited += task.wait(0.05)
+			end
+			if frame.Parent then
+				TweenService:Create(frame, TweenInfo.new(0.15), { ImageTransparency = 0 }):Play()
+			end
 		end)
-		task.delay(4, show)
 	end
 	local root = model.PrimaryPart
 	if root and model:GetAttribute("Pose") == "fish" then
 		-- Three-quarter, head to the left and toward us, nose lifted: a hero pose. A
 		-- part or variant is about its shape, so it's shown nearly side-on (a snout
-		-- pointing at the camera read as a white blob, playtest 2026-10-08)
+		-- pointing at the camera read as a white blob, playtest 2026-10-08). The whole
+		-- model is pivoted at once: turning just the root left the jointed body where
+		-- it was until a later frame, so the camera framed the wrong box (the Sawblade
+		-- Snout card came out a close-up, retest 2026-10-08).
 		local profile = outcome.kind == "part" or outcome.kind == "variant"
-		root.CFrame = CFrame.Angles(0, math.rad(if profile then 98 else 118), 0)
-			* CFrame.Angles(math.rad(if profile then 4 else 8), 0, math.rad(-5))
+		model:PivotTo(
+			CFrame.Angles(0, math.rad(if profile then 98 else 118), 0)
+				* CFrame.Angles(math.rad(if profile then 4 else 8), 0, math.rad(-5))
+		)
 	elseif root then
 		model:PivotTo(CFrame.Angles(0, math.rad(-18), 0) * model:GetPivot())
 	end
