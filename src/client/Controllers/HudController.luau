@@ -25,6 +25,7 @@ local HuntController = require(script.Parent.HuntController)
 local PredatorController = require(script.Parent.PredatorController)
 local SchoolController = require(script.Parent.SchoolController)
 local ShellController = require(script.Parent.ShellController)
+local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
 
 local World = Config.World
@@ -630,11 +631,11 @@ end
 
 local function showControlsHint()
 	local text = if Input.isTouch()
-		then "Left stick: push up to swim, sideways to turn · drag to aim · BITE, DASH and HEAL on the right"
+		then "Left stick: push up to swim, sideways to turn · drag to aim · swim into smaller fish to eat · BITE for fish your size"
 		elseif
 			Input.isGamepad()
-		then "Left stick: up to swim, sideways to turn · right stick aims · RT dash · RB bite · LB heal · Y at a stall · D-pad menus"
-		else "Mouse to look · WASD swim · Shift dash · Click bite · Space/Ctrl up/down · Wheel zoom · E at a stall · H heal · R roll · hold Alt for the cursor"
+		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites fish your size · RT dash · LB heal · Y at a stall"
+		else "Mouse to look · WASD swim · swim into smaller fish to eat · Click or F bites fish your size · Shift dash · Space/Ctrl up/down · E at a stall · H heal"
 	local label = Ui.label(
 		gui,
 		"Controls",
@@ -667,7 +668,7 @@ local function hintFor(s: { [string]: any }): string
 	if haul <= 0 then
 		return if s.inHub
 			then "Swim out a tunnel or up through the roof to hunt"
-			else "Eat smaller fish to grow"
+			else "Swim into smaller fish to swallow them"
 	elseif s.maxed then
 		return "MAX SIZE · bank your Haul to keep growing"
 	elseif s.inHub then
@@ -867,7 +868,7 @@ function HudController.start()
 	SwimController.spawned:connect(function()
 		if not hinted then
 			hinted = true
-			showControlsHint()
+			StartController.afterStart(showControlsHint)
 		end
 	end)
 	RunService.RenderStepped:Connect(step)

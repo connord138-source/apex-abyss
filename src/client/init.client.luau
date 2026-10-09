@@ -11,6 +11,7 @@ local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
 local GardenController = require(script.Controllers.GardenController)
 local HealController = require(script.Controllers.HealController)
+local HintController = require(script.Controllers.HintController)
 local HudController = require(script.Controllers.HudController)
 local HuntController = require(script.Controllers.HuntController)
 local MenuController = require(script.Controllers.MenuController)
@@ -28,12 +29,14 @@ local KelpController = require(script.Controllers.KelpController)
 local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
 local ShellController = require(script.Controllers.ShellController)
+local StartController = require(script.Controllers.StartController)
 local SwimController = require(script.Controllers.SwimController)
 local TreasureController = require(script.Controllers.TreasureController)
 local TutorialController = require(script.Controllers.TutorialController)
 
 ClientState.start()
 Input.start()
+StartController.start() -- the start screen covers the game until the player dives in
 OceanController.start()
 HudController.start() -- before the swim controller, so it hears the first spawn
 MenuController.start() -- shops (at the stalls), wardrobe, odds
@@ -46,6 +49,7 @@ BiomeController.start() -- biome names, suggested levels and under-level warning
 TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
 HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow
+HintController.start() -- EAT / BITE / DANGER / TOO BIG hints while hunting
 CameraController.start()
 FishAnimator.start()
 PredatorController.start() -- AI predators: interpolation, tells, tags

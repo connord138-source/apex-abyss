@@ -32,6 +32,8 @@ local Input = {
 	ability = Signal.new(),
 	-- Set by menus (none yet) to free the mouse
 	cursorWanted = false,
+	-- Set while the start screen is up: the fish doesn't swim, look, bite or dash
+	locked = false,
 }
 
 local touchLook = Vector2.zero
@@ -107,9 +109,13 @@ function Input.start()
 			or key == Enum.KeyCode.ButtonR1
 			or key == Enum.KeyCode.ButtonX
 		then
-			Input.bite:fire()
+			if not Input.locked then
+				Input.bite:fire()
+			end
 		elseif key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.Q or key == Enum.KeyCode.ButtonR2 then
-			Input.ability:fire()
+			if not Input.locked then
+				Input.ability:fire()
+			end
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input: InputObject)
@@ -161,6 +167,9 @@ end
 -- WASD or the arrow keys. Length at most 1. (The owner likes PC as it is: A/D slide
 -- the fish sideways while the mouse aims.)
 function Input.moveVector(): Vector3
+	if Input.locked then
+		return Vector3.zero
+	end
 	local keys = Vector2.new(
 		axis(down("D") or down("Right"), down("A") or down("Left")),
 		axis(down("S") or down("Down"), down("W") or down("Up"))
@@ -175,6 +184,9 @@ end
 -- touch stick is a throttle and a rudder. Returns throttle (+1 full ahead, -1 back
 -- up) and steer (+1 turn right); the right stick or a screen drag aims up and down.
 function Input.drive(): (number, number)
+	if Input.locked then
+		return 0, 0
+	end
 	-- The left stick moves the selection while a menu button is selected
 	-- (stick1 is stored with y flipped, so pushing up is negative)
 	local stick = if GuiService.SelectedObject then Vector2.zero else stick1
@@ -189,6 +201,9 @@ end
 
 -- Up/down: +1, 0 or -1.
 function Input.vertical(): number
+	if Input.locked then
+		return 0
+	end
 	local up = down("Space") or down("ButtonA")
 	local dive = down("LeftControl") or down("C") or down("ButtonB")
 	return (if up then 1 else 0) - (if dive then 1 else 0)
@@ -212,7 +227,7 @@ function Input.consumeLook(dt: number): Vector2
 	look += touchLook * cameraTuning.touchSensitivity
 	touchLook = Vector2.zero
 	look += stick2 * cameraTuning.gamepadSpeed * dt
-	return look
+	return if Input.locked then Vector2.zero else look
 end
 
 -- Mouse wheel notches since the last call (up is positive, meaning zoom in).

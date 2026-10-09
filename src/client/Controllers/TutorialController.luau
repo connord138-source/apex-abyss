@@ -11,7 +11,9 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local ClientState = require(script.Parent.Parent.ClientState)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
+local StartController = require(script.Parent.StartController)
 
 local Tutorial = Config.Tutorial
 
@@ -260,6 +262,25 @@ function TutorialController.start()
 	if ClientState.current then
 		onState(ClientState.current)
 	end
+	-- After the start screen the step pops, so a new player sees where to begin
+	StartController.afterStart(function()
+		task.wait(0.6)
+		if not panel.Visible then
+			return
+		end
+		Sfx.play("Banner", { volume = 0.4 })
+		local bounce = panel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+		bounce.Parent = panel
+		bounce.Scale = 1.14
+		Ui.tween(bounce, 0.5, { Scale = 1 }, Enum.EasingStyle.Back)
+		local stroke = panel:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			local was = stroke.Transparency
+			stroke.Color = Ui.color.accent
+			stroke.Transparency = 0
+			Ui.tween(stroke, 1.6, { Transparency = was })
+		end
+	end)
 end
 
 return TutorialController

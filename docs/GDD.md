@@ -71,6 +71,12 @@ owner disliked "Molt" and this was the recommended replacement.*
   - The jaw snaps with a 2–3 frame hit-stop and a small camera kick.
   - A number pops up for the mass gained.
   - Growth eases smoothly.
+- **How it's taught (owner, 2026-10-09: "needs to be clear mechanics on how to
+  actually bite fish"):** swallowing needs no button (swim into it, like shells and
+  shrimp); BITE (F / click, RB / X, the BITE button) is for fish your size, AI
+  predators and bosses. The start screen's EAT / BITE / BANK cards, the tutorial's Eat
+  step, the controls hint and short in-play hints (EAT, BITE, DANGER, TOO BIG) say
+  so at the moment it matters.
 
 ## 5. PvP, protections and twists
 
@@ -636,7 +642,7 @@ view the rarer it is:
 
 | Source | Range | Holder's view |
 |---|---|---|
-| Common glowing shade | 18 | 5% clearer |
+| Common glowing shade (Ember, Ink, Neon Tetra) | 18 | 5% clearer |
 | Deep Lantern (350 coral) | 30 + beam | 10% |
 | Rare glowing shade | 28 | 10% |
 | Epic glowing shade | 36 | 16% |
@@ -646,8 +652,9 @@ view the rarer it is:
 | Boss trophy / Abyssal shade (Ghost, Abyss Ink) | 60 | 38% |
 
 A fish uses its best source, and everyone round it sees its light. A glowing shade's
-light comes up as the water darkens (it's a skin, not a lamp). `Config/Tuning`
-`light`.
+light comes up as the water darkens (it's a skin, not a lamp), measured before its
+holder's own light clears the view, and deep colours (violet) are brightened so they
+light as much as their tier says. `Config/Tuning` `light`.
 
 ### Healing (owner, 2026-10-07; built)
 
@@ -907,6 +914,19 @@ finished week adds +25% coral and shells (up to +100%).
 ## 11. Servers
 
 12 players per server (owner, 2026-10-06).
+
+## 11a. Start screen (owner, 2026-10-09; built)
+
+"A start screen when players load into the server. Just hit any button to start and
+then it pushes them straight to the den and tutorial. Starter screen should have motion
+and some fish swimming by with maybe some kelp." It covers the game while it loads: a
+lit underwater scene (swaying kelp, the playable fish and a sardine school swimming
+past, minnows and the Megalodon's shadow far off in hazed water, light shafts, marine
+snow, rising bubbles), the APEX ABYSS title, and three cards on how to play (EAT, BITE,
+BANK). Once the fish is in its den the prompt reads PRESS ANY KEY (PRESS ANY BUTTON on
+a controller, TAP TO START on a phone); any input dives in and the water clears onto
+the fish in its den, where the tutorial step pops (or the Daily panel and WELCOME BACK
+show for a returning player).
 
 ## 12. Quality bar ("very fluid, extremely professional")
 

@@ -10,6 +10,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
+local StartController = require(script.Parent.StartController)
 
 local GardenController = {}
 
@@ -197,8 +198,11 @@ local function onCollected(summary: { [string]: any })
 		pop(`+{shells} SHELL{if shells == 1 then "" else "S"}`, Color3.fromRGB(242, 228, 204), 0.35)
 	end
 	if typeof(summary.away) == "number" then
-		Sfx.play("Bank", { volume = 0.6 })
-		welcome(summary)
+		-- On joining: after the start screen, so it's seen
+		StartController.afterStart(function()
+			Sfx.play("Bank", { volume = 0.6 })
+			welcome(summary)
+		end)
 	else
 		Sfx.play("Shell", { volume = 0.45 })
 	end

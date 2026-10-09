@@ -434,8 +434,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   (`emissive` or `spectral`) by its tier, Common → Rare → Epic → Legendary → Mythic →
   Trophy/Abyssal. Range, brightness, beam and `reveal` (how much of the dark it lifts
   from the holder's own view, `OceanController.setReveal`) all grow with rarity; a
-  shade's light comes up with the darkness round the camera. The biome banner and
-  chip say PITCH DARK · bring a light.
+  shade's light comes up with the water's own darkness (`OceanController.darkness`,
+  before the holder's reveal: scaled after it, a rare shade dimmed itself on its
+  wearer's screen, playtest 2026-10-09). A deep-coloured light gets up to ×1.6
+  brightness by luminance (Abyss Ink, Void, Nebula read weaker than their tier).
+  Common glowing shades: Ember, Ink and Neon Tetra (`light` in `Config/Shades` gives
+  the colour when there's no `glow`). The Trench reads the plankton level (32, 58,
+  68) nearly everywhere at its bottom; the base shows higher up. The biome banner
+  and chip say PITCH DARK · bring a light.
 - **Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
   luminescense such as photoplankton etc to give very very faint light"):**
   `PlanktonController` fills the water round the camera with faint twinkling
@@ -571,6 +577,34 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   skybox, and the atmosphere is thicker and bluer (server `setupLighting` and the
   client's `OceanController` grades, which drive it every frame). If the sky ever
   shows again, it's a gap in that box, not a lighting setting.
+- **Start screen (owner, 2026-10-09: "a start screen when players load into the
+  server. Just hit any button to start and then it pushes them straight to the den
+  and tutorial. Starter screen should have motion and some fish swimming by with maybe
+  some kelp"; built):** `StartController` covers the game from the first frame: a
+  lit underwater scene in two ViewportFrames (far: hazed floor, kelp, a minnow school
+  and the Megalodon's shadow; near: swaying part-built kelp, the Nibbler, 'Cuda and
+  Pufferfish swimming past with the SwimWave, a sardine school), light shafts, marine
+  snow, rising bubbles, the APEX ABYSS title with a shine, and three how-to-play cards
+  (EAT, BITE with the device's key, BANK). LOADING THE REEF until the fish has spawned
+  and the state arrived (at least 2.4 s), then PRESS ANY KEY / BUTTON / TAP TO START.
+  Any key (not Escape), click, tap or pad button dives in: the cameras rush ahead,
+  bubbles burst and the water clears onto the fish in its den. `Input.locked` holds the
+  fish still meanwhile; chat and the player list are hidden. Join-time UI waits with
+  `StartController.afterStart`: the controls hint, WELCOME BACK, the Daily panel
+  (1.5 s after) and a pop of the tutorial panel. Models come from `FishModels` /
+  `PreyModels` (oriented by their main mesh), with ellipsoid fish while not imported.
+- **Eating vs biting made clear (owner, 2026-10-09: "needs to be clear mechanics on
+  how to actually bite fish ... are the other fish the same way or do they need to be
+  eaten by hitting a bite key?"):** anything under ~70% of your length (prey, shrimp,
+  starfish, small players) is swallowed just by swimming into it, like shells; fish
+  your size, AI predators and bosses take BITE (F / click, RB / X, the BITE button);
+  prey too big can't be eaten (oversized ones chase you). Said on the start screen's
+  cards, the tutorial's Eat step ("Swim into 10 small fish ... to swallow them"), the
+  Haul card hint, the controls hint and `HintController`: a chip above the health bar
+  (EAT until you've swallowed 3 things, BITE when a fish your size or a predator is at
+  your mouth, DANGER near a fish that can swallow you, TOO BIG when a prey fish at your
+  mouth is too big, `SchoolController.tooBig`), each capped per session with a
+  cooldown, never in the hub or under a menu.
 - **Underwater presence (owner, 2026-10-08: "there's no feeling that you're
   underwater. Something needs to be added"):** sound and motion.
   - **Audio:** one synthesized pack, `assets/audio/apex_sfx.ogg` from

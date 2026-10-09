@@ -29,6 +29,7 @@ local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
 local HudController = require(script.Parent.HudController)
 local MenuController = require(script.Parent.MenuController)
+local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
 
 local Monetization = Config.Monetization
@@ -361,8 +362,19 @@ local function onState(s: { [string]: any })
 end
 
 -- The Daily panel opens by itself once a session, when a reward waits
+local waitingForStart = false
 local function maybeShowDaily()
 	if dailyShown then
+		return
+	end
+	-- Not under the start screen: a moment after the player dives in
+	if StartController.isUp() then
+		if not waitingForStart then
+			waitingForStart = true
+			StartController.afterStart(function()
+				task.delay(1.5, maybeShowDaily)
+			end)
+		end
 		return
 	end
 	local s = state()

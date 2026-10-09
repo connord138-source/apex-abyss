@@ -25,7 +25,11 @@ local SwimController = require(script.Parent.SwimController)
 local SchoolController = {
 	-- (preyId, mass, position) — we ate a prey fish (HUD pops a number)
 	ate = Signal.new(),
+	-- (preyId) — a prey fish too big to swallow is at our mouth (at most once a second)
+	tooBig = Signal.new(),
 }
+
+local lastTooBig = 0
 
 local DRAW_DISTANCE = 520 -- schools further than this from the camera aren't moved
 -- Static GLB prey meshes came in facing +Z (owner, 2026-10-07: "swimming backwards");
@@ -342,12 +346,15 @@ local function step(dt: number)
 					end
 				end
 				-- Eat it if it's in reach and small enough
-				if
-					mouth
+				local inReach = mouth ~= nil
 					and not inHub
-					and Size.canSwallow(length, fish.length)
-					and (frame.Position - mouth).Magnitude <= reach + fish.radius
-				then
+					and (frame.Position - (mouth :: Vector3)).Magnitude <= reach + fish.radius
+				if inReach and not Size.canSwallow(length, fish.length) then
+					if now - lastTooBig > 1 then
+						lastTooBig = now
+						SchoolController.tooBig:fire(fish.prey)
+					end
+				elseif inReach then
 					visual.suckFrom = frame
 					visual.suckStart = now
 					visual.pendingUntil = now + CONFIRM_SECONDS

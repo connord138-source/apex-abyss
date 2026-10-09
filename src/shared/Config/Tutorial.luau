@@ -21,7 +21,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Eat",
-		text = "Eat 10 small fish, shrimp or starfish",
+		text = "Swim into 10 small fish, shrimp or starfish to swallow them",
 		goal = 10,
 		event = "ate",
 	},
