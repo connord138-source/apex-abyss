@@ -314,6 +314,12 @@ local function maybeShowDaily()
 	if MenuController.isOpen() then
 		return
 	end
+	-- Never over an offer card: on respawn it covered the eaten screen's Second
+	-- Chance offer (playtest 2026-10-09, phone). Try again once the card is gone.
+	if card then
+		task.delay(2, maybeShowDaily)
+		return
+	end
 	dailyShown = true
 	MenuController.openDaily()
 end
