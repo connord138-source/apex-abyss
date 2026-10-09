@@ -326,6 +326,11 @@ end
 
 local function step()
 	local s = state()
+	-- An open card keeps the cursor free: closing a menu over it locked the mouse
+	-- again, so GET IT BACK couldn't be clicked (playtest 2026-10-09)
+	if card then
+		Input.cursorWanted = true
+	end
 	-- The growth chip
 	local mass = s.massMultiplier or 1
 	local frenzyLeft = (workspace:GetAttribute("FrenzyUntil") or 0) - workspace:GetServerTimeNow()
