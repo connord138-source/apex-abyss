@@ -724,7 +724,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
   `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
   `2026-10-08-pc.md`, which also covers the two world rounds before it,
-  `2026-10-08-pc-retest.md`).
+  `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`).
+- A game script can't read `SurfaceAppearance.ColorMap` (it needs Plugin
+  capability, and the read throws); read `ColorMapContent.Uri` in a pcall
+  (2026-10-09). `ContentProvider:PreloadAsync` on a folder of SurfaceAppearances
+  fetches nothing (fetch status stays None); preload the texture ids themselves.
 - Boss `Struggle` requests are rate-limited to one per 0.05 s (it was 0.12 s, which
   dropped real fast mashing, retest 2026-10-08).
 - Engine limits the world hit (playtest 2026-10-08):
