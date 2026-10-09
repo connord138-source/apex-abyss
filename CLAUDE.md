@@ -799,7 +799,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
   `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
   `2026-10-08-pc.md`, which also covers the two world rounds before it,
-  `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`, `2026-10-09-pc-monetization.md`;
+  `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`, `2026-10-09-pc-monetization.md`,
+  `2026-10-09-pc-fixes.md`;
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -808,6 +809,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   capability, and the read throws); read `ColorMapContent.Uri` in a pcall
   (2026-10-09). `ContentProvider:PreloadAsync` on a folder of SurfaceAppearances
   fetches nothing (fetch status stays None); preload the texture ids themselves.
+  Even by id, `PreloadAsync` returns once the downloads are queued (still
+  `Loading`), not when they finish: poll `GetAssetFetchStatus` to know when one
+  has arrived (retest 2026-10-09).
 - Boss `Struggle` requests are rate-limited to one per 0.05 s (it was 0.12 s, which
   dropped real fast mashing, retest 2026-10-08).
 - Engine limits the world hit (playtest 2026-10-08):
