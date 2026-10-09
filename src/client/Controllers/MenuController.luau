@@ -68,16 +68,20 @@ function MenuController.close()
 	GuiService.SelectedObject = nil
 end
 
-local function selectFirst(container: Instance)
+-- A controller starts on the menu's first button of its own, not the window's X
+-- (B already closes it): the X is built first, so the Daily panel opened with X
+-- selected instead of CLAIM (playtest 2026-10-09). The X only if there's nothing else.
+local function selectFirst(window: Ui.Window)
 	if not Input.isGamepad() then
 		return
 	end
-	for _, child in container:GetDescendants() do
-		if child:IsA("GuiButton") and child.Selectable and child.Visible then
+	for _, child in window.frame:GetDescendants() do
+		if child:IsA("GuiButton") and child ~= window.close and child.Selectable and child.Visible then
 			GuiService.SelectedObject = child
 			return
 		end
 	end
+	GuiService.SelectedObject = window.close
 end
 
 local function open(title: string, subtitle: string, size: Vector2, build: (Ui.Window) -> Menu)
@@ -94,7 +98,7 @@ local function open(title: string, subtitle: string, size: Vector2, build: (Ui.W
 		return Enum.ContextActionResult.Sink
 	end, false, 3000, Enum.KeyCode.ButtonB)
 	menu.render()
-	selectFirst(window.frame)
+	selectFirst(window)
 end
 
 -- Rebuilds a list's rows, keeping the scroll position and the selected button.

@@ -314,12 +314,23 @@ local function maybeShowDaily()
 	if MenuController.isOpen() then
 		return
 	end
+	-- Never over an offer card: on respawn it covered the eaten screen's Second
+	-- Chance offer (playtest 2026-10-09, phone). Try again once the card is gone.
+	if card then
+		task.delay(2, maybeShowDaily)
+		return
+	end
 	dailyShown = true
 	MenuController.openDaily()
 end
 
 local function step()
 	local s = state()
+	-- An open card keeps the cursor free: closing a menu over it locked the mouse
+	-- again, so GET IT BACK couldn't be clicked (playtest 2026-10-09)
+	if card then
+		Input.cursorWanted = true
+	end
 	-- The growth chip
 	local mass = s.massMultiplier or 1
 	local frenzyLeft = (workspace:GetAttribute("FrenzyUntil") or 0) - workspace:GetServerTimeNow()

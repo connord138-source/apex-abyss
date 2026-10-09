@@ -185,9 +185,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `MonetizationService` (ported from Hatch & Snatch: passes checked with Roblox on join
   and after a purchase, ProcessReceipt → `DataService.processPurchase`, PolicyService,
   rewarded ads), `Store` + `OfferController` + `MenuController.openStore` on the client.
-  **Every id is 0 until the owner creates it in Creator Hub**: a live game hides id-0
-  items, Studio shows them greyed out, and the admin panel grants passes and runs
-  product effects without Robux. Full table in GDD §9.
+  **The ids are real since 2026-10-09** (all 4 passes and 8 products, created in
+  Creator Hub under the private experience "Apex Abyss", universe 10769954850, place
+  83646578075996; publish this place there with "Update existing experience"). An id
+  of 0 is hidden in a live game and greyed out in Studio, and the admin panel grants
+  passes and runs product effects without Robux. Full table in GDD §9.
+  - Studio test purchases of products work even in the unpublished place file. A
+    pass's creator owns it, so on the owner's account every pass shows Owned and a
+    pass purchase can only be tested by someone else.
+  - Rewarded video ads: the experience isn't eligible yet (ID-verified 13+ owner,
+    2-Step Verification, public, the maturity questionnaire, 2K monthly users).
   - **Rule:** sell growth and safety, never bite damage. Coral (it buys Iron Jaw) and
     Kelp Wraps are never sold for Robux.
   - **Passes:** ×2 Mass 399 (every Haul gain ×2), VIP 299 (gold nametag tag, +10%
@@ -782,8 +789,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - Reports go in `docs/playtests/` (`2026-10-06-pc.md`, `2026-10-06-pc-retest.md`,
   `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
   `2026-10-08-pc.md`, which also covers the two world rounds before it,
-  `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`; briefs for the PC session sit
-  beside them as `*-brief.md`).
+  `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`, `2026-10-09-pc-monetization.md`;
+  briefs for the PC session sit beside them as `*-brief.md`).
+- A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
+  turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
+  `part.CFrame:VectorToObjectSpace(Vector3.new(0, studs, 0))` (2026-10-09).
 - A game script can't read `SurfaceAppearance.ColorMap` (it needs Plugin
   capability, and the read throws); read `ColorMapContent.Uri` in a pcall
   (2026-10-09). `ContentProvider:PreloadAsync` on a folder of SurfaceAppearances

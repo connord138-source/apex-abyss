@@ -30,28 +30,28 @@ export type Product = {
 local passes: { Pass } = {
 	{
 		key = "DoubleMass",
-		id = 0,
+		id = 2023286343,
 		name = "×2 Mass",
 		price = 399,
 		description = "Everything you eat counts double toward your Haul. Grow twice as fast, forever.",
 	},
 	{
 		key = "VIP",
-		id = 0,
+		id = 2021282363,
 		name = "VIP",
 		price = 299,
 		description = "A gold VIP tag over your fish and +10% coral from everything you earn.",
 	},
 	{
 		key = "DenExpansion",
-		id = 0,
+		id = 2022452343,
 		name = "Den Expansion",
 		price = 149,
 		description = "Four more furniture spots in your den (two on the floor, two on the walls), at any den level.",
 	},
 	{
 		key = "DeepGarden",
-		id = 0,
+		id = 2022290332,
 		name = "Deep Garden",
 		price = 129,
 		description = "Your den's Coral Garden grows 50% faster and holds 16 hours instead of 8.",
@@ -61,7 +61,7 @@ local passes: { Pass } = {
 local products: { Product } = {
 	{
 		key = "SecondChance",
-		id = 0,
+		id = 3717380340,
 		name = "Second Chance",
 		price = 39,
 		description = "Just eaten? Get back the Haul you lost. Otherwise it's a Second Chance "
@@ -69,7 +69,7 @@ local products: { Product } = {
 	},
 	{
 		key = "ServerFrenzy",
-		id = 0,
+		id = 3717380401,
 		name = "Server Frenzy",
 		price = 99,
 		description = "×2 growth for everyone in the server for 15 minutes, and your name is announced. "
@@ -79,7 +79,7 @@ local products: { Product } = {
 	-- fixed prices). Not listed in the Shop.
 	{
 		key = "DoubleHaulSmall",
-		id = 0,
+		id = 3717380436,
 		name = "Double Haul",
 		price = 19,
 		description = "Doubles the Haul you just banked.",
@@ -87,7 +87,7 @@ local products: { Product } = {
 	},
 	{
 		key = "DoubleHaulBig",
-		id = 0,
+		id = 3717380455,
 		name = "Double Haul (Big)",
 		price = 49,
 		description = "Doubles the big Haul you just banked.",
@@ -95,7 +95,7 @@ local products: { Product } = {
 	},
 	{
 		key = "DoubleHaulHuge",
-		id = 0,
+		id = 3717380479,
 		name = "Double Haul (Huge)",
 		price = 99,
 		description = "Doubles the huge Haul you just banked.",
@@ -103,7 +103,7 @@ local products: { Product } = {
 	},
 	{
 		key = "ShellPouch",
-		id = 0,
+		id = 3717380495,
 		name = "Shell Pouch",
 		price = 49,
 		description = "100 Shells: two rolls for shades, parts and variants.",
@@ -111,7 +111,7 @@ local products: { Product } = {
 	},
 	{
 		key = "ShellChest",
-		id = 0,
+		id = 3717380526,
 		name = "Shell Chest",
 		price = 199,
 		description = "600 Shells: twelve rolls, two of them free.",
@@ -121,7 +121,7 @@ local products: { Product } = {
 		-- The rewarded video ad's reward (Roblox grants ad rewards as a developer
 		-- product, and they can't be random): doubles a small Haul. Not in the Shop.
 		key = "AdDoubleHaul",
-		id = 0,
+		id = 3717380541,
 		name = "Double Haul (ad)",
 		price = 5,
 		description = "Doubles the small Haul you just banked.",
