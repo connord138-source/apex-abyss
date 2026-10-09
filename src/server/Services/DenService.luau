@@ -7,6 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Garden = require(ReplicatedStorage.Shared.Garden)
 local DenBuilder = require(script.Parent.Parent.DenBuilder)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
@@ -14,6 +15,7 @@ local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local StateService = require(script.Parent.StateService)
 local WorldService = require(script.Parent.WorldService)
 
@@ -36,6 +38,21 @@ local function trophiesOf(player: Player, data: DataService.PlayerData): DenBuil
 	}
 end
 
+-- Whether a slot is open at the den's level (or by a pass the player owns)
+local function slotUnlocked(player: Player, level: number, slotId: string): boolean
+	local slot = Dens.slotsById[slotId]
+	if slot and slot.pass then
+		return MonetizationService.hasPass(player, slot.pass)
+	end
+	for i = 1, level do
+		local def = Dens.levels[i]
+		if def and table.find(def.slots, slotId) then
+			return true
+		end
+	end
+	return false
+end
+
 -- Builds the player's den as their record says
 function DenService.refresh(player: Player)
 	local data = DataService.get(player)
@@ -44,21 +61,22 @@ function DenService.refresh(player: Player)
 		return
 	end
 	Guard.run("DenService.build", function()
-		DenBuilder.build(den, data.den, trophiesOf(player, data))
+		local rates = Garden.rates(data.den.level, MonetizationService.hasPass(player, "DeepGarden"))
+		local shellFill = if rates.capShells > 0 then data.garden.shells / rates.capShells else 0
+		-- Furniture only in spots still open (a pass refunded closes its spots)
+		local record = data.den
+		local furniture: { [string]: string } = {}
+		for slotId, itemId in record.furniture do
+			if slotUnlocked(player, record.level, slotId) then
+				furniture[slotId] = itemId
+			end
+		end
+		local shown =
+			{ level = record.level, furniture = furniture, owned = record.owned, glow = record.glow }
+		DenBuilder.build(den, shown, trophiesOf(player, data), Garden.fill(data.garden, rates), shellFill)
 		local level = Dens.levels[data.den.level] or Dens.levels[1]
 		WorldService.setDenLevel(den, level.name)
 	end)
-end
-
--- Whether a slot is open at the den's level
-local function slotUnlocked(level: number, slotId: string): boolean
-	for i = 1, level do
-		local def = Dens.levels[i]
-		if def and table.find(def.slots, slotId) then
-			return true
-		end
-	end
-	return false
 end
 
 local function upgrade(player: Player)
@@ -86,7 +104,7 @@ local function place(player: Player, slotId: any, itemId: any)
 		return
 	end
 	local slot = Dens.slotsById[slotId]
-	if slot == nil or not slotUnlocked(data.den.level, slotId) then
+	if slot == nil or not slotUnlocked(player, data.den.level, slotId) then
 		return fail(player, "That spot isn't open yet")
 	end
 	if itemId == "" then
@@ -143,6 +161,12 @@ function DenService.start()
 	end)
 	Events.trophies:connect(function(player: Player)
 		DenService.refresh(player)
+	end)
+	-- A pass's spots (Den Expansion) and garden (Deep Garden) show at once
+	MonetizationService.passAdded:connect(function(player: Player, key: string)
+		if key == "DenExpansion" or key == "DeepGarden" then
+			DenService.refresh(player)
+		end
 	end)
 	Net.onRequest("DenUpgrade", upgrade)
 	Net.onRequest("DenPlace", place)

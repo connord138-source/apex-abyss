@@ -428,13 +428,166 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 	end
 end
 
--- Builds (or rebuilds) den `index` from its owner's record
-function DenBuilder.build(index: number, record: Record, trophies: Trophies)
+-- The Coral Garden (Config/Dens garden): a stone basin of sand on the floor under
+-- the trophy plaques, its corals growing as it fills (`fill` 0..1 by coral,
+-- `shellFill` by shells), sparkling and lit in the den's glow color once full.
+-- Rebuilt on its own as it grows (GardenService), so the den isn't.
+local CORALS = {
+	Color3.fromRGB(255, 112, 130),
+	Color3.fromRGB(255, 156, 84),
+	Color3.fromRGB(186, 112, 236),
+	Color3.fromRGB(255, 212, 96),
+	Color3.fromRGB(110, 214, 200),
+}
+local SPRIGS = {
+	Vector2.new(0, -0.6),
+	Vector2.new(-1.9, -1.2),
+	Vector2.new(1.9, -1.1),
+	Vector2.new(-1.1, 1.0),
+	Vector2.new(1.2, 1.1),
+	Vector2.new(-2.7, 0.4),
+	Vector2.new(2.7, 0.5),
+}
+
+function DenBuilder.garden(index: number, record: Record, fill: number, shellFill: number)
+	local folder = denFolder(index)
+	local old = folder:FindFirstChild("Garden")
+	if old then
+		old:Destroy()
+	end
+	local def = Dens.levels[record.level] or Dens.levels[1]
+	local glow = Dens.glowsById[record.glow] or Dens.glows[1]
+	local z = -(ROOM_BACK + def.extend) + Dens.garden.fromBack
+	local base = denSpot(floorFrame(index), 0, 0, z)
+	local model = Instance.new("Model")
+	model.Name = "Garden"
+	local bed = part(
+		model,
+		"Bed",
+		Vector3.new(1.3, 7.6, 7.6),
+		base * CFrame.new(0, 0.55, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		STONE,
+		Enum.Material.Slate
+	)
+	bed.Shape = Enum.PartType.Cylinder
+	local sand = part(
+		model,
+		"Sand",
+		Vector3.new(0.3, 6.6, 6.6),
+		base * CFrame.new(0, 1.15, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(226, 208, 168),
+		Enum.Material.Sand
+	)
+	sand.Shape = Enum.PartType.Cylinder
+	local rim = part(
+		model,
+		"Rim",
+		Vector3.new(0.12, 7.75, 7.75),
+		base * CFrame.new(0, 1.22, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		glow.color,
+		Enum.Material.Neon
+	)
+	rim.Shape = Enum.PartType.Cylinder
+	rim.Transparency = 0.55
+	-- The corals fill one after another; even an empty garden shows buds
+	local top = base * CFrame.new(0, 1.3, 0)
+	for i, spot in SPRIGS do
+		local grown = math.clamp(fill * #SPRIGS - (i - 1), 0, 1)
+		local size = 0.18 + 0.82 * grown
+		local color = CORALS[(i - 1) % #CORALS + 1]
+		local foot = top * CFrame.new(spot.X, 0, spot.Y) * CFrame.Angles(0, i * 1.7, 0)
+		local height = 0.5 + 2.6 * size
+		local stalk = part(
+			model,
+			"Coral",
+			Vector3.new(height, 0.42 * size + 0.12, 0.42 * size + 0.12),
+			foot * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			color,
+			Enum.Material.SmoothPlastic
+		)
+		stalk.Shape = Enum.PartType.Cylinder
+		if grown > 0.35 then
+			for side = -1, 1, 2 do
+				local length = height * 0.55
+				local branch = part(
+					model,
+					"Branch",
+					Vector3.new(length, 0.3 * size + 0.08, 0.3 * size + 0.08),
+					foot
+						* CFrame.new(0, height * 0.45, 0)
+						* CFrame.Angles(0, 0, math.rad(90 + side * 38))
+						* CFrame.new(length / 2, 0, 0),
+					color,
+					Enum.Material.SmoothPlastic
+				)
+				branch.Shape = Enum.PartType.Cylinder
+			end
+		end
+		local cap = part(
+			model,
+			"Polyp",
+			Vector3.one * (0.3 + 0.45 * size),
+			foot * CFrame.new(0, height, 0),
+			color:Lerp(Color3.new(1, 1, 1), 0.25),
+			if grown >= 1 then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		)
+		cap.Shape = Enum.PartType.Ball
+	end
+	-- Shells washed up on the sand
+	for i = 1, math.floor(shellFill * 5 + 0.001) do
+		local angle = i * 2.1
+		local shell = part(
+			model,
+			"Shell",
+			Vector3.new(0.7, 0.3, 0.6),
+			top * CFrame.new(math.cos(angle) * 2.6, 0.05, math.sin(angle) * 2.6) * CFrame.Angles(0, angle, 0),
+			Color3.fromRGB(242, 228, 204),
+			Enum.Material.SmoothPlastic
+		)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = shell
+	end
+	-- Full: it sparkles and glows, so a glance says "collect me"
+	if fill >= 0.999 then
+		local light = Instance.new("PointLight")
+		light.Color = glow.color
+		light.Range = 14
+		light.Brightness = 1.4
+		light.Parent = sand
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Rate = 6
+		sparkle.Lifetime = NumberRange.new(1.2, 2)
+		sparkle.Speed = NumberRange.new(0.5, 1.5)
+		sparkle.SpreadAngle = Vector2.new(25, 25)
+		sparkle.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.3, 0.35),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		sparkle.LightEmission = 1
+		sparkle.Color = ColorSequence.new(glow.color)
+		sparkle.EmissionDirection = Enum.NormalId.Right -- the cylinder's axis is up
+		sparkle.Parent = sand
+	end
+	model.Parent = folder
+end
+
+-- Builds (or rebuilds) den `index` from its owner's record (`fill` and `shellFill`:
+-- the Coral Garden's, 0..1)
+function DenBuilder.build(
+	index: number,
+	record: Record,
+	trophies: Trophies,
+	fill: number?,
+	shellFill: number?
+)
 	DenBuilder.clear(index, false)
 	carve(index, record.level)
 	local folder = denFolder(index)
 	furnish(folder, index, record)
 	trophyWall(folder, index, record, trophies)
+	DenBuilder.garden(index, record, fill or 0, shellFill or 0)
 end
 
 -- Takes a den's base down; with `refill` the rock goes back to a plain Nook

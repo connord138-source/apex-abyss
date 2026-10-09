@@ -813,34 +813,69 @@ Concept: `assets/concepts/GiantSquid.jpg`.
 
 ## 9. Monetization
 
-Rule: **sell growth and safety, never bite damage**, so PvP stays fair.
+Rule: **sell growth and safety, never bite damage**, so PvP stays fair. Kelp Wraps
+are never sold for Robux. Built 2026-10-09 (`Config/Monetization.luau`,
+`MonetizationService`, ported from Hatch & Snatch); every item has id 0 until it's
+created in Creator Hub, and a live game hides id-0 items.
 
-- **Second Chance** (developer product): keep your Haul when you're eaten. This is the
-  top earner in eat-and-grow games. A rewarded ad can grant it too, since a fixed reward
-  is allowed.
-- **Double Haul** (developer product; the owner's addition):
-  - **When it's offered:** on the bank screen, only when the haul is over a minimum
-    size. It's one tap with a Skip button and **no countdown**.
-  - **Pricing:** 2–3 versions by haul size (Small / Big / Huge), since Roblox products
-    have fixed prices. The economy sim sets the cut-offs.
-  - **Rewarded ad:** doubles small hauls up to a cap, and bigger hauls need Robux.
-  - **Stacking:** it doubles the final banked amount, after Server Frenzy and ×2 Mass.
-  - **Paying exactly once:** each banked haul is written to the save (`lastHaul`), so a
-    receipt that lands late or after a rejoin still pays exactly once.
-- **Server Frenzy** (developer product): ×2 growth for the whole server for a while,
-  like Server Luck in Hatch & Snatch.
-- **Game passes:** VIP, ×2 Mass, extra den slots.
-- **Pearl crates:** paid random items, with an odds panel before buying.
-- **Free rewards:** codes, a Roblox group perk, a Premium perk and rewarded ads.
-- **Shell packs (planned):** Robux for shells (paid rolls), with the odds panel shown
-  before buying.
+| Item | Kind | Price | What it does |
+|---|---|---|---|
+| **×2 Mass** | pass | 399 | Every Haul gain counts double (prey, forage, players, predators, bosses, treasure) |
+| **VIP** | pass | 299 | Gold VIP tag on the nametag, +10% coral from play |
+| **Den Expansion** | pass | 149 | Four more furniture spots (X1–X4: two floor, two wall), at any den level |
+| **Deep Garden** | pass | 129 | The Coral Garden grows 50% faster and holds 16 h instead of 8 |
+| **Second Chance** | product | 39 | Bought on the eaten screen: the Haul just lost comes back (once, within 3 min). Bought any other time: a Second Chance charm (hold up to 5) |
+| **Double Haul** Small / Big / Huge | product | 19 / 49 / 99 | Doubles the Haul just banked; the tier is the Haul's size (≤ 60 kg, ≤ 2.5 t, more) |
+| **Server Frenzy** | product | 99 | ×2 growth for the whole server for 15 min, announced; buying again adds 15 min (up to 2 h ahead) |
+| **Shell Pouch** / **Shell Chest** | product | 49 / 199 | 100 / 600 shells (2 / 12 rolls). Paid random items: hidden where policy restricts them, with ODDS one tap away |
+| Double Haul (ad) | ad reward | — | A watched rewarded video doubles a Haul up to 60 kg |
+
+- **Double Haul:** offered on the bank screen after the tutorial when doubling would
+  add at least 2 levels (a Haul of ~30% of your banked mass or more). One tap, WATCH
+  AD for small Hauls, SKIP; **no countdown**. It doubles the banked amount after ×2
+  Mass and Server Frenzy. `lastHaul` (with its species) is in the save, so a late
+  receipt doubles exactly that haul once, capped at the tier that was paid for; a
+  second receipt for the same haul becomes a Second Chance charm (a purchase is never
+  lost).
+- **Second Chance:** the eaten screen offers it (after the tutorial) when the lost
+  Haul is at least 25% of your banked mass. `lostHaul` is in the save.
+- **Coral multipliers** (VIP 1.1, Premium 1.1, group 1.05) apply to coral earned from
+  play (`EconomyService.earnCoral`: banking, eating players, predators, bosses, the
+  Coral Garden), not to fixed rewards that show their amount (rolls, treasure, daily).
+- **Free perks:** Roblox Premium (+10% coral, more Premium playtime for Premium
+  Payouts), the Roblox group (id 0 until it exists: +5% coral, 100 shells once),
+  rewarded ads.
+- **Shop:** SHOP (beside the wallet) or the View button on a controller: Daily reward,
+  Boosts, Game passes, Free perks. Purchases open Roblox's own prompts.
+- **Not sold:** coral (it buys Iron Jaw), Kelp Wraps, anything that adds bite damage.
+- **Later:** codes, Pearl crates, a season pass.
+
+### Daily login streak (owner, 2026-10-09; built)
+
+One claim a UTC day (`Config/Daily.luau`, `RewardsService`). The panel opens by itself
+once a session when a reward waits (after the tutorial); DAILY on the HUD glows until
+it's claimed. Missing a day starts again at Day 1. The seven days loop, and each
+finished week adds +25% coral and shells (up to +100%).
+
+| Day | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|
+| Reward | 300 coral | 50 shells | 600 coral + Kelp Wrap | 100 shells | 1,000 coral + Lucky Charm | 150 shells + Second Chance | 2,500 coral + 100 shells + Captain's map |
 
 ## 10. Den
 
 - **Haul Chamber:** raises the banking multiplier.
 - **Trophy wall:** the jaws of your biggest kills.
 - **Aquarium:** your collected skins swim around it.
-- **Kelp or plankton farm:** passive income.
+- **Coral Garden** (owner, 2026-10-09: "an afk aspect of the game to earn something
+  to keep players coming back"; built): every den has a garden bed under the trophy
+  plaques that grows coral and shells over real time, online or off, up to 8 hours'
+  worth (16 with Deep Garden). Per hour by den level: Nook 60 coral + 4 shells,
+  Burrow 100 + 6, Hall 160 + 9, Grotto 250 + 12 (Deep Garden ×1.5). Resting in your
+  own den grows it ×2 and collects it every minute (AFK income); swimming in
+  collects it, and a returning player (who spawns in the den) sees WELCOME BACK with
+  what grew while away. Its corals grow as it fills and sparkle once full; a sign
+  over it shows the amount and the time to full. `Config/Dens` `garden`,
+  `Shared/Garden`, `GardenService`, `DenBuilder.garden`, `GardenController`.
 - **Dive buffs:** start bigger, swim faster, longer sonar range, deeper depth rating.
 - **Den Designer:** the Castle Designer idea from Hatch & Snatch, with coral, crystal,
   magma, ice and bioluminescent themes, and the most wanted looks on a rebirth ladder.

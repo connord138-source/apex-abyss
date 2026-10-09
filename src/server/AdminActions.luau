@@ -16,7 +16,9 @@ local BossService = require(script.Parent.Services.BossService)
 local DataService = require(script.Parent.Services.DataService)
 local EconomyService = require(script.Parent.Services.EconomyService)
 local FishService = require(script.Parent.Services.FishService)
+local GardenService = require(script.Parent.Services.GardenService)
 local HuntService = require(script.Parent.Services.HuntService)
+local MonetizationService = require(script.Parent.Services.MonetizationService)
 local TreasureService = require(script.Parent.Services.TreasureService)
 local TutorialService = require(script.Parent.Services.TutorialService)
 local WardrobeService = require(script.Parent.Services.WardrobeService)
@@ -315,6 +317,107 @@ local function endBoss(_admin: Player, _targets: { Player }): string
 	return `{boss.def.name} sent away`
 end
 
+-- Monetization testing (no Robux): grant or take a pass, run a product's effect,
+-- pretend to have Premium or a restricted policy
+local function grantPass(_admin: Player, targets: { Player }, key: any): string
+	local pass = if typeof(key) == "string" then Config.Monetization.passesByKey[key] else nil
+	if pass == nil then
+		return "Pick a pass"
+	end
+	local count = each(targets, function(player)
+		MonetizationService.grantPass(player, pass.key)
+	end)
+	return `{pass.name} granted to {count} player(s)`
+end
+
+local function revokePass(_admin: Player, targets: { Player }, key: any): string
+	local pass = if typeof(key) == "string" then Config.Monetization.passesByKey[key] else nil
+	if pass == nil then
+		return "Pick a pass"
+	end
+	local count = each(targets, function(player)
+		MonetizationService.revokePass(player, pass.key)
+	end)
+	return `{pass.name} taken from {count} player(s) (until they rejoin, if they own it on Roblox)`
+end
+
+local function runProduct(_admin: Player, targets: { Player }, key: any): string
+	local product = if typeof(key) == "string" then Config.Monetization.productsByKey[key] else nil
+	if product == nil then
+		return "Pick a product"
+	end
+	local count = 0
+	for _, player in targets do
+		if MonetizationService.grantProduct(player, product.key) then
+			count += 1
+		end
+	end
+	return `Ran {product.name} for {count} player(s) (no purchase made)`
+end
+
+local function perk(_admin: Player, targets: { Player }, which: any): string
+	local perks = { premium = true, restricted = true, group = true }
+	if typeof(which) ~= "string" then
+		return "Pick a perk"
+	end
+	local name, value = string.match(which, "^(%a+):(%a+)$")
+	if name == nil or not perks[name] then
+		return "Pick a perk"
+	end
+	local on = value == "on"
+	local count = each(targets, function(player)
+		MonetizationService.setDebugPerk(player, name :: string, on)
+	end)
+	return `{name} {if on then "on" else "off"} for {count} player(s)`
+end
+
+-- Daily streak and Coral Garden testing
+local function dailyReset(_admin: Player, targets: { Player }): string
+	local today = EconomyService.today()
+	local count = each(targets, function(_player, data)
+		-- As if the last claim was yesterday: the streak carries on and today's claim waits
+		if data.daily.day >= today then
+			data.daily.day = today - 1
+		end
+	end)
+	return `Today's daily reward is claimable again for {count} player(s)`
+end
+
+local function dailyStreak(_admin: Player, targets: { Player }, streak: any): string
+	local n = amountOf(streak, 0)
+	if n == nil then
+		return "Give a streak"
+	end
+	local today = EconomyService.today()
+	local count = each(targets, function(_player, data)
+		data.daily.day = today - 1
+		data.daily.streak = n
+		data.daily.best = math.max(data.daily.best, n)
+	end)
+	return `Streak set to {n} (today's claim makes it {n + 1}) for {count} player(s)`
+end
+
+local function dailyBreak(_admin: Player, targets: { Player }): string
+	local today = EconomyService.today()
+	local count = each(targets, function(_player, data)
+		data.daily.day = today - 3
+	end)
+	return `Missed two days: the streak starts over for {count} player(s)`
+end
+
+local function gardenHours(_admin: Player, targets: { Player }, hours: any): string
+	local n = if typeof(hours) == "number" and hours == hours then math.clamp(hours, 0, 48) else nil
+	if n == nil then
+		return "Give hours"
+	end
+	local count = 0
+	for _, player in targets do
+		GardenService.fastForward(player, n)
+		count += 1
+	end
+	return `Coral Garden grown by {n} h for {count} player(s) (collected within a few seconds while in their den)`
+end
+
 AdminActions.byName = {
 	addCoral = addCoral :: Handler,
 	setCoral = setCoral :: Handler,
@@ -337,6 +440,14 @@ AdminActions.byName = {
 	summonBoss = summonBoss :: Handler,
 	hurtBoss = hurtBoss :: Handler,
 	endBoss = endBoss :: Handler,
+	grantPass = grantPass :: Handler,
+	revokePass = revokePass :: Handler,
+	runProduct = runProduct :: Handler,
+	perk = perk :: Handler,
+	dailyReset = dailyReset :: Handler,
+	dailyStreak = dailyStreak :: Handler,
+	dailyBreak = dailyBreak :: Handler,
+	gardenHours = gardenHours :: Handler,
 } :: { [string]: Handler }
 
 return AdminActions

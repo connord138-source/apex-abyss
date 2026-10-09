@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Schools = require(ReplicatedStorage.Shared.Schools)
@@ -24,6 +25,7 @@ local Progress = require(script.Parent.Parent.Progress)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local ShellService = require(script.Parent.ShellService)
 local StateService = require(script.Parent.StateService)
 
@@ -31,6 +33,7 @@ local hunt = Config.Tuning.hunt
 local swim = Config.Tuning.swim
 local economy = Config.Tuning.economy
 local hub = Config.World.hub
+local money = Config.Monetization.tuning
 
 export type Session = {
 	haul: number,
@@ -131,12 +134,33 @@ local function mouthOf(root: BasePart, length: number): Vector3
 	return root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
 end
 
-local function addHaul(player: Player, amount: number)
+-- Adds to a fish's Haul: ×2 Mass and Server Frenzy multiply every gain, unless
+-- `raw` (a Haul given back). Returns what was added.
+local function addHaul(player: Player, amount: number, raw: boolean?): number
 	local session = sessions[player]
-	if session then
-		session.haul += amount
-		refreshSize(player)
+	if session == nil or amount <= 0 then
+		return 0
 	end
+	if not raw then
+		amount *= MonetizationService.growth(player)
+	end
+	session.haul += amount
+	refreshSize(player)
+	return amount
+end
+
+-- A Haul lost to being eaten, for a Second Chance bought on the eaten screen.
+-- Offered only for a Haul worth having, after the tutorial; only an offered Haul is
+-- remembered, so a Second Chance bought from the Shop otherwise is a charm. Returns
+-- the kg to offer, or nil.
+local function rememberLost(data: DataService.PlayerData, lost: number): number?
+	local worth = lost > 0 and lost >= Progress.mass(data) * money.secondChance.minShare
+	if not worth or not data.tutorial.done then
+		data.lostHaul = { amount = 0, at = 0 }
+		return nil
+	end
+	data.lostHaul = { amount = lost, at = Timing.now() }
+	return lost
 end
 
 -- A fish is eaten: its Haul is lost (part of it goes to the eater) and it
@@ -168,7 +192,8 @@ local function eatPlayer(victim: Player, eater: Player)
 	local ratio = math.clamp(victimLength / eaterLength / hunt.swallowRatio, 0, 1)
 	local farm = math.max(ratio * ratio, 0.02)
 	local gain = (lost * hunt.playerHaulShare + Progress.mass(victimData) * hunt.playerBaseShare) * farm
-	EconomyService.addCoral(eater, economy.eatPlayerCoral * farm)
+	EconomyService.earnCoral(eater, economy.eatPlayerCoral * farm)
+	local offer = if saved then nil else rememberLost(victimData, lost)
 	victimSession.haul = 0
 	victimSession.alive = false
 	victimData.stats.timesEaten += 1
@@ -182,6 +207,7 @@ local function eatPlayer(victim: Player, eater: Player)
 		lost = lost,
 		saved = if saved then keptHaul[victim] else nil,
 		respawn = hunt.respawnSeconds,
+		offer = offer,
 	})
 	Net.notify(eater, `You ate {victim.DisplayName}!`, "good")
 	FishService.respawnIn(victim, hunt.respawnSeconds)
@@ -380,18 +406,35 @@ end
 
 local function bank(player: Player, session: Session, data: DataService.PlayerData)
 	local amount = session.haul * hunt.bankMultiplier * Perks.bank(data.upgrades)
-	local coral = math.floor(economy.bankCoral * math.sqrt(amount))
 	local record = Progress.record(data)
 	local levelBefore = Size.level(record.mass)
 	record.mass += amount
 	record.bestMass = math.max(record.bestMass, record.mass)
-	data.lastHaul = { id = data.nextHaulId, amount = amount, doubled = false }
+	data.lastHaul = { id = data.nextHaulId, amount = amount, doubled = false, species = data.current }
 	data.nextHaulId += 1
 	data.stats.banks += 1
 	data.stats.banked += amount
 	session.haul = 0
 	local levelAfter = Size.level(record.mass)
-	EconomyService.addCoral(player, coral)
+	local coral = EconomyService.earnCoral(player, economy.bankCoral * math.sqrt(amount))
+	-- Double Haul on the bank screen, when doubling is worth at least a level's share
+	local gain = math.log((record.mass + amount) / record.mass) / math.log(Config.Tuning.size.levelGrowth)
+	local offer = nil
+	if gain >= money.doubleHaul.minLevels and data.tutorial.done then
+		local tier = money.doubleHaul.tiers[#money.doubleHaul.tiers]
+		for _, candidate in money.doubleHaul.tiers do
+			if amount <= candidate.maxKg then
+				tier = candidate
+				break
+			end
+		end
+		offer = {
+			id = data.lastHaul.id,
+			product = tier.key,
+			levels = Size.level(record.mass + amount) - levelAfter,
+			ad = amount <= money.doubleHaul.adMaxKg,
+		}
+	end
 	Net.banked(player, {
 		amount = amount,
 		coral = coral,
@@ -399,6 +442,7 @@ local function bank(player: Player, session: Session, data: DataService.PlayerDa
 		levelBefore = levelBefore,
 		level = levelAfter,
 		stage = Size.stage(levelAfter),
+		offer = offer,
 	})
 	refreshSize(player)
 	Events.banked:fire(player, amount, levelAfter)
@@ -467,11 +511,13 @@ function HuntService.mouth(player: Player): (Vector3?, number, number)
 end
 
 -- Adds food to a player's Haul (with the Feast Charm), as eating prey does.
-function HuntService.feed(player: Player, mass: number)
+-- Returns the kg added (after ×2 Mass and Server Frenzy).
+function HuntService.feed(player: Player, mass: number): number
 	local data = DataService.get(player)
-	if data then
-		addHaul(player, mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()))
+	if data == nil then
+		return 0
 	end
+	return addHaul(player, mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()))
 end
 
 -- Every fish's session (alive, inHub, safeUntil, ...), for creatures choosing a
@@ -507,6 +553,7 @@ function HuntService.kill(player: Player, source: string)
 		keptHaul[player] = lost
 		lost = 0
 	end
+	local offer = if saved then nil else rememberLost(data, lost)
 	session.haul = 0
 	session.alive = false
 	data.stats.timesEaten += 1
@@ -516,6 +563,7 @@ function HuntService.kill(player: Player, source: string)
 		lost = lost,
 		saved = if saved then keptHaul[player] else nil,
 		respawn = hunt.respawnSeconds,
+		offer = offer,
 	})
 	FishService.respawnIn(player, hunt.respawnSeconds)
 	DataService.markDirty(player)
@@ -602,7 +650,73 @@ function HuntService.giveDna(player: Player, position: Vector3, amount: number)
 	giveDna(player, position, amount)
 end
 
+-- Double Haul (a product receipt or a watched ad): the last banked Haul again, up to
+-- `cap` kg (a bigger haul banked before the receipt landed is doubled up to the
+-- size that was paid for). Each haul doubles once; a second receipt for the same
+-- one is never lost, it becomes a Second Chance charm.
+local function doubleHaul(player: Player, data: DataService.PlayerData, cap: number)
+	local last = data.lastHaul
+	if last.amount <= 0 or last.doubled then
+		data.charms.SecondChance = (data.charms.SecondChance or 0) + 1
+		Net.notify(player, "That Haul was already doubled, so here's a Second Chance charm instead.", "info")
+		return
+	end
+	local amount = math.min(last.amount, cap)
+	local speciesId = last.species or data.current
+	local record = data.species[speciesId] or Progress.record(data)
+	local levelBefore = Size.level(record.mass)
+	record.mass += amount
+	record.bestMass = math.max(record.bestMass, record.mass)
+	last.doubled = true
+	data.stats.banked += amount
+	local levelAfter = Size.level(record.mass)
+	Net.banked(player, {
+		amount = amount,
+		doubled = true,
+		mass = record.mass,
+		levelBefore = levelBefore,
+		level = levelAfter,
+		stage = Size.stage(levelAfter),
+	})
+	if speciesId == data.current then
+		refreshSize(player)
+	end
+end
+
+-- Second Chance bought on the eaten screen gives back the Haul just lost (once);
+-- bought any other time, it's a charm for the next time something eats you.
+local function secondChance(player: Player, data: DataService.PlayerData)
+	local lost = data.lostHaul
+	if lost.amount > 0 and Timing.now() - lost.at <= money.secondChance.window then
+		local amount = lost.amount
+		data.lostHaul = { amount = 0, at = 0 }
+		local session = sessions[player]
+		if session and session.alive then
+			addHaul(player, amount, true)
+		else
+			keptHaul[player] = (keptHaul[player] or 0) + amount -- back on the next spawn
+		end
+		Net.notify(
+			player,
+			`Second Chance: your {Format.mass(amount)} Haul is back! Swim home to bank it.`,
+			"rare"
+		)
+		return
+	end
+	data.charms.SecondChance = (data.charms.SecondChance or 0) + 1
+	Net.notify(player, "Second Chance ready: the next time you're eaten, you keep your Haul.", "rare")
+end
+
 function HuntService.start()
+	for _, tier in money.doubleHaul.tiers do
+		MonetizationService.onProduct(tier.key, function(player, data)
+			doubleHaul(player, data, tier.maxKg)
+		end)
+	end
+	MonetizationService.onProduct("AdDoubleHaul", function(player, data)
+		doubleHaul(player, data, money.doubleHaul.adMaxKg)
+	end)
+	MonetizationService.onProduct("SecondChance", secondChance)
 	FishService.spawned:connect(function(player: Player, character: Model)
 		local session = newSession()
 		session.health = maxHealth(player)

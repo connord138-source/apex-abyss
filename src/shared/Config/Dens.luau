@@ -24,6 +24,7 @@ export type Slot = {
 	kind: "floor" | "wall" | "pit",
 	offset: Vector3, -- in the den's frame: x right, y up from the floor, z toward the hub (negative = back)
 	facing: number, -- yaw (radians) the item turns to face the room
+	pass: string?, -- opened by this game pass (Config/Monetization) instead of a level
 }
 
 export type Item = {
@@ -95,6 +96,37 @@ local slots: { Slot } = {
 	{ id = "P2", kind = "pit", offset = Vector3.new(5, -9, 2), facing = math.rad(-40) },
 	{ id = "P3", kind = "pit", offset = Vector3.new(0, -9, -5), facing = 0 },
 	{ id = "P4", kind = "pit", offset = Vector3.new(0, -13, 6), facing = math.rad(180) },
+	-- The Den Expansion pass's spots, open at any level: the back corners of the
+	-- floor (clear of the pool and the Coral Garden) and low on the side walls by
+	-- the doorway
+	{
+		id = "X1",
+		kind = "floor",
+		offset = Vector3.new(-8, 0, -12),
+		facing = math.rad(30),
+		pass = "DenExpansion",
+	},
+	{
+		id = "X2",
+		kind = "floor",
+		offset = Vector3.new(8, 0, -12),
+		facing = math.rad(-30),
+		pass = "DenExpansion",
+	},
+	{
+		id = "X3",
+		kind = "wall",
+		offset = Vector3.new(-10.5, 7, 9),
+		facing = math.rad(90),
+		pass = "DenExpansion",
+	},
+	{
+		id = "X4",
+		kind = "wall",
+		offset = Vector3.new(10.5, 7, 9),
+		facing = math.rad(-90),
+		pass = "DenExpansion",
+	},
 }
 
 local items: { Item } = {
@@ -275,4 +307,20 @@ return {
 	maxPitRadius = 12,
 	-- The hint to open the den menu shows within this of your own Haul Pool
 	hintReach = 16,
+	-- The Coral Garden (owner, 2026-10-09: "an afk aspect of the game to earn
+	-- something to keep players coming back"): every den grows coral and a few
+	-- shells over real time, online or off, up to `hours` of growth (the Deep Garden
+	-- pass: Config/Monetization). Resting in your own den grows it `rest` times
+	-- faster and collects it every `collectEvery` seconds; swimming in collects it
+	-- too. A bigger den grows more (per hour, by den level).
+	garden = {
+		coral = { 60, 100, 160, 250 },
+		shells = { 4, 6, 9, 12 },
+		hours = 8,
+		rest = 2,
+		collectEvery = 60,
+		-- The bed sits on the floor this far in front of the back wall (it moves
+		-- back as the den grows), under the trophy plaques
+		fromBack = 8,
+	},
 }

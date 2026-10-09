@@ -6,8 +6,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Timing = require(ReplicatedStorage.Shared.Timing)
-local DataService = require(script.Parent.DataService)
+local Net = require(script.Parent.Parent.Net)
 local Progress = require(script.Parent.Parent.Progress)
+local DataService = require(script.Parent.DataService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local StateService = require(script.Parent.StateService)
 
 local EconomyService = {}
@@ -21,6 +23,19 @@ function EconomyService.addCoral(player: Player, amount: number)
 	data.coral += amount
 	data.stats.coralEarned += amount
 	DataService.markDirty(player)
+end
+
+-- Coral earned from play (banking, eating players, predators, bosses, the Coral
+-- Garden): VIP, Premium and the group perk add their share. Fixed rewards that show
+-- their amount up front (rolls, treasure, the daily streak) use addCoral. Returns
+-- what was added.
+function EconomyService.earnCoral(player: Player, amount: number): number
+	if amount <= 0 then
+		return 0
+	end
+	local total = math.floor(amount * MonetizationService.coralMultiplier(player) + 0.5)
+	EconomyService.addCoral(player, total)
+	return total
 end
 
 -- Takes coral if the player has enough; returns whether it did.
@@ -50,6 +65,19 @@ function EconomyService.today(): number
 end
 
 function EconomyService.start()
+	-- Shell packs (Robux): shells buy rolls, so they're paid random items (hidden
+	-- where restricted, odds shown first; MonetizationService)
+	local Tuning = Config.Monetization.tuning
+	MonetizationService.onProduct("ShellPouch", function(player, data)
+		data.shells += Tuning.shellPouch
+		data.stats.shells += Tuning.shellPouch
+		Net.notify(player, `+{Tuning.shellPouch} Shells! Thanks for the support.`, "rare")
+	end)
+	MonetizationService.onProduct("ShellChest", function(player, data)
+		data.shells += Tuning.shellChest
+		data.stats.shells += Tuning.shellChest
+		Net.notify(player, `+{Tuning.shellChest} Shells! Thanks for the support.`, "rare")
+	end)
 	StateService.provide(function(_player, data, state)
 		local perRoll = Config.Rolls.shellsPerRoll
 		state.coral = data.coral

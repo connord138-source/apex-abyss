@@ -839,11 +839,9 @@ local function rewards(boss: Boss, killer: Player?)
 		}
 		-- The Haul (carry it home), the coral jackpot
 		local haul = reward.haulKg * math.max(share, reward.minHaulShare)
-		HuntService.feed(player, haul)
-		summary.haul = haul
+		summary.haul = HuntService.feed(player, haul) -- (×2 Mass and Server Frenzy count)
 		local coral = math.floor(math.max(reward.coral * share, reward.coralMin) + 0.5)
-		EconomyService.addCoral(player, coral)
-		summary.coral = coral
+		summary.coral = EconomyService.earnCoral(player, coral)
 		-- A shade roll, Rare or better (a fish that has them all gets coral instead:
 		-- it got nothing at all, playtest 2026-10-08)
 		local shade = rollShade(reward.shadeRollMin, Progress.shades(data))

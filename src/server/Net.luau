@@ -32,6 +32,8 @@ local predatorEvent = makeEvent("PredatorEvent") -- (kind, index, payload) to ev
 local bossState = makeEvent("BossState") -- (state) to everyone: the world boss event (warning, active, gone)
 local bossReward = makeEvent("BossReward") -- (summary) to a player who helped kill a boss
 local shove = makeEvent("Shove") -- (velocity) to a player: a push from a creature (its client adds it)
+local gardenCollected = makeEvent("GardenCollected") -- (summary) to the den's owner: the Coral Garden paid out
+local dailyClaimed = makeEvent("DailyClaimed") -- (summary) to the claimer: a daily streak reward
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -58,6 +60,8 @@ local REQUESTS: { [string]: number } = {
 	DenUpgrade = 0.5, -- () the den's next level
 	DenPlace = 0.25, -- (slotId, itemId) furniture into a slot ("" clears it)
 	DenColor = 0.25, -- (glowId) the den's glow color
+	ClaimDaily = 1, -- () today's daily streak reward
+	WatchAd = 3, -- () a rewarded video ad (its reward: Double Haul on a small Haul)
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -203,6 +207,14 @@ end
 -- so it adds the velocity itself.
 function Net.shove(player: Player, velocity: Vector3)
 	shove:FireClient(player, velocity)
+end
+
+function Net.gardenCollected(player: Player, summary: { [string]: any })
+	gardenCollected:FireClient(player, summary)
+end
+
+function Net.dailyClaimed(player: Player, summary: { [string]: any })
+	dailyClaimed:FireClient(player, summary)
 end
 
 -- A toast for everyone (rare rolls).

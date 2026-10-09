@@ -33,6 +33,7 @@ local function make(player: Player, character: Model, root: BasePart): Tag
 		Ui.label(gui, "Name", player.DisplayName, Ui.FONT_BOLD, 18, Ui.color.text, UDim2.new(1, 0, 0, 22))
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.TextStrokeTransparency = 0.6
+	name.RichText = true -- the gold VIP tag
 	local status = Ui.label(
 		gui,
 		"Status",
@@ -80,6 +81,11 @@ local function step()
 			color, status = Ui.color.text, "EVEN FIGHT"
 		end
 		tag.name.TextColor3 = color
+		local display =
+			string.gsub(string.gsub(string.gsub(player.DisplayName, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+		tag.name.Text = if character:GetAttribute("VIP") == true
+			then `<font color="#FFCC5C">VIP</font> {display}`
+			else display
 		local title = character:GetAttribute("Title")
 		tag.status.Text = if typeof(title) == "string" and title ~= ""
 			then `{status} · {string.upper(title)}`

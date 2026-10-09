@@ -1,17 +1,21 @@
 --!strict
 -- Client bootstrap. The client draws everything and moves its own fish; the
 -- server never trusts it for growth, eats or banking.
+local Ads = require(script.Ads)
 local ClientState = require(script.ClientState)
 local Input = require(script.Input)
+local Store = require(script.Store)
 local BiomeController = require(script.Controllers.BiomeController)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
+local GardenController = require(script.Controllers.GardenController)
 local HealController = require(script.Controllers.HealController)
 local HudController = require(script.Controllers.HudController)
 local HuntController = require(script.Controllers.HuntController)
 local MenuController = require(script.Controllers.MenuController)
 local NametagController = require(script.Controllers.NametagController)
+local OfferController = require(script.Controllers.OfferController)
 local OceanController = require(script.Controllers.OceanController)
 local PlanktonController = require(script.Controllers.PlanktonController)
 local PredatorController = require(script.Controllers.PredatorController)
@@ -34,6 +38,10 @@ OceanController.start()
 HudController.start() -- before the swim controller, so it hears the first spawn
 MenuController.start() -- shops (at the stalls), wardrobe, odds
 RollController.start() -- wallet, Roll button and the reveal
+Store.start() -- Robux prompts (passes, products)
+OfferController.start() -- DAILY and SHOP, the growth chip, Double Haul and Second Chance cards
+GardenController.start() -- the den's Coral Garden sign, payouts and welcome back
+task.spawn(Ads.start) -- rewarded ads: checks whether one can be shown
 BiomeController.start() -- biome names, suggested levels and under-level warnings
 TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
