@@ -428,6 +428,9 @@ function StartController.start()
 	gui.Name = "StartScreen"
 	gui.ResetOnSpawn = false
 	gui.IgnoreGuiInset = true
+	-- Edge to edge: inside the safe area, a phone's notch strips showed the game
+	-- world, cutting the scene's fish off at the seam (playtest 2026-10-09)
+	gui.ScreenInsets = Enum.ScreenInsets.None
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.DisplayOrder = 100
 	gui.Parent = playerGui
