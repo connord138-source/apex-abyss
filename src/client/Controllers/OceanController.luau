@@ -138,15 +138,18 @@ local ink: ColorCorrectionEffect
 -- things show
 local darkTarget = 0
 local dark, darkVelocity = 0, 0
-local lit = false
+local reveal = 0 -- how much of the dark this fish's own light lifts (LampController)
 local glow = 0
 -- Plankton glow in the deepest water (PlanktonController): a very faint blue-green
 -- light, most noticeable in the pitch dark
 local GLOW_TINT = Color3.fromRGB(70, 150, 150)
--- What's left of the light in the full dark, and the plankton's very faint share
-local BLACK_AMBIENT = Color3.fromRGB(2, 3, 6)
-local GLOW_AMBIENT = Color3.fromRGB(12, 30, 34)
-local DARK_WATER, DARK_DECAY = Color3.fromRGB(3, 7, 14), Color3.fromRGB(1, 3, 6)
+-- What's left of the light in the full dark (owner, 2026-10-09: "about 5-10%
+-- visibility with no light"), and with the plankton's glow at its thickest; the haze
+-- is a very deep blue, so rock and fish read as dim shapes against it
+local lightTuning = Config.Tuning.light
+local BLACK_AMBIENT = lightTuning.ambient
+local GLOW_AMBIENT = lightTuning.plankton
+local DARK_WATER, DARK_DECAY = lightTuning.water, lightTuning.decay
 local DARK_DENSITY = 0.6
 
 -- The light the server set (WorldService.setupLighting), read when the dark comes
@@ -216,8 +219,9 @@ local function step(dt: number)
 	-- The dark: the light itself goes out (sun, ambient, the environment's
 	-- reflections), so only what glows or is lit shows: lamps, glowing skins, the
 	-- plankton, the walls' glow specks. Fog and a crushed exposure hid all of those
-	-- too (playtest 2026-10-08). A lamp holder's own view is a touch less dark.
-	dark, darkVelocity = Spring.number(dark, darkVelocity, darkTarget * (if lit then 0.85 else 1), 1.8, dt)
+	-- too (playtest 2026-10-08). A fish's own light lifts its view of the dark by
+	-- how rare the light is (Config/Tuning light.sources `reveal`).
+	dark, darkVelocity = Spring.number(dark, darkVelocity, darkTarget * (1 - reveal), 1.8, dt)
 	if dark > 0.001 then
 		local day: Light = daylight
 			or {
@@ -279,13 +283,13 @@ local function step(dt: number)
 end
 
 -- Whether the camera is in a pitch-dark biome (0..1; BiomeController sets it) and
--- whether this fish carries a lamp (LampController sets it)
+-- how much of the dark this fish's light lifts (0..1; LampController sets it)
 function OceanController.setDark(amount: number)
 	darkTarget = math.clamp(amount, 0, 1)
 end
 
-function OceanController.setLit(value: boolean)
-	lit = value
+function OceanController.setReveal(amount: number)
+	reveal = math.clamp(amount, 0, 0.9)
 end
 
 -- How dark the water round the camera is right now (0..1)

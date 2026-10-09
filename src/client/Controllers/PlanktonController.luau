@@ -21,7 +21,7 @@ local World = Config.World
 -- most of it on the deep floor, all of it at the bottom of the Trench
 local START_Y = World.deep.floorY + 110
 local FLOOR_SHARE = 0.55
-local CLOUD_RATE = 70 -- specks a second around the camera at full glow
+local CLOUD_RATE = 110 -- specks a second around the camera at full glow (a little more light, owner 2026-10-09)
 local WAKE_RANGE = 260 -- fish further from the camera than this leave no wake
 local TEAL = Color3.fromRGB(90, 255, 214)
 local BLUE = Color3.fromRGB(86, 168, 255)
@@ -188,7 +188,7 @@ function PlanktonController.start()
 	-- Close round the camera: the thick deep water hides anything further off
 	cloud.Size = Vector3.new(70, 40, 70)
 	cloud.Parent = workspace.CurrentCamera
-	specks = { speckEmitter(TEAL, 0.09), speckEmitter(BLUE, 0.13) }
+	specks = { speckEmitter(TEAL, 0.11), speckEmitter(BLUE, 0.16) }
 	Players.PlayerAdded:Connect(watch)
 	for _, player in Players:GetPlayers() do
 		watch(player)

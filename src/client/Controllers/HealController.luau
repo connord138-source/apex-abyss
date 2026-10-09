@@ -107,7 +107,8 @@ function HealController.start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	gui = Ui.screen("Heal", playerGui, 6)
 	-- A small chip left of the depth gauge: the count and the cooldown bar
-	chip = Ui.panel(gui, "Wraps", UDim2.fromOffset(150, 40), UDim2.new(1, -100, 0.5, 130), Vector2.new(1, 0))
+	-- Under the biome chip (it covered the chip's left part at 1280×720, 2026-10-09)
+	chip = Ui.panel(gui, "Wraps", UDim2.fromOffset(150, 40), UDim2.new(1, -18, 0.5, 176), Vector2.new(1, 0))
 	countLabel = Ui.label(
 		chip,
 		"Count",

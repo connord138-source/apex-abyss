@@ -68,7 +68,7 @@ local function banner(biome: Biomes.Biome)
 		then `TOO DANGEROUS FOR NOW · suggested level {biome.minLevel}–{biome.maxLevel}`
 		else `Suggested level {biome.minLevel}–{biome.maxLevel}`
 	if biome.dark then
-		text ..= "  ·  PITCH DARK · bring a light: an Anglerfish's lure or a Deep Lantern"
+		text ..= "  ·  PITCH DARK · bring a light: a Deep Lantern, an Anglerfish's lure or a glowing shade"
 	end
 	local sub = Ui.label(
 		holder,

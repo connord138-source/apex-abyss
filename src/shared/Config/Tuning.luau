@@ -115,6 +115,36 @@ return {
 		playerCooldown = 3.5, -- seconds before the same player is chased again
 	},
 
+	-- Light in the pitch dark of the Trench (owner, 2026-10-09: "there should still be
+	-- about 5-10% visibility with no light, and visibility with a light source scales
+	-- with how rare the light source is"). OceanController keeps `ambient` (and the
+	-- plankton's `plankton` where it's thickest) when the light goes out, and the haze
+	-- turns `water`, so rock and fish read as dim shapes; LampController lights each
+	-- fish by its best source.
+	light = {
+		ambient = Color3.fromRGB(24, 34, 50),
+		plankton = Color3.fromRGB(32, 58, 68),
+		water = Color3.fromRGB(8, 15, 28),
+		decay = Color3.fromRGB(4, 8, 16),
+		-- Each light source, rarest last: the glow's range and brightness, the forward
+		-- beam's brightness (0 = none: a glowing skin shines all round), and how much
+		-- of the dark it lifts from its holder's own view. A fish uses its best one.
+		-- `lantern` is the Deep Lantern (350 coral), `lure` the Anglerfish's lure (a
+		-- Trench species); the rest are glowing shades by tier (Config/Shades
+		-- `emissive`, and the spectral Ghost).
+		sources = {
+			Common = { range = 18, brightness = 1.0, beam = 0, reveal = 0.05 },
+			lantern = { range = 30, brightness = 1.6, beam = 2.2, reveal = 0.1 },
+			Rare = { range = 28, brightness = 1.4, beam = 0, reveal = 0.1 },
+			Epic = { range = 36, brightness = 1.9, beam = 0, reveal = 0.16 },
+			lure = { range = 46, brightness = 2.6, beam = 3.6, reveal = 0.24 },
+			Legendary = { range = 48, brightness = 2.6, beam = 0, reveal = 0.26 },
+			Mythic = { range = 60, brightness = 3.2, beam = 0, reveal = 0.34 },
+			Trophy = { range = 60, brightness = 3.4, beam = 0, reveal = 0.38 },
+			Abyssal = { range = 60, brightness = 3.4, beam = 0, reveal = 0.38 },
+		} :: { [string]: { range: number, brightness: number, beam: number, reveal: number } },
+	},
+
 	-- Healing (owner, 2026-10-07: "a healing element for boss fights, PvP and PvE").
 	-- Kelp Wraps are the consumable (Config/Shop sells them, medkelp fronds and prey
 	-- drop them, chests hold them); eating prey heals a little too.

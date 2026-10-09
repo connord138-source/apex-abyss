@@ -1,53 +1,102 @@
 --!strict
--- Lights the fish that carry a lamp (owner, 2026-10-07: the Abyssal Trench needs a
--- light source, "that could be the perk of the angler fish"). The server puts a
--- `Lamp` attribute on a character: "lure" for an Anglerfish, "lantern" while a Deep
--- Lantern charm runs. Every client hangs a PointLight on those fish, so a lit fish
--- lights the dark for everyone round it; OceanController eases the pitch dark for
--- the local fish while it's lit.
+-- Lights the fish that carry a light into the dark (owner, 2026-10-07: the Abyssal
+-- Trench needs a light source, "that could be the perk of the angler fish";
+-- 2026-10-09: "visibility with a light source scales with how rare the light source
+-- is"). A fish's light is the best of:
+--
+--  * its `Lamp` attribute (the server's WardrobeService): "lantern" while a Deep
+--    Lantern charm runs (350 coral, the weakest), "lure" for an Anglerfish;
+--  * its shade, if the shade glows (Config/Shades `emissive`, or the spectral
+--    Ghost): Rare, Epic, Legendary, Mythic and boss shades light further each tier.
+--
+-- Each source's range, brightness, beam and how much of the dark it lifts from the
+-- holder's own view are in Config/Tuning `light.sources`. Every client hangs the
+-- light on every lit fish, so a lit fish lights the dark for everyone round it. A
+-- glowing shade's light only comes up as the water darkens (it's a skin, not a lamp,
+-- so it doesn't flood the shallows).
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local OceanController = require(script.Parent.OceanController)
 
 local LampController = {}
 
-type Lamp = { light: PointLight, beam: SpotLight, kind: string, bulb: Part? }
+type Source = { range: number, brightness: number, beam: number, reveal: number }
+type Lamp = {
+	key: string, -- which source (and colour) it was made for
+	light: PointLight,
+	beam: SpotLight?,
+	bulb: Part?,
+	source: Source,
+	fromShade: boolean,
+}
+
+local SOURCES = Config.Tuning.light.sources
+local LAMP_COLORS: { [string]: Color3 } = {
+	lure = Color3.fromRGB(150, 240, 255),
+	lantern = Color3.fromRGB(255, 214, 150),
+}
 
 local lamps: { [Model]: Lamp } = {}
 
--- A glow all round the fish plus a beam where it's looking. Roblox caps a light's
--- range at 60 (the 80-90 asked for before was clamped), and in the pitch dark the
--- lamp is the only light, so it's bright (retest 2026-10-08: the floor 8 studs
--- under a lantern stayed black)
-local LOOKS = {
-	lure = { color = Color3.fromRGB(150, 240, 255), range = 60, brightness = 3.2, beam = 5 },
-	lantern = { color = Color3.fromRGB(255, 214, 150), range = 60, brightness = 3.6, beam = 4 },
-}
-
-local function attach(character: Model, root: BasePart, kind: string): Lamp?
-	local look = LOOKS[kind]
-	if look == nil then
-		return nil
+-- The fish's best light: its key (for rebuilding when it changes), the source, its
+-- colour and whether it comes from the shade
+local function bestLight(character: Model): (string?, Source?, Color3?, boolean)
+	local bestKey: string? = nil
+	local best: Source? = nil
+	local color: Color3? = nil
+	local fromShade = false
+	local kind = character:GetAttribute("Lamp")
+	if typeof(kind) == "string" and SOURCES[kind] then
+		bestKey, best, color = kind, SOURCES[kind], LAMP_COLORS[kind]
 	end
+	local shadeId = character:GetAttribute("Shade")
+	local shade = if typeof(shadeId) == "string" then Config.Shades.byId[shadeId] else nil
+	if shade and (shade.emissive or shade.spectral) then
+		local source = SOURCES[shade.tier]
+		if source and (best == nil or source.reveal > (best :: Source).reveal) then
+			local tier = Config.Tiers.byId[shade.tier]
+			bestKey = `shade:{shade.id}`
+			best = source
+			color = shade.glow or (if tier then tier.color else Color3.new(1, 1, 1))
+			fromShade = true
+		end
+	end
+	return bestKey, best, color, fromShade
+end
+
+local function attach(
+	character: Model,
+	root: BasePart,
+	key: string,
+	source: Source,
+	color: Color3,
+	fromShade: boolean
+): Lamp
 	local light = Instance.new("PointLight")
 	light.Name = "Lamp"
-	light.Color = look.color
-	light.Range = look.range
-	light.Brightness = look.brightness
+	light.Color = color
+	light.Range = source.range
+	light.Brightness = source.brightness
 	light.Shadows = false
 	light.Parent = root
-	local beam = Instance.new("SpotLight")
-	beam.Name = "LampBeam"
-	beam.Color = look.color
-	beam.Range = look.range
-	beam.Brightness = look.beam
-	beam.Angle = 80
-	beam.Face = Enum.NormalId.Front -- the root faces the fish's heading
-	beam.Shadows = false
-	beam.Parent = root
+	local beam: SpotLight? = nil
+	if source.beam > 0 then
+		local made = Instance.new("SpotLight")
+		made.Name = "LampBeam"
+		made.Color = color
+		made.Range = math.min(source.range + 12, 60)
+		made.Brightness = source.beam
+		made.Angle = 80
+		made.Face = Enum.NormalId.Front -- the root faces the fish's heading
+		made.Shadows = false
+		made.Parent = root
+		beam = made
+	end
 	local bulb: Part? = nil
-	if kind == "lantern" then
+	if key == "lantern" then
 		-- A small glowing lantern slung under the fish
 		local made = Instance.new("Part")
 		made.Name = "LanternBulb"
@@ -58,7 +107,7 @@ local function attach(character: Model, root: BasePart, kind: string): Lamp?
 		made.Massless = true
 		made.Shape = Enum.PartType.Ball
 		made.Material = Enum.Material.Neon
-		made.Color = look.color
+		made.Color = color
 		made.Size = Vector3.one * 0.5
 		made.CFrame = root.CFrame * CFrame.new(0, -root.Size.Y * 0.5, 0)
 		local weld = Instance.new("WeldConstraint")
@@ -68,14 +117,16 @@ local function attach(character: Model, root: BasePart, kind: string): Lamp?
 		made.Parent = character
 		bulb = made
 	end
-	return { light = light, beam = beam, kind = kind, bulb = bulb }
+	return { key = key, light = light, beam = beam, bulb = bulb, source = source, fromShade = fromShade }
 end
 
 local function detach(character: Model)
 	local lamp = lamps[character]
 	if lamp then
 		lamp.light:Destroy()
-		lamp.beam:Destroy()
+		if lamp.beam then
+			(lamp.beam :: SpotLight):Destroy()
+		end
 		if lamp.bulb then
 			(lamp.bulb :: Part):Destroy()
 		end
@@ -85,28 +136,33 @@ end
 
 local function step()
 	local me = Players.LocalPlayer
-	local litMine = false
+	local myReveal = 0
+	-- A glowing skin's light comes up with the dark round the camera
+	local darkness = OceanController.darkness()
 	for _, player in Players:GetPlayers() do
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		if character == nil or root == nil or not root:IsA("BasePart") then
 			continue
 		end
-		local kind = character:GetAttribute("Lamp")
-		local wanted = if typeof(kind) == "string" and kind ~= "" then kind else nil
+		local key, source, color, fromShade = bestLight(character)
 		local current: Lamp? = lamps[character]
-		if current and (wanted == nil or current.kind ~= wanted) then
+		if current and current.key ~= key then
 			detach(character)
 			current = nil
 		end
-		if wanted and current == nil then
-			local made = attach(character, root, wanted)
-			if made then
-				lamps[character] = made
-			end
+		if key and source and color and current == nil then
+			local made = attach(character, root, key, source, color, fromShade)
+			lamps[character] = made
+			current = made
 		end
-		if player == me and wanted then
-			litMine = true
+		local lamp = current
+		if lamp then
+			local scale = if lamp.fromShade then 0.2 + 0.8 * darkness else 1
+			lamp.light.Brightness = lamp.source.brightness * scale
+			if player == me then
+				myReveal = lamp.source.reveal
+			end
 		end
 	end
 	for character in lamps do
@@ -114,7 +170,7 @@ local function step()
 			detach(character)
 		end
 	end
-	OceanController.setLit(litMine)
+	OceanController.setReveal(myReveal)
 end
 
 function LampController.start()

@@ -241,7 +241,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `GardenService`, `DenBuilder.garden` (corals grow as it fills, sparkle when full;
   the bed sits on the Terrain floor found by raycast, `floorUnder`, half a second
   after the den is carved, since the voxel floor rises 0.6–4.6 studs above the den's
-  nominal floor and a bed at the nominal height was buried, playtest 2026-10-09),
+  nominal floor and a bed at the nominal height was buried, playtest 2026-10-09; it
+  rests on the floor's high side with a 4-stud stone footing under it, so a sloping
+  floor shows no gap),
   `GardenController` (the sign, payout pops, the welcome banner). Admin: "Coral
   Garden: grow hours".
 - **Controls (owner, 2026-10-07):**
@@ -417,13 +419,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   light. The Vents grade is thinner (0.84) and every chimney has a Neon glowing
   throat (`VentGlow`), since a light alone didn't read across a basin; it's seated on
   the lava cap's real top by raycast (at the nominal top 25 of 26 sat buried inside
-  the cap, retest 2026-10-09). Bosses glow faintly in the
+  the cap, retest 2026-10-09), or on top of rock covering the chimney (a basin's
+  rubble). Bosses glow faintly in the
   dark (`PredatorController` `DARK_GLOW`, violet for the squid) so they're
-  silhouettes, not invisible. A lamp holder's view is 15% less dark. The Anglerfish's
-  lure is a lamp (`Lamp = "lure"` attribute
-  from WardrobeService) and the Tidecharm Trader sells a **Deep Lantern** (350 coral,
-  10 min, `Lamp = "lantern"`); `LampController` hangs PointLights on lit fish for
-  everyone; the biome banner and chip say PITCH DARK · bring a light.
+  silhouettes, not invisible. **Not black, and lights by rarity (owner, 2026-10-09:
+  "about 5-10% visibility with no light, and visibility with a light source scales
+  with how rare the light source is"):** the dark keeps `Config/Tuning` `light.ambient`
+  (24, 34, 50), up to `light.plankton` where the plankton is thick, with a very deep
+  blue haze (`light.water`), so rock and fish read as dim shapes; 42 glow gardens
+  (glowing tube anemones, each a PointLight of range 28) sit along the canyon floor
+  and every Trench plankton mat is lit. `LampController` gives each fish its best
+  source from `light.sources`: the `Lamp` attribute (`lantern` from the Deep Lantern
+  charm, 350 coral, the weakest; `lure` for the Anglerfish) or a glowing shade
+  (`emissive` or `spectral`) by its tier, Common → Rare → Epic → Legendary → Mythic →
+  Trophy/Abyssal. Range, brightness, beam and `reveal` (how much of the dark it lifts
+  from the holder's own view, `OceanController.setReveal`) all grow with rarity; a
+  shade's light comes up with the darkness round the camera. The biome banner and
+  chip say PITCH DARK · bring a light.
 - **Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
   luminescense such as photoplankton etc to give very very faint light"):**
   `PlanktonController` fills the water round the camera with faint twinkling

@@ -1062,9 +1062,12 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	-- The cap's real top, by raycast: the chimney is capped by a ball of lava rock up
 	-- to 8 studs round, and a throat at the nominal top sat buried in it (retest
 	-- 2026-10-09: 25 of 26 throats were inside CrackedLava, so none showed)
+	-- A chimney under other rock (a basin's rubble) breathes out through that rock's
+	-- top instead (retest 2026-10-09: one throat sat 22 studs inside a rubble ball)
 	local top = chimney.position + Vector3.new(0, chimney.height + 8, 0)
 	local hit = groundAt(chimney.position.X, chimney.position.Z)
-	if hit and math.abs(hit.Y - (chimney.position.Y + chimney.height)) < 20 then
+	local nominalTop = chimney.position.Y + chimney.height
+	if hit and hit.Y > nominalTop - 20 and hit.Y < nominalTop + 90 then
 		top = hit
 	end
 	local holder = Instance.new("Part")
@@ -1287,6 +1290,68 @@ local function buildBiomes(parent: Instance)
 		end
 	end
 
+	-- Glow gardens on the canyon's floor (owner, 2026-10-09: "a few scattered light
+	-- spots on the floor"): clumps of glowing tube anemones, each casting a real pool
+	-- of light, so the Trench has places to see by between the dark stretches
+	local gardenColors =
+		{ Color3.fromRGB(90, 255, 214), Color3.fromRGB(110, 190, 255), Color3.fromRGB(170, 120, 255) }
+	for i = 1, 42 do
+		local trench = World.trench
+		local r = rng:NextNumber(trench.radii[1] + 15, trench.radii[2] - 15)
+		local _, width = Seafloor.trenchAxis(r)
+		local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
+		local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-1, 1) * math.max(halfBottom - 10, 4))
+		local ground, normal = groundAt(x, z)
+		-- Only down in the canyon (its floor or a ledge), on ground that's fairly flat
+		if ground == nil or normal == nil or normal.Y < 0.5 or ground.Y > World.deep.floorY - 60 then
+			continue
+		end
+		local color = gardenColors[i % #gardenColors + 1]
+		local base: Part? = nil
+		for _ = 1, rng:NextInteger(4, 7) do
+			local height = rng:NextNumber(1.5, 5)
+			local foot = ground + Vector3.new(rng:NextNumber(-3, 3), 0, rng:NextNumber(-3, 3))
+			local tilt = CFrame.Angles(rng:NextNumber(-0.25, 0.25), 0, rng:NextNumber(-0.25, 0.25))
+			local stalk = Instance.new("Part")
+			stalk.Name = "GlowStalk"
+			stalk.Anchored = true
+			stalk.CanCollide = false
+			stalk.CanQuery = false
+			stalk.CanTouch = false
+			stalk.Shape = Enum.PartType.Cylinder
+			stalk.Size = Vector3.new(height, 0.35, 0.35)
+			stalk.CFrame = CFrame.new(foot)
+				* tilt
+				* CFrame.new(0, height / 2, 0)
+				* CFrame.Angles(0, 0, math.rad(90))
+			stalk.Color = color:Lerp(Color3.new(0, 0, 0), 0.45)
+			stalk.Material = Enum.Material.Neon
+			stalk.Transparency = 0.2
+			stalk.Parent = trenchGlow
+			local tip = Instance.new("Part")
+			tip.Name = "GlowTip"
+			tip.Anchored = true
+			tip.CanCollide = false
+			tip.CanQuery = false
+			tip.CanTouch = false
+			tip.Shape = Enum.PartType.Ball
+			tip.Size = Vector3.one * rng:NextNumber(0.7, 1.2)
+			tip.CFrame = CFrame.new(foot) * tilt * CFrame.new(0, height, 0)
+			tip.Color = color
+			tip.Material = Enum.Material.Neon
+			tip.Parent = trenchGlow
+			base = base or tip
+		end
+		if base then
+			local light = Instance.new("PointLight")
+			light.Color = color
+			light.Brightness = 1.3
+			light.Range = 28
+			light.Shadows = false
+			light.Parent = base
+		end
+	end
+
 	-- Glowing plankton mats on the deepest floors (owner, 2026-10-08: "deepest depths
 	-- should have light luminescense such as photoplankton etc to give very very faint
 	-- light"): a patch of tiny glowing dots just off the floor, every other one faintly
@@ -1330,11 +1395,14 @@ local function buildBiomes(parent: Instance)
 				dot.Parent = mats
 				first = first or dot
 			end
-			if first and i % 2 == 0 then
+			-- In the Trench every patch is lit (owner, 2026-10-09: some light to see by);
+			-- elsewhere every other one, faintly
+			local trenchMat = entry.id == "AbyssalTrench"
+			if first and (trenchMat or i % 2 == 0) then
 				local light = Instance.new("PointLight")
 				light.Color = color
-				light.Brightness = 0.35
-				light.Range = 16
+				light.Brightness = if trenchMat then 0.7 else 0.35
+				light.Range = if trenchMat then 20 else 16
 				light.Shadows = false
 				light.Parent = first
 			end

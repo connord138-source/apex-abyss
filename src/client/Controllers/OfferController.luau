@@ -81,6 +81,12 @@ local function openCard(kind: string, title: string, line: string, accent: Color
 	closeCard()
 	local frame =
 		Ui.panel(gui, "Offer", UDim2.fromOffset(460, 132), UDim2.fromScale(0.5, 0.62), Vector2.new(0.5, 0.5))
+	if Ui.isTouch() then
+		-- Phones: clear of the HUD row above it (its top edge sat 2-3 px over the
+		-- buttons, 2026-10-09)
+		frame.Size = UDim2.fromOffset(460, 124)
+		frame.Position = UDim2.fromScale(0.5, 0.635)
+	end
 	frame.BackgroundTransparency = 0.12
 	local stroke = frame:FindFirstChildOfClass("UIStroke")
 	if stroke then

@@ -347,9 +347,10 @@ local function build()
 	-- The sonar card, above the depth gauge on the right
 	card = Ui.panel(gui, "Sonar", UDim2.fromOffset(92, 118), UDim2.new(1, -18, 0.5, -120), Vector2.new(1, 1))
 	if Ui.isTouch() then
-		-- Phones: left of the biome chip, which sits above the depth gauge there (the
-		-- sonar sat on it, playtest 2026-10-09)
-		card.Position = UDim2.new(1, -226, 0.5, -113)
+		-- Phones: beside the depth gauge's top, clear of the biome chip above the
+		-- gauge (the sonar sat on it) and of the boss bar (playtest 2026-10-09)
+		card.AnchorPoint = Vector2.new(1, 0)
+		card.Position = UDim2.new(1, -96, 0.5, -105)
 	end
 	tierLabel = Ui.label(
 		card,

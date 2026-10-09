@@ -622,8 +622,32 @@ the shelf the water holds glowing plankton: faint blue-green specks twinkle roun
 thickening from the drop-off's foot to the Trench floor, and any fish swimming through
 leaves a brief sparkling wake, the way real plankton flashes when disturbed. Patches
 of glowing plankton sit on the deep floors (Trench, Vents, Open Blue, Ruins), and the
-pitch dark gets a very faint teal light. It is never enough to see by: a lamp is
-still what lights the Trench.
+pitch dark gets a very faint teal light.
+
+**A little light to see by, and lights by rarity (owner, 2026-10-09: "players need at
+least a bit of visibility ... there should still be about 5-10% visibility with no
+light, and visibility with a light source scales with how rare the light source is";
+built).** With no light the Trench keeps a dim blue ambient (about 10%, more where the
+plankton is thick) and a very deep blue haze, so rock walls and fish read as dim
+shapes. Glow gardens (clumps of glowing tube anemones, each casting a pool of light)
+are scattered along the canyon floor, every plankton patch there is lit, and the wall
+clusters still glow. A light source lights further and clears more of its holder's
+view the rarer it is:
+
+| Source | Range | Holder's view |
+|---|---|---|
+| Common glowing shade | 18 | 5% clearer |
+| Deep Lantern (350 coral) | 30 + beam | 10% |
+| Rare glowing shade | 28 | 10% |
+| Epic glowing shade | 36 | 16% |
+| Anglerfish lure (Trench species) | 46 + beam | 24% |
+| Legendary glowing shade | 48 | 26% |
+| Mythic glowing shade | 60 | 34% |
+| Boss trophy / Abyssal shade (Ghost, Abyss Ink) | 60 | 38% |
+
+A fish uses its best source, and everyone round it sees its light. A glowing shade's
+light comes up as the water darkens (it's a skin, not a lamp). `Config/Tuning`
+`light`.
 
 ### Healing (owner, 2026-10-07; built)
 

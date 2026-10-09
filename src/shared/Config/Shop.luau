@@ -185,7 +185,7 @@ local charms: { Charm } = {
 		id = "DeepLantern",
 		vendor = "Charms",
 		name = "Deep Lantern",
-		blurb = "Lights the pitch-dark Trench round you for 10 minutes",
+		blurb = "A small light for the dark Trench, 10 minutes. Rarer glowing shades light further",
 		price = 350,
 		seconds = 600,
 	},

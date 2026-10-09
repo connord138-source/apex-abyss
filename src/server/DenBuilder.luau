@@ -481,6 +481,17 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 		Enum.Material.Slate
 	)
 	bed.Shape = Enum.PartType.Cylinder
+	-- A footing under it: the bed rests on the floor's high side, and on a sloping
+	-- floor the low side showed a 2-3 stud gap (retest 2026-10-09)
+	local footing = part(
+		model,
+		"Footing",
+		Vector3.new(4, 7.2, 7.2),
+		base * CFrame.new(0, -1.9, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		STONE:Lerp(Color3.new(0, 0, 0), 0.15),
+		Enum.Material.Slate
+	)
+	footing.Shape = Enum.PartType.Cylinder
 	local sand = part(
 		model,
 		"Sand",
