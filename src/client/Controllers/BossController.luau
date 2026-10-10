@@ -60,6 +60,7 @@ local lastShake = 0
 local barAlpha = 0
 
 local PHASES = { "HUNTING", "FRENZY", "LAST STAND" }
+local SHOWN = 0.35 -- how opaque a boss that fades in must be before the HUD names it
 
 local function clockText(seconds: number): string
 	seconds = math.max(0, math.floor(seconds))
@@ -335,10 +336,12 @@ local function step(dt: number)
 	local from = if root then root.Position else camera.CFrame.Position
 	local distance = (position - from).Magnitude
 	-- Distances to its body, not its middle (the Megalodon is 130 studs long)
-	local measured = PredatorController.gap(state.index, from)
+	local measured, shown = PredatorController.gap(state.index, from)
 	local gap = measured or math.max(distance - def.predator.length * 0.4, 0)
 	local sight = def.sight
-	local unseen = sight.far ~= nil and gap > (sight.far :: number)
+	-- Unseen until the body has faded in a third of the way: the bar and NEARBY came
+	-- on at `far` while it was still 98% see-through (playtest 2026-10-10)
+	local unseen = sight.far ~= nil and (if measured then shown < SHOWN else gap > (sight.far :: number))
 	-- The bar, while it's within range (a boss that fades in: once it starts to show)
 	local show = mode ~= "dead" and not unseen and distance <= Bosses.hudRange
 	barAlpha = math.clamp(barAlpha + (if show then dt else -dt) * 4, 0, 1)

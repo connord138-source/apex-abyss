@@ -501,7 +501,8 @@ Owner: "a giant squid that roams the map as well, they could be world events."
   - The two bosses take turns, so there's always a reason to come back.
 - **The bosses:**
   - The **Megalodon** roams the Open Blue (below).
-  - The **Giant Squid** rises from the Abyssal Trench and the deep edges (below).
+  - The **Giant Squid** rises from the Abyssal Trench and keeps to its canyon (below):
+    it patrols and jets inside it and gives up a chase that leads it 160 studs out.
 - **"Leviathan Rising"** in the tide events becomes these boss events.
 
 **Boss rules (owner, 2026-10-07):** "designed to be taken on as a team, very hard but
@@ -731,8 +732,10 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
     the screen's edges darken and beat, the water turns cold and grey, and a warning
     reads SOMETHING CIRCLES IN THE BLUE (no arrow, no distance).
   - **It fades in:** from ~280 studs off its body it materialises out of the blue,
-    solid by ~110. Its tag and boss bar appear as it shows, and then MEGALODON NEARBY
-    points at it.
+    solid by ~170, and the haze carries the rest of the emergence. Its tag, boss bar
+    and MEGALODON NEARBY appear once it's a third of the way in. The body is never
+    left a hair see-through: any transparency at all draws a mesh without sorting its
+    own faces, so fins and the jaw showed through (playtest 2026-10-10).
   - **Seen to be fought:** within ~190 studs the water round it clears (no darkening
     ever), and a faint cool rim keeps its outline readable.
   - The camera shakes as it passes, and its tag reads APEX PREDATOR in red.
@@ -758,7 +761,8 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
        pings show where it is. **Marked for death**: it locks onto the biggest fish
        for 8 s with repeated short charges; the mark breaks when the stagger meter
        fills, so the team's soft-spot hits save that player. (No minions, owner.)
-    3. **Last stand** (under 25%): it dives for the Trench on a 60 s clock. **Breach**:
+    3. **Last stand** (under 25%): it makes for the open ocean (the far edge of the
+       Open Blue, the way it's facing) on a 60 s clock. **Breach**:
        it rockets up and crashes down with a shockwave ring (go vertical to dodge),
        then lies exhausted 5 s with its gills glowing at triple damage, the solo kill
        window. Catch it before it escapes, or it heals and comes back later.
@@ -793,7 +797,7 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   Frenzy: ×1.3 speed, a 10 s blood cloud (its tag hides), Tail sweep when 3+ fish are
   within 40 studs behind it (1 s tell, 20%, a 60 stud/s shove, 12 s cooldown), Marked
   for death every 24 s (8 s, ×1.45 speed at the mark, a 0.5 s-tell lunge every 2.2 s
-  for 25%). Last stand: a 60 s clock toward the Trench, a Breach every 13 s (2.2 s
+  for 25%). Last stand: a 60 s clock out toward the open ocean, a Breach every 13 s (2.2 s
   tell as it sinks, 1.3 s rocket, 0.9 s crash, a 48 stud ring 30% + shove to fish
   within 16 studs of its depth, then 5 s exhausted at triple damage). Soft spots:
   gills (60–80% along the body) and tail (0–22%) take double damage and fill a

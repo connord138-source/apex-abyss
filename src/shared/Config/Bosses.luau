@@ -41,7 +41,7 @@ export type SharkKit = {
 		lungeSeconds: number,
 		lungeFraction: number,
 	},
-	-- Last stand: breaches on the way to the Trench, then lies exhausted
+	-- Last stand: breaches on the way out to the open ocean, then lies exhausted
 	breachEvery: number,
 	breach: {
 		fraction: number,
@@ -106,6 +106,10 @@ export type BossDef = {
 		spread: number, -- radians either side of it
 		band: { number }, -- distance from the hub's center
 		depth: { number },
+		-- Keeps to the Abyssal Trench's canyon (Seafloor.trenchPoint) instead of the
+		-- sector, and gives up a chase that takes it `leash` studs out of it
+		trench: boolean?,
+		leash: number?,
 	},
 	stagger: {
 		need: number,
@@ -244,7 +248,9 @@ local megalodon: BossDef = {
 	},
 	-- Felt before it's seen: the dread starts well outside the fade-in
 	dread = { range = 460, shakeRange = 70, warning = "SOMETHING CIRCLES IN THE BLUE" },
-	sight = { far = 280, near = 110, light = 190 },
+	-- Solid by 170 (it was 110): the haze carries the rest of the emergence, and the
+	-- body is never part see-through while it's in plain view (playtest 2026-10-10)
+	sight = { far = 280, near = 170, light = 190 },
 	event = { interval = 1800, warning = 120, studioInterval = 240, escapeDelay = 900 },
 }
 
@@ -308,10 +314,15 @@ local giantSquid: BossDef = {
 	phases = { 0.65, 0.3 },
 	phaseNames = { "LURKER", "ENRAGED", "MANTLE" },
 	patrol = {
-		direction = Vector3.new(0, 0, 1), -- the Trench and the Vents are south, off the drop-off
+		direction = Vector3.new(0, 0, 1), -- the Trench is south, off the drop-off
 		spread = math.rad(70),
 		band = { 980, 1420 },
 		depth = { 10, 55 },
+		-- The deepest dark is the squid's (owner, 2026-10-09): it rises, roams and
+		-- jets inside the canyon (it rose in the Sunken Ruins and roamed far,
+		-- playtest 2026-10-10)
+		trench = true,
+		leash = 160,
 	},
 	stagger = { need = 650, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
 	softSpots = { { from = 0.52, to = 0.7 }, { from = 0, to = 0.25 } }, -- the eye, the tentacles

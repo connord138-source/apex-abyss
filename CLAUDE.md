@@ -298,7 +298,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     window). Three phases: Hunting (Charge 35%, Bite 55%, both telegraphed),
     Frenzy under 60% (×1.3 speed, blood cloud hides the tag, Tail sweep 20% + a shove
     when 3+ fish bunch behind it, Marked for death: 8 s of short lunges at one fish),
-    Last stand under 25% (makes for the Trench on a 60 s clock, Breach every 13 s:
+    Last stand under 25% (makes for the open ocean, the far edge of the Open Blue, on a 60 s clock; Breach every 13 s:
     sinks, rockets up, crashes with a shockwave 30% + shove, then 5 s exhausted at
     triple damage; escapes when the clock runs out and returns in 15 min). Gills and
     tail take double damage and fill the stagger meter (700); full → 4 s stagger at
@@ -316,7 +316,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Pushes go through `Net.shove` → `SwimController.shove`.
   - **Giant Squid (built 2026-10-07):** the second boss on the same service (`kit =
     "squid"` in `Config/Bosses.luau`; the bosses take turns, `rotation`). 70 studs,
-    5,500 hp, lurks deep (10–55 up off the floor) in the south, patrol band 280–560.
+    5,500 hp, lurks deep (10–55 up off the floor) in the Trench's canyon: it rises,
+    patrols and jets inside it (`patrol.trench`, `Seafloor.trenchPoint`) and gives up
+    a chase that leads it 160 studs out (`patrol.leash`; it rose in the Ruins and
+    roamed 4,700 studs out, playtest 2026-10-10). No predator leaves the map
+    (`PredatorService.steer` holds them inside `boundsRadius`).
     Lurker: **tentacle grab** (1 s tell, range 60, 15%/s for up to 4 s; the victim's
     fish is dragged to the beak: server sets `HeldBy`/`HeldUntil` on the character,
     the client's SwimController.hold overrides the swim; mash BITE or DASH sends
@@ -399,8 +403,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   floor); the Open Blue's fish and Reef Sharks keep to 140–430, and its old 150–280
   stud pinnacles are 37–70 stud spires on the floor far below (`Shelf.luau`).
   `Config/Bosses` `sight` (studs from its body): unseen beyond `far` 280, solid by
-  `near` 110 (`PredatorController` fades the body's transparency by camera distance,
-  eased; tag and boss bar only once it shows), and within `light` 190 the fight light
+  `near` 170 (`PredatorController` fades the body's transparency by camera distance,
+  eased; tag, boss bar and NEARBY once it's 35% opaque). **A body is fully opaque or
+  plainly fading, never a hair see-through** (owner, playtest 2026-10-10: "boss has
+  holes and see through glitches"): the eased fade sat at 0.995 for the whole fight,
+  and any Transparency above 0 draws a mesh in the transparent pass, which doesn't
+  sort its own faces, so fins and the jaw showed through; the opacity snaps to 1
+  above 0.97 and to 0 below 0.02. Within `light` 190 the fight light
   (`OceanController.setBossLight`: exposure +0.35, haze ×0.78, and in the dark the dark
   ×0.4) plus a faint cool Highlight rim. The dread (range 460) never darkens the
   picture any more (it made the Open Blue near-black, playtest 2026-10-09): colder,

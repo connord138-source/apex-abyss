@@ -5,9 +5,9 @@
 -- taking turns. Each hunts the biggest fish around, telegraphs every attack, and
 -- moves through three phases as its health falls. Two kits:
 --   shark (Megalodon): Hunting (charge, bite), Frenzy (faster, blood cloud, tail
---     sweep, Marked for death), Last stand (makes for the Trench on a clock,
+--     sweep, Marked for death), Last stand (makes for the open ocean on a clock,
 --     breaching on the way; catch it or it escapes).
---   squid (Giant Squid): Lurker (tentacle grabs, ink then a jet away), Enraged (two
+--   squid (Giant Squid, keeps to the Trench): Lurker (tentacle grabs, ink then a jet away), Enraged (two
 --     grabs, whirlpool), Mantle (up into open water: beak slam, siphon blast; sinks
 --     away after its clock).
 -- Health scales with the number of attackers; soft spots take double damage and
@@ -76,10 +76,12 @@ type Boss = {
 	staggerReadyAt: number,
 	exhaustedUntil: number,
 	lastStandUntil: number, -- the third phase's escape clock
+	escapeGoal: Vector3, -- where the last stand makes for
 	nextBreachAt: number,
 	bloodUntil: number,
 	waypoint: Vector3,
 	waypointUntil: number,
+	homeUntil: number, -- heading back home after a chase led it out
 	spawnedAt: number,
 }
 
@@ -119,6 +121,14 @@ end
 local function patrolPoint(def: BossDef, depth: { number }?): Vector3
 	local patrol = def.patrol
 	local band = depth or patrol.depth
+	if patrol.trench then
+		-- Somewhere along the canyon, away from its ends and walls
+		local trench = World.trench
+		local r = rng:NextNumber(trench.radii[1] + 50, trench.radii[2] - 50)
+		local _, width = Seafloor.trenchAxis(r)
+		local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-0.3, 0.3) * width)
+		return Vector3.new(x, Seafloor.y(x, z) + rng:NextNumber(band[1], band[2]), z)
+	end
 	local base = math.atan2(patrol.direction.Z, patrol.direction.X)
 	local angle = base + rng:NextNumber(-patrol.spread, patrol.spread)
 	local distance = rng:NextNumber(patrol.band[1], patrol.band[2])
@@ -503,7 +513,10 @@ local function jetTo(boss: Boss, now: number)
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local candidate = from + Vector3.new(math.cos(angle), 0, math.sin(angle)) * squid.jet.distance
 		local flat = Vector3.new(candidate.X, 0, candidate.Z).Magnitude
-		if flat >= def.patrol.band[1] and flat <= def.patrol.band[2] then
+		local inside = if def.patrol.trench
+			then Seafloor.inTrench(candidate.X, candidate.Z, -20)
+			else flat >= def.patrol.band[1] and flat <= def.patrol.band[2]
+		if inside then
 			destination = candidate
 			break
 		end
@@ -724,10 +737,21 @@ local function enterPhase(boss: Boss, phase: number, now: number)
 		elseif phase == 3 then
 			boss.lastStandUntil = now + def.escapeClock
 			boss.nextBreachAt = now + 4
+			-- Out to the far edge of its own open water, the way it's facing (the
+			-- Trench was 2,000 studs off and the deepest dark is the squid's; owner,
+			-- 2026-10-09: the Megalodon is "not for deepest darkest ocean just deep blue")
+			local patrol = def.patrol
+			local base = math.atan2(patrol.direction.Z, patrol.direction.X)
+			local at = boss.predator.position
+			local off = math.atan2(at.Z, at.X) - base
+			off = math.clamp((off + math.pi) % (2 * math.pi) - math.pi, -patrol.spread, patrol.spread)
+			local out = patrol.band[2] - 40
+			local x, z = math.cos(base + off) * out, math.sin(base + off) * out
+			boss.escapeGoal = Vector3.new(x, Seafloor.y(x, z) + (patrol.depth[1] + patrol.depth[2]) / 2, z)
 			endMark(boss, now)
 			boss.attack = nil
 			Net.predatorEvent("laststand", index, { seconds = def.escapeClock })
-			Net.notifyAll(`LAST STAND · the {name} makes for the Trench · {def.escapeClock} s`, "bad")
+			Net.notifyAll(`LAST STAND · the {name} makes for the open ocean · {def.escapeClock} s`, "bad")
 			local _ = shark
 		end
 	else
@@ -754,7 +778,7 @@ local function escape(boss: Boss, now: number)
 	Net.notifyAll(
 		if boss.def.kit == "squid"
 			then `The {string.upper(boss.def.name)} sank back into the Trench. It will be back.`
-			else `The {string.upper(boss.def.name)} slipped away into the Trench. It will be back.`,
+			else `The {string.upper(boss.def.name)} slipped away into the deep blue. It will be back.`,
 		"info"
 	)
 	schedule(now, boss.def.event.escapeDelay)
@@ -1029,10 +1053,12 @@ local function summon(def: BossDef, now: number)
 		staggerReadyAt = now + 15,
 		exhaustedUntil = 0,
 		lastStandUntil = 0,
+		escapeGoal = Vector3.zero,
 		nextBreachAt = 0,
 		bloodUntil = 0,
 		waypoint = patrolPoint(def, depth),
 		waypointUntil = now + 15,
+		homeUntil = 0,
 		spawnedAt = now,
 	}
 	warned = false
@@ -1346,6 +1372,21 @@ local function tick(boss: Boss, dt: number, now: number)
 			end
 		end
 	end
+	-- A boss with a home (the squid's Trench) gives up a chase that leads it out and
+	-- swims back in for a while before it hunts again
+	local leash = def.patrol.leash
+	if leash and def.patrol.trench then
+		local at = predator.position
+		if boss.homeUntil <= now and not Seafloor.inTrench(at.X, at.Z, leash) then
+			boss.homeUntil = now + 8
+			boss.waypoint = patrolPoint(def, depthBand(boss))
+			boss.waypointUntil = now + 8
+		end
+		local target = predator.target
+		if boss.homeUntil > now and target and boss.grabs[target :: Player] == nil then
+			predator.target = nil
+		end
+	end
 
 	local stunned = boss.staggeredUntil > now or boss.exhaustedUntil > now
 	local speed = speedOf(boss)
@@ -1369,10 +1410,8 @@ local function tick(boss: Boss, dt: number, now: number)
 		if boss.attack then
 			desired = predator.velocity
 		elseif def.kit == "shark" and boss.phase == 3 then
-			-- Making for the Trench, slowly, until the clock runs out
-			local trench = World.trench.center
-			local goal = Vector3.new(trench.X, Seafloor.y(trench.X, trench.Z) + 40, trench.Z)
-			local offset = goal - predator.position
+			-- Making for the open ocean, slowly, until the clock runs out
+			local offset = boss.escapeGoal - predator.position
 			local flat = Vector3.new(offset.X, 0, offset.Z)
 			if flat.Magnitude < 90 then
 				local tangent = Vector3.new(-flat.Z, 0, flat.X).Unit

@@ -778,13 +778,29 @@ local function step(dt: number)
 			if not visual.hidden then
 				local gap = bodyGap(visual, cameraAt)
 				local target = smoothstep((far - gap) / math.max(far - near, 1))
-				visual.presence += (target - visual.presence) * math.min(1, dt * 2.5)
+				-- (the last step lands on the target: easing alone never quite reaches it)
+				visual.presence = if math.abs(target - visual.presence) < 0.01
+					then target
+					else visual.presence + (target - visual.presence) * math.min(1, dt * 2.5)
 			end
 		else
 			visual.presence = 1
 		end
+		-- Fully opaque or plainly fading, never a hair see-through: any Transparency
+		-- above 0 draws a mesh in Roblox's transparent pass, which doesn't sort its own
+		-- faces, so fins, the tail and the inside of the jaw showed through the body
+		-- for the whole fight while the fade sat at 0.995 (owner, playtest 2026-10-10:
+		-- "boss has holes and see through glitches")
 		local opacity = visual.fade * visual.presence
-		if math.abs(opacity - visual.shown) > 0.006 or (opacity == 0) ~= (visual.shown == 0) then
+		if opacity >= 0.97 then
+			opacity = 1
+		elseif opacity <= 0.02 then
+			opacity = 0
+		end
+		if
+			opacity ~= visual.shown
+			and (math.abs(opacity - visual.shown) > 0.006 or opacity == 0 or opacity == 1)
+		then
 			visual.shown = opacity
 			setTransparency(visual, 1 - opacity)
 		end
@@ -1316,14 +1332,14 @@ end
 
 -- The creature drawn at `index`: its position, mode, health (0..1) and stagger
 -- meter (0..1), for the boss HUD. Nil when it isn't known here.
--- How far `point` is from a creature's body (nil while it isn't drawn), and how far
--- it has faded into view (0..1)
+-- How far `point` is from a creature's body (nil while it isn't drawn), and how
+-- opaque it's drawn right now (0..1: its fade into view)
 function PredatorController.gap(index: number, point: Vector3): (number?, number)
 	local visual = visuals[index]
 	if visual == nil or visual.hidden then
 		return nil, 0
 	end
-	return bodyGap(visual, point), visual.presence
+	return bodyGap(visual, point), visual.shown
 end
 
 function PredatorController.get(index: number): (Vector3?, string?, number, number)

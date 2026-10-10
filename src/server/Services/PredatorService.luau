@@ -188,6 +188,19 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		predator.heading = rotateToward(predator.heading, predator.velocity, (turnRate or def.turnRate) * dt)
 	end
 	local position = predator.position + predator.velocity * dt
+	-- Never out past the map's wall (the squid chased a fish 4,700 studs out,
+	-- playtest 2026-10-10)
+	local hub = World.hub.center
+	local out = Vector3.new(position.X - hub.X, 0, position.Z - hub.Z)
+	local limit = World.boundsRadius - def.length * 0.5
+	if out.Magnitude > limit then
+		local outward = out.Unit
+		position = Vector3.new(hub.X + outward.X * limit, position.Y, hub.Z + outward.Z * limit)
+		local along = predator.velocity:Dot(outward)
+		if along > 0 then
+			predator.velocity -= outward * along
+		end
+	end
 	local floor = Seafloor.y(position.X, position.Z)
 	-- The surface is a ceiling for the whole body, not just its middle: a big
 	-- creature's back and fin sit well above its axis (playtest 2026-10-10: the
