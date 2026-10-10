@@ -803,16 +803,15 @@ local function pickWeighted<T>(list: { T }, weight: (T) -> number): T?
 	return list[#list]
 end
 
-local function rollShade(minTier: string, owned: { [string]: boolean })
+local function rollShade(minTier: string, owned: { [string]: boolean }, species: string)
 	local floor = Tiers.byId[minTier]
 	local pool = {}
 	for _, shade in Config.Shades.list do
 		local tier = Tiers.byId[shade.tier]
 		if
-			shade.chance > 0
+			Config.Shades.rollable(shade)
+			and shade.species == species
 			and not owned[shade.id]
-			and not shade.boss
-			and not shade.treasure
 			and tier
 			and floor
 			and tier.order >= floor.order
@@ -868,7 +867,7 @@ local function rewards(boss: Boss, killer: Player?)
 		summary.coral = EconomyService.earnCoral(player, coral)
 		-- A shade roll, Rare or better (a fish that has them all gets coral instead:
 		-- it got nothing at all, playtest 2026-10-08)
-		local shade = rollShade(reward.shadeRollMin, Progress.shades(data))
+		local shade = rollShade(reward.shadeRollMin, Progress.shades(data), Progress.speciesId(data))
 		if shade == nil then
 			local instead = math.floor(reward.coral * 0.5)
 			EconomyService.addCoral(player, instead)

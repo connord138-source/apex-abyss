@@ -340,6 +340,26 @@ local function onPlayerAdded(player: Player)
 		end
 		table.clear(data.shades)
 	end
+	-- Skin lines per fish (owner, 2026-10-10): a fish keeps its own line's skins and
+	-- the ones every fish can have; any other skin it held turns into its coral
+	for id, record in data.species do
+		local owned = record.shades
+		if owned then
+			for shadeId in owned do
+				if not Config.Shades.fits(shadeId, id) then
+					owned[shadeId] = nil
+					local shade = Config.Shades.byId[shadeId]
+					data.coral += if shade then shade.refund else 0
+					if record.shade == shadeId then
+						record.shade = ""
+					end
+				end
+			end
+		end
+	end
+	if not Config.Shades.fits(data.equipped.shade, data.current) then
+		data.equipped.shade = ""
+	end
 
 	profiles[player] = profile
 	DataService.loaded:fire(player, data)

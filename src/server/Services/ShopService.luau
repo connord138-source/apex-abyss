@@ -76,6 +76,10 @@ local function buyDye(player: Player, data: DataService.PlayerData, id: string)
 	if shade == nil or shade.price == nil or not atVendor(player, "Dyer") then
 		return
 	end
+	-- The Dyer sells the fish you swim as its own line's Commons
+	if not Config.Shades.fits(id, Progress.speciesId(data)) then
+		return fail(player, `{shade.name} isn't one of this fish's skins`)
+	end
 	if Progress.ownsShade(data, id) then
 		return fail(player, `This fish already has {shade.name}`)
 	end

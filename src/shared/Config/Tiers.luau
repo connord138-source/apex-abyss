@@ -11,6 +11,8 @@ export type Tier = {
 local list: { Tier } = {
 	{ id = "Coral", name = "Coral", color = Color3.fromRGB(255, 146, 110), order = 0 },
 	{ id = "Common", name = "Common", color = Color3.fromRGB(200, 216, 224), order = 1 },
+	-- Per-fish skin lines (owner, 2026-10-10): between Common and Rare
+	{ id = "Uncommon", name = "Uncommon", color = Color3.fromRGB(110, 220, 130), order = 1.5 },
 	{ id = "Rare", name = "Rare", color = Color3.fromRGB(96, 176, 255), order = 2 },
 	{ id = "Epic", name = "Epic", color = Color3.fromRGB(190, 116, 255), order = 3 },
 	{ id = "Legendary", name = "Legendary", color = Color3.fromRGB(255, 202, 76), order = 4 },

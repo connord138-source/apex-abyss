@@ -19,6 +19,7 @@ export type Outcome = {
 	amount: number?, -- coral
 	share: number?, -- coral: its share of the coral chance
 	refund: number?, -- coral a duplicate turns into
+	species: string?, -- a skin: the fish whose line it's in (it only rolls for that fish)
 }
 
 export type Odds = { outcome: Outcome, probability: number }
@@ -35,8 +36,10 @@ for _, coral in Rolls.coral do
 	})
 end
 for _, shade in Config.Shades.list do
-	if shade.boss or shade.treasure then
-		continue -- boss trophies are won and treasure shades dug up, never rolled
+	-- Only a fish's own line rolls (owner, 2026-10-10); trophies are won, treasure dug
+	-- up, catch-track and weekly skins earned
+	if not Config.Shades.rollable(shade) then
+		continue
 	end
 	table.insert(outcomes, {
 		id = shade.id,
@@ -45,6 +48,7 @@ for _, shade in Config.Shades.list do
 		tier = shade.tier,
 		chance = shade.chance,
 		refund = shade.refund,
+		species = shade.species,
 	})
 end
 for _, part in Config.Exotics.parts do
@@ -81,20 +85,26 @@ function RollOdds.get(kind: string, id: string): Outcome?
 	return byKey[`{kind}:{id}`]
 end
 
--- Whether an outcome is out of the table: a shade the fish already has never rolls
--- again for it (owner, 2026-10-08); its share goes to coral, so every other chance
--- stays exactly as it was.
-local function excluded(outcome: Outcome, owned: { [string]: boolean }?): boolean
-	return owned ~= nil and outcome.kind == "shade" and owned[outcome.id] == true
+-- Whether an outcome is out of the table: another fish's skin, or a skin the fish
+-- already has (it never rolls again for it, owner 2026-10-08; its share goes to
+-- coral, so every other chance stays exactly as it was).
+local function excluded(outcome: Outcome, owned: { [string]: boolean }?, species: string?): boolean
+	if outcome.kind ~= "shade" then
+		return false
+	end
+	if species and outcome.species ~= species then
+		return true
+	end
+	return owned ~= nil and owned[outcome.id] == true
 end
 
--- Every outcome with its probability for one roll at `luck` (1 = normal), leaving
--- out the shades in `owned` (the rolling fish's). The probabilities add up to
--- exactly 1.
-function RollOdds.table(luck: number, owned: { [string]: boolean }?): { Odds }
+-- Every outcome with its probability for one roll at `luck` (1 = normal) for a fish
+-- of `species` (its own line), leaving out the skins in `owned` (the rolling fish's).
+-- The probabilities add up to exactly 1.
+function RollOdds.table(luck: number, owned: { [string]: boolean }?, species: string?): { Odds }
 	local special = 0
 	for _, outcome in outcomes do
-		if outcome.chance and not excluded(outcome, owned) then
+		if outcome.chance and not excluded(outcome, owned, species) then
 			special += luck / outcome.chance
 		end
 	end
@@ -103,7 +113,7 @@ function RollOdds.table(luck: number, owned: { [string]: boolean }?): { Odds }
 	local coralTotal = 1 - special * scale
 	local result: { Odds } = {}
 	for _, outcome in outcomes do
-		if excluded(outcome, owned) then
+		if excluded(outcome, owned, species) then
 			continue
 		end
 		local probability = if outcome.chance
@@ -115,8 +125,8 @@ function RollOdds.table(luck: number, owned: { [string]: boolean }?): { Odds }
 end
 
 -- Picks an outcome for a uniform random number `r` in [0, 1).
-function RollOdds.pick(luck: number, r: number, owned: { [string]: boolean }?): Outcome
-	local odds = RollOdds.table(luck, owned)
+function RollOdds.pick(luck: number, r: number, owned: { [string]: boolean }?, species: string?): Outcome
+	local odds = RollOdds.table(luck, owned, species)
 	local total = 0
 	for _, entry in odds do
 		total += entry.probability

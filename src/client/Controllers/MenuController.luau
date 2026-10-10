@@ -355,7 +355,8 @@ local function dyeRows(list: ScrollingFrame, preview: FishPreview.Preview)
 	local wearing = if s.equipped then s.equipped.shade else ""
 	local order = 0
 	for _, shade in Config.Shades.list do
-		if shade.price == nil then
+		-- This fish's own Commons (its line's realistic morphs)
+		if shade.price == nil or shade.species ~= s.species then
 			continue
 		end
 		order += 1
@@ -765,13 +766,15 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 		worn: boolean,
 		slot: string?,
 		color: Color3?,
-		elsewhere: boolean?
+		elsewhere: boolean?,
+		how: string? -- how a locked one that isn't rolled is got
 	)
 		order += 1
 		local tierInfo = Tiers.byId[tier]
 		local blurb = if has
 			then `{tierInfo.name}{if slot then ` · {slot}` else ""}`
 			elseif elsewhere then `{tierInfo.name} · on another of your fish · unlock it again for this one`
+			elseif how then `{tierInfo.name} · {how}`
 			elseif chance <= 0 then `{tierInfo.name} · beat the world boss to win it`
 			else `{tierInfo.name} · roll to find · {RollOdds.oneIn(1 / chance)}`
 		local action = if not has then "LOCKED" elseif worn then "TAKE OFF" else "WEAR"
@@ -798,10 +801,29 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 		end
 	end
 	if tab == "Shades" then
+		-- This fish's own line (owner, 2026-10-10: every fish its own skins, wilder as
+		-- they get rarer), then the skins every fish can earn: its catch track, boss
+		-- trophies, treasure, and a week's limited skin once it has one
+		local owned = s.shades or {}
+		local shown: { any } = {}
+		local line: { any } = Config.Shades.lines[s.species or "Nibbler"] or {}
+		for _, shade in line do
+			table.insert(shown, shade)
+		end
 		for _, shade in Config.Shades.list do
-			-- Shades are per fish: this list is the current fish's
-			local has = (s.shades or {})[shade.id] == true
-			local elsewhere = not has and (s.otherShades or {})[shade.id] == true
+			if shade.species == nil and (shade.week == nil or owned[shade.id]) then
+				table.insert(shown, shade)
+			end
+		end
+		for _, shade in shown do
+			local has = owned[shade.id] == true
+			local elsewhere = not has and shade.species == nil and (s.otherShades or {})[shade.id] == true
+			local rarity = if shade.catch then Config.Catch.byId[shade.catch] else nil
+			local how = if rarity
+				then `catch {rarity.track} {rarity.name} fish as this fish (the LOG's catch track)`
+				elseif shade.treasure then "dug up from a Captain's treasure chest"
+				elseif shade.week then "the Catch of the Week"
+				else nil
 			add(
 				"shade",
 				shade.id,
@@ -812,7 +834,8 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 				equipped.shade == shade.id,
 				nil,
 				if has or elsewhere then shade.back else nil,
-				elsewhere
+				elsewhere,
+				how
 			)
 		end
 	elseif tab == "Parts" then
@@ -1289,7 +1312,7 @@ function MenuController.openOdds()
 			render = function()
 				rerender(list, function()
 					-- Shades this fish already has never roll again for it
-					local odds = RollOdds.table(luck, s.shades)
+					local odds = RollOdds.table(luck, s.shades, s.species)
 					table.sort(odds, function(a, b)
 						return a.probability > b.probability
 					end)
