@@ -173,6 +173,24 @@ function Ui.bossBottom(): number
 	return bottom
 end
 
+-- The bottom of the tide chip at the top centre (design units), or 0 while it's hidden
+function Ui.tideBottom(): number
+	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	local tides = playerGui and playerGui:FindFirstChild("Tides")
+	local chip = tides and tides:FindFirstChild("TideChip")
+	if chip and chip:IsA("GuiObject") and chip.Visible then
+		return chip.Position.Y.Offset + chip.Size.Y.Offset
+	end
+	return 0
+end
+
+-- The bottom of everything stacked at the top centre: the boss bar or countdown,
+-- and the tide chip under it. The SAFE ZONE chip and centre banners start below it
+-- (playtest 2026-10-10: the tide chip was drawn over SAFE ZONE).
+function Ui.topBottom(): number
+	return math.max(Ui.bossBottom(), Ui.tideBottom())
+end
+
 -- The safe area's top inset (the Roblox top bar), in screen pixels.
 function Ui.topInset(): number
 	-- GetGuiInset can still read 0 while the client starts up; the top bar's own

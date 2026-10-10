@@ -330,7 +330,7 @@ local function showBanner(current: Spin)
 	local jackpot = segment.kind == "skin"
 	local group = Instance.new("CanvasGroup")
 	group.AnchorPoint = Vector2.new(0.5, 0)
-	group.Position = UDim2.new(0.5, 0, 0, math.max(84, Ui.bossBottom() + 60))
+	group.Position = UDim2.new(0.5, 0, 0, math.max(84, Ui.topBottom() + 60))
 	group.Size = UDim2.fromOffset(540, 150)
 	group.BackgroundTransparency = 1
 	local pop = Instance.new("UIScale")

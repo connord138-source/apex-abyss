@@ -43,7 +43,7 @@ local function banner(kicker: string, title: string, sub: string, color: Color3)
 	holder.Name = "CatchBanner"
 	holder.AnchorPoint = Vector2.new(0.5, 0)
 	local height = gui.AbsoluteSize.Y / Ui.scaleOf(gui)
-	holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.24, Ui.bossBottom() + 70))
+	holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.24, Ui.topBottom() + 70))
 	holder.Size = UDim2.fromOffset(680, 84)
 	holder.BackgroundTransparency = 1
 	local labels = {

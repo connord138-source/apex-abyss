@@ -157,8 +157,8 @@ local function zoneBanner(leaving: boolean)
 	local color = if leaving then Ui.color.danger else Ui.color.safe
 	local holder = Instance.new("Frame")
 	holder.Name = "ZoneBanner"
-	-- Below the boss bar while a boss is up
-	local top = math.max(56, Ui.bossBottom() + 10)
+	-- Below the boss bar, the tide chip and the SAFE ZONE chip under them
+	local top = math.max(56, Ui.topBottom() + 50)
 	holder.AnchorPoint = Vector2.new(0.5, 0)
 	holder.Position = UDim2.new(0.5, 0, 0, top - 16)
 	holder.Size = UDim2.fromOffset(560, 70)
@@ -651,7 +651,7 @@ local function showControlsHint()
 	end
 	task.spawn(function()
 		while label.Parent do
-			label.Position = UDim2.new(0.5, 0, 0, math.max(52, Ui.bossBottom() + 6))
+			label.Position = UDim2.new(0.5, 0, 0, math.max(52, Ui.topBottom() + 40))
 			task.wait(0.25)
 		end
 	end)
@@ -732,6 +732,8 @@ local function step(dt: number)
 	end
 	local safeUntil = if character then character:GetAttribute("SafeUntil") else nil
 	local protectedFor = if typeof(safeUntil) == "number" then safeUntil - Timing.clock() else 0
+	-- Under the boss bar and the tide chip
+	safeChip.Position = UDim2.new(0.5, 0, 0, math.max(16, Ui.topBottom() + 6))
 	if zoneSafe then
 		safeChip.Visible = true
 		safeText.Text = "SAFE ZONE"
