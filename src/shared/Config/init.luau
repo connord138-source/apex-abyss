@@ -22,4 +22,8 @@ return {
 	Dens = require(script.Dens),
 	Monetization = require(script.Monetization),
 	Daily = require(script.Daily),
+	Tides = require(script.Tides),
+	Catch = require(script.Catch),
+	Bounties = require(script.Bounties),
+	Leaderboards = require(script.Leaderboards),
 }

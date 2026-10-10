@@ -349,6 +349,29 @@ local function build()
 	amountRow("Daily: set the streak", "days", "dailyStreak", 0, "SET")
 	actionRow("Daily: miss a day (streak resets)", "dailyBreak", "BREAK", "danger")
 	amountRow("Coral Garden: grow hours", "hours (max 48)", "gardenHours", 0, "GROW")
+
+	header("TIDES · RARE CATCHES · BOUNTIES · WEEKLY")
+	local tides: { { label: string, value: any } } = { { label = "Back to the clock", value = "" } }
+	for _, tide in Config.Tides.list do
+		table.insert(tides, { label = tide.name, value = tide.id })
+	end
+	pickRow("Force a tide (10 min, this server)", tides, "forceTide", "SET")
+	local rarities: { { label: string, value: any } } = {}
+	for _, rarity in Config.Catch.rarities do
+		table.insert(rarities, { label = rarity.name, value = rarity.id })
+	end
+	pickRow("Turn the 10 nearest fish", rarities, "rareNear", "TURN")
+	pickRow("Catch track: add catches (current fish)", rarities, "trackAdd", "ADD", "×")
+	actionRow("Catch of the Week: catch it", "weeklyCatch", "CATCH", "secondary")
+	pickRow("Bounties", {
+		{ label = "Finish all three", value = "finish" },
+		{ label = "Draw new ones", value = "redraw" },
+	}, "bounties", "GO")
+	local boards: { { label: string, value: any } } = {}
+	for _, board in Config.Leaderboards.boards do
+		table.insert(boards, { label = board.name, value = board.id })
+	end
+	pickRow("Leaderboard: add to my score", boards, "boardPoints", "ADD", "amount")
 end
 
 function AdminController.start()

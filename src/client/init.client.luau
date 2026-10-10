@@ -6,6 +6,7 @@ local ClientState = require(script.ClientState)
 local Input = require(script.Input)
 local Store = require(script.Store)
 local BiomeController = require(script.Controllers.BiomeController)
+local CatchController = require(script.Controllers.CatchController)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
@@ -31,6 +32,7 @@ local SchoolController = require(script.Controllers.SchoolController)
 local ShellController = require(script.Controllers.ShellController)
 local StartController = require(script.Controllers.StartController)
 local SwimController = require(script.Controllers.SwimController)
+local TideController = require(script.Controllers.TideController)
 local TreasureController = require(script.Controllers.TreasureController)
 local TutorialController = require(script.Controllers.TutorialController)
 
@@ -46,6 +48,8 @@ OfferController.start() -- DAILY and SHOP, the growth chip, Double Haul and Seco
 GardenController.start() -- the den's Coral Garden sign, payouts and welcome back
 task.spawn(Ads.start) -- rewarded ads: checks whether one can be shown
 BiomeController.start() -- biome names, suggested levels and under-level warnings
+TideController.start() -- the Tide Clock: the chip, the banner when it turns, the water's tint
+CatchController.start() -- rare catches: toasts, skin unlocks, the Catch of the Week
 TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
 HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow

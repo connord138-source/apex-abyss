@@ -323,6 +323,7 @@ local function finishDig(player: Player)
 	result.found = data.treasures.found
 	DataService.markDirty(player)
 	Net.treasureResult(player, result)
+	Events.treasure:fire(player, map.tier)
 	if result.kind == "shade" and not result.duplicate then
 		local shadeTier = Tiers.byId[result.outcome.tier]
 		if shadeTier and shadeTier.order >= Tiers.byId[Treasure.announceFrom].order then

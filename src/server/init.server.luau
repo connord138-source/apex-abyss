@@ -23,6 +23,10 @@ local Admin = require(script.Admin)
 local DenService = require(Services.DenService)
 local GardenService = require(Services.GardenService)
 local RewardsService = require(Services.RewardsService)
+local TideService = require(Services.TideService)
+local CatchService = require(Services.CatchService)
+local BountyService = require(Services.BountyService)
+local LeaderboardService = require(Services.LeaderboardService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -46,6 +50,10 @@ Admin.start() -- the owner's admin panel (checks who is asking on every call)
 DenService.start() -- den bases: levels, furniture, glow, trophy wall
 GardenService.start() -- the den's Coral Garden: AFK and offline coral and shells
 RewardsService.start() -- the daily login streak and the group perk
+TideService.start() -- the Tide Clock: the tide turning, the Prism Tide warning
+CatchService.start() -- rare catches: which fish are rare, the Catch Log, catch tracks, the Catch of the Week
+BountyService.start() -- daily bounties and the Bounty Chest
+LeaderboardService.start() -- weekly leaderboards and last week's titles
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

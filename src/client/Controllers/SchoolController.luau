@@ -7,6 +7,11 @@
 -- sucked in on this client straight away, and the eat goes to the server in a
 -- small batch. If the server doesn't confirm it within a moment, the fish comes
 -- back. Fish other players ate vanish with a puff and return when they respawn.
+--
+-- Rare fish (Config/Catch; the server says which, `PreyRarity`) wear their rarity:
+-- gold foil, a teal glow, clear crystal or a shifting rainbow, with sparkles and a
+-- small light so they can be spotted from a distance. A tide's own schools (the
+-- Sardine Run's bait balls) are only drawn while it's up.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,12 +23,13 @@ local Ui = require(script.Parent.Parent.Ui)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
+local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local SwimController = require(script.Parent.SwimController)
 
 local SchoolController = {
-	-- (preyId, mass, position) — we ate a prey fish (HUD pops a number)
+	-- (preyId, mass, position, rarity?) — we ate a prey fish (HUD pops a number)
 	ate = Signal.new(),
 	-- (preyId) — a prey fish too big to swallow is at our mouth (at most once a second)
 	tooBig = Signal.new(),
@@ -58,6 +64,19 @@ type Visual = {
 	fadeIn: number, -- 0..1 after respawning
 	-- A chase (AggroService): this fish darts at a player and back
 	chase: { target: Player, startAt: number, endsAt: number, glow: Highlight }?,
+	-- Its rarity's look while it swims rare (Config/Catch): what was changed, to put
+	-- back, and what was added
+	look: Look?,
+}
+
+type Look = {
+	rarity: string,
+	held: { [BasePart]: SurfaceAppearance },
+	saved: {
+		[BasePart]: { color: Color3, material: Enum.Material, reflectance: number, transparency: number },
+	},
+	extras: { Instance },
+	light: PointLight?,
 }
 
 local visuals: { Visual } = {}
@@ -68,6 +87,53 @@ local lastSend = 0
 local aggro = Config.Tuning.aggro
 local chaseWarning: TextLabel? = nil
 local chaseWarningUntil = 0
+local CatchConfig = Config.Catch
+local rarities: { [number]: string } = {} -- prey index → rarity id (rare fish only)
+local prisms: { [number]: Visual } = {} -- fish wearing the Prism look (their colour cycles)
+local tideOff: { [number]: boolean } = {} -- tide schools hidden because their tide isn't up
+local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+
+-- How each rarity looks on a fish: its material and colour (the texture is held
+-- aside), its sparkle and its light
+local LOOKS: {
+	[string]: {
+		material: Enum.Material,
+		color: Color3,
+		reflectance: number,
+		transparency: number,
+		light: number,
+	},
+} =
+	{
+		Golden = {
+			material = Enum.Material.Foil,
+			color = Color3.fromRGB(255, 196, 64),
+			reflectance = 0.1,
+			transparency = 0,
+			light = 1.2,
+		},
+		Glowing = {
+			material = Enum.Material.Neon,
+			color = Color3.fromRGB(20, 170, 160),
+			reflectance = 0,
+			transparency = 0,
+			light = 2.2,
+		},
+		Crystal = {
+			material = Enum.Material.Glass,
+			color = Color3.fromRGB(150, 210, 255),
+			reflectance = 0.3,
+			transparency = 0.25,
+			light = 1.6,
+		},
+		Prism = {
+			material = Enum.Material.SmoothPlastic,
+			color = Color3.fromRGB(255, 120, 230),
+			reflectance = 0.15,
+			transparency = 0,
+			light = 2.2,
+		},
+	}
 
 local function makePart(parent: Instance, color: Color3, shape: "Ellipsoid" | "Fin"): Part
 	local part = Instance.new("Part")
@@ -241,6 +307,136 @@ local function setHidden(visual: Visual, hidden: boolean)
 	end
 end
 
+local function partsOf(visual: Visual): { BasePart }
+	local list: { BasePart } = {}
+	if visual.model then
+		for _, descendant in (visual.model :: Model):GetDescendants() do
+			if descendant:IsA("BasePart") then
+				table.insert(list, descendant)
+			end
+		end
+	else
+		table.insert(list, visual.body)
+	end
+	if visual.tail then
+		table.insert(list, visual.tail :: BasePart)
+	end
+	return list
+end
+
+-- Takes a rarity's look off a fish, putting its own texture and colours back
+local function clearLook(index: number, visual: Visual)
+	local look = visual.look
+	if look == nil then
+		return
+	end
+	visual.look = nil
+	prisms[index] = nil
+	for part, saved in look.saved do
+		part.Color = saved.color
+		part.Material = saved.material
+		part.Reflectance = saved.reflectance
+		if not visual.hidden then
+			part.Transparency = saved.transparency
+		end
+	end
+	for part, appearance in look.held do
+		appearance.Parent = part
+	end
+	for _, extra in look.extras do
+		extra:Destroy()
+	end
+end
+
+-- Puts a rarity's look on a fish (nil = plain)
+local function setLook(index: number, rarityId: string?)
+	local visual = visuals[index]
+	if visual == nil or (visual.look and visual.look.rarity == rarityId) then
+		return
+	end
+	clearLook(index, visual)
+	local style = if rarityId then LOOKS[rarityId] else nil
+	local def = if rarityId then CatchConfig.byId[rarityId] else nil
+	if rarityId == nil or style == nil or def == nil then
+		return
+	end
+	local look: Look = { rarity = rarityId, held = {}, saved = {}, extras = {}, light = nil }
+	for _, part in partsOf(visual) do
+		if part.Transparency >= 1 and not visual.hidden then
+			continue -- a part the model keeps hidden
+		end
+		look.saved[part] = {
+			color = part.Color,
+			material = part.Material,
+			reflectance = part.Reflectance,
+			transparency = if visual.hidden then 0 else part.Transparency,
+		}
+		local appearance = part:FindFirstChildOfClass("SurfaceAppearance")
+		if appearance then
+			look.held[part] = appearance
+			appearance.Parent = nil
+		end
+		part.Color = style.color
+		part.Material = style.material
+		part.Reflectance = style.reflectance
+		if not visual.hidden then
+			part.Transparency = style.transparency
+		end
+	end
+	local length = Schools.fish[index].length
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "RareLook"
+	attachment.Parent = visual.body
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Texture = SPARKLE
+	sparkle.Color = ColorSequence.new(def.color)
+	sparkle.LightEmission = 1
+	sparkle.Rate = 5 + math.min(length, 6)
+	sparkle.Lifetime = NumberRange.new(0.6, 1.2)
+	sparkle.Speed = NumberRange.new(0.2, 0.8)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.3, math.clamp(length * 0.18, 0.15, 1.2)),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	sparkle.Transparency = NumberSequence.new(0.2, 1)
+	sparkle.Parent = attachment
+	local light = Instance.new("PointLight")
+	light.Color = def.color
+	light.Brightness = style.light
+	light.Range = math.clamp(4 + length * 2.5, 6, 18)
+	light.Shadows = false
+	light.Parent = attachment
+	table.insert(look.extras, attachment)
+	look.light = light
+	visual.look = look
+	if rarityId == "Prism" then
+		prisms[index] = visual
+	end
+end
+
+-- The rarity of fish `index` (nil = plain), as the server last said
+function SchoolController.rarityOf(index: number): string?
+	return rarities[index]
+end
+
+local function onRarity(indices: { number }, codes: { number })
+	for i, index in indices do
+		local code = codes[i]
+		local def = if typeof(code) == "number" and code > 0 then CatchConfig.rarities[code] else nil
+		if typeof(index) ~= "number" or visuals[index] == nil then
+			continue
+		end
+		if def then
+			rarities[index] = def.id
+		else
+			rarities[index] = nil
+		end
+		setLook(index, if def then def.id else nil)
+	end
+end
+
 local function flush(now: number)
 	if #batch == 0 or now - lastSend < SEND_INTERVAL then
 		return
@@ -266,9 +462,41 @@ local function step(dt: number)
 
 	table.clear(parts)
 	table.clear(frames)
+	local tideId = Tides.at(Timing.unix()).id
+	-- Prism fish shimmer through the rainbow
+	if next(prisms) then
+		local hue = (now * 0.25) % 1
+		for index, visual in prisms do
+			local look = visual.look
+			if look then
+				local color = Color3.fromHSV((hue + index * 0.07) % 1, 0.65, 1)
+				for part in look.saved do
+					part.Color = color
+				end
+				if look.light then
+					look.light.Color = color
+				end
+			end
+		end
+	end
 	for schoolIndex, school in Schools.list do
 		if (school.center - camera).Magnitude > DRAW_DISTANCE + school.radius then
 			continue
+		end
+		-- A tide's school (the Sardine Run's bait balls) only while its tide is up
+		if school.tide and school.tide ~= tideId then
+			if not tideOff[schoolIndex] then
+				tideOff[schoolIndex] = true
+				for index = school.first, school.first + school.count - 1 do
+					setHidden(visuals[index], true)
+				end
+			end
+			continue
+		elseif tideOff[schoolIndex] then
+			tideOff[schoolIndex] = nil
+			for index = school.first, school.first + school.count - 1 do
+				setHidden(visuals[index], false)
+			end
 		end
 		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
 		for index = school.first, school.first + school.count - 1 do
@@ -361,7 +589,7 @@ local function step(dt: number)
 					visual.backAt = math.huge
 					table.insert(batch, { index, now })
 					local prey = Config.Prey.byId[fish.prey]
-					SchoolController.ate:fire(prey.id, prey.mass, frame.Position)
+					SchoolController.ate:fire(prey.id, prey.mass, frame.Position, rarities[index])
 				end
 			end
 			if not visual.hidden then
@@ -460,6 +688,26 @@ function SchoolController.start()
 	preyEaten.OnClientEvent:Connect(onPreyEaten)
 	local preyChase = remotes:WaitForChild("PreyChase") :: RemoteEvent
 	preyChase.OnClientEvent:Connect(onPreyChase)
+	local preyRarity = remotes:WaitForChild("PreyRarity") :: RemoteEvent
+	preyRarity.OnClientEvent:Connect(onRarity)
+	-- The fish that were already rare when we joined
+	local getRarities = remotes:WaitForChild("GetRarities") :: RemoteFunction
+	task.spawn(function()
+		local ok, known = pcall(function()
+			return getRarities:InvokeServer()
+		end)
+		if ok and typeof(known) == "table" then
+			local indices, codes = {}, {}
+			for key, code in known do
+				local index = tonumber(key)
+				if index and typeof(code) == "number" then
+					table.insert(indices, index)
+					table.insert(codes, code)
+				end
+			end
+			onRarity(indices, codes)
+		end
+	end)
 	-- The warning when one turns on us
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	local gui = Ui.screen("Chase", playerGui, 6)

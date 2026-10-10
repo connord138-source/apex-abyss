@@ -85,6 +85,20 @@ export type PlayerData = {
 	-- The den's Coral Garden (Config/Dens garden): what's grown and not yet
 	-- collected, and the Unix time it was last grown to
 	garden: { coral: number, shells: number, at: number },
+	-- Rare catches (Config/Catch): the Catch Log (prey id → rarity id, "Normal" too →
+	-- catches), its finished rows, and each fish's catch track (species id → rarity
+	-- id → catches as that fish)
+	catchLog: { [string]: { [string]: number } },
+	logRows: { [string]: boolean },
+	catchTracks: { [string]: { [string]: number } },
+	-- Today's bounties (Config/Bounties): the UTC day they're for, each one's id,
+	-- goal progress and whether it paid, and whether the chest paid
+	bounties: { day: number, list: { { id: string, progress: number, done: boolean } }, chest: boolean },
+	-- This week (Shared/Tides.week): leaderboard scores (Config/Leaderboards id →
+	-- score), whether the Catch of the Week was caught, and the last week whose
+	-- leaderboard titles were checked
+	weekly: { week: number, scores: { [string]: number }, featured: boolean },
+	lbChecked: number,
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
@@ -138,6 +152,12 @@ local TEMPLATE: PlayerData = {
 	treasures = { found = 0, byTier = {} },
 	daily = { day = 0, streak = 0, best = 0 },
 	garden = { coral = 0, shells = 0, at = 0 },
+	catchLog = {},
+	logRows = {},
+	catchTracks = {},
+	bounties = { day = 0, list = {}, chest = false },
+	weekly = { week = 0, scores = {}, featured = false },
+	lbChecked = 0,
 	passes = {},
 	groupRewarded = false,
 	purchaseIds = {},

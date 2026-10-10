@@ -142,6 +142,12 @@ local beatNow = 0
 -- dark lifts, so the fight reads
 local bossLightTarget = 0
 local bossLight, bossLightVelocity = 0, 0
+-- The tide's faint colour in the water (Config/Tides `tint`; TideController), and a
+-- Bioluminescent Night's dimmer sea
+local tideColor = Color3.new(1, 1, 1)
+local tideTarget, tideDimTarget = 0, 0
+local tide, tideVelocity = 0, 0
+local tideDim, tideDimVelocity = 0, 0
 local blindTarget = 0
 local blind, blindVelocity = 0, 0
 local ink: ColorCorrectionEffect
@@ -225,11 +231,15 @@ local function step(dt: number)
 	local beat = math.max(math.sin(cycle) ^ 6, math.sin(cycle - 0.9) ^ 6 * 0.6)
 	beatNow = beat * dread
 	bossLight, bossLightVelocity = Spring.number(bossLight, bossLightVelocity, bossLightTarget, 2, dt)
-	grade.TintColor = blended.tint:Lerp(HUB_TINT, hubBlend * 0.6):Lerp(DREAD_TINT, dread * 0.4)
+	tide, tideVelocity = Spring.number(tide, tideVelocity, tideTarget * (1 - hubBlend), 0.6, dt)
+	tideDim, tideDimVelocity =
+		Spring.number(tideDim, tideDimVelocity, tideDimTarget * (1 - hubBlend), 0.6, dt)
+	grade.TintColor =
+		blended.tint:Lerp(HUB_TINT, hubBlend * 0.6):Lerp(tideColor, tide):Lerp(DREAD_TINT, dread * 0.4)
 	grade.Brightness = blended.brightness + bossLight * 0.03
 	grade.Saturation = blended.saturation - dread * 0.3 + bossLight * 0.12
 	grade.Contrast = 0.06 + dread * (0.06 + beat * 0.12)
-	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 + bossLight * 0.35
+	Lighting.ExposureCompensation = blended.exposure + hubBlend * 0.1 + bossLight * 0.35 - tideDim * 0.25
 	-- The dark: the light itself goes out (sun, ambient, the environment's
 	-- reflections), so only what glows or is lit shows: lamps, glowing skins, the
 	-- plankton, the walls' glow specks. Fog and a crushed exposure hid all of those
@@ -332,6 +342,14 @@ end
 -- greyer water and a heartbeat in the contrast, never a darker picture
 function OceanController.setDread(amount: number)
 	dreadTarget = math.clamp(amount, 0, 1)
+end
+
+-- The tide's colour in the water (`amount` 0..1 of it) and how much a dark tide dims
+-- the sea (0..1); eased over a few seconds, and never inside the hub
+function OceanController.setTide(color: Color3, amount: number, dim: number)
+	tideColor = color
+	tideTarget = math.clamp(amount, 0, 1)
+	tideDimTarget = math.clamp(dim, 0, 1)
 end
 
 -- The heartbeat's pulse right now, scaled by the dread (0..1), for the vignette

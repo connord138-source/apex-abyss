@@ -14,8 +14,10 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Catch = require(ReplicatedStorage.Shared.Catch)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
+local Tides = require(ReplicatedStorage.Shared.Tides)
 local ClientState = require(script.Parent.Parent.ClientState)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
@@ -1699,6 +1701,474 @@ local nearVendor: string? = nil
 local counters: { [string]: Vector3 } = {}
 for _, vendor in Shop.vendors do
 	counters[vendor.id] = Layout.counterPosition(vendor.angle)
+end
+
+-- The LOG (owner, 2026-10-10: "a factor that pulls people back over and over"):
+-- the Catch Log and your fish's catch track, today's bounties, the Catch of the Week
+-- with the weekly leaderboards, and the Tide Clock's forecast.
+local LOG_TABS = { "Catch Log", "Bounties", "Weekly", "Tides" }
+local logBoards: { [string]: any }? = nil -- the last GetBoards answer
+local logBoardsAt = -math.huge
+local logBoard = "RareCatches"
+local logScope = "global"
+
+local function rewardText(reward: { [string]: any }): string
+	local parts: { string } = {}
+	if reward.coral then
+		table.insert(parts, `{Ui.number(reward.coral)} coral`)
+	end
+	if reward.shells then
+		table.insert(parts, `{reward.shells} shells`)
+	end
+	if reward.wraps then
+		table.insert(parts, `{reward.wraps} Kelp Wrap{if reward.wraps == 1 then "" else "s"}`)
+	end
+	if reward.charms then
+		for id, count in reward.charms do
+			local charm = Shop.charmsById[id]
+			table.insert(parts, `{count} {if charm then charm.name else id}`)
+		end
+	end
+	if reward.map then
+		local tier = Config.Treasure.byId[reward.map]
+		table.insert(parts, `a {if tier then tier.name else reward.map} map`)
+	end
+	return table.concat(parts, ", ")
+end
+
+local function longClock(seconds: number): string
+	seconds = math.max(0, math.floor(seconds))
+	if seconds >= 86400 then
+		return `{seconds // 86400}d {(seconds // 3600) % 24}h`
+	end
+	return string.format("%d:%02d:%02d", seconds // 3600, (seconds // 60) % 60, seconds % 60)
+end
+
+local function fetchBoards(force: boolean?)
+	if not force and os.clock() - logBoardsAt < 30 then
+		return
+	end
+	logBoardsAt = os.clock()
+	task.spawn(function()
+		local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local getBoards = remotes and remotes:FindFirstChild("GetBoards")
+		if getBoards == nil or not getBoards:IsA("RemoteFunction") then
+			return
+		end
+		local ok, result = pcall(function()
+			return (getBoards :: RemoteFunction):InvokeServer()
+		end)
+		if ok and typeof(result) == "table" then
+			logBoards = result
+			if current then
+				current.render()
+			end
+		end
+	end)
+end
+
+-- One Catch Log line: a prey species and a cell per rarity (its count, or a dash)
+local function logLine(
+	list: ScrollingFrame,
+	order: number,
+	preyId: string,
+	counts: { [string]: number },
+	done: boolean
+)
+	local prey = Config.Prey.byId[preyId]
+	local frame = Instance.new("Frame")
+	frame.Name = `Log{preyId}`
+	frame.LayoutOrder = order
+	frame.Size = UDim2.new(1, -8, 0, 40)
+	frame.BackgroundColor3 = Ui.color.track
+	frame.BackgroundTransparency = 0.35
+	frame.BorderSizePixel = 0
+	Ui.corner(frame, UDim.new(0, 8))
+	local title = Ui.label(
+		frame,
+		"Name",
+		if done then `{prey.name}  ✓` else prey.name,
+		Ui.FONT_BOLD,
+		16,
+		if done then Ui.color.haul else Ui.color.text,
+		UDim2.fromOffset(150, 40),
+		UDim2.fromOffset(14, 0)
+	)
+	title.TextYAlignment = Enum.TextYAlignment.Center
+	local columns = { "Normal" }
+	for _, rarity in Config.Catch.rarities do
+		table.insert(columns, rarity.id)
+	end
+	for i, id in columns do
+		local count = counts[id] or 0
+		local rarity = Config.Catch.byId[id]
+		local cell = Instance.new("Frame")
+		cell.Name = id
+		cell.Size = UDim2.fromOffset(92, 28)
+		cell.Position = UDim2.fromOffset(170 + (i - 1) * 100, 6)
+		cell.BackgroundColor3 = if count > 0 and rarity then rarity.color else Ui.color.panel
+		cell.BackgroundTransparency = if count > 0 then 0.55 else 0.4
+		cell.BorderSizePixel = 0
+		Ui.corner(cell, UDim.new(0, 6))
+		local label = Ui.label(
+			cell,
+			"Count",
+			if count > 0 then `×{Ui.number(count)}` else "—",
+			Ui.FONT_SEMI,
+			14,
+			if count > 0 then Ui.color.text else Ui.color.muted,
+			UDim2.fromScale(1, 1)
+		)
+		label.TextXAlignment = Enum.TextXAlignment.Center
+		label.TextYAlignment = Enum.TextYAlignment.Center
+		cell.Parent = frame
+	end
+	frame.Parent = list
+end
+
+local function catchLogRows(list: ScrollingFrame)
+	local s = state()
+	local species = Config.Species.byId[s.species or "Nibbler"]
+	local speciesName = if species then species.name else "fish"
+	local tracks = (s.catchTracks or {})[s.species or ""] or {}
+	local owned: { [string]: boolean } = if typeof(s.shades) == "table" then s.shades else {}
+	heading(
+		list,
+		1,
+		`YOUR {string.upper(speciesName)}'S CATCH TRACK · catch rare fish as it to unlock its skins`
+	)
+	for i, rarity in Config.Catch.rarities do
+		local count = tracks[rarity.id] or 0
+		local skin = Config.Shades.byId[rarity.skin]
+		local name = `{if skin then skin.name else rarity.name} {speciesName}`
+		local have = owned[rarity.skin] == true
+		local blurb = `{rarity.track} {rarity.name} catches as your {speciesName} · Haul ×{rarity.haul}`
+		if rarity.tide then
+			blurb ..= " · only in the Prism Tide"
+		end
+		row(
+			list,
+			1 + i,
+			`Track{rarity.id}`,
+			name,
+			blurb,
+			if have then "✓ UNLOCKED" else `{math.min(count, rarity.track)} / {rarity.track}`,
+			nil,
+			nil,
+			rarity.color
+		)
+	end
+	local log = s.catchLog or {}
+	local rows = s.logRows or {}
+	local found, total = 0, 0
+	for _, prey in Config.Prey.list do
+		local counts = log[prey.id] or {}
+		total += 1 + #Config.Catch.rarities
+		if (counts.Normal or 0) > 0 then
+			found += 1
+		end
+		for _, rarity in Config.Catch.rarities do
+			if (counts[rarity.id] or 0) > 0 then
+				found += 1
+			end
+		end
+	end
+	heading(list, 10, `CATCH LOG · {found} / {total} found · a first catch pays, a full row pays more`)
+	local header = Instance.new("Frame")
+	header.Name = "LogHeader"
+	header.LayoutOrder = 11
+	header.BackgroundTransparency = 1
+	header.Size = UDim2.new(1, -8, 0, 20)
+	local columns = { "Plain" }
+	for _, rarity in Config.Catch.rarities do
+		table.insert(columns, rarity.name)
+	end
+	for i, text in columns do
+		local label = Ui.label(
+			header,
+			text,
+			string.upper(text),
+			Ui.FONT_BOLD,
+			12,
+			if i == 1 then Ui.color.muted else Config.Catch.rarities[i - 1].color,
+			UDim2.fromOffset(92, 20),
+			UDim2.fromOffset(170 + (i - 1) * 100, 0)
+		)
+		label.TextXAlignment = Enum.TextXAlignment.Center
+	end
+	header.Parent = list
+	for i, prey in Config.Prey.list do
+		logLine(list, 11 + i, prey.id, log[prey.id] or {}, rows[prey.id] == true)
+	end
+	heading(list, 40, "RARE FISH · spot their sparkle; the tides change the odds")
+	for i, rarity in Config.Catch.rarities do
+		local odds = `about 1 in {Ui.number(math.floor(1 / rarity.chance + 0.5))} fish`
+		row(
+			list,
+			40 + i,
+			`Rarity{rarity.id}`,
+			rarity.name,
+			`{if rarity.tide then "Only in the Prism Tide, " else ""}{odds} · Haul ×{rarity.haul} · coral and DNA ×{rarity.dna}`,
+			nil,
+			nil,
+			nil,
+			rarity.color
+		)
+	end
+end
+
+local function bountyRows(list: ScrollingFrame)
+	local s = state()
+	local bounties = s.bounties
+	if typeof(bounties) ~= "table" then
+		heading(list, 1, "BOUNTIES open once the tutorial is done")
+		return
+	end
+	local nextAt = if typeof(bounties.nextAt) == "number" then bounties.nextAt else 0
+	heading(list, 1, `TODAY'S BOUNTIES · new ones in {longClock(nextAt - workspace:GetServerTimeNow())}`)
+	for i, entry in bounties.list or {} do
+		local bounty = Config.Bounties.byId[entry.id]
+		if bounty == nil then
+			continue
+		end
+		local text = string.gsub(bounty.text, "{n}", tostring(bounty.count))
+		row(
+			list,
+			1 + i,
+			`Bounty{i}`,
+			text,
+			rewardText(bounty.reward),
+			if entry.done then "✓ DONE" else `{entry.progress} / {bounty.count}`,
+			nil,
+			nil,
+			if entry.done then Ui.color.safe else Ui.color.haul
+		)
+	end
+	row(
+		list,
+		10,
+		"Chest",
+		"BOUNTY CHEST · finish all three",
+		rewardText(Config.Bounties.chest),
+		if bounties.chest then "✓ OPENED" else "",
+		nil,
+		nil,
+		Ui.color.haul
+	)
+	heading(list, 20, "Bounties pay the moment they're done. Three new ones every day (UTC).")
+end
+
+local function weeklyRows(list: ScrollingFrame)
+	local s = state()
+	local unix = workspace:GetServerTimeNow()
+	local featured, _, endsAt = Catch.weekly(unix)
+	if featured then
+		local rarity = Config.Catch.byId[featured.rarity]
+		local prey = Config.Prey.byId[featured.prey]
+		local skin = Config.Shades.byId[featured.skin]
+		heading(list, 1, `CATCH OF THE WEEK · ends in {longClock(endsAt - unix)}`)
+		tallRow(
+			list,
+			2,
+			"Featured",
+			`{string.upper(rarity.name)} {string.upper(prey.name)}`,
+			`It swims {rarity.name} ×{Config.Catch.weekly.chance} as often all week. The first one you catch pays {Ui.number(
+				featured.coral
+			)} coral, {featured.shells} shells and the {if skin then skin.name else featured.skin} skin for the fish you catch it with.`,
+			if s.weeklyFeatured then "✓ CAUGHT" else "NOT YET",
+			nil,
+			nil,
+			rarity.color
+		)
+	end
+	heading(list, 10, `LEADERBOARDS · reset every Monday 00:00 UTC · the top 100 earn a title`)
+	local buttons = Instance.new("Frame")
+	buttons.Name = "BoardButtons"
+	buttons.LayoutOrder = 11
+	buttons.BackgroundTransparency = 1
+	buttons.Size = UDim2.new(1, -8, 0, 40)
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = buttons
+	for i, board in Config.Leaderboards.boards do
+		local button = Ui.button(
+			buttons,
+			board.id,
+			string.upper(board.name),
+			UDim2.fromOffset(150, 36),
+			UDim2.new(),
+			if board.id == logBoard then "primary" else "secondary"
+		)
+		button.LayoutOrder = i
+		button.TextSize = 13
+		button.Activated:Connect(function()
+			logBoard = board.id
+			if current then
+				current.render()
+			end
+		end)
+	end
+	local scope = Ui.button(
+		buttons,
+		"Scope",
+		if logScope == "global" then "ALL SERVERS" else "THIS SERVER",
+		UDim2.fromOffset(130, 36),
+		UDim2.new(),
+		"gold"
+	)
+	scope.LayoutOrder = 10
+	scope.TextSize = 13
+	scope.Activated:Connect(function()
+		logScope = if logScope == "global" then "server" else "global"
+		if current then
+			current.render()
+		end
+	end)
+	buttons.Parent = list
+	local board = Config.Leaderboards.byId[logBoard]
+	local answer = logBoards
+	local data = if answer and answer.boards then answer.boards[logBoard] else nil
+	if data == nil then
+		heading(list, 12, "Loading the boards...")
+		return
+	end
+	local rows = if logScope == "global" then data.global else data.server
+	local mine = data.mine or 0
+	heading(
+		list,
+		12,
+		`{board.blurb} · yours this week: {Ui.number(math.floor(mine))} {board.unit}{if logScope == "global"
+				and not data.live
+			then " · (live boards need the published game)"
+			else ""}`
+	)
+	local me = Players.LocalPlayer.UserId
+	for i, entry in rows or {} do
+		if i > Config.Leaderboards.show then
+			break
+		end
+		local medal = if i == 1 then Ui.color.haul elseif i <= 3 then Color3.fromRGB(200, 216, 224) else nil
+		local frame = row(
+			list,
+			12 + i,
+			`Rank{i}`,
+			`#{i}  {entry.name}`,
+			"",
+			`{Ui.number(math.floor(entry.score))} {board.unit}`,
+			nil,
+			nil,
+			if entry.userId == me then Ui.color.safe else medal
+		)
+		frame.Size = UDim2.new(1, -8, 0, 40)
+		local title = frame:FindFirstChild("Title") :: TextLabel?
+		if title then
+			title.Position = UDim2.fromOffset(22, 9)
+		end
+	end
+	if rows == nil or #rows == 0 then
+		heading(list, 13, "No scores yet this week. Be the first!")
+	end
+end
+
+local function tideRows(list: ScrollingFrame)
+	local unix = workspace:GetServerTimeNow()
+	local tide, _, endsAt = Tides.at(unix)
+	heading(list, 1, "THE TIDE NOW")
+	row(
+		list,
+		2,
+		"Now",
+		string.upper(tide.name),
+		tide.blurb,
+		`ends in {clockText(endsAt - unix)}`,
+		nil,
+		nil,
+		tide.color
+	)
+	heading(list, 3, "FORECAST · the same on every server, every 20 minutes")
+	for i, slot in Tides.forecast(unix, 9) do
+		local next = Config.Tides.byId[slot.tide]
+		local at = os.date("%H:%M", slot.startsAt)
+		row(
+			list,
+			3 + i,
+			`Forecast{i}`,
+			if next.id == "Prism" then `★ {string.upper(next.name)} ★` else next.name,
+			next.blurb,
+			`in {longClock(slot.startsAt - unix)} · {at}`,
+			nil,
+			nil,
+			next.color
+		)
+	end
+	heading(
+		list,
+		20,
+		"The Prism Tide rises at 03:00, 09:00, 15:00 and 21:00 UTC: the only time Prism fish swim."
+	)
+end
+
+function MenuController.openLog(tab: string?)
+	open(
+		"Log",
+		"Rare catches, bounties, the weekly race and the tides",
+		Vector2.new(900, 540),
+		function(window)
+			local shown = tab or "Catch Log"
+			local tabs: { [string]: TextButton } = {}
+			local listHolder = Instance.new("Frame")
+			listHolder.BackgroundTransparency = 1
+			listHolder.Position = UDim2.fromOffset(0, 50)
+			listHolder.Size = UDim2.new(1, 0, 1, -50)
+			listHolder.Parent = window.content
+			local list = Ui.list(listHolder)
+			local menu: Menu
+			for i, name in LOG_TABS do
+				local button = Ui.button(
+					window.content,
+					name,
+					string.upper(name),
+					UDim2.fromOffset(150, 38),
+					UDim2.fromOffset((i - 1) * 160, 0),
+					"secondary"
+				)
+				tabs[name] = button
+				button.Activated:Connect(function()
+					shown = name
+					if name == "Weekly" then
+						fetchBoards(true)
+					end
+					menu.render()
+				end)
+			end
+			menu = {
+				window = window,
+				ticking = true,
+				render = function()
+					for name, button in tabs do
+						Ui.setButtonStyle(button, if name == shown then "primary" else "secondary")
+					end
+					if shown == "Weekly" then
+						fetchBoards()
+					end
+					rerender(list, function()
+						if shown == "Catch Log" then
+							catchLogRows(list)
+						elseif shown == "Bounties" then
+							bountyRows(list)
+						elseif shown == "Weekly" then
+							weeklyRows(list)
+						else
+							tideRows(list)
+						end
+					end)
+				end,
+			}
+			return menu
+		end
+	)
 end
 
 local function openNearShop()
