@@ -175,6 +175,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `RollOdds.table(luck, owned, species)`); every fish can also have the boss
     trophies, treasure shades, its catch-track skins and the weekly ones. Old saves:
     a skin now on another fish's line turned into its coral (DataService load).
+    **The textures are made (v4, 2026-10-10):** 23 skins a fish (its line plus the
+    11 universal), 138 in all, every GLB cleared by `screen_shades.py` with the
+    classifier (highest 0.19); contact sheets in `assets/shades/previews/`; the
+    `shade_skins` bundle in `tools/assets_manifest.json`. Pale or soft colours that
+    scored high were moved (Maroon to garnet, Jade to teal, Shipwreck's red hull to
+    dark iron; line-art metal maps to even metal).
 - **The pull-back loop (owner, 2026-10-10: "I still feel like we're missing a factor
   that pulls people back over and over. I do want to add random rarities of fish that
   can be eaten for more towards the haul or like 10 total unlocks a skin"; of the four

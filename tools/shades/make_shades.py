@@ -48,19 +48,25 @@ from scipy import ndimage
 from scipy.spatial import cKDTree
 
 import shade_lines
+from screen_shades import skin_masks
 
 HERE = pathlib.Path(__file__).parent
 SIZE = 1024
 
 # Per fish: keep its teeth and mouth (the predators), and the Anglerfish's glowing
-# lure and iris
+# lure and iris; `blade` is how thin its fins are (body lengths: the Nibbler's and
+# the Puffer's are chunky) and `blade_top` how far a fin stands out at least (the
+# Puffer's spines are not fins), `tail_from` where its tail fin starts if the blade
+# test misses it, `mirror` copies its right side's fins to its left; `fins` finds
+# them another way (the 'Cuda's are
+# painted yellow, the eel's is the ridge along its back)
 FISH = {
-    "Nibbler": {"teeth": False, "keep_vivid": False},
-    "Cuda": {"teeth": True, "keep_vivid": False},
-    "Puffer": {"teeth": False, "keep_vivid": False},
-    "MorayEel": {"teeth": True, "keep_vivid": False},
-    "ReefShark": {"teeth": True, "keep_vivid": False},
-    "Angler": {"teeth": True, "keep_vivid": True},
+    "Nibbler": {"teeth": False, "keep_vivid": False, "blade": 0.045, "blade_top": 0.035},
+    "Cuda": {"teeth": True, "keep_vivid": False, "fins": "yellow", "blade_top": 0.012},
+    "Puffer": {"teeth": False, "keep_vivid": False, "blade": 0.045, "blade_top": 0.04, "tail_from": 0.85, "mirror": True},
+    "MorayEel": {"teeth": True, "keep_vivid": False, "fins": "ridge", "blade_top": 0.006},
+    "ReefShark": {"teeth": True, "keep_vivid": False, "blade": 0.02},
+    "Angler": {"teeth": True, "keep_vivid": True, "blade": 0.024, "blade_top": 0.03},
 }
 
 
@@ -125,6 +131,8 @@ class Fish:
         # quarter of the atlas): left out of the point sets the lines' patterns use
         corner = np.all(np.abs(self.pos - self.mn.astype(np.float32)) < 1e-3, axis=-1)
         self.real = cov & ~corner
+        # (every skin's maps are filled there from the baked texels round them: see
+        # padded())
         self.length = float(d["length"])
         self.faces = d["faces"]
         self.hsv = rgb_to_hsv(self.color)
@@ -447,7 +455,44 @@ def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail
     if rough is not None:
         rough = np.clip(rough + 0.12 * m.fine, 0.05, 1)
         rough = rough * (1 - m.eyes) + 0.12 * m.eyes
+    rgb, emit, metal, rough = (None if a is None else padded(m, a) for a in (rgb, emit, metal, rough))
     return {"rgb": rgb, "emit": emit, "metal": metal, "rough": rough, "finish": finish}
+
+
+def padded(m: Fish, arr):
+    """A map with the atlas gaps (texels the bake never reached) filled with a soft
+    blur of the baked texels round them (pull-push, widening until every gap is
+    filled): nearest-texel padding drew streaks the moderation classifier scored
+    higher. A blend of two colours can be a skin tone (orange into white is peach),
+    so wherever the fill lands on one, the nearest baked texel's own colour is used
+    instead (the same rule screen_shades.py checks)."""
+    arr = np.asarray(arr, np.float32)
+    if arr.ndim == 0:
+        return arr
+    known = m.real.astype(np.float32)
+    out = arr * (known if arr.ndim == 2 else known[..., None])
+    filled = m.real.copy()
+    for sigma in (2, 4, 8, 16, 32, 64, 128):
+        den = ndimage.gaussian_filter(known, sigma)
+        if arr.ndim == 2:
+            num = ndimage.gaussian_filter(arr * known, sigma)
+            fill = num / np.maximum(den, 1e-6)
+        else:
+            num = np.stack([ndimage.gaussian_filter(arr[..., k] * known, sigma) for k in range(arr.shape[-1])], -1)
+            fill = num / np.maximum(den, 1e-6)[..., None]
+        new = ~filled & (den > 0.05)
+        out[new] = fill[new]
+        filled |= new
+        if filled.all():
+            break
+    out[~filled] = arr[~filled]
+    if arr.ndim == 3:
+        skin, pale = skin_masks((np.clip(out, 0, 1) * 255).astype(np.uint8))
+        risky = ndimage.binary_dilation((skin | pale) & ~m.real, iterations=2) & ~m.real
+        if risky.any():
+            idx = cache(m, "nearest_real", lambda: ndimage.distance_transform_edt(~m.real, return_distances=False, return_indices=True))
+            out[risky] = arr[idx[0], idx[1]][risky]
+    return out
 
 
 def finish_map(m: Fish, finish):
@@ -456,7 +501,7 @@ def finish_map(m: Fish, finish):
     rough = np.clip(FINISHES[finish] + 0.12 * m.fine, 0.05, 1)
     rough = rough * (1 - m.eyes) + 0.12 * m.eyes
     rough[~m.cov] = 1.0
-    return rough
+    return padded(m, rough)
 
 
 # ---------------------------------------------------------------------------
@@ -974,66 +1019,97 @@ def cache(m: Fish, key, make):
 
 def blades(m: Fish):
     """The fins as they really are, thin blades of the mesh (Fish.fin guesses from the
-    body's outline and takes a gill cover or a deep head for a fin): (mask 0..1, reach
-    0..1 from the fin's root to its tip, the fin each texel belongs to). A texel is on
-    a blade when stepping a little way in through the skin lands on the skin's other
-    face; each fin's reach is its distance from the body over its own furthest."""
+    body's outline alone and takes a gill cover or a deep head for a fin): (mask 0..1,
+    reach 0..1 from the fin's root to its tip, which fin each texel is on, -1 off
+    them). A texel is thin when a short step through the skin, either way, lands
+    next to the skin again; the meshes hold stray inner faces, so a texel counts as
+    fin only where most of the skin round it is thin and it stands out from the
+    body's core. Each fin's reach is its distance from the body over its own
+    furthest."""
 
     def make():
         rng = np.random.default_rng(17)
         flat_p = m.p.reshape(-1, 3)
         flat_n = m.nrm.reshape(-1, 3)
         real = np.flatnonzero(m.real.reshape(-1))
-        pick = real[rng.choice(len(real), size=min(260000, len(real)), replace=False)]
-        tree = cKDTree(flat_p[pick])
-        thick = np.full(len(flat_p), 1.0, np.float32)
-        for depth in (0.026, 0.018, 0.012, 0.008, 0.005):
-            dist, j = tree.query(flat_p - flat_n * depth)
-            facing = (flat_n * flat_n[pick][j]).sum(-1)
-            hit = (facing < -0.2) & (dist < depth * 0.6)
-            thick[hit] = depth
-        thick = thick.reshape(m.y.shape)
-        mask = smoothstep(0.022, 0.012, ndimage.median_filter(thick, 5))
-        body = mask < 0.5
-        pts_body = m.p[body & m.real]
+        rules = FISH.get(m.name, {})
+        hint = rules.get("fins")
+        if hint == "yellow":
+            # The 'Cuda's fins are painted yellow, all of them (its tail is too thick
+            # for the blade test)
+            hue, sat, val = m.hsv[..., 0], m.hsv[..., 1], m.hsv[..., 2]
+            mask = ((hue > 0.08) & (hue < 0.22) & (sat > 0.28) & (val > 0.35)).astype(np.float32)
+            mask = ndimage.binary_opening(mask > 0.5, iterations=1).astype(np.float32) * (1 - m.keep)
+        elif hint == "ridge":
+            # The eel's fin is the ridge along its back, to the tail
+            u, v = flank(m)
+            hh, _ = girth(m)
+            mask = smoothstep(0.8, 0.9, v / np.maximum(hh, 1e-4)) * smoothstep(0.12, 0.18, u)
+        else:
+            pts = flat_p[real[rng.choice(len(real), size=min(300000, len(real)), replace=False)]]
+            tree = cKDTree(pts)
+            limit = rules.get("blade", 0.02)
+            thin = np.zeros(len(flat_p), bool)
+            for depth in (limit * 0.35, limit * 0.6, limit):
+                for sign in (1, -1):
+                    dist, _ = tree.query(flat_p[real] - sign * flat_n[real] * depth)
+                    thin[real[dist < depth * 0.35]] = True
+            # The vote: the share of thin skin round each texel (3D, about a fin's width)
+            sub = real[rng.choice(len(real), size=min(120000, len(real)), replace=False)]
+            _, near = cKDTree(flat_p[sub]).query(flat_p, k=24)
+            vote = thin[sub][near].mean(-1).reshape(m.y.shape)
+            out = np.sqrt(m.r2)
+            mask = smoothstep(0.5, 0.7, vote) * smoothstep(1.0, 1.2, out)
+            if rules.get("tail_from"):
+                mask = np.maximum(mask, smoothstep(rules["tail_from"], rules["tail_from"] + 0.02, m.y))
+        if rules.get("mirror"):
+            # Stray inner faces under the Puffer's left flank: its right side's fins,
+            # mirrored, are both sides' fins (it's symmetric; posed fish aren't)
+            right = real[(flat_p[real, 0] >= m.xc.reshape(-1)[real])]
+            right = right[rng.choice(len(right), size=min(200000, len(right)), replace=False)]
+            mirror = flat_p.copy()
+            mirror[:, 0] = 2 * m.xc.reshape(-1) - mirror[:, 0]
+            _, j = cKDTree(flat_p[right]).query(mirror)
+            left = (flat_p[:, 0] < m.xc.reshape(-1)).reshape(m.y.shape)
+            mask = np.where(left, mask.reshape(-1)[right][j].reshape(m.y.shape), mask)
+        mask = np.clip(ndimage.gaussian_filter(mask * m.real, 0.8), 0, 1).astype(np.float32)
+        min_top = rules.get("blade_top", 0.02)
+        # Body is what's clearly not fin (holes in a fin would pull its reach down)
+        solid = ndimage.binary_closing(mask >= 0.5, iterations=3)
+        body = ~solid & (mask < 0.3) & m.real
+        pts_body = m.p[body]
         pts_body = pts_body[rng.choice(len(pts_body), size=min(150000, len(pts_body)), replace=False)]
-        from_body = cKDTree(pts_body).query(flat_p)[0].reshape(m.y.shape)
-        fin_idx = np.flatnonzero((~body & m.real).reshape(-1))
-        reach_ = np.zeros(m.y.shape, np.float32)
-        label = np.full(m.y.shape, -1, int)
+        from_body = cKDTree(pts_body).query(flat_p)[0]
+        fin_idx = np.flatnonzero(((mask >= 0.5) & m.real).reshape(-1))
+        reach_ = np.zeros(len(flat_p), np.float32)
+        label = np.full(len(flat_p), -1, int)
         if len(fin_idx) > 50:
             from scipy.sparse.csgraph import connected_components
 
-            sub = fin_idx[rng.choice(len(fin_idx), size=min(45000, len(fin_idx)), replace=False)]
+            sub = fin_idx[rng.choice(len(fin_idx), size=min(40000, len(fin_idx)), replace=False)]
             sub_tree = cKDTree(flat_p[sub])
-            graph = sub_tree.sparse_distance_matrix(sub_tree, 0.009, output_type="coo_matrix")
+            graph = sub_tree.sparse_distance_matrix(sub_tree, 0.01, output_type="coo_matrix")
             count, labels = connected_components(graph, directed=False)
-            far = from_body.reshape(-1)[sub]
+            far = from_body[sub]
             sizes = np.bincount(labels, minlength=count)
-            # A fin's own furthest, a little in from the very tip; a few stray texels
-            # (a spike's point) count as part of the skin round them
             order = np.lexsort((far, labels))
             starts = np.searchsorted(labels[order], np.arange(count))
             top = far[order][starts + np.floor((sizes - 1) * 0.97).astype(int)].astype(np.float32)
-            _, j = sub_tree.query(flat_p[fin_idx])
+            dist, j = sub_tree.query(flat_p)
             lab = labels[j]
-            small = sizes[lab] < 40
-            r = np.clip(from_body.reshape(-1)[fin_idx] / np.maximum(top[lab], 0.01), 0, 1)
-            r[small] = 0
-            flat_r = reach_.reshape(-1)
-            flat_r[fin_idx] = r
-            flat_l = label.reshape(-1)
-            flat_l[fin_idx] = np.where(small, -1, lab)
-        return mask.astype(np.float32), reach_, label
+            # A real fin stands well clear of the body; a patch of stray thin skin
+            # lies on it
+            ok = (sizes[lab] >= 60) & (top[lab] >= min_top) & (mask.reshape(-1) > 0.05) & (dist < 0.01)
+            reach_ = np.where(ok, np.clip(from_body / np.maximum(top[lab], 0.008), 0, 1), 0).astype(np.float32)
+            label = np.where(ok, lab, -1)
+            # Smoothed over the skin round each texel, so a fin's margin is an even band
+            _, near = sub_tree.query(flat_p, k=12)
+            reach_ = np.where(ok, reach_[sub][near].mean(-1), 0).astype(np.float32)
+        keep = ndimage.gaussian_filter((label >= 0).reshape(m.y.shape).astype(np.float32), 1.0)
+        mask = mask * np.clip(keep * 1.6, 0, 1)
+        return mask, reach_.reshape(m.y.shape), label.reshape(m.y.shape)
 
     return cache(m, "blades", make)
-
-
-def reach(m: Fish):
-    """How far out along its fin each texel sits: 0 at the root, 1 at the tip, 0 off
-    the fins."""
-    mask, out, _ = blades(m)
-    return out * mask
 
 
 def flank(m: Fish):
@@ -1136,19 +1212,6 @@ def own_lines(m: Fish):
     return cache(m, "own_lines", make)
 
 
-def own_marks(m: Fish):
-    """Where the fish's own texture differs from the color round it (its markings:
-    bands, spots, fin tips, a pale belly), 0..1."""
-
-    def make():
-        broad = np.stack([ndimage.gaussian_filter(m.color[..., k], 24) for k in range(3)], -1)
-        d = np.linalg.norm(m.color - broad, axis=-1) * (1 - m.keep)
-        s = np.percentile(d[m.cov], 92)
-        return np.clip(d / max(s, 1e-4), 0, 1).astype(np.float32)
-
-    return cache(m, "own_marks", make)
-
-
 def polar(m: Fish, yc, vc=0.0, squash=1.0):
     """Polar coordinates on the flanks round a point (yc along the body, vc above the
     mid-line): distance in body lengths and angle."""
@@ -1179,94 +1242,1289 @@ def hard(mask, lo=0.45, hi=0.55):
     return smoothstep(lo, hi, mask)
 
 
+def round_scales(m: Fish, size):
+    """Overlapping scales laid round the body in its own girth (a thin eel gets round
+    scales too): each texel's distance from its scale's middle (the rim at 0.5)."""
+    hh, _ = girth(m)
+    u = m.y / size
+    arc = round_angle(m) * np.maximum(hh, 0.02) / size
+    row = np.floor(u)
+    arc = arc + 0.5 * (row % 2)
+    fu, fv = u - row, arc - np.floor(arc)
+    return np.sqrt(((fu - 0.15) / 1.1) ** 2 + (fv - 0.5) ** 2)
+
+
+def own_dark_fins(m: Fish):
+    """The fish's own painted dark fin tips (the Reef Shark's), to hush where a skin
+    paints its fins another way."""
+    fins, _ = fin_parts(m)
+    return np.clip(ndimage.gaussian_filter(fins * smoothstep(0.34, 0.2, m.hsv[..., 2]), 1.5) * 1.5, 0, 1)
+
+
+def fin_parts(m: Fish):
+    """(fins 0..1, reach 0..1 along them) from blades()."""
+    mask, out, _ = blades(m)
+    return mask, out * mask
+
+
+def body_coat(m: Fish, back, belly, soft=0.25, line=0.5):
+    """Countershading only: back to belly about `line` up the body (fins are laid on
+    after, from blades())."""
+    w = smoothstep(line - soft, line + soft, m.up)
+    return mix(board(m, belly), back, w)
+
+
+def height(m: Fish):
+    """(u, v, vn): the print coordinates plus the height up the flank as a share of the
+    body's half-height there (-1 belly .. +1 back, fins beyond)."""
+    u, v = flank(m)
+    hh, _ = girth(m)
+    return u, v, v / np.maximum(hh, 1e-4)
+
+
+def round_angle(m: Fish):
+    """The angle round the body, 0 under the belly, +-pi on the back (its seam runs
+    along the dorsal ridge, where fins and spines hide it)."""
+    return np.arctan2(m.p[..., 0] - m.xc, -(m.p[..., 2] - m.zc))
+
+
+def at_points(m: Fish, pts, values):
+    """A map's value at each of `pts` (nearest texel)."""
+    flat = m.p.reshape(-1, 3)
+    real = np.flatnonzero(m.real.reshape(-1))
+    _, j = cKDTree(flat[real]).query(pts)
+    return np.asarray(values).reshape(-1)[real[j]]
+
+
+def stroke(u, v, a, b, width, taper=0.6, rough=None):
+    """A brush stroke from a to b (print coordinates): 0..1, its ends tapered, its
+    edge roughened by `rough` (a noise field in body lengths)."""
+    d, t = segment(u, v, a, b)
+    w = width * (1 - taper + taper * np.sqrt(np.clip(np.sin(np.pi * t), 0, 1)))
+    if rough is not None:
+        d = d + rough
+    return smoothstep(w, w * 0.75, d)
+
+
+def spiral(u, v, centre, radius, turns_rate=4.0, width=0.0018, flip=1.0):
+    """A scroll: a log spiral curling into `centre` (print coordinates), out to
+    `radius`, as a thin line."""
+    du, dv = u - centre[0], (v - centre[1]) * flip
+    r = np.hypot(du, dv) + 1e-6
+    th = np.arctan2(dv, du)
+    s = (th + turns_rate * np.log(r / radius)) / (2 * np.pi)
+    ds = np.abs(s - np.round(s))
+    gap = r * (1 - np.exp(-2 * np.pi / turns_rate))
+    line = smoothstep(width, width * 0.55, ds * gap)
+    return line * smoothstep(radius * 1.02, radius * 0.96, r) * smoothstep(radius * 0.06, radius * 0.12, r)
+
+
 # ---------------------------------------------------------------------------
-# The Nibbler's line: clownfish morphs, from its own three painted bands
+# The Nibbler's line: clownfish morphs from its own three painted bands, then wilder
 # ---------------------------------------------------------------------------
 
 
 def nib_bands(m: Fish):
-    """The Nibbler's own white bands (head, middle, tail) from its texture, as a crisp
-    mask, which band each texel is nearest (1 head, 2 middle, 3 tail), the 3D
-    distance outside a band and inside one (body lengths), and whether a texel is in
-    front of the head band (the face)."""
+    """The Nibbler's own white bands (head, middle, tail), fitted to its texture: each
+    band's middle and half-width all the way round the body, so the bands are crisp
+    and follow the painted ones. Returns the band mask, which band each texel is
+    nearest (1 head, 2 middle, 3 tail), the distance outside a band and inside one
+    (along the body, body lengths) and the face (in front of the head band)."""
 
     def make():
         s, val = m.hsv[..., 1], m.hsv[..., 2]
-        cream = (s < 0.42) & (val > 0.55) & (m.keep < 0.3)
+        cream = (s < 0.42) & (val > 0.55) & (m.keep < 0.3) & m.real
         spans = ((0.12, 0.32), (0.40, 0.62), (0.71, 0.87))
-        inside = np.zeros(cream.shape, bool)
+        nt = 24
+        tb = ((m.theta + np.pi) / (2 * np.pi) * nt).astype(int) % nt
+        tt = (m.theta + np.pi) / (2 * np.pi) * nt - 0.5
+        idx = np.arange(nt)
+        dists, fronts = [], []
         for lo, hi in spans:
-            inside |= (m.y > lo) & (m.y < hi)
-        band = ndimage.gaussian_filter((cream & inside).astype(np.float32), 1.5) > 0.5
-        band &= inside & (m.keep < 0.3)
-        rng = np.random.default_rng(5)
-        pts_in = m.p[band & m.real]
-        pts_out = m.p[~band & m.real]
-        pts_in = pts_in[rng.choice(len(pts_in), min(90000, len(pts_in)), replace=False)]
-        pts_out = pts_out[rng.choice(len(pts_out), min(140000, len(pts_out)), replace=False)]
-        flat = m.p.reshape(-1, 3)
-        d_in, i_in = cKDTree(pts_in).query(flat)
-        d_out, _ = cKDTree(pts_out).query(flat)
-        shape = m.y.shape
-        near_y = pts_in[i_in, 1].reshape(shape)
-        near_y = (near_y - m.mn[1]) / max(m.length, 1e-6)
-        which = np.digitize(near_y, [0.36, 0.67]) + 1
-        outside = np.where(band, 0.0, d_in.reshape(shape)).astype(np.float32)
-        depth = np.where(band, d_out.reshape(shape), 0.0).astype(np.float32)
-        face = (which == 1) & (m.y < near_y) & ~band
-        return band.astype(np.float32), which, outside, depth, face.astype(np.float32)
+            sel = cream & (m.y > lo) & (m.y < hi)
+            c, w = np.full(nt, np.nan), np.full(nt, np.nan)
+            for b in range(nt):
+                ys = m.y[sel & (tb == b)]
+                if len(ys) > 150:
+                    c[b] = np.median(ys)
+                    w[b] = 2 * np.median(np.abs(ys - c[b]))
+            good = ~np.isnan(c)
+            for arr in (c, w):
+                arr[~good] = np.interp(idx[~good], idx[good], arr[good], period=nt)
+            c = ndimage.gaussian_filter1d(c, 1.0, mode="wrap")
+            w = ndimage.gaussian_filter1d(w, 1.0, mode="wrap")
+            cc = np.interp(tt, idx, c, period=nt)
+            ww = np.interp(tt, idx, w, period=nt)
+            dists.append(np.abs(m.y - cc) - ww)
+            fronts.append(cc - ww)
+        dist = np.stack(dists)
+        which = np.argmin(dist, 0) + 1
+        d = dist.min(0)
+        fins, _ = fin_parts(m)
+        paired = hard(fins * smoothstep(0.8, 0.65, m.up))
+        band = smoothstep(0.0015, -0.0015, d) * (1 - paired)
+        outside = np.where(band > 0.5, 0.0, np.maximum(d, 0)).astype(np.float32)
+        depth = np.maximum(-d, 0).astype(np.float32) * band
+        face = (m.y < fronts[0]).astype(np.float32) * (1 - band)
+        return band.astype(np.float32), which, outside, depth, face
 
     return cache(m, "nib_bands", make)
 
 
 def nib_percula(m):  # Percula: vivid orange, three crisp white bands edged in black
     band, which, outside, depth, face = nib_bands(m)
-    tip = reach(m)
-    rgb = coat(m, (1.0, 0.40, 0.0), (1.0, 0.50, 0.02), (1.0, 0.46, 0.0), soft=0.3)
-    rgb = mix(rgb, (0.92, 0.30, 0.0), smoothstep(0.6, 0.95, m.up) * 0.5)
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.96, 0.34, 0.0), (1.0, 0.50, 0.02), soft=0.35)
+    rgb = mix(rgb, (1.0, 0.46, 0.0), fins)
     rgb = mix(rgb, SNOW, band)
-    rim = smoothstep(0.0075, 0.0055, outside) * (1 - band)
+    rim = smoothstep(0.0072, 0.0052, outside) * (1 - band)
     rgb = mix(rgb, INKY, rim)
-    fin_edge = hard(smoothstep(0.62, 0.7, tip)) * m.fin
-    rgb = mix(rgb, INKY, fin_edge * (1 - band))
+    edge = hard(smoothstep(0.86, 0.92, tip)) * (1 - band)
+    rgb = mix(rgb, INKY, edge)
     return done(m, rgb, "gloss", detail=0.9)
 
 
 def nib_tomato(m):  # Tomato clownfish: red-orange darkening to red-black, one head band
     band, which, outside, depth, face = nib_bands(m)
+    fins, tip = fin_parts(m)
     head = band * (which == 1)
-    u, v = flank(m)
-    dark = smoothstep(0.34, 0.66, m.y) * smoothstep(0.98, 0.55, m.up) * (1 - m.fin)
-    dark = np.clip(dark + smoothstep(0.5, 0.75, m.y) * 0.4 * (1 - m.fin), 0, 1)
-    rgb = coat(m, (0.86, 0.12, 0.02), (1.0, 0.30, 0.02), (0.82, 0.08, 0.03), soft=0.3)
-    rgb = mix(rgb, (0.24, 0.015, 0.02), dark * 0.92)
-    rgb = mix(rgb, (0.72, 0.05, 0.03), m.fin * smoothstep(0.85, 0.9, m.y) * 0.6)
+    dark = smoothstep(0.34, 0.68, m.y) * smoothstep(0.98, 0.6, m.up) * (1 - fins)
+    rgb = body_coat(m, (0.88, 0.14, 0.02), (1.0, 0.30, 0.02), soft=0.35)
+    rgb = mix(rgb, (0.22, 0.012, 0.02), dark * 0.94)
+    rgb = mix(rgb, (0.82, 0.08, 0.03), fins)
     rgb = mix(rgb, SNOW, head)
-    rim = smoothstep(0.0065, 0.0045, outside) * (which == 1) * (1 - band)
+    rim = smoothstep(0.0062, 0.0044, outside) * (which == 1) * (1 - band)
     rgb = mix(rgb, INKY, rim)
-    # The old bands' painted edges would show as ghost lines through the red: hush them
+    # The other two painted bands' edges would show as ghost lines through the red
     hush = smoothstep(0.012, 0.0, outside + depth) * (which > 1)
     return done(m, rgb, "gloss", detail=0.9, hush=hush)
 
 
 def nib_maroon(m):  # Maroon clownfish: deep wine body, three thin golden bands
     band, which, outside, depth, face = nib_bands(m)
-    gold = hard(smoothstep(0.024, 0.03, depth)) * band
-    rgb = coat(m, (0.20, 0.012, 0.06), (0.36, 0.03, 0.10), (0.22, 0.015, 0.07), soft=0.3)
-    rgb = mix(rgb, (0.30, 0.02, 0.08), band * (1 - gold))
+    fins, tip = fin_parts(m)
+    gold = hard(smoothstep(0.022, 0.028, depth)) * band
+    # A deep garnet wine: the browner maroons scored 0.15-0.6 on the moderation
+    # classifier with the pale eyes on them (screen, 2026-10-10); this one 0.08
+    rgb = body_coat(m, (0.28, 0.0, 0.08), (0.48, 0.0, 0.12), soft=0.35)
+    rgb = mix(rgb, (0.32, 0.0, 0.09), fins)
     rgb = mix(rgb, (1.0, 0.76, 0.0), gold)
-    hush = smoothstep(0.01, 0.0, np.minimum(outside, np.where(band > 0.5, depth, 1.0)))
-    return done(m, rgb, "satin", detail=0.9, hush=hush)
+    hush = smoothstep(0.01, 0.0, outside) + smoothstep(0.01, 0.0, depth) * band
+    return done(m, rgb, "satin", detail=0.7, hush=np.clip(hush, 0, 1))
 
 
 def nib_midnight(m):  # Black ocellaris: glossy black, bright white bands, an orange face
     band, which, outside, depth, face = nib_bands(m)
-    rgb = coat(m, (0.025, 0.025, 0.035), (0.05, 0.05, 0.065), (0.03, 0.03, 0.045), soft=0.3)
-    orange = hard(face * smoothstep(0.0075, 0.0095, outside))
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.025, 0.025, 0.035), (0.05, 0.05, 0.065), soft=0.3)
+    orange = hard(face * smoothstep(0.0075, 0.0095, outside)) * (1 - fins)
     rgb = mix(rgb, (1.0, 0.40, 0.0), orange)
-    rgb = mix(rgb, (0.95, 0.30, 0.0), orange * smoothstep(0.08, 0.0, m.y) * 0.5)
+    rgb = mix(rgb, (0.03, 0.03, 0.045), fins)
     rgb = mix(rgb, SNOW, band)
     return done(m, rgb, "gloss", detail=0.8)
+
+
+# ---------------------------------------------------------------------------
+# The 'Cuda's line: barracuda species, then chrome and a comet
+# ---------------------------------------------------------------------------
+
+
+def cuda_great(m):  # Great barracuda: steel flank, slanted bars, black blotches
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.28, 0.36, 0.46), (0.80, 0.84, 0.90), soft=0.2)
+    rgb = sheen(m, rgb, 0.3, (0.88, 0.94, 1.0))
+    bars = stripes(m, 27, 0.32, wobble=0.1, slant=-0.22, seed=101, edge=0.07)
+    bars *= smoothstep(0.0, 0.3, vn) * smoothstep(0.13, 0.19, u) * smoothstep(0.84, 0.74, u)
+    rgb = mix(rgb, (0.14, 0.18, 0.25), bars * (1 - fins) * 0.9)
+    zone = smoothstep(0.48, 0.56, m.y) * smoothstep(0.9, 0.82, m.y) * smoothstep(0.1, -0.35, vn) * (1 - fins)
+    pts = scatter(m, 22, 102, weight=zone)
+    d1, _, i = nearest(m, pts)
+    r = (0.005 + 0.006 * np.random.default_rng(103).random(len(pts)))[i]
+    rgb = mix(rgb, INKY, smoothstep(r * 1.15, r * 0.85, d1) * (1 - fins))
+    rgb = mix(rgb, (0.34, 0.40, 0.46), fins)
+    rgb = mix(rgb, (0.10, 0.12, 0.16), fins * smoothstep(0.84, 0.88, m.y))
+    silver = smoothstep(0.55, 0.3, m.up) * (1 - fins)
+    return done(m, rgb, "gloss", metal=silver * 0.45)
+
+
+def cuda_yellowtail(m):  # Yellowtail barracuda: blue back, silver flank, one yellow stripe
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.16, 0.32, 0.62), (0.82, 0.86, 0.94), soft=0.12, line=0.56)
+    rgb = sheen(m, rgb, 0.3, (0.88, 0.94, 1.0))
+    stripe = hard(smoothstep(0.2, 0.15, np.abs(vn - 0.02))) * smoothstep(0.03, 0.06, u) * (1 - fins)
+    rgb = mix(rgb, (1.0, 0.80, 0.0), stripe)
+    rgb = mix(rgb, (0.50, 0.58, 0.70), fins)
+    rgb = mix(rgb, (1.0, 0.78, 0.0), hard(fins * smoothstep(0.84, 0.87, m.y)))
+    silver = smoothstep(0.55, 0.3, m.up) * (1 - fins) * (1 - stripe)
+    return done(m, rgb, "gloss", metal=silver * 0.4)
+
+
+def cuda_chevron(m):  # Chevron barracuda: gunmetal with dark chevrons pointing forward
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.20, 0.23, 0.27), (0.70, 0.74, 0.80), soft=0.15)
+    rgb = sheen(m, rgb, 0.25, (0.85, 0.9, 1.0))
+    t = (u - 0.9 * np.abs(v - 0.008)) * 22 + 0.15 * (fbm(m, 6, 104) - 0.5)
+    chev = smoothstep(0.62, 0.7, 0.5 + 0.5 * np.cos(2 * np.pi * t))
+    chev *= smoothstep(0.15, 0.2, u) * smoothstep(0.86, 0.78, u) * smoothstep(-0.75, -0.5, vn) * smoothstep(1.0, 0.8, vn)
+    rgb = mix(rgb, (0.07, 0.08, 0.11), chev * (1 - fins))
+    rgb = mix(rgb, (0.40, 0.44, 0.50), fins)
+    return done(m, rgb, "satin")
+
+
+def cuda_blackfin(m):  # Blackfin barracuda: polished steel, every fin tipped jet black
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.56, 0.62, 0.70), (0.84, 0.87, 0.92), soft=0.25)
+    rgb = sheen(m, rgb, 0.45, (0.92, 0.96, 1.0))
+    lateral = smoothstep(0.06, 0.025, np.abs(vn - 0.04)) * smoothstep(0.12, 0.2, u) * smoothstep(0.9, 0.82, u)
+    rgb = mix(rgb, (0.34, 0.38, 0.44), lateral * (1 - fins) * 0.65)
+    rgb = mix(rgb, (0.66, 0.72, 0.80), fins)
+    tips = hard(smoothstep(0.5, 0.58, tip))
+    rgb = mix(rgb, (0.02, 0.02, 0.03), tips)
+    metal = 0.6 * (1 - tips) * (1 - fins * 0.5)
+    rough = 0.22 + 0.5 * tips
+    return done(m, rgb, "gloss", metal=metal, rough=rough)
+
+
+def cuda_chrome(m):  # Mirror chrome: a sky-and-ground reflection, speed streaks from the nose
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    e = m.nrm[..., 2] * 0.6 + np.clip(vn, -1, 1) * 0.4
+    sky = mix(board(m, (0.84, 0.90, 1.0)), (0.34, 0.56, 0.96), smoothstep(0.1, 0.95, e))
+    ground = mix(board(m, (0.36, 0.40, 0.46)), (0.80, 0.84, 0.90), smoothstep(-0.15, -0.9, e))
+    rgb = np.where((e > 0.02)[..., None], sky, ground)
+    rgb = mix(rgb, (0.07, 0.09, 0.14), smoothstep(0.05, 0.0, np.abs(e)))
+    streak_p = np.stack([m.ex * 0.05, u * 2.2, vn * 16], -1).astype(np.float32)
+    n1 = value_noise(streak_p, 1.0, 105)
+    fade = smoothstep(0.95, 0.15, u) * smoothstep(0.0, 0.05, u) * (1 - fins)
+    rgb = mix(rgb, (0.97, 0.98, 1.0), smoothstep(0.72, 0.78, n1) * fade)
+    rgb = mix(rgb, (0.10, 0.14, 0.24), smoothstep(0.26, 0.2, n1) * fade * 0.9)
+    rgb = mix(rgb, (0.26, 0.50, 0.96), smoothstep(0.75, 0.95, m.up) * 0.4)
+    edge = hard(smoothstep(0.7, 0.78, tip))
+    rgb = mix(rgb, (0.02, 0.02, 0.03), edge)
+    return done(m, rgb, "mirror", metal=0.7 * (1 - edge), rough=0.1 + 0.6 * edge, detail=0.4)
+
+
+def cuda_comet(m):  # A comet: a blazing cyan head, a tail of sparks pouring back
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.012, 0.025, 0.11), (0.03, 0.06, 0.20), soft=0.3)
+    core = smoothstep(0.24, 0.06, u)
+    hot = smoothstep(0.1, 0.02, u)
+    spread = 0.35 + 1.1 * u
+    cone = smoothstep(1.0, 0.4, np.abs(vn) / spread)
+    env = np.exp(-np.clip(u - 0.12, 0, None) * 2.0) * smoothstep(0.05, 0.16, u)
+    streak_p = np.stack([m.ex * 0.05, u * 2.6, vn / spread * 6], -1).astype(np.float32)
+    lines = smoothstep(0.48, 0.74, value_noise(streak_p, 1.0, 106))
+    tail = np.clip(env * cone * (0.3 + 0.9 * lines), 0, 1)
+    pts = scatter(m, 320, 107, weight=env * cone + 0.02)
+    d1, _, i = nearest(m, pts)
+    r = (0.002 + 0.003 * np.random.default_rng(108).random(len(pts)))[i]
+    sparks = smoothstep(r, r * 0.4, d1)
+    tail_col = mix(board(m, (0.05, 0.72, 1.0)), (0.30, 0.30, 1.0), smoothstep(0.3, 0.85, u))
+    core_col = mix(board(m, (0.10, 0.70, 1.0)), (0.62, 0.93, 1.0), hot)
+    stars = speckle(m, 220, 0.9, seed=109) * (1 - core)
+    rgb = mix(rgb, (0.45, 0.55, 0.95), stars * 0.6)
+    rgb = mix(rgb, tail_col, tail)
+    rgb = mix(rgb, (0.55, 0.90, 1.0), sparks)
+    rgb = mix(rgb, core_col, core)
+    edge = smoothstep(0.6, 0.9, tip)
+    rgb = mix(rgb, (0.20, 0.45, 1.0), edge * 0.7)
+    halo = glow_halo(np.clip(sparks, 0, 1), 4)
+    emit = (
+        core_col * (core * 0.65)[..., None]
+        + tail_col * (tail * 0.6)[..., None]
+        + C(0.4, 0.85, 1.0) * (sparks * 0.8)[..., None]
+        + C(0.1, 0.4, 1.0) * (halo * 0.3)[..., None]
+        + C(0.2, 0.45, 1.0) * (edge * 0.4)[..., None]
+        + C(0.4, 0.5, 0.9) * (stars * 0.3)[..., None]
+    )
+    return done(m, rgb, "gloss", emit=emit, detail=0.5)
+
+
+# ---------------------------------------------------------------------------
+# The Puffer's line: real puffers, then an urchin, a reef and a sun
+# ---------------------------------------------------------------------------
+
+
+def point_y(m: Fish, pts):
+    """Body-frame y (0 snout .. 1 tail) of points from scatter()."""
+    return pts[:, 1] - m.mn[1] / max(m.length, 1e-6)
+
+
+def puf_guineafowl(m):  # Guineafowl puffer: charcoal, densely spotted white, finer on the face
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.07, 0.07, 0.09), (0.11, 0.11, 0.14), soft=0.3)
+    face = smoothstep(0.3, 0.12, m.y)
+    pts = scatter(m, 1300, 201, weight=1 + 2.5 * face)
+    d1, _, i = nearest(m, pts)
+    py = point_y(m, pts)
+    rng = np.random.default_rng(202)
+    r = (0.0072 * (0.5 + 0.5 * smoothstep(0.12, 0.34, py)) * (0.8 + 0.4 * rng.random(len(pts))))[i]
+    dots = smoothstep(r * 1.12, r * 0.86, d1)
+    rgb = mix(rgb, (0.08, 0.08, 0.10), fins)
+    rgb = mix(rgb, (0.80, 0.85, 0.94), dots * (1 - fins * 0.5))
+    return done(m, rgb, "satin", detail=0.8)
+
+
+def puf_golden(m):  # Golden puffer: saturated lemon yellow, a few dark speckles on the back
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (1.0, 0.78, 0.0), (1.0, 0.88, 0.08), soft=0.3)
+    rgb = mix(rgb, (1.0, 0.72, 0.0), fins)
+    pts = scatter(m, 45, 203, weight=smoothstep(0.6, 0.8, m.up) * (1 - fins))
+    d1, _, i = nearest(m, pts)
+    r = (0.0035 + 0.003 * np.random.default_rng(204).random(len(pts)))[i]
+    rgb = mix(rgb, (0.10, 0.10, 0.04), smoothstep(r * 1.15, r * 0.8, d1))
+    return done(m, rgb, "gloss", detail=0.9)
+
+
+def puf_starry(m):  # Starry puffer: blue-grey back with large black spots, cool white belly
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.36, 0.44, 0.54), (0.84, 0.88, 0.96), soft=0.16, line=0.42)
+    pts = scatter(m, 150, 205, weight=smoothstep(0.38, 0.55, m.up))
+    d1, _, i = nearest(m, pts)
+    r = (0.012 + 0.008 * np.random.default_rng(206).random(len(pts)))[i]
+    spot = smoothstep(r * 1.08, r * 0.92, d1) * smoothstep(0.3, 0.42, m.up)
+    rgb = mix(rgb, (0.46, 0.50, 0.56), fins)
+    rgb = mix(rgb, (0.04, 0.04, 0.06), spot)
+    return done(m, rgb, "satin", detail=0.9)
+
+
+def puf_green(m):  # Green spotted puffer: lime-olive back, round dark spots, pale belly
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.40, 0.54, 0.05), (0.72, 0.84, 0.16), soft=0.12, line=0.48)
+    rgb = mix(rgb, (0.84, 0.90, 0.96), smoothstep(0.26, 0.16, m.up))
+    pts = scatter(m, 190, 207, weight=smoothstep(0.42, 0.6, m.up))
+    d1, _, i = nearest(m, pts)
+    r = (0.010 + 0.006 * np.random.default_rng(208).random(len(pts)))[i]
+    rgb = mix(rgb, (0.05, 0.10, 0.04), smoothstep(r * 1.1, r * 0.9, d1) * smoothstep(0.36, 0.46, m.up) * (1 - fins))
+    rgb = mix(rgb, (0.40, 0.66, 0.30), fins)
+    rgb = mix(rgb, (0.60, 0.82, 0.40), fins * smoothstep(0.6, 0.95, tip) * 0.6)
+    return done(m, rgb, "gloss", detail=0.9)
+
+
+def puf_urchin(m):  # A sea urchin: purple-black, teal spines bursting from each flank
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.07, 0.02, 0.11), (0.12, 0.04, 0.17), soft=0.3)
+    rho, phi = polar(m, 0.42, 0.0)
+    long_, out = rays(m, rho, phi, 44, 0.0065, seed=210, length=(0.24, 0.40), taper=0.6)
+    short, out2 = rays(m, rho, phi + np.pi / 44, 44, 0.005, seed=211, length=(0.10, 0.2), taper=0.6)
+    start = smoothstep(0.04, 0.055, rho)
+    spines = np.clip(np.maximum(long_, short) * start, 0, 1)
+    along = np.where(long_ >= short, out, out2)
+    col = mix(board(m, (0.0, 0.55, 0.82)), (0.28, 1.0, 0.90), smoothstep(0.45, 0.9, along))
+    halo = glow_halo(spines, 6)
+    rgb = mix(rgb, (0.16, 0.12, 0.50), halo * 0.55)
+    rgb = mix(rgb, col, spines)
+    centre = smoothstep(0.04, 0.035, rho)
+    rgb = mix(rgb, (0.03, 0.01, 0.05), centre)
+    rgb = mix(rgb, (0.08, 0.66, 0.78), smoothstep(0.005, 0.0, np.abs(rho - 0.037)))
+    rgb = mix(rgb, (0.14, 0.05, 0.22), fins * (1 - spines))
+    return done(m, rgb, "gloss", detail=0.6)
+
+
+def puf_coral_bloom(m):  # Living coral: colonies of star polyps and branching coral over teal
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.0, 0.38, 0.42), (0.04, 0.52, 0.52), soft=0.3)
+    palette = np.array([(1.0, 0.46, 0.0), (0.52, 0.18, 0.92), (1.0, 0.82, 0.0)], np.float32)
+    bright = np.array([(1.0, 0.76, 0.0), (0.78, 0.60, 1.0), (1.0, 0.96, 0.32)], np.float32)
+    rng = np.random.default_rng(221)
+    heads = scatter(m, 12, 224, weight=1 - fins)
+    hd, _, hi = nearest(m, heads)
+    R = (0.11 + 0.06 * rng.random(len(heads)))[hi]
+    edge_noise = 1 + 0.35 * (fbm(m, 12, 225) - 0.5)
+    colony = hard(smoothstep(R * 1.02, R * 0.97, hd * edge_noise))
+    kind = rng.integers(0, 3, len(heads))[hi]
+    pts = scatter(m, 1300, 222)
+    d1, d2, i = nearest(m, pts)
+    a, b = offsets(m, pts, i)
+    ang = np.arctan2(b, a) + i * 1.3
+    cell = (d1 + d2) * 0.5
+    star_r = cell * (0.44 + 0.28 * np.cos(5 * ang))
+    star = smoothstep(star_r * 1.05, star_r * 0.85, d1)
+    eye = smoothstep(cell * 0.13, cell * 0.08, d1)
+    rim = smoothstep(cell * 0.14, cell * 0.05, d2 - d1)
+    polyp = palette[kind] * (0.62 + 0.38 * smoothstep(1.0, 0.3, d1 / np.maximum(cell, 1e-5)))[..., None]
+    polyp = mix(polyp, bright[kind], star)
+    polyp = mix(polyp, palette[kind] * 0.55, eye)
+    polyp = mix(polyp, (0.02, 0.18, 0.20), rim * 0.85)
+    rgb = mix(rgb, polyp, colony * (1 - fins * 0.5))
+    ridge = 1 - np.abs(fbm_at(body_coords(m), 6, 223) * 2 - 1)
+    rlo, rhi = np.percentile(ridge[m.real], [90, 95])
+    branch = smoothstep(rlo, rhi, ridge) * (1 - colony)
+    bkind = (kind + 1) % 3
+    rgb = mix(rgb, palette[bkind], branch)
+    rgb = mix(rgb, bright[bkind], smoothstep(rhi, rhi + (1 - rhi) * 0.5, ridge) * (1 - colony))
+    rgb = mix(rgb, (0.0, 0.30, 0.36), fins * (1 - colony))
+    return done(m, rgb, "satin", detail=0.6)
+
+
+def puf_sunburst(m):  # A sun: gold rays over deep orange, a glowing gold core
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.86, 0.24, 0.0), (0.98, 0.38, 0.0), soft=0.3)
+    rho, phi = polar(m, 0.46, 0.0)
+    spec_long = dict(count=10, width=0.07, seed=230, length=(0.33, 0.40), taper=0.93)
+    spec_short = dict(count=10, width=0.05, seed=231, length=(0.21, 0.26), taper=0.93)
+
+    def burst(spec, grow=0.0, turn=0.0):
+        return rays(m, rho, phi + turn, spec["count"], spec["width"] + grow, spec["seed"], spec["length"], spec["taper"])[0]
+
+    ray = hard(np.maximum(burst(spec_long), burst(spec_short, turn=np.pi / 10)))
+    outline = hard(np.maximum(burst(spec_long, 0.012), burst(spec_short, 0.012, np.pi / 10))) * (1 - ray)
+    core = hard(smoothstep(0.08, 0.075, rho))
+    ring = hard(smoothstep(0.005, 0.003, np.abs(rho - 0.09)))
+    gold = (1.0, 0.70, 0.0)
+    rgb = mix(rgb, (0.62, 0.10, 0.0), outline)
+    rgb = mix(rgb, gold, ray)
+    rgb = mix(rgb, (1.0, 0.86, 0.10), ray * smoothstep(0.35, 0.0, rho) * 0.5)
+    rgb = mix(rgb, (0.56, 0.08, 0.0), ring)
+    rgb = mix(rgb, (1.0, 0.84, 0.12), core)
+    rgb = mix(rgb, (0.92, 0.22, 0.0), fins * (1 - ray))
+    rgb = mix(rgb, gold, hard(smoothstep(0.72, 0.8, tip)))
+    glow = glow_halo(core, 6)
+    emit = C(1.0, 0.62, 0.0) * core[..., None] + C(0.9, 0.42, 0.0) * (glow * 0.4 * (1 - core))[..., None]
+    emit = emit + C(0.5, 0.3, 0.0) * (ray * 0.2)[..., None]
+    metal = np.clip(ray * 0.3 + core * 0.2, 0, 1)
+    return done(m, rgb, "gloss", emit=emit, metal=metal, rough=0.25 - 0.1 * ray, detail=0.6)
+
+
+# ---------------------------------------------------------------------------
+# The Moray's line: moray species, then a serpent, a ribbon eel and jade
+# ---------------------------------------------------------------------------
+
+
+def mor_green(m):  # Green moray: rich olive-green, subtle mottling, a yellower throat
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.18, 0.30, 0.04), (0.38, 0.48, 0.07), soft=0.3)
+    mott = fbm_at(body_coords(m), 9, 240)
+    rgb = mix(rgb, (0.11, 0.19, 0.03), smoothstep(0.5, 0.64, mott) * 0.45)
+    throat = smoothstep(0.26, 0.1, u) * smoothstep(0.5, 0.25, m.up)
+    rgb = mix(rgb, (0.56, 0.60, 0.05), throat * 0.75)
+    edge = smoothstep(0.94, 0.99, vn) * fins * smoothstep(0.24, 0.32, u)
+    rgb = mix(rgb, (0.30, 0.54, 0.08), np.clip(edge * 1.5, 0, 1))
+    return done(m, rgb, "gloss", detail=0.7)
+
+
+def mor_zebra(m):  # Zebra moray: near-black with about 30 thin cool-white rings
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.06, 0.06, 0.09), (0.09, 0.08, 0.12), soft=0.3)
+    ring = stripes(m, 32, 0.24, wobble=0.18, slant=0.3, seed=241, edge=0.05) * smoothstep(0.03, 0.06, u)
+    halo = glow_halo(ring, 3)
+    rgb = mix(rgb, (0.18, 0.22, 0.34), halo * 0.35)
+    rgb = mix(rgb, (0.74, 0.82, 0.95), ring)
+    return done(m, rgb, "gloss", detail=0.6)
+
+
+def mor_snowflake(m):  # Snowflake moray: cool grey, black dendritic blotches with yellow hearts
+    rgb = body_coat(m, (0.48, 0.52, 0.58), (0.62, 0.66, 0.72), soft=0.3)
+    pts = scatter(m, 85, 242)
+    d1, _, i = nearest(m, pts)
+    a, b = offsets(m, pts, i)
+    ang = np.arctan2(b, a)
+    rng = np.random.default_rng(243)
+    n = len(pts)
+    R = (0.042 * (0.7 + 0.6 * rng.random(n)))[i]
+    k = rng.integers(5, 8, n)[i]
+    rot = (rng.random(n) * 2 * np.pi)[i]
+    arm = np.abs(np.cos((ang + rot) * k / 2)) ** 1.6
+    twig = np.abs(np.cos((ang + rot) * k * 1.5 + d1 / R * 5)) ** 3
+    wobble = 0.85 + 0.3 * (fbm(m, 30, 244) - 0.5) * 2
+    rr = R * (0.36 + 0.5 * arm + 0.14 * twig) * wobble
+    blot = smoothstep(rr * 1.04, rr * 0.9, d1)
+    heart = smoothstep(R * 0.15, R * 0.1, d1)
+    rgb = mix(rgb, (0.04, 0.04, 0.06), blot)
+    rgb = mix(rgb, (1.0, 0.82, 0.0), heart)
+    rgb = mix(rgb, (0.08, 0.08, 0.10), speckle(m, 160, 0.86, seed=245) * 0.7)
+    return done(m, rgb, "gloss", detail=0.7)
+
+
+def mor_honeycomb(m):  # Honeycomb moray: golden cells under a dark net, small on the head
+    w = 1 + 7 * smoothstep(0.26, 0.06, m.y)
+    pts = scatter(m, 360, 250, weight=w)
+    d1, d2, i = nearest(m, pts)
+    rel = (d2 - d1) / (d2 + d1 + 1e-6)
+    netm = smoothstep(0.17, 0.12, rel)
+    rgb = body_coat(m, (0.96, 0.66, 0.0), (1.0, 0.80, 0.0), soft=0.3)
+    rgb = mix(rgb, (0.84, 0.50, 0.0), smoothstep(0.45, 0.2, rel) * 0.45)
+    rgb = mix(rgb, (0.05, 0.05, 0.06), netm)
+    return done(m, rgb, "gloss", detail=0.7)
+
+
+def mor_serpent(m):  # A sea serpent: emerald dragon scales, each edged in gold
+    rgb = body_coat(m, (0.0, 0.24, 0.13), (0.06, 0.58, 0.32), soft=0.3)
+    d = round_scales(m, 0.042)
+    rgb = rgb * (1.12 - 0.5 * smoothstep(0.15, 0.5, d))[..., None]
+    gold = hard(smoothstep(0.07, 0.03, np.abs(d - 0.5)), 0.4, 0.6)
+    rgb = mix(rgb, (1.0, 0.70, 0.0), gold)
+    rgb = sheen(m, rgb, 0.18, (0.80, 1.0, 0.86))
+    # An even metal map: thin lines of metal on black read as line art to the
+    # moderation classifier (0.17 here, 0.5-0.98 for a traced pattern)
+    return done(m, rgb, "gloss", metal=np.full(m.y.shape, 0.3, np.float32), detail=0.6)
+
+
+def mor_ribbon(m):  # Ribbon eel: electric cobalt, a yellow dorsal fin edge and jaw
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.0, 0.10, 0.74), (0.06, 0.32, 1.0), soft=0.3)
+    rgb = mix(rgb, (0.02, 0.20, 0.96), smoothstep(0.5, 0.0, np.abs(vn)) * 0.5)
+    jaw = hard(smoothstep(0.075, 0.065, u) + smoothstep(0.16, 0.14, u) * smoothstep(0.42, 0.36, m.up))
+    rgb = mix(rgb, (1.0, 0.84, 0.0), jaw)
+    edge = hard(smoothstep(0.93, 0.96, vn) * fins)
+    rgb = mix(rgb, (1.0, 0.84, 0.0), edge)
+    return done(m, rgb, "gloss", detail=0.6)
+
+
+def mor_jade(m):  # Jade dragon: polished jade, glowing gold filigree scrolls on the flanks
+    u, v, vn = height(m)
+    hh, at = girth(m)
+    P = body_coords(m)
+    f = fbm_at(P, 5, 260) + 0.25 * (fbm_at(P, 14, 261) - 0.5)
+    # A cool teal jade: the greener jades scored 0.26-0.6 on the moderation classifier
+    # once JPEG-packed (screen, 2026-10-10); this one 0.01
+    rgb = mix(board(m, (0.0, 0.24, 0.24)), (0.24, 0.66, 0.62), smoothstep(0.38, 0.7, f))
+    vein = smoothstep(0.018, 0.0, np.abs(fbm_at(P, 7, 262) - 0.5))
+    rgb = mix(rgb, (0.0, 0.18, 0.14), vein * 0.4)
+    rgb = mix(rgb, (0.50, 0.84, 0.74), smoothstep(0.012, 0.0, np.abs(fbm_at(P, 11, 263) - 0.5)) * 0.25)
+    rgb = mix(rgb, (0.46, 0.86, 0.68), smoothstep(0.6, 1.0, m.nrm[..., 2]) * 0.18)
+    fil = np.zeros_like(u)
+    period = 0.17
+    for k, uc in enumerate(np.arange(0.17, 0.92, period / 2)):
+        h = at(uc)
+        up_ = 1 if k % 2 == 0 else -1
+        centre = (uc, up_ * 0.42 * h)
+        fil = np.maximum(fil, spiral(u, v, centre, 0.5 * h, 3.6, 0.0016, flip=up_))
+    # The vine the scrolls hang from, crest to trough
+    vine = smoothstep(0.0017, 0.001, np.abs(v - 0.42 * hh * np.cos(2 * np.pi * (u - 0.17) / period)))
+    fil = np.maximum(fil, vine * smoothstep(0.14, 0.17, u) * smoothstep(0.95, 0.92, u))
+    fil = hard(fil, 0.35, 0.6)
+    rgb = mix(rgb, (1.0, 0.72, 0.0), fil)
+    rgb = sheen(m, rgb, 0.22, (0.86, 1.0, 0.92))
+    emit = C(0.6, 0.4, 0.0) * fil[..., None] + C(0.4, 0.26, 0.0) * (glow_halo(fil, 2) * 0.25)[..., None]
+    return done(m, rgb, "gloss", emit=emit, metal=np.full(m.y.shape, 0.25, np.float32), detail=0.5)
+
+
+# ---------------------------------------------------------------------------
+# The Reef Shark's line: reef sharks, then warpaint, scars and bone armour
+# ---------------------------------------------------------------------------
+
+
+def shk_blacktip(m):  # Blacktip reef shark: blue-grey, white belly and flank band, black tips
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    bump = np.exp(-(((u - 0.56) / 0.08) ** 2)) * (1 - fins)
+    line = 0.5 + 0.16 * bump
+    w = smoothstep(line - 0.04, line + 0.04, m.up)
+    rgb = mix(board(m, (0.90, 0.93, 0.98)), (0.40, 0.48, 0.58), w)
+    rgb = mix(rgb, (0.40, 0.48, 0.58), fins * smoothstep(0.3, 0.6, m.up))
+    tips = hard(smoothstep(0.66, 0.73, tip))
+    rgb = mix(rgb, (0.03, 0.03, 0.04), tips)
+    return done(m, rgb, "satin", detail=1.0)
+
+
+def shk_whitetip(m):  # Whitetip reef shark: dark slate, small dark spots, white-tipped dorsal and tail
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.22, 0.25, 0.29), (0.52, 0.56, 0.62), soft=0.2)
+    pts = scatter(m, 45, 260, weight=(1 - fins) * smoothstep(0.35, 0.6, m.up))
+    d1, _, i = nearest(m, pts)
+    r = (0.003 + 0.003 * np.random.default_rng(261).random(len(pts)))[i]
+    rgb = mix(rgb, (0.10, 0.11, 0.14), smoothstep(r * 1.15, r * 0.8, d1) * 0.85)
+    rgb = mix(rgb, (0.24, 0.27, 0.31), fins)
+    dorsal = smoothstep(0.7, 0.85, m.up) * smoothstep(0.22, 0.27, u) * smoothstep(0.58, 0.52, u)
+    tail = smoothstep(0.82, 0.86, u) * smoothstep(0.0, 0.03, v)
+    tips = hard(smoothstep(0.66, 0.73, tip) * np.clip(dorsal + tail, 0, 1))
+    rgb = mix(rgb, (0.84, 0.88, 0.96), tips)
+    return done(m, rgb, "satin", detail=1.0, hush=np.maximum(own_dark_fins(m), tips))
+
+
+def shk_grey(m):  # Grey reef shark: even grey, white belly, a broad black trailing edge on the tail
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.44, 0.47, 0.51), (0.90, 0.92, 0.96), soft=0.06)
+    rgb = mix(rgb, (0.42, 0.45, 0.49), fins * smoothstep(0.3, 0.6, m.up))
+    tail = (fins > 0.4) & (u > 0.8) & m.real
+    lo, span = v[tail].min(), max(np.ptp(v[tail]), 1e-4)
+    nb = 60
+    vb = np.clip(((v - lo) / span * nb).astype(int), 0, nb - 1)
+    umax = np.full(nb, np.nan)
+    for b in range(nb):
+        sel = tail & (vb == b)
+        if sel.sum() > 15:
+            umax[b] = np.percentile(u[sel], 97)
+    good = ~np.isnan(umax)
+    umax = np.interp(np.arange(nb), np.flatnonzero(good), umax[good])
+    umax = ndimage.gaussian_filter1d(umax, 2.0, mode="nearest")
+    at_v = np.interp((v - lo) / span * nb - 0.5, np.arange(nb), umax)
+    trailing = hard(smoothstep(0.045, 0.035, at_v - u)) * smoothstep(0.78, 0.82, u) * fins
+    rgb = mix(rgb, (0.05, 0.05, 0.06), trailing)
+    dusky = smoothstep(0.75, 0.95, tip) * smoothstep(0.75, 0.7, u)
+    rgb = mix(rgb, (0.18, 0.19, 0.22), dusky * 0.8)
+    return done(m, rgb, "satin", detail=1.0, hush=own_dark_fins(m) * (1 - trailing))
+
+
+def shk_lemon(m):  # Lemon shark: mustard-olive yellow, paler cool yellow belly
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.58, 0.53, 0.11), (0.82, 0.84, 0.40), soft=0.18)
+    rgb = mix(rgb, (0.50, 0.46, 0.09), smoothstep(0.75, 0.95, m.up) * 0.6)
+    rgb = mix(rgb, (0.62, 0.56, 0.13), fins)
+    return done(m, rgb, "satin", detail=1.0, hush=own_dark_fins(m))
+
+
+def shk_warpaint(m):  # Tribal warpaint: charcoal hide, bold teal and black slashes
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    hh, at = girth(m)
+    rgb = body_coat(m, (0.11, 0.12, 0.14), (0.26, 0.28, 0.31), soft=0.25)
+    rough = (fbm(m, 40, 270) - 0.5) * 0.008
+
+    def pt(uu, nn):
+        return (uu, nn * at(uu))
+
+    teal_strokes = [
+        (pt(0.2, 0.9), pt(0.245, -0.8), 0.012),
+        (pt(0.245, 0.9), pt(0.29, -0.8), 0.012),
+        (pt(0.29, 0.9), pt(0.335, -0.8), 0.012),
+        (pt(0.035, -0.1), pt(0.17, 0.5), 0.01),
+        (pt(0.42, 0.9), pt(0.57, -0.4), 0.019),
+        (pt(0.70, 0.8), pt(0.765, -0.65), 0.013),
+    ]
+    black_strokes = [
+        (pt(0.455, 0.95), pt(0.61, -0.3), 0.009),
+        (pt(0.02, -0.4), pt(0.15, 0.08), 0.007),
+        (pt(0.745, 0.8), pt(0.805, -0.6), 0.008),
+    ]
+    teal = np.zeros_like(u)
+    for a, b, w in teal_strokes:
+        teal = np.maximum(teal, stroke(u, v, a, b, w, rough=rough))
+    black = np.zeros_like(u)
+    for a, b, w in black_strokes:
+        black = np.maximum(black, stroke(u, v, a, b, w, rough=rough))
+    dry = 0.8 + 0.2 * smoothstep(0.3, 0.7, value_noise(np.stack([m.ex * 0.1, u * 40, vn * 3], -1).astype(np.float32), 1.0, 271))
+    teal = hard(teal) * (1 - fins * 0.7)
+    black = hard(black) * (1 - fins * 0.7) * (1 - teal)
+    rgb = mix(rgb, (0.01, 0.01, 0.015), black)
+    rgb = mix(rgb, C(0.0, 0.74, 0.72) * dry[..., None], teal)
+    rgb = mix(rgb, (0.10, 0.11, 0.13), fins * (1 - teal))
+    rgb = mix(rgb, (0.0, 0.62, 0.60), hard(smoothstep(0.8, 0.86, tip)))
+    return done(m, rgb, "matte", detail=0.9, hush=own_dark_fins(m))
+
+
+def shk_scarred(m):  # A veteran: healed rake scars, crescent bites with tooth gouges, torn fins
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    hh, at = girth(m)
+    rgb = body_coat(m, (0.30, 0.35, 0.42), (0.58, 0.64, 0.73), soft=0.15)
+    rgb = mix(rgb, (0.30, 0.35, 0.42), fins * smoothstep(0.3, 0.6, m.up))
+    rng = np.random.default_rng(280)
+    core = np.zeros_like(u)
+    rim = np.zeros_like(u)
+
+    def scar(a, b, w):
+        d, t = segment(u, v, a, b)
+        ww = w * np.sqrt(np.clip(np.sin(np.pi * t), 0, 1)) + 0.0004
+        return smoothstep(ww, ww * 0.6, d), smoothstep(ww * 1.8, ww * 1.3, d)
+
+    for _ in range(6):  # rakes: three parallel claw lines
+        uc = rng.uniform(0.15, 0.8)
+        h = at(uc)
+        vc = rng.uniform(-0.5, 0.7) * h
+        ang = rng.uniform(-1.1, -0.4) if rng.random() < 0.6 else rng.uniform(0.4, 1.1)
+        half = rng.uniform(0.025, 0.045)
+        nx, ny = -np.sin(ang), np.cos(ang)
+        for k in (-1, 0, 1):
+            off = k * 0.0075
+            a = (uc - half * np.cos(ang) + off * nx, vc - half * np.sin(ang) + off * ny)
+            b = (uc + half * np.cos(ang) + off * nx, vc + half * np.sin(ang) + off * ny)
+            c_, r_ = scar(a, b, 0.0026)
+            core, rim = np.maximum(core, c_), np.maximum(rim, r_)
+    for _ in range(9):  # single scars
+        uc = rng.uniform(0.1, 0.86)
+        h = at(uc)
+        vc = rng.uniform(-0.8, 0.9) * h
+        ang = rng.uniform(-1.3, 1.3)
+        half = rng.uniform(0.015, 0.04)
+        a = (uc - half * np.cos(ang), vc - half * np.sin(ang))
+        b = (uc + half * np.cos(ang), vc + half * np.sin(ang))
+        c_, r_ = scar(a, b, 0.0028)
+        core, rim = np.maximum(core, c_), np.maximum(rim, r_)
+    gouge = np.zeros_like(u)
+    for _ in range(4):  # crescent bites
+        uc = rng.uniform(0.28, 0.72)
+        h = at(uc)
+        vc = rng.uniform(-0.2, 0.5) * h
+        R = rng.uniform(0.75, 1.0) * h
+        start = rng.uniform(0, 2 * np.pi)
+        du, dv = u - uc, v - vc
+        r = np.hypot(du, dv)
+        th = (np.arctan2(dv, du) - start) % (2 * np.pi)
+        on_arc = smoothstep(2.6, 2.45, th)
+        core = np.maximum(core, smoothstep(0.003, 0.0018, np.abs(r - R)) * on_arc)
+        rim = np.maximum(rim, smoothstep(0.0062, 0.0046, np.abs(r - R)) * on_arc)
+        for k in np.linspace(0.12, 2.4, 10):
+            tu = uc + (R - 0.007) * np.cos(start + k)
+            tv = vc + (R - 0.007) * np.sin(start + k)
+            gouge = np.maximum(gouge, smoothstep(0.0034, 0.0022, np.hypot((u - tu) * 1.4, v - tv)))
+    body = 1 - fins * 0.8
+    # Cool blue-grey scars: neutral grey lines with dark rims scored 0.55 on the
+    # moderation classifier (screen, 2026-10-10)
+    rgb = mix(rgb, (0.16, 0.20, 0.27), rim * body)
+    rgb = mix(rgb, (0.64, 0.72, 0.86), core * body)
+    rgb = mix(rgb, (0.10, 0.13, 0.19), gouge * body)
+    torn = hard(smoothstep(0.8, 0.88, tip) * smoothstep(0.5, 0.56, fbm(m, 30, 281)))
+    rgb = mix(rgb, (0.08, 0.09, 0.10), torn)
+    return done(m, rgb, "matte", detail=0.9, hush=own_dark_fins(m))
+
+
+def shk_boneplate(m):  # Placoderm armour: bone-grey plates over the head and back, dark seams
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.17, 0.20, 0.24), (0.28, 0.31, 0.35), soft=0.25)
+    region = np.clip(smoothstep(0.32, 0.26, u) + smoothstep(0.25, 0.4, vn) * smoothstep(0.82, 0.74, u), 0, 1) * (1 - fins)
+    pts = scatter(m, 230, 290, weight=0.15 + region)
+    d1, d2, i = nearest(m, pts)
+    member = at_points(m, pts, region) > 0.5
+    plate = member[i].astype(np.float32)
+    rng = np.random.default_rng(291)
+    tone = (0.86 + 0.14 * rng.random(len(pts)))[i]
+    a, b = offsets(m, pts, i)
+    cell = (d1 + d2) * 0.5
+    rear = smoothstep(-0.3, 1.0, a / np.maximum(cell, 1e-5))
+    bone = C(0.66, 0.70, 0.74) * (tone * (1.05 - 0.35 * rear))[..., None]
+    bone = mix(bone, (0.42, 0.45, 0.49), speckle(m, 240, 0.8, seed=292) * 0.5)
+    seam = smoothstep(0.0032, 0.0016, d2 - d1)
+    rgb = mix(rgb, bone, plate)
+    rgb = mix(rgb, (0.06, 0.07, 0.08), seam * plate)
+    rgb = mix(rgb, (0.22, 0.25, 0.29), fins)
+    rgb = mix(rgb, (0.58, 0.62, 0.66), hard(smoothstep(0.85, 0.92, tip)))
+    metal = (1 - plate) * (1 - fins) * 0.35
+    return done(m, rgb, "satin", metal=metal, rough=0.5 + 0.25 * plate, detail=0.8, hush=own_dark_fins(m))
+
+
+# ---------------------------------------------------------------------------
+# The Angler's line: deep-sea anglers, then murk, driftwood and glowing horrors
+# ---------------------------------------------------------------------------
+
+
+def ang_seadevil(m):  # Black seadevil: velvet black with a faint cool sheen on the ridges
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.032, 0.032, 0.045), (0.05, 0.05, 0.07), soft=0.3)
+    ridge = smoothstep(0.02, 0.14, m.fine)
+    top = smoothstep(0.3, 0.9, m.nrm[..., 2])
+    rgb = mix(rgb, (0.10, 0.15, 0.28), ridge * 0.75)
+    rgb = mix(rgb, (0.06, 0.08, 0.13), top * 0.45)
+    rgb = mix(rgb, (0.09, 0.13, 0.24), smoothstep(0.75, 0.95, tip) * 0.7)
+    return done(m, rgb, "matte", detail=0.3)
+
+
+def ang_humpback(m):  # Humpback angler: dark olive-grey, darker back, lighter flanks
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.11, 0.13, 0.11), (0.28, 0.31, 0.26), soft=0.3, line=0.6)
+    rgb = mix(rgb, (0.30, 0.33, 0.27), smoothstep(0.5, 0.1, np.abs(vn - 0.05)) * 0.5)
+    rgb = mix(rgb, (0.14, 0.16, 0.14), smoothstep(0.52, 0.66, fbm(m, 7, 300)) * 0.4)
+    rgb = mix(rgb, (0.17, 0.20, 0.17), fins)
+    return done(m, rgb, "matte", detail=0.9)
+
+
+def ang_warty(m):  # Warty angler: mottled charcoal and slate-blue, raised cool-grey bumps
+    fins, tip = fin_parts(m)
+    mott = smoothstep(0.44, 0.56, fbm(m, 5, 301))
+    rgb = mix(board(m, (0.14, 0.15, 0.17)), (0.22, 0.28, 0.38), mott)
+    rgb = mix(rgb, (0.26, 0.30, 0.38), smoothstep(0.35, 0.1, m.up) * 0.5)
+    pts = scatter(m, 1700, 302, weight=1 - fins * 0.8)
+    d1, _, i = nearest(m, pts)
+    a, b = offsets(m, pts, i)
+    R = (0.0035 + 0.0065 * np.random.default_rng(303).random(len(pts)) ** 2)[i]
+    bump = smoothstep(R, R * 0.7, d1)
+    lit = np.clip(0.5 + 0.6 * b / R, 0, 1)
+    shade = smoothstep(R * 1.45, R * 1.05, d1) * (1 - bump) * smoothstep(0.0, -0.5, b / R)
+    rgb = mix(rgb, (0.06, 0.07, 0.09), shade * 0.7)
+    rgb = mix(rgb, C(0.42, 0.46, 0.54) * (0.72 + 0.45 * lit)[..., None], bump)
+    rgb = mix(rgb, (0.16, 0.18, 0.22), fins * (1 - bump))
+    return done(m, rgb, "matte", detail=0.7)
+
+
+def ang_football(m):  # Footballfish: cobalt-black with a grid of tiny bony points, deep blue belly
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.025, 0.04, 0.12), (0.05, 0.12, 0.40), soft=0.2)
+    step = 0.024
+    gu = m.y / step
+    row = np.floor(gu)
+    gv = round_angle(m) * 0.24 / step + 0.5 * (row % 2)
+    fu, fv = gu - row, gv - np.floor(gv)
+    d = np.hypot(fu - 0.5, fv - 0.5) * step
+    point = smoothstep(0.0034, 0.0024, d) * (1 - fins)
+    ring = smoothstep(0.0058, 0.0044, d) * (1 - point) * (1 - fins)
+    rgb = mix(rgb, (0.01, 0.015, 0.04), ring * 0.7)
+    rgb = mix(rgb, (0.44, 0.52, 0.72), point)
+    rgb = mix(rgb, (0.04, 0.06, 0.16), fins)
+    return done(m, rgb, "satin", detail=0.7)
+
+
+def ang_murk(m):  # Murk: silt-grey with drifting sediment streaks and floating specks
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.28, 0.30, 0.32), (0.40, 0.42, 0.44), soft=0.3)
+    warp = (fbm(m, 3, 310) - 0.5) * 1.2
+    sp = np.stack([m.ex * 0.1, u * 1.6 + warp * 0.3, vn * 7 + warp * 2.5], -1).astype(np.float32)
+    n1 = value_noise(sp, 1.0, 311)
+    rgb = mix(rgb, (0.16, 0.17, 0.18), smoothstep(0.6, 0.72, n1) * 0.75)
+    rgb = mix(rgb, (0.48, 0.50, 0.52), smoothstep(0.32, 0.22, n1) * 0.35)
+    rgb = mix(rgb, (0.58, 0.62, 0.66), speckle(m, 240, 0.87, seed=312) * 0.8)
+    rgb = mix(rgb, (0.12, 0.13, 0.14), speckle(m, 190, 0.85, seed=313) * 0.7)
+    rgb = mix(rgb, (0.24, 0.26, 0.28), fins * 0.6)
+    return done(m, rgb, "matte", detail=0.9)
+
+
+def ang_driftwood(m):  # Driftwood: bleached grey grain and knots, barnacle clusters on the back
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    gp = np.stack([m.ex * 0.12, u * 0.55, vn * 0.6], -1).astype(np.float32)
+    knots = scatter(m, 7, 320, weight=1 - fins)
+    kd, _, _ = nearest(m, knots)
+    f = fbm_at(gp, 3, 321) + 0.08 * np.exp(-((kd / 0.02) ** 2))
+    g = np.abs(((f * 26) % 1.0) - 0.5)
+    rgb = board(m, (0.50, 0.52, 0.54))
+    rgb = mix(rgb, (0.30, 0.32, 0.34), smoothstep(0.14, 0.04, g))
+    rgb = mix(rgb, (0.60, 0.62, 0.64), smoothstep(0.42, 0.5, g) * 0.5)
+    rgb = mix(rgb, (0.24, 0.25, 0.27), smoothstep(0.012, 0.004, kd))
+    centres = scatter(m, 5, 322, weight=smoothstep(0.7, 0.85, m.up) * (1 - fins))
+    cd, _, _ = nearest(m, centres)
+    pts = scatter(m, 110, 323, weight=np.exp(-((cd / 0.03) ** 2)) * (1 - fins))
+    d1, _, i = nearest(m, pts)
+    R = (0.004 + 0.003 * np.random.default_rng(324).random(len(pts)))[i]
+    shell = smoothstep(R * 1.05, R * 0.9, d1)
+    ring = smoothstep(R * 0.3, R * 0.15, np.abs(d1 - R * 0.75))
+    hole = smoothstep(R * 0.4, R * 0.3, d1)
+    rgb = mix(rgb, (0.58, 0.64, 0.74), shell)
+    rgb = mix(rgb, (0.76, 0.82, 0.92), ring * shell)
+    rgb = mix(rgb, (0.12, 0.14, 0.18), hole)
+    rgb = mix(rgb, (0.40, 0.42, 0.44), fins * 0.6)
+    return done(m, rgb, "matte", detail=0.8)
+
+
+def ang_bioglow(m):  # Bioglow: near-black, tiny faint blue glowing freckles, densest on the belly
+    rgb = body_coat(m, (0.02, 0.025, 0.05), (0.03, 0.04, 0.09), soft=0.3)
+    pts = scatter(m, 1000, 330, weight=0.4 + 2.5 * smoothstep(0.6, 0.15, m.up))
+    d1, _, i = nearest(m, pts)
+    r = (0.0026 * (0.7 + 0.6 * np.random.default_rng(331).random(len(pts))))[i]
+    dot = smoothstep(r * 1.2, r * 0.7, d1)
+    halo = glow_halo(dot, 3)
+    col = C(0.28, 0.55, 1.0)
+    rgb = mix(rgb, (0.05, 0.12, 0.30), halo * 0.45)
+    rgb = mix(rgb, col, dot * 0.9)
+    emit = col * (dot * 0.8)[..., None] + C(0.05, 0.12, 0.35) * (halo * 0.5)[..., None]
+    return done(m, rgb, "satin", emit=emit, detail=0.6)
+
+
+def ang_glassveins(m):  # Glassveins: deep indigo lit from inside by branching cyan veins
+    rgb = body_coat(m, (0.06, 0.04, 0.24), (0.10, 0.07, 0.32), soft=0.3)
+    P = body_coords(m)
+    r1 = 1 - np.abs(fbm_at(P, 4, 340) * 2 - 1)
+    lo, hi = np.percentile(r1[m.real], [92, 96.5])
+    major = smoothstep(lo, hi, r1)
+    r2 = 1 - np.abs(fbm_at(P, 9, 341) * 2 - 1)
+    lo2, hi2 = np.percentile(r2[m.real], [95, 98])
+    minor = smoothstep(lo2, hi2, r2) * 0.65
+    veins = np.maximum(major, minor)
+    halo = glow_halo(veins, 6)
+    rgb = mix(rgb, (0.10, 0.30, 0.75), halo * 0.55)
+    rgb = mix(rgb, (0.25, 0.88, 1.0), veins)
+    emit = C(0.2, 0.85, 1.0) * veins[..., None] + C(0.05, 0.25, 0.7) * (halo * 0.5)[..., None]
+    return done(m, rgb, "gloss", emit=emit, detail=0.6)
+
+
+def ang_abyss_eye(m):  # Abyss eye: a black body covered in glowing amber eyes with slit pupils
+    fins, tip = fin_parts(m)
+    rgb = body_coat(m, (0.025, 0.022, 0.03), (0.05, 0.03, 0.07), soft=0.3)
+    free = (m.keep < 0.05).astype(np.float32) * (1 - fins)
+    free = ndimage.minimum_filter(free, 9)
+    pts = scatter(m, 48, 350, weight=free)
+    d1, _, i = nearest(m, pts)
+    a, b = offsets(m, pts, i)
+    R = (0.010 + 0.026 * np.random.default_rng(351).random(len(pts)) ** 2.2)[i]
+    t = d1 / R
+    inside = smoothstep(1.02, 0.97, t)
+    socket = smoothstep(1.28, 1.06, t) * (1 - inside)
+    ang = np.arctan2(b, a)
+    iris = mix(board(m, (1.0, 0.72, 0.0)), (0.86, 0.32, 0.0), smoothstep(0.25, 0.95, t))
+    iris = iris * (0.86 + 0.14 * np.cos(ang * 22))[..., None]
+    iris = mix(iris, (0.32, 0.08, 0.0), smoothstep(0.86, 0.96, t))
+    pupil = smoothstep(0.03, 0.0, np.abs(a) / R - 0.17 * np.sqrt(np.clip(1 - (b / (0.86 * R)) ** 2, 0, 1)))
+    glint = smoothstep(0.13, 0.09, np.hypot(a + 0.35 * R, b - 0.35 * R) / R)
+    rgb = mix(rgb, (0.09, 0.03, 0.11), socket)
+    rgb = mix(rgb, iris, inside)
+    rgb = mix(rgb, (0.01, 0.0, 0.01), pupil * inside)
+    rgb = mix(rgb, (0.78, 0.84, 1.0), glint * inside)
+    lit = inside * (1 - pupil) * (1 - glint)
+    emit = iris * (lit * 0.9)[..., None] + C(0.5, 0.2, 0.0) * (glow_halo(inside, 3) * 0.2 * (1 - inside))[..., None]
+    return done(m, rgb, "gloss", emit=emit, detail=0.5)
+
+
+def ang_lantern_king(m):  # Lantern King: gold lantern filigree on navy, a crown of glowing gold spines
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.02, 0.04, 0.16), (0.04, 0.07, 0.22), soft=0.3)
+    P = 0.07
+    a = 2 * np.pi * u / P
+    b = 2 * np.pi * v / P
+    trellis = smoothstep(0.16, 0.07, np.abs(np.cos(a) + np.cos(b)))
+    cu, cv = (u / P) % 1.0 - 0.5, (v / P) % 1.0 - 0.5
+    node = np.hypot(cu, cv) * P
+    ring = smoothstep(0.0016, 0.0008, np.abs(node - 0.012))
+    dot = smoothstep(0.0032, 0.0022, node)
+    fil = hard(np.clip(trellis + ring + dot, 0, 1)) * (1 - fins) * smoothstep(0.1, 0.16, u)
+    gold = (1.0, 0.70, 0.0)
+    rgb = mix(rgb, gold, fil)
+    crown = hard(fins * smoothstep(0.45, 0.65, vn) * smoothstep(0.08, 0.2, tip))
+    trim = hard(smoothstep(0.78, 0.85, tip)) * (1 - crown)
+    rgb = mix(rgb, (0.03, 0.05, 0.18), fins * (1 - crown) * (1 - trim))
+    rgb = mix(rgb, gold, trim)
+    rgb = mix(rgb, (1.0, 0.78, 0.04), crown)
+    glow = glow_halo(crown, 4)
+    emit = C(1.0, 0.6, 0.0) * crown[..., None] + C(0.8, 0.4, 0.0) * (glow * 0.4 * (1 - crown))[..., None]
+    emit = emit + C(0.5, 0.32, 0.0) * (fil * 0.25)[..., None]
+    metal = np.clip(fil + trim + crown * 0.6, 0, 1)
+    return done(m, rgb, "gloss", emit=emit, metal=metal, rough=0.28 - 0.12 * metal, detail=0.5)
+
+
+def ang_starfall(m):  # Starfall: constellations joined by glowing lines, falling stars
+    u, v, vn = height(m)
+    hh, at = girth(m)
+    rgb = body_coat(m, (0.012, 0.012, 0.035), (0.02, 0.02, 0.06), soft=0.3)
+    rng = np.random.default_rng(360)
+    n = 30
+    su = rng.uniform(0.14, 0.9, n)
+    sv = np.array([rng.uniform(-0.8, 0.85) * at(x) for x in su])
+    mag = rng.uniform(0.55, 1.0, n)
+    from scipy.sparse.csgraph import minimum_spanning_tree
+
+    gap = np.hypot(su[:, None] - su[None], sv[:, None] - sv[None])
+    tree = minimum_spanning_tree(gap).tocoo()
+    lines = np.zeros_like(u)
+    for i, j, w in zip(tree.row, tree.col, tree.data):
+        if w < 0.15:
+            d, _ = segment(u, v, (su[i], sv[i]), (su[j], sv[j]))
+            lines = np.maximum(lines, smoothstep(0.0022, 0.0012, d))
+    stars = np.zeros_like(u)
+    for k in range(n):
+        du, dv = u - su[k], v - sv[k]
+        d = np.hypot(du, dv)
+        core = smoothstep(0.0065 * mag[k], 0.0028 * mag[k], d)
+        arms = smoothstep(0.0012, 0.0005, np.minimum(np.abs(du), np.abs(dv))) * smoothstep(0.02 * mag[k], 0.0, d)
+        stars = np.maximum(stars, np.maximum(core, arms * 0.85))
+    falling = np.zeros_like(u)
+    for k in range(4):
+        u0 = rng.uniform(0.25, 0.8)
+        h = at(u0)
+        a = (u0, 0.9 * h)
+        b = (u0 + rng.uniform(0.05, 0.09), -0.5 * h)
+        d, t = segment(u, v, a, b)
+        w = 0.001 + 0.004 * t
+        falling = np.maximum(falling, smoothstep(w, w * 0.4, d) * t**1.3)
+    dust = speckle(m, 260, 0.9, seed=361)
+    halo = glow_halo(np.clip(lines + stars + falling, 0, 1), 5)
+    line_col, star_col, fall_col = C(0.52, 0.46, 1.0), C(0.74, 0.80, 1.0), C(0.55, 0.62, 1.0)
+    rgb = mix(rgb, (0.35, 0.38, 0.70), dust * 0.5)
+    rgb = mix(rgb, (0.20, 0.13, 0.55), halo * 0.55)
+    rgb = mix(rgb, line_col, lines)
+    rgb = mix(rgb, fall_col, falling)
+    rgb = mix(rgb, star_col, stars)
+    emit = (
+        line_col * (lines * 0.8)[..., None]
+        + star_col * stars[..., None]
+        + fall_col * falling[..., None]
+        + C(0.2, 0.14, 0.6) * (halo * 0.5)[..., None]
+        + C(0.3, 0.32, 0.6) * (dust * 0.3)[..., None]
+    )
+    return done(m, rgb, "gloss", emit=emit, detail=0.4)
+
+
+# ---------------------------------------------------------------------------
+# The universal skins: the catch track and the weekly skins. Earned, so never elite
+# (owner, 2026-10-10: Uncommon to Epic; the top looks come from rolls, bosses and
+# treasure): restrained finishes, a modest glow at most, nothing full-body flashy
+# ---------------------------------------------------------------------------
+
+
+def catch_golden(m):  # Golden: polished gold with the fish's own pattern engraved darker
+    L = own_lum(m)
+    lines = own_lines(m)
+    gold = mix(board(m, (0.86, 0.54, 0.0)), (1.0, 0.76, 0.04), smoothstep(0.1, 0.85, L))
+    gold = mix(gold, (0.46, 0.24, 0.0), hard(smoothstep(0.35, 0.6, lines)) * 0.85)
+    rgb = sheen(m, gold, 0.3, (1.0, 0.84, 0.22))
+    # An even metal map: one that traced the engraving was a grey line drawing, which
+    # the moderation classifier scored 0.5-0.98 (screen, 2026-10-10)
+    return done(m, rgb, "satin", metal=np.full(m.y.shape, 0.6, np.float32), detail=0.4)
+
+
+def catch_glowing(m):  # Glowing: deep navy, the fish's own lines softly glowing cyan-green
+    lines = own_lines(m)
+    L = own_lum(m)
+    rgb = body_coat(m, (0.02, 0.05, 0.15), (0.03, 0.08, 0.21), soft=0.3)
+    rgb = mix(rgb, (0.03, 0.12, 0.20), smoothstep(0.55, 0.9, L) * 0.6)
+    glow_line = smoothstep(0.3, 0.7, lines)
+    halo = glow_halo(glow_line, 3)
+    wide = glow_halo(glow_line, 7)
+    col = C(0.10, 0.95, 0.70)
+    rgb = mix(rgb, (0.02, 0.22, 0.26), halo * 0.4)
+    rgb = mix(rgb, col, glow_line * 0.9)
+    # The glow map in blue-violet with a wide soft glow: thin cyan-green lines on
+    # black scored up to 0.25 on the moderation classifier, these 0.001-0.003
+    # (screen, 2026-10-10). In game the glow takes the color map's cyan-green; the
+    # glow map only says where and how much
+    emit = C(0.30, 0.40, 0.95) * (glow_line * 0.5)[..., None] + C(0.18, 0.16, 0.55) * (wide * 0.5)[..., None]
+    return done(m, rgb, "satin", emit=emit, detail=0.5)
+
+
+def catch_crystal(m):  # Crystal: mid-toned icy facets, a few glints, cool refractions
+    pts = scatter(m, 280, 400)
+    d1, d2, i = nearest(m, pts)
+    rng = np.random.default_rng(401)
+    dirs = rng.normal(size=(len(pts), 3)).astype(np.float32)
+    dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
+    facet = 0.5 + 0.5 * (dirs[i] * m.nrm).sum(-1)
+    rgb = mix(board(m, (0.14, 0.34, 0.58)), (0.50, 0.74, 0.90), smoothstep(0.15, 0.95, facet))
+    rgb = mix(rgb, (0.66, 0.86, 0.98), smoothstep(0.0035, 0.0012, d2 - d1) * 0.7)
+    n = m.nrm
+    hue = 0.52 + 0.1 * np.sin(n[..., 0] * 3 + n[..., 2] * 2 + m.y * 5)
+    film = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.45), np.full_like(hue, 0.85)], -1))
+    rgb = mix(rgb, film, 0.2)
+    crack = smoothstep(0.012, 0.0, np.abs(fbm(m, 6, 402) - 0.5))
+    rgb = mix(rgb, (0.10, 0.24, 0.46), crack * 0.5)
+    glint = speckle(m, 120, 0.9, seed=403)
+    rgb = mix(rgb, (0.80, 0.90, 1.0), glint * 0.7)
+    return done(m, rgb, "gloss", detail=0.4)
+
+
+def catch_prism(m):  # Prism: brushed silver with a soft cool rainbow film, its own pattern in full colour
+    lines = own_lines(m)
+    n = m.nrm
+    rgb = body_coat(m, (0.50, 0.55, 0.62), (0.64, 0.68, 0.76), soft=0.3)
+    # Cool hues only (green, cyan, blue, violet): a warm or pink film on silver is the
+    # pale tone the skin screen exists for
+    t = 0.5 + 0.5 * np.sin(2.4 * (n[..., 0] * 0.6 + n[..., 2] * 0.5) + m.y * 5)
+    hue = 0.3 + 0.48 * t
+    film = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.42), np.full_like(hue, 0.88)], -1))
+    rgb = mix(rgb, film, 0.32)
+    emboss = smoothstep(0.35, 0.65, lines)
+    vivid = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.85), np.full_like(hue, 0.95)], -1))
+    rgb = mix(rgb, vivid, emboss * 0.85)
+    grating = 0.94 + 0.06 * np.sin(m.y * 900 + m.p[..., 2] * 600)
+    rgb = rgb * grating[..., None]
+    emit = vivid * (emboss * 0.3)[..., None]
+    return done(m, rgb, "satin", emit=emit, metal=np.full(m.y.shape, 0.3, np.float32), detail=0.4)
+
+
+def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on ultramarine
+    u, v, vn = height(m)
+    hh, _ = girth(m)
+    period = 0.26
+    s = (u / period + 0.2) % 1.0
+    crest = -0.55 + 1.4 * s**2.2
+    depth = crest - vn
+    inside = depth > 0
+    sky = body_coat(m, (0.03, 0.07, 0.26), (0.05, 0.10, 0.32), soft=0.3)
+    far = 0.62 + 0.12 * np.sin(2 * np.pi * (u / 0.11))
+    sky = mix(sky, (0.10, 0.24, 0.58), smoothstep(far + 0.02, far - 0.02, vn) * 0.8)
+    sea = mix(board(m, (0.18, 0.40, 0.82)), (0.03, 0.12, 0.44), smoothstep(0.0, 0.9, depth))
+    grain = smoothstep(0.1, 0.0, np.abs(((depth * 7) % 1.0) - 0.5) - 0.42) * smoothstep(0.1, 0.22, depth)
+    sea = mix(sea, (0.36, 0.58, 0.92), grain * 0.6)
+    rgb = np.where(inside[..., None], sea, sky)
+    claws = 0.5 + 0.5 * np.cos(2 * np.pi * u / 0.016)
+    foam_w = (0.06 + 0.4 * smoothstep(0.4, 1.0, s)) * (0.35 + 0.65 * claws**2)
+    foam = inside & (depth < foam_w) & (s > 0.35)
+    foam_col = C(0.84, 0.90, 0.98)
+    rgb = np.where(foam[..., None], foam_col, rgb)
+    du = (s - 0.9) * period
+    dv = (vn - 0.36) * hh
+    r = np.hypot(du, dv)
+    R = 0.4 * hh
+    ang = np.arctan2(dv, du)
+    lip = smoothstep(0.26, 0.17, np.abs(r / np.maximum(R, 1e-5) - 1)) * smoothstep(-0.7, -0.25, ang)
+    hollow = smoothstep(0.86, 0.78, r / np.maximum(R, 1e-5)) * inside
+    rgb = mix(rgb, (0.02, 0.07, 0.30), hollow)
+    rgb = mix(rgb, foam_col, hard(lip))
+    spray = smoothstep(0.0034, 0.002, nearest_dots(m, 900, 1600)) * (vn > crest) * (vn < crest + 0.4) * smoothstep(0.6, 0.9, s)
+    rgb = mix(rgb, foam_col, spray)
+    return done(m, rgb, "satin", detail=0.5)
+
+
+def nearest_dots(m: Fish, seed, count=900):
+    """Distance to the nearest of `count` random dots (for spray, bubbles)."""
+    return cache(m, ("dots", seed, count), lambda: nearest(m, scatter(m, count, seed))[0])
+
+
+def week_reef(m):  # A living reef: brain coral, sea fans and tiny fish over turquoise
+    fins, tip = fin_parts(m)
+    u, v, vn = height(m)
+    hh, at = girth(m)
+    rgb = body_coat(m, (0.04, 0.70, 0.72), (0.0, 0.50, 0.62), soft=0.3)
+    rgb = mix(rgb, (0.40, 0.90, 0.86), net(m, 240, 0.004, seed=415) * 0.3)
+    rng = np.random.default_rng(411)
+    low = smoothstep(0.6, -0.3, vn) * (1 - fins)
+    pts = scatter(m, 13, 412, weight=low + 0.02)
+    d1, _, i = nearest(m, pts)
+    pu = point_y(m, pts)
+    R = np.array([0.62 * at(x) for x in pu]) * (0.8 + 0.4 * rng.random(len(pts)))
+    R = np.maximum(R, 0.022)[i]
+    blob = hard(smoothstep(R * 1.02, R * 0.96, d1 * (1 + 0.3 * (fbm(m, 14, 413) - 0.5))))
+    kinds = np.array([(0.72, 0.86, 0.0), (1.0, 0.50, 0.0), (1.0, 0.80, 0.0)], np.float32)
+    grooves = np.array([(0.16, 0.30, 0.0), (0.46, 0.10, 0.0), (0.50, 0.28, 0.0)], np.float32)
+    kind = rng.integers(0, 3, len(pts))[i]
+    maze = contours(m, 7, 9, seed=414, warp=0.8)
+    coral = mix(kinds[kind], grooves[kind], smoothstep(0.14, 0.06, maze))
+    coral = coral * (0.78 + 0.22 * smoothstep(1.0, 0.4, d1 / R))[..., None]
+    rgb = mix(rgb, coral, blob)
+    fans = np.zeros_like(u)
+    for k in range(4):
+        uc = 0.24 + 0.17 * k + rng.uniform(-0.03, 0.03)
+        h = at(uc)
+        base_v = -0.55 * h
+        du, dv = u - uc, v - base_v
+        r = np.hypot(du, dv)
+        th = np.arctan2(dv, du)
+        reach_ = 1.0 * h
+        sector = smoothstep(0.5, 0.65, th) * smoothstep(2.65, 2.5, th)
+        spoke = smoothstep(0.0016, 0.0008, r * np.abs(np.sin((th - 0.5) * 6)))
+        ring_gap = reach_ / 5
+        arcs = smoothstep(0.0014, 0.0007, np.abs(r - np.round(r / ring_gap) * ring_gap)) * (r > ring_gap * 0.5)
+        stem = smoothstep(0.0028, 0.0016, segment(u, v, (uc, base_v - 0.3 * h), (uc, base_v + 0.2 * reach_))[0])
+        fans = np.maximum(fans, np.clip(spoke + arcs, 0, 1) * sector * smoothstep(reach_, reach_ * 0.96, r) + stem)
+    fans = hard(fans) * (1 - blob) * (1 - fins)
+    rgb = mix(rgb, (0.50, 0.12, 0.88), fans)
+    school = np.zeros_like(u)
+    school_col = np.zeros_like(u)
+    for g, (cu, cn, col) in enumerate(((0.34, 0.5, 1.0), (0.64, 0.45, 0.0))):
+        h = at(cu)
+        L = max(0.3 * h, 0.012)
+        placed = []
+        tries = 0
+        while len(placed) < 7 and tries < 200:
+            tries += 1
+            fu = cu + rng.uniform(-3.0, 3.0) * L
+            fv = (cn + rng.uniform(-0.3, 0.3)) * at(fu)
+            if all(np.hypot((fu - a) / 1.3, fv - b) > 1.25 * L for a, b in placed):
+                placed.append((fu, fv))
+        for fu, fv in placed:
+            du, dv = (u - fu) / L, (v - fv) / L
+            body_ = ((du / 0.5) ** 2 + (dv / 0.24) ** 2) < 1
+            tail_ = (du > 0.42) & (du < 0.85) & (np.abs(dv) < (du - 0.42) * 0.75)
+            shape = (body_ | tail_).astype(np.float32)
+            school = np.maximum(school, shape)
+            school_col = np.where(shape > 0, col, school_col)
+    school = school * (1 - blob) * (1 - fins)
+    fish_col = mix(board(m, (0.02, 0.10, 0.34)), (1.0, 0.80, 0.0), school_col)
+    rgb = mix(rgb, fish_col, school)
+    return done(m, rgb, "satin", detail=0.5)
+
+
+def week_wreck(m):  # A shipwreck: riveted hull plates, rust streaks, barnacles, a hull number
+    u, v, vn = height(m)
+    hh, at = girth(m)
+    water = -0.3
+    upper = vn > water
+    rgb = np.where(upper[..., None], board(m, (0.20, 0.28, 0.28)), board(m, (0.09, 0.11, 0.12)))
+    plate_l, plate_h = 0.11, 0.5
+    row = np.floor(vn / plate_h)
+    col = (u + 0.5 * plate_l * (row % 2)) / plate_l
+    rng = np.random.default_rng(420)
+    tone = 0.88 + 0.2 * rng.random(4096)
+    key = (np.floor(col).astype(int) * 31 + row.astype(int) * 7) % 4096
+    rgb = rgb * tone[key][..., None]
+    fu, fv = col - np.floor(col), vn / plate_h - row
+    seam_u = np.minimum(fu, 1 - fu) * plate_l
+    seam_v = np.minimum(fv, 1 - fv) * plate_h * hh
+    seam = smoothstep(0.0022, 0.0012, np.minimum(seam_u, seam_v))
+    along = ((u / 0.008) % 1.0 - 0.5) * 0.008
+    rivet_d = np.hypot(along, np.abs(seam_v - 0.0045))
+    rivet = smoothstep(0.002, 0.0013, rivet_d)
+    lane = np.floor(u / 0.012)
+    lane_on = (np.sin(lane * 12.9898 + 4.1) * 43758.5453) % 1.0 < 0.35
+    streak_p = np.stack([m.ex * 0.1, u * 85, vn * 0.5], -1).astype(np.float32)
+    below_top = 1 - fv
+    streak = smoothstep(0.5, 0.62, value_noise(streak_p, 1.0, 421)) * lane_on * smoothstep(0.75, 0.05, below_top)
+    bloom = smoothstep(0.005, 0.0025, rivet_d) * smoothstep(0.5, 0.58, fbm(m, 30, 422))
+    rust = hard(np.clip(streak + bloom, 0, 1)) * upper
+    rgb = mix(rgb, (0.05, 0.06, 0.06), seam)
+    rgb = mix(rgb, (0.80, 0.26, 0.0), rust)
+    rgb = mix(rgb, (0.52, 0.12, 0.0), rust * smoothstep(0.62, 0.7, value_noise(streak_p * 1.7, 1.0, 426)))
+    rgb = mix(rgb, (0.48, 0.52, 0.54), rivet)
+    rgb = mix(rgb, (0.30, 0.36, 0.36), smoothstep(0.05, 0.03, np.abs(vn - water)))
+    rgb = hull_number(m, rgb, "07", 0.42, 0.3)
+    centres = scatter(m, 7, 423, weight=smoothstep(0.0, -0.4, vn - water))
+    cd, _, _ = nearest(m, centres)
+    pts = scatter(m, 140, 424, weight=np.exp(-((cd / 0.03) ** 2)))
+    d1, _, i = nearest(m, pts)
+    R = (0.0035 + 0.003 * rng.random(len(pts)))[i]
+    shell = smoothstep(R * 1.05, R * 0.9, d1)
+    rgb = mix(rgb, (0.58, 0.64, 0.74), shell)
+    rgb = mix(rgb, (0.76, 0.82, 0.92), smoothstep(R * 0.3, R * 0.15, np.abs(d1 - R * 0.72)) * shell)
+    rgb = mix(rgb, (0.10, 0.12, 0.16), smoothstep(R * 0.4, R * 0.3, d1))
+    return done(m, rgb, "matte", detail=0.6)
+
+
+SEGMENTS = {  # a seven-segment digit: (a top, b top right, c bottom right, d bottom, e bottom left, f top left, g middle)
+    "0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc",
+    "5": "afgcd", "6": "afgedc", "7": "abc", "8": "abcdefg", "9": "abcdfg",
+}
+
+
+def hull_number(m: Fish, rgb, text, u_mid, vn_mid):
+    """Paints a stencilled number on both flanks, reading the right way round on each."""
+    u, v, vn = height(m)
+    hh, at = girth(m)
+    h = 0.55 * at(u_mid)
+    w = 0.55 * h
+    x = (u - u_mid) * side(m)
+    y = v - vn_mid * at(u_mid)
+    paint = np.zeros_like(u)
+    gap = w * 1.45
+    for k, ch in enumerate(text):
+        cx = (k - (len(text) - 1) / 2) * gap
+        lx, ly = x - cx, y
+        bars = {
+            "a": ((-w / 2, h / 2), (w / 2, h / 2)),
+            "d": ((-w / 2, -h / 2), (w / 2, -h / 2)),
+            "g": ((-w / 2, 0), (w / 2, 0)),
+            "b": ((w / 2, 0), (w / 2, h / 2)),
+            "c": ((w / 2, -h / 2), (w / 2, 0)),
+            "e": ((-w / 2, -h / 2), (-w / 2, 0)),
+            "f": ((-w / 2, 0), (-w / 2, h / 2)),
+        }
+        for seg_ in SEGMENTS[ch]:
+            a, b = bars[seg_]
+            d, _ = segment(lx, ly, a, b)
+            paint = np.maximum(paint, smoothstep(h * 0.11, h * 0.08, d))
+    chipped = paint * smoothstep(0.4, 0.46, fbm(m, 30, 425))
+    return mix(rgb, (0.58, 0.64, 0.72), hard(chipped))
+
+
+def week_sea_glass(m):  # Sea glass: frosted pebbles of bottle green, cobalt and amber, dark grout
+    pts = scatter(m, 420, 430)
+    d1, d2, i = nearest(m, pts)
+    rng = np.random.default_rng(431)
+    palette = np.array(
+        [(0.08, 0.46, 0.26), (0.16, 0.56, 0.34), (0.10, 0.24, 0.72), (0.18, 0.34, 0.82), (0.96, 0.56, 0.0), (0.86, 0.44, 0.0)],
+        np.float32,
+    )
+    light = np.array(
+        [(0.36, 0.74, 0.56), (0.44, 0.80, 0.62), (0.40, 0.56, 0.92), (0.48, 0.62, 0.96), (1.0, 0.74, 0.08), (1.0, 0.66, 0.04)],
+        np.float32,
+    )
+    kind = rng.integers(0, len(palette), len(pts))[i]
+    rel = (d2 - d1) / (d2 + d1 + 1e-6)
+    dome = smoothstep(0.0, 0.5, rel)
+    rgb = mix(palette[kind], light[kind], dome * 0.55)
+    frost = value_noise(m.p, 260, 432)
+    rgb = rgb * (0.94 + 0.12 * frost)[..., None]
+    grout = smoothstep(0.09, 0.03, rel)
+    rgb = mix(rgb, (0.07, 0.09, 0.11), grout)
+    return done(m, rgb, "satin", detail=0.4)
 
 
 RECIPES = {
@@ -1303,11 +2561,58 @@ RECIPES = {
     "AbyssInk": abyss_ink,
     "SunkenGold": sunken_gold,
     "DrownedPearl": drowned_pearl,
-    # The Nibbler's line
+    # The per-fish lines (lines.json)
     "NibPercula": nib_percula,
     "NibTomato": nib_tomato,
     "NibMaroon": nib_maroon,
     "NibMidnight": nib_midnight,
+    "CudaGreat": cuda_great,
+    "CudaYellowtail": cuda_yellowtail,
+    "CudaChevron": cuda_chevron,
+    "CudaBlackfin": cuda_blackfin,
+    "CudaChrome": cuda_chrome,
+    "CudaComet": cuda_comet,
+    "PufGuineafowl": puf_guineafowl,
+    "PufGolden": puf_golden,
+    "PufStarry": puf_starry,
+    "PufGreen": puf_green,
+    "PufUrchin": puf_urchin,
+    "PufCoralBloom": puf_coral_bloom,
+    "PufSunburst": puf_sunburst,
+    "MorGreen": mor_green,
+    "MorZebra": mor_zebra,
+    "MorSnowflake": mor_snowflake,
+    "MorHoneycomb": mor_honeycomb,
+    "MorSerpent": mor_serpent,
+    "MorRibbon": mor_ribbon,
+    "MorJade": mor_jade,
+    "ShkBlacktip": shk_blacktip,
+    "ShkWhitetip": shk_whitetip,
+    "ShkGrey": shk_grey,
+    "ShkLemon": shk_lemon,
+    "ShkWarpaint": shk_warpaint,
+    "ShkScarred": shk_scarred,
+    "ShkBoneplate": shk_boneplate,
+    "AngSeadevil": ang_seadevil,
+    "AngHumpback": ang_humpback,
+    "AngWarty": ang_warty,
+    "AngFootball": ang_football,
+    "AngMurk": ang_murk,
+    "AngDriftwood": ang_driftwood,
+    "AngBioglow": ang_bioglow,
+    "AngGlassveins": ang_glassveins,
+    "AngAbyssEye": ang_abyss_eye,
+    "AngLanternKing": ang_lantern_king,
+    "AngStarfall": ang_starfall,
+    # Universal: the catch track and the weekly skins
+    "CatchGolden": catch_golden,
+    "CatchGlowing": catch_glowing,
+    "CatchCrystal": catch_crystal,
+    "CatchPrism": catch_prism,
+    "WeekWave": week_wave,
+    "WeekReef": week_reef,
+    "WeekWreck": week_wreck,
+    "WeekSeaGlass": week_sea_glass,
 }
 
 

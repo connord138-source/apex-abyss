@@ -816,8 +816,7 @@ local list: { Shade } = {
 		C(40, 16, 60),
 		C(70, 30, 96),
 		C(40, 220, 210),
-		"Purple-black with teal spines bursting outward.",
-		{ emissive = 0.8, pulse = "breathe", light = C(60, 220, 210) }
+		"Purple-black with teal spines bursting outward."
 	),
 	skin(
 		"PufCoralBloom",
