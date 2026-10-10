@@ -1760,6 +1760,9 @@ local function rewardText(reward: { [string]: any }): string
 		local tier = Config.Treasure.byId[reward.map]
 		table.insert(parts, `a {if tier then tier.name else reward.map} map`)
 	end
+	if reward.spins then
+		table.insert(parts, `{reward.spins} wheel spin{if reward.spins == 1 then "" else "s"}`)
+	end
 	return table.concat(parts, ", ")
 end
 
@@ -2035,7 +2038,9 @@ local function weeklyRows(list: ScrollingFrame)
 			`{string.upper(rarity.name)} {string.upper(prey.name)}`,
 			`It swims {rarity.name} ×{Config.Catch.weekly.chance} as often all week. The first one you catch pays {Ui.number(
 				featured.coral
-			)} coral, {featured.shells} shells and the {if skin then skin.name else featured.skin} skin for the fish you catch it with.`,
+			)} coral, {featured.shells} shells, {Config.Wheel.weekly} wheel spins and the {if skin
+				then skin.name
+				else featured.skin} skin for the fish you catch it with.`,
 			if s.weeklyFeatured then "✓ CAUGHT" else "NOT YET",
 			nil,
 			nil,

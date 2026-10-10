@@ -149,6 +149,9 @@ local function onCaught(summary: { [string]: any })
 	if typeof(summary.weeklyCoral) == "number" then
 		Sfx.play("RollLegendary", { volume = 0.6 })
 		local got = `+{Format.number(summary.weeklyCoral)} coral, {summary.weeklyShells or 0} shells`
+		if typeof(summary.weeklySpins) == "number" and summary.weeklySpins > 0 then
+			got ..= `, {summary.weeklySpins} wheel spins`
+		end
 		if typeof(summary.weeklySkin) == "string" then
 			got ..= ` · the {shadeName(summary.weeklySkin)} skin for your {speciesName(summary.species)}`
 		end
