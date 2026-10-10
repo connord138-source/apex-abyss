@@ -37,7 +37,7 @@ What's new:
 - **Skins per fish:**
   - Each fish has its own 12: 4 realistic Commons (sold by the Dyer), then Uncommon, Rare, Epic, Legendary and Mythic.
   - Every fish can also earn the catch-track skins, the weekly skins and the trophy and treasure skins.
-  - The new skin textures aren't imported yet: until they are, a new skin shows as its tint.
+  - The skin textures are made (v4: 23 a fish, 138 in all, every GLB cleared by the moderation screen). Import them in section 1b. A skin that isn't imported shows as its tint.
 - **Admin** has new sections, TIDES · RARE CATCHES · BOUNTIES · WEEKLY and TREASURE WHEEL (give spins, rig the next slice), for all of the above.
 
 ## 1. Merge and sync
@@ -45,6 +45,14 @@ What's new:
 1. git fetch origin claude/world, then git merge origin/claude/world (it should fast-forward).
 2. stylua --line-endings Windows src --glob "!**/Packages/**"
 3. rojo serve on port 34873, connect, Play Solo. Expect "Server started" and "Client ready", no errors.
+
+## 1b. Import the new skins (edit mode, before testing)
+
+The account was suspended once over an uploaded texture, so go slowly:
+1. python tools/fetch_assets.py (it downloads the changed `shade_skins` bundle into assets/shades/glb).
+2. In edit mode, File → Import 3D the six assets/shades/glb/<Fish>_Shades.glb files **one at a time**, waiting about 3 minutes between them. If Roblox rejects or moderates any image, stop and report it. Don't retry and don't upload from another account.
+3. Run tools/studio/organize_shades.luau in the Command Bar. Expect "[organize_shades] filed 138 skin(s) for 6 fish". Each ReplicatedStorage.ShadeSkins.<Fish> holds 23 (the folder is cleared first, so the old 33 are gone), and no _Shades models are left in the Workspace.
+4. Save the place (Ctrl+S).
 
 ## 2. Rare catches (keyboard; LV 15+ Nibbler, then a 'Cuda)
 
@@ -143,7 +151,12 @@ What's new:
 - **K3 Odds:** ODDS lists the fish's 12 skins plus coral and parts. The total is 100%, coral is 82.5% for a fresh fish, and no other fish's skins appear.
 - **K4 Roll:** roll 20 times (Admin shells). Only this fish's skins come up, and the reel's filler cards are this fish's too.
 - **K5 Old skins:** if your Studio save had shades that now belong to another fish's line, they turned into coral on join. Note your coral before and after the merge.
-- **K6 Looks:** until the new skin bundle is imported, the new skins show as tints. Say whether any tint looks wrong (it's only the swatch).
+- **K6 Looks:** with the skins imported, wear each fish's 12 plus the catch and weekly skins (Admin "Every shade, part and variant"). Compare them with assets/shades/previews/<Fish>_sheet.jpg.
+  - Each matches its sheet.
+  - The glowing ones glow and pulse: Comet, Sunburst, Jade, Bioglow, Glass Veins, Abyss Eye, Lantern King, Starfall, Glowing and Prism.
+  - No skin shows white or untextured after a few seconds.
+  - Screenshot each fish in its Mythic, and the 4 Commons side by side for one fish.
+  - Say which look cheap, stair-stepped (the Cuda's Chrome and Sunset edges), or too alike (the Angler's dark Commons, the shark's grey Commons).
 
 ## 8. Treasure Wheel
 
