@@ -228,7 +228,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     is Spin all, a line for a second spinner; 8 slices, a 4% jackpot of a Rare+ skin
     from the current fish's line. Spins are never sold: one free every 4 h (online or
     off, up to 3), plus the Bounty Chest, the Catch of the Week and daily days 3 and
-    6 (`data.wheel`). Admin: give spins, rig the next slice.
+    6 (`data.wheel`). Admin: give spins, rig the next slice. **Details pass (owner,
+    2026-10-10: "looks pretty cruddy. word overlap etc ... the setup is fine its just
+    the details"):** each slice's two words sit in bands sized to the wedge's width
+    at their inner edge (`sliceText`, `BIG_BAND`/`SUB_BAND`, capped letter heights;
+    keep `big` ≤ 5 letters and `sub` ≤ 8), a pearl hub with a gold collar, warm
+    smaller bulbs, boards drawn as rows (swatch, prize, %; `BoardRow`), the hint
+    chip in the HUD's hint place above the health bar, and the win card at the left
+    under the HUD column, never over the wheel.
 - **Coral and vendors (owner, 2026-10-06):** Coral is the currency. Four vendor stalls
   round the hub plaza, near the dens, sell with it:
   - Outfitter: upgrades.

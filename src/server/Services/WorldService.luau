@@ -1537,14 +1537,19 @@ local function buildWheel(parent: Instance)
 		top = hub.center.Y + Layout.PLAZA_TOP
 	end
 	local hours = Wheel.freeEvery / 3600
-	WorldService.wheel =
-		TreasureWheel.build(parent, Vector3.new(center.X, top, center.Z), hub.center, Wheel.segments, {
-			`1 free spin every {hours} hours, online or off (up to {Wheel.maxFree} waiting)`,
-			`+{Config.Wheel.bountyChest} in the Bounty Chest · +{Wheel.weekly} for the Catch of the Week`,
-			"+1 on daily streak days 3 and 6",
-			"The jackpot: a Rare-or-better skin for the fish you swim as",
-			"Busy? Spin anyway to join the line",
-		})
+	WorldService.wheel = TreasureWheel.build(
+		parent,
+		Vector3.new(center.X, top, center.Z),
+		hub.center,
+		Wheel.segments,
+		{
+			{ left = `Every {hours} hours`, right = "+1" },
+			{ left = "Bounty Chest", right = `+{Wheel.bountyChest}` },
+			{ left = "Catch of the Week", right = `+{Wheel.weekly}` },
+			{ left = "Daily streak days 3 and 6", right = "+1" },
+		},
+		`Free spins come online or off, up to {Wheel.maxFree} waiting. Busy? Spin anyway to join the line.`
+	)
 end
 
 function WorldService.start()

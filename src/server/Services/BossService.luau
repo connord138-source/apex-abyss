@@ -492,7 +492,11 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 					{ x = center.X, y = center.Y, z = center.Z, radius = breach.radius }
 				)
 				boss.exhaustedUntil = now + shark.exhausted
-				boss.nextBreachAt = now + shark.breachEvery + shark.exhausted
+				-- `breachEvery` is start to start (the tell began this long ago), and never
+				-- sooner than 2 s after it gets up (retest 2026-10-10: counted from the
+				-- crash plus the rest, breaches came every ~24 s, not 13)
+				local began = now - breach.telegraph - breach.rocket - breach.crash
+				boss.nextBreachAt = math.max(began + shark.breachEvery, now + shark.exhausted + 2)
 				Net.predatorEvent("exhausted", index, { seconds = shark.exhausted })
 				boss.attack = nil
 				broadcast()

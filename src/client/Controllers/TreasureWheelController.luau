@@ -41,8 +41,9 @@ local FAST_PEGS = 12 -- pegs a second above which the flapper just rattles
 local TICK_GAP = 0.045 -- at most ~22 ticks a second
 local FLASH_SECONDS = 3.2
 local BANNER_SECONDS = 3.6
-local BULB_ON = Color3.fromRGB(255, 240, 200)
-local BULB_DIM = Color3.fromRGB(120, 60, 28)
+-- Warm and not white: white Neon bulbs bloomed into blobs (playtest 2026-10-10)
+local BULB_ON = Color3.fromRGB(255, 206, 120)
+local BULB_DIM = Color3.fromRGB(66, 40, 22)
 local CONFETTI = {
 	Color3.fromRGB(255, 214, 70),
 	Color3.fromRGB(255, 90, 150),
@@ -102,12 +103,14 @@ local bannerCard: Instance? = nil
 
 local TreasureWheelController = {}
 
--- The hint at the button (built in start)
-local hintSpot: Attachment
-local hintGui: BillboardGui
+-- The hint near the button (built in start): a chip in the HUD's hint place, above
+-- the health bar, not over the wheel (playtest 2026-10-10: a world chip at the
+-- button sat across the wheel's lower slices)
+local hintGui: ScreenGui
 local hintKey: TextLabel
 local hintText: TextLabel
-local hintSub: TextLabel
+local hintAll: Frame
+local hintFree: TextLabel
 local phoneSpin: TextButton
 local phoneAll: TextButton
 local nearButton = false
@@ -328,60 +331,95 @@ local function showBanner(current: Spin)
 		bannerCard:Destroy()
 	end
 	local jackpot = segment.kind == "skin"
+	-- A compact card at the left, under the HUD column, so the wheel and its sign stay
+	-- in view (playtest 2026-10-10: a wide card at the top hid the sign); it slides in
 	local group = Instance.new("CanvasGroup")
-	group.AnchorPoint = Vector2.new(0.5, 0)
-	group.Position = UDim2.new(0.5, 0, 0, math.max(84, Ui.bossBottom() + 60))
-	group.Size = UDim2.fromOffset(540, 150)
+	group.AnchorPoint = Vector2.new(0, 0.5)
+	local rest = UDim2.new(0, 24, 0.5, 40)
+	group.Position = rest - UDim2.fromOffset(60, 0)
+	group.Size = UDim2.fromOffset(372, 104)
 	group.BackgroundTransparency = 1
-	local pop = Instance.new("UIScale")
-	pop.Scale = 0.35
-	pop.Parent = group
+	group.GroupTransparency = 1
+	group.Interactable = false
 	local card = Instance.new("Frame")
-	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.Position = UDim2.fromScale(0.5, 0.5)
-	card.Size = UDim2.fromOffset(510, 128)
-	card.BackgroundColor3 = segment.color:Lerp(Color3.new(0, 0, 0), if jackpot then 0.35 else 0.6)
+	card.Size = UDim2.fromScale(1, 1)
+	card.BackgroundColor3 = Ui.color.panel
+	card.BackgroundTransparency = 0.08
 	card.Parent = group
-	Ui.corner(card, UDim.new(0, 18))
-	Ui.stroke(card, Color3.fromRGB(255, 214, 90), 0, 3)
-	local kicker = Ui.label(
+	Ui.corner(card, UDim.new(0, 14))
+	Ui.stroke(card, if jackpot then Color3.fromRGB(255, 214, 90) else segment.color, 0.1, 2)
+	-- The slice's colour as a band down the left edge, with its big word on it
+	local band = Instance.new("Frame")
+	band.Name = "Band"
+	band.BorderSizePixel = 0
+	band.BackgroundColor3 = segment.color
+	band.Size = UDim2.new(0, 92, 1, 0)
+	band.Parent = card
+	Ui.corner(band, UDim.new(0, 14))
+	local square = Instance.new("Frame") -- squares the band's right edge
+	square.BorderSizePixel = 0
+	square.BackgroundColor3 = segment.color
+	square.Position = UDim2.new(1, -14, 0, 0)
+	square.Size = UDim2.new(0, 14, 1, 0)
+	square.Parent = band
+	local big =
+		Ui.label(band, "Big", segment.big, Ui.FONT_HEAVY, 30, Color3.new(1, 1, 1), UDim2.fromScale(1, 1))
+	big.TextXAlignment = Enum.TextXAlignment.Center
+	big.TextScaled = true
+	local bigLimit = Instance.new("UITextSizeConstraint")
+	bigLimit.MaxTextSize = 30
+	bigLimit.Parent = big
+	local bigPad = Instance.new("UIPadding")
+	bigPad.PaddingLeft = UDim.new(0, 8)
+	bigPad.PaddingRight = UDim.new(0, 8)
+	bigPad.Parent = big
+	local bigStroke = Instance.new("UIStroke")
+	bigStroke.Color = Color3.fromRGB(4, 28, 36)
+	bigStroke.Thickness = 2
+	bigStroke.Parent = big
+	Ui.label(
 		card,
 		"Kicker",
 		if jackpot then "TREASURE WHEEL · JACKPOT!" else "TREASURE WHEEL",
 		Ui.FONT_HEAVY,
-		16,
+		13,
 		Color3.fromRGB(255, 214, 90),
-		UDim2.new(1, -40, 0, 22),
-		UDim2.fromOffset(20, 12)
+		UDim2.new(1, -112, 0, 16),
+		UDim2.fromOffset(106, 12)
 	)
-	kicker.TextXAlignment = Enum.TextXAlignment.Left
 	local title = Ui.label(
 		card,
 		"Title",
 		`YOU WON {segment.label}!`,
 		Ui.FONT_HEAVY,
-		30,
+		22,
 		Ui.color.text,
-		UDim2.new(1, -40, 0, 40),
-		UDim2.fromOffset(20, 36)
+		UDim2.new(1, -116, 0, 28),
+		UDim2.fromOffset(106, 30)
 	)
-	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextScaled = true
+	local titleLimit = Instance.new("UITextSizeConstraint")
+	titleLimit.MaxTextSize = 22
+	titleLimit.Parent = title
 	local detail = Ui.label(
 		card,
 		"Detail",
 		current.detail,
-		Ui.FONT_BOLD,
-		17,
-		Color3.fromRGB(255, 236, 190),
-		UDim2.new(1, -40, 0, 26),
-		UDim2.fromOffset(20, 84)
+		Ui.FONT_SEMI,
+		14,
+		Ui.color.muted,
+		UDim2.new(1, -116, 0, 34),
+		UDim2.fromOffset(106, 60)
 	)
-	detail.TextXAlignment = Enum.TextXAlignment.Left
+	detail.TextWrapped = true
+	detail.TextYAlignment = Enum.TextYAlignment.Top
 	group.Parent = bannerGui
 	bannerCard = group
-	TweenService
-		:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
-		:Play()
+	TweenService:Create(
+		group,
+		TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Position = rest, GroupTransparency = 0 }
+	):Play()
 	task.delay(BANNER_SECONDS, function()
 		if bannerCard ~= group then
 			return
@@ -571,43 +609,71 @@ end
 -- fish characters). The button's place comes from WheelState, so it shows even
 -- before the wheel has streamed in.
 local function buildHint(playerGui: Instance)
-	hintSpot = Instance.new("Attachment")
-	hintSpot.Name = "WheelHint"
-	hintSpot.Parent = workspace.Terrain
-	hintGui = Instance.new("BillboardGui")
-	hintGui.Name = "WheelHint"
-	hintGui.Adornee = hintSpot
-	hintGui.Size = UDim2.fromOffset(280, 64)
-	hintGui.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
-	hintGui.AlwaysOnTop = true
-	hintGui.LightInfluence = 0
+	hintGui = Ui.screen("WheelHint", playerGui, 9)
 	hintGui.Enabled = false
-	hintGui.ResetOnSpawn = false
-	local chip = Instance.new("Frame")
-	chip.Name = "Chip"
-	chip.Size = UDim2.new(1, 0, 0, 44)
-	chip.BackgroundColor3 = Ui.color.panel
-	chip.BackgroundTransparency = 0.15
-	Ui.corner(chip, UDim.new(1, 0))
-	Ui.stroke(chip, Color3.fromRGB(255, 214, 90), 0.2, 1.5)
-	chip.Parent = hintGui
-	local key = Instance.new("Frame")
-	key.Name = "Key"
-	key.AnchorPoint = Vector2.new(0, 0.5)
-	key.Position = UDim2.new(0, 6, 0.5, 0)
-	key.Size = UDim2.fromOffset(34, 34)
-	key.BackgroundColor3 = Color3.fromRGB(255, 214, 90)
-	Ui.corner(key, UDim.new(1, 0))
-	key.Parent = chip
-	hintKey = Ui.label(key, "Text", "E", Ui.FONT_HEAVY, 18, Ui.color.panel, UDim2.fromScale(1, 1))
-	hintKey.TextXAlignment = Enum.TextXAlignment.Center
-	hintText = Ui.label(chip, "Text", "", Ui.FONT_BOLD, 16, Ui.color.text, UDim2.new(1, -54, 1, 0))
-	hintText.Position = UDim2.fromOffset(48, 0)
-	hintSub = Ui.label(hintGui, "Sub", "", Ui.FONT_SEMI, 13, Ui.color.text, UDim2.new(1, 0, 0, 18))
-	hintSub.Position = UDim2.fromOffset(0, 46)
-	hintSub.TextXAlignment = Enum.TextXAlignment.Center
-	hintSub.TextStrokeTransparency = 0.4
-	hintGui.Parent = playerGui
+	local chip =
+		Ui.panel(hintGui, "Chip", UDim2.fromOffset(0, 44), UDim2.new(0.5, 0, 1, -146), Vector2.new(0.5, 1))
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.BackgroundTransparency = 0.12
+	local edge = chip:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = Color3.fromRGB(255, 214, 90)
+		edge.Transparency = 0.3
+	end
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 6)
+	padding.PaddingRight = UDim.new(0, 16)
+	padding.Parent = chip
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 10)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = chip
+	-- A gold key cap with its key on it
+	local function keyCap(parent: Instance, order: number, key: string): TextLabel
+		local cap = Instance.new("Frame")
+		cap.Name = "Key"
+		cap.Size = UDim2.fromOffset(32, 32)
+		cap.BackgroundColor3 = Color3.fromRGB(255, 214, 90)
+		cap.LayoutOrder = order
+		Ui.corner(cap, UDim.new(0, 8))
+		cap.Parent = parent
+		local label = Ui.label(cap, "Text", key, Ui.FONT_HEAVY, 17, Ui.color.panel, UDim2.fromScale(1, 1))
+		label.TextXAlignment = Enum.TextXAlignment.Center
+		return label
+	end
+	local function words(parent: Instance, order: number, font: Font, size: number, color: Color3): TextLabel
+		local label = Ui.label(parent, "Text", "", font, size, color, UDim2.fromOffset(0, 32))
+		label.AutomaticSize = Enum.AutomaticSize.X
+		label.LayoutOrder = order
+		return label
+	end
+	hintKey = keyCap(chip, 1, "E")
+	hintText = words(chip, 2, Ui.FONT_HEAVY, 17, Ui.color.text)
+	hintAll = Instance.new("Frame")
+	hintAll.Name = "All"
+	hintAll.BackgroundTransparency = 1
+	hintAll.AutomaticSize = Enum.AutomaticSize.X
+	hintAll.Size = UDim2.fromOffset(0, 32)
+	hintAll.LayoutOrder = 3
+	hintAll.Parent = chip
+	local allLayout = Instance.new("UIListLayout")
+	allLayout.FillDirection = Enum.FillDirection.Horizontal
+	allLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	allLayout.Padding = UDim.new(0, 8)
+	allLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	allLayout.Parent = hintAll
+	local gap = Instance.new("Frame") -- a hairline between SPIN and ALL
+	gap.BorderSizePixel = 0
+	gap.BackgroundColor3 = Ui.color.muted
+	gap.BackgroundTransparency = 0.5
+	gap.Size = UDim2.fromOffset(1, 22)
+	gap.LayoutOrder = 0
+	gap.Parent = hintAll
+	keyCap(hintAll, 1, "T")
+	words(hintAll, 2, Ui.FONT_HEAVY, 17, Ui.color.text).Text = "SPIN ALL"
+	hintFree = words(chip, 4, Ui.FONT_SEMI, 14, Ui.color.muted)
 	-- Phones: SPIN and ALL where the stall button goes
 	local buttons = Ui.screen("WheelButtons", playerGui, 9)
 	phoneSpin =
@@ -667,14 +733,12 @@ local function updateHint()
 		text = if busy then `JOIN THE LINE ({spins})` else `SPIN ({spins})`
 	end
 	local free = if nextFreeAt > 0
-		then `next free spin in {Format.duration(math.max(0, nextFreeAt - Workspace:GetServerTimeNow()))}`
-		else "free spins are full: spin one!"
-	if typeof(at) == "Vector3" then
-		hintSpot.WorldPosition = at
-	end
+		then `next free in {Format.duration(math.max(0, nextFreeAt - Workspace:GetServerTimeNow()))}`
+		else "free spins full"
 	hintKey.Text = if Input.isGamepad() then "Y" else "E"
 	hintText.Text = text
-	hintSub.Text = if spins >= 2 and not Input.isGamepad() then `T · SPIN ALL   ·   {free}` else free
+	hintAll.Visible = spins >= 2 and not Input.isGamepad()
+	hintFree.Text = free
 	phoneSpin.Text = if spins <= 0 then "NO SPINS" else `SPIN ({spins})`
 end
 

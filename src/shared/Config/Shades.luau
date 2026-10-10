@@ -556,10 +556,12 @@ local list: { Shade } = {
 		belly = Color3.fromRGB(64, 40, 96),
 		fin = Color3.fromRGB(130, 64, 210),
 		reflectance = 0.1,
-		glow = Color3.fromRGB(150, 90, 255),
+		glow = Color3.fromRGB(170, 120, 255),
 		-- Its violet read level with Nebula and Void on the Trench's blue-violet floor,
-		-- not above them as a trophy should (playtest 2026-10-10)
-		lampBoost = 1.15,
+		-- not above them as a trophy should (playtest 2026-10-10); at ×1.15 it still
+		-- lit the floor less than Nebula's warmer pink (retest 2026-10-10), so a lighter
+		-- violet and ×1.3
+		lampBoost = 1.3,
 		sparkle = Color3.fromRGB(110, 230, 255),
 		emissive = 1.5,
 		pulse = "wave",

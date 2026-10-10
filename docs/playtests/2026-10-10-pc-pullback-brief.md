@@ -163,13 +163,21 @@ The account was suspended once over an uploaded texture, so go slowly:
 - **S1 Placement:** the wheel stands on the hub plaza at 240° (between stalls; it shouldn't block a stall, a den door, a tunnel or the beacon). It stands on the floor with no gap and isn't buried.
   - Screenshot it from the plaza, by day and with a boss up.
   - Say whether it reads as a game-show wheel and fits the cave, or looks cheap.
-- **S2 Hint:** swim up to the red button. A chip reads "E · SPIN (1)" with "next free spin in …" under it.
-  - It shows Y on a controller and SPIN / ALL buttons on the phone.
+  - **The details pass (Connor: "looks pretty cruddy. word overlap etc"):**
+    - Each slice has a big word near the rim (300, MAP, 40, FEAST, +2, KELP, LUCKY, SKIN) over a small one (CORAL, TREASURE, SHELLS, CHARM, SPINS, 2 WRAPS, CHARM, JACKPOT).
+    - No word crosses a gold divider or touches the hub, at rest or mid-spin.
+    - The hub is a gold dome with a pearl (no pink jewel), ringed by a gold collar.
+    - The bulbs are warm amber, smaller, and don't bloom into white blobs.
+    - The boards read from the stage. PRIZES & ODDS has 8 rows, each with a colour swatch, the prize and its %. FREE SPINS has 4 rows (Every 4 hours +1, Bounty Chest +1, Catch of the Week +2, Daily streak days 3 and 6 +1) and a footnote. Nothing runs off a board.
+    - Screenshot the wheel square on and both boards.
+- **S2 Hint:** swim up to the red button. A chip appears at the bottom centre, above the health bar, not over the wheel. It reads "[E] SPIN (1)", then "[T] SPIN ALL" once you have 2+ spins, and "next free in …" in grey.
+  - It shows Y on a controller (no T part) and SPIN / ALL buttons on the phone.
   - It goes away a few studs from the button.
   - The stall hint (E · Shop) and the wheel never both take E: swim slowly from the Tidecharm Trader's counter (the nearest stall) to the button. One hint hands over to the other, never both at once, and E opens whichever is showing.
 - **S3 Spin:** press E. The wheel turns for about 5.5 s with ticks off the pegs, the flapper swings, and the bulbs chase.
   - It stops with the flapper hanging straight in the middle of a slice, and the prize matches that slice.
-  - The banner reads "YOU WON …", and the prize lands (coral, shells, wraps, charm, map in the SATCHEL, or +2 spins).
+  - A compact card slides in at the left, under the HUD buttons, not over the wheel or its sign. It has the slice's colour band with its big word, then "YOU WON …" and the detail. The prize lands (coral, shells, wraps, charm, map in the SATCHEL, or +2 spins).
+  - The sign's line under TREASURE WHEEL reads "<you> won …".
   - A second client sees the same spin and stop.
 - **S4 Line:** with two clients, spin on both. The second gets "You're #1 in line" and spins after the first's result.
 - **S5 Spin all:** Admin "Wheel: give spins" 10, then press T. It keeps spinning until you're out, then "Spin all done". Press T mid-way and Spin all goes off.
@@ -187,6 +195,11 @@ The account was suspended once over an uploaded texture, so go slowly:
 - **L2** The tide chip doesn't cover the boss bar, the biome banner or the safe-zone banner. The tide banner and a biome banner at once don't overlap.
 - **L3 FPS:** in the Shallows during a forced Golden Hour (many golden fish with lights), log average and worst frame on PC and the phone.
 
+## 9b. From the boss round (quick)
+
+- **Breach timing:** Admin SUMMON, hurt the Megalodon to its Last stand (`_G.ApexBoss.hurt(0.8)`), and time the breaches. They should come about every 13 s start to start (they were ~24 s).
+- **Abyss Ink's light:** at last round's T2 spot in the Trench, compare Abyss Ink, Nebula and Void by eye. Abyss Ink (now a lighter violet at ×1.3) should read brightest. Log the lamp brightness for each.
+
 ## 10. Output
 
 0 game errors.
@@ -194,7 +207,7 @@ The account was suspended once over an uploaded texture, so go slowly:
 ## 11. Report
 
 Write docs/playtests/2026-10-10-pc-pullback.md:
-- R1–R4, C1–C4, T1–T3, B1–B4, W1–W3, K1–K6, S1–S8, L1–L3 and Output: pass/fail with the logged values
+- R1–R4, C1–C4, T1–T3, B1–B4, W1–W3, K1–K6, S1–S8, L1–L3, 9b and Output: pass/fail with the logged values
 - screenshots: each rare look (close and far), the LOG's four tabs, each tide's banner and water, the skin unlock banner, the Catch of the Week banner, the Wardrobe for two fish, the wheel (plaza, mid-spin, the jackpot result)
 - your verdict: does this make you want to come back (for a tide, a bounty, a rare fish, a free spin, the board)? What feels thin?
 - any Output errors, verbatim
