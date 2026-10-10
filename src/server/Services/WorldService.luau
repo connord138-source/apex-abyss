@@ -791,6 +791,8 @@ local function rock(parent: Instance, rng: Random, ground: Vector3, scale: numbe
 	Props.dress(part, if rng:NextNumber() < 0.6 then "BoulderRound" else "BoulderJagged", {
 		cframe = CFrame.new(ground + Vector3.new(0, size.Y * 0.42, 0)) * CFrame.Angles(0, yaw, 0),
 		size = Vector3.new(size.X * 1.1, size.Y * 0.95, size.Z * 1.1),
+		solid = true,
+		blocksCamera = true,
 	})
 end
 
@@ -837,12 +839,18 @@ local function coralGarden(parent: Instance, rng: Random, center: Vector3, count
 			* CFrame.Angles(0, rng:NextNumber(0, 6.28), math.rad(rng:NextNumber(40, 90)))
 		piece.Color = CORAL_COLORS[rng:NextInteger(1, #CORAL_COLORS)]
 		piece.Material = Enum.Material.SmoothPlastic
-		piece.CanCollide = false
+		-- Hard corals and sponges are solid (owner, 2026-10-10: "a lot of the coral i
+		-- can go right through"); anemones stay soft to swim through
+		local kind = kinds[rng:NextInteger(1, #kinds)]
+		local hard = kind ~= "Anemone"
+		piece.CanCollide = hard
+		piece.CanQuery = false -- the camera passes through coral
 		piece.Parent = parent
-		Props.dress(piece, kinds[rng:NextInteger(1, #kinds)], {
+		Props.dress(piece, kind, {
 			cframe = CFrame.new(ground + Vector3.new(0, size * 0.75, 0))
 				* CFrame.Angles(0, rng:NextNumber(0, 6.28), 0),
 			size = Vector3.new(size * 1.7, size * 1.5, size * 1.7),
+			solid = hard,
 		})
 	end
 end
@@ -1537,14 +1545,19 @@ local function buildWheel(parent: Instance)
 		top = hub.center.Y + Layout.PLAZA_TOP
 	end
 	local hours = Wheel.freeEvery / 3600
-	WorldService.wheel =
-		TreasureWheel.build(parent, Vector3.new(center.X, top, center.Z), hub.center, Wheel.segments, {
-			`1 free spin every {hours} hours, online or off (up to {Wheel.maxFree} waiting)`,
-			`+{Config.Wheel.bountyChest} in the Bounty Chest · +{Wheel.weekly} for the Catch of the Week`,
-			"+1 on daily streak days 3 and 6",
-			"The jackpot: a Rare-or-better skin for the fish you swim as",
-			"Busy? Spin anyway to join the line",
-		})
+	WorldService.wheel = TreasureWheel.build(
+		parent,
+		Vector3.new(center.X, top, center.Z),
+		hub.center,
+		Wheel.segments,
+		{
+			{ left = `Every {hours} hours`, right = "+1" },
+			{ left = "Bounty Chest", right = `+{Wheel.bountyChest}` },
+			{ left = "Catch of the Week", right = `+{Wheel.weekly}` },
+			{ left = "Daily streak days 3 and 6", right = "+1" },
+		},
+		`Free spins come online or off, up to {Wheel.maxFree} waiting. Busy? Spin anyway to join the line.`
+	)
 end
 
 function WorldService.start()

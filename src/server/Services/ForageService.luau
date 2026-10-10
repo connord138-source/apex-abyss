@@ -25,25 +25,42 @@ type Spot = { position: Vector3, kind: string }
 local spots: { Spot } = {}
 local eatenUntil: { [number]: number } = {}
 
+-- Whether a fish can get to food at `position`: nothing solid round it (a rock or
+-- coral it would sit inside or under; playtest 2026-10-10: a shrimp at a boulder's
+-- foot was behind an invisible wall). The world is built before this runs.
+local blockers = OverlapParams.new()
+blockers.FilterType = Enum.RaycastFilterType.Exclude
+blockers.FilterDescendantsInstances = { workspace.Terrain }
+blockers.RespectCanCollide = true
+local function reachable(position: Vector3): boolean
+	return #workspace:GetPartBoundsInRadius(position + Vector3.new(0, 1.5, 0), 2.5, blockers) == 0
+end
+
 local function placeSpots()
 	local rng = Random.new(World.seed + 20)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { workspace.Terrain } -- the floor itself, never a kelp blade
 	for _, def in Forage.list do
-		local placed, tries = 0, 0
-		while placed < def.spots and tries < def.spots * 6 do
-			tries += 1
-			local angle = rng:NextNumber(0, 2 * math.pi)
-			local distance = rng:NextNumber(World.shallows.inner - 20, World.shallows.outer)
-			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
-			if not Seafloor.inTrench(x, z, 10) then
-				local from = Vector3.new(x, World.surfaceY - 10, z)
-				local hit = workspace:Raycast(from, Vector3.new(0, -(World.surfaceY + 40), 0), params)
-				-- Only on the floor or gentle tops, not up the side of a rock
-				if hit and hit.Normal.Y > 0.6 then
-					table.insert(spots, { position = hit.Position + hit.Normal * 0.35, kind = def.id })
-					placed += 1
+		for _, band in def.bands do
+			local placed, tries = 0, 0
+			while placed < band.count and tries < band.count * 6 do
+				tries += 1
+				local angle = rng:NextNumber(0, 2 * math.pi)
+				-- Even over the band's area, not bunched at its inner edge
+				local distance = math.sqrt(rng:NextNumber(band.from ^ 2, band.to ^ 2))
+				local x, z = math.cos(angle) * distance, math.sin(angle) * distance
+				if not Seafloor.inTrench(x, z, 10) then
+					local from = Vector3.new(x, World.surfaceY - 10, z)
+					local hit = workspace:Raycast(from, Vector3.new(0, -(World.surfaceY + 40), 0), params)
+					-- Only on the floor or gentle tops, not up the side of a rock
+					if hit and hit.Normal.Y > 0.6 then
+						local position = hit.Position + hit.Normal * 0.35
+						if reachable(position) then
+							table.insert(spots, { position = position, kind = def.id })
+							placed += 1
+						end
+					end
 				end
 			end
 		end

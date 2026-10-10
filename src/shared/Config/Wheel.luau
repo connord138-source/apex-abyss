@@ -16,8 +16,8 @@ export type Segment = {
 	value: number, -- coral, shells, wraps or spins
 	weight: number, -- its share of the wheel's odds (they add up to 100)
 	color: Color3,
-	big: string, -- on the slice, near the rim
-	sub: string, -- on the slice, under it
+	big: string, -- on the slice, near the rim (5 letters at most reads best)
+	sub: string, -- on the slice, under it (8 at most: the slice narrows inward)
 	charm: string?, -- kind "charm": the Config/Shop charm
 	map: string?, -- kind "map": the Config/Treasure tier
 	minTier: string?, -- kind "skin": the rarest-or-better tier rolled
@@ -61,7 +61,7 @@ local segments: { Segment } = {
 		weight = 12,
 		color = Color3.fromRGB(214, 90, 40),
 		big = "FEAST",
-		sub = "+25% HAUL",
+		sub = "CHARM",
 		charm = "Feast",
 	},
 	{
@@ -79,8 +79,8 @@ local segments: { Segment } = {
 		value = 2,
 		weight = 12,
 		color = Color3.fromRGB(60, 190, 110),
-		big = "×2",
-		sub = "KELP WRAPS",
+		big = "KELP",
+		sub = "2 WRAPS",
 	},
 	{
 		label = "LUCKY CHARM",
@@ -99,7 +99,7 @@ local segments: { Segment } = {
 		weight = 4,
 		color = Color3.fromRGB(255, 210, 60),
 		big = "SKIN",
-		sub = "RARE OR BETTER",
+		sub = "JACKPOT",
 		minTier = "Rare",
 	},
 }

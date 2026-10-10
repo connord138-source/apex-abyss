@@ -136,7 +136,9 @@ these changes:
 - The **safe zone** is the dens plus the vendor plaza. A banner says when you leave it
   ("LEAVING THE SAFE ZONE", with a protection countdown) and when you're back. Built.
 - **Filler food:** starfish and shrimp on the seabed for low-level XP. Built
-  (`Config/Forage.luau`).
+  (`Config/Forage.luau`). Thickest near the hub, where new fish start: about one
+  every 20 studs within 330 of it (owner, 2026-10-10: "far too scarce"), never
+  inside or under a rock or coral; minnow schools swim low over the sand there.
 
 The approved details:
 

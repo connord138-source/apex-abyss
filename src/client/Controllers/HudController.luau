@@ -629,13 +629,54 @@ local function buildTouchButtons()
 	end)
 end
 
+-- While the player has freed the cursor (Alt or M), a chip at the top says so and
+-- how to swim again; it sits under the tide chip and the boss bar
+local function buildCursorChip()
+	local chip =
+		Ui.panel(gui, "CursorChip", UDim2.fromOffset(0, 32), UDim2.new(0.5, 0, 0, 48), Vector2.new(0.5, 0))
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.BackgroundTransparency = 0.15
+	chip.Visible = false
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 14)
+	padding.PaddingRight = UDim.new(0, 14)
+	padding.Parent = chip
+	local text = Ui.label(
+		chip,
+		"Text",
+		"CURSOR FREE · click the game, or press Alt or M, to swim",
+		Ui.FONT_BOLD,
+		14,
+		Ui.color.text,
+		UDim2.fromOffset(0, 32)
+	)
+	text.AutomaticSize = Enum.AutomaticSize.X
+	local function place()
+		local bossBottom = Ui.bossBottom()
+		-- Below the tide chip (8 from the top, or 6 under the boss bar, ~32 tall)
+		chip.Position = UDim2.new(0.5, 0, 0, (if bossBottom > 0 then bossBottom + 6 else 8) + 40)
+	end
+	Input.cursorChanged:connect(function(free: boolean)
+		place()
+		chip.Visible = free
+	end)
+	task.spawn(function()
+		while chip.Parent do
+			if chip.Visible then
+				place()
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+
 local function showControlsHint()
 	local text = if Input.isTouch()
 		then "Left stick: push up to swim, sideways to turn · drag to aim · swim into smaller fish to eat · BITE for fish your size"
 		elseif
 			Input.isGamepad()
 		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites fish your size · RT dash · LB heal · Y at a stall"
-		else "Mouse to look · WASD swim · swim into smaller fish to eat · Click or F bites fish your size · Shift dash · Space/Ctrl up/down · E at a stall · H heal"
+		else "Mouse to look · WASD swim · swim into smaller fish to eat · Click or F bites fish your size · Shift dash · Space/Ctrl up/down · E at a stall · H heal · Alt or M frees the cursor"
 	local label = Ui.label(gui, "Controls", text, Ui.FONT_SEMI, 14, Ui.color.muted, UDim2.fromOffset(800, 18))
 	-- Top centre under the safe-zone pill, and below the boss bar or the boss
 	-- countdown while one is up (the countdown sits at the same spot and covered it,
@@ -787,6 +828,7 @@ function HudController.start()
 	buildLevelCard()
 	buildHaulCard()
 	buildDepthGauge()
+	buildCursorChip()
 
 	toastList = Instance.new("Frame")
 	toastList.Name = "Toasts"

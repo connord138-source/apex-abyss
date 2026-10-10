@@ -29,6 +29,8 @@ TreasureWheel.PEGS = 24
 TreasureWheel.CLEAR_RADIUS = 26 -- keep scenery this far from the wheel (stage and boards)
 
 export type Segment = WheelConfig.Segment
+-- A line on a board: what (left), how much (right), and the slice's color swatch
+export type BoardRow = { left: string, right: string, color: Color3? }
 
 export type Built = {
 	model: Model, -- tagged TreasureWheel, streams in and out whole
@@ -47,6 +49,18 @@ local SIGN_Y = FRAME_R + 3.4 -- the arch sign's center, above the wheel's center
 local STAGE_TOP = 1.8 -- the upper step's top above the ground
 local FLAPPER_PIVOT = Vector3.new(0, R + 1.4, -0.85)
 local PEG_RADIUS = R - 0.55
+local HUB_R = 2.2 -- the gold hub
+local COLLAR_R = 3.15 -- the gold ring round it
+-- Slice text (owner, 2026-10-10: "word overlap etc ... its just the details"): the
+-- prize in big letters over what it is, each label as wide as its wedge is at the
+-- label's inner edge (×LABEL_FILL), so no word reaches into the next slice, and its
+-- letters capped (`letters`, studs) so a short word doesn't dwarf a long one
+type Band = { from: number, to: number, letters: number }
+local BIG_BAND: Band = { from = 5.3, to = 7.3, letters = 1.25 }
+local SUB_BAND: Band = { from = 3.75, to = 4.85, letters = 0.6 }
+local LABEL_FILL = 0.88
+local TEXT_PIXELS = 100 -- SurfaceGui pixels per stud on the wheel
+local CAP_HEIGHT = 0.72 -- a capital's height as a share of the font size
 
 local GOLD = Color3.fromRGB(255, 196, 64)
 local GOLD_LIGHT = Color3.fromRGB(255, 224, 140)
@@ -55,7 +69,7 @@ local CRIMSON = Color3.fromRGB(16, 98, 112)
 local CRIMSON_DARK = Color3.fromRGB(8, 56, 68)
 local MARBLE = Color3.fromRGB(176, 196, 196)
 local BACKING = Color3.fromRGB(10, 24, 40)
-local BULB = Color3.fromRGB(255, 236, 190)
+local BULB = Color3.fromRGB(255, 214, 150)
 local TEXT_STROKE = Color3.fromRGB(4, 28, 36)
 
 local function apply(p: BasePart, props: { [string]: any })
@@ -200,6 +214,42 @@ local function bulb(parent: Instance, cf: CFrame, size: number, group: string, i
 	return b
 end
 
+-- A label lying on the slice centred at `theta` (`half` is half the slice's angle),
+-- across the band and as wide as the wedge allows at the band's inner edge.
+local function sliceText(
+	disc: Instance,
+	base: CFrame,
+	theta: number,
+	half: number,
+	band: Band,
+	words: string,
+	stroke: number
+): BasePart
+	local holder = part(disc, {
+		Name = "SliceText",
+		Size = Vector3.new(2 * band.from * math.tan(half) * LABEL_FILL, band.to - band.from, 0.05),
+		CFrame = radial(base, theta, (band.from + band.to) / 2, -0.2),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+	})
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = TEXT_PIXELS
+	gui.LightInfluence = 0
+	gui.Parent = holder
+	local label = text(gui, stroke, {
+		Size = UDim2.fromScale(1, 1),
+		Text = words,
+	})
+	local limit = Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = math.floor(band.letters / CAP_HEIGHT * TEXT_PIXELS)
+	limit.Parent = label
+	return holder
+end
+
 ---------------------------------------------------------------------------
 -- The disc: everything that turns
 ---------------------------------------------------------------------------
@@ -212,7 +262,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 	local hub = part(disc, {
 		Name = "Hub",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.4, 5.6, 5.6),
+		Size = Vector3.new(0.4, HUB_R * 2, HUB_R * 2),
 		CFrame = facing(base * CFrame.new(0, 0, -0.3)),
 		Material = Enum.Material.Foil,
 		Color = GOLD,
@@ -221,7 +271,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 	part(disc, {
 		Name = "HubRing",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.45, 4.2, 4.2),
+		Size = Vector3.new(0.45, 3.3, 3.3),
 		CFrame = facing(base * CFrame.new(0, 0, -0.55)),
 		Material = Enum.Material.SmoothPlastic,
 		Color = CRIMSON,
@@ -229,7 +279,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 	})
 	local dome = part(disc, {
 		Name = "HubDome",
-		Size = Vector3.new(3.4, 3.4, 1.8),
+		Size = Vector3.new(2.5, 2.5, 1.4),
 		CFrame = base * CFrame.new(0, 0, -0.8),
 		Material = Enum.Material.Foil,
 		Color = GOLD,
@@ -238,21 +288,23 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Parent = dome
-	local jewel = part(disc, {
-		Name = "Jewel",
+	-- A pearl set in the gold dome (it was a pink neon jewel)
+	local pearl = part(disc, {
+		Name = "Pearl",
 		Shape = Enum.PartType.Ball,
-		Size = Vector3.new(1.2, 1.2, 1.2),
-		CFrame = base * CFrame.new(0, 0, -1.6),
-		Material = Enum.Material.Neon,
-		Color = Color3.fromRGB(255, 60, 110),
+		Size = Vector3.new(1.35, 1.35, 1.35),
+		CFrame = base * CFrame.new(0, 0, -1.35),
+		Material = Enum.Material.SmoothPlastic,
+		Color = Color3.fromRGB(236, 242, 252),
+		Reflectance = 0.3,
 		CanCollide = false,
 		CastShadow = false,
 	})
 	local glow = Instance.new("PointLight")
-	glow.Color = Color3.fromRGB(255, 90, 140)
-	glow.Range = 8
-	glow.Brightness = 1.2
-	glow.Parent = jewel
+	glow.Color = Color3.fromRGB(170, 230, 255)
+	glow.Range = 7
+	glow.Brightness = 0.8
+	glow.Parent = pearl
 	part(disc, {
 		Name = "Backing",
 		Shape = Enum.PartType.Cylinder,
@@ -293,8 +345,8 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 		-- Gold divider on the slice's leading edge
 		part(disc, {
 			Name = "Divider",
-			Size = Vector3.new(0.3, R - 2.6, 0.2),
-			CFrame = radial(base, center + slice / 2, (R + 2.6) / 2, -0.22),
+			Size = Vector3.new(0.24, R - HUB_R, 0.2),
+			CFrame = radial(base, center + slice / 2, (R + HUB_R) / 2, -0.22),
 			Material = Enum.Material.Foil,
 			Color = GOLD_LIGHT,
 			CanCollide = false,
@@ -303,35 +355,10 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 			CastShadow = false,
 		})
 
-		-- The prize near the rim in big letters, what it is under it; upright when the
-		-- slice is on top (no emoji: the game uses none, GDD §12)
-		local iconPart = part(disc, {
-			Name = "SliceIcon",
-			Size = Vector3.new(4, 2.2, 0.05),
-			CFrame = radial(base, center, R * 0.72, -0.2),
-			Transparency = 1,
-			CanCollide = false,
-			CanQuery = false,
-			CanTouch = false,
-		})
-		text(surface(iconPart, Enum.NormalId.Front, Vector2.new(400, 220)), 5, {
-			Size = UDim2.fromScale(1, 1),
-			Font = Enum.Font.LuckiestGuy,
-			Text = segment.big,
-		})
-		local labelPart = part(disc, {
-			Name = "SliceLabel",
-			Size = Vector3.new(4.2, 1.4, 0.05),
-			CFrame = radial(base, center, R * 0.46, -0.2),
-			Transparency = 1,
-			CanCollide = false,
-			CanQuery = false,
-			CanTouch = false,
-		})
-		text(surface(labelPart, Enum.NormalId.Front, Vector2.new(420, 140)), 4, {
-			Size = UDim2.fromScale(1, 1),
-			Text = segment.sub,
-		})
+		-- The prize in big letters, what it is under it; upright when the slice is on
+		-- top, under the flapper (no emoji: the game uses none, GDD §12)
+		local prize = sliceText(disc, base, center, slice / 2, BIG_BAND, segment.big, 6)
+		sliceText(disc, base, center, slice / 2, SUB_BAND, segment.sub, 3)
 		if segment.kind == "skin" then
 			-- The jackpot slice glitters
 			local sparkle = Instance.new("ParticleEmitter")
@@ -339,14 +366,14 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 			sparkle.Color = ColorSequence.new(Color3.fromRGB(255, 240, 170))
 			sparkle.LightEmission = 1
 			sparkle.Size = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.5),
+				NumberSequenceKeypoint.new(0, 0.4),
 				NumberSequenceKeypoint.new(1, 0),
 			})
 			sparkle.Lifetime = NumberRange.new(0.6, 1.2)
-			sparkle.Rate = 5
+			sparkle.Rate = 4
 			sparkle.Speed = NumberRange.new(0.3, 0.8)
 			sparkle.SpreadAngle = Vector2.new(180, 180)
-			sparkle.Parent = iconPart
+			sparkle.Parent = prize
 		end
 	end
 
@@ -356,6 +383,12 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 	rimProps.Material = Enum.Material.Foil
 	rimProps.Color = GOLD
 	ring(disc, base, R + 0.35, 0.9, -0.05, 36, rimProps)
+	local collarProps: { [string]: any } = table.clone(loose)
+	collarProps.Name = "Collar"
+	collarProps.Material = Enum.Material.Foil
+	collarProps.Color = GOLD
+	collarProps.CastShadow = false
+	ring(disc, base, COLLAR_R, 0.3, -0.18, 28, collarProps)
 	local perSlice = TreasureWheel.PEGS // #segments
 	for k = 0, TreasureWheel.PEGS - 1 do
 		local theta = k / TreasureWheel.PEGS * 2 * math.pi
@@ -461,60 +494,131 @@ end
 -- Boards beside the stage
 ---------------------------------------------------------------------------
 
-local function board(parent: Instance, origin: CFrame, title: string, body: string)
+-- A board: a title, a hairline, one row per line (a swatch, what, how much) and a
+-- footnote. Rows are laid out on a fixed canvas, so nothing wraps or runs off the
+-- panel (playtest 2026-10-10: the spins board's last line ran off the bottom).
+local function board(parent: Instance, origin: CFrame, title: string, rows: { BoardRow }, footer: string)
 	local folder = Instance.new("Model")
 	folder.Name = "WheelBoard"
-	for _, x in { -3.2, 3.2 } do
+	for _, x in { -4.3, 4.3 } do
 		part(folder, {
 			Name = "Post",
-			Size = Vector3.new(0.45, 9.2, 0.45),
-			CFrame = origin * CFrame.new(x, 4.6, 0.3),
+			Size = Vector3.new(0.5, 10.8, 0.5),
+			CFrame = origin * CFrame.new(x, 5.4, 0.3),
 			Material = Enum.Material.Foil,
 			Color = GOLD,
 		})
 	end
 	part(folder, {
 		Name = "Plate",
-		Size = Vector3.new(7.6, 6.8, 0.25),
-		CFrame = origin * CFrame.new(0, 5.6, 0.3),
+		Size = Vector3.new(9, 8.2, 0.25),
+		CFrame = origin * CFrame.new(0, 6.3, 0.3),
 		Material = Enum.Material.Foil,
 		Color = GOLD,
 	})
 	local panel = part(folder, {
 		Name = "Panel",
-		Size = Vector3.new(7, 6.2, 0.4),
-		CFrame = origin * CFrame.new(0, 5.6, 0),
+		Size = Vector3.new(8.4, 7.6, 0.4),
+		CFrame = origin * CFrame.new(0, 6.3, 0),
 		Material = Enum.Material.SmoothPlastic,
-		Color = CRIMSON,
+		Color = CRIMSON_DARK,
 	})
 	part(folder, {
 		Name = "Cap",
-		Size = Vector3.new(7.9, 0.4, 0.9),
-		CFrame = origin * CFrame.new(0, 9.1, 0.2),
+		Size = Vector3.new(9.3, 0.45, 1),
+		CFrame = origin * CFrame.new(0, 10.6, 0.2),
 		Material = Enum.Material.Foil,
 		Color = GOLD,
 	})
-	local gui = surface(panel, Enum.NormalId.Front, Vector2.new(560, 496))
-	text(gui, 4, {
-		Position = UDim2.fromScale(0.05, 0.03),
-		Size = UDim2.fromScale(0.9, 0.17),
+	-- 80 canvas pixels a stud
+	local gui = surface(panel, Enum.NormalId.Front, Vector2.new(672, 608))
+	local heading = text(gui, 4, {
+		Position = UDim2.fromOffset(32, 16),
+		Size = UDim2.fromOffset(608, 72),
 		Font = Enum.Font.LuckiestGuy,
 		Text = title,
 		TextColor3 = GOLD_LIGHT,
 	})
-	local lines = text(gui, 2, {
-		Position = UDim2.fromScale(0.07, 0.23),
-		Size = UDim2.fromScale(0.86, 0.72),
-		Font = Enum.Font.GothamBold,
-		RichText = true,
+	local headingLimit = Instance.new("UITextSizeConstraint")
+	headingLimit.MaxTextSize = 64
+	headingLimit.Parent = heading
+	local rule = Instance.new("Frame")
+	rule.Name = "Rule"
+	rule.BorderSizePixel = 0
+	rule.BackgroundColor3 = GOLD
+	rule.Position = UDim2.fromOffset(48, 98)
+	rule.Size = UDim2.fromOffset(576, 3)
+	rule.Parent = gui
+	-- Rows: 404 px of room, at most 60 px a row
+	local top, room = 116, 404
+	local rowHeight = math.min(60, math.floor(room / math.max(1, #rows)))
+	for i, row in rows do
+		local frame = Instance.new("Frame")
+		frame.Name = "Row"
+		frame.BorderSizePixel = 0
+		frame.BackgroundColor3 = Color3.new(1, 1, 1)
+		frame.BackgroundTransparency = if i % 2 == 1 then 0.93 else 1
+		frame.Position = UDim2.fromOffset(28, top + (i - 1) * rowHeight)
+		frame.Size = UDim2.fromOffset(616, rowHeight)
+		frame.Parent = gui
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = frame
+		local inset = 14
+		if row.color then
+			local swatch = Instance.new("Frame")
+			swatch.Name = "Swatch"
+			swatch.BorderSizePixel = 0
+			swatch.BackgroundColor3 = row.color :: Color3
+			swatch.AnchorPoint = Vector2.new(0, 0.5)
+			swatch.Position = UDim2.new(0, 14, 0.5, 0)
+			swatch.Size = UDim2.fromOffset(24, 24)
+			swatch.Parent = frame
+			local round = Instance.new("UICorner")
+			round.CornerRadius = UDim.new(0, 5)
+			round.Parent = swatch
+			local edge = Instance.new("UIStroke")
+			edge.Color = GOLD_LIGHT
+			edge.Thickness = 1.5
+			edge.Parent = swatch
+			inset = 50
+		end
+		local what = text(gui, 1.5, {
+			Name = "What",
+			Font = Enum.Font.GothamBold,
+			Text = row.left,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.fromOffset(28 + inset, top + (i - 1) * rowHeight + rowHeight * 0.18),
+			Size = UDim2.fromOffset(452 - inset, rowHeight * 0.64),
+		})
+		local whatLimit = Instance.new("UITextSizeConstraint")
+		whatLimit.MaxTextSize = 34
+		whatLimit.Parent = what
+		local much = text(gui, 1.5, {
+			Name = "Much",
+			Font = Enum.Font.GothamBlack,
+			Text = row.right,
+			TextColor3 = GOLD_LIGHT,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Position = UDim2.fromOffset(488, top + (i - 1) * rowHeight + rowHeight * 0.16),
+			Size = UDim2.fromOffset(146, rowHeight * 0.68),
+		})
+		local muchLimit = Instance.new("UITextSizeConstraint")
+		muchLimit.MaxTextSize = 36
+		muchLimit.Parent = much
+	end
+	local note = text(gui, 1, {
+		Name = "Footer",
+		Font = Enum.Font.GothamMedium,
+		Text = footer,
+		TextColor3 = Color3.fromRGB(196, 228, 228),
 		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		Text = body,
+		Position = UDim2.fromOffset(36, 528),
+		Size = UDim2.fromOffset(600, 66),
 	})
-	local limit = Instance.new("UITextSizeConstraint")
-	limit.MaxTextSize = 40
-	limit.Parent = lines
+	local noteLimit = Instance.new("UITextSizeConstraint")
+	noteLimit.MaxTextSize = 26
+	noteLimit.Parent = note
 	folder.Parent = parent
 end
 
@@ -523,13 +627,14 @@ end
 ---------------------------------------------------------------------------
 
 -- Builds the wheel standing on `ground`, its face turned toward `faceToward`.
--- `spinLines` fill in the spins board (one line each).
+-- `spinRows` and `spinFooter` fill in the free spins board.
 function TreasureWheel.build(
 	parent: Instance,
 	ground: Vector3,
 	faceToward: Vector3,
 	segments: { Segment },
-	spinLines: { string }
+	spinRows: { BoardRow },
+	spinFooter: string
 ): Built
 	local target = Vector3.new(faceToward.X, ground.Y + H, faceToward.Z)
 	local base = CFrame.lookAt(ground + Vector3.new(0, H, 0), target)
@@ -622,7 +727,7 @@ function TreasureWheel.build(
 	local ringBulbs = 32
 	for i = 0, ringBulbs - 1 do
 		-- Numbered clockwise from the top (as seen from the front), so the chase runs with the wheel
-		bulb(bulbs, radial(base, -i / ringBulbs * 2 * math.pi, FRAME_R, -0.75), 0.62, "Ring", i + 1)
+		bulb(bulbs, radial(base, -i / ringBulbs * 2 * math.pi, FRAME_R, -0.75), 0.48, "Ring", i + 1)
 	end
 	part(model, {
 		Name = "FlapperMount", -- the client's tick sounds and confetti come from here
@@ -680,9 +785,9 @@ function TreasureWheel.build(
 			Material = Enum.Material.Foil,
 			Color = GOLD,
 		})
-		bulb(bulbs, base * CFrame.new(x, top + 3, 0.3), 0.8, "Finial", 1)
+		bulb(bulbs, base * CFrame.new(x, top + 3, 0.3), 0.6, "Finial", 1)
 		for i = 0, 8 do
-			bulb(bulbs, base * CFrame.new(x, -9 + i * 2.6, -0.72), 0.5, "Pillar", i + 1)
+			bulb(bulbs, base * CFrame.new(x, -9 + i * 2.6, -0.72), 0.4, "Pillar", i + 1)
 		end
 		part(model, {
 			Name = "Arm",
@@ -749,7 +854,7 @@ function TreasureWheel.build(
 		bulb(
 			bulbs,
 			base * CFrame.new(-math.sin(theta) * 4.4, SIGN_Y + 2.2 + math.cos(theta) * 4.4, -0.1),
-			0.5,
+			0.42,
 			"Crest",
 			i + 1
 		)
@@ -757,8 +862,8 @@ function TreasureWheel.build(
 	local edgeBulbs = 20
 	for i = 0, edgeBulbs - 1 do
 		local x = (i / (edgeBulbs - 1) - 0.5) * (signWidth - 0.6)
-		bulb(bulbs, base * CFrame.new(-x, SIGN_Y + 2.45, -0.45), 0.5, "Sign", i + 1)
-		bulb(bulbs, base * CFrame.new(x, SIGN_Y - 2.45, -0.45), 0.5, "Sign", edgeBulbs + i + 1)
+		bulb(bulbs, base * CFrame.new(-x, SIGN_Y + 2.45, -0.45), 0.4, "Sign", i + 1)
+		bulb(bulbs, base * CFrame.new(x, SIGN_Y - 2.45, -0.45), 0.4, "Sign", edgeBulbs + i + 1)
 	end
 	local signGui = surface(sign, Enum.NormalId.Front, Vector2.new(1245, 220))
 	text(signGui, 6, {
@@ -858,26 +963,27 @@ function TreasureWheel.build(
 	for _, segment in segments do
 		total += segment.weight
 	end
-	local odds: { string } = {}
+	local odds: { BoardRow } = {}
 	for _, segment in segments do
-		table.insert(
-			odds,
-			`<font color="#{segment.color:ToHex()}">◆</font> {segment.label}  <b>{math.floor(
-				segment.weight / total * 100 + 0.5
-			)}%</b>`
-		)
+		table.insert(odds, {
+			left = segment.label,
+			right = `{math.floor(segment.weight / total * 1000 + 0.5) / 10}%`,
+			color = segment.color,
+		})
 	end
 	board(
 		model,
 		floor * CFrame.new(-17, 0, -7) * CFrame.Angles(0, math.rad(-25), 0),
 		"PRIZES & ODDS",
-		table.concat(odds, "\n")
+		odds,
+		"The jackpot: a Rare-or-better skin for the fish you swim as"
 	)
 	board(
 		model,
 		floor * CFrame.new(17, 0, -7) * CFrame.Angles(0, math.rad(25), 0),
-		"SPINS",
-		table.concat(spinLines, "\n")
+		"FREE SPINS",
+		spinRows,
+		spinFooter
 	)
 
 	local disc = buildDisc(model, base, segments)
