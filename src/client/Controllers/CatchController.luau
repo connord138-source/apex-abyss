@@ -117,6 +117,17 @@ local function onCaught(summary: { [string]: any })
 			"good"
 		)
 	end
+	-- A new biggest of this species at this rarity: said for rare ones and trophy-size
+	-- plain ones (a slightly bigger minnow every few bites would be noise)
+	local preyDef = Config.Prey.byId[summary.prey]
+	local trophy = preyDef ~= nil and typeof(summary.mass) == "number" and summary.mass >= preyDef.mass * 1.9
+	if typeof(summary.record) == "number" and typeof(summary.mass) == "number" and (rare or trophy) then
+		local label = if rare then `{rare.name} {prey}` else prey
+		HudController.toast(
+			`NEW BIGGEST · {Format.catchMass(summary.mass)} {label} (was {Format.catchMass(summary.record)})`,
+			"good"
+		)
+	end
 	if summary.row then
 		HudController.toast(
 			`CATCH LOG ROW DONE · every {prey} · +{Format.number(CatchConfig.rowComplete.coral)} coral, {CatchConfig.rowComplete.shells} shells`,

@@ -273,20 +273,21 @@ local function onEatPrey(player: Player, batch: any)
 		local rare = if rarityId then Config.Catch.byId[rarityId] else nil
 		local worth = (if rare then rare.haul else 1)
 			* (tide.haul or 1)
-			* (if prey.mass < Config.Tides.smallMass then tide.smallHaul or 1 else 1)
-		gained += prey.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()) * worth
+			* (if fish.mass < Config.Tides.smallMass then tide.smallHaul or 1 else 1)
+		-- Each fish its own size (Schools `mass`): a big one is worth more
+		gained += fish.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()) * worth
 		data.stats.preyEaten += 1
 		count += 1
-		if prey.mass > data.stats.bestPreyMass then
+		if fish.mass > data.stats.bestPreyMass then
 			data.stats.bestPrey = prey.id
-			data.stats.bestPreyMass = prey.mass
+			data.stats.bestPreyMass = fish.mass
 			Events.trophies:fire(player)
 		end
 		-- Eating heals a little, so snacking matters in a long fight
 		local most = maxHealth(player)
 		if session.health < most then
 			session.health =
-				math.min(most, session.health + most * (heal.eatBase + heal.eatPerKg * prey.mass))
+				math.min(most, session.health + most * (heal.eatBase + heal.eatPerKg * fish.mass))
 			character:SetAttribute("Health", session.health)
 		end
 		-- A wrap tucked in the fish, sometimes
@@ -296,8 +297,8 @@ local function onEatPrey(player: Player, batch: any)
 		-- DNA: big prey always carry some, small ones sometimes, rare ones more
 		local position = Schools.position(index, at)
 		local dna = if rare then rare.dna else 1
-		if prey.mass >= economy.dnaBigMass then
-			giveDna(player, position, math.max(1, math.floor(prey.mass / economy.dnaBigMass)) * dna)
+		if fish.mass >= economy.dnaBigMass then
+			giveDna(player, position, math.max(1, math.floor(fish.mass / economy.dnaBigMass)) * dna)
 		elseif rare then
 			giveDna(player, position, dna)
 		elseif math.random() < economy.dnaChance then
@@ -308,7 +309,7 @@ local function onEatPrey(player: Player, batch: any)
 			Net.notify(player, `The {prey.name} had {shells} shell{if shells == 1 then "" else "s"}!`, "good")
 		end
 		Events.atePrey:fire(player, prey.id, position)
-		Events.caught:fire(player, prey.id, rarityId or "Normal", position, prey.mass)
+		Events.caught:fire(player, prey.id, rarityId or "Normal", position, fish.mass)
 	end
 	if gained > 0 then
 		addHaul(player, gained)

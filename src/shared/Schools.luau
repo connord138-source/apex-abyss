@@ -33,8 +33,10 @@ export type Fish = {
 	prey: string,
 	offset: Vector3, -- in the school's frame, studs
 	phase: number,
-	length: number, -- body length, studs
+	length: number, -- body length, studs (its own size: `size` × the species')
 	radius: number, -- for eat checks
+	size: number, -- how big this one is next to its species (0.82–1.18, a few trophies to 1.5)
+	mass: number, -- kg: the species' mass × size³ (what eating it is worth; the Catch Log's biggest)
 }
 
 -- Where some of a prey's schools go (Config/Prey `zones`, `tideZones`)
@@ -49,6 +51,18 @@ type Zone = {
 
 local list: { School } = {}
 local fish: { Fish } = {}
+
+-- Every fish its own size (owner, 2026-10-10: the Catch Log tracks "their biggest
+-- eat of each species"): most within ±18% of the species, 1 in 25 a trophy up to
+-- half again as long. From its own seed, so no school moves.
+local sizeRng = Random.new(World.seed + 2)
+local TROPHY_CHANCE = 0.04
+local function sizeOf(): number
+	if sizeRng:NextNumber() < TROPHY_CHANCE then
+		return 1.25 + sizeRng:NextNumber() * 0.25
+	end
+	return 0.82 + sizeRng:NextNumber() * 0.36
+end
 
 -- Lays out one zone's schools of a prey (rng shared, so the layout is the same
 -- everywhere)
@@ -101,13 +115,16 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 					rng:NextNumber(-0.45, 0.45),
 					rng:NextNumber(-1, 1)
 				) * spread
+			local size = sizeOf()
 			table.insert(fish, {
 				school = #list,
 				prey = prey.id,
 				offset = offset,
 				phase = rng:NextNumber(0, 2 * math.pi),
-				length = length,
-				radius = length * 0.3,
+				length = length * size,
+				radius = length * size * 0.3,
+				size = size,
+				mass = prey.mass * size ^ 3,
 			})
 		end
 	end

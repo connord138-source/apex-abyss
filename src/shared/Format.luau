@@ -14,6 +14,15 @@ function Format.mass(kg: number): string
 	return string.format("%d t", math.floor(kg / 1000 + 0.5))
 end
 
+-- A catch's weight with enough digits for the small fish (the Catch Log's biggest:
+-- a minnow weighs 0.06–0.3 kg)
+function Format.catchMass(kg: number): string
+	if kg < 1 then
+		return string.format("%.2f kg", kg)
+	end
+	return Format.mass(kg)
+end
+
 -- Distances read in feet (owner, 2026-10-08: "instead of studs it should say ft");
 -- a stud is 0.28 m, about 0.92 ft
 local FEET_PER_STUD = 0.92

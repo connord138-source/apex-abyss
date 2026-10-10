@@ -961,11 +961,13 @@ local list: { Shade } = {
 		{ emissive = 1.5, pulse = "twinkle", aura = "stars", light = C(170, 150, 255) }
 	),
 	-- Earned on a fish's catch track (Config/Catch), never rolled: every fish can earn
-	-- its own
+	-- its own. Earned skins top out at Epic (owner, 2026-10-10: "we still don't want
+	-- the most elite skins obtained that way that'll be rng and bosses/treasure
+	-- chests"), and so do the weekly ones
 	earned(
 		"CatchGolden",
 		"Golden",
-		"Rare",
+		"Uncommon",
 		{ catch = "Golden" },
 		C(255, 196, 64),
 		C(255, 226, 120),
@@ -976,7 +978,7 @@ local list: { Shade } = {
 	earned(
 		"CatchGlowing",
 		"Glowing",
-		"Epic",
+		"Rare",
 		{ catch = "Glowing" },
 		C(10, 30, 60),
 		C(30, 160, 160),
@@ -987,7 +989,7 @@ local list: { Shade } = {
 	earned(
 		"CatchCrystal",
 		"Crystal",
-		"Legendary",
+		"Epic",
 		{ catch = "Crystal" },
 		C(150, 200, 240),
 		C(200, 230, 255),
@@ -998,7 +1000,7 @@ local list: { Shade } = {
 	earned(
 		"CatchPrism",
 		"Prism",
-		"Mythic",
+		"Epic",
 		{ catch = "Prism" },
 		C(255, 120, 230),
 		C(120, 220, 255),
@@ -1010,7 +1012,7 @@ local list: { Shade } = {
 	earned(
 		"WeekWave",
 		"Great Wave",
-		"Legendary",
+		"Epic",
 		{ week = 1 },
 		C(20, 40, 120),
 		C(200, 220, 245),
@@ -1020,7 +1022,7 @@ local list: { Shade } = {
 	earned(
 		"WeekReef",
 		"Living Reef",
-		"Legendary",
+		"Epic",
 		{ week = 2 },
 		C(30, 180, 180),
 		C(255, 140, 60),
@@ -1030,7 +1032,7 @@ local list: { Shade } = {
 	earned(
 		"WeekWreck",
 		"Shipwreck",
-		"Legendary",
+		"Epic",
 		{ week = 3 },
 		C(80, 70, 66),
 		C(200, 90, 40),
@@ -1040,7 +1042,7 @@ local list: { Shade } = {
 	earned(
 		"WeekSeaGlass",
 		"Sea Glass",
-		"Legendary",
+		"Epic",
 		{ week = 4 },
 		C(40, 140, 90),
 		C(60, 110, 200),

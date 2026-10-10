@@ -234,6 +234,18 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 	data.catchLog[preyId] = row
 	local first = (row[rarityId] or 0) == 0
 	row[rarityId] = (row[rarityId] or 0) + 1
+	-- The biggest of each species at each rarity (owner, 2026-10-10: "track their
+	-- biggest eat of each species and rarity of species too")
+	local best = data.catchBest[preyId] or {}
+	data.catchBest[preyId] = best
+	local before = best[rarityId] or 0
+	summary.mass = mass
+	if mass > before then
+		best[rarityId] = mass
+		if before > 0 then
+			summary.record = before
+		end
+	end
 	if first then
 		local coral = CatchConfig.firstCatch[rarityId] or 0
 		EconomyService.addCoral(player, coral)
@@ -299,7 +311,10 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 		end
 	end
 	DataService.markDirty(player)
-	Net.caught(player, summary)
+	-- Only what's news goes to the client (a plain minnow eaten isn't)
+	if summary.first or def or summary.record or summary.weekly or summary.row then
+		Net.caught(player, summary)
+	end
 end
 
 function CatchService.start()
@@ -328,6 +343,7 @@ function CatchService.start()
 	Guard.loop("CatchService.tick", CatchConfig.rotate.seconds, tick)
 	StateService.provide(function(_player, data, state)
 		state.catchLog = data.catchLog
+		state.catchBest = data.catchBest
 		state.logRows = data.logRows
 		state.catchTracks = data.catchTracks
 		state.weeklyFeatured = Weekly.record(data).featured

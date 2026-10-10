@@ -89,6 +89,7 @@ export type PlayerData = {
 	-- catches), its finished rows, and each fish's catch track (species id → rarity
 	-- id → catches as that fish)
 	catchLog: { [string]: { [string]: number } },
+	catchBest: { [string]: { [string]: number } }, -- prey id → rarity id → the biggest eaten (kg)
 	logRows: { [string]: boolean },
 	catchTracks: { [string]: { [string]: number } },
 	-- Today's bounties (Config/Bounties): the UTC day they're for, each one's id,
@@ -153,6 +154,7 @@ local TEMPLATE: PlayerData = {
 	daily = { day = 0, streak = 0, best = 0 },
 	garden = { coral = 0, shells = 0, at = 0 },
 	catchLog = {},
+	catchBest = {},
 	logRows = {},
 	catchTracks = {},
 	bounties = { day = 0, list = {}, chest = false },

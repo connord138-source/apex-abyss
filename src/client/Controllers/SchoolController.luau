@@ -589,7 +589,7 @@ local function step(dt: number)
 					visual.backAt = math.huge
 					table.insert(batch, { index, now })
 					local prey = Config.Prey.byId[fish.prey]
-					SchoolController.ate:fire(prey.id, prey.mass, frame.Position, rarities[index])
+					SchoolController.ate:fire(prey.id, fish.mass, frame.Position, rarities[index])
 				end
 			end
 			if not visual.hidden then

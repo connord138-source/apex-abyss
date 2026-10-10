@@ -1794,34 +1794,49 @@ local function fetchBoards(force: boolean?)
 	end)
 end
 
--- One Catch Log line: a prey species and a cell per rarity (its count, or a dash)
+-- One Catch Log line: a prey species, its biggest ever, and a cell per rarity (how
+-- many, and the biggest of that rarity; a dash until caught)
 local function logLine(
 	list: ScrollingFrame,
 	order: number,
 	preyId: string,
 	counts: { [string]: number },
+	best: { [string]: number },
 	done: boolean
 )
 	local prey = Config.Prey.byId[preyId]
 	local frame = Instance.new("Frame")
 	frame.Name = `Log{preyId}`
 	frame.LayoutOrder = order
-	frame.Size = UDim2.new(1, -8, 0, 40)
+	frame.Size = UDim2.new(1, -8, 0, 48)
 	frame.BackgroundColor3 = Ui.color.track
 	frame.BackgroundTransparency = 0.35
 	frame.BorderSizePixel = 0
 	Ui.corner(frame, UDim.new(0, 8))
-	local title = Ui.label(
+	local biggest = 0
+	for _, kg in best do
+		biggest = math.max(biggest, kg)
+	end
+	Ui.label(
 		frame,
 		"Name",
 		if done then `{prey.name}  ✓` else prey.name,
 		Ui.FONT_BOLD,
 		16,
 		if done then Ui.color.haul else Ui.color.text,
-		UDim2.fromOffset(150, 40),
-		UDim2.fromOffset(14, 0)
+		UDim2.fromOffset(150, 20),
+		UDim2.fromOffset(14, 5)
 	)
-	title.TextYAlignment = Enum.TextYAlignment.Center
+	Ui.label(
+		frame,
+		"Biggest",
+		if biggest > 0 then `biggest {Format.catchMass(biggest)}` else "not caught yet",
+		Ui.FONT_SEMI,
+		12,
+		Ui.color.muted,
+		UDim2.fromOffset(150, 16),
+		UDim2.fromOffset(14, 26)
+	)
 	local columns = { "Normal" }
 	for _, rarity in Config.Catch.rarities do
 		table.insert(columns, rarity.id)
@@ -1831,23 +1846,37 @@ local function logLine(
 		local rarity = Config.Catch.byId[id]
 		local cell = Instance.new("Frame")
 		cell.Name = id
-		cell.Size = UDim2.fromOffset(92, 28)
-		cell.Position = UDim2.fromOffset(170 + (i - 1) * 100, 6)
+		cell.Size = UDim2.fromOffset(92, 38)
+		cell.Position = UDim2.fromOffset(170 + (i - 1) * 100, 5)
 		cell.BackgroundColor3 = if count > 0 and rarity then rarity.color else Ui.color.panel
 		cell.BackgroundTransparency = if count > 0 then 0.55 else 0.4
 		cell.BorderSizePixel = 0
 		Ui.corner(cell, UDim.new(0, 6))
-		local label = Ui.label(
+		local top = Ui.label(
 			cell,
 			"Count",
 			if count > 0 then `×{Ui.number(count)}` else "—",
 			Ui.FONT_SEMI,
 			14,
 			if count > 0 then Ui.color.text else Ui.color.muted,
-			UDim2.fromScale(1, 1)
+			UDim2.new(1, 0, 0, 20),
+			UDim2.fromOffset(0, 2)
 		)
-		label.TextXAlignment = Enum.TextXAlignment.Center
-		label.TextYAlignment = Enum.TextYAlignment.Center
+		top.TextXAlignment = Enum.TextXAlignment.Center
+		if count > 0 and best[id] then
+			local sub = Ui.label(
+				cell,
+				"Best",
+				Format.catchMass(best[id]),
+				Ui.FONT_SEMI,
+				11,
+				Ui.color.text,
+				UDim2.new(1, 0, 0, 14),
+				UDim2.fromOffset(0, 21)
+			)
+			sub.TextXAlignment = Enum.TextXAlignment.Center
+			sub.TextTransparency = 0.25
+		end
 		cell.Parent = frame
 	end
 	frame.Parent = list
@@ -1900,7 +1929,11 @@ local function catchLogRows(list: ScrollingFrame)
 			end
 		end
 	end
-	heading(list, 10, `CATCH LOG · {found} / {total} found · a first catch pays, a full row pays more`)
+	heading(
+		list,
+		10,
+		`CATCH LOG · {found} / {total} found · each cell: how many, and your biggest · a first catch pays, a full row more`
+	)
 	local header = Instance.new("Frame")
 	header.Name = "LogHeader"
 	header.LayoutOrder = 11
@@ -1924,8 +1957,9 @@ local function catchLogRows(list: ScrollingFrame)
 		label.TextXAlignment = Enum.TextXAlignment.Center
 	end
 	header.Parent = list
+	local best = s.catchBest or {}
 	for i, prey in Config.Prey.list do
-		logLine(list, 11 + i, prey.id, log[prey.id] or {}, rows[prey.id] == true)
+		logLine(list, 11 + i, prey.id, log[prey.id] or {}, best[prey.id] or {}, rows[prey.id] == true)
 	end
 	heading(list, 40, "RARE FISH · spot their sparkle; the tides change the odds")
 	for i, rarity in Config.Catch.rarities do

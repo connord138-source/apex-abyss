@@ -1,5 +1,5 @@
 {
- "_about": "Per-fish skin lines (owner, 2026-10-10: \"skins to be different for each playable fish. Common skins should be similar to original just with realistic fish reshades and the rarer they get the wilder they get\"; 12 per fish). Every line skin belongs to one fish only. Commons are realistic colour morphs of the real species, keeping the fish's own painted look; each tier up is wilder. The universal skins (catch track, weekly, trophies) are made for every fish. Ids are global and unique; the in-game config is src/shared/Config/Shades.luau. `new` marks a recipe to write; the others already exist in make_shades.py.",
+ "_about": "Earned skins (catch track, weekly) are Uncommon to Epic at most: the elite looks come only from rolls, bosses and treasure (owner, 2026-10-10). Per-fish skin lines (owner, 2026-10-10: \"skins to be different for each playable fish. Common skins should be similar to original just with realistic fish reshades and the rarer they get the wilder they get\"; 12 per fish). Every line skin belongs to one fish only. Commons are realistic colour morphs of the real species, keeping the fish's own painted look; each tier up is wilder. The universal skins (catch track, weekly, trophies) are made for every fish. Ids are global and unique; the in-game config is src/shared/Config/Shades.luau. `new` marks a recipe to write; the others already exist in make_shades.py.",
  "fish": {
   "Nibbler": {
    "species": "Nibbler",
@@ -105,14 +105,14 @@
   }
  },
  "universal": [
-  {"id": "CatchGolden", "name": "Golden", "tier": "Rare", "catch": "Golden", "new": true, "look": "Polished solid gold (metal map), the fish's own pattern showing through as darker gold engraving. Golds without blue, hard edges."},
-  {"id": "CatchGlowing", "name": "Glowing", "tier": "Epic", "catch": "Glowing", "new": true, "glow": true, "look": "Bioluminescent: deep navy body, the fish's own pattern lines and markings glowing cyan-green (glow map)."},
-  {"id": "CatchCrystal", "name": "Crystal", "tier": "Legendary", "catch": "Crystal", "new": true, "look": "Clear crystal: icy blue facets with bright glints and cool inner refractions (mid-toned, cool; gloss finish)."},
-  {"id": "CatchPrism", "name": "Prism", "tier": "Mythic", "catch": "Prism", "new": true, "glow": true, "look": "Holographic prism foil: a rainbow that sweeps across the body with the surface's facing, the fish's own pattern embossed through it, a faint glow."},
-  {"id": "WeekWave", "name": "Great Wave", "tier": "Legendary", "week": 1, "new": true, "look": "A woodblock-print great wave: deep ultramarine body with curling cool-white foam crests and claw-like spray rolling along the flanks."},
-  {"id": "WeekReef", "name": "Living Reef", "tier": "Legendary", "week": 2, "new": true, "look": "A whole reef painted on: brain coral, sea fans and tiny fish silhouettes in saturated reef colours over turquoise."},
-  {"id": "WeekWreck", "name": "Shipwreck", "tier": "Legendary", "week": 3, "new": true, "look": "Riveted iron hull plates, orange-red rust streaks (saturated), barnacle clusters and a painted hull number on the flank."},
-  {"id": "WeekSeaGlass", "name": "Sea Glass", "tier": "Legendary", "week": 4, "new": true, "look": "A mosaic of frosted sea-glass pebbles in bottle green, cobalt and amber, with soft dark grout between them."},
+  {"id": "CatchGolden", "name": "Golden", "tier": "Uncommon", "catch": "Golden", "new": true, "look": "Polished solid gold (metal map), the fish's own pattern showing through as darker gold engraving. Golds without blue, hard edges."},
+  {"id": "CatchGlowing", "name": "Glowing", "tier": "Rare", "catch": "Glowing", "new": true, "glow": true, "look": "Bioluminescent: deep navy body, the fish's own pattern lines and markings glowing cyan-green (glow map)."},
+  {"id": "CatchCrystal", "name": "Crystal", "tier": "Epic", "catch": "Crystal", "new": true, "look": "Clear crystal: icy blue facets with bright glints and cool inner refractions (mid-toned, cool; gloss finish)."},
+  {"id": "CatchPrism", "name": "Prism", "tier": "Epic", "catch": "Prism", "new": true, "glow": true, "look": "Holographic prism foil: a rainbow that sweeps across the body with the surface's facing, the fish's own pattern embossed through it, a faint glow."},
+  {"id": "WeekWave", "name": "Great Wave", "tier": "Epic", "week": 1, "new": true, "look": "A woodblock-print great wave: deep ultramarine body with curling cool-white foam crests and claw-like spray rolling along the flanks."},
+  {"id": "WeekReef", "name": "Living Reef", "tier": "Epic", "week": 2, "new": true, "look": "A whole reef painted on: brain coral, sea fans and tiny fish silhouettes in saturated reef colours over turquoise."},
+  {"id": "WeekWreck", "name": "Shipwreck", "tier": "Epic", "week": 3, "new": true, "look": "Riveted iron hull plates, orange-red rust streaks (saturated), barnacle clusters and a painted hull number on the flank."},
+  {"id": "WeekSeaGlass", "name": "Sea Glass", "tier": "Epic", "week": 4, "new": true, "look": "A mosaic of frosted sea-glass pebbles in bottle green, cobalt and amber, with soft dark grout between them."},
   {"id": "AbyssInk", "tier": "Trophy"},
   {"id": "SunkenGold", "tier": "Mythic"},
   {"id": "DrownedPearl", "tier": "Mythic"}

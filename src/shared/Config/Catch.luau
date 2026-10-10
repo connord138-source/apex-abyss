@@ -10,7 +10,9 @@
 --   * the Catch Log: every prey species × rarity, with a reward for each first catch
 --     and for each finished row;
 --   * the catch track of the fish you're swimming as: `track` catches of a rarity
---     unlock that rarity's skin for that fish (owner: "per fish, per rarity");
+--     unlock that rarity's skin for that fish (owner: "per fish, per rarity"). Those
+--     skins are Uncommon to Epic: the elite ones only come from rolls, bosses and
+--     treasure (owner, 2026-10-10);
 --   * the Catch of the Week: one prey and rarity, easier to find all week, that pays
 --     big and unlocks the week's limited skin for the fish that catches it;
 --   * the weekly leaderboard (`points`).
