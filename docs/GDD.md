@@ -485,7 +485,9 @@ progression**.
 
 - **Depth pressure** gates biomes instead of walls: a fish below the biome's level takes
   crush damage that grows the deeper it goes.
-- **The surface** is the ceiling of the map. Boats sit up there and drop hooks.
+- **The surface** is the ceiling of the map. Boats sit up there and drop hooks. It's a
+  ceiling for whole bodies: a big creature's middle stays 30% of its length under it and
+  it can't tilt its nose or tail through (`PredatorService.steer`).
 
 ### World boss events (owner, 2026-10-06)
 

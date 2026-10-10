@@ -1,6 +1,6 @@
 Apex Abyss — PC session brief: the Megalodon out of the deep blue, fights you can see, and the store page (2026-10-09)
 
-Your start-screen report (8911301) and your five fixes are merged into claude/world (c2754ec or later). Work in C:\Users\neos1\Desktop\apex-abyss on claude/core-systems.
+Your start-screen report (8911301) and your five fixes are merged into claude/world (c2754ec or later; the surface fix for M6 is in the latest). Work in C:\Users\neos1\Desktop\apex-abyss on claude/core-systems.
 
 Connor's direction this round:
 > "I want the megalodon to be a figure that sort of appears from the deep blue. It should be an eerie figure but is not for deepest darkest ocean just deep blue where there's no ground or anything just open ocean. Adds to the horror element. He should roam around the deep blue but the deep blue needs to be large enough that he is unseen until he slowly fades into view of players. Once he is upon them he needs to be seeable to be fightable. The deepest dark is for the giant squid and even this is a massive reason why the abyss can't be completely black — how will anyone fight anything in pitch black or low visibility let alone a boss."
@@ -69,6 +69,12 @@ Summon it with the Admin panel's SUMMON (the command bar's `_G` doesn't reach th
 - **M5 Last stand into the Trench:**
   - Hurt it below 25% (Admin) and follow it down.
   - In the dark near it, the dark lifts (log Lighting.Ambient near it and 300 studs away), and it stays visible to fight.
+- **M6 The surface** (Connor's screenshot: the Megalodon's back broke through the surface while it chased a fish at 6 ft):
+  - Swim right under the surface (depth 0–10 ft) with the Megalodon hunting you.
+  - It must never break through: no back, fin, nose or tail above the surface sheet, from below or from the side. Log its Y (expect ≤ 401 for its middle).
+  - It can still bite you there (the jaw rises to meet you).
+  - Up close its body looks solid, not see-through.
+  - Screenshot it right under you at the surface.
 
 ## 3. The Giant Squid and the Trench
 
@@ -127,7 +133,7 @@ Connor is signing in to Roblox in your browser pane. Once he has, and once the t
 ## 7. Report
 
 Write docs/playtests/2026-10-09-pc-boss.md:
-- M1–M5, Q1–Q3, S2 and Output: pass/fail with the logged values
+- M1–M6, Q1–Q3, S2 and Output: pass/fail with the logged values
 - screenshots: the emergence sequence (400 / 250 / 150 / 80), the fight from two angles, the squid at 150 and 60, the light re-rank
 - your verdict on the feel: does the Megalodon read as an eerie figure fading out of the deep blue, and can you fight both bosses comfortably?
 - the published version, and what went up on the store page

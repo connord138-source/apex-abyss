@@ -175,6 +175,10 @@ local function targetRoot(predator: Predator): (BasePart?, number)
 	return root, if typeof(length) == "number" then length else 2
 end
 
+-- How far below the surface a creature's middle must stay, as a share of its length
+-- (its back plus a dorsal fin)
+local CEILING_SHARE = 0.3
+
 -- Moves a predator toward a desired velocity: it accelerates, turns no faster than
 -- `turnRate` (its own by default), and stays in the water column.
 local function steer(predator: Predator, desired: Vector3, dt: number, turnRate: number?)
@@ -185,7 +189,24 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 	end
 	local position = predator.position + predator.velocity * dt
 	local floor = Seafloor.y(position.X, position.Z)
-	local y = math.clamp(position.Y, floor + math.max(def.depth[1] * 0.6, 5), World.surfaceY - 12)
+	-- The surface is a ceiling for the whole body, not just its middle: a big
+	-- creature's back and fin sit well above its axis (playtest 2026-10-10: the
+	-- Megalodon chased a fish at the surface, its middle stopped 12 studs under, and
+	-- its back and fin broke through the surface sheet)
+	local ceiling = World.surfaceY - math.max(12, def.length * CEILING_SHARE)
+	local y = math.clamp(position.Y, floor + math.max(def.depth[1] * 0.6, 5), ceiling)
+	if y >= ceiling and predator.velocity.Y > 0 then
+		predator.velocity = Vector3.new(predator.velocity.X, 0, predator.velocity.Z)
+	end
+	-- ...and its nose and tail stay under too: near the surface it can only tilt so far
+	local reach = def.length * 0.45
+	local room = (World.surfaceY - 4 - def.length * 0.09 - y) / math.max(reach, 1)
+	if room < 1 and math.abs(predator.heading.Y) > room then
+		local flat = Vector3.new(predator.heading.X, 0, predator.heading.Z)
+		local tilt = math.clamp(predator.heading.Y, -math.max(room, 0), math.max(room, 0))
+		local level = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.xAxis
+		predator.heading = (level * math.sqrt(math.max(1 - tilt * tilt, 0)) + Vector3.yAxis * tilt).Unit
+	end
 	predator.position = Vector3.new(position.X, y, position.Z)
 end
 

@@ -409,7 +409,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   BLUE with no arrow or distance. The squid has no fade (the dark is its own) but the
   same fight light.
 - **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
-  and radii scaled with them (`Config/Bosses.luau`). **Bosses are solid** (playtest
+  and radii scaled with them (`Config/Bosses.luau`). **The surface is a ceiling for
+  the whole body** (playtest 2026-10-10: chasing a fish at the surface, the
+  Megalodon's back and fin broke through the surface sheet): `PredatorService.steer`
+  keeps a creature's middle `max(12, 0.3 × length)` under the surface and limits its
+  tilt there so nose and tail stay under; it still reaches a fish hugging the
+  surface (its mouth rises to ~16 studs under). **Bosses are solid** (playtest
   2026-10-08: the Megalodon and fish phased through each other): your own fish is
   pushed out of a boss's body capsule on the client (`PredatorController` `solid`),
   set back onto the capsule's surface with only its speed into the body taken away
