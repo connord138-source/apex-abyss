@@ -121,6 +121,10 @@ class Fish:
             cov = ndimage.zoom(cov.astype(np.float32), k, order=0) > 0.5
         self.cov = cov
         self.mn, self.mx = d["bounds"]
+        # Texels the bake never reached keep the bounds' corner as their place (a
+        # quarter of the atlas): left out of the point sets the lines' patterns use
+        corner = np.all(np.abs(self.pos - self.mn.astype(np.float32)) < 1e-3, axis=-1)
+        self.real = cov & ~corner
         self.length = float(d["length"])
         self.faces = d["faces"]
         self.hsv = rgb_to_hsv(self.color)
@@ -979,7 +983,8 @@ def blades(m: Fish):
         rng = np.random.default_rng(17)
         flat_p = m.p.reshape(-1, 3)
         flat_n = m.nrm.reshape(-1, 3)
-        pick = rng.choice(len(flat_p), size=min(260000, len(flat_p)), replace=False)
+        real = np.flatnonzero(m.real.reshape(-1))
+        pick = real[rng.choice(len(real), size=min(260000, len(real)), replace=False)]
         tree = cKDTree(flat_p[pick])
         thick = np.full(len(flat_p), 1.0, np.float32)
         for depth in (0.026, 0.018, 0.012, 0.008, 0.005):
@@ -990,10 +995,10 @@ def blades(m: Fish):
         thick = thick.reshape(m.y.shape)
         mask = smoothstep(0.022, 0.012, ndimage.median_filter(thick, 5))
         body = mask < 0.5
-        pts_body = m.p[body]
+        pts_body = m.p[body & m.real]
         pts_body = pts_body[rng.choice(len(pts_body), size=min(150000, len(pts_body)), replace=False)]
         from_body = cKDTree(pts_body).query(flat_p)[0].reshape(m.y.shape)
-        fin_idx = np.flatnonzero((~body).reshape(-1))
+        fin_idx = np.flatnonzero((~body & m.real).reshape(-1))
         reach_ = np.zeros(m.y.shape, np.float32)
         label = np.full(m.y.shape, -1, int)
         if len(fin_idx) > 50:
@@ -1004,14 +1009,12 @@ def blades(m: Fish):
             graph = sub_tree.sparse_distance_matrix(sub_tree, 0.009, output_type="coo_matrix")
             count, labels = connected_components(graph, directed=False)
             far = from_body.reshape(-1)[sub]
-            top = np.zeros(count, np.float32)
-            np.maximum.at(top, labels, far)
             sizes = np.bincount(labels, minlength=count)
             # A fin's own furthest, a little in from the very tip; a few stray texels
             # (a spike's point) count as part of the skin round them
-            for k in range(count):
-                if sizes[k] >= 12:
-                    top[k] = np.percentile(far[labels == k], 97)
+            order = np.lexsort((far, labels))
+            starts = np.searchsorted(labels[order], np.arange(count))
+            top = far[order][starts + np.floor((sizes - 1) * 0.97).astype(int)].astype(np.float32)
             _, j = sub_tree.query(flat_p[fin_idx])
             lab = labels[j]
             small = sizes[lab] < 40
@@ -1021,7 +1024,6 @@ def blades(m: Fish):
             flat_r[fin_idx] = r
             flat_l = label.reshape(-1)
             flat_l[fin_idx] = np.where(small, -1, lab)
-            mask = mask * (1 - small.astype(np.float32).sum() * 0) # keep the mask
         return mask.astype(np.float32), reach_, label
 
     return cache(m, "blades", make)
@@ -1080,8 +1082,7 @@ def scatter(m: Fish, count, seed, weight=None):
     `weight` is higher."""
     rng = np.random.default_rng(seed)
     flat = m.p.reshape(-1, 3)
-    ok = m.cov.reshape(-1)
-    w = ok.astype(np.float64)
+    w = m.real.reshape(-1).astype(np.float64)
     if weight is not None:
         w = w * np.clip(np.asarray(weight, np.float64).reshape(-1), 0, None)
     w /= w.sum()
@@ -1199,8 +1200,8 @@ def nib_bands(m: Fish):
         band = ndimage.gaussian_filter((cream & inside).astype(np.float32), 1.5) > 0.5
         band &= inside & (m.keep < 0.3)
         rng = np.random.default_rng(5)
-        pts_in = m.p[band]
-        pts_out = m.p[~band & m.cov]
+        pts_in = m.p[band & m.real]
+        pts_out = m.p[~band & m.real]
         pts_in = pts_in[rng.choice(len(pts_in), min(90000, len(pts_in)), replace=False)]
         pts_out = pts_out[rng.choice(len(pts_out), min(140000, len(pts_out)), replace=False)]
         flat = m.p.reshape(-1, 3)
