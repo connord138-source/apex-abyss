@@ -41,6 +41,15 @@ local function banner(tide: TideConfig.Tide)
 	if StartController.isUp() then
 		return
 	end
+	-- A player's own banner (the tutorial's end, a skin unlock) has the spot: wait
+	-- for it, and skip this one if the tide turned again meanwhile
+	local waited = 0
+	while Ui.centreBannerUp() and waited < 8 do
+		waited += task.wait(0.25)
+	end
+	if shown ~= tide.id then
+		return
+	end
 	Sfx.play("Banner", { volume = 0.5, pitch = if tide.id == "Prism" then 1.25 else 0.9 })
 	local old = gui:FindFirstChild("TideBanner")
 	if old then
@@ -161,7 +170,7 @@ local function step()
 			stroke.Transparency = 0.45
 		end
 		if not first then
-			banner(tide)
+			task.spawn(banner, tide)
 		end
 	end
 	nameLabel.Text = string.upper(tide.name)

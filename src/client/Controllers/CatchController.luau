@@ -39,6 +39,7 @@ local function banner(kicker: string, title: string, sub: string, color: Color3)
 	if old then
 		old:Destroy()
 	end
+	Ui.clearTideBanner()
 	local holder = Instance.new("Frame")
 	holder.Name = "CatchBanner"
 	holder.AnchorPoint = Vector2.new(0.5, 0)

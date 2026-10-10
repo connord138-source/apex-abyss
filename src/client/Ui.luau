@@ -191,6 +191,33 @@ function Ui.topBottom(): number
 	return math.max(Ui.bossBottom(), Ui.tideBottom())
 end
 
+-- Centre banners share the middle of the screen, so they take turns (playtest
+-- 2026-10-10: TUTORIAL COMPLETE and a tide's banner drew on top of each other).
+-- Whether a player's own banner (the tutorial's end, a skin unlock, the Catch of
+-- the Week) is up: the tide's banner waits for it.
+function Ui.centreBannerUp(): boolean
+	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	if playerGui == nil then
+		return false
+	end
+	for _, name in { "TutorialBanner", "CatchBanner" } do
+		if playerGui:FindFirstChild(name, true) then
+			return true
+		end
+	end
+	return false
+end
+
+-- A player's own banner takes the spot from a tide's (the tide stays on its chip)
+function Ui.clearTideBanner()
+	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	local tides = playerGui and playerGui:FindFirstChild("Tides")
+	local banner = tides and tides:FindFirstChild("TideBanner")
+	if banner then
+		banner:Destroy()
+	end
+end
+
 -- The safe area's top inset (the Roblox top bar), in screen pixels.
 function Ui.topInset(): number
 	-- GetGuiInset can still read 0 while the client starts up; the top bar's own

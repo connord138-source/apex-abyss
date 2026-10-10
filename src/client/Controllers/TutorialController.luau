@@ -134,7 +134,9 @@ local function celebrate()
 	while hudGui and hudGui:FindFirstChild("Banked") and waited < 4 do
 		waited += task.wait(0.1)
 	end
+	Ui.clearTideBanner()
 	local holder = Instance.new("Frame")
+	holder.Name = "TutorialBanner"
 	holder.AnchorPoint = Vector2.new(0.5, 0.5)
 	holder.Position = UDim2.fromScale(0.5, 0.32)
 	holder.Size = UDim2.fromOffset(700, 110)
