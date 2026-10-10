@@ -892,7 +892,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-07-pc.md`, `2026-10-07-pc-retest.md`, `2026-10-07-pc-fixes.md`,
   `2026-10-08-pc.md`, which also covers the two world rounds before it,
   `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`, `2026-10-09-pc-monetization.md`,
-  `2026-10-09-pc-fixes.md`, `2026-10-09-pc-trench.md`, `2026-10-09-pc-start.md`;
+  `2026-10-09-pc-fixes.md`, `2026-10-09-pc-trench.md`, `2026-10-09-pc-start.md`,
+  `2026-10-09-pc-boss.md`;
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
