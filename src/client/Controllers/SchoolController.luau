@@ -91,6 +91,12 @@ local CatchConfig = Config.Catch
 local rarities: { [number]: string } = {} -- prey index → rarity id (rare fish only)
 local prisms: { [number]: Visual } = {} -- fish wearing the Prism look (their colour cycles)
 local tideOff: { [number]: boolean } = {} -- tide schools hidden because their tide isn't up
+-- A tide school near the camera when its tide ends shrinks away over TIDE_FADE
+-- seconds instead of popping out in front of you (playtest 2026-10-10); far off,
+-- out in the haze, it just goes
+local tideFade: { [number]: number } = {} -- school index → clock its fade began
+local TIDE_FADE = 1.5
+local TIDE_FADE_RANGE = 160
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
 
 -- How each rarity looks on a fish: its material and colour (the texture is held
@@ -484,18 +490,31 @@ local function step(dt: number)
 			continue
 		end
 		-- A tide's school (the Sardine Run's bait balls) only while its tide is up
+		local fadeOut: number? = nil
 		if school.tide and school.tide ~= tideId then
-			if not tideOff[schoolIndex] then
+			if tideOff[schoolIndex] then
+				continue
+			end
+			local fading = tideFade[schoolIndex]
+			if fading == nil and (school.center - camera).Magnitude < TIDE_FADE_RANGE + school.radius then
+				fading = now
+				tideFade[schoolIndex] = now
+			end
+			if fading == nil or now - fading >= TIDE_FADE then
+				tideFade[schoolIndex] = nil
 				tideOff[schoolIndex] = true
 				for index = school.first, school.first + school.count - 1 do
 					setHidden(visuals[index], true)
 				end
+				continue
 			end
-			continue
-		elseif tideOff[schoolIndex] then
+			fadeOut = (now - fading) / TIDE_FADE
+		elseif tideOff[schoolIndex] or tideFade[schoolIndex] then
+			tideFade[schoolIndex] = nil
 			tideOff[schoolIndex] = nil
 			for index = school.first, school.first + school.count - 1 do
 				setHidden(visuals[index], false)
+				visuals[index].fadeIn = 0 -- one caught mid-fade grows back
 			end
 		end
 		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
@@ -561,7 +580,18 @@ local function step(dt: number)
 					setHidden(visual, true)
 				end
 			elseif not visual.hidden then
-				if visual.fadeIn < 1 then
+				if fadeOut then
+					-- Its tide is over: it shrinks away (and can't be eaten any more)
+					local shrink = 1 - 0.8 * fadeOut
+					if visual.model then
+						(visual.model :: Model):ScaleTo(visual.unitScale * shrink)
+					else
+						visual.body.Size = visual.bodySize * shrink
+					end
+					if visual.tail then
+						visual.tail.Size = visual.tailSize * shrink
+					end
+				elseif visual.fadeIn < 1 then
 					visual.fadeIn = math.min(1, visual.fadeIn + dt * 2.5)
 					local grow = 0.3 + 0.7 * visual.fadeIn
 					if visual.model then
@@ -574,7 +604,8 @@ local function step(dt: number)
 					end
 				end
 				-- Eat it if it's in reach and small enough
-				local inReach = mouth ~= nil
+				local inReach = fadeOut == nil
+					and mouth ~= nil
 					and not inHub
 					and (frame.Position - (mouth :: Vector3)).Magnitude <= reach + fish.radius
 				if inReach and not Size.canSwallow(length, fish.length) then
