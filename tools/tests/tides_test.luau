@@ -45,10 +45,12 @@ check(Tides.nextPrism(start) == start + 3 * 3600, `next Prism from Monday 00:00:
 -- Weeks
 check(Tides.weekStart(Tides.week(start)) == start, "week start")
 check(Tides.week(start - 1) == Tides.week(start) - 1, "Sunday is the week before")
-local featured, week = Catch.weekly(start + 100)
+local first = Config.Catch.weekly.start
+local featured, week = Catch.weekly(first + 100)
 check(week == 1 and featured ~= nil and featured.prey == "Grouper", "week 1's Catch of the Week")
-local _, before = Catch.weekly(start - 100)
+local _, before = Catch.weekly(first - 100)
 check(before == 0, "no Catch of the Week before week 1")
+check(Tides.weekStart(Tides.week(first)) == first, "week 1 starts on a Monday")
 -- Odds
 local calm = Catch.chances("Minnow", "Calm", false, start + 100)
 check(calm.Prism == 0, "Prism outside its tide")
@@ -57,9 +59,9 @@ local golden = Catch.chances("Minnow", "Golden", false, start + 100)
 check(math.abs(golden.Golden - 5 / 35) < 1e-12, "Golden Hour ×5")
 local prism = Catch.chances("Minnow", "Prism", false, start + 100)
 check(prism.Prism > 0, "Prism in the Prism Tide")
-local biolumDeep = Catch.chances("Snapper", "Biolum", true, start + 100)
+local biolumDeep = Catch.chances("Sardine", "Biolum", true, start + 100)
 check(math.abs(biolumDeep.Glowing - 5 / 180) < 1e-12, "Glowing ×5 in the deep at night")
-local weeklyFish = Catch.chances("Grouper", "Calm", false, start + 100)
+local weeklyFish = Catch.chances("Grouper", "Calm", false, first + 100)
 check(math.abs(weeklyFish.Crystal - 3 / 900) < 1e-12, "the featured fish ×3")
 -- Rolling: the rarest first, and plain past the sum
 check(Catch.roll(0, golden) == "Crystal", "roll 0 is the rarest available")

@@ -133,7 +133,7 @@ return {
 	rowComplete = { coral = 3000, shells = 60 },
 	logTitle = "Master Angler", -- every species at every rarity
 	weekly = {
-		start = 1791763200, -- Monday 2026-10-12 00:00 UTC: week 1
+		start = 1791158400, -- Monday 2026-10-05 00:00 UTC: week 1 (live from the first build)
 		list = weekly,
 		chance = 3, -- the featured fish swims rare at ×this all week
 		points = 50, -- extra leaderboard points for catching it

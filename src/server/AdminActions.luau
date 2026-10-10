@@ -473,7 +473,7 @@ end
 local function weeklyCatch(_admin: Player, targets: { Player }): string
 	local featured = Catch.weekly(Timing.unix())
 	if featured == nil then
-		return "No Catch of the Week yet (week 1 starts Monday 2026-10-12)"
+		return "No Catch of the Week yet"
 	end
 	local prey = Config.Prey.byId[featured.prey]
 	for _, player in targets do

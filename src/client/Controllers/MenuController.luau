@@ -810,9 +810,13 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 		for _, shade in line do
 			table.insert(shown, shade)
 		end
-		for _, shade in Config.Shades.list do
-			if shade.species == nil and (shade.week == nil or owned[shade.id]) then
-				table.insert(shown, shade)
+		-- (catch-track skins first, then the weeks', then trophies and treasure)
+		for pass = 1, 3 do
+			for _, shade in Config.Shades.list do
+				local group = if shade.catch then 1 elseif shade.week then 2 else 3
+				if shade.species == nil and group == pass and (shade.week == nil or owned[shade.id]) then
+					table.insert(shown, shade)
+				end
 			end
 		end
 		for _, shade in shown do

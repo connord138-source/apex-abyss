@@ -163,6 +163,49 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     ones too. The wardrobe names a shade another of your fish has ("unlock it again
     for this one", `state.otherShades`). Old saves: the global `data.shades` was
     copied to every unlocked fish and emptied.
+  - **Every fish has its own skin line (owner, 2026-10-10: "skins to be different for
+    each playable fish. Common skins should be similar to original just with
+    realistic fish reshades and the rarer they get the wilder they get"; 12 per
+    fish):** `Config/Shades` `LINES`: 4 Common realistic morphs of the real species
+    (the Shade Dyer sells them), 3 Uncommon (a new tier), 2 Rare, Epic, Legendary,
+    Mythic, at 1 in 32/100/150/300/700/1,500 (coral stays 82.5% of a fresh fish's
+    roll). The 30 v3 shades fill wilder places; 42 skins are new
+    (`tools/shades/lines.json` lists every one with its look). A line skin rolls,
+    sells and shows only on its own fish (`Shades.fits`, `Shades.rollable`,
+    `RollOdds.table(luck, owned, species)`); every fish can also have the boss
+    trophies, treasure shades, its catch-track skins and the weekly ones. Old saves:
+    a skin now on another fish's line turned into its coral (DataService load).
+- **The pull-back loop (owner, 2026-10-10: "I still feel like we're missing a factor
+  that pulls people back over and over. I do want to add random rarities of fish that
+  can be eaten for more towards the haul or like 10 total unlocks a skin"; of the four
+  proposed, "All four please!"; built, GDD §8 "The pull-back loop"):**
+  - **Rare catches** (`Config/Catch`, `Shared/Catch`, `CatchService`): any prey can
+    swim Golden (1/35, Haul ×3), Glowing (1/180, ×6), Crystal (1/900, ×12) or Prism
+    (Prism Tide only, 1/150, ×25), with coral and DNA. Rolled on respawn and re-rolled
+    while no one's within 260 studs (12 fish every 5 s, ×3 just after a tide turns);
+    the server streams which are rare (`PreyRarity`, `GetRarities`) and
+    `SchoolController` draws them (foil, Neon teal, Glass, rainbow; sparkles and a
+    light; their texture held aside). `HuntService` takes a fish's rarity as it's
+    eaten (`CatchService.take`) and fires `Events.caught`.
+  - **Catch Log and catch tracks:** every prey × rarity with first-catch rewards, row
+    rewards and the Master Angler title; per fish, 10 Golden / 10 Glowing / 5 Crystal
+    / 3 Prism catches unlock that rarity's skin for it (`data.catchLog`, `logRows`,
+    `catchTracks`).
+  - **Tide Clock** (`Config/Tides`, `Shared/Tides`, `TideService`, `TideController`):
+    20-minute tides on Unix time, the same on every server, never one twice in a row:
+    Calm, Golden Hour, Blood Tide (hunters faster, `PredatorService`), Sardine Run
+    (bait-ball schools, `Config/Prey` `tideZones`, built after the others with their
+    own seed so no school moved), Bioluminescent Night; the Prism Tide at 03/09/15/21
+    UTC. Chip at the top, banner, a faint water tint (`OceanController.setTide`),
+    forecast. Admin can force one (`TideOverride` Workspace attributes).
+  - **Daily bounties** (`Config/Bounties`, `BountyService`), **Catch of the Week**
+    (`Config/Catch` `weekly`, week 1 = 2026-10-05; a limited skin each week) and
+    **weekly leaderboards** (`Config/Leaderboards`, `LeaderboardService`:
+    OrderedDataStores `Weekly_v1_<board>_<week>`, a Studio fallback to this server;
+    last week's top 100 titles).
+  - **The LOG** (beside DAILY; `MenuController.openLog`): Catch Log, Bounties, Weekly,
+    Tides. `CatchController` toasts catches and announces unlocks. Tests:
+    `tools/tests/run_tides.sh`.
 - **Coral and vendors (owner, 2026-10-06):** Coral is the currency. Four vendor stalls
   round the hub plaza, near the dens, sell with it:
   - Outfitter: upgrades.
@@ -902,7 +945,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-08-pc.md`, which also covers the two world rounds before it,
   `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`, `2026-10-09-pc-monetization.md`,
   `2026-10-09-pc-fixes.md`, `2026-10-09-pc-trench.md`, `2026-10-09-pc-start.md`,
-  `2026-10-09-pc-boss.md`;
+  `2026-10-09-pc-boss.md`, `2026-10-10-pc.md` (boss see-through),
+  `2026-10-10-pc-pullback.md`;
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
