@@ -10,6 +10,13 @@
 -- nothing, a later one swayed everything). A plant whose parts streamed in or out
 -- is collected again; each part's rest pose is kept (the `KelpRest` attribute), so
 -- collecting a plant mid-sway never makes it drift.
+--
+-- Kelp is soft, so fish swim through it, but it gives way (owner, 2026-10-10: "the
+-- kelp and a lot of other items are phasing and glitching"): a plant leans away
+-- from any fish passing through it, far enough to clear the fish at its height, and
+-- springs back after; a plant the camera is inside fades out instead of flickering
+-- across the lens.
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -20,10 +27,20 @@ type Plant = {
 	phase: number,
 	rate: number,
 	amplitude: number,
+	height: number, -- how tall it stands
+	pushX: number, -- the lean away from fish, radians about the base's X and Z
+	pushZ: number,
+	faded: boolean, -- the camera is inside it
 }
 
 local REACH = 180 -- studs from the camera a plant still sways
 local RESCAN = 0.5 -- seconds between picking the plants in reach
+local GIVE = 3.5 -- studs round the stalk a fish pushes it (plus the fish's own radius)
+local MAX_LEAN = 0.55 -- radians a plant leans away at most
+local LEAN_IN = 7 -- how fast it gives way (per second) ...
+local LEAN_OUT = 1.8 -- ... and springs back
+local FADE_RADIUS = 4 -- studs round the stalk the camera makes it fade
+local FADED = 0.75 -- its LocalTransparencyModifier then
 
 local KelpController = {}
 
@@ -72,10 +89,16 @@ local function collect(plant: Model, old: Plant?): Plant?
 		phase = if old then old.phase else rng:NextNumber(0, 6.28),
 		rate = if old then old.rate else rng:NextNumber(0.3, 0.55),
 		amplitude = if old then old.amplitude else rng:NextNumber(0.035, 0.07),
+		height = stalk.Size.Y,
+		pushX = if old then old.pushX else 0,
+		pushZ = if old then old.pushZ else 0,
+		faded = false,
 	}
 	for _, part in partsOf(plant) do
 		table.insert(entry.parts, part)
-		table.insert(entry.offsets, base:ToObjectSpace(restOf(part)))
+		local offset = base:ToObjectSpace(restOf(part))
+		table.insert(entry.offsets, offset)
+		entry.height = math.max(entry.height, offset.Y + part.Size.Y / 2)
 	end
 	return entry
 end
@@ -116,6 +139,63 @@ local function rescan()
 	end
 end
 
+-- Every player's fish near the camera: where it is and how wide (prey are small
+-- and swim round the kelp)
+local swimmers: { { position: Vector3, radius: number } } = {}
+local function gatherSwimmers(camera: Vector3)
+	table.clear(swimmers)
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") and (root.Position - camera).Magnitude < REACH + 20 then
+			local length = (character :: Model):GetAttribute("Length")
+			table.insert(swimmers, {
+				position = root.Position,
+				radius = if typeof(length) == "number" then length * 0.3 else 1,
+			})
+		end
+	end
+end
+
+-- The lean (about the base's X and Z) that clears every fish in the plant, or 0, 0
+local function leanFor(plant: Plant): (number, number)
+	local bestX, bestZ, best = 0, 0, 0
+	for _, swimmer in swimmers do
+		local q = plant.base:PointToObjectSpace(swimmer.position)
+		if q.Y < -swimmer.radius or q.Y > plant.height + swimmer.radius then
+			continue
+		end
+		local d = math.sqrt(q.X * q.X + q.Z * q.Z)
+		local reach = GIVE + swimmer.radius
+		if d >= reach then
+			continue
+		end
+		-- Far enough over to clear the fish at its height, away from it
+		local angle = math.min(MAX_LEAN, (reach - d) / math.max(q.Y, 4))
+		if angle > best then
+			local awayX, awayZ = 1, 0
+			if d > 1e-3 then
+				awayX, awayZ = -q.X / d, -q.Z / d
+			end
+			-- About X tips the top toward +Z; about Z by a negative angle, toward +X
+			best, bestX, bestZ = angle, awayZ * angle, -awayX * angle
+		end
+	end
+	return bestX, bestZ
+end
+
+local function setFaded(plant: Plant, faded: boolean)
+	if plant.faded == faded then
+		return
+	end
+	plant.faded = faded
+	for _, part in plant.parts do
+		if part.Parent ~= nil and part.Transparency < 1 then
+			part.LocalTransparencyModifier = if faded then FADED else 0
+		end
+	end
+end
+
 local function step(dt: number)
 	clock += dt
 	sinceScan += dt
@@ -123,15 +203,28 @@ local function step(dt: number)
 		sinceScan = 0
 		rescan()
 	end
+	local camera = Workspace.CurrentCamera.CFrame.Position
+	gatherSwimmers(camera)
 	table.clear(parts)
 	table.clear(frames)
 	for _, plant in active do
+		-- Give way to fish, quickly, and spring back slowly
+		local wantX, wantZ = leanFor(plant)
+		local pushing = wantX ~= 0 or wantZ ~= 0
+		local ease = math.min(1, dt * (if pushing then LEAN_IN else LEAN_OUT))
+		plant.pushX += (wantX - plant.pushX) * ease
+		plant.pushZ += (wantZ - plant.pushZ) * ease
+		local eye = plant.base:PointToObjectSpace(camera)
+		setFaded(
+			plant,
+			eye.Y > -1 and eye.Y < plant.height + 1 and math.sqrt(eye.X * eye.X + eye.Z * eye.Z) < FADE_RADIUS
+		)
 		-- A slow lean that wanders round, so no two plants nod together
 		local a = plant.amplitude
 		local tilt = CFrame.Angles(
-			a * math.sin(clock * plant.rate + plant.phase),
+			a * math.sin(clock * plant.rate + plant.phase) + plant.pushX,
 			0,
-			a * 0.7 * math.sin(clock * plant.rate * 0.73 + plant.phase * 1.3)
+			a * 0.7 * math.sin(clock * plant.rate * 0.73 + plant.phase * 1.3) + plant.pushZ
 		)
 		local frame = plant.base * tilt
 		for i, part in plant.parts do

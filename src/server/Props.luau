@@ -2,8 +2,8 @@
 -- Imported 3D props (docs/ASSETS.md). Every world object is built from plain parts
 -- first; when a matching model has been imported into ReplicatedStorage, it is
 -- fitted over that part and the part turns invisible (it keeps its collision and
--- labels). Without imports the game still runs on blocks. The same pattern carried
--- Hatch & Snatch's 100+ models.
+-- labels, unless the prop is `solid`). Without imports the game still runs on
+-- blocks. The same pattern carried Hatch & Snatch's 100+ models.
 --
 --   ReplicatedStorage.WorldProps.<Name>   kelp, rocks, coral, stalls, lanterns, ...
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -48,6 +48,11 @@ export type DressOptions = {
 	cframe: CFrame?, -- center of that box, upright (default: the part's CFrame)
 	keepVisible: boolean?, -- leave the placeholder part showing
 	tint: Color3?, -- multiply the model's colors (only ever darkens a texture)
+	-- The model itself is what fish bump into, and the placeholder stops colliding
+	-- (playtest 2026-10-10: a boulder's tilted placeholder box was an invisible wall
+	-- round it, and corals had no collision at all, so fish swam through them)
+	solid: boolean?,
+	blocksCamera: boolean?, -- with `solid`: the camera stays out of it too (big rocks)
 }
 
 -- Fits WorldProps.<name> over `part` and hides the part. Returns the model, or nil
@@ -64,6 +69,18 @@ function Props.dress(part: BasePart, name: string, options: DressOptions?): Mode
 	Props.place(model, opts.cframe or part.CFrame, opts.size or part.Size)
 	if opts.tint then
 		Props.tint(model, opts.tint)
+	end
+	if opts.solid then
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.CanCollide = true
+				descendant.CanQuery = opts.blocksCamera == true
+				descendant.CanTouch = false
+			end
+		end
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
 	end
 	model.Parent = part.Parent
 	if not opts.keepVisible then

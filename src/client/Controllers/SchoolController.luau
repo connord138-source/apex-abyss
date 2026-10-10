@@ -38,6 +38,10 @@ local SchoolController = {
 local lastTooBig = 0
 
 local DRAW_DISTANCE = 520 -- schools further than this from the camera aren't moved
+-- Bodies further than this hold their spine still (they still swim their paths): the
+-- wave can't be seen that far off, and there are many more small fish near the hub
+-- now (owner, 2026-10-10: "far too scarce")
+local WAVE_DISTANCE = 160
 -- Static GLB prey meshes came in facing +Z (owner, 2026-10-07: "swimming backwards");
 -- they're turned round when drawn. Rigged FBX bodies face -Z already.
 local MESH_FLIP = CFrame.Angles(0, math.pi, 0)
@@ -601,7 +605,9 @@ local function step(dt: number)
 					-- (Shared/SwimWave), faster for the quick little ones
 					local prey = Config.Prey.byId[fish.prey]
 					visual.phase += dt * 2 * math.pi * (0.9 + prey.speed * 0.22)
-					SwimWave.applyBones(visual.bones, visual.spine, visual.phase, 0.34, 0)
+					if (frame.Position - camera).Magnitude < WAVE_DISTANCE then
+						SwimWave.applyBones(visual.bones, visual.spine, visual.phase, 0.34, 0)
+					end
 					table.insert(frames, frame)
 				elseif tail then
 					table.insert(frames, frame)

@@ -2,7 +2,9 @@
 -- One place for every device's controls, so the swim, camera and HUD code never
 -- cares what the player is holding.
 --
---   PC:       mouse looks (cursor locked; hold Alt to free it), the wheel zooms,
+--   PC:       mouse looks (cursor locked; tap Alt or M to free it for the HUD and
+--             menus, tap again or click the game to lock it; hold Alt for a
+--             moment's cursor), the wheel zooms,
 --             WASD or the arrows swim toward the camera, Space / Ctrl up and
 --             down, Shift or Q uses the ability (the Nibbler's Dash), click or F
 --             bites, E shops at a stall
@@ -30,11 +32,21 @@ local Input = {
 	bite = Signal.new(),
 	-- () — the ability button was pressed (the Nibbler's Dash)
 	ability = Signal.new(),
-	-- Set by menus (none yet) to free the mouse
+	-- Set by menus to free the mouse
 	cursorWanted = false,
+	-- Alt or M tapped: the cursor stays free for the HUD buttons and panels until
+	-- Alt or M again, or a click on the game (owner, 2026-10-10: "since the cursor is
+	-- tied to swimming there is no way to click on ui panels"). Studio's own window
+	-- can take an Alt tap, so M does the same.
+	cursorToggled = false,
+	-- (free: boolean) — the player freed or locked the cursor (the HUD's chip)
+	cursorChanged = Signal.new(),
 	-- Set while the start screen is up: the fish doesn't swim, look, bite or dash
 	locked = false,
 }
+
+local ALT_TAP = 0.35 -- seconds: an Alt let go sooner than this toggles the cursor
+local altDownAt: number? = nil
 
 local touchLook = Vector2.zero
 local lookTouches: { [InputObject]: boolean } = {}
@@ -80,6 +92,21 @@ local function pollSticks()
 	end
 end
 
+-- Frees or locks the cursor for the player (the Alt / M toggle)
+local function setCursor(free: boolean)
+	-- (not under the start screen: any key there just dives in)
+	if Input.cursorToggled == free or (free and Input.locked) then
+		return
+	end
+	Input.cursorToggled = free
+	if free then
+		-- Free it now, not on the camera's next frame, so a click straight after lands
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end
+	Input.cursorChanged:fire(free)
+end
+
 function Input.start()
 	-- The HUD's own stick and buttons replace Roblox's touch controls (its dynamic
 	-- thumbstick drew a second ring beside ours, playtest 2026-10-07)
@@ -99,9 +126,22 @@ function Input.start()
 		local key = input.KeyCode
 		if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt then
 			-- Free the cursor now, not on the camera's next frame, so a click that
-			-- follows straight after lands where it's aimed
+			-- follows straight after lands where it's aimed (a tap toggles it on release)
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 			UserInputService.MouseIconEnabled = true
+			altDownAt = os.clock()
+		elseif key == Enum.KeyCode.M then
+			setCursor(not Input.cursorToggled)
+		end
+		-- With the cursor freed, a click on the game (not on a button) takes the mouse
+		-- back for swimming; it doesn't bite
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			and Input.cursorToggled
+			and not Input.cursorWanted
+		then
+			setCursor(false)
+			return
 		end
 		if
 			input.UserInputType == Enum.UserInputType.MouseButton1
@@ -130,6 +170,13 @@ function Input.start()
 		end
 		setHeld(input.KeyCode, false)
 		setHeld(input.UserInputType, false)
+		if input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt then
+			local downAt = altDownAt
+			altDownAt = nil
+			if downAt and os.clock() - downAt <= ALT_TAP then
+				setCursor(not Input.cursorToggled)
+			end
+		end
 	end)
 	UserInputService.InputChanged:Connect(function(input: InputObject, processed: boolean)
 		if input.UserInputType == Enum.UserInputType.Touch and lookTouches[input] then
@@ -214,6 +261,7 @@ function Input.wantsMouseLock(): boolean
 	return UserInputService.MouseEnabled
 		and not UserInputService.TouchEnabled
 		and not Input.cursorWanted
+		and not Input.cursorToggled
 		and not down("LeftAlt")
 		and not down("RightAlt")
 end

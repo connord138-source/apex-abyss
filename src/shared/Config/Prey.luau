@@ -45,6 +45,14 @@ local list: { PreyDef } = {
 		speed = 7,
 		pathRadius = { 18, 34 },
 		depth = { 20, 120 },
+		-- Plenty near the hub and low over the sand, where a new fish swims (owner,
+		-- 2026-10-10: "needs a lot more smaller fish ... far too scarce"; 14 schools
+		-- 20–120 up over the whole shelf were hard to find)
+		zones = {
+			{ band = { 150, 340 }, schools = 22, depth = { 4, 45 } },
+			{ band = { 340, 560 }, schools = 12, depth = { 6, 80 } },
+			{ band = { 560, 830 }, schools = 8 },
+		} :: { Zone },
 		respawn = 8,
 		back = Color3.fromRGB(122, 150, 160),
 		belly = Color3.fromRGB(214, 226, 230),
@@ -60,6 +68,10 @@ local list: { PreyDef } = {
 		speed = 9,
 		pathRadius = { 24, 44 },
 		depth = { 30, 160 },
+		zones = {
+			{ band = { 150, 420 }, schools = 12, depth = { 8, 70 } },
+			{ band = { 420, 830 }, schools = 12 },
+		} :: { Zone },
 		-- The Sardine Run's bait balls: big tight schools in the Kelp Shallows and over
 		-- the reef, out only while it's up
 		tideZones = {

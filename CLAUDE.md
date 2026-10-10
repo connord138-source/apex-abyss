@@ -79,7 +79,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the old held boost.
   - **Safe zone = the dens plus the vendor plaza.** A banner shows on leaving or
     entering it, with a protection countdown (built).
-  - **Filler food:** starfish and shrimp on the seabed (built).
+  - **Filler food:** starfish and shrimp on the seabed (built). **Thick near the hub
+    (owner, 2026-10-10: "needs a lot more smaller fish and starter food laying
+    around. far too scarce"):** `Config/Forage` `bands` (studs from the hub, count
+    each): ~1,680 spots, about one every 20 studs within 330 of the hub; a spot is
+    skipped when anything solid is round it (`ForageService` `reachable`). Minnows
+    are 42 schools (22 near the hub, 4–45 over the sand) and sardines 24
+    (`Config/Prey` `zones`); prey past 160 studs from the camera keep their path but
+    not the spine wave (`SchoolController` `WAVE_DISTANCE`).
   - **World building:** see GDD §8 "How the world gets built".
     - Code-sculpted Terrain per biome.
     - Tripo hero props placed by scatter rules.
@@ -322,6 +329,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Controls (owner, 2026-10-07):**
   - **PC stays as built** (the owner likes it): WASD swims relative to the camera (A/D
     slide sideways), the mouse aims, Space/C go up and down.
+  - **Freeing the cursor (owner, 2026-10-10: "need a way to pull up the cursor since
+    the cursor is tied to swimming"):** tap Alt or M (Studio's window can take an
+    Alt tap) to free it for the HUD and panels (`Input.cursorToggled`, the HUD's
+    CURSOR FREE chip); tap again, or click the game (that click doesn't bite), to
+    lock it. Holding Alt frees it only while held; menus free it while open.
   - **Controller and phone** use the left stick as throttle and rudder: up swims along
     the aim (further is faster), sideways turns the aim, down brakes and backs up
     still facing forward. The right stick, or a drag on the screen, aims (up and down
@@ -824,6 +836,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   are still parts. Layout numbers are unchanged, so Layout/HuntService/FishService
   still agree. Preview from the cloud: `LUAU=<luau> bash tools/preview/run_cave.sh
   <dir>` (voxelizes the ops, marching cubes, Cycles on the CPU; no EGL here).
+- **Solid props (owner, 2026-10-10: "Cant get this shrimp because of an invisible
+  wall. And a lot of the coral i can go right through"):** `Props.dress` `solid`
+  makes the imported model what fish bump into and turns the placeholder's
+  collision off (a boulder's placeholder was a tilted box, an invisible wall round
+  the rock; `blocksCamera` keeps the camera out of rocks too). Boulders and hard
+  corals (brain, staghorn, fan, tube sponge) are solid; anemones and kelp stay soft.
+  Kelp gives way instead (`KelpController`): a plant leans away from any player's
+  fish inside it (far enough to clear it at its height) and springs back, and fades
+  when the camera is inside it.
 - **Vendors (owner, 2026-10-08: "still just spheres with eyes"):** the five
   shopkeepers are models now, `vendors_glb` (`WorldProps.Keeper<VendorId>`): the
   hermit crab Outfitter, octopus Den Mason, sea turtle Tidecharm Trader, pufferfish
@@ -976,6 +997,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-08-pc-retest.md`, `2026-10-09-pc.md`, `2026-10-09-pc-monetization.md`,
   `2026-10-09-pc-fixes.md`, `2026-10-09-pc-trench.md`, `2026-10-09-pc-start.md`,
   `2026-10-09-pc-boss.md`, `2026-10-10-pc.md` (boss see-through),
+  `2026-10-10-pc-fixes.md` (walls, coral, kelp, food, cursor),
   `2026-10-10-pc-pullback.md`;
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
