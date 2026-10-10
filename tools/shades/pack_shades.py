@@ -2,11 +2,13 @@
 
     <blender python> tools/shades/pack_shades.py -- <fish.glb> <skins_dir>/<Fish> <out.glb> [size]
 
-The GLB holds one tiny quad per skin, named for its shade, whose material is the skin
-as it ships (skins.json from make_shades.py): its color map, the fish's own normal
-map, a roughness/metal map (its finish's, shared by every shade with that finish, or
-its own for a metal shade) and, for a glowing shade, its glow map as the emissive
-texture. Importing it uploads the textures and makes a SurfaceAppearance on each quad
+The GLB holds one tiny quad per skin, named for its shade, for the shades in the
+fish's own list only (shade_lines.py: its line plus the universal skins; anything else
+in the folder is left out, and a listed shade with no skin is reported). Each quad's
+material is the skin as it ships (skins.json from make_shades.py): its color map, the
+fish's own normal map, a roughness/metal map (its finish's, shared by every shade with
+that finish, or its own for a metal shade) and, for a glowing shade, its glow map as
+the emissive texture. Importing it uploads the textures and makes a SurfaceAppearance on each quad
 (the importer turns the emissive texture into the glow mask);
 tools/studio/organize_shades.luau then files them under
 ReplicatedStorage.ShadeSkins.<Fish>.<Shade>, where Cosmetics wears them in place of
@@ -24,6 +26,7 @@ import sys
 
 import bpy
 import numpy as np
+import shade_lines
 from PIL import Image
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
@@ -60,6 +63,13 @@ for obj in list(bpy.data.objects):
     bpy.data.objects.remove(obj, do_unlink=True)
 
 specs = json.loads((SKINS / "skins.json").read_text())
+FISH = SKINS.name
+if FISH in shade_lines.fishes():
+    wanted = shade_lines.shades(FISH)
+    missing = [s for s in wanted if s not in specs or not (SKINS / f"{s}.png").exists()]
+    if missing:
+        print(f"[pack] {FISH}: no skin for {', '.join(missing)} (screened out or not made); packing the rest")
+    specs = {s: specs[s] for s in wanted if s in specs}
 rm_images: dict[str, bpy.types.Image] = {}
 
 

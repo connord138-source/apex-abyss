@@ -46,9 +46,10 @@ local function roll(player: Player)
 	end
 	-- This fish's shades are out of its table (they never roll again for it)
 	local fishShades = Progress.shades(data)
-	local outcome = RollOdds.pick(luck, rng:NextNumber(), fishShades)
+	local species = Progress.speciesId(data)
+	local outcome = RollOdds.pick(luck, rng:NextNumber(), fishShades, species)
 	local probability = 0
-	for _, entry in RollOdds.table(luck, fishShades) do
+	for _, entry in RollOdds.table(luck, fishShades, species) do
 		if entry.outcome == outcome then
 			probability = entry.probability
 		end

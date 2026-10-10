@@ -309,7 +309,7 @@ local function buildButtons()
 		holder.Name = "StoreButtons"
 		holder.BackgroundTransparency = 1
 		holder.Position = UDim2.fromOffset(258, 144)
-		holder.Size = UDim2.fromOffset(196, 34)
+		holder.Size = UDim2.fromOffset(296, 34)
 		holder.Parent = gui
 		Ui.belowTopBar(gui, holder, 144)
 		local layout = Instance.new("UIListLayout")
@@ -319,6 +319,14 @@ local function buildButtons()
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
 		layout.Parent = holder
 	end
+	-- LOG: the Catch Log, bounties, the weekly race and the tides (MenuController.openLog)
+	local log = Ui.button(holder, "Log", "LOG", UDim2.fromOffset(90, 34), UDim2.new(), "secondary")
+	log.LayoutOrder = 10
+	log.TextSize = 14
+	log.Selectable = false
+	log.Activated:Connect(function()
+		MenuController.openLog()
+	end)
 	dailyButton = Ui.button(holder, "Daily", "DAILY", UDim2.fromOffset(90, 34), UDim2.new(), "secondary")
 	dailyButton.LayoutOrder = 11
 	dailyButton.TextSize = 14

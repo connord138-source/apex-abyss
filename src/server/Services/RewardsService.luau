@@ -82,6 +82,10 @@ local function claim(player: Player)
 			table.insert(got, `{count} {if charm then charm.name else id}`)
 		end
 	end
+	if reward.spins then
+		data.wheel.spins += reward.spins
+		table.insert(got, `{reward.spins} wheel spin{if reward.spins == 1 then "" else "s"}`)
+	end
 	if reward.map then
 		if TreasureService.give(player, reward.map) then
 			table.insert(got, "a treasure map")

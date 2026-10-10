@@ -10,16 +10,17 @@ export type Reward = {
 	wraps: number?, -- Kelp Wraps (up to the carry cap)
 	charms: { [string]: number }?, -- Config/Shop charm id → count
 	map: string?, -- a Config/Treasure tier
+	spins: number?, -- Treasure Wheel spins (Config/Wheel)
 	big: boolean?, -- the day the ladder builds to (drawn larger)
 }
 
 local days: { Reward } = {
 	{ coral = 300 },
 	{ shells = 50 },
-	{ coral = 600, wraps = 1 },
+	{ coral = 600, wraps = 1, spins = 1 },
 	{ shells = 100 },
 	{ coral = 1000, charms = { Lucky = 1 } },
-	{ shells = 150, charms = { SecondChance = 1 } },
+	{ shells = 150, charms = { SecondChance = 1 }, spins = 1 },
 	{ coral = 2500, shells = 100, map = "Captain", big = true },
 }
 

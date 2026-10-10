@@ -310,9 +310,34 @@ This replaced the finish and mutation plan.
   - The fish's painted strokes, eyes, teeth and mouth are kept. 33 shades × 6 fish =
     198 skins, screened for moderation before upload and imported as
     `ReplicatedStorage.ShadeSkins`.
-- **Shades are per fish (owner, 2026-10-08):** a shade works on every fish, but each
-  fish unlocks it for itself, and once a fish has a shade it never rolls again for
-  that fish (its chance goes to coral; the odds panel shows that fish's table).
+- **Shades are per fish (owner, 2026-10-08):** each fish unlocks its skins for itself,
+  and once a fish has one it never rolls again for that fish (its chance goes to
+  coral; the odds panel shows that fish's table).
+- **Every fish has its own line (owner, 2026-10-10: "skins to be different for each
+  playable fish. Common skins should be similar to original just with realistic fish
+  reshades and the rarer they get the wilder they get"; 12 per fish):**
+  `Config/Shades` `LINES`, made by `tools/shades` from `tools/shades/lines.json`.
+
+  | Place | Tier | Chance per roll | Duplicate |
+  |---|---|---|---|
+  | 1–4 | Common: realistic morphs of the real species (also at the Shade Dyer, 1,500 coral) | 1 in 32 each | 120 coral |
+  | 5–7 | Uncommon | 1 in 100 each | 300 |
+  | 8–9 | Rare | 1 in 150 each | 1,000 |
+  | 10 | Epic | 1 in 300 | 2,000 |
+  | 11 | Legendary | 1 in 700 | 5,000 |
+  | 12 | Mythic | 1 in 1,500 | 12,000 |
+
+  - About 17.5% of a fresh fish's roll is a skin (coral 82.5%), as before.
+  - The lines: Nibbler (Percula, Tomato, Maroon, Midnight clownfish morphs …
+    Prismatic), 'Cuda (Great, Yellowtail, Chevron, Blackfin barracuda … Comet),
+    Pufferfish (Guineafowl, Golden, Starry, Green Spotted … Exotic), Moray (Green,
+    Zebra, Snowflake, Honeycomb … Void), Reef Shark (Blacktip, Whitetip, Grey Reef,
+    Lemon … Nebula), Anglerfish (Seadevil, Humpback, Warty, Footballfish … Starfall).
+    The 30 v3 shades fill the wilder places; 42 skins are new.
+  - Every fish can also have: boss trophies (Ghost, Abyss Ink), treasure (Sunken Gold,
+    Drowned Pearl), its catch-track skins (Golden, Glowing, Crystal, Prism; §7 "Rare
+    catches") and the weekly skins.
+  - Old saves: a skin a fish held that's now another fish's turned into its coral.
 - **Wearing them:**
   - Shades are owned per fish; parts and variants per player. Worn from the Wardrobe
     or straight from the reveal.
@@ -869,6 +894,102 @@ Concept: `assets/concepts/GiantSquid.jpg`.
 - **World boss events** (Megalodon and Giant Squid) took Leviathan Rising's place; see
   §8 "World boss events".
 - **Bioluminescent Night:** a dark sea, and glowing skins can drop.
+- These became the **Tide Clock** (2026-10-10, below): Blood Tide, the Sardine Run and
+  Bioluminescent Night are tides now; Whale Fall is still to come.
+
+### The pull-back loop (owner, 2026-10-10; built)
+
+Owner: "I still feel like we're missing a factor that pulls people back over and over.
+I do want to add random rarities of fish that can be eaten for more towards the haul or
+like 10 total unlocks a skin." Claude proposed four pieces that feed each other; the
+owner picked all four ("All four please!").
+
+- **Rare catches** (`Config/Catch`, `Shared/Catch`, `CatchService`): any prey fish can
+  swim rare, rolled when it (re)spawns and re-rolled now and then while no one is
+  within 260 studs, so the sea keeps changing and the tide's odds reach every school.
+
+  | Rarity | Tier | Chance per spawn | Haul | Coral | DNA | Track |
+  |---|---|---|---|---|---|---|
+  | Golden | Rare | 1 in 35 | ×3 | 6/kg, min 10 | ×2 | 10 |
+  | Glowing | Epic | 1 in 180 | ×6 | 15/kg, min 40 | ×3 | 10 |
+  | Crystal | Legendary | 1 in 900 | ×12 | 40/kg, min 150 | ×5 | 5 |
+  | Prism | Mythic | 1 in 150, Prism Tide only | ×25 | 100/kg, min 500 | ×8 | 3 |
+
+  - They look the part from a distance (`SchoolController`): gold foil, a teal glow,
+    clear crystal, a shifting rainbow, each with sparkles and a small light.
+  - A Crystal or Prism catch is announced; a Prism fish is announced when it appears.
+- **The Catch Log:** every prey species × rarity (plain too). A first catch pays (25 /
+  120 / 400 / 1,500 / 5,000 coral), a finished species row 3,000 coral and 60 shells,
+  and the whole log the Master Angler title.
+  - **Biggest catches (owner: "track their biggest eat of each species and rarity of
+    species too"):** every school fish has its own size (`Schools` `size`: 0.82–1.18
+    of its species' length, and 1 in 25 a trophy at 1.25–1.5), so its mass, and what
+    eating it is worth, goes with the cube of that. The log keeps your heaviest of
+    each species at each rarity (`data.catchBest`); each cell shows how many and the
+    biggest, each row the species' biggest. A new record on a rare or trophy-sized
+    fish (≥1.9× the species' mass) says NEW BIGGEST.
+- **Catch tracks (owner: "10 total unlocks a skin", per fish, per rarity):** rare
+  catches count on the fish you're swimming as; 10 Golden, 10 Glowing, 5 Crystal and 3
+  Prism catches unlock that rarity's skin for that fish. Those skins are never rolled.
+  - **Earned skins stop at Epic** (owner, 2026-10-10: "we still don't want the most
+    elite skins obtained that way that'll be rng and bosses/treasure chests"): Golden
+    is Uncommon, Glowing Rare, Crystal and Prism Epic, and the weekly skins Epic.
+    Legendary and Mythic skins come only from rolls, the Treasure Wheel's jackpot,
+    bosses and treasure chests.
+- **The Tide Clock** (`Config/Tides`, `Shared/Tides`, `TideService`, `TideController`):
+  the sea changes every 20 minutes, on the :00, :20 and :40, on one clock for every
+  server (arithmetic on Unix time, so nothing is sent).
+
+  | Tide | How often | What it does |
+  |---|---|---|
+  | Calm Waters | twice as often as the others | rare fish at their usual odds |
+  | Golden Hour | | Golden ×5, coral from rare catches ×1.5 |
+  | Blood Tide | | Golden, Glowing and Crystal ×2, Haul ×1.25, AI hunters ×1.2 speed and ×1.5 aggro |
+  | Sardine Run | | bait balls of 36 sardines in the shallows and over the reef (`Config/Prey` `tideZones`), small fish Haul ×1.5 |
+  | Bioluminescent Night | | Glowing ×3 (×5 in the deep), the sea dims |
+  | Prism Tide | 03:00, 09:00, 15:00, 21:00 UTC | Prism fish swim; every rare ×2 |
+
+  - Never the same tide twice in a row. A chip at the top names the tide and its time
+    left, and counts down to a Prism Tide within the hour; a banner and a faint tint
+    in the water mark each change; the LOG's TIDES tab forecasts the next nine.
+- **Daily bounties** (`Config/Bounties`, `BountyService`): three a UTC day, different
+  kinds, within the fish's level (catch Golden/Glowing fish, eat fish, bite hunters or
+  a boss, bank Hauls, pick up shells, eat during a tide, dig up a chest); each pays the
+  moment it's done, all three open the Bounty Chest (1,000 coral, 50 shells, a Lucky
+  Charm, a Treasure Wheel spin).
+- **Catch of the Week:** one prey and rarity a week (Monday 00:00 UTC; week 1 is
+  2026-10-05: Crystal Grouper, then Glowing Snapper, Golden Barracuda, Crystal
+  Wrasse), ×3 as common all week. The first one caught pays big and unlocks that week's
+  limited skin for the fish that caught it (Great Wave, Living Reef, Shipwreck, Sea
+  Glass). The list cycles; add a week and a skin to keep it fresh.
+- **Weekly leaderboards** (`Config/Leaderboards`, `LeaderboardService`): Rare Catches
+  (Golden 1, Glowing 5, Crystal 25, Prism 100, Catch of the Week +50), Biggest Haul and
+  Boss Damage; this server's live and every server's top 50 (OrderedDataStores per
+  week). Last week's top 1, 10 and 100 earn a title on their next join.
+- **The LOG** (HUD button beside DAILY): Catch Log and catch track, Bounties, Weekly
+  (Catch of the Week and the boards), Tides.
+- **The Treasure Wheel** (owner, 2026-10-10: "do want a spin wheel again"; ported from
+  Hatch & Snatch's Luck Wheel: `Config/Wheel`, `TreasureWheel.luau`, `WheelService`,
+  `TreasureWheelController`): a game-show wheel of parts on the hub plaza (240°, 62
+  studs from the beacon), teal and brass, with pegs, a flapper, marquee bulbs, a sign,
+  an odds board and a big red button. Swim to the button and press E (Y on a
+  controller, SPIN on a phone); T (ALL) is Spin all. Everyone in the hub sees it turn;
+  a second spinner joins the line.
+
+  | Slice | Odds |
+  |---|---|
+  | 300 coral | 24% |
+  | 40 shells | 18% |
+  | Feast Charm | 12% |
+  | 2 Kelp Wraps | 12% |
+  | Weathered treasure map | 10% |
+  | +2 spins | 10% |
+  | Lucky Charm | 10% |
+  | Jackpot: a Rare-or-better skin from your fish's line (2,500 coral once it has them all) | 4% |
+
+  - Spins are never sold. One comes free every 4 hours, online or off, up to 3
+    waiting (a reason to come back), and a new save starts with one; the Bounty Chest
+    gives 1, the Catch of the Week 2, and daily streak days 3 and 6 one each.
 
 ## 9. Monetization
 

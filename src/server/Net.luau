@@ -34,6 +34,9 @@ local bossReward = makeEvent("BossReward") -- (summary) to a player who helped k
 local shove = makeEvent("Shove") -- (velocity) to a player: a push from a creature (its client adds it)
 local gardenCollected = makeEvent("GardenCollected") -- (summary) to the den's owner: the Coral Garden paid out
 local dailyClaimed = makeEvent("DailyClaimed") -- (summary) to the claimer: a daily streak reward
+local preyRarity = makeEvent("PreyRarity") -- ({ index }, { code }) to everyone: prey fish turned rare (code 0 = plain again)
+local caught = makeEvent("Caught") -- (summary) to the catcher: a rare catch, a first in the Catch Log, track progress, a skin unlocked
+local tideChanged = makeEvent("TideChanged") -- (tideId, endsAt) to everyone: the tide turned
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -62,6 +65,7 @@ local REQUESTS: { [string]: number } = {
 	DenColor = 0.25, -- (glowId) the den's glow color
 	ClaimDaily = 1, -- () today's daily streak reward
 	WatchAd = 3, -- () a rewarded video ad (its reward: Double Haul on a small Haul)
+	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do
@@ -75,6 +79,14 @@ getEaten.Parent = folder
 local getForage = Instance.new("RemoteFunction")
 getForage.Name = "GetForage" -- () -> { positions, kinds, eaten }
 getForage.Parent = folder
+
+local getRarities = Instance.new("RemoteFunction")
+getRarities.Name = "GetRarities" -- () -> { [string]: number } prey index -> rarity code
+getRarities.Parent = folder
+
+local getBoards = Instance.new("RemoteFunction")
+getBoards.Name = "GetBoards" -- () -> the weekly leaderboards (LeaderboardService)
+getBoards.Parent = folder
 
 local getShells = Instance.new("RemoteFunction")
 getShells.Name = "GetShells" -- () -> { positions, golden, hidden }
@@ -215,6 +227,27 @@ end
 
 function Net.dailyClaimed(player: Player, summary: { [string]: any })
 	dailyClaimed:FireClient(player, summary)
+end
+
+-- Prey fish whose rarity changed (Config/Catch codes; 0 = plain again), to everyone.
+function Net.preyRarity(indices: { number }, codes: { number })
+	preyRarity:FireAllClients(indices, codes)
+end
+
+function Net.onGetRarities(handler: (Player) -> { [string]: number })
+	getRarities.OnServerInvoke = handler
+end
+
+function Net.onGetBoards(handler: (Player) -> { [string]: any })
+	getBoards.OnServerInvoke = handler
+end
+
+function Net.caught(player: Player, summary: { [string]: any })
+	caught:FireClient(player, summary)
+end
+
+function Net.tideChanged(tideId: string, endsAt: number)
+	tideChanged:FireAllClients(tideId, endsAt)
 end
 
 -- A toast for everyone (rare rolls).

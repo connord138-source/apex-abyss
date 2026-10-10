@@ -137,6 +137,7 @@ return {
 		-- `emissive`, and the spectral Ghost).
 		sources = {
 			Common = { range = 24, brightness = 1.3, beam = 0, reveal = 0.05 },
+			Uncommon = { range = 26, brightness = 1.35, beam = 0, reveal = 0.07 },
 			lantern = { range = 30, brightness = 1.6, beam = 2.2, reveal = 0.1 },
 			Rare = { range = 28, brightness = 1.4, beam = 0, reveal = 0.1 },
 			Epic = { range = 36, brightness = 1.9, beam = 0, reveal = 0.16 },

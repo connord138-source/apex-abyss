@@ -9,6 +9,10 @@ export type Zone = {
 	angles: { number }?,
 	schools: number,
 	depth: { number }?,
+	-- Only out while this tide is up (Config/Tides, `schools`): the Sardine Run's
+	-- bait balls. Built after every other school, so they never move the others.
+	tide: string?,
+	perSchool: number?, -- fish in each of these schools (default: the prey's)
 }
 
 export type PreyDef = {
@@ -23,6 +27,7 @@ export type PreyDef = {
 	depth: { number }, -- min, max height above the local floor (Shared/Seafloor)
 	band: { number }?, -- distance from the hub its schools roam (default: the shallows ring on the shelf)
 	zones: { Zone }?, -- instead of one band: several places, each with its own schools (and depth)
+	tideZones: { Zone }?, -- schools that only come out with a tide (each zone sets `tide`)
 	respawn: number, -- seconds after being eaten
 	back: Color3,
 	belly: Color3,
@@ -55,6 +60,12 @@ local list: { PreyDef } = {
 		speed = 9,
 		pathRadius = { 24, 44 },
 		depth = { 30, 160 },
+		-- The Sardine Run's bait balls: big tight schools in the Kelp Shallows and over
+		-- the reef, out only while it's up
+		tideZones = {
+			{ band = { 170, 470 }, schools = 5, perSchool = 36, depth = { 40, 140 }, tide = "Sardine" },
+			{ band = { 520, 820 }, schools = 3, perSchool = 36, depth = { 50, 180 }, tide = "Sardine" },
+		},
 		respawn = 10,
 		back = Color3.fromRGB(64, 104, 140),
 		belly = Color3.fromRGB(205, 218, 228),

@@ -111,7 +111,7 @@ local function lunge(chase: Chase, now: number)
 	local slack = Size.topSpeed(length) * hunt.latencySeconds
 	if (at - root.Position).Magnitude <= fish.length * 0.5 + length * 0.35 + aggro.reach + slack then
 		local prey = Config.Prey.byId[fish.prey]
-		local fraction = math.min(aggro.fraction + aggro.perKg * prey.mass, aggro.maxFraction)
+		local fraction = math.min(aggro.fraction + aggro.perKg * fish.mass, aggro.maxFraction)
 		HuntService.damage(player, fraction, `a {prey.name}`)
 	end
 end

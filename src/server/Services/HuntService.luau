@@ -17,11 +17,13 @@ local Layout = require(ReplicatedStorage.Shared.Layout)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Schools = require(ReplicatedStorage.Shared.Schools)
 local Size = require(ReplicatedStorage.Shared.Size)
+local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local Progress = require(script.Parent.Parent.Progress)
+local CatchService = require(script.Parent.CatchService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
@@ -237,6 +239,7 @@ local function onEatPrey(player: Player, batch: any)
 	local now = Timing.clock()
 	local mouth = mouthOf(root, length)
 	local allowance = Size.reach(length) + slack(length)
+	local tide = Tides.at(Timing.unix())
 	local gained = 0
 	local count = 0
 	for _, entry in batch do
@@ -250,6 +253,10 @@ local function onEatPrey(player: Player, batch: any)
 		if at < now - 1 or at > now + 0.25 or (eatenUntil[index] or 0) > now then
 			continue
 		end
+		-- A tide's school (the Sardine Run's bait balls) only while its tide is up
+		if not Schools.out(index, tide.id) then
+			continue
+		end
 		local fish = Schools.fish[index]
 		if not Size.canSwallow(length * 1.03, fish.length) then
 			continue
@@ -261,29 +268,39 @@ local function onEatPrey(player: Player, batch: any)
 		local backAt = now + prey.respawn
 		eatenUntil[index] = backAt
 		Net.preyEaten(index, backAt, player.UserId)
-		gained += prey.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now())
+		-- A rare fish (Config/Catch) is worth more, and so is a tide's catch
+		local rarityId = CatchService.take(index, backAt)
+		local rare = if rarityId then Config.Catch.byId[rarityId] else nil
+		local worth = (if rare then rare.haul else 1)
+			* (tide.haul or 1)
+			* (if fish.mass < Config.Tides.smallMass then tide.smallHaul or 1 else 1)
+		-- Each fish its own size (Schools `mass`): a big one is worth more
+		gained += fish.mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()) * worth
 		data.stats.preyEaten += 1
 		count += 1
-		if prey.mass > data.stats.bestPreyMass then
+		if fish.mass > data.stats.bestPreyMass then
 			data.stats.bestPrey = prey.id
-			data.stats.bestPreyMass = prey.mass
+			data.stats.bestPreyMass = fish.mass
 			Events.trophies:fire(player)
 		end
 		-- Eating heals a little, so snacking matters in a long fight
 		local most = maxHealth(player)
 		if session.health < most then
 			session.health =
-				math.min(most, session.health + most * (heal.eatBase + heal.eatPerKg * prey.mass))
+				math.min(most, session.health + most * (heal.eatBase + heal.eatPerKg * fish.mass))
 			character:SetAttribute("Health", session.health)
 		end
 		-- A wrap tucked in the fish, sometimes
 		if math.random() < heal.preyDropChance and HuntService.giveWrap(player, 1) then
 			Net.notify(player, `The {prey.name} had a Kelp Wrap in it!`, "good")
 		end
-		-- DNA: big prey always carry some, small ones sometimes
+		-- DNA: big prey always carry some, small ones sometimes, rare ones more
 		local position = Schools.position(index, at)
-		if prey.mass >= economy.dnaBigMass then
-			giveDna(player, position, math.max(1, math.floor(prey.mass / economy.dnaBigMass)))
+		local dna = if rare then rare.dna else 1
+		if fish.mass >= economy.dnaBigMass then
+			giveDna(player, position, math.max(1, math.floor(fish.mass / economy.dnaBigMass)) * dna)
+		elseif rare then
+			giveDna(player, position, dna)
 		elseif math.random() < economy.dnaChance then
 			giveDna(player, position, 1)
 		end
@@ -292,6 +309,7 @@ local function onEatPrey(player: Player, batch: any)
 			Net.notify(player, `The {prey.name} had {shells} shell{if shells == 1 then "" else "s"}!`, "good")
 		end
 		Events.atePrey:fire(player, prey.id, position)
+		Events.caught:fire(player, prey.id, rarityId or "Normal", position, fish.mass)
 	end
 	if gained > 0 then
 		addHaul(player, gained)

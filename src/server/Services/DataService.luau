@@ -85,6 +85,24 @@ export type PlayerData = {
 	-- The den's Coral Garden (Config/Dens garden): what's grown and not yet
 	-- collected, and the Unix time it was last grown to
 	garden: { coral: number, shells: number, at: number },
+	-- Rare catches (Config/Catch): the Catch Log (prey id → rarity id, "Normal" too →
+	-- catches), its finished rows, and each fish's catch track (species id → rarity
+	-- id → catches as that fish)
+	catchLog: { [string]: { [string]: number } },
+	catchBest: { [string]: { [string]: number } }, -- prey id → rarity id → the biggest eaten (kg)
+	logRows: { [string]: boolean },
+	catchTracks: { [string]: { [string]: number } },
+	-- Today's bounties (Config/Bounties): the UTC day they're for, each one's id,
+	-- goal progress and whether it paid, and whether the chest paid
+	bounties: { day: number, list: { { id: string, progress: number, done: boolean } }, chest: boolean },
+	-- This week (Shared/Tides.week): leaderboard scores (Config/Leaderboards id →
+	-- score), whether the Catch of the Week was caught, and the last week whose
+	-- leaderboard titles were checked
+	weekly: { week: number, scores: { [string]: number }, featured: boolean },
+	lbChecked: number,
+	-- The Treasure Wheel (Config/Wheel): spins waiting, and when the free-spin clock
+	-- last paid (Unix; 0 = never: a new player's first spin)
+	wheel: { spins: number, lastFree: number },
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
@@ -138,6 +156,14 @@ local TEMPLATE: PlayerData = {
 	treasures = { found = 0, byTier = {} },
 	daily = { day = 0, streak = 0, best = 0 },
 	garden = { coral = 0, shells = 0, at = 0 },
+	catchLog = {},
+	catchBest = {},
+	logRows = {},
+	catchTracks = {},
+	bounties = { day = 0, list = {}, chest = false },
+	weekly = { week = 0, scores = {}, featured = false },
+	lbChecked = 0,
+	wheel = { spins = 0, lastFree = 0 },
 	passes = {},
 	groupRewarded = false,
 	purchaseIds = {},
@@ -319,6 +345,26 @@ local function onPlayerAdded(player: Player)
 			current.shade = worn
 		end
 		table.clear(data.shades)
+	end
+	-- Skin lines per fish (owner, 2026-10-10): a fish keeps its own line's skins and
+	-- the ones every fish can have; any other skin it held turns into its coral
+	for id, record in data.species do
+		local owned = record.shades
+		if owned then
+			for shadeId in owned do
+				if not Config.Shades.fits(shadeId, id) then
+					owned[shadeId] = nil
+					local shade = Config.Shades.byId[shadeId]
+					data.coral += if shade then shade.refund else 0
+					if record.shade == shadeId then
+						record.shade = ""
+					end
+				end
+			end
+		end
+	end
+	if not Config.Shades.fits(data.equipped.shade, data.current) then
+		data.equipped.shade = ""
 	end
 
 	profiles[player] = profile

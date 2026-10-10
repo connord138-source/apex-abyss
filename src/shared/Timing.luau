@@ -19,6 +19,12 @@ function Timing.now(): number
 	return os.time()
 end
 
+-- Unix time from the server's clock, the same on the server and every client (a
+-- client's own os.time can be off): the Tide Clock, bounty days and weeks.
+function Timing.unix(): number
+	return workspace:GetServerTimeNow()
+end
+
 -- The shared clock: the same value on the server and every client, to the
 -- millisecond, so anything computed from it (school paths) agrees everywhere.
 function Timing.clock(): number

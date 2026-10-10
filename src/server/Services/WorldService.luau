@@ -15,13 +15,17 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Cave = require(script.Parent.Parent.Cave)
 local Props = require(script.Parent.Parent.Props)
+local TreasureWheel = require(script.Parent.Parent.TreasureWheel)
 local Shelf = require(script.Parent.Parent.Shelf)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 
 local World = Config.World
 local hub = World.hub
 
-local WorldService = {}
+local WorldService = {
+	-- The Treasure Wheel on the plaza (Config/Wheel; WheelService spins it), once built
+	wheel = nil :: TreasureWheel.Built?,
+}
 
 local root: Folder
 local denSigns: { [number]: TextLabel } = {}
@@ -1503,6 +1507,46 @@ function WorldService.setDenLevel(index: number, levelName: string?)
 	refreshSign(index)
 end
 
+-- The Treasure Wheel (Config/Wheel) on the plaza, facing the beacon, standing on
+-- the cave floor's highest point under its stage (by raycast down from inside the
+-- cavern; its footing reaches down past the rest)
+local function buildWheel(parent: Instance)
+	local Wheel = Config.Wheel
+	local angle = math.rad(Wheel.angle)
+	local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+	local center = hub.center + out * Wheel.radius
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+	local top = -math.huge
+	for ring = 0, 2 do
+		for k = 0, if ring == 0 then 0 else 7 do
+			local theta = k / 8 * 2 * math.pi
+			local spot = center + Vector3.new(math.cos(theta), 0, math.sin(theta)) * ring * 7
+			local hit = workspace:Raycast(
+				Vector3.new(spot.X, hub.center.Y + 60, spot.Z),
+				Vector3.new(0, -120, 0),
+				params
+			)
+			if hit then
+				top = math.max(top, hit.Position.Y)
+			end
+		end
+	end
+	if top == -math.huge then
+		top = hub.center.Y + Layout.PLAZA_TOP
+	end
+	local hours = Wheel.freeEvery / 3600
+	WorldService.wheel =
+		TreasureWheel.build(parent, Vector3.new(center.X, top, center.Z), hub.center, Wheel.segments, {
+			`1 free spin every {hours} hours, online or off (up to {Wheel.maxFree} waiting)`,
+			`+{Config.Wheel.bountyChest} in the Bounty Chest · +{Wheel.weekly} for the Catch of the Week`,
+			"+1 on daily streak days 3 and 6",
+			"The jackpot: a Rare-or-better skin for the fish you swim as",
+			"Busy? Spin anyway to join the line",
+		})
+end
+
 function WorldService.start()
 	setupLighting()
 	root = folder("World", workspace)
@@ -1515,6 +1559,7 @@ function WorldService.start()
 	for _, segment in tunnelSegments do
 		exitDressing(hubFolder, segment)
 	end
+	buildWheel(hubFolder)
 	buildBiomes(folder("Biomes", root))
 end
 

@@ -18,7 +18,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
-| `shade_skins` | `<Fish>_Shades.glb` ×6: every shade's skin for each fish (33 quads each with color, finish/metal and glow maps; tools/shades v3, screened 2026-10-08) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
+| `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (23 quads each: its own 12-skin line plus the 11 universal skins, with color, finish/metal and glow maps; tools/shades v4, screened 2026-10-10) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
@@ -63,9 +63,13 @@ Don't scale or position anything; the code does it:
 ## Shade skins (tools/shades)
 
 Every shade is a texture per fish, made offline from the fish's own texture
-(owner, 2026-10-08: shades need "much much more variance and depth"). To change or
-add one, edit its recipe in `tools/shades/make_shades.py` (`RECIPES`) and its entry
-in `Config/Shades.luau`, then from the repo root (Python 3.11 with bpy, numpy,
+(owner, 2026-10-08: shades need "much much more variance and depth"). Since
+2026-10-10 each fish makes only its own list: `tools/shades/lines.json` (read by
+`shade_lines.py` for every tool) gives each fish its 12-skin line and the universal
+skins every fish has (catch track, weekly, boss, treasure), 23 a fish; a skin not on
+a fish's list is pruned from its folder. To change or add one, edit `lines.json`, its
+recipe in `tools/shades/make_shades.py` (`RECIPES`) and its entry in
+`Config/Shades.luau` (`LINES` for a line skin), then from the repo root (Python 3.11 with bpy, numpy,
 scipy, pillow; torch and transformers for the screen):
 
 ```
@@ -80,7 +84,10 @@ python3.11 tools/shades/screen_shades.py assets/shades/glb/<Fish>_Shades.glb --b
 `make_shades.py` writes, per fish, `<Shade>.png` (color), `<Shade>_emit.png` (glow,
 for glowing shades), `<Shade>_metal.png` and `<Shade>_rough.png` (metal shades),
 `finish_<matte|satin|gloss|mirror>.png` (the roughness every other shade shares) and
-`skins.json` (which maps each shade has). `render_shades.py` shows them all wired up;
+`skins.json` (which maps each shade has). Texels the bake never reached (atlas gaps)
+are filled from their neighbours with a skin-tone guard. Fins are found per fish by
+`blades()` (settings in `FISH`). `render_shades.py` shows them all wired up, in line
+order (`pair` adds a second view from the left and below);
 `pack_shades.py` turns them into glTF materials (green roughness, blue metal, the
 glow as the emissive texture, which Studio's importer turns into the
 SurfaceAppearance's glow mask). How bright a skin glows in game, and how it pulses,

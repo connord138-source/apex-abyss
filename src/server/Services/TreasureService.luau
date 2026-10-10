@@ -207,18 +207,17 @@ local function startDig(player: Player)
 	digStarted[player] = { mapId = map.id, at = os.clock() }
 end
 
--- Rolls the shade for a Shade Roll reward: any rollable shade at `minTier` or
--- rarer, weighted by its roll chance (rarer ones stay rarer).
-local function rollShade(minTier: string, owned: { [string]: boolean }): Shade?
+-- Rolls the shade for a Shade Roll reward: any of the digging fish's own line at
+-- `minTier` or rarer, weighted by its roll chance (rarer ones stay rarer).
+local function rollShade(minTier: string, owned: { [string]: boolean }, species: string): Shade?
 	local floor = Tiers.byId[minTier]
 	local pool: { Shade } = {}
 	for _, shade in Config.Shades.list do
 		local tier = Tiers.byId[shade.tier]
 		if
-			shade.chance > 0
+			Config.Shades.rollable(shade)
+			and shade.species == species
 			and not owned[shade.id]
-			and not shade.boss
-			and not shade.treasure
 			and tier
 			and floor
 			and tier.order >= floor.order
@@ -268,7 +267,11 @@ local function grant(
 	elseif reward.kind == "shade" or reward.kind == "shaderoll" then
 		local shade = if reward.kind == "shade"
 			then Config.Shades.byId[reward.shade or ""]
-			else rollShade(reward.minShadeTier or "Rare", Progress.shades(data))
+			else rollShade(
+				reward.minShadeTier or "Rare",
+				Progress.shades(data),
+				Progress.speciesId(data)
+			)
 		if shade then
 			result.kind = "shade"
 			result.id = shade.id
@@ -323,6 +326,7 @@ local function finishDig(player: Player)
 	result.found = data.treasures.found
 	DataService.markDirty(player)
 	Net.treasureResult(player, result)
+	Events.treasure:fire(player, map.tier)
 	if result.kind == "shade" and not result.duplicate then
 		local shadeTier = Tiers.byId[result.outcome.tier]
 		if shadeTier and shadeTier.order >= Tiers.byId[Treasure.announceFrom].order then

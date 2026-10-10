@@ -1,0 +1,120 @@
+{
+ "_about": "Earned skins (catch track, weekly) are Uncommon to Epic at most: the elite looks come only from rolls, bosses and treasure (owner, 2026-10-10). Per-fish skin lines (owner, 2026-10-10: \"skins to be different for each playable fish. Common skins should be similar to original just with realistic fish reshades and the rarer they get the wilder they get\"; 12 per fish). Every line skin belongs to one fish only. Commons are realistic colour morphs of the real species, keeping the fish's own painted look; each tier up is wilder. The universal skins (catch track, weekly, trophies) are made for every fish. Ids are global and unique; the in-game config is src/shared/Config/Shades.luau. `new` marks a recipe to write; the others already exist in make_shades.py.",
+ "fish": {
+  "Nibbler": {
+   "species": "Nibbler",
+   "line": [
+    {"id": "NibPercula", "name": "Percula", "tier": "Common", "new": true, "look": "Close to its own look: vivid orange body, three crisp white bands each edged in a thin black line, orange fins with black-edged tips."},
+    {"id": "NibTomato", "name": "Tomato", "tier": "Common", "new": true, "look": "Tomato clownfish: saturated red-orange body darkening to deep red-black on the rear flanks, ONE white band behind the eye only, red fins."},
+    {"id": "NibMaroon", "name": "Maroon", "tier": "Common", "new": true, "look": "Maroon clownfish: deep wine-maroon body, three thin golden-yellow bands, dark maroon fins."},
+    {"id": "NibMidnight", "name": "Midnight", "tier": "Common", "new": true, "look": "Black ocellaris morph: glossy black body, three bright white bands, a saturated orange face and snout."},
+    {"id": "Bumblebee", "tier": "Uncommon"},
+    {"id": "Lilac", "tier": "Uncommon"},
+    {"id": "Mint", "tier": "Uncommon"},
+    {"id": "Tidepool", "tier": "Rare"},
+    {"id": "Glowspot", "tier": "Rare"},
+    {"id": "Diamond", "tier": "Epic"},
+    {"id": "Divine", "tier": "Legendary"},
+    {"id": "Prismatic", "tier": "Mythic"}
+   ]
+  },
+  "Cuda": {
+   "species": "Cuda",
+   "line": [
+    {"id": "CudaGreat", "name": "Great", "tier": "Common", "new": true, "look": "Great barracuda: steel-silver body, blue-grey back, about 18-22 slanted dark bars on the upper flank, a scatter of inky black blotches on the lower rear flank, dark forked tail."},
+    {"id": "CudaYellowtail", "name": "Yellowtail", "tier": "Common", "new": true, "look": "Yellowtail barracuda: blue-silver back, bright silver flank, one saturated yellow lateral stripe nose to tail, yellow tail fin."},
+    {"id": "CudaChevron", "name": "Chevron", "tier": "Common", "new": true, "look": "Chevron barracuda: gunmetal body with dark V-shaped chevrons pointing forward along the flank, silver belly, grey fins."},
+    {"id": "CudaBlackfin", "name": "Blackfin", "tier": "Common", "new": true, "look": "Blackfin barracuda: polished bright steel body (slight sheen), every fin and the tail tipped jet black, a faint dark lateral line."},
+    {"id": "Tiger", "tier": "Uncommon"},
+    {"id": "Sunset", "tier": "Uncommon"},
+    {"id": "Ocean", "tier": "Uncommon"},
+    {"id": "Lunar", "tier": "Rare"},
+    {"id": "CudaChrome", "name": "Chrome", "tier": "Rare", "new": true, "look": "Mirror chrome (metal map) with long horizontal speed streaks raking back from the nose, a cool blue reflection on the back, black fin edges. Reads fast."},
+    {"id": "Xray", "tier": "Epic"},
+    {"id": "Thunder", "tier": "Legendary"},
+    {"id": "CudaComet", "name": "Comet", "tier": "Mythic", "new": true, "glow": true, "look": "Deep space-blue body; the head is a blazing cyan-white comet core and a glowing tail of sparks and streaks pours back along the flanks to the tail. Glow map on the core and sparks (tint any near-white glow toward cyan/blue)."}
+   ]
+  },
+  "Puffer": {
+   "species": "Pufferfish",
+   "line": [
+    {"id": "PufGuineafowl", "name": "Guineafowl", "tier": "Common", "new": true, "look": "Guineafowl puffer: charcoal-black body densely covered in small round white spots, spots smaller on the face, dark fins."},
+    {"id": "PufGolden", "name": "Golden", "tier": "Common", "new": true, "look": "Golden morph of the guineafowl puffer: saturated lemon-yellow all over, a few small dark speckles on the back, yellow fins. Saturated yellow only, never cream or beige."},
+    {"id": "PufStarry", "name": "Starry", "tier": "Common", "new": true, "look": "Starry puffer: blue-grey back with large round black spots, cool white belly (silver-blue white), grey fins."},
+    {"id": "PufGreen", "name": "Green Spotted", "tier": "Common", "new": true, "look": "Green spotted puffer: olive-lime green back with round dark spots, yellow-green belly fading to a cool white, translucent green fins."},
+    {"id": "Toxic", "tier": "Uncommon"},
+    {"id": "Leopard", "tier": "Uncommon"},
+    {"id": "Tetra", "tier": "Uncommon"},
+    {"id": "Mandarin", "tier": "Rare"},
+    {"id": "PufUrchin", "name": "Urchin", "tier": "Rare", "new": true, "look": "Sea urchin: deep purple-black body with thin radiating teal-blue spine lines bursting outward from the middle of each flank, the spines' tips brighter turquoise."},
+    {"id": "PufCoralBloom", "name": "Coral Bloom", "tier": "Epic", "new": true, "look": "Living coral grows over it: clusters of polyp cells and branching coral in saturated orange, violet and yellow patches over a teal base, each polyp a little star."},
+    {"id": "PufSunburst", "name": "Sunburst", "tier": "Legendary", "new": true, "glow": true, "look": "A sun: radiant golden rays burst from the body's middle over deep saturated orange, the rays metallic gold (metal map), a glowing gold core (glow map). Golds without blue; hard edges, no soft orange-to-white blends."},
+    {"id": "Exotic", "tier": "Mythic"}
+   ]
+  },
+  "MorayEel": {
+   "species": "MorayEel",
+   "line": [
+    {"id": "MorGreen", "name": "Green", "tier": "Common", "new": true, "look": "Green moray: rich olive-green body with subtle darker mottling, a slightly yellower throat, green fin edge."},
+    {"id": "MorZebra", "name": "Zebra", "tier": "Common", "new": true, "look": "Zebra moray: near-black blue-brown body ringed by about 30 thin cool-white rings all along its length."},
+    {"id": "MorSnowflake", "name": "Snowflake", "tier": "Common", "new": true, "look": "Snowflake moray: mid-toned cool grey base (never cream), covered in black star-shaped dendritic blotches with small bright yellow centres."},
+    {"id": "MorHoneycomb", "name": "Honeycomb", "tier": "Common", "new": true, "look": "Honeycomb moray: saturated golden-yellow base under a dark near-black honeycomb net, the cells large on the flanks and small on the head."},
+    {"id": "Moss", "tier": "Uncommon"},
+    {"id": "Sand", "tier": "Uncommon"},
+    {"id": "Rust", "tier": "Uncommon"},
+    {"id": "MorSerpent", "name": "Serpent", "tier": "Rare", "new": true, "look": "Sea serpent: emerald dragon scales, each scale edged in gold (metal on the edges), a darker green back."},
+    {"id": "MorRibbon", "name": "Ribbon", "tier": "Rare", "new": true, "look": "Ribbon eel: electric cobalt-blue body with a vivid yellow dorsal fin edge and yellow snout and jaw."},
+    {"id": "Magma", "tier": "Epic"},
+    {"id": "MorJade", "name": "Jade Dragon", "tier": "Legendary", "new": true, "glow": true, "look": "Carved polished jade (deep to pale green, cool) with gold filigree whorls along the flanks (metal), the filigree faintly glowing."},
+    {"id": "Void", "tier": "Mythic"}
+   ]
+  },
+  "ReefShark": {
+   "species": "ReefShark",
+   "line": [
+    {"id": "ShkBlacktip", "name": "Blacktip", "tier": "Common", "new": true, "look": "Blacktip reef shark: blue-grey back, cool white belly, every fin and the tail tipped solid black."},
+    {"id": "ShkWhitetip", "name": "Whitetip", "tier": "Common", "new": true, "look": "Whitetip reef shark: dark slate-grey body with a few small dark spots, the first dorsal fin and tail tips bright cool white."},
+    {"id": "ShkGrey", "name": "Grey Reef", "tier": "Common", "new": true, "look": "Grey reef shark: even mid-grey back, white belly, a broad black trailing edge on the tail fin."},
+    {"id": "ShkLemon", "name": "Lemon", "tier": "Common", "new": true, "look": "Lemon shark: saturated mustard-olive yellow body (never tan or beige), paler cool yellow belly, yellow fins."},
+    {"id": "Ember", "tier": "Uncommon"},
+    {"id": "Ink", "tier": "Uncommon"},
+    {"id": "ShkWarpaint", "name": "Warpaint", "tier": "Uncommon", "new": true, "look": "Tribal warpaint: dark charcoal hide with bold teal and black slashes across the face, gills and flanks, like painted war stripes."},
+    {"id": "ShkScarred", "name": "Battle-Scarred", "tier": "Rare", "new": true, "look": "A veteran: grey hide crossed by many healed scars and crescent bite marks (paler cool grey ridges with dark edges), a torn fin edge, tooth gouges."},
+    {"id": "ShkBoneplate", "name": "Bone Plate", "tier": "Rare", "new": true, "look": "Armoured like a placoderm: gunmetal hide under overlapping cool bone-grey armour plates over the head and back, dark seams between plates."},
+    {"id": "Glacier", "tier": "Epic"},
+    {"id": "Aurora", "tier": "Legendary"},
+    {"id": "Nebula", "tier": "Mythic"}
+   ]
+  },
+  "Angler": {
+   "species": "Anglerfish",
+   "line": [
+    {"id": "AngSeadevil", "name": "Seadevil", "tier": "Common", "new": true, "look": "Black seadevil: matte velvet black body with a faint cool blue sheen on the ridges. The lure keeps its glow."},
+    {"id": "AngHumpback", "name": "Humpback", "tier": "Common", "new": true, "look": "Humpback anglerfish: dark olive-grey (cool, never brown) with a darker back and slightly lighter flanks."},
+    {"id": "AngWarty", "name": "Warty", "tier": "Common", "new": true, "look": "Warty angler: mottled charcoal and slate-blue skin covered in small raised cool-grey bumps."},
+    {"id": "AngFootball", "name": "Footballfish", "tier": "Common", "new": true, "look": "Footballfish: dark cobalt-black body studded with a grid of tiny bony points, a deep blue belly."},
+    {"id": "AngMurk", "name": "Murk", "tier": "Uncommon", "new": true, "look": "Silt-grey matte skin with drifting dark sediment streaks and floating particle specks, like it lives in the mud."},
+    {"id": "AngDriftwood", "name": "Driftwood", "tier": "Uncommon", "new": true, "look": "Grey bleached driftwood grain (cool grey, never tan) with barnacle clusters (white-blue rings) on the back."},
+    {"id": "AngBioglow", "name": "Bioglow", "tier": "Uncommon", "new": true, "glow": true, "look": "Near-black body sprinkled with tiny faint blue glowing freckles (glow map), denser along the belly."},
+    {"id": "Lanternfish", "tier": "Rare"},
+    {"id": "AngGlassveins", "name": "Glassveins", "tier": "Rare", "new": true, "glow": true, "look": "Deep indigo body with a branching network of glowing cyan veins (glow map) like it's lit from inside."},
+    {"id": "AngAbyssEye", "name": "Abyss Eye", "tier": "Epic", "new": true, "glow": true, "look": "Horror (no gore): black body covered in dozens of glowing amber eyes of different sizes, each an iris ring with a dark slit pupil (glow map on the irises)."},
+    {"id": "AngLanternKing", "name": "Lantern King", "tier": "Legendary", "new": true, "glow": true, "look": "Ornate gold lantern filigree (metal) over deep navy, a crown of glowing gold spines along the back (glow), gold-trimmed fins. Golds without blue."},
+    {"id": "AngStarfall", "name": "Starfall", "tier": "Mythic", "new": true, "glow": true, "look": "Black body full of glowing constellations: stars joined by thin glowing lines, a few falling stars streaking down the flanks (glow map; tint whites toward blue-violet)."}
+   ]
+  }
+ },
+ "universal": [
+  {"id": "CatchGolden", "name": "Golden", "tier": "Uncommon", "catch": "Golden", "new": true, "look": "Polished solid gold (metal map), the fish's own pattern showing through as darker gold engraving. Golds without blue, hard edges."},
+  {"id": "CatchGlowing", "name": "Glowing", "tier": "Rare", "catch": "Glowing", "new": true, "glow": true, "look": "Bioluminescent: deep navy body, the fish's own pattern lines and markings glowing cyan-green (glow map)."},
+  {"id": "CatchCrystal", "name": "Crystal", "tier": "Epic", "catch": "Crystal", "new": true, "look": "Clear crystal: icy blue facets with bright glints and cool inner refractions (mid-toned, cool; gloss finish)."},
+  {"id": "CatchPrism", "name": "Prism", "tier": "Epic", "catch": "Prism", "new": true, "glow": true, "look": "Holographic prism foil: a rainbow that sweeps across the body with the surface's facing, the fish's own pattern embossed through it, a faint glow."},
+  {"id": "WeekWave", "name": "Great Wave", "tier": "Epic", "week": 1, "new": true, "look": "A woodblock-print great wave: deep ultramarine body with curling cool-white foam crests and claw-like spray rolling along the flanks."},
+  {"id": "WeekReef", "name": "Living Reef", "tier": "Epic", "week": 2, "new": true, "look": "A whole reef painted on: brain coral, sea fans and tiny fish silhouettes in saturated reef colours over turquoise."},
+  {"id": "WeekWreck", "name": "Shipwreck", "tier": "Epic", "week": 3, "new": true, "look": "Riveted iron hull plates, orange-red rust streaks (saturated), barnacle clusters and a painted hull number on the flank."},
+  {"id": "WeekSeaGlass", "name": "Sea Glass", "tier": "Epic", "week": 4, "new": true, "look": "A mosaic of frosted sea-glass pebbles in bottle green, cobalt and amber, with soft dark grout between them."},
+  {"id": "AbyssInk", "tier": "Trophy"},
+  {"id": "SunkenGold", "tier": "Mythic"},
+  {"id": "DrownedPearl", "tier": "Mythic"}
+ ]
+}

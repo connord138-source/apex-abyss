@@ -15,6 +15,7 @@ local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
+local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
@@ -69,6 +70,16 @@ local rng = Random.new(World.seed + 41)
 local lastBite: { [Player]: number } = {}
 local accumulator = 0
 local STREAM_BATCH = 4 -- creatures per position packet (an entry is ~130 bytes)
+
+-- A Blood Tide's hunters: faster and keener (Config/Tides `hunters`; never bosses)
+local function hunters(predator: Predator): (number, number)
+	if predator.custom then
+		return 1, 1
+	end
+	local tide = Tides.at(Timing.unix())
+	local boost = tide.hunters
+	return if boost then boost.speed else 1, if boost then boost.aggro else 1
+end
 
 local function randomWaypoint(def: Def): Vector3
 	for _ = 1, 20 do
@@ -146,7 +157,9 @@ local function pickTarget(predator: Predator, now: number): Player?
 		local distance = (root.Position - predator.position).Magnitude
 		local hit = predator.hitBy[player]
 		local provoked = hit ~= nil and now - hit.at < 8
-		if distance > (if provoked then def.aggroRange * Predators.loseRange else def.aggroRange) then
+		local _, keen = hunters(predator)
+		local range = def.aggroRange * keen
+		if distance > (if provoked then range * Predators.loseRange else range) then
 			continue
 		end
 		local length = character:GetAttribute("Length")
@@ -249,12 +262,14 @@ local function simulate(predator: Predator, dt: number, now: number)
 	end
 
 	local desired: Vector3
+	local fast = hunters(predator)
+	local speed = def.speed * fast
 	if predator.mode == "roam" then
 		if (predator.waypoint - predator.position).Magnitude < 8 or now > predator.waypointUntil then
 			predator.waypoint = randomWaypoint(def)
 			predator.waypointUntil = now + 12
 		end
-		desired = (predator.waypoint - predator.position).Unit * def.speed * Predators.roamSpeed
+		desired = (predator.waypoint - predator.position).Unit * speed * Predators.roamSpeed
 	else
 		local root, fishLength = targetRoot(predator)
 		if root == nil then
@@ -265,7 +280,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 			local aim = root.Position + root.AssemblyLinearVelocity * 0.3
 			local toTarget = aim - mouthOf(predator)
 			if predator.mode == "hunt" then
-				desired = (if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading) * def.speed
+				desired = (if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading) * speed
 				if (root.Position - mouthOf(predator)).Magnitude <= def.biteReach + fishLength * 0.5 then
 					predator.mode = "windup"
 					predator.modeUntil = now + def.telegraph
@@ -423,6 +438,10 @@ local function onBite(player: Player, index: any)
 	record.damage += damage
 	record.at = now
 	predator.hitBy[player] = record
+	Events.bitPredator:fire(player, def.id, predator.custom == true)
+	if predator.custom then
+		Events.bossDamage:fire(player, damage)
+	end
 	Net.predatorEvent("hurt", predator.index, {
 		by = player.UserId,
 		damage = damage,

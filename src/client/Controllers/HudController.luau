@@ -834,11 +834,14 @@ function HudController.start()
 	if ClientState.current then
 		onState(ClientState.current)
 	end
-	SchoolController.ate:connect(function(_preyId: string, eaten: number, position: Vector3)
-		local mass = eaten * growthNow()
+	SchoolController.ate:connect(function(_preyId: string, eaten: number, position: Vector3, rarity: string?)
+		-- A rare fish (Config/Catch) pops its rarity in its colour, with its bigger Haul
+		local rare = if rarity then Config.Catch.byId[rarity] else nil
+		local mass = eaten * growthNow() * (if rare then rare.haul else 1)
+		local amount = `+{if mass < 10 then string.format("%.1f", mass) else tostring(math.floor(mass))}`
 		pop(
-			`+{if mass < 10 then string.format("%.1f", mass) else tostring(math.floor(mass))}`,
-			Ui.color.haul,
+			if rare then `{string.upper(rare.name)} {amount}` else amount,
+			if rare then rare.color else Ui.color.haul,
 			position
 		)
 	end)

@@ -1,10 +1,13 @@
 """Renders a fish wearing each of its shade skins, three-quarter view, for review.
 
-    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [Shade ...]
+    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [Shade ...]
 
-Writes <out_dir>/<Fish>_<Shade>.png (the fish's own texture as <Fish>_Base.png).
-contact_sheet.py lays them out. Each skin is shown the way it ships: its finish's
-roughness map (or its own), its metal map and its glow map, from skins.json.
+Writes <out_dir>/<Fish>_<Shade>.png (the fish's own texture as <Fish>_Base.png), by
+default every shade in the fish's own list (shade_lines.py: its line, then the
+universal skins). `pair` adds a second view from the fish's left side and a little
+below (the other flank and the belly) beside the first. contact_sheet.py lays them
+out. Each skin is shown the way it ships: its finish's roughness map (or its own),
+its metal map and its glow map, from skins.json.
 """
 
 import json
@@ -14,14 +17,16 @@ import sys
 
 import bpy
 import numpy as np
+import shade_lines
 from mathutils import Matrix, Vector
+from PIL import Image
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
 SRC, SKINS, OUT = argv[0], pathlib.Path(argv[1]).resolve(), pathlib.Path(argv[2]).resolve()
 rest = argv[3:]
-FLIP = bool(rest) and rest[0] == "flip"
-if FLIP:
-    rest = rest[1:]
+FLIP = "flip" in rest
+PAIR = "pair" in rest
+rest = [a for a in rest if a not in ("flip", "pair")]
 NAME = pathlib.Path(SRC).stem
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -111,8 +116,16 @@ cam = bpy.data.objects.new("Cam", cam_data)
 scene.collection.objects.link(cam)
 scene.camera = cam
 direction = Vector((1.0, -0.55, 0.35)).normalized()  # three-quarter from the fish's right, head forward
-cam.location = mid + direction * length * 3
-cam.rotation_euler = (mid - cam.location).to_track_quat("-Z", "Y").to_euler()
+# The second view (pair): the fish's left side from a little behind and below
+VIEWS = [Vector((1.0, -0.55, 0.35)).normalized(), Vector((-1.0, 0.3, -0.32)).normalized()]
+
+
+def aim(direction):
+    cam.location = mid + direction * length * 3
+    cam.rotation_euler = (mid - cam.location).to_track_quat("-Z", "Y").to_euler()
+
+
+aim(direction)
 
 
 def grey(path):
@@ -147,15 +160,29 @@ def wear(spec, folder, shade):
 
 def shoot(label, image):
     tex.image = image
-    scene.render.filepath = str(OUT / f"{NAME}_{label}.png")
+    path = OUT / f"{NAME}_{label}.png"
+    scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
+    if not PAIR:
+        return
+    second = OUT / f"{NAME}_{label}.view2.png"
+    aim(VIEWS[1])
+    scene.render.filepath = str(second)
+    bpy.ops.render.render(write_still=True)
+    aim(VIEWS[0])
+    a, b = Image.open(path).convert("RGB"), Image.open(second).convert("RGB")
+    both = Image.new("RGB", (a.width + b.width, a.height))
+    both.paste(a, (0, 0))
+    both.paste(b, (a.width, 0))
+    both.save(path)
+    second.unlink()
 
 
 FOLDER = SKINS / NAME
 specs = json.loads((FOLDER / "skins.json").read_text()) if (FOLDER / "skins.json").exists() else {}
 wear(None, FOLDER, "Base")
 shoot("Base", own)
-shades = rest or sorted(specs) or sorted(
+shades = rest or [s for s in shade_lines.shades(NAME) if s in specs] or sorted(specs) or sorted(
     p.stem for p in FOLDER.glob("*.png") if p.stem != "eyes_debug" and "_" not in p.stem
 )
 for shade in shades:

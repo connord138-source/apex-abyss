@@ -37,9 +37,9 @@
       "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept"
     },
     "shade_skins": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/aa5ef0e4-ed28-481b-a3e8-bcc5ac91d89f.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/77e18b6f-4ae4-4ee5-9dc9-53fd609431f0.zip",
       "into": "assets/shades/glb",
-      "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per shade (33 each, 198 skins; v3 with finish roughness, metal and glow maps), made by tools/shades and cleared by screen_shades.py (color rules + classifier, every image in each GLB) on 2026-10-08. Import one fish at a time, then tools/studio/organize_shades.luau."
+      "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per skin, 23 each (its own 12-skin line from tools/shades/lines.json plus the 11 universal skins: catch track, weekly, boss and treasure; 138 skins, v4 of 2026-10-10, sha256 bcf1b7a9...), made by tools/shades and cleared by screen_shades.py with the classifier on every image in each GLB (all six exit 0, highest 0.19). Import one fish at a time in small batches, then tools/studio/organize_shades.luau."
     }
   }
 }

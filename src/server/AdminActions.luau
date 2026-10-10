@@ -6,13 +6,18 @@
 -- targets'.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Catch = require(ReplicatedStorage.Shared.Catch)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
+local Events = require(script.Parent.Events)
 local Net = require(script.Parent.Net)
 local Progress = require(script.Parent.Progress)
 local BossService = require(script.Parent.Services.BossService)
+local BountyService = require(script.Parent.Services.BountyService)
+local CatchService = require(script.Parent.Services.CatchService)
+local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local DataService = require(script.Parent.Services.DataService)
 local EconomyService = require(script.Parent.Services.EconomyService)
 local FishService = require(script.Parent.Services.FishService)
@@ -22,6 +27,7 @@ local MonetizationService = require(script.Parent.Services.MonetizationService)
 local TreasureService = require(script.Parent.Services.TreasureService)
 local TutorialService = require(script.Parent.Services.TutorialService)
 local WardrobeService = require(script.Parent.Services.WardrobeService)
+local WheelService = require(script.Parent.Services.WheelService)
 
 type PlayerData = DataService.PlayerData
 type Handler = (Player, { Player }, ...any) -> string
@@ -199,7 +205,9 @@ local function allShades(_admin: Player, targets: { Player }): string
 	each(targets, function(_, data)
 		for _, species in Config.Species.list do
 			for _, shade in Config.Shades.list do
-				Progress.grantShade(data, shade.id, species.id)
+				if Config.Shades.fits(shade.id, species.id) then
+					Progress.grantShade(data, shade.id, species.id)
+				end
 			end
 		end
 		for _, part in Config.Exotics.parts do
@@ -418,6 +426,113 @@ local function gardenHours(_admin: Player, targets: { Player }, hours: any): str
 	return `Coral Garden grown by {n} h for {count} player(s) (collected within a few seconds while in their den)`
 end
 
+-- The Tide Clock: force a tide on every server client for 10 minutes ("" = the clock)
+local function forceTide(_admin: Player, _targets: { Player }, id: any): string
+	if id == "" then
+		workspace:SetAttribute("TideOverride", nil)
+		workspace:SetAttribute("TideOverrideUntil", nil)
+		return "Tides back on the clock"
+	end
+	if typeof(id) ~= "string" or Config.Tides.byId[id] == nil then
+		return "Pick a tide"
+	end
+	workspace:SetAttribute("TideOverride", id)
+	workspace:SetAttribute("TideOverrideUntil", Timing.unix() + 600)
+	return `{Config.Tides.byId[id].name} for 10 minutes on this server`
+end
+
+-- Rare catches: the 10 prey fish nearest each target turn a rarity
+local function rareNear(_admin: Player, targets: { Player }, rarityId: any): string
+	if typeof(rarityId) ~= "string" or Config.Catch.byId[rarityId] == nil then
+		return "Pick a rarity"
+	end
+	local made = 0
+	for _, player in targets do
+		local _, root = FishService.character(player)
+		if root then
+			made += CatchService.forceNear(root.Position, rarityId, 10)
+		end
+	end
+	return `{made} fish turned {rarityId}`
+end
+
+local function trackAdd(_admin: Player, targets: { Player }, rarityId: any, amount: any): string
+	local n = amountOf(amount, 1) or 1
+	if typeof(rarityId) ~= "string" or Config.Catch.byId[rarityId] == nil then
+		return "Pick a rarity"
+	end
+	local unlocked = 0
+	for _, player in targets do
+		local skin = CatchService.addTrack(player, rarityId, n)
+		if skin and skin ~= "" then
+			unlocked += 1
+		end
+	end
+	return `+{n} {rarityId} catches on the current fish's track ({unlocked} skin(s) unlocked)`
+end
+
+local function weeklyCatch(_admin: Player, targets: { Player }): string
+	local featured = Catch.weekly(Timing.unix())
+	if featured == nil then
+		return "No Catch of the Week yet"
+	end
+	local prey = Config.Prey.byId[featured.prey]
+	for _, player in targets do
+		local _, root = FishService.character(player)
+		Events.caught:fire(
+			player,
+			featured.prey,
+			featured.rarity,
+			if root then root.Position else Vector3.zero,
+			prey.mass
+		)
+	end
+	return `Caught this week's {featured.rarity} {prey.name} for {names(targets)}`
+end
+
+local function bounties(_admin: Player, targets: { Player }, what: any): string
+	for _, player in targets do
+		if what == "finish" then
+			BountyService.finishAll(player)
+		else
+			BountyService.redraw(player)
+		end
+	end
+	return if what == "finish"
+		then `Bounties finished for {names(targets)}`
+		else `New bounties drawn for {names(targets)}`
+end
+
+local function boardPoints(_admin: Player, targets: { Player }, boardId: any, amount: any): string
+	local n = amountOf(amount, 1) or 1
+	if typeof(boardId) ~= "string" or Config.Leaderboards.byId[boardId] == nil then
+		return "Pick a board"
+	end
+	for _, player in targets do
+		LeaderboardService.add(player, boardId, n)
+	end
+	return `+{n} on {Config.Leaderboards.byId[boardId].name} for {names(targets)} (written within a minute)`
+end
+
+local function wheelSpins(_admin: Player, targets: { Player }, amount: any): string
+	local n = amountOf(amount, 1) or 1
+	for _, player in targets do
+		WheelService.give(player, n)
+	end
+	return `+{n} Treasure Wheel spins for {names(targets)}`
+end
+
+local function wheelLand(_admin: Player, targets: { Player }, index: any): string
+	local segment = if typeof(index) == "number" then Config.Wheel.segments[index] else nil
+	if segment == nil then
+		return "Pick a slice"
+	end
+	for _, player in targets do
+		WheelService.rig(player, index)
+	end
+	return `{names(targets)}'s next spin lands on {segment.label}`
+end
+
 AdminActions.byName = {
 	addCoral = addCoral :: Handler,
 	setCoral = setCoral :: Handler,
@@ -448,6 +563,14 @@ AdminActions.byName = {
 	dailyStreak = dailyStreak :: Handler,
 	dailyBreak = dailyBreak :: Handler,
 	gardenHours = gardenHours :: Handler,
+	forceTide = forceTide :: Handler,
+	rareNear = rareNear :: Handler,
+	trackAdd = trackAdd :: Handler,
+	weeklyCatch = weeklyCatch :: Handler,
+	bounties = bounties :: Handler,
+	boardPoints = boardPoints :: Handler,
+	wheelSpins = wheelSpins :: Handler,
+	wheelLand = wheelLand :: Handler,
 } :: { [string]: Handler }
 
 return AdminActions

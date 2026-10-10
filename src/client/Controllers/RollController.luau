@@ -316,10 +316,17 @@ local fishShades: { [string]: boolean } = {} -- the current fish's (they never r
 
 local function filler(rng: Random): RollOdds.Outcome
 	local outcomes = RollOdds.outcomes
+	-- Only this fish's own line (owner, 2026-10-10): another fish's skin isn't a
+	-- thing this fish could roll
+	local state = ClientState.current
+	local species = if state and typeof(state.species) == "string" then state.species else "Nibbler"
 	if rng:NextNumber() < 0.35 then
 		local rare: { RollOdds.Outcome } = {}
 		for _, outcome in outcomes do
-			if outcome.kind ~= "coral" and not (outcome.kind == "shade" and fishShades[outcome.id]) then
+			if
+				outcome.kind ~= "coral"
+				and not (outcome.kind == "shade" and (fishShades[outcome.id] or outcome.species ~= species))
+			then
 				table.insert(rare, outcome)
 			end
 		end
@@ -327,7 +334,7 @@ local function filler(rng: Random): RollOdds.Outcome
 			return rare[rng:NextInteger(1, #rare)]
 		end
 	end
-	return RollOdds.pick(1, rng:NextNumber(), fishShades)
+	return RollOdds.pick(1, rng:NextNumber(), fishShades, species)
 end
 
 local function spinSeconds(tier: Tier): number
@@ -342,8 +349,15 @@ end
 -- Filler for a boss reward's reel: the Rare-or-better shades a kill can roll
 local function bossFiller(rng: Random): RollOdds.Outcome
 	local pool: { RollOdds.Outcome } = {}
+	local state = ClientState.current
+	local species = if state and typeof(state.species) == "string" then state.species else "Nibbler"
 	for _, shade in Config.Shades.list do
-		if shade.chance > 0 and tierOf(shade.tier).order >= Tiers.byId.Rare.order then
+		-- This fish's own line (a boss rolls from it)
+		if
+			Config.Shades.rollable(shade)
+			and shade.species == species
+			and tierOf(shade.tier).order >= Tiers.byId.Rare.order
+		then
 			table.insert(
 				pool,
 				{ id = shade.id, kind = "shade", name = `{shade.name} Shade`, tier = shade.tier }
