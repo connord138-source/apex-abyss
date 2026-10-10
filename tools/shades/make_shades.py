@@ -1,6 +1,6 @@
 """Makes the shade skins: one recolored color texture per fish and shade.
 
-    python tools/shades/make_shades.py <maps_dir> <out_dir> [Fish ...] [--only Shade,Shade]
+    python tools/shades/make_shades.py <maps_dir> <out_dir> [Fish ...] [--only=Shade,Shade]
 
 Needs numpy, scipy and pillow. The maps come from bake_maps.py (the fish's own color
 texture plus, for every texel, where it sits on the body in 3D) and the eyes from
@@ -8,20 +8,32 @@ eyes.json (find_eyes.py). Owner, 2026-10-08: "All of the shades in general need 
 much more variance and depth than just a slight reshape to the existing colors." A
 tint can only darken a texture (SurfaceAppearance.Color multiplies), so every shade
 is a real skin here: countershaded body, fins, then patterns laid on the body in 3D
-(stripes, bands, spots, rosettes, nets, scales, facets, cracks, clouds) and a finish
-(pearl, metal, glow halos), keeping the texture's painted strokes, the eyes, teeth
-and mouth, and the Anglerfish's lure.
+(stripes, bands, spots, rosettes, nets, scales, facets, cracks, clouds, rays, prints)
+and a finish (pearl, metal, glow halos), keeping the texture's painted strokes, the
+eyes, teeth and mouth, and the Anglerfish's lure.
+
+Each fish has its own skin line (owner, 2026-10-10: "skins to be different for each
+playable fish. Common skins should be similar to original just with realistic fish
+reshades and the rarer they get the wilder they get"): lines.json lists, per fish,
+its 12 line skins (4 Common realistic colour morphs of the real species, then
+Uncommon to Mythic, each wilder) and the universal skins every fish gets (the catch
+track, the weekly limited skins, the trophy and treasure shades). A fish is made with
+ONLY its own line plus the universal skins (shade_lines.py reads the lists for every
+tool here); a recipe for every id in lines.json lives in RECIPES.
 
 No skin may look like human skin (Hatch & Snatch, 2026-10-03: an account suspension
 over a pale pinkish atlas). Every pale tone is cool (silver-blue whites), warm colors
 are saturated (a saturated orange or gold is far outside the skin-tone rules; a
-peach or beige is inside them), and screen_shades.py checks every skin before upload.
+peach or beige is inside them) with hard edges against anything pale, dark tones are
+cool (olive, charcoal, slate, never a warm brown), and screen_shades.py checks every
+skin before upload.
 
 Writes, per fish, <out_dir>/<Fish>/: <Shade>.png (color, 1024, what Roblox takes),
 <Shade>_emit.png (what glows, RGB; the importer turns it into the emissive mask),
 <Shade>_metal.png and <Shade>_rough.png where a shade has its own, finish_<name>.png
 (the roughness every other shade with that finish shares: matte, satin, gloss,
-mirror), skins.json (which maps each shade has) and eyes_debug.png.
+mirror), skins.json (which maps each shade has; only the fish's own list, anything
+else in the folder is removed) and eyes_debug.png.
 """
 
 from __future__ import annotations
@@ -34,6 +46,8 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 from scipy.spatial import cKDTree
+
+import shade_lines
 
 HERE = pathlib.Path(__file__).parent
 SIZE = 1024
@@ -407,11 +421,13 @@ def pearl(m: Fish, rgb, amount=0.35, hue_spread=0.14, base_hue=0.58):
 FINISHES = {"matte": 0.86, "satin": 0.56, "gloss": 0.3, "mirror": 0.14}
 
 
-def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail=1.3):
+def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail=1.3, hush=None):
     """A finished skin: the painted strokes back on, the eyes, teeth, mouth and lure
     as they were, plus its glow (RGB), metal (0..1) and own roughness, if any. The
-    Angler's lure always glows."""
-    rgb = rgb * (1 + detail * m.fine)[..., None]
+    Angler's lure always glows. `hush` (0..1) quiets the painted strokes where a skin
+    paints over the fish's own markings (old band edges showing through as ghosts)."""
+    fine = m.fine if hush is None else m.fine * (1 - np.clip(hush, 0, 1))
+    rgb = rgb * (1 + detail * fine)[..., None]
     rgb = np.clip(rgb, 0, 1)
     rgb = mix(rgb, m.color, m.keep)
     rgb[~m.cov] = m.color[~m.cov]
@@ -939,6 +955,319 @@ def drowned_pearl(m):
     return done(m, rgb, "gloss", detail=0.6)
 
 
+# ---------------------------------------------------------------------------
+# Helpers for the per-fish skin lines (owner, 2026-10-10)
+# ---------------------------------------------------------------------------
+
+
+def cache(m: Fish, key, make):
+    """A map made once per fish and shared by every skin that needs it."""
+    store = m.__dict__.setdefault("_cache", {})
+    if key not in store:
+        store[key] = make()
+    return store[key]
+
+
+def blades(m: Fish):
+    """The fins as they really are, thin blades of the mesh (Fish.fin guesses from the
+    body's outline and takes a gill cover or a deep head for a fin): (mask 0..1, reach
+    0..1 from the fin's root to its tip, the fin each texel belongs to). A texel is on
+    a blade when stepping a little way in through the skin lands on the skin's other
+    face; each fin's reach is its distance from the body over its own furthest."""
+
+    def make():
+        rng = np.random.default_rng(17)
+        flat_p = m.p.reshape(-1, 3)
+        flat_n = m.nrm.reshape(-1, 3)
+        pick = rng.choice(len(flat_p), size=min(260000, len(flat_p)), replace=False)
+        tree = cKDTree(flat_p[pick])
+        thick = np.full(len(flat_p), 1.0, np.float32)
+        for depth in (0.026, 0.018, 0.012, 0.008, 0.005):
+            dist, j = tree.query(flat_p - flat_n * depth)
+            facing = (flat_n * flat_n[pick][j]).sum(-1)
+            hit = (facing < -0.2) & (dist < depth * 0.6)
+            thick[hit] = depth
+        thick = thick.reshape(m.y.shape)
+        mask = smoothstep(0.022, 0.012, ndimage.median_filter(thick, 5))
+        body = mask < 0.5
+        pts_body = m.p[body]
+        pts_body = pts_body[rng.choice(len(pts_body), size=min(150000, len(pts_body)), replace=False)]
+        from_body = cKDTree(pts_body).query(flat_p)[0].reshape(m.y.shape)
+        fin_idx = np.flatnonzero((~body).reshape(-1))
+        reach_ = np.zeros(m.y.shape, np.float32)
+        label = np.full(m.y.shape, -1, int)
+        if len(fin_idx) > 50:
+            from scipy.sparse.csgraph import connected_components
+
+            sub = fin_idx[rng.choice(len(fin_idx), size=min(45000, len(fin_idx)), replace=False)]
+            sub_tree = cKDTree(flat_p[sub])
+            graph = sub_tree.sparse_distance_matrix(sub_tree, 0.009, output_type="coo_matrix")
+            count, labels = connected_components(graph, directed=False)
+            far = from_body.reshape(-1)[sub]
+            top = np.zeros(count, np.float32)
+            np.maximum.at(top, labels, far)
+            sizes = np.bincount(labels, minlength=count)
+            # A fin's own furthest, a little in from the very tip; a few stray texels
+            # (a spike's point) count as part of the skin round them
+            for k in range(count):
+                if sizes[k] >= 12:
+                    top[k] = np.percentile(far[labels == k], 97)
+            _, j = sub_tree.query(flat_p[fin_idx])
+            lab = labels[j]
+            small = sizes[lab] < 40
+            r = np.clip(from_body.reshape(-1)[fin_idx] / np.maximum(top[lab], 0.01), 0, 1)
+            r[small] = 0
+            flat_r = reach_.reshape(-1)
+            flat_r[fin_idx] = r
+            flat_l = label.reshape(-1)
+            flat_l[fin_idx] = np.where(small, -1, lab)
+            mask = mask * (1 - small.astype(np.float32).sum() * 0) # keep the mask
+        return mask.astype(np.float32), reach_, label
+
+    return cache(m, "blades", make)
+
+
+def reach(m: Fish):
+    """How far out along its fin each texel sits: 0 at the root, 1 at the tip, 0 off
+    the fins."""
+    mask, out, _ = blades(m)
+    return out * mask
+
+
+def flank(m: Fish):
+    """Print coordinates, in body lengths: u along the body from the snout, v up from
+    the body's mid-line. Both flanks share them, like the same print on each side."""
+    return m.y, m.p[..., 2] - m.zc
+
+
+def side(m: Fish):
+    """+1 on the fish's right flank, -1 on its left (to make a print read the same
+    way round on both, like a hull number)."""
+    return np.where(m.p[..., 0] >= m.xc, 1.0, -1.0).astype(np.float32)
+
+
+def girth(m: Fish):
+    """(per texel, and a function of u) half the body's height in body lengths at that
+    place along it, fins left out, so prints can be sized to a thin or a round fish."""
+
+    def make():
+        u, v = flank(m)
+        body = m.cov & (m.fin < 0.3)
+        bins = 40
+        idx = np.clip((u * bins).astype(int), 0, bins - 1)
+        h = np.zeros(bins)
+        for b in range(bins):
+            sel = body & (idx == b)
+            h[b] = np.percentile(np.abs(v[sel]), 92) if sel.sum() > 50 else 0
+        good = h > 0
+        h = np.interp(np.arange(bins), np.flatnonzero(good), h[good])
+        h = ndimage.gaussian_filter1d(h, 1.5, mode="nearest")
+        centres = (np.arange(bins) + 0.5) / bins
+        return h[idx].astype(np.float32), (lambda at: float(np.interp(at, centres, h)))
+
+    return cache(m, "girth", make)
+
+
+def segment(u, v, a, b):
+    """Distance from (u, v) to the segment a-b, and how far along it (0..1)."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    t = np.clip(((u - a[0]) * dx + (v - a[1]) * dy) / max(dx * dx + dy * dy, 1e-12), 0, 1)
+    return np.hypot(u - a[0] - t * dx, v - a[1] - t * dy), t
+
+
+def scatter(m: Fish, count, seed, weight=None):
+    """`count` places on the skin (texel positions, body lengths), more of them where
+    `weight` is higher."""
+    rng = np.random.default_rng(seed)
+    flat = m.p.reshape(-1, 3)
+    ok = m.cov.reshape(-1)
+    w = ok.astype(np.float64)
+    if weight is not None:
+        w = w * np.clip(np.asarray(weight, np.float64).reshape(-1), 0, None)
+    w /= w.sum()
+    idx = rng.choice(len(flat), size=min(count, int((w > 0).sum())), replace=False, p=w)
+    return flat[idx].astype(np.float32)
+
+
+def nearest(m: Fish, pts):
+    """Distances to the nearest and second-nearest of `pts`, and the nearest's index."""
+    tree = cKDTree(pts)
+    d, i = tree.query(m.p.reshape(-1, 3), k=2)
+    shape = m.y.shape
+    return d[:, 0].reshape(shape), d[:, 1].reshape(shape), i[:, 0].reshape(shape)
+
+
+def offsets(m: Fish, pts, i):
+    """Each texel's offset from its point, flattened onto the skin: (a) along the body
+    toward the tail, (b) round it, up on the flanks."""
+    o = m.p - pts[i]
+    n = m.nrm
+    fwd = np.array([0, 1, 0], np.float32) - n * n[..., 1:2]
+    fwd /= np.maximum(np.linalg.norm(fwd, axis=-1, keepdims=True), 1e-4)
+    up = np.cross(n, fwd) * side(m)[..., None]
+    return (o * fwd).sum(-1), (o * up).sum(-1)
+
+
+def own_lum(m: Fish):
+    """The fish's own painted pattern as a tone: 0 its darkest, 1 its lightest."""
+
+    def make():
+        sel = m.cov & (m.keep < 0.5)
+        lo, hi = np.percentile(m.lum[sel], [3, 97])
+        return np.clip((m.lum - lo) / max(hi - lo, 1e-3), 0, 1).astype(np.float32)
+
+    return cache(m, "own_lum", make)
+
+
+def own_lines(m: Fish):
+    """The fish's own painted lines and the edges of its markings (0..1), from the
+    texture's color edges (eyes, teeth and lure left out)."""
+
+    def make():
+        g = np.zeros(m.y.shape, np.float32)
+        for k in range(3):
+            c = ndimage.gaussian_filter(m.color[..., k], 1.2)
+            g += ndimage.sobel(c, 0) ** 2 + ndimage.sobel(c, 1) ** 2
+        g = np.sqrt(g) * (1 - m.keep)
+        s = np.percentile(g[m.cov], 96)
+        return np.clip(g / max(s, 1e-4), 0, 1).astype(np.float32)
+
+    return cache(m, "own_lines", make)
+
+
+def own_marks(m: Fish):
+    """Where the fish's own texture differs from the color round it (its markings:
+    bands, spots, fin tips, a pale belly), 0..1."""
+
+    def make():
+        broad = np.stack([ndimage.gaussian_filter(m.color[..., k], 24) for k in range(3)], -1)
+        d = np.linalg.norm(m.color - broad, axis=-1) * (1 - m.keep)
+        s = np.percentile(d[m.cov], 92)
+        return np.clip(d / max(s, 1e-4), 0, 1).astype(np.float32)
+
+    return cache(m, "own_marks", make)
+
+
+def polar(m: Fish, yc, vc=0.0, squash=1.0):
+    """Polar coordinates on the flanks round a point (yc along the body, vc above the
+    mid-line): distance in body lengths and angle."""
+    u, v = flank(m)
+    du, dv = u - yc, (v - vc) / squash
+    return np.hypot(du, dv), np.arctan2(dv, du)
+
+
+def rays(m: Fish, rho, phi, count, width, seed, length=(0.6, 1.0), taper=0.0):
+    """`count` rays bursting from a centre (rho, phi from polar), each of its own
+    length (a fraction of `length`, body lengths): returns the ray mask and how far
+    out along its ray each texel is (0..1)."""
+    rng = np.random.default_rng(seed)
+    k = phi / (2 * np.pi) * count
+    idx = np.round(k).astype(int) % count
+    lens = (length[0] + (length[1] - length[0]) * rng.random(count)).astype(np.float32)
+    jitter = ((rng.random(count) - 0.5) * 0.35).astype(np.float32)
+    ang = np.abs(k - np.round(k) - jitter[idx]) * 2 * np.pi / count
+    out = rho / lens[idx]
+    w = width * (1 - taper * np.clip(out, 0, 1))
+    mask = smoothstep(w, w * 0.55, rho * ang) * smoothstep(1.0, 0.94, out)
+    return mask, np.clip(out, 0, 1)
+
+
+def hard(mask, lo=0.45, hi=0.55):
+    """A mask with a hard edge (no wide blends: an orange or gold blended softly into
+    a pale tone makes peach or beige)."""
+    return smoothstep(lo, hi, mask)
+
+
+# ---------------------------------------------------------------------------
+# The Nibbler's line: clownfish morphs, from its own three painted bands
+# ---------------------------------------------------------------------------
+
+
+def nib_bands(m: Fish):
+    """The Nibbler's own white bands (head, middle, tail) from its texture, as a crisp
+    mask, which band each texel is nearest (1 head, 2 middle, 3 tail), the 3D
+    distance outside a band and inside one (body lengths), and whether a texel is in
+    front of the head band (the face)."""
+
+    def make():
+        s, val = m.hsv[..., 1], m.hsv[..., 2]
+        cream = (s < 0.42) & (val > 0.55) & (m.keep < 0.3)
+        spans = ((0.12, 0.32), (0.40, 0.62), (0.71, 0.87))
+        inside = np.zeros(cream.shape, bool)
+        for lo, hi in spans:
+            inside |= (m.y > lo) & (m.y < hi)
+        band = ndimage.gaussian_filter((cream & inside).astype(np.float32), 1.5) > 0.5
+        band &= inside & (m.keep < 0.3)
+        rng = np.random.default_rng(5)
+        pts_in = m.p[band]
+        pts_out = m.p[~band & m.cov]
+        pts_in = pts_in[rng.choice(len(pts_in), min(90000, len(pts_in)), replace=False)]
+        pts_out = pts_out[rng.choice(len(pts_out), min(140000, len(pts_out)), replace=False)]
+        flat = m.p.reshape(-1, 3)
+        d_in, i_in = cKDTree(pts_in).query(flat)
+        d_out, _ = cKDTree(pts_out).query(flat)
+        shape = m.y.shape
+        near_y = pts_in[i_in, 1].reshape(shape)
+        near_y = (near_y - m.mn[1]) / max(m.length, 1e-6)
+        which = np.digitize(near_y, [0.36, 0.67]) + 1
+        outside = np.where(band, 0.0, d_in.reshape(shape)).astype(np.float32)
+        depth = np.where(band, d_out.reshape(shape), 0.0).astype(np.float32)
+        face = (which == 1) & (m.y < near_y) & ~band
+        return band.astype(np.float32), which, outside, depth, face.astype(np.float32)
+
+    return cache(m, "nib_bands", make)
+
+
+def nib_percula(m):  # Percula: vivid orange, three crisp white bands edged in black
+    band, which, outside, depth, face = nib_bands(m)
+    tip = reach(m)
+    rgb = coat(m, (1.0, 0.40, 0.0), (1.0, 0.50, 0.02), (1.0, 0.46, 0.0), soft=0.3)
+    rgb = mix(rgb, (0.92, 0.30, 0.0), smoothstep(0.6, 0.95, m.up) * 0.5)
+    rgb = mix(rgb, SNOW, band)
+    rim = smoothstep(0.0075, 0.0055, outside) * (1 - band)
+    rgb = mix(rgb, INKY, rim)
+    fin_edge = hard(smoothstep(0.62, 0.7, tip)) * m.fin
+    rgb = mix(rgb, INKY, fin_edge * (1 - band))
+    return done(m, rgb, "gloss", detail=0.9)
+
+
+def nib_tomato(m):  # Tomato clownfish: red-orange darkening to red-black, one head band
+    band, which, outside, depth, face = nib_bands(m)
+    head = band * (which == 1)
+    u, v = flank(m)
+    dark = smoothstep(0.34, 0.66, m.y) * smoothstep(0.98, 0.55, m.up) * (1 - m.fin)
+    dark = np.clip(dark + smoothstep(0.5, 0.75, m.y) * 0.4 * (1 - m.fin), 0, 1)
+    rgb = coat(m, (0.86, 0.12, 0.02), (1.0, 0.30, 0.02), (0.82, 0.08, 0.03), soft=0.3)
+    rgb = mix(rgb, (0.24, 0.015, 0.02), dark * 0.92)
+    rgb = mix(rgb, (0.72, 0.05, 0.03), m.fin * smoothstep(0.85, 0.9, m.y) * 0.6)
+    rgb = mix(rgb, SNOW, head)
+    rim = smoothstep(0.0065, 0.0045, outside) * (which == 1) * (1 - band)
+    rgb = mix(rgb, INKY, rim)
+    # The old bands' painted edges would show as ghost lines through the red: hush them
+    hush = smoothstep(0.012, 0.0, outside + depth) * (which > 1)
+    return done(m, rgb, "gloss", detail=0.9, hush=hush)
+
+
+def nib_maroon(m):  # Maroon clownfish: deep wine body, three thin golden bands
+    band, which, outside, depth, face = nib_bands(m)
+    gold = hard(smoothstep(0.024, 0.03, depth)) * band
+    rgb = coat(m, (0.20, 0.012, 0.06), (0.36, 0.03, 0.10), (0.22, 0.015, 0.07), soft=0.3)
+    rgb = mix(rgb, (0.30, 0.02, 0.08), band * (1 - gold))
+    rgb = mix(rgb, (1.0, 0.76, 0.0), gold)
+    hush = smoothstep(0.01, 0.0, np.minimum(outside, np.where(band > 0.5, depth, 1.0)))
+    return done(m, rgb, "satin", detail=0.9, hush=hush)
+
+
+def nib_midnight(m):  # Black ocellaris: glossy black, bright white bands, an orange face
+    band, which, outside, depth, face = nib_bands(m)
+    rgb = coat(m, (0.025, 0.025, 0.035), (0.05, 0.05, 0.065), (0.03, 0.03, 0.045), soft=0.3)
+    orange = hard(face * smoothstep(0.0075, 0.0095, outside))
+    rgb = mix(rgb, (1.0, 0.40, 0.0), orange)
+    rgb = mix(rgb, (0.95, 0.30, 0.0), orange * smoothstep(0.08, 0.0, m.y) * 0.5)
+    rgb = mix(rgb, SNOW, band)
+    return done(m, rgb, "gloss", detail=0.8)
+
+
 RECIPES = {
     "Mint": mint,
     "Sunset": sunset,
@@ -973,6 +1302,11 @@ RECIPES = {
     "AbyssInk": abyss_ink,
     "SunkenGold": sunken_gold,
     "DrownedPearl": drowned_pearl,
+    # The Nibbler's line
+    "NibPercula": nib_percula,
+    "NibTomato": nib_tomato,
+    "NibMaroon": nib_maroon,
+    "NibMidnight": nib_midnight,
 }
 
 
@@ -984,6 +1318,23 @@ def save_gray(path, arr):
     Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8), "L").save(path)
 
 
+STALE_SKIP = {"eyes_debug"}
+
+
+def prune(folder: pathlib.Path, keep: list[str]):
+    """Removes skins a fish no longer gets (a shade moved to another fish's line), so
+    nothing stale is screened or packed."""
+    for path in folder.glob("*.png"):
+        stem = path.stem
+        if stem in STALE_SKIP or stem.startswith("finish_"):
+            continue
+        shade = stem
+        for suffix in ("_emit", "_metal", "_rough"):
+            shade = shade.removesuffix(suffix)
+        if shade not in keep:
+            path.unlink()
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     only = None
@@ -993,7 +1344,12 @@ def main():
     maps, out = pathlib.Path(args[0]), pathlib.Path(args[1])
     names = args[2:] or [p.stem for p in sorted(maps.glob("*.npz"))]
     eyes = json.loads((HERE / "eyes.json").read_text())
+    todo = {s for f in names for s in shade_lines.shades(f) if not only or s in only}
+    missing = sorted(todo - set(RECIPES))
+    if missing:
+        raise SystemExit(f"[shades] lines.json names shades with no recipe: {', '.join(missing)}")
     for name in names:
+        wanted = shade_lines.shades(name)
         fish = Fish(name, maps / f"{name}.npz", eyes.get(name, {}).get("picks", []))
         folder = out / name
         folder.mkdir(parents=True, exist_ok=True)
@@ -1003,11 +1359,13 @@ def main():
         Image.fromarray((np.clip(dbg, 0, 1) * 255).astype(np.uint8)).save(folder / "eyes_debug.png")
         manifest_path = folder / "skins.json"
         manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+        manifest = {k: v for k, v in manifest.items() if k in wanted}
+        prune(folder, wanted)
         made = 0
-        for shade, recipe in RECIPES.items():
+        for shade in wanted:
             if only and shade not in only:
                 continue
-            skin = recipe(fish)
+            skin = RECIPES[shade](fish)
             save_rgb(folder / f"{shade}.png", skin["rgb"])
             for suffix in ("_emit", "_metal", "_rough"):
                 (folder / f"{shade}{suffix}.png").unlink(missing_ok=True)
@@ -1024,11 +1382,15 @@ def main():
                 "rough": skin["rough"] is not None,
             }
             made += 1
+            print(f"[shades] {name}: {shade}", flush=True)
         # The finish maps every shade without its own roughness shares
         for finish in sorted({v["finish"] for v in manifest.values()}):
             save_gray(folder / f"finish_{finish}.png", finish_map(fish, finish))
+        for stale in folder.glob("finish_*.png"):
+            if stale.stem.removeprefix("finish_") not in {v["finish"] for v in manifest.values()}:
+                stale.unlink()
         manifest_path.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n")
-        print(f"[shades] {name}: {made} skins")
+        print(f"[shades] {name}: {made} skins ({len(wanted)} in its list)")
 
 
 if __name__ == "__main__":
