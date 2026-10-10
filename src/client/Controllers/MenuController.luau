@@ -1618,6 +1618,9 @@ function MenuController.openDaily()
 				local tier = Config.Treasure.byId[reward.map]
 				table.insert(parts, `{string.upper(if tier then tier.name else reward.map)} MAP`)
 			end
+			if reward.spins then
+				table.insert(parts, `{reward.spins} WHEEL SPIN{if reward.spins == 1 then "" else "S"}`)
+			end
 			return table.concat(parts, "\n")
 		end
 		return {
