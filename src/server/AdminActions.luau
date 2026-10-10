@@ -27,6 +27,7 @@ local MonetizationService = require(script.Parent.Services.MonetizationService)
 local TreasureService = require(script.Parent.Services.TreasureService)
 local TutorialService = require(script.Parent.Services.TutorialService)
 local WardrobeService = require(script.Parent.Services.WardrobeService)
+local WheelService = require(script.Parent.Services.WheelService)
 
 type PlayerData = DataService.PlayerData
 type Handler = (Player, { Player }, ...any) -> string
@@ -513,6 +514,25 @@ local function boardPoints(_admin: Player, targets: { Player }, boardId: any, am
 	return `+{n} on {Config.Leaderboards.byId[boardId].name} for {names(targets)} (written within a minute)`
 end
 
+local function wheelSpins(_admin: Player, targets: { Player }, amount: any): string
+	local n = amountOf(amount, 1) or 1
+	for _, player in targets do
+		WheelService.give(player, n)
+	end
+	return `+{n} Treasure Wheel spins for {names(targets)}`
+end
+
+local function wheelLand(_admin: Player, targets: { Player }, index: any): string
+	local segment = if typeof(index) == "number" then Config.Wheel.segments[index] else nil
+	if segment == nil then
+		return "Pick a slice"
+	end
+	for _, player in targets do
+		WheelService.rig(player, index)
+	end
+	return `{names(targets)}'s next spin lands on {segment.label}`
+end
+
 AdminActions.byName = {
 	addCoral = addCoral :: Handler,
 	setCoral = setCoral :: Handler,
@@ -549,6 +569,8 @@ AdminActions.byName = {
 	weeklyCatch = weeklyCatch :: Handler,
 	bounties = bounties :: Handler,
 	boardPoints = boardPoints :: Handler,
+	wheelSpins = wheelSpins :: Handler,
+	wheelLand = wheelLand :: Handler,
 } :: { [string]: Handler }
 
 return AdminActions

@@ -33,6 +33,7 @@ local ShellController = require(script.Controllers.ShellController)
 local StartController = require(script.Controllers.StartController)
 local SwimController = require(script.Controllers.SwimController)
 local TideController = require(script.Controllers.TideController)
+local TreasureWheelController = require(script.Controllers.TreasureWheelController)
 local TreasureController = require(script.Controllers.TreasureController)
 local TutorialController = require(script.Controllers.TutorialController)
 
@@ -50,6 +51,7 @@ task.spawn(Ads.start) -- rewarded ads: checks whether one can be shown
 BiomeController.start() -- biome names, suggested levels and under-level warnings
 TideController.start() -- the Tide Clock: the chip, the banner when it turns, the water's tint
 CatchController.start() -- rare catches: toasts, skin unlocks, the Catch of the Week
+task.spawn(TreasureWheelController.start) -- the Treasure Wheel: its spin, bulbs, result, the hint at its button
 TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
 HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow

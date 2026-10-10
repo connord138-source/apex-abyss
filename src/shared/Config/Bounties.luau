@@ -9,6 +9,7 @@ export type Reward = {
 	wraps: number?,
 	charms: { [string]: number }?, -- Config/Shop charm id → count
 	map: string?, -- a Config/Treasure tier
+	spins: number?, -- Treasure Wheel spins (Config/Wheel)
 }
 
 export type Bounty = {
@@ -128,5 +129,5 @@ return {
 	pool = pool,
 	byId = byId,
 	perDay = 3,
-	chest = { coral = 1000, shells = 50, charms = { Lucky = 1 } } :: Reward,
+	chest = { coral = 1000, shells = 50, charms = { Lucky = 1 }, spins = 1 } :: Reward,
 }

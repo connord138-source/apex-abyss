@@ -65,6 +65,7 @@ local REQUESTS: { [string]: number } = {
 	DenColor = 0.25, -- (glowId) the den's glow color
 	ClaimDaily = 1, -- () today's daily streak reward
 	WatchAd = 3, -- () a rewarded video ad (its reward: Double Haul on a small Haul)
+	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do

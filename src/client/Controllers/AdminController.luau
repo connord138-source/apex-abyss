@@ -372,6 +372,14 @@ local function build()
 		table.insert(boards, { label = board.name, value = board.id })
 	end
 	pickRow("Leaderboard: add to my score", boards, "boardPoints", "ADD", "amount")
+
+	header("TREASURE WHEEL")
+	amountRow("Wheel: give spins", "spins", "wheelSpins", 1, "GIVE")
+	local slices: { { label: string, value: any } } = {}
+	for index, segment in Config.Wheel.segments do
+		table.insert(slices, { label = segment.label, value = index })
+	end
+	pickRow("Wheel: the next spin lands on", slices, "wheelLand", "RIG")
 end
 
 function AdminController.start()

@@ -299,6 +299,8 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 			record.featured = true
 			EconomyService.addCoral(player, featured.coral)
 			EconomyService.addShells(player, featured.shells)
+			data.wheel.spins += Config.Wheel.weekly
+			summary.weeklySpins = Config.Wheel.weekly
 			summary.weeklyCoral = featured.coral
 			summary.weeklyShells = featured.shells
 			if Progress.grantShade(data, featured.skin, species) then

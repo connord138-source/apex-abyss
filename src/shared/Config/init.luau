@@ -26,4 +26,5 @@ return {
 	Catch = require(script.Catch),
 	Bounties = require(script.Bounties),
 	Leaderboards = require(script.Leaderboards),
+	Wheel = require(script.Wheel),
 }

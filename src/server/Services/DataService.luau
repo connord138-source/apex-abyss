@@ -100,6 +100,9 @@ export type PlayerData = {
 	-- leaderboard titles were checked
 	weekly: { week: number, scores: { [string]: number }, featured: boolean },
 	lbChecked: number,
+	-- The Treasure Wheel (Config/Wheel): spins waiting, and when the free-spin clock
+	-- last paid (Unix; 0 = never: a new player's first spin)
+	wheel: { spins: number, lastFree: number },
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
@@ -160,6 +163,7 @@ local TEMPLATE: PlayerData = {
 	bounties = { day = 0, list = {}, chest = false },
 	weekly = { week = 0, scores = {}, featured = false },
 	lbChecked = 0,
+	wheel = { spins = 0, lastFree = 0 },
 	passes = {},
 	groupRewarded = false,
 	purchaseIds = {},
