@@ -2320,6 +2320,16 @@ local function updateHint(root: BasePart?)
 			end
 		end
 	end
+	-- The Treasure Wheel's button nearer than the counter: E is the wheel's
+	-- (TreasureWheelController shows its hint by the same rule)
+	local wheelState = ReplicatedStorage:FindFirstChild("WheelState")
+	local button = if wheelState then wheelState:GetAttribute("ButtonPosition") else nil
+	if best and root and typeof(button) == "Vector3" then
+		local distance = (root.Position - button).Magnitude
+		if distance <= Config.Wheel.reach and distance < bestDistance then
+			best = nil
+		end
+	end
 	-- Your own den's pool: the den menu
 	local denIndex = state().denIndex
 	local denSpot: Vector3? = nil

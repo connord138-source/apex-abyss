@@ -206,6 +206,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **The LOG** (beside DAILY; `MenuController.openLog`): Catch Log, Bounties, Weekly,
     Tides. `CatchController` toasts catches and announces unlocks. Tests:
     `tools/tests/run_tides.sh`.
+  - **Earned skins stop at Epic (owner, 2026-10-10: "we still don't want the most
+    elite skins obtained that way that'll be rng and bosses/treasure chests"):** catch
+    tracks give Golden Uncommon, Glowing Rare, Crystal and Prism Epic; the weekly
+    skins are Epic. Legendary and Mythic only roll (rolls, the wheel's jackpot,
+    bosses, treasure). Keep any new earned skin at Epic or below.
+  - **Biggest catches (owner: "track their biggest eat of each species and rarity of
+    species too"):** every school fish has its own size (`Schools` `size` 0.82–1.18,
+    4% trophies 1.25–1.5; mass and Haul go with size³); `data.catchBest[prey][rarity]`
+    holds the heaviest, shown per cell and per row in the Catch Log, with a NEW
+    BIGGEST toast for rare or trophy-sized records.
+  - **Treasure Wheel (owner: "do want a spin wheel again"):** Hatch & Snatch's Luck
+    Wheel ported (`Config/Wheel`, `TreasureWheel.luau` builds it, `WheelService`,
+    `TreasureWheelController`), on the hub plaza at 240°. E / Y / SPIN spins, T / ALL
+    is Spin all, a line for a second spinner; 8 slices, a 4% jackpot of a Rare+ skin
+    from the current fish's line. Spins are never sold: one free every 4 h (online or
+    off, up to 3), plus the Bounty Chest, the Catch of the Week and daily days 3 and
+    6 (`data.wheel`). Admin: give spins, rig the next slice.
 - **Coral and vendors (owner, 2026-10-06):** Coral is the currency. Four vendor stalls
   round the hub plaza, near the dens, sell with it:
   - Outfitter: upgrades.

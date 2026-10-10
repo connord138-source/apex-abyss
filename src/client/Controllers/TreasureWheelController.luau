@@ -23,6 +23,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
@@ -630,9 +631,17 @@ end
 local function updateHint()
 	local at = state:GetAttribute("ButtonPosition")
 	local root = SwimController.root()
-	local near = typeof(at) == "Vector3"
-		and root ~= nil
-		and (root.Position - at).Magnitude <= Wheel.reach
+	local distance = if typeof(at) == "Vector3" and root then (root.Position - at).Magnitude else math.huge
+	-- A stall's counter nearer than the button keeps E for its shop (MenuController
+	-- drops its hint the same way when the button is nearer)
+	local stall = math.huge
+	if root then
+		for _, vendor in Config.Shop.vendors do
+			stall = math.min(stall, Layout.counterDistance(vendor.angle, root.Position))
+		end
+	end
+	local near = distance <= Wheel.reach
+		and distance < stall
 		and not MenuController.isOpen()
 		and not StartController.isUp()
 	nearButton = near == true

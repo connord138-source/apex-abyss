@@ -921,9 +921,21 @@ owner picked all four ("All four please!").
 - **The Catch Log:** every prey species × rarity (plain too). A first catch pays (25 /
   120 / 400 / 1,500 / 5,000 coral), a finished species row 3,000 coral and 60 shells,
   and the whole log the Master Angler title.
+  - **Biggest catches (owner: "track their biggest eat of each species and rarity of
+    species too"):** every school fish has its own size (`Schools` `size`: 0.82–1.18
+    of its species' length, and 1 in 25 a trophy at 1.25–1.5), so its mass, and what
+    eating it is worth, goes with the cube of that. The log keeps your heaviest of
+    each species at each rarity (`data.catchBest`); each cell shows how many and the
+    biggest, each row the species' biggest. A new record on a rare or trophy-sized
+    fish (≥1.9× the species' mass) says NEW BIGGEST.
 - **Catch tracks (owner: "10 total unlocks a skin", per fish, per rarity):** rare
   catches count on the fish you're swimming as; 10 Golden, 10 Glowing, 5 Crystal and 3
   Prism catches unlock that rarity's skin for that fish. Those skins are never rolled.
+  - **Earned skins stop at Epic** (owner, 2026-10-10: "we still don't want the most
+    elite skins obtained that way that'll be rng and bosses/treasure chests"): Golden
+    is Uncommon, Glowing Rare, Crystal and Prism Epic, and the weekly skins Epic.
+    Legendary and Mythic skins come only from rolls, the Treasure Wheel's jackpot,
+    bosses and treasure chests.
 - **The Tide Clock** (`Config/Tides`, `Shared/Tides`, `TideService`, `TideController`):
   the sea changes every 20 minutes, on the :00, :20 and :40, on one clock for every
   server (arithmetic on Unix time, so nothing is sent).
@@ -944,7 +956,7 @@ owner picked all four ("All four please!").
   kinds, within the fish's level (catch Golden/Glowing fish, eat fish, bite hunters or
   a boss, bank Hauls, pick up shells, eat during a tide, dig up a chest); each pays the
   moment it's done, all three open the Bounty Chest (1,000 coral, 50 shells, a Lucky
-  Charm).
+  Charm, a Treasure Wheel spin).
 - **Catch of the Week:** one prey and rarity a week (Monday 00:00 UTC; week 1 is
   2026-10-05: Crystal Grouper, then Glowing Snapper, Golden Barracuda, Crystal
   Wrasse), ×3 as common all week. The first one caught pays big and unlocks that week's
@@ -956,6 +968,28 @@ owner picked all four ("All four please!").
   week). Last week's top 1, 10 and 100 earn a title on their next join.
 - **The LOG** (HUD button beside DAILY): Catch Log and catch track, Bounties, Weekly
   (Catch of the Week and the boards), Tides.
+- **The Treasure Wheel** (owner, 2026-10-10: "do want a spin wheel again"; ported from
+  Hatch & Snatch's Luck Wheel: `Config/Wheel`, `TreasureWheel.luau`, `WheelService`,
+  `TreasureWheelController`): a game-show wheel of parts on the hub plaza (240°, 62
+  studs from the beacon), teal and brass, with pegs, a flapper, marquee bulbs, a sign,
+  an odds board and a big red button. Swim to the button and press E (Y on a
+  controller, SPIN on a phone); T (ALL) is Spin all. Everyone in the hub sees it turn;
+  a second spinner joins the line.
+
+  | Slice | Odds |
+  |---|---|
+  | 300 coral | 24% |
+  | 40 shells | 18% |
+  | Feast Charm | 12% |
+  | 2 Kelp Wraps | 12% |
+  | Weathered treasure map | 10% |
+  | +2 spins | 10% |
+  | Lucky Charm | 10% |
+  | Jackpot: a Rare-or-better skin from your fish's line (2,500 coral once it has them all) | 4% |
+
+  - Spins are never sold. One comes free every 4 hours, online or off, up to 3
+    waiting (a reason to come back), and a new save starts with one; the Bounty Chest
+    gives 1, the Catch of the Week 2, and daily streak days 3 and 6 one each.
 
 ## 9. Monetization
 
