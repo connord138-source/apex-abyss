@@ -27,7 +27,7 @@ export type Biome = {
 	live: boolean,
 	color: Color3, -- the zone banner's accent
 	deep: boolean, -- below the drop-off
-	dark: boolean?, -- pitch dark: bring a light (an Anglerfish's lure, a Deep Lantern)
+	dark: boolean?, -- dark and murky: a light helps (an Anglerfish's lure, a Deep Lantern)
 }
 
 local SHELF = 850 -- Config/World shelf.radius

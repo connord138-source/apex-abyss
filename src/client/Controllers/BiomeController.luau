@@ -74,7 +74,7 @@ local function banner(biome: Biomes.Biome)
 		then `TOO DANGEROUS FOR NOW · suggested level {biome.minLevel}–{biome.maxLevel}`
 		else `Suggested level {biome.minLevel}–{biome.maxLevel}`
 	if biome.dark then
-		text ..= "  ·  PITCH DARK · bring a light: a Deep Lantern, an Anglerfish's lure or a glowing shade"
+		text ..= "  ·  DARK WATERS · a light helps: a Deep Lantern, an Anglerfish's lure or a glowing shade"
 	end
 	local sub = Ui.label(
 		holder,
@@ -150,7 +150,7 @@ local function step()
 	end
 	local biome = Biomes.at(root.Position)
 	local inHub = biome == nil
-	-- The pitch dark of a dark biome, once you're down in it
+	-- The dark of a dark biome, once you're down in it
 	OceanController.setDark(
 		if biome and biome.dark and root.Position.Y < Config.World.deep.floorY + 40 then 1 else 0
 	)

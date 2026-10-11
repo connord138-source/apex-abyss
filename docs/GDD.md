@@ -652,7 +652,17 @@ clusters on the canyon walls, and the bosses' own eerie glow (playtest 2026-10-0
 done with fog and exposure instead, it was pure black even with a lantern). The Anglerfish's lure is
 a lamp (its species perk), and the Tidecharm Trader sells a Deep Lantern (350 coral,
 10 minutes). Lamps light the dark for everyone round the fish. The biome banner and
-chip warn PITCH DARK · bring a light.
+chip warn DARK WATERS · a light helps (it said PITCH DARK · bring a light until
+2026-10-11).
+
+**Creepy, not black (owner, 2026-10-11: "Let's just go with a creepy vibe for the
+trench and keep it darker but not pitch black people aren't going to want to go
+there. The light affects will still make a difference").** The Trench is the darkest
+place in the sea but never a void: a dim, cold light stays (more where the plankton is
+thick, and a sliver from far above), the water turns a murky green-teal that the canyon
+walls, fish and the Giant Squid loom out of, and the picture goes cold and drained with
+a little extra contrast. A light still matters: it lights a pool round its fish and
+clears its holder's view by its rarity (below).
 
 **Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
 luminescense such as photoplankton etc to give very very faint light"; built).** Below

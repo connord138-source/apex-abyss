@@ -593,14 +593,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   Common glowing shades: Ember, Ink and Neon Tetra (`light` in `Config/Shades` gives
   the colour when there's no `glow`). The Trench reads the plankton level nearly
   everywhere at its bottom; the base shows higher up. The biome banner and chip say
-  PITCH DARK · bring a light. **Retuned after the owner's "the abyss can't be
+  PITCH DARK · bring a light (DARK WATERS since 2026-10-11). **Retuned after the owner's "the abyss can't be
   completely black how the hell will anyone fight anything in pitch black or low
   visibility let alone a boss" (2026-10-09):** `light.ambient` (32, 46, 66),
   `plankton` (44, 74, 88); the deep-colour boost tops out at ×1.2 (×1.6 made the
   purples outshine everything); `lampBoost` in `Config/Shades` lifts Aurora (×1.15) and
   Ghost (×1.25), which read weak on the teal floor; Common is range 24, brightness
   1.3; Trophy 3.6. Every predator shows the eerie rim in the dark (non-bosses at 60%),
-  and near a boss the fight light lifts the dark (above).
+  and near a boss the fight light lifts the dark (above). **Creepy, not black
+  (owner, 2026-10-11: "Let's just go with a creepy vibe for the trench and keep it
+  darker but not pitch black people aren't going to want to go there. The light
+  affects will still make a difference"):** the dark keeps `light.ambient` (58, 76,
+  80), `plankton` (64, 96, 98), 14% of the sun (`sun`) and 30% of the environment's
+  light (`environment`); the haze is a murky green-teal (`water` (20, 44, 48),
+  `decay` (7, 20, 24), `density` 0.7) that rock, fish and the squid loom out of; a
+  cold, drained grade (`grade`: tint (206, 228, 220), saturation −0.22, contrast
+  +0.1) and exposure +0.1. Lamps and glowing shades still lift the dark by rarity.
+  The banner says DARK WATERS · a light helps, the chip DARK.
 - **Deep bioluminescence (owner, 2026-10-08: "deepest depths should have light
   luminescense such as photoplankton etc to give very very faint light"):**
   `PlanktonController` fills the water round the camera with faint twinkling
@@ -901,9 +910,19 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   collision off (a boulder's placeholder was a tilted box, an invisible wall round
   the rock; `blocksCamera` keeps the camera out of rocks too). Boulders and hard
   corals (brain, staghorn, fan, tube sponge) are solid; anemones and kelp stay soft.
-  Kelp gives way instead (`KelpController`): a plant leans away from any player's
-  fish inside it (far enough to clear it at its height) and springs back, and fades
-  when the camera is inside it.
+  Kelp gives way instead (`KelpController`): a fish brushing a plant nudges it
+  aside and drags it a little along its swim through a damped spring (it eases over
+  and wobbles back, never flips across the stalk), and it fades, eased, when the
+  camera is inside it. **The kelp glitch (owner, 2026-10-11: "The kelp and other
+  floating attached items still glitch while they move"):** the sway records sat
+  in a weak table keyed by the plant's Model, and Luau drops an Instance key
+  whenever no script holds that Instance (the plant was still there), so every
+  garbage collection re-rolled each plant's phase and dropped its lean: the forest
+  snapped to new poses (the 2026-10-10 readings jumped 5° → 1° → 4° in 0.15 s).
+  Records are strong now (pruned when a plant goes), the sway is seeded from the
+  plant's position (the same after streaming), sway eases out over the last 50
+  studs of reach (no freeze mid-lean or pop back in), and a tall plant's top moves
+  at most 24 studs from a push.
 - **Vendors (owner, 2026-10-08: "still just spheres with eyes"):** the five
   shopkeepers are models now, `vendors_glb` (`WorldProps.Keeper<VendorId>`): the
   hermit crab Outfitter, octopus Den Mason, sea turtle Tidecharm Trader, pufferfish
@@ -1123,6 +1142,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).
+
+- **Never key a weak table (`__mode = "k"`) by an Instance** unless some script
+  also holds that Instance: Luau collects the key though the Instance still
+  exists, and the entry is gone (the kelp's sway records, 2026-10-11).
 
 ## Lessons carried over from Hatch & Snatch
 

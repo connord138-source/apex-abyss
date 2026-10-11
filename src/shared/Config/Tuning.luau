@@ -130,11 +130,24 @@ return {
 	-- completely black how the hell will anyone fight anything in pitch black or low
 	-- visibility let alone a boss"); near a boss the dark lifts much further
 	-- (OceanController.setBossLight).
+	-- The Trench is creepy, not black (owner, 2026-10-11: "Let's just go with a creepy
+	-- vibe for the trench and keep it darker but not pitch black people aren't going
+	-- to want to go there. The light affects will still make a difference"): the
+	-- dark keeps a dim, cold, drained light (`ambient`, more where the plankton is
+	-- thick), a sliver of the light from far above (`sun`, `environment`), and the
+	-- water is a murky green-teal (`water`, `decay`, `density`) that things loom out
+	-- of, never a black void; `grade` tints and drains it a little and adds contrast.
+	-- A fish's own light still lifts the dark round it by its rarity (`sources`).
 	light = {
-		ambient = Color3.fromRGB(32, 46, 66),
-		plankton = Color3.fromRGB(44, 74, 88),
-		water = Color3.fromRGB(10, 20, 36),
-		decay = Color3.fromRGB(4, 8, 16),
+		ambient = Color3.fromRGB(58, 76, 80),
+		plankton = Color3.fromRGB(64, 96, 98),
+		sun = 0.14, -- share of the sun left
+		environment = 0.3, -- share of the environment's light left
+		water = Color3.fromRGB(20, 44, 48),
+		decay = Color3.fromRGB(7, 20, 24),
+		density = 0.7,
+		exposure = 0.1,
+		grade = { tint = Color3.fromRGB(206, 228, 220), saturation = -0.22, contrast = 0.1 },
 		-- Each light source, rarest last: the glow's range and brightness, the forward
 		-- beam's brightness (0 = none: a glowing skin shines all round), and how much
 		-- of the dark it lifts from its holder's own view. A fish uses its best one.

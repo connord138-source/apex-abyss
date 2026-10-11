@@ -29,7 +29,8 @@ type Grade = {
 -- with depth so no depth ever sees every other (owner, 2026-10-08: "swimming to the
 -- surface allows you to see all the way down ... similar to the underwater feel of
 -- Subnautica"); the deep floor is a deep blue, never black ("a large black
--- wasteland"); only the Trench goes near-black, and that is OceanController.setDark.
+-- wasteland"); only the Trench goes darker still, and that is OceanController.setDark
+-- (murky and dim, not black).
 -- The shelf's three are thinner and less green than they were (owner, 2026-10-11:
 -- the haze turned Golden and Bumblebee olive from ~16 studs and Lilac blue), so
 -- colours hold out to ~40 studs; the deep grades are unchanged.
@@ -156,8 +157,8 @@ local tideDim, tideDimVelocity = 0, 0
 local blindTarget = 0
 local blind, blindVelocity = 0, 0
 local ink: ColorCorrectionEffect
--- Pitch dark biomes (the Trench): the light goes out, so only lamps and glowing
--- things show
+-- Dark biomes (the Trench): most of the light goes, the water turns murky, and
+-- lamps and glowing things carry the rest
 local darkTarget = 0
 local dark, darkVelocity = 0, 0 -- the dark this player sees (less where their own light lifts it)
 local water, waterVelocity = 0, 0 -- the water's own dark, before anyone's light
@@ -166,14 +167,16 @@ local glow = 0
 -- Plankton glow in the deepest water (PlanktonController): a very faint blue-green
 -- light, most noticeable in the pitch dark
 local GLOW_TINT = Color3.fromRGB(70, 150, 150)
--- What's left of the light in the full dark (owner, 2026-10-09: "about 5-10%
--- visibility with no light"), and with the plankton's glow at its thickest; the haze
--- is a very deep blue, so rock and fish read as dim shapes against it
+-- What's left of the light in the dark, and with the plankton's glow at its
+-- thickest: dim and cold, never black (owner, 2026-10-11: "a creepy vibe for the
+-- trench ... darker but not pitch black"); the haze is a murky green-teal, so rock,
+-- fish and the boss loom out of it as shapes (Config/Tuning `light`)
 local lightTuning = Config.Tuning.light
-local BLACK_AMBIENT = lightTuning.ambient
+local DARK_AMBIENT = lightTuning.ambient
 local GLOW_AMBIENT = lightTuning.plankton
 local DARK_WATER, DARK_DECAY = lightTuning.water, lightTuning.decay
-local DARK_DENSITY = 0.6
+local DARK_DENSITY = lightTuning.density
+local DARK_GRADE = lightTuning.grade
 
 -- The light the server set (WorldService.setupLighting), read when the dark comes
 -- and put back when it lifts
@@ -265,23 +268,23 @@ local function step(dt: number)
 			}
 		daylight = day
 		local d = math.min(dark, 1)
-		-- The plankton's very faint light is all that's left (owner: "to give very
-		-- very faint light")
-		local floor = BLACK_AMBIENT:Lerp(GLOW_AMBIENT, glow)
-		Lighting.Brightness = day.brightness * (1 - d)
+		-- A dim, cold light is left, a little more where the plankton is thick, and a
+		-- sliver of the light from far above
+		local floor = DARK_AMBIENT:Lerp(GLOW_AMBIENT, glow)
+		Lighting.Brightness = day.brightness * (1 - d * (1 - lightTuning.sun))
 		Lighting.Ambient = day.ambient:Lerp(floor, d)
 		Lighting.OutdoorAmbient = day.outdoor:Lerp(floor, d)
-		Lighting.EnvironmentDiffuseScale = day.diffuse * (1 - d)
-		Lighting.EnvironmentSpecularScale = day.specular * (1 - d)
-		-- With the light gone, no colour grade or exposure cut on top: they only
-		-- crushed what glows (retest 2026-10-08: tint x0.5 and exposure -1 left the
-		-- lantern's pool, glowing skins and plankton barely visible). The water thins
-		-- too, so a lamp's pool and the glow round you read; the black haze still
-		-- swallows anything unlit.
-		grade.TintColor = grade.TintColor:Lerp(Color3.new(1, 1, 1), d * 0.9)
+		Lighting.EnvironmentDiffuseScale = day.diffuse * (1 - d * (1 - lightTuning.environment))
+		Lighting.EnvironmentSpecularScale = day.specular * (1 - d * (1 - lightTuning.environment))
+		-- The creepy grade: cold, drained, a touch more contrast. Never a strong tint
+		-- or an exposure cut on top: those crushed what glows (retest 2026-10-08: tint
+		-- x0.5 and exposure -1 left the lantern's pool, glowing skins and plankton
+		-- barely visible).
+		grade.TintColor = grade.TintColor:Lerp(DARK_GRADE.tint, d * 0.9)
 		grade.Brightness *= 1 - d
-		grade.Saturation *= 1 - d * 0.7
-		Lighting.ExposureCompensation = Lighting.ExposureCompensation * (1 - d) + d * 0.25
+		grade.Saturation = grade.Saturation * (1 - d) + DARK_GRADE.saturation * d
+		grade.Contrast += DARK_GRADE.contrast * d
+		Lighting.ExposureCompensation = Lighting.ExposureCompensation * (1 - d) + d * lightTuning.exposure
 		local atmosphereNow = atmosphere
 		if atmosphereNow and atmosphereNow.Parent then
 			atmosphereNow.Color = atmosphereNow.Color:Lerp(DARK_WATER, d)
@@ -314,7 +317,7 @@ local function step(dt: number)
 	snowHolder.CFrame = CFrame.new(position)
 end
 
--- Whether the camera is in a pitch-dark biome (0..1; BiomeController sets it) and
+-- Whether the camera is in a dark biome (0..1; BiomeController sets it) and
 -- how much of the dark this fish's light lifts (0..1; LampController sets it)
 function OceanController.setDark(amount: number)
 	darkTarget = math.clamp(amount, 0, 1)
