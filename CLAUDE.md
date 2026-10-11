@@ -187,7 +187,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     classifier (highest 0.19); contact sheets in `assets/shades/previews/`; the
     `shade_skins` bundle in `tools/assets_manifest.json`. Pale or soft colours that
     scored high were moved (Maroon to garnet, Jade to teal, Shipwreck's red hull to
-    dark iron; line-art metal maps to even metal).
+    dark iron; line-art metal maps to even metal). **v5 (2026-10-11, playtest
+    2026-10-10):** the twin Commons read apart (shark bronze / charcoal / steel blue,
+    Angler black / umber / olive-ochre / slate, 'Cuda bronze-olive Chevron and
+    steel-blue Blackfin), Chrome is dark gunmetal, Golden is a warmer brushed gold
+    with less metal (mirror gold reflecting the blue water read lime), the Puffer's
+    Common Golden is "Canary", and stair-stepped edges are gone (`smooth(m)`: the
+    body frame jumped between its fitted slices). Warm gold or orange in large
+    smooth areas can pass as a PNG and fail once JPEG-packed: screen the GLBs too.
+    Every worn skin is fetched ahead when another player wears it (player
+    attributes `WornShade`/`WornSpecies` → `CardPhoto.preloadSkin`).
 - **The pull-back loop (owner, 2026-10-10: "I still feel like we're missing a factor
   that pulls people back over and over. I do want to add random rarities of fish that
   can be eaten for more towards the haul or like 10 total unlocks a skin"; of the four
@@ -198,7 +207,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     while no one's within 260 studs (12 fish every 5 s, ×3 just after a tide turns);
     the server streams which are rare (`PreyRarity`, `GetRarities`) and
     `SchoolController` draws them (foil, Neon teal, Glass, rainbow; sparkles and a
-    light; their texture held aside). `HuntService` takes a fish's rarity as it's
+    light; their texture held aside), each with a **glint** (playtest 2026-10-10: a
+    Golden Minnow was gone by 100 studs): a four-point star at a fixed 15–21 px out
+    to 240 studs, fading in past 18, only on fish drawn that frame. `HuntService` takes a fish's rarity as it's
     eaten (`CatchService.take`) and fires `Events.caught`.
   - **Catch Log and catch tracks:** every prey × rarity with first-catch rewards, row
     rewards and the Master Angler title; per fish, 10 Golden / 10 Glowing / 5 Crystal
@@ -333,7 +344,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the cursor is tied to swimming"):** tap Alt or M (Studio's window can take an
     Alt tap) to free it for the HUD and panels (`Input.cursorToggled`, the HUD's
     CURSOR FREE chip); tap again, or click the game (that click doesn't bite), to
-    lock it. Holding Alt frees it only while held; menus free it while open.
+    lock it (a click on a HUD panel keeps it free). Holding Alt frees it only while
+    held; menus free it while open.
   - **Controller and phone** use the left stick as throttle and rudder: up swims along
     the aim (further is faster), sideways turns the aim, down brakes and backs up
     still facing forward. The right stick, or a drag on the screen, aims (up and down
@@ -681,7 +693,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   and in the Trench, exposure down to −0.75; the Trench's black is the dark, above, plus classic fog with a `sight` per
   grade in case the Atmosphere ever goes), and the deep floor grade is a deep blue
   (the Mud material is blue-grey), never black; only the Trench's `dark` goes
-  near-black. The sky, surface and upper atmosphere are the other (PC) chat's
+  near-black. **The shallows' light is half as blue as it was** (playtest
+  2026-10-10: gold skins read lime, lilac read royal blue): base Ambient (40, 56, 68)
+  and OutdoorAmbient (78, 104, 118), and the shelf's grade tints keep more red
+  (×0.84–0.87); the haze and deeper grades carry the blue. The sky, surface and upper atmosphere are the other (PC) chat's
   (owner: "I have the other chat working on the sky/upper atmosphere"); don't touch
   `setupLighting`'s Sky or the Surface sheet from this branch.
 - **Exits (owner, 2026-10-08: "a flashing blue box that says EXIT in black on every
@@ -998,7 +1013,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-09-pc-fixes.md`, `2026-10-09-pc-trench.md`, `2026-10-09-pc-start.md`,
   `2026-10-09-pc-boss.md`, `2026-10-10-pc.md` (boss see-through),
   `2026-10-10-pc-fixes.md` (walls, coral, kelp, food, cursor),
-  `2026-10-10-pc-pullback.md`;
+  `2026-10-10-pc-pullback.md`, `2026-10-11-pc.md` (skins v5, glints, light);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -1037,6 +1052,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   defaults to port 34872, so set 34873 before connecting.
 - Toasts have their own ScreenGui above the menus, so refusals from menu buttons
   show. ROLL also has R on keyboards.
+- **Which place file:** imports (skins, models) are saved into the local
+  `ApexAbyss.rbxl`; the cloud copy only has what was last published from it
+  (2026-10-10: the cloud copy, version 5, still had the v3 skins). Test and publish
+  from `ApexAbyss.rbxl`. A published place's Studio session logs DataStore errors
+  with Studio API access off; the weekly boards skip DataStores in Studio.
 - On the owner's PC, Rojo for this game runs on **port 34873** until the stale Hatch
   & Snatch `rojo serve` on 34872 is closed. Never connect the plugin to the
   HatchAndSnatch project from this place.
