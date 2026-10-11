@@ -81,6 +81,8 @@ type Look = {
 	},
 	extras: { Instance },
 	light: PointLight?,
+	glint: BillboardGui?, -- a star that stays a few pixels wide however far off
+	glintScale: UIScale?,
 }
 
 local visuals: { Visual } = {}
@@ -102,6 +104,18 @@ local tideFade: { [number]: number } = {} -- school index → clock its fade beg
 local TIDE_FADE = 1.5
 local TIDE_FADE_RANGE = 160
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+-- A rare fish's glint (playtest 2026-10-10: a Golden Minnow was a 2-3 pixel speck at
+-- 60 studs and gone by 100): a small four-point star drawn at a fixed pixel size, so
+-- it reads out to GLINT_RANGE; it fades in past GLINT_NEAR, where the fish itself reads
+local GLINT_RANGE = 240
+local GLINT_NEAR = 18
+local GLINT_FADE = 30
+local GLINT_PIXELS: { [string]: number } = { Golden = 15, Glowing = 17, Crystal = 19, Prism = 21 }
+-- Its light reaches further for the rarer ones (×length, plus studs)
+local LIGHT_BONUS: { [string]: number } = { Golden = 2, Glowing = 5, Crystal = 7, Prism = 9 }
+local glints: { [number]: Look } = {} -- fish index → its look, while it has a glint
+local glintShown: { [number]: boolean } = {}
+local glintSeen: { [number]: boolean } = {}
 
 -- How each rarity looks on a fish: its material and colour (the texture is held
 -- aside), its sparkle and its light
@@ -342,6 +356,8 @@ local function clearLook(index: number, visual: Visual)
 	end
 	visual.look = nil
 	prisms[index] = nil
+	glints[index] = nil
+	glintShown[index] = nil
 	for part, saved in look.saved do
 		part.Color = saved.color
 		part.Material = saved.material
@@ -415,9 +431,51 @@ local function setLook(index: number, rarityId: string?)
 	local light = Instance.new("PointLight")
 	light.Color = def.color
 	light.Brightness = style.light
-	light.Range = math.clamp(4 + length * 2.5, 6, 18)
+	light.Range = math.clamp(6 + length * 2 + (LIGHT_BONUS[rarityId] or 0), 8, 22)
 	light.Shadows = false
 	light.Parent = attachment
+	-- The glint: two thin bars crossed (a four-point star) and a bright core
+	local glint = Instance.new("BillboardGui")
+	glint.Name = "Glint"
+	local pixels = GLINT_PIXELS[rarityId] or 15
+	glint.Size = UDim2.fromOffset(pixels, pixels)
+	glint.LightInfluence = 0
+	glint.AlwaysOnTop = false -- rock and kelp still hide it
+	glint.MaxDistance = GLINT_RANGE
+	glint.Enabled = false
+	local scale = Instance.new("UIScale")
+	scale.Parent = glint
+	for _, bar in { Vector2.new(1, 0.16), Vector2.new(0.16, 1) } do
+		local frame = Instance.new("Frame")
+		frame.AnchorPoint = Vector2.new(0.5, 0.5)
+		frame.Position = UDim2.fromScale(0.5, 0.5)
+		frame.Size = UDim2.fromScale(bar.X, bar.Y)
+		frame.BorderSizePixel = 0
+		frame.BackgroundColor3 = def.color:Lerp(Color3.new(1, 1, 1), 0.35)
+		local fade = Instance.new("UIGradient")
+		fade.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		fade.Rotation = if bar.X > bar.Y then 0 else 90
+		fade.Parent = frame
+		frame.Parent = glint
+	end
+	local core = Instance.new("Frame")
+	core.AnchorPoint = Vector2.new(0.5, 0.5)
+	core.Position = UDim2.fromScale(0.5, 0.5)
+	core.Size = UDim2.fromScale(0.34, 0.34)
+	core.BorderSizePixel = 0
+	core.BackgroundColor3 = def.color:Lerp(Color3.new(1, 1, 1), 0.6)
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = core
+	core.Parent = glint
+	glint.Parent = attachment
+	look.glint = glint
+	look.glintScale = scale
+	glints[index] = look
 	table.insert(look.extras, attachment)
 	look.light = light
 	visual.look = look
@@ -489,6 +547,7 @@ local function step(dt: number)
 			end
 		end
 	end
+	table.clear(glintSeen)
 	for schoolIndex, school in Schools.list do
 		if (school.center - camera).Magnitude > DRAW_DISTANCE + school.radius then
 			continue
@@ -627,6 +686,19 @@ local function step(dt: number)
 					SchoolController.ate:fire(prey.id, fish.mass, frame.Position, rarities[index])
 				end
 			end
+			local glintLook = glints[index]
+			if glintLook and not visual.hidden then
+				-- Twinkles, and fades in past GLINT_NEAR (up close the fish itself reads)
+				local away = (frame.Position - camera).Magnitude
+				local scaleBy = math.clamp((away - GLINT_NEAR) / GLINT_FADE, 0, 1)
+				if scaleBy > 0 and away < GLINT_RANGE then
+					glintSeen[index] = true
+					local glintScale = glintLook.glintScale
+					if glintScale then
+						glintScale.Scale = scaleBy * (0.75 + 0.25 * math.sin(now * 5 + index * 1.7))
+					end
+				end
+			end
 			if not visual.hidden then
 				local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
 				table.insert(parts, visual.body)
@@ -661,6 +733,18 @@ local function step(dt: number)
 							* (if visual.flip then MESH_FLIP else CFrame.identity)
 					)
 				end
+			end
+		end
+	end
+	-- A glint shows only on a rare fish drawn this frame (a school out of reach sits at
+	-- its built spot, and an eaten fish is hidden)
+	for index, glintLook in glints do
+		local shown = glintSeen[index] == true
+		if glintShown[index] ~= shown then
+			glintShown[index] = shown
+			local glint = glintLook.glint
+			if glint then
+				glint.Enabled = shown
 			end
 		end
 	end

@@ -683,7 +683,7 @@ local list: { Shade } = {
 	),
 	skin(
 		"PufGolden",
-		"Golden",
+		"Canary", -- not "Golden": the catch skin has that name (playtest 2026-10-10)
 		C(255, 216, 20),
 		C(255, 232, 60),
 		C(240, 190, 10),

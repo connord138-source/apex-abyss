@@ -23,6 +23,10 @@ local function dress(player: Player)
 		return
 	end
 	character:SetAttribute("Shade", data.equipped.shade)
+	-- On the player too, which every client always has (a far-off character may not
+	-- have streamed in): clients fetch the skin before the fish swims into view
+	player:SetAttribute("WornShade", data.equipped.shade)
+	player:SetAttribute("WornSpecies", Progress.species(data).id)
 	-- Exotic variants reshape one species only
 	local variant = Config.Exotics.variantsById[data.equipped.variant]
 	local current = character:GetAttribute("Species")

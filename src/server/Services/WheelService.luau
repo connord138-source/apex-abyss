@@ -296,7 +296,13 @@ local function settle(entry: Entry, prize: Prize, to: number)
 	if entry.auto and player.Parent and data then
 		if segment.kind == "skin" then
 			entry.auto = false
-			Net.notify(player, "Spin all paused: you hit the jackpot!", "rare")
+			Net.notify(
+				player,
+				if data.wheel.spins > 0
+					then "Spin all paused: you hit the jackpot!"
+					else "Spin all done, on the jackpot!",
+				"rare"
+			)
 		elseif data.wheel.spins > 0 then
 			table.insert(queue, entry)
 		else

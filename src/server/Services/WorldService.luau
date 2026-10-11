@@ -115,8 +115,11 @@ local function setupLighting()
 	Lighting.ClockTime = 12
 	Lighting.GeographicLatitude = 20
 	Lighting.Brightness = 1.7
-	Lighting.Ambient = Color3.fromRGB(26, 58, 82)
-	Lighting.OutdoorAmbient = Color3.fromRGB(56, 108, 136)
+	-- Half as blue as it was, at the same brightness (playtest 2026-10-10: under
+	-- (26, 58, 82) / (56, 108, 136) gold skins read lime and lilac read royal blue);
+	-- the water's haze and the colour grade still carry the blue
+	Lighting.Ambient = Color3.fromRGB(40, 56, 68)
+	Lighting.OutdoorAmbient = Color3.fromRGB(78, 104, 118)
 	Lighting.EnvironmentDiffuseScale = 0.3
 	Lighting.EnvironmentSpecularScale = 0.2
 	Lighting.GlobalShadows = true
@@ -953,7 +956,11 @@ local function wreck(parent: Instance, rng: Random, ground: Vector3)
 	light.Brightness = 1.4
 	light.Range = 26
 	light.Parent = lanternPart
-	Props.dress(lanternPart, "Lantern", { cframe = lanternPart.CFrame, size = Vector3.new(3, 4.5, 3) })
+	Props.dress(lanternPart, "Lantern", {
+		cframe = lanternPart.CFrame,
+		size = Vector3.new(3, 4.5, 3),
+		solid = true, -- the lantern itself, not an invisible box round it (playtest 2026-10-10)
+	})
 end
 
 -- A ruin: columns, a lintel, steps, a statue and a teal lantern
@@ -1039,7 +1046,11 @@ local function ruin(parent: Instance, rng: Random, anchor: Vector3)
 	light.Brightness = 1.6
 	light.Range = 34
 	light.Parent = lanternPart
-	Props.dress(lanternPart, "Lantern", { cframe = lanternPart.CFrame, size = Vector3.new(3, 4.5, 3) })
+	Props.dress(lanternPart, "Lantern", {
+		cframe = lanternPart.CFrame,
+		size = Vector3.new(3, 4.5, 3),
+		solid = true, -- the lantern itself, not an invisible box round it (playtest 2026-10-10)
+	})
 end
 
 -- A vent chimney's dressing: the glow at its cap and the black smoke it breathes

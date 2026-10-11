@@ -904,6 +904,26 @@ function RollController.start()
 		task.delay(2, CardPhoto.warm)
 	end)
 	task.delay(2, CardPhoto.warm)
+	-- Other players' skins load as soon as they wear them, wherever they are
+	local function watch(other: Player)
+		if other == Players.LocalPlayer then
+			return
+		end
+		local function fetch()
+			local shade = other:GetAttribute("WornShade")
+			local species = other:GetAttribute("WornSpecies")
+			if typeof(shade) == "string" and shade ~= "" and typeof(species) == "string" then
+				CardPhoto.preloadSkin(species, shade)
+			end
+		end
+		other:GetAttributeChangedSignal("WornShade"):Connect(fetch)
+		other:GetAttributeChangedSignal("WornSpecies"):Connect(fetch)
+		fetch()
+	end
+	Players.PlayerAdded:Connect(watch)
+	for _, other in Players:GetPlayers() do
+		watch(other)
+	end
 	ClientState.changed:connect(onState)
 	if ClientState.current then
 		onState(ClientState.current)

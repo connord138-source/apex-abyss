@@ -18,6 +18,7 @@
 -- PlayerModule: that module isn't inserted for this game's custom fish character
 -- (playtest 2026-10-06: WASD did nothing while the client waited on it forever).
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -92,6 +93,26 @@ local function pollSticks()
 	end
 end
 
+-- Whether the mouse is over a HUD panel (a card, not just the water): a click there
+-- leaves a freed cursor free (playtest 2026-10-10: a click on the level card locked it).
+-- Tried with and without the top bar's inset, since mouse positions skip it.
+local function overPanel(position: Vector3): boolean
+	local player = Players.LocalPlayer
+	local playerGui = if player then player:FindFirstChildOfClass("PlayerGui") else nil
+	if playerGui == nil then
+		return false
+	end
+	local inset = GuiService:GetGuiInset()
+	for _, y in { position.Y, position.Y + inset.Y } do
+		for _, object in playerGui:GetGuiObjectsAtPosition(position.X, y) do
+			if object.Visible and object.BackgroundTransparency < 0.95 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 -- Frees or locks the cursor for the player (the Alt / M toggle)
 local function setCursor(free: boolean)
 	-- (not under the start screen: any key there just dives in)
@@ -140,7 +161,9 @@ function Input.start()
 			and Input.cursorToggled
 			and not Input.cursorWanted
 		then
-			setCursor(false)
+			if not overPanel(input.Position) then
+				setCursor(false)
+			end
 			return
 		end
 		if

@@ -572,6 +572,30 @@ end
 -- card's subject once in a tiny, nearly invisible viewport so the textures are
 -- decoded too, and the reel's cards come up textured from their first frame.
 local warmed: { [string]: boolean } = {}
+
+-- Fetches the textures of one skin ahead of time (once a session): the skin another
+-- player is wearing, so it doesn't draw pale for the 3-9 s its download takes when
+-- their fish first swims into view (playtest 2026-10-10)
+local fetched: { [string]: boolean } = {}
+function CardPhoto.preloadSkin(speciesId: string, shadeId: string)
+	local species = Config.Species.byId[speciesId]
+	local template = if species then FishBuilder.meshTemplate(species.plan) else nil
+	local root = ReplicatedStorage:FindFirstChild("ShadeSkins")
+	local folder = if root then root:FindFirstChild(if template then template.Name else speciesId) else nil
+	local skin = if folder then folder:FindFirstChild(shadeId) else nil
+	local key = `{speciesId}/{shadeId}`
+	if skin == nil or not skin:IsA("SurfaceAppearance") or fetched[key] then
+		return
+	end
+	fetched[key] = true
+	local ids = skinTextures(skin)
+	task.spawn(function()
+		pcall(function()
+			ContentProvider:PreloadAsync(ids)
+		end)
+	end)
+end
+
 function CardPhoto.warm()
 	local id = myFish(nil)
 	-- Skins are filed by the mesh's name (MorayEel, Puffer, ...), as Cosmetics wears them

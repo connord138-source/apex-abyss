@@ -12,6 +12,7 @@
 -- players, so nothing breaks.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -36,7 +37,10 @@ local readWeek = -1
 local dirty: { [Player]: boolean } = {}
 local names: { [number]: string } = {}
 local lastWeek: { [string]: { [number]: number }? } = {} -- board id → userId → rank, last week
-local storeOk = true -- false once DataStores have failed (Studio without API access)
+-- False once DataStores have failed, and from the start in Studio: a published place's
+-- Studio session logged DataStore errors there with API access off (playtest
+-- 2026-10-10), and Studio's boards show this server anyway
+local storeOk = not RunService:IsStudio()
 
 local function storeFor(boardId: string, week: number): OrderedDataStore?
 	if not storeOk then
