@@ -282,14 +282,57 @@ local function furnish(folder: Folder, index: number, record: Record)
 	end
 end
 
+-- The carved back wall is ragged and bulges in at plaque height, so a plaque at the
+-- nominal wall sat up to 5 studs inside the rock (playtest 2026-10-10: the whole
+-- trophy wall was hidden). Each column (a plaque, its trim and what's mounted over
+-- it) is brought forward until it clears the nearest rock across the plaque's face.
+local PLAQUE_Y = 11
+local WALL_REACH = 14 -- the rays start this far in front of the nominal wall
+local function seatTrophies(frame: CFrame, backZ: number, columns: { [number]: { BasePart } })
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+	local toWall = frame:VectorToWorldSpace(Vector3.new(0, 0, WALL_REACH + 10))
+	for x, items in columns do
+		if items[1].Parent == nil then
+			continue
+		end
+		local face: number? = nil -- the rock nearest the room, as a z in the den
+		-- A grid over the plaque and its trim, edges and corners included (rock at the
+		-- very edge still cut the end off a title)
+		for _, across in { -3.3, -1.6, 0, 1.6, 3.3 } do
+			for _, up in { -2.2, 0, 2.5 } do
+				local origin = denSpot(frame, x + across, PLAQUE_Y + up, backZ + WALL_REACH).Position
+				local hit = workspace:Raycast(origin, toWall, params)
+				if hit then
+					face = math.max(face or -math.huge, backZ + WALL_REACH - hit.Distance)
+				end
+			end
+		end
+		local shift = if face then math.clamp(face + 0.45 - backZ, 0, 8) else 0
+		if shift > 0 then
+			local move = frame:VectorToWorldSpace(Vector3.new(0, 0, -shift))
+			for _, item in items do
+				item.CFrame += move
+			end
+		end
+	end
+end
+
 -- Trophies on the back wall: plaques with a label, the biggest catch's model on one
 local function trophyWall(folder: Folder, index: number, record: Record, trophies: Trophies)
 	local frame = floorFrame(index)
 	local def = Dens.levels[record.level] or Dens.levels[1]
 	local backZ = -(ROOM_BACK + def.extend) + 2.5
 	local glow = Dens.glowsById[record.glow] or Dens.glows[1]
+	local columns: { [number]: { BasePart } } = {}
+	local function mount(x: number, item: BasePart)
+		local column = columns[x] or {}
+		table.insert(column, item)
+		columns[x] = column
+	end
 	local function plaque(x: number, title: string, line: string, accent: Color3): Part
-		local at = denSpot(frame, x, 11, backZ)
+		local at = denSpot(frame, x, PLAQUE_Y, backZ)
 		local board = part(
 			folder,
 			"Plaque",
@@ -306,7 +349,8 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			accent,
 			Enum.Material.Neon
 		)
-		local _ = trim
+		mount(x, board)
+		mount(x, trim)
 		local gui = Instance.new("SurfaceGui")
 		gui.Face = Enum.NormalId.Front
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -363,12 +407,14 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			clone.Size = mesh.Size * (4.5 / math.max(mesh.Size.Z, 0.01))
 			clone.CFrame = at
 			clone.Parent = folder
+			mount(-7, clone)
 		else
 			local fish =
 				part(folder, "Catch", Vector3.new(1.2, 1.6, 4.5), at, prey.back, Enum.Material.SmoothPlastic)
 			local shape = Instance.new("SpecialMesh")
 			shape.MeshType = Enum.MeshType.Sphere
 			shape.Parent = fish
+			mount(-7, fish)
 		end
 	end
 	-- Boss trophies
@@ -388,6 +434,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 		local wedge = Instance.new("SpecialMesh")
 		wedge.MeshType = Enum.MeshType.Wedge
 		wedge.Parent = tooth
+		mount(0, tooth)
 	end
 	local beaksLine = if trophies.beaks > 0
 		then `{trophies.beaks} beak{if trophies.beaks == 1 then "" else "s"} taken`
@@ -405,7 +452,12 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 		local shape = Instance.new("SpecialMesh")
 		shape.MeshType = Enum.MeshType.Sphere
 		shape.Parent = beak
+		mount(7, beak)
 	end
+	-- Terrain carved this frame doesn't answer a raycast until a later one
+	task.delay(0.5, function()
+		seatTrophies(frame, backZ, columns)
+	end)
 	-- The title over the door, inside
 	if trophies.title ~= "" then
 		local sign = part(
