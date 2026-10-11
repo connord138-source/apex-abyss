@@ -32,9 +32,9 @@
       "contents": "props/TreasureChest.glb (the dig site's chest, half out of the sand)"
     },
     "vendors_glb": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/ea78d41d-e7ec-40b9-a8ec-ee11dea5f531.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/9d3c7f7b-a357-4119-9ebd-6ec95fb131b6.zip",
       "into": "assets/glb",
-      "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept"
+      "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept. v2 of 2026-10-11 (sha256 917bf7b7...): the base colors of the Mason, Outfitter, Dyer and Charms moved out of skin tones by tools/props/safe_colors.py (salmon to vivid orange, cream to cool white, tan to greige, browns darker), and all five cleared by screen_shades.py with the classifier (highest 0.016). Front faces +X in the GLB."
     },
     "shade_skins": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/d5f3f958-b26b-4c3a-a1ae-bcc7af6d8d20.zip",

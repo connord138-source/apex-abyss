@@ -17,7 +17,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
-| `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
+| `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`; v2 colors made safe by `tools/props/safe_colors.py` and screened 2026-10-11) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (23 quads each: its own 12-skin line plus the 11 universal skins, with color, finish/metal and glow maps; tools/shades v5, screened 2026-10-11) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -57,7 +57,7 @@ Don't scale or position anything; the code does it:
 |---|---|
 | Species | `FishBuilder.buildMesh` welds the skinned MeshPart to the fish's root, nose on -Z, and scales it with `ScaleTo` to the fish's length (growth re-scales it). `FishAnimator` waves the `Spine1..N` and `Tail` bones and nods `Head`. A shade tints the texture (`Cosmetics`); rolled parts and variants show on part bodies only for now. |
 | Prey | One MeshPart each, scaled to the fish's length, moved with `BulkMoveTo`, with a small yaw wiggle. |
-| Keepers | `WorldService.keeper` fits `WorldProps.Keeper<VendorId>` over the placeholder ball behind each counter (the ball and eyes hide), turned to face the beacon like the stall (a GLB prop's front is +Z). |
+| Keepers | `WorldService.keeper` stands `WorldProps.Keeper<VendorId>` on the plaza beside its counter (on the right as you face the stall), full height, facing the plaza and turned 25° toward the counter, and hides the placeholder ball and eyes behind the counter. Like the stall it gets `GLB_FRONT` (see Facing). |
 | Props | `Props.dress` fits a copy over its placeholder part (kelp, boulders, coral, the beacon, stalls, lanterns) and hides the part. Shrimp, starfish and shells go through `PropParts` and keep the client's bulk movement. |
 
 ## Shade skins (tools/shades)
@@ -126,6 +126,18 @@ In Studio: File → Import 3D, one `assets/shades/glb/<Fish>_Shades.glb` at a ti
   predators swam backwards (owner, 2026-10-08) because `PredatorController` pulled
   the MeshPart out of their rigged Model and turned it; predators now draw rigged
   `PreyModels` like the bosses do.
+- **Tripo props face +X in the GLB** (the MarketStall and the five keepers; check a new
+  one with a render from +X and +Z). Roblox's importer turns a GLB half round (a prey
+  GLB with its nose on -Z comes in facing +Z), so they arrive facing -X, and
+  `WorldService` `GLB_FRONT` (a quarter turn) puts their fronts on -Z. Until
+  2026-10-11 the stall was turned half round instead and stood side-on to the plaza.
+  `Props.place` fits the model's own axes to the box, so a quarter-turned prop's box
+  is given as (depth, height, width).
+- **Colors before upload:** a prop's texture goes through the same moderation screen as
+  the skins (`tools/shades/screen_shades.py` on its extracted images, with the
+  classifier). Warm creatures fail its color checks (Tripo paints them in salmon,
+  peach and cream); `tools/props/safe_colors.py` moves those texels out (vivid, cool
+  white, greige or darker) and the result is screened again before hosting.
 - **Facing:** a rigged fish must swim nose first. `tools/blender/rig_fish.py` finds the
   head as the deep, wide end (a tail fin is thin) and puts it at -Y for FBX (Blender's
   exporter maps -Y onto the -Z we ask for) or +Y for `--static` GLBs (glTF maps +Y onto

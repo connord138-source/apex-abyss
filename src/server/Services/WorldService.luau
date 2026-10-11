@@ -537,9 +537,20 @@ end
 
 local WOOD = Color3.fromRGB(132, 96, 66)
 local LANTERN = Color3.fromRGB(255, 196, 120)
+-- The stall and keeper models face the GLB's +X, and Roblox's importer turns a GLB
+-- half round (the prey GLBs, nose on -Z, came in facing +Z), so they arrive facing
+-- -X. A quarter turn puts their fronts on -Z, the way a CFrame looks.
+local GLB_FRONT = CFrame.Angles(0, -math.pi / 2, 0)
+-- A keeper stands beside its counter (on the right as you face the stall), turned
+-- part way toward the plaza in front of the counter
+local KEEPER_SIDE = 10.5
+local KEEPER_TURN = math.rad(-25)
 
--- A placeholder shopkeeper until the vendor models arrive: a round body with eyes.
-local function keeper(parent: Instance, at: CFrame, color: Color3, vendorId: string)
+-- A shopkeeper: its model (WorldProps.Keeper<VendorId>, from the approved Vendors
+-- concept) stands on the plaza beside the counter at full height, facing the plaza
+-- (owner, 2026-10-11: "still just spheres w eyeballs"; behind the counter only its
+-- head would show). Until it's imported, a ball with eyes sits behind the counter.
+local function keeper(parent: Instance, at: CFrame, stand: CFrame, color: Color3, vendorId: string)
 	local body = Instance.new("Part")
 	body.Name = "Keeper"
 	body.Anchored = true
@@ -550,12 +561,10 @@ local function keeper(parent: Instance, at: CFrame, color: Color3, vendorId: str
 	body.Color = color
 	body.Material = Enum.Material.SmoothPlastic
 	body.Parent = parent
-	-- The keeper's own model (WorldProps.Keeper<VendorId>, from the approved Vendors
-	-- concept) replaces the placeholder ball and eyes when it's imported. A GLB
-	-- prop's front is +Z, so it's turned round to face the beacon like the stall.
 	local dressed = Props.dress(body, `Keeper{vendorId}`, {
-		cframe = at * CFrame.new(0, 1.2, 0) * CFrame.Angles(0, math.pi, 0),
-		size = Vector3.new(6.5, 7, 6.5),
+		cframe = stand * GLB_FRONT,
+		size = Vector3.new(8, 7.5, 7.5), -- turned: X runs front to back, Z side to side
+		solid = true,
 	})
 	if dressed then
 		body.Transparency = 1
@@ -660,12 +669,18 @@ local function buildVendors(parent: Instance)
 		label.TextColor3 = Color3.fromRGB(255, 240, 214)
 		label.Text = string.upper(vendor.name)
 		label.Parent = gui
-		keeper(stall, at(36.2, plazaTop + 4.2), vendor.color:Lerp(Color3.new(1, 1, 1), 0.25), vendor.id)
+		keeper(
+			stall,
+			at(36.2, plazaTop + 4.2),
+			at(32, plazaTop + 3.75) * CFrame.new(-KEEPER_SIDE, 0, 0) * CFrame.Angles(0, KEEPER_TURN, 0),
+			vendor.color:Lerp(Color3.new(1, 1, 1), 0.25),
+			vendor.id
+		)
 		-- The imported stall stands where the counter is, facing the beacon; the
 		-- block posts and awning go when it's in (the sign and keeper stay)
 		local stallModel = Props.dress(counter, "MarketStall", {
-			cframe = at(33.5, plazaTop + 5.5) * CFrame.Angles(0, math.pi, 0),
-			size = Vector3.new(15, 11, 9),
+			cframe = at(33.5, plazaTop + 5.5) * GLB_FRONT,
+			size = Vector3.new(9, 11, 15), -- turned: X runs front to back, Z side to side
 			tint = vendor.color:Lerp(Color3.new(1, 1, 1), 0.6),
 		})
 		if stallModel then

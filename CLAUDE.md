@@ -866,8 +866,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   hermit crab Outfitter, octopus Den Mason, sea turtle Tidecharm Trader, pufferfish
   Shade Dyer and "Scar", the scarred grouper Trophy Hunter, from the approved
   `assets/concepts/Vendors.jpg` (sheets `tripo_jobs_vendor_sheets.json`, models
-  `tripo_jobs_vendor_models.json`, 200 credits). `WorldService.keeper` dresses each
-  over its placeholder ball, facing the beacon. Balance ~1,360.
+  `tripo_jobs_vendor_models.json`, 200 credits). Balance ~1,360. **No brief had
+  asked for them to be imported** (owner, 2026-10-11: "The vendors are still just
+  spheres w eyeballs"; the PC imports them in the 2026-10-11 round): `WorldService.keeper` stands each on the
+  plaza beside its counter at full height, facing the plaza (behind the counter only
+  its head would show), solid; the ball and eyes behind the counter are only the
+  fallback. Tripo props face +X in the GLB and Roblox turns a GLB half round on
+  import, so the stall and keepers get `GLB_FRONT` (a quarter turn; the stall had
+  stood side-on). Four keepers' textures failed the colour screen (salmon, peach,
+  cream atlases), so `tools/props/safe_colors.py` moved those colours out (vivid
+  orange, cool white, greige, darker browns) before `vendors_glb` v2 was hosted;
+  screen every new prop's textures before it's uploaded.
 - **Models come from Tripo, batch 1 done** (580 credits; balance ~1,660): 6 species
   (clean single-fish sheets from `assets/concepts/StyleSheet.jpg`, then
   image_to_model), 7 prey, 15 props/food. Reviews: contact sheets of
