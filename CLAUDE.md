@@ -809,7 +809,25 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `Roll<Tier>` stinger, Warning (a predator's tell on you), TooBig, Banner, Heal,
     Boss Warning/Rise/Phase/Defeat, Breach, Grab, Ink. Every sound is low-passed
     ("heard through water"). Add a sound: a maker in `make_sfx.py`, rerun, re-upload,
-    paste the new id.
+    paste the new id. **No bells (v2, owner 2026-10-11: "The music is horrible too
+    that needs to be changed it's just random bells it sounds like"):** there was no
+    music; the v1 hub bed pinged a glockenspiel at random pitches every 1–2 s (68% of
+    its energy above 1.2 kHz), and Shell, Banner, UiOpen, Heal, Bank, GoldenShell and
+    LevelUp rang glock or FM-bell notes. v2 beds are noise, drones and low plops; the
+    everyday cues are soft marimba, clicks, bubbles and pads; only the roll and boss
+    stingers keep bright notes. Until v2's id is pasted into `Config/Sounds` `id`, the
+    v1 pack plays from `legacy` with its hub bed skipped (`Sfx` `pack`/`regionOf`).
+  - **Music (owner, 2026-10-11; built):** `Config/Music.luau` + `MusicController`
+    (ported from Hatch & Snatch). Lists by place: `hub`, each biome (`biomes` map),
+    `trench` (the Trench's dark), and `megalodon`/`squid` while a boss is near
+    (`BossController` → `MusicController.setBoss`). Roblox's licensed APM library
+    only (uploader @APMOfficial), mostly David Lindsay's album "Underwater Kingdom"
+    (Kelp Forest, Great Barrier Reef, Infinite Expanse, Endless Sonar, Mariana
+    Trench, ...) so the sea sounds of a piece. A place must hold 4 s before its music
+    crossfades in (no flip-flop on a border), a place revisited within 2 min resumes
+    its track, a track that won't load is skipped, and it ducks under the roll
+    reveal. Levels stay subtle: each track's measured loudness goes in `loudness`,
+    and it plays at Volume = its list's `target` ÷ that. No mute button yet.
   - **Motion:** `Bubbles.luau` is the one bubble look (bursts and mouth streams);
     `BubbleController` streams bubbles off every fish's mouth by speed; vents and ~37
     seeps on the shelf and deep floor send bubble columns up (`WorldService`

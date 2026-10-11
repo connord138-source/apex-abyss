@@ -10,6 +10,7 @@ return {
 	Rolls = require(script.Rolls),
 	Shop = require(script.Shop),
 	Sounds = require(script.Sounds),
+	Music = require(script.Music),
 	Shells = require(script.Shells),
 	Forage = require(script.Forage),
 	Biomes = require(script.Biomes),

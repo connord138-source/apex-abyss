@@ -26,6 +26,7 @@ local BossController = require(script.Controllers.BossController)
 local LampController = require(script.Controllers.LampController)
 local AdminController = require(script.Controllers.AdminController)
 local AmbienceController = require(script.Controllers.AmbienceController)
+local MusicController = require(script.Controllers.MusicController)
 local BubbleController = require(script.Controllers.BubbleController)
 local KelpController = require(script.Controllers.KelpController)
 local RollController = require(script.Controllers.RollController)
@@ -65,6 +66,7 @@ BossController.start() -- world boss: HUD bar, dread, countdown, rewards
 LampController.start() -- lamps on fish (an Anglerfish's lure, Deep Lanterns) for the dark
 AdminController.start() -- the owner's admin panel (shows only for admins)
 AmbienceController.start() -- the water's sound: shallow, deep and cavern beds by depth
+MusicController.start() -- the music for where you are (Config/Music)
 BubbleController.start() -- bubbles off every fish's mouth as it swims
 KelpController.start() -- kelp near the camera sways in the current
 PlanktonController.start() -- glowing plankton in the deepest water, wakes through it

@@ -1128,6 +1128,28 @@ show for a returning player).
      bigger on bigger fish.
    - Music swells when a predator is near.
    - Levels stay subtle.
+   - **Music by place (owner, 2026-10-11: "The music is horrible too ... it's just
+     random bells"; built).** The "music" was the synthesized ambience: the hub's bed
+     pinged a glockenspiel at random pitches. Now the beds and everyday cues have no
+     bells, and real music plays from Roblox's licensed APM library, one album for
+     the whole sea (David Lindsay, "Underwater Kingdom"):
+
+     | Place | Tracks |
+     |---|---|
+     | Hub cavern, dens, start screen | Aquatic Atmosphere, Beneath The Waves (underscores) |
+     | Kelp Shallows | Kelp Forest, Beneath The Waves, Aquatic Atmosphere |
+     | Coral Reef | Great Barrier Reef, Ethereal Expedition |
+     | Shipwreck Graveyard | Desolate Ocean, Underwater Kingdom (underscore) |
+     | Open Blue | Infinite Expanse, Endless Sonar |
+     | Sunken Ruins | Ethereal Expedition, Underwater Kingdom (underscores) |
+     | Hydrothermal Vents | Deep Sea Descent, Abyssal Plain |
+     | The Trench | Mariana Trench (underscore), The Deep Sea Dwellers, Nightmare of the Abyss |
+     | Megalodon near | Dangerous Predator, Predator (a) |
+     | Giant Squid near | The Kraken Lurks 2, Predator (a) |
+
+     Crossfades between places (after 4 s, so a border doesn't flip it), resumes a
+     track when you swim back within 2 minutes, and ducks under the roll reveal.
+     Connor picks by ear; swaps come from the same album (`Config/Music`).
 6. **Performance**
    - Target 60 fps on mid-range phones.
    - Distant fish use simpler models and skip skeleton animation.

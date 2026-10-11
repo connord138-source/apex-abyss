@@ -22,6 +22,7 @@ local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
 local Ui = require(script.Parent.Parent.Ui)
 local MenuController = require(script.Parent.MenuController)
+local MusicController = require(script.Parent.MusicController)
 
 local Tiers = Config.Tiers
 type Tier = typeof(Tiers.list[1])
@@ -404,6 +405,7 @@ local function reveal(result: { [string]: any })
 	local tier = tierOf(outcome.tier)
 	local big = tier.order >= Tiers.byId.Rare.order
 	Input.cursorWanted = true
+	MusicController.duck(true)
 
 	local overlay = Instance.new("TextButton") -- a button, so a tap can skip
 	overlay.Name = "Reveal"
@@ -740,6 +742,7 @@ local function reveal(result: { [string]: any })
 			overlay:Destroy()
 		end)
 		Input.cursorWanted = MenuController.isOpen()
+		MusicController.duck(false)
 		busy = false
 	end
 	if cosmetic and not result.duplicate then

@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
+local MusicController = require(script.Parent.MusicController)
 local AmbienceController = require(script.Parent.AmbienceController)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -270,6 +271,7 @@ local function calm()
 	OceanController.setDread(0)
 	OceanController.setBossLight(0)
 	AmbienceController.setDread(0)
+	MusicController.setBoss(0, nil)
 	for _, frame in vignette do
 		frame.BackgroundTransparency = 1
 	end
@@ -370,6 +372,7 @@ local function step(dt: number)
 	local dread = math.clamp(1 - (gap - 30) / math.max(range - 30, 1), 0, 1)
 	OceanController.setDread(dread)
 	AmbienceController.setDread(dread)
+	MusicController.setBoss(dread, def.id)
 	-- The fight light: up close the water clears and the dark lifts
 	local fight = math.clamp(1 - (gap - sight.light * 0.45) / math.max(sight.light * 0.55, 1), 0, 1)
 	OceanController.setBossLight(fight)

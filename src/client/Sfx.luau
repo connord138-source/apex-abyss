@@ -60,16 +60,39 @@ local warned = false
 
 local Sfx = {}
 
-local function soundId(): string?
-	local id = Config.Sounds.id
-	if id and id > 0 then
-		return `rbxassetid://{id}`
+-- The pack to play: v2 once its id is set, else the v1 pack (`legacy`, without the
+-- sounds it skips), else none
+type Pack = { id: number, regions: { [string]: { number } }, skip: { [string]: boolean }? }
+local function pack(): Pack?
+	local sounds = Config.Sounds
+	if sounds.id > 0 then
+		return sounds :: any
+	end
+	if sounds.legacy.id > 0 then
+		return sounds.legacy
 	end
 	if not warned then
 		warned = true
 		warn("[Sfx] Config/Sounds.luau id is 0: upload assets/audio/apex_sfx.ogg and paste its id for sound")
 	end
 	return nil
+end
+
+local function soundId(): string?
+	local current = pack()
+	return if current then `rbxassetid://{current.id}` else nil
+end
+
+-- The stretch of the pack a sound plays (nil when it isn't in it, or is skipped)
+local function regionOf(name: string): { number }?
+	local current = pack()
+	if current == nil then
+		return Config.Sounds.regions[name]
+	end
+	if current.skip and current.skip[name] then
+		return nil
+	end
+	return current.regions[name]
 end
 
 local function place(sound: Sound, parent: Instance?, range: number?)
@@ -101,7 +124,7 @@ end
 
 -- Seconds the sound lasts (at pitch 1), or 0 if it doesn't exist.
 function Sfx.length(name: string): number
-	local region = Config.Sounds.regions[name]
+	local region = regionOf(name)
 	return if region then region[2] else 0
 end
 
@@ -110,7 +133,7 @@ function Sfx.play(name: string, options: Options?)
 	local pitch = if options and options.pitch then options.pitch else 1
 	local parent = if options then options.parent else nil
 	local range = if options then options.range else nil
-	local region = Config.Sounds.regions[name]
+	local region = regionOf(name)
 	local id = soundId()
 	if id and region then
 		Sfx.preload()
@@ -153,7 +176,7 @@ end
 -- A bed: the named region looping for as long as the Sound lives (nil without the
 -- pack). The caller owns its Volume.
 function Sfx.loop(name: string, volume: number, parent: Instance?): Sound?
-	local region = Config.Sounds.regions[name]
+	local region = regionOf(name)
 	local id = soundId()
 	if id == nil or region == nil then
 		return nil

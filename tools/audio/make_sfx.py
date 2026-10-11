@@ -15,7 +15,14 @@ Sound.PlaybackRegion (src/client/Sfx.luau); the three ambience beds loop their r
 Beds (seamless loops, AmbienceController crossfades them by depth):
   AmbientShallow   bright water: soft wash, distant bubbles
   AmbientDeep      the deep floor and the Trench: a low drone, far groans
-  AmbientHub       the cavern: a quiet hush and drips
+  AmbientHub       the cavern: a quiet hush, a low room tone and soft plops
+
+No bells (v2, owner 2026-10-11: "it's just random bells it sounds like"): the v1
+hub bed pinged a glockenspiel at random pitches every second or two, and shells,
+banners, menus, heals and banks all rang glock or FM-bell notes. Beds are noise,
+drones and low plops only; everyday cues use soft wood (marimba), clicks, bubbles
+and pads. Only the roll and boss stingers keep bright notes. The music is real
+music now (Config/Music, MusicController).
 
 One-shots:
   Bubble, Bubbles, Dash, Snap, Bite, Chomp, Hurt, Eaten, Heal, Bank, LevelUp,
@@ -291,8 +298,8 @@ def ambient_shallow():
     # A faint hiss up top, like light on the surface
     hiss = bandpass(rng.standard_normal(len(t)), 2500, 6000) * (0.5 + 0.5 * np.sin(2 * np.pi * 0.13 * t))
     tr.add(hiss, 0, 0.035)
-    bubbles(tr, 0, dur, 26, 500, 2200, 0.07, 0.9)
-    return loop(finish(tr, 0.7, 0.18, 1.2, 4200))
+    bubbles(tr, 0, dur, 12, 260, 900, 0.045, 0.9)
+    return loop(finish(tr, 0.7, 0.18, 1.2, 3600))
 
 
 def ambient_deep():
@@ -316,16 +323,18 @@ def ambient_deep():
 
 
 def ambient_hub():
-    dur = 14.0
+    dur = 16.0
     tr = Track(dur)
     t = secs(dur)
-    tr.add(brown(dur, 500) * (0.5 + 0.5 * np.sin(2 * np.pi * 0.06 * t)), 0, 0.32)
-    # Drips: little pings with a long tail
-    for _ in range(9):
-        when = rng.uniform(0.3, dur - 1.2)
-        tr.add(bubble(rng.uniform(1400, 2600), 0.08, 0.2), when, 0.12, rng.uniform(-0.9, 0.9))
-        tr.add(glock(rng.uniform(1800, 3200), 0.9), when + 0.01, 0.025, rng.uniform(-0.9, 0.9))
-    return loop(finish(tr, 0.6, 0.45, 2.8, 3600))
+    tr.add(brown(dur, 500) * (0.5 + 0.5 * np.sin(2 * np.pi * 0.0625 * t)), 0, 0.32)
+    # The cavern's room tone: a low, slow hum (whole cycles in the loop, so it's seamless)
+    hum = np.sin(2 * np.pi * 55 * t) * 0.5 + np.sin(2 * np.pi * 82.5 * t) * 0.2
+    tr.add(lowpass(hum * (0.6 + 0.4 * np.sin(2 * np.pi * 0.125 * t)), 200), 0, 0.12)
+    # A few soft, low plops of water (v1 rang a glockenspiel here: "random bells")
+    for _ in range(4):
+        when = rng.uniform(0.5, dur - 1.5)
+        tr.add(lowpass(bubble(rng.uniform(380, 620), 0.12, 0.25), 1400), when, 0.07, rng.uniform(-0.7, 0.7))
+    return loop(finish(tr, 0.6, 0.35, 2.4, 2400))
 
 
 # ---------------------------------------------------------------------------
@@ -401,43 +410,46 @@ def eaten():
 
 def heal():
     tr = Track(1.2)
-    tr.add(pad(["G4", "D5", "G5"], 1.0, 0.25, 1800), 0.0, 0.5)
-    tr.add(glock(hz("G6"), 0.8), 0.1, 0.12)
-    bubbles(tr, 0.05, 0.6, 7, 600, 1800, 0.12, 0.5)
+    tr.add(pad(["G3", "D4", "G4"], 1.0, 0.25, 1500), 0.0, 0.55)
+    bubbles(tr, 0.05, 0.6, 7, 400, 1200, 0.12, 0.5)
     return finish(tr, 0.8, 0.25, 1.4)
 
 
 def bank():
     tr = Track(2.0)
-    for i, note in enumerate(("C5", "E5", "G5", "C6")):
-        tr.add(glock(hz(note), 1.3), i * 0.1, 0.5, (i - 1.5) * 0.3)
-    tr.add(bell(hz("C6"), 1.6, 3, 2.0, 0.9), 0.4, 0.3)
-    shimmer(tr, 0.4, 1.2, 10, "C6", "C7", 0.08)
-    return finish(tr, 0.85, 0.25, 1.6)
+    for i, note in enumerate(("C4", "E4", "G4", "C5")):
+        tr.add(marimba(hz(note), 1.0), i * 0.1, 0.55, (i - 1.5) * 0.3)
+    tr.add(pad(["C3", "G3", "E4"], 1.5, 0.3, 1400), 0.3, 0.45)
+    bubbles(tr, 0.3, 1.0, 10, 300, 1000, 0.14, 0.6)
+    return finish(tr, 0.85, 0.25, 1.6, 2800)
 
 
 def level_up():
     tr = Track(2.2)
     for i, note in enumerate(("G4", "C5", "E5")):
         tr.add(brass(hz(note), 0.5 if i < 2 else 1.2, 0.03, 0.9), i * 0.16, 0.45)
-    tr.add(bell(hz("G5"), 1.8, 4, 2.0, 1.0), 0.5, 0.3)
-    shimmer(tr, 0.5, 1.5, 12, "C6", "G7", 0.09)
-    return finish(tr, 0.88, 0.25, 1.6)
+    tr.add(pad(["C3", "G3", "E4"], 1.6, 0.25, 1600), 0.45, 0.4)
+    shimmer(tr, 0.5, 1.2, 4, "C6", "C7", 0.035)
+    return finish(tr, 0.88, 0.25, 1.6, 2800)
 
 
 def shell():
     tr = Track(0.5)
-    tr.add(glock(hz("G6"), 0.45), 0.0, 0.7)
-    tr.add(bubble(1300, 0.06, 0.5), 0.0, 0.3)
-    return finish(tr, 0.75, 0.1, 0.6)
+    for i in range(2):  # two shell halves clacking
+        click = bandpass(rng.standard_normal(int(0.012 * SR)), 1500, 4200) * np.exp(-secs(0.012) / 0.003)
+        tr.add(click, i * 0.035, 0.45)
+    tr.add(marimba(hz("G4"), 0.4), 0.01, 0.45)
+    tr.add(bubble(700, 0.07, 0.5), 0.05, 0.25)
+    return finish(tr, 0.75, 0.1, 0.6, 2800)
 
 
 def golden_shell():
     tr = Track(0.9)
-    for i, note in enumerate(("C6", "E6", "G6")):
-        tr.add(glock(hz(note), 0.7), i * 0.07, 0.6, (i - 1) * 0.4)
-    shimmer(tr, 0.15, 0.5, 10, "C7", "C8", 0.05)
-    return finish(tr, 0.8, 0.15, 0.9)
+    for i, note in enumerate(("C5", "E5", "G5")):
+        tr.add(marimba(hz(note), 0.6), i * 0.07, 0.6, (i - 1) * 0.4)
+    shimmer(tr, 0.15, 0.4, 4, "C6", "C7", 0.03)
+    bubbles(tr, 0.05, 0.4, 6, 400, 1200, 0.12, 0.5)
+    return finish(tr, 0.8, 0.15, 0.9, 3000)
 
 
 def forage():
@@ -579,8 +591,8 @@ def too_big():
 def banner():
     tr = Track(0.8)
     tr.add(noise_sweep(0.5, 400, 1600, 0.5, 1.0) * envelope(int(0.5 * SR), 0.05, 0.3), 0.0, 0.45)
-    tr.add(glock(hz("E6"), 0.9), 0.08, 0.18)
-    return finish(tr, 0.7, 0.2, 1.0)
+    tr.add(pad(["A2", "E3", "A3"], 0.7, 0.2, 900), 0.05, 0.3)
+    return finish(tr, 0.7, 0.2, 1.0, 2400)
 
 
 def boss_warning():
@@ -652,7 +664,7 @@ def ink():
 def ui_open():
     tr = Track(0.35)
     tr.add(noise_sweep(0.22, 800, 2600, 0.45, 1.0) * envelope(int(0.22 * SR), 0.01, 0.1), 0.0, 0.5)
-    tr.add(glock(hz("C6"), 0.3), 0.02, 0.15)
+    tr.add(bubble(600, 0.08, 0.5), 0.03, 0.2)
     return finish(tr, 0.6, 0.05, 0.4)
 
 
