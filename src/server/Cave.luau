@@ -89,6 +89,43 @@ local function cylinder(
 	})
 end
 
+-- A box's worth of rock, rounded off like a pebble (owner, 2026-10-11: "rocks are
+-- also still a bit too unnatural and jagged. Needs more of a toonish rounded off
+-- look"): capsules (a cylinder with a ball on each end) run along the box's longest
+-- side, laid side by side across its middle one, thinner and shorter toward the
+-- edges, so the box's corners and flat faces become one smooth rounded lump. Use it
+-- wherever a tilted block of rock would go; carve (Air) and floors stay blocks.
+function Cave.pebble(ops: { Op }, material: Enum.Material, cframe: CFrame, size: Vector3)
+	local axes = {
+		{ size = size.X, axis = cframe.RightVector },
+		{ size = size.Y, axis = cframe.UpVector },
+		{ size = size.Z, axis = cframe.LookVector },
+	}
+	table.sort(axes, function(a, b)
+		return a.size < b.size
+	end)
+	local thin, mid, long = axes[1].size, axes[2].size, axes[3].size
+	local across, along = axes[2].axis, axes[3].axis
+	local radius = thin / 2
+	local span = math.max(mid / 2 - radius, 0)
+	local count = if span > 0 then math.ceil(span * 2 / (radius * 1.1)) + 1 else 1
+	for i = 1, count do
+		local t = if count > 1 then (i - 1) / (count - 1) * 2 - 1 else 0
+		local offset = t * span
+		local round = math.sqrt(math.max(1 - (offset / (mid / 2)) ^ 2, 0))
+		local r = radius * (0.72 + 0.28 * round)
+		local half = math.max(long / 2 - r, 0) * (0.55 + 0.45 * round)
+		local middle = cframe.Position + across * offset
+		if half > r * 0.25 then
+			cylinder(ops, material, middle, along, half * 2, r)
+			ball(ops, material, middle + along * half, r)
+			ball(ops, material, middle - along * half, r)
+		else
+			ball(ops, material, middle, r * 1.1)
+		end
+	end
+end
+
 local function outward(angle: number): Vector3
 	return Vector3.new(math.cos(angle), 0, math.sin(angle))
 end
@@ -152,24 +189,31 @@ function Cave.ops(): { Op }
 				angle + rng:NextNumber(-0.5, 0.5),
 				rng:NextNumber(-0.25, 0.25)
 			)
-			block(ops, ROCK, CFrame.new(spot) * tilt, size)
+			Cave.pebble(ops, ROCK, CFrame.new(spot) * tilt, size)
 		end
-		for i = 1, 10 do
-			-- Notches chipped out of the shelf's edge, tilted and mostly outside the
-			-- rock (deeper, square-on cuts read as windows)
-			local angle = (i / 10) * 2 * math.pi + rng:NextNumber(-0.3, 0.3)
-			local spot = at(angle, terrace.r + 6, terrace.y1 - rng:NextNumber(2, 10))
-			local tilt = CFrame.Angles(
-				rng:NextNumber(-0.7, 0.7),
-				angle + rng:NextNumber(-0.6, 0.6),
-				rng:NextNumber(-0.7, 0.7)
-			)
-			block(
-				ops,
-				AIR,
-				CFrame.new(spot) * tilt,
-				Vector3.new(rng:NextNumber(12, 20), rng:NextNumber(8, 14), rng:NextNumber(10, 18))
-			)
+		-- A rounded lip: a ring of rock balls along the shelf's edge, so the drum's
+		-- square top edge reads as a soft shoulder
+		local lip = math.clamp(height * 0.35, 6, 14)
+		local around = math.ceil(2 * math.pi * terrace.r / (lip * 1.3))
+		for i = 1, around do
+			local angle = (i / around) * 2 * math.pi
+			ball(ops, ROCK, at(angle, terrace.r - 6 - lip * 0.5, terrace.y1 - lip * 0.45), lip)
+		end
+		for i = 1, 8 do
+			-- Rounded bites out of the shelf's edge (square-on cuts read as windows)
+			local angle = (i / 8) * 2 * math.pi + rng:NextNumber(-0.3, 0.3)
+			ball(ops, AIR, at(angle, terrace.r + 2, terrace.y1 - rng:NextNumber(0, 4)), rng:NextNumber(6, 9))
+		end
+	end
+	-- Soft inside corners: where each terrace stands on the one below, a ring of balls
+	-- fills the step's corner
+	for i = 2, #terraces do
+		local upper, lower = terraces[i], terraces[i - 1]
+		local fillet = math.clamp((upper.y1 - upper.y0) * 0.3, 6, 10)
+		local around = math.ceil(2 * math.pi * upper.r / (fillet * 1.4))
+		for k = 1, around do
+			local angle = (k / around) * 2 * math.pi
+			ball(ops, ROCK, at(angle, upper.r - 6 + fillet * 0.2, lower.y1 + fillet * 0.15), fillet)
 		end
 	end
 	ball(ops, SLATE, center + Vector3.new(0, 8, 0), 122) -- the cap: top at 130
@@ -177,7 +221,7 @@ function Cave.ops(): { Op }
 		local angle = (i / 14) * 2 * math.pi + rng:NextNumber(-0.2, 0.2)
 		local spot = at(angle, rng:NextNumber(38, 78), rng:NextNumber(104, 118))
 		local size = Vector3.new(rng:NextNumber(14, 26), rng:NextNumber(8, 16), rng:NextNumber(12, 22))
-		block(
+		Cave.pebble(
 			ops,
 			SLATE,
 			CFrame.new(spot)
@@ -263,8 +307,8 @@ function Cave.ops(): { Op }
 		local size = rng:NextNumber(18, 26)
 		ball(ops, AIR, at(angle, r, domeY + size * 0.75), size)
 	end
-	-- Drips hanging from the dome: angular knobs mostly buried in the rock so only
-	-- a facet shows, in groups, a few stacked into short stalactites
+	-- Drips hanging from the dome: rounded knobs mostly buried in the rock, in
+	-- groups, a few with a smaller drop under them
 	for _ = 1, 9 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local r = rng:NextNumber(hub.oculusRadius + 8, 74)
@@ -272,12 +316,10 @@ function Cave.ops(): { Op }
 			local spotAngle = angle + rng:NextNumber(-0.12, 0.12)
 			local spotR = r + rng:NextNumber(-8, 8)
 			local domeY = DOME_CENTER_Y + math.sqrt(math.max(DOME_RADIUS ^ 2 - spotR ^ 2, 0))
-			local size = Vector3.new(rng:NextNumber(5, 10), rng:NextNumber(6, 12), rng:NextNumber(5, 10))
-			local spin =
-				CFrame.Angles(rng:NextNumber(-0.6, 0.6), rng:NextNumber(0, 6.28), rng:NextNumber(-0.6, 0.6))
-			block(ops, SLATE, CFrame.new(at(spotAngle, spotR, domeY + size.Y * 0.2)) * spin, size)
+			local size = rng:NextNumber(3, 6)
+			ball(ops, SLATE, at(spotAngle, spotR, domeY + size * 0.3), size)
 			if rng:NextNumber() < 0.35 then
-				block(ops, SLATE, CFrame.new(at(spotAngle, spotR, domeY - size.Y * 0.35)) * spin, size * 0.55)
+				ball(ops, SLATE, at(spotAngle, spotR, domeY - size * 0.7), size * 0.55)
 			end
 		end
 	end
@@ -323,6 +365,9 @@ function Cave.ops(): { Op }
 				reach - (hub.radius - 20),
 				TUNNEL_RADIUS
 			)
+			-- A flared mouth where the tube comes out on the sand, so it opens wide
+			-- onto the shallows instead of ending in a lip
+			ball(ops, AIR, at(angle, reach - 4, TUNNEL_RADIUS + 5), TUNNEL_RADIUS + 4)
 			for _ = 1, 6 do
 				local r = rng:NextNumber(hub.radius + 4, reach - 8)
 				local side = rng:NextNumber(0, 2 * math.pi)

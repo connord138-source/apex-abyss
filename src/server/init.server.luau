@@ -13,6 +13,7 @@ local ForageService = require(Services.ForageService)
 local RollService = require(Services.RollService)
 local WardrobeService = require(Services.WardrobeService)
 local ShopService = require(Services.ShopService)
+local ItemService = require(Services.ItemService)
 local SpeciesService = require(Services.SpeciesService)
 local TutorialService = require(Services.TutorialService)
 local TreasureService = require(Services.TreasureService)
@@ -41,6 +42,7 @@ ForageService.start() -- starfish and shrimp on the seabed
 RollService.start() -- 50 shells = a roll
 WardrobeService.start() -- spawned: dress the fish
 ShopService.start() -- the plaza's vendors
+ItemService.start() -- the item wheel: Kelp Wraps and timed charms, used when picked
 SpeciesService.start() -- switching and unlocking species
 TutorialService.start() -- loaded: skip steps already met
 TreasureService.start() -- treasure maps: drops, following, digging

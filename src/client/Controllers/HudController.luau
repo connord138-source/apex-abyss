@@ -675,8 +675,8 @@ local function showControlsHint()
 		then "Left stick: push up to swim, sideways to turn · drag to aim · swim into smaller fish to eat · BITE for fish your size"
 		elseif
 			Input.isGamepad()
-		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites fish your size · RT dash · LB heal · Y at a stall"
-		else "Mouse to look · WASD swim · swim into smaller fish to eat · Click or F bites fish your size · Shift dash · Space/Ctrl up/down · E at a stall · H heal · Alt or M frees the cursor"
+		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites fish your size · RT dash · LB heal (hold for items) · Y at a stall"
+		else "Mouse to look · WASD swim · swim into smaller fish to eat · Click or F bites fish your size · Shift dash · Space/Ctrl up/down · E at a stall · H heal · G item wheel · Alt or M frees the cursor"
 	local label = Ui.label(gui, "Controls", text, Ui.FONT_SEMI, 14, Ui.color.muted, UDim2.fromOffset(800, 18))
 	-- Top centre under the safe-zone pill, and below the boss bar or the boss
 	-- countdown while one is up (the countdown sits at the same spot and covered it,

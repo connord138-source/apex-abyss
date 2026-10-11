@@ -195,7 +195,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Common Golden is "Canary", and stair-stepped edges are gone (`smooth(m)`: the
     body frame jumped between its fitted slices). Warm gold or orange in large
     smooth areas can pass as a PNG and fail once JPEG-packed: screen the GLBs too.
-    All six v5 GLBs exit 0 (highest 0.154); the bundle is hosted (sha256 b69a98ce...).
+    All six v5 GLBs exit 0 (highest 0.154). **v6 (2026-10-11, playtest nits):** the
+    Puffer's Neon Tetra stripe is measured from one straight line fitted through the
+    body's middles (on the smooth frame it still kinked behind the pectoral fin) and
+    the 'Cuda's Blackfin is deep navy over silver (Great's twin from afar); only the
+    Puffer and 'Cuda GLBs changed; the bundle is hosted (sha256 87721930...).
     Every worn skin is fetched ahead when another player wears it (player
     attributes `WornShade`/`WornSpecies` → `CardPhoto.preloadSkin`).
 - **The pull-back loop (owner, 2026-10-10: "I still feel like we're missing a factor
@@ -382,9 +386,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (eaten like forage), the Tidecharm Trader (120 coral), a 3% prey drop and treasure
     chests; H / LB / HEAL. Eating prey heals 2% + 0.5%/kg. `Config/Tuning.luau`
     `heal`, `HuntService.giveWrap/useWrap/damage/kill`, `HealController`. Never sold
-    for Robux.
+    for Robux. **No regeneration** (owner, 2026-10-11: "Health should not regenerate
+    that is the whole point of kelp wraps"): only a wrap, eating prey or a respawn
+    brings health back. **The item wheel** (owner, 2026-10-11: wraps "in user
+    inventory wheel to be used when needed and not immediately, same for kelp wraps
+    won from the spin wheel"): Kelp Wraps and the timed charms (Feast, Shell Magnet,
+    Deep Lantern; carry 3 each) always go into `data.charms` however they come
+    (bought, won on the Treasure Wheel, treasure, bounties, admin) and start only when
+    picked: hold G (point, let go; a tap leaves it open to click), hold LB (point with
+    a stick; a tap of LB still uses a wrap), or the phone's ITEMS button
+    (`ItemWheelController`, `ItemService` `UseItem`, `Config/Shop` `items`). A wheel
+    prize that doesn't fit is paid in coral.
   - **AI predators (owner, 2026-10-06: aggressive AI fish worth more):** built as the
-    base the bosses extend. `Config/Predators.luau` (Barracuda, Reef Shark) and
+    base the bosses extend. **None comes near the starter cave** (owner, 2026-10-11:
+    "Starter cave should never have predator fish or anything that can hurt you in
+    it"): `PredatorService.steer` keeps every creature (bosses too) `Predators.hubKeepOut`
+    210 studs plus half its length from the hub's centre, and a fish inside that is
+    never a target (damage there was already blocked by the safe zone). `Config/Predators.luau` (Barracuda, Reef Shark) and
     `PredatorService`: simulated at 10 Hz, roam a band round the hub, hunt the biggest
     worthwhile fish in range, telegraph every bite (0.9–1.1 s jaw flash and an INCOMING
     warning for the target), bite for a share of max health; players bite back
@@ -850,6 +868,24 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 
 ## World and assets (2026-10-07)
 
+- **Rocks are rounded, toon-style** (owner, 2026-10-11: "rocks are also still a bit
+  too unnatural and jagged. Needs more of a toonish rounded off look"): every tilted
+  block of rock is a pebble of capsules (`Cave.pebble`: cylinders with ball ends
+  along the box's long side, side by side across its middle, thinner at the edges),
+  in the seamount's shelf rocks and cap, the reef's outcrops, ridges and arch tops,
+  the kelp's sandstone ridges and the Trench's ledges; the terraces have rounded lips
+  and filled inside corners, notches are round bites, drips are balls; only the
+  round boulder model is used. Carves (Air), floors and the ruins stay blocks. Use
+  `Cave.pebble` for any new rock.
+- **The exits are open** (owner, 2026-10-11: "ensure all exits from the den are
+  clear and open"): the seamount's foot was widened to 165 for the dens but the
+  tunnels were still carved to 163, so all four were plugged at the mouth. They run
+  to 195 now (`World.hub.tunnelLength` 76) with a flared mouth. After any change to
+  `Cave.luau` or `Shelf.luau` run `DUMP_ONLY=1 LUAU=<luau> bash
+  tools/preview/run_world.sh <dir>` then `python3 tools/preview/check_exits.py
+  <dir>/world_ops.jsonl` (the tunnels, the 12 den doorways and the oculus; exit 1
+  if any is blocked). The previews load `Config/Dens` too (Layout reads it; without
+  it the dump was empty from 2026-10-08 to 10-11).
 - **The hub cavern is Roblox Terrain** (owner: "needs to actually resemble a
   cave/cavern, not straight flat edges"). `src/server/Cave.luau` lists fill ops (a
   terraced seamount with faceted blocks, the carved cavern with a dome, bays, drips
@@ -951,7 +987,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
       instead of collapsing into it; very close up, your own fish fades
       (`LocalTransparencyModifier`, skipping parts Cosmetics hid at 1). The look-at
       point trails the fish by at most `maxLag` × its length, shake rotates, and
-      thin species sit closer (`Config/Species` `camera`).
+      thin species sit closer (`Config/Species` `camera`). **Growth shows on
+      screen** (owner, 2026-10-11: "ensure that player fish are actually getting
+      bigger as they grow"; the distance had followed the length one for one): it
+      frames the banked length to the power `camera.growFraming` (0.85) plus
+      `growHaul` (30%) of a dive's live growth (`framedLength`).
     - `ForageController`: filler food is eaten from a generous reach
       (`Forage.REACH_SCALE`/`REACH_BONUS`) with a suction pull (`PULL`), and the
       server allows for both.
@@ -1031,7 +1071,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-09-pc-boss.md`, `2026-10-10-pc.md` (boss see-through),
   `2026-10-10-pc-fixes.md` (walls, coral, kelp, food, cursor),
   `2026-10-10-pc-pullback.md`, `2026-10-11-pc.md` (skins v5, glints, light),
-  `2026-10-11-pc-2.md` (vendor models, glints on top, haze, publish);
+  `2026-10-11-pc-2.md` (vendor models, exits, rounded rocks, safe cave, no regen, item
+  wheel, growth, skins v6, glints, haze, publish);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

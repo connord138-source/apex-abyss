@@ -58,6 +58,7 @@ local REQUESTS: { [string]: number } = {
 	StartDig = 0.4, -- () begin digging at the followed map's X
 	FinishDig = 0.4, -- () the dig hold completed
 	UseWrap = 0.3, -- () use a Kelp Wrap (heal)
+	UseItem = 0.3, -- (id) use an item from the item wheel (Config/Shop items)
 	BitePredator = 0.35, -- (predator index) bite an AI predator or boss
 	Struggle = 0.05, -- () mash to break a boss's grab (0.12 dropped fast mashing, playtest 2026-10-08)
 	DenUpgrade = 0.5, -- () the den's next level

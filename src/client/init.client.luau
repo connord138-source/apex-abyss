@@ -12,6 +12,7 @@ local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
 local GardenController = require(script.Controllers.GardenController)
 local HealController = require(script.Controllers.HealController)
+local ItemWheelController = require(script.Controllers.ItemWheelController)
 local HintController = require(script.Controllers.HintController)
 local HudController = require(script.Controllers.HudController)
 local HuntController = require(script.Controllers.HuntController)
@@ -55,6 +56,7 @@ task.spawn(TreasureWheelController.start) -- the Treasure Wheel: its spin, bulbs
 TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
 HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow
+ItemWheelController.start() -- the item wheel: G / hold LB / ITEMS, wraps and timed charms used when picked
 HintController.start() -- EAT / BITE / DANGER / TOO BIG hints while hunting
 CameraController.start()
 FishAnimator.start()

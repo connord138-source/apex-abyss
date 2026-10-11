@@ -806,7 +806,10 @@ local function rock(parent: Instance, rng: Random, ground: Vector3, scale: numbe
 		if dark then ROCK_DARK else ROCK,
 		Enum.Material.Rock
 	)
-	Props.dress(part, if rng:NextNumber() < 0.6 then "BoulderRound" else "BoulderJagged", {
+	-- Round boulders only: the jagged one read as unnatural (owner, 2026-10-11: "Needs
+	-- more of a toonish rounded off look")
+	rng:NextNumber() -- (keeps the scatter's random sequence where it was)
+	Props.dress(part, "BoulderRound", {
 		cframe = CFrame.new(ground + Vector3.new(0, size.Y * 0.42, 0)) * CFrame.Angles(0, yaw, 0),
 		size = Vector3.new(size.X * 1.1, size.Y * 0.95, size.Z * 1.1),
 		solid = true,

@@ -29,7 +29,10 @@ return {
 		denHeight = 26,
 		denFloorY = 4,
 		tunnelHeight = 36,
-		tunnelLength = 44,
+		-- Out past the seamount's foot (165 from the center, its terrace drums up to
+		-- ~180): at 44 the tubes stopped inside the rock widened for the dens
+		-- (owner, 2026-10-11: "ensure all exits from the den are clear and open")
+		tunnelLength = 76,
 		oculusRadius = 28, -- the hole in the cavern roof (light comes down through it)
 		poolRadius = 7, -- each den's Haul Pool: swim into it to bank
 	},

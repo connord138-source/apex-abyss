@@ -4,7 +4,8 @@
 # Blender from above and from the sides:
 #   bash tools/preview/run_world.sh <out_dir>
 # Needs `luau` on PATH (or LUAU=...) and Blender's Python with numpy and
-# scikit-image (BPY=..., default python3.11).
+# scikit-image (BPY=..., default python3.11). DUMP_ONLY=1 stops after the ops dump
+# (tools/preview/check_exits.py reads it).
 set -e
 cd "$(dirname "$0")"
 OUT=${1:-/tmp/world_preview}
@@ -16,7 +17,10 @@ chunk=$(mktemp --suffix=.luau)
 	echo 'local World = (function()'
 	grep -v '^--!strict' ../../src/shared/Config/World.luau
 	echo 'end)()'
-	echo 'local Config = { World = World }'
+	echo 'local Dens = (function()'
+	grep -v '^--!strict' ../../src/shared/Config/Dens.luau
+	echo 'end)()'
+	echo 'local Config = { World = World, Dens = Dens }'
 	echo 'local Layout = (function()'
 	grep -v '^--!strict' ../../src/shared/Layout.luau | sed 's#require(script.Parent.Config)#Config#'
 	echo 'end)()'
@@ -42,4 +46,5 @@ chunk=$(mktemp --suffix=.luau)
 ${LUAU:-luau} "$chunk" > "$OUT/world_ops.jsonl"
 rm "$chunk"
 echo "ops: $(wc -l < "$OUT/world_ops.jsonl")"
+[ -n "$DUMP_ONLY" ] && exit 0
 EGL_PLATFORM=surfaceless ${BPY:-python3.11} cave_render.py -- "$OUT" --world 2>&1 | grep -E "wrote|Error|error|Traceback|^  " || true

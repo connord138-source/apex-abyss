@@ -141,6 +141,12 @@ local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vecto
 	return CFrame.fromAxisAngle(axis.Unit, maxAngle):VectorToWorldSpace(from)
 end
 
+-- Whether a point is inside the hub's keep-out (Predators.hubKeepOut).
+local function nearHub(position: Vector3, margin: number): boolean
+	local hub = World.hub.center
+	return Vector3.new(position.X - hub.X, 0, position.Z - hub.Z).Magnitude < Predators.hubKeepOut + margin
+end
+
 -- The fish worth hunting: alive, not safe, in range, big enough (or it bit us).
 local function pickTarget(predator: Predator, now: number): Player?
 	local def = predator.def
@@ -151,7 +157,7 @@ local function pickTarget(predator: Predator, now: number): Player?
 		if character == nil or root == nil or not record.alive or record.inHub then
 			continue
 		end
-		if record.safeUntil > now then
+		if record.safeUntil > now or nearHub(root.Position, 0) then
 			continue
 		end
 		local distance = (root.Position - predator.position).Magnitude
@@ -214,6 +220,18 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 			predator.velocity -= outward * along
 		end
 	end
+	-- ...and never into the hub's keep-out: the cave, its tunnels and the sand round
+	-- them (Predators.hubKeepOut)
+	local away = Vector3.new(position.X - hub.X, 0, position.Z - hub.Z)
+	local keep = Predators.hubKeepOut + def.length * 0.5
+	if away.Magnitude < keep then
+		local outward = if away.Magnitude > 1e-3 then away.Unit else Vector3.xAxis
+		position = Vector3.new(hub.X + outward.X * keep, position.Y, hub.Z + outward.Z * keep)
+		local into = predator.velocity:Dot(outward)
+		if into < 0 then
+			predator.velocity -= outward * into
+		end
+	end
 	local floor = Seafloor.y(position.X, position.Z)
 	-- The surface is a ceiling for the whole body, not just its middle: a big
 	-- creature's back and fin sit well above its axis (playtest 2026-10-10: the
@@ -254,6 +272,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 			or session == nil
 			or not session.alive
 			or session.inHub
+			or nearHub(root.Position, 0)
 			or (root.Position - predator.position).Magnitude > def.aggroRange * Predators.loseRange
 		then
 			predator.target = pickTarget(predator, now)

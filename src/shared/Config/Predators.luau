@@ -91,6 +91,11 @@ return {
 	byId = byId,
 	tickSeconds = 0.1, -- the server simulates and streams at this rate
 	roamSpeed = 0.55, -- × speed while roaming
+	-- No creature comes within this many studs of the hub's center (plus half its
+	-- length): the seamount, its cave and tunnels and the sand round the tunnel
+	-- mouths (owner, 2026-10-11: "Starter cave should never have predator fish or
+	-- anything that can hurt you in it"). A fish in there is never a target.
+	hubKeepOut = 210,
 	schoolBonus = 0.35, -- + per other fish that bit it in the last schoolWindow
 	schoolWindow = 2.5,
 	-- A player's bite on a predator: biteDamage × (their length / its length) ^ 1.5,

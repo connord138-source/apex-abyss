@@ -15,13 +15,16 @@ chunk=$(mktemp --suffix=.luau)
 	echo 'local World = (function()'
 	grep -v '^--!strict' ../../src/shared/Config/World.luau
 	echo 'end)()'
-	echo 'local Layout = (function()'
-	grep -v '^--!strict' ../../src/shared/Layout.luau | sed 's#require(script.Parent.Config)#{ World = World }#'
+	echo 'local Dens = (function()'
+	grep -v '^--!strict' ../../src/shared/Config/Dens.luau
 	echo 'end)()'
-	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = { World = World }, Layout = Layout } } }'
+	echo 'local Layout = (function()'
+	grep -v '^--!strict' ../../src/shared/Layout.luau | sed 's#require(script.Parent.Config)#{ World = World, Dens = Dens }#'
+	echo 'end)()'
+	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = { World = World, Dens = Dens }, Layout = Layout } } }'
 	echo 'local Cave = (function()'
 	grep -v '^--!strict' ../../src/server/Cave.luau \
-		| sed 's#require(ReplicatedStorage.Shared.Config)#{ World = World }#' \
+		| sed 's#require(ReplicatedStorage.Shared.Config)#{ World = World, Dens = Dens }#' \
 		| sed 's#require(ReplicatedStorage.Shared.Layout)#Layout#'
 	echo 'end)()'
 	echo 'if MODE == "layout" then dumpLayout(Layout, World.hub) else dumpOps(Cave.ops()) end'

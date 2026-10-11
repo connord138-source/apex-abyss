@@ -222,13 +222,13 @@ function Shelf.ops(): ({ Op }, Features)
 		local size = Vector3.new(rng:NextNumber(18, 52), rng:NextNumber(10, 28), rng:NextNumber(18, 52))
 		local frame = CFrame.new(at(angle, r, -size.Y * 0.35))
 			* CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 6.28), rng:NextNumber(-0.3, 0.3))
-		block(ops, ROCK, frame, size)
+		Cave.pebble(ops, ROCK, frame, size) -- rounded, not a tilted box (owner, 2026-10-11)
 	end
 	for _ = 1, 26 do
 		local angle = rng:NextNumber(0, 360)
 		local r = rng:NextNumber(hubClear + 20, 470)
 		local size = Vector3.new(rng:NextNumber(70, 160), 12, rng:NextNumber(16, 28))
-		block(
+		Cave.pebble(
 			ops,
 			SANDSTONE,
 			CFrame.new(at(angle, r, -4)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0),
@@ -266,7 +266,7 @@ function Shelf.ops(): ({ Op }, Features)
 		local thick = rng:NextNumber(26, 42)
 		local yaw = rng:NextNumber(0, 6.28)
 		local frame = CFrame.new(at(angle, r, height * 0.35 - 4)) * CFrame.Angles(0, yaw, 0)
-		block(ops, ROCK, frame, Vector3.new(length, height, thick))
+		Cave.pebble(ops, ROCK, frame, Vector3.new(length, height, thick))
 		ball(ops, ROCK, (frame * CFrame.new(length * 0.4, height * 0.2, 0)).Position, thick * 0.7)
 		ball(ops, ROCK, (frame * CFrame.new(-length * 0.4, height * 0.1, 0)).Position, thick * 0.6)
 		-- One or two swim-throughs bored across the ridge
@@ -288,7 +288,7 @@ function Shelf.ops(): ({ Op }, Features)
 			local leg = (frame * CFrame.new(side * span / 2, height / 2 - 4, 0)).Position
 			cylinder(ops, ROCK, leg, rng:NextNumber(7, 11), height + 8)
 		end
-		block(ops, ROCK, frame * CFrame.new(0, height + 2, 0), Vector3.new(span + 20, 11, 16))
+		Cave.pebble(ops, ROCK, frame * CFrame.new(0, height + 2, 0), Vector3.new(span + 20, 11, 16))
 	end
 
 	-- The Trench: a winding canyon carved down to its floor in three stepped cuts
@@ -343,7 +343,7 @@ function Shelf.ops(): ({ Op }, Features)
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
 		local ledge =
 			at(angle + side * math.deg((halfMid - 6) / r), r, rng:NextNumber(trench.floorY + 120, floor - 90))
-		block(
+		Cave.pebble(
 			ops,
 			SLATE,
 			CFrame.lookAt(ledge, ledge + outward(angle)) * CFrame.Angles(0, 0, side * math.rad(8)),

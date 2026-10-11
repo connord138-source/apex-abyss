@@ -1,6 +1,6 @@
 --!strict
--- Kelp Wraps on this client (Config/Tuning heal): H, LB on a pad or the HEAL button
--- on touch uses one; the HUD shows how many you carry and the cooldown; while a
+-- Kelp Wraps on this client (Config/Tuning heal): H, a tap of LB on a pad (the item
+-- wheel owns LB: ItemWheelController) or the HEAL button on touch uses one; the HUD shows how many you carry and the cooldown; while a
 -- wrap heals, your fish glows green (every client sees it: the Healing attribute).
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
@@ -33,7 +33,7 @@ local function count(): number
 end
 
 local function use()
-	if MenuController.isOpen() then
+	if MenuController.isOpen() or Input.locked then
 		return
 	end
 	if count() < 1 then
@@ -103,6 +103,9 @@ local function step()
 	updateGlows()
 end
 
+-- Uses a Kelp Wrap now (a tap of LB, from the item wheel's controller).
+HealController.use = use
+
 function HealController.start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	gui = Ui.screen("Heal", playerGui, 6)
@@ -148,7 +151,7 @@ function HealController.start()
 		end
 		use()
 		return Enum.ContextActionResult.Sink
-	end, false, Enum.KeyCode.H, Enum.KeyCode.ButtonL1)
+	end, false, Enum.KeyCode.H)
 	RunService.RenderStepped:Connect(step)
 end
 

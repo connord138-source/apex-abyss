@@ -692,12 +692,19 @@ def bumblebee(m):
 
 def tetra(m):
     # Edges along the body, not stepped per slice (playtest 2026-10-10), and a stripe
-    # that runs straight
+    # ruled straight down it: on the smooth frame it still followed the Puffer's lumpy
+    # middle and kinked behind the pectoral fin (playtest 2026-10-11), so its height is
+    # measured from one straight line fitted through the body's middles, in one body
+    # height for the whole length
     m = smooth(m, flatten=6)
     rgb = coat(m, (0.05, 0.10, 0.28), (0.52, 0.60, 0.80), (0.42, 0.55, 0.85))
     rear = smoothstep(0.42, 0.55, m.y) * smoothstep(0.62, 0.35, m.up)
     rgb = mix(rgb, (0.95, 0.06, 0.04), body_only(m, rear))
-    stripe = smoothstep(0.16, 0.06, np.abs(m.ez - 0.18)) * smoothstep(0.1, 0.22, m.y) * smoothstep(0.92, 0.75, m.y)
+    ys, _, zc, _, wz = m.slices
+    mid = (ys > 0.15) & (ys < 0.85)
+    slope, at0 = np.polyfit(ys[mid], zc[mid], 1)
+    level = (m.p[..., 2] - (slope * m.y + at0)) / float(np.median(wz[mid]))
+    stripe = smoothstep(0.16, 0.06, np.abs(level - 0.18)) * smoothstep(0.1, 0.22, m.y) * smoothstep(0.92, 0.75, m.y)
     stripe = body_only(m, stripe)
     rgb = mix(rgb, (0.12, 0.98, 1.0), stripe)
     return done(m, rgb, "gloss", emit=stripe[..., None] * C(0.1, 0.9, 1.0))
@@ -1592,14 +1599,15 @@ def cuda_chevron(m):  # Chevron barracuda: bronze-olive back with dark chevrons 
     return done(m, rgb, "satin", metal=silver * 0.35)
 
 
-def cuda_blackfin(m):  # Blackfin barracuda: steel-blue back, silver belly, black fins
-    # Steel blue, not silver (playtest 2026-10-10: it read as a twin of Great and
-    # Chevron), and fins black from a dusky root
+def cuda_blackfin(m):  # Blackfin barracuda: deep navy back, silver belly, black fins
+    # Deep navy down past the middle over a bright silver belly, so it reads as a dark
+    # fish from far off (playtest 2026-10-11: steel blue was still Great's twin at a
+    # distance, where Great's bars blur into silver), and fins black from a dusky root
     m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
-    rgb = body_coat(m, (0.24, 0.34, 0.47), (0.80, 0.84, 0.90), soft=0.1, line=0.52)
-    rgb = mix(rgb, (0.14, 0.21, 0.31), smoothstep(0.75, 0.97, m.up) * 0.7)
+    rgb = body_coat(m, (0.07, 0.12, 0.24), (0.80, 0.84, 0.90), soft=0.06, line=0.44)
+    rgb = mix(rgb, (0.03, 0.06, 0.13), smoothstep(0.7, 0.95, m.up) * 0.8)
     rgb = sheen(m, rgb, 0.4, (0.88, 0.94, 1.0))
     lateral = smoothstep(0.06, 0.025, np.abs(vn - 0.04)) * smoothstep(0.12, 0.2, u) * smoothstep(0.9, 0.82, u)
     rgb = mix(rgb, (0.22, 0.30, 0.42), lateral * (1 - fins) * 0.6)

@@ -5,7 +5,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local Timing = require(ReplicatedStorage.Shared.Timing)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
@@ -13,6 +12,7 @@ local Progress = require(script.Parent.Parent.Progress)
 local FishService = require(script.Parent.FishService)
 local WardrobeService = require(script.Parent.WardrobeService)
 local WorldService = require(script.Parent.WorldService)
+local ItemService = require(script.Parent.ItemService)
 
 local Shop = Config.Shop
 
@@ -61,14 +61,15 @@ local function buyCharm(player: Player, data: DataService.PlayerData, id: string
 	if not EconomyService.spendCoral(player, charm.price) then
 		return fail(player, "Not enough coral")
 	end
-	if charm.seconds then
-		local now = Timing.now()
-		data.boosts[id] = math.max(data.boosts[id] or 0, now) + charm.seconds
-		WardrobeService.refresh(player)
+	-- Into the satchel, never started on the spot (owner, 2026-10-11): the item
+	-- wheel (G) uses it when it's wanted
+	if table.find(Shop.items, id) then
+		ItemService.give(player, id, 1)
+		Net.notify(player, `Bought {charm.name} · use it from your item wheel (G)`, "good")
 	else
 		data.charms[id] = (data.charms[id] or 0) + 1
+		Net.notify(player, `Bought {charm.name}`, "good")
 	end
-	Net.notify(player, `Bought {charm.name}`, "good")
 end
 
 local function buyDye(player: Player, data: DataService.PlayerData, id: string)

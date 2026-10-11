@@ -712,7 +712,12 @@ PvP and PvE fights."
   coral, never bite damage).
 - **Eat to heal:** eating prey heals 2% plus 0.5% per kg, so snacking on the schools
   around a boss arena matters in a long fight.
-- The den and the plaza keep their full regen.
+- **No regeneration anywhere** (owner, 2026-10-11: "Health should not regenerate that
+  is the whole point of kelp wraps"): only a wrap, eating prey or a respawn heals.
+- **The item wheel** (owner, 2026-10-11): wraps and the timed charms (Feast, Shell
+  Magnet, Deep Lantern) wait in your inventory however they come, the Treasure Wheel
+  included, and start only when picked on the wheel (hold G / hold LB / ITEMS); H and
+  a tap of LB still use a wrap at once.
 
 ### AI predators (built 2026-10-07)
 

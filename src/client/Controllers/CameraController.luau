@@ -18,6 +18,7 @@ local Size = require(ReplicatedStorage.Shared.Size)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
 local SwimController = require(script.Parent.SwimController)
+local ClientState = require(script.Parent.Parent.ClientState)
 
 local tuning = Config.Tuning.camera
 
@@ -37,6 +38,19 @@ local lastPosition: Vector3? = Config.World.hub.center + Vector3.new(0, Config.W
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 rayParams.IgnoreWater = true
+
+-- How big the camera frames your fish (owner, 2026-10-11: "ensure that player fish
+-- are actually getting bigger as they grow"): the distance followed the length one
+-- for one, so a fish grown 36% longer looked 8% bigger on screen. Now it follows the
+-- banked length to the power `growFraming` and only `growHaul` of a dive's growth,
+-- so a fish fills more of the screen as it eats and as it levels.
+local function framedLength(live: number): number
+	local s = ClientState.current
+	local mass = if s and typeof(s.mass) == "number" then s.mass else nil
+	local banked = if mass then math.min(Size.length(mass), live) else live
+	local start = Size.length(Config.Tuning.size.startMass)
+	return start * (banked / start) ^ tuning.growFraming + (live - banked) * tuning.growHaul
+end
 
 -- Your own fish's parts, faded when the camera is right on top of it.
 local fadeCharacter: Model? = nil
@@ -160,7 +174,7 @@ local function update(dt: number)
 		return
 	end
 	lastPosition = target
-	local wantDistance = (tuning.baseDistance + tuning.perLength * length) * zoom * speciesScale
+	local wantDistance = (tuning.baseDistance + tuning.perLength * framedLength(length)) * zoom * speciesScale
 	if not hasFocus then
 		focus, focusVelocity = target, Vector3.zero
 		distance = wantDistance

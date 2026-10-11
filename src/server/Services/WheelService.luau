@@ -26,11 +26,10 @@ local Progress = require(script.Parent.Parent.Progress)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
-local HuntService = require(script.Parent.HuntService)
 local StateService = require(script.Parent.StateService)
 local TreasureService = require(script.Parent.TreasureService)
-local WardrobeService = require(script.Parent.WardrobeService)
 local WorldService = require(script.Parent.WorldService)
+local ItemService = require(script.Parent.ItemService)
 
 type PlayerData = DataService.PlayerData
 
@@ -236,16 +235,19 @@ local function award(player: Player, prize: Prize)
 		EconomyService.addCoral(player, prize.amount)
 	elseif segment.kind == "shells" then
 		EconomyService.addShells(player, prize.amount)
-	elseif segment.kind == "wraps" then
-		HuntService.giveWrap(player, prize.amount)
-	elseif segment.kind == "charm" then
-		local charm = Config.Shop.charmsById[segment.charm or ""]
-		if charm and charm.seconds then
-			local now = Timing.now()
-			data.boosts[charm.id] = math.max(data.boosts[charm.id] or 0, now) + charm.seconds
-			WardrobeService.refresh(player)
-		elseif charm then
-			data.charms[charm.id] = (data.charms[charm.id] or 0) + 1
+	elseif segment.kind == "wraps" or segment.kind == "charm" then
+		-- Into the satchel for the item wheel, never used on the spot (owner,
+		-- 2026-10-11); what doesn't fit comes back as coral
+		local id = if segment.kind == "wraps" then "KelpWrap" else segment.charm or ""
+		local charm = Config.Shop.charmsById[id]
+		if charm then
+			local count = if segment.kind == "wraps" then prize.amount else 1
+			local added = ItemService.give(player, id, count)
+			if added < count then
+				local refund = math.floor(charm.price * (count - added) / 2)
+				EconomyService.addCoral(player, refund)
+				Net.notify(player, `You can't carry more {charm.name}s: {refund} coral instead`, "info")
+			end
 		end
 	elseif segment.kind == "map" then
 		if not TreasureService.give(player, segment.map or "Weathered") then

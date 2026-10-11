@@ -39,8 +39,8 @@ export type Charm = {
 	name: string,
 	blurb: string,
 	price: number,
-	max: number?, -- most you can hold (stocked charms)
-	seconds: number?, -- timed charms: how long it lasts
+	max: number?, -- most you can hold
+	seconds: number?, -- timed charms: how long it lasts once used from the item wheel
 }
 
 local vendors: { Vendor } = {
@@ -177,7 +177,7 @@ local charms: { Charm } = {
 		id = "KelpWrap",
 		vendor = "Charms",
 		name = "Kelp Wrap",
-		blurb = "Heals 40% over 4 s (H). You swim slower while it works",
+		blurb = "Heals 40% over 4 s. Use it from your item wheel (G) or H. You swim slower while it works",
 		price = 120,
 		max = 5,
 	},
@@ -185,24 +185,27 @@ local charms: { Charm } = {
 		id = "DeepLantern",
 		vendor = "Charms",
 		name = "Deep Lantern",
-		blurb = "A small light for the dark Trench, 10 minutes. Rarer glowing shades light further",
+		blurb = "A small light for the dark Trench, 10 minutes from when you use it (item wheel, G)",
 		price = 350,
+		max = 3,
 		seconds = 600,
 	},
 	{
 		id = "Magnet",
 		vendor = "Charms",
 		name = "Shell Magnet",
-		blurb = "×2 shell pickup reach for 10 minutes",
+		blurb = "×2 shell pickup reach for 10 minutes from when you use it (item wheel, G)",
 		price = 250,
+		max = 3,
 		seconds = 600,
 	},
 	{
 		id = "Feast",
 		vendor = "Charms",
 		name = "Feast Charm",
-		blurb = "+25% Haul from everything you eat for 10 minutes",
+		blurb = "+25% Haul from everything you eat for 10 minutes from when you use it (item wheel, G)",
 		price = 400,
+		max = 3,
 		seconds = 600,
 	},
 }
@@ -222,6 +225,10 @@ return {
 	upgradesById = index(upgrades),
 	charms = charms,
 	charmsById = index(charms),
+	-- The item wheel's slots, clockwise from the top (owner, 2026-10-11: consumables
+	-- are carried and used when wanted, "not immediately"): a Kelp Wrap heals, the
+	-- others start their timer when used
+	items = { "KelpWrap", "Feast", "Magnet", "DeepLantern" },
 	trophies = trophies,
 	trophiesById = index(trophies),
 	-- The Tidecharm Trader also sells shells, a few times a day

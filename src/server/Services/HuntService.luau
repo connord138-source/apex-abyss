@@ -488,11 +488,8 @@ local function tick()
 				DataService.markDirty(player)
 			end
 			local most = maxHealth(player)
-			if session.health < most and now - session.lastHitAt > hunt.regenDelay then
-				session.health = math.min(most, session.health + hunt.regenPerSecond * 0.2)
-				character:SetAttribute("Health", session.health)
-			end
-			-- A Kelp Wrap heals through hits (that's what it's for)
+			-- No regeneration (Config/Tuning hunt.health): a Kelp Wrap heals, through
+			-- hits too (that's what it's for)
 			if now < session.healUntil and session.health < most then
 				session.health = math.min(most, session.health + session.healRate * 0.2)
 				character:SetAttribute("Health", session.health)
@@ -663,6 +660,8 @@ local function useWrap(player: Player)
 	character:SetAttribute("WrapReadyAt", session.wrapReadyAt)
 	DataService.markDirty(player)
 end
+
+HuntService.useWrap = useWrap
 
 function HuntService.giveDna(player: Player, position: Vector3, amount: number)
 	giveDna(player, position, amount)

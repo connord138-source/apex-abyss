@@ -303,14 +303,15 @@ local function charmRows(list: ScrollingFrame)
 	local order = 0
 	for _, charm in Shop.charms do
 		order += 1
-		local status
+		local held = charms[charm.id] or 0
+		-- (Robux Second Chances can take you past the trader's cap: no "2 / 1")
+		local status = if held > (charm.max or 1) then `Have {held}` else `Have {held} / {charm.max or 1}`
 		if charm.seconds then
+			-- A timed charm waits in the item wheel (G) until it's used
 			local left = (boosts[charm.id] or 0) - now
-			status = if left > 0 then `Active {clockText(left)}` else nil
-		else
-			local held = charms[charm.id] or 0
-			-- (Robux Second Chances can take you past the trader's cap: no "2 / 1")
-			status = if held > (charm.max or 1) then `Have {held}` else `Have {held} / {charm.max or 1}`
+			if left > 0 then
+				status ..= ` · on {clockText(left)}`
+			end
 		end
 		local full = charm.max ~= nil and (charms[charm.id] or 0) >= charm.max
 		local _, button = row(

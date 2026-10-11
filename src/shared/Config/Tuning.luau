@@ -52,6 +52,11 @@ return {
 		-- about 7 studs out (it was 13 and read as a dot, playtest 2026-10-06).
 		baseDistance = 2,
 		perLength = 2.4,
+		-- ...where the length is framed smaller than it is, so a growing fish fills
+		-- more of the screen: the banked length to this power (a level-100 fish of
+		-- 60 studs sits as if 36) and this share of a dive's live growth
+		growFraming = 0.85,
+		growHaul = 0.3,
 		zoomMin = 0.6, -- the mouse wheel scales the distance within these
 		zoomMax = 1.8,
 		zoomStep = 0.1,
@@ -85,9 +90,10 @@ return {
 		mouthOffset = 0.5, -- the mouth sits this many lengths ahead of the center
 		reach = 0.42, -- eat reach around the mouth, in lengths (generous: eating should feel easy)
 		biteDamage = 24, -- a bite from an equal-sized fish
+		-- Health never comes back on its own (owner, 2026-10-11: "Health should not
+		-- regenerate that is the whole point of kelp wraps"): Kelp Wraps, eating prey
+		-- (heal.eatBase/eatPerKg) and a respawn are the only ways back up
 		health = 100,
-		regenDelay = 4, -- seconds after the last hit before healing starts
-		regenPerSecond = 10,
 		spawnProtection = 6, -- seconds of safety after respawning
 		leaveHubProtection = 4, -- seconds of safety after swimming out of the hub
 		respawnSeconds = 3,

@@ -171,15 +171,11 @@ local function charm(_admin: Player, targets: { Player }, id: any, amount: any):
 	if def == nil then
 		return "Pick a charm"
 	end
-	each(targets, function(player, data)
-		if def.seconds then
-			data.boosts[def.id] = math.max(data.boosts[def.id] or 0, Timing.now()) + def.seconds * n
-			WardrobeService.refresh(player)
-		else
-			data.charms[def.id] = (data.charms[def.id] or 0) + n
-		end
+	-- Into the satchel (timed charms start from the item wheel, like any other)
+	each(targets, function(_player, data)
+		data.charms[def.id] = (data.charms[def.id] or 0) + n
 	end)
-	return `{def.name} ×{n} for {names(targets)}`
+	return `{def.name} ×{n} for {names(targets)} (in their item wheel)`
 end
 
 local function unlockSpecies(_admin: Player, targets: { Player }, id: any): string
