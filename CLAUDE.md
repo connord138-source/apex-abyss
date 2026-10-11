@@ -195,6 +195,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Common Golden is "Canary", and stair-stepped edges are gone (`smooth(m)`: the
     body frame jumped between its fitted slices). Warm gold or orange in large
     smooth areas can pass as a PNG and fail once JPEG-packed: screen the GLBs too.
+    All six v5 GLBs exit 0 (highest 0.154); the bundle is hosted (sha256 b69a98ce...).
     Every worn skin is fetched ahead when another player wears it (player
     attributes `WornShade`/`WornSpecies` → `CardPhoto.preloadSkin`).
 - **The pull-back loop (owner, 2026-10-10: "I still feel like we're missing a factor
