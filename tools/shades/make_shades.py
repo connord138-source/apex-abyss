@@ -591,6 +591,7 @@ def mint(m):  # Seafoam: foam rings over sea-green
 
 
 def sunset(m):
+    m = smooth(m)  # edges along the body, not stepped per slice (playtest 2026-10-10)
     along = smoothstep(0.05, 0.95, m.y)
     rgb = mix(board(m, (1.0, 0.80, 0.0)), (0.95, 0.26, 0.0), along)
     rgb = mix(rgb, (1.0, 0.90, 0.20), smoothstep(0.45, 0.15, m.up) * 0.7)
@@ -601,6 +602,7 @@ def sunset(m):
 
 
 def ink(m):  # Ink wash: pigment pooling at the edges, a glowing lateral line
+    m = smooth(m)  # edges along the body, not stepped per slice (playtest 2026-10-10)
     rgb = coat(m, (0.34, 0.42, 0.60), (0.48, 0.56, 0.70), (0.28, 0.34, 0.54))
     for k, (col, cut) in enumerate((((0.16, 0.18, 0.44), 0.5), ((0.05, 0.06, 0.22), 0.58))):
         f = fbm(m, 4 + 2 * k, 60 + k)
@@ -662,6 +664,7 @@ def moss(m):  # Lichen patches with bright rims, algae hanging from the back
 
 
 def ocean(m):
+    m = smooth(m)  # edges along the body, not stepped per slice (playtest 2026-10-10)
     rgb = coat(m, (0.08, 0.32, 0.82), (0.34, 0.56, 0.92), (1.0, 0.82, 0.0))
     swoosh = smoothstep(0.18, 0.05, np.abs(m.ez - 0.35 - 0.25 * np.sin(m.y * 5.5))) * smoothstep(0.15, 0.3, m.y)
     rgb = mix(rgb, (0.03, 0.05, 0.14), body_only(m, swoosh))
@@ -829,12 +832,18 @@ def magma(m):
 
 
 def glacier(m):  # Ice in strata: layers of teal and cyan, a frosted cap, rime
+    m = smooth(m)  # edges along the body, not stepped per slice (playtest 2026-10-10)
     w = (fbm(m, 5, 35) - 0.5) * 0.18
     layer = (m.up + w) * 7
-    idx = np.floor(layer).astype(int) % 4
     palette = np.array([(0.03, 0.28, 0.42), (0.08, 0.50, 0.64), (0.24, 0.70, 0.84), (0.50, 0.84, 0.95)], np.float32)
-    rgb = palette[idx]
-    seam = smoothstep(0.06, 0.0, layer - np.floor(layer))
+    # Each texel between the layers either side of its nearest boundary, on a ramp a
+    # texel and a half wide (a hard switch of layer stair-stepped along the texels)
+    frac = layer - np.floor(layer)
+    above = np.floor(layer).astype(int) + (frac >= 0.5)
+    sd = np.where(frac < 0.5, frac, frac - 1)  # layers above the boundary (+) or below (-)
+    a = np.clip(sd / (texel_step(m, layer) * 1.4 + 1e-6) + 0.5, 0, 1)[..., None]
+    rgb = palette[above % 4] * a + palette[(above - 1) % 4] * (1 - a)
+    seam = smoothstep(0.06, 0.0, np.maximum(sd, 0)) * a[..., 0]
     rgb = mix(rgb, (0.80, 0.95, 1.0), seam * 0.7)
     cap = smoothstep(0.82, 0.86, m.up + w * 0.5) * (1 - m.fin)
     rgb = mix(rgb, (0.80, 0.92, 1.0), cap)
@@ -1547,14 +1556,17 @@ def cuda_great(m):  # Great barracuda: steel flank, slanted bars, black blotches
 
 
 def cuda_yellowtail(m):  # Yellowtail barracuda: blue back, silver flank, one yellow stripe
+    # On the smooth frame, the stripe's and tail's hard edges anti-aliased (crisp):
+    # stepped per slice and squeezed under a texel, they stair-stepped (2026-10-11)
+    m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
     rgb = body_coat(m, (0.16, 0.32, 0.62), (0.82, 0.86, 0.94), soft=0.12, line=0.56)
     rgb = sheen(m, rgb, 0.3, (0.88, 0.94, 1.0))
-    stripe = hard(smoothstep(0.2, 0.15, np.abs(vn - 0.02))) * smoothstep(0.03, 0.06, u) * (1 - fins)
+    stripe = crisp(m, 0.175 - np.abs(vn - 0.02)) * smoothstep(0.03, 0.06, u) * (1 - fins)
     rgb = mix(rgb, (1.0, 0.80, 0.0), stripe)
     rgb = mix(rgb, (0.50, 0.58, 0.70), fins)
-    rgb = mix(rgb, (1.0, 0.78, 0.0), hard(fins * smoothstep(0.84, 0.87, m.y)))
+    rgb = mix(rgb, (1.0, 0.78, 0.0), crisp(m, fins * smoothstep(0.84, 0.87, m.y) - 0.5))
     silver = smoothstep(0.55, 0.3, m.up) * (1 - fins) * (1 - stripe)
     return done(m, rgb, "gloss", metal=silver * 0.4)
 
