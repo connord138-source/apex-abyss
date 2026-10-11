@@ -101,7 +101,16 @@ shades on fish with dark parts (the Angler's teeth) can trip the classifier: kee
 pale shades mid-toned. Thin near-white or cyan lines on black (lightning, an x-ray
 skeleton, a glow map that is mostly black) score high on the NSFW classifier even
 with no skin tone in them (0.23-0.49 in v3): tint them blue or violet and give them
-a wide soft glow, which brought them under 0.12. Eyes are picked on the side face renders (`find_eyes.py`,
+a wide soft glow, which brought them under 0.12. Large smooth fields of a warm gold or orange score
+high once JPEG-packed even when the PNG passes (the Reef Shark's warmer Golden: 0.11 as PNG, 0.72 in
+the GLB, 2026-10-11): give them a fine grain or texture (a brushed grain brought it to 0.01), and
+always screen the packed GLB, not only the PNGs. An edge drawn on the body frame (`ez`, `up`, the fins'
+outline, the flank height) steps at every one of its 48 slices, a staircase on the
+render (playtest 2026-10-10: Tiger, Tetra, Void, Aurora): a new or reworked recipe
+starts with `m = smooth(m)` (the fits interpolated between slices; `flatten` for a
+line that should run straight down a lumpy body) and draws hard edges with `crisp()`
+(an anti-aliased ramp at least a texel and a half wide). Older skins keep the stepped
+frame so they don't change. Eyes are picked on the side face renders (`find_eyes.py`,
 then checked by hand in `eyes.json`); the teeth, mouth and the Angler's lure are
 kept from the fish's own texture.
 

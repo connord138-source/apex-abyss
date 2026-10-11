@@ -175,6 +175,9 @@ class Fish:
         wz = np.minimum(wz, cap_z * taper)
         smooth = lambda a: ndimage.gaussian_filter1d(a, 2, mode="nearest")  # noqa: E731
         xc, zc, wx, wz = smooth(xc), smooth(zc), smooth(wx), smooth(wz)
+        # The fits per slice, for the smooth frame (Smooth: interpolated between the
+        # slices' middles instead of looked up per slice)
+        self.slices = (ys, xc, zc, wx, wz)
         self.xc, self.zc = xc[idx], zc[idx]
         ex = (x - self.xc) / np.maximum(wx[idx], 1e-4)
         ez = (z - self.zc) / np.maximum(wz[idx], 1e-4)
@@ -667,6 +670,7 @@ def ocean(m):
 
 
 def tiger(m):
+    m = smooth(m)  # edges along the body, not stepped per slice (playtest 2026-10-10)
     rgb = coat(m, (1.0, 0.42, 0.0), SNOW, (0.95, 0.34, 0.0), soft=0.025, hard_fins=True)
     t = stripes(m, 11, 0.24, wobble=0.35, slant=0.25, seed=23) * smoothstep(0.15, 0.55, m.up)
     rgb = mix(rgb, INKY, t)
@@ -684,6 +688,9 @@ def bumblebee(m):
 
 
 def tetra(m):
+    # Edges along the body, not stepped per slice (playtest 2026-10-10), and a stripe
+    # that runs straight
+    m = smooth(m, flatten=6)
     rgb = coat(m, (0.05, 0.10, 0.28), (0.52, 0.60, 0.80), (0.42, 0.55, 0.85))
     rear = smoothstep(0.42, 0.55, m.y) * smoothstep(0.62, 0.35, m.up)
     rgb = mix(rgb, (0.95, 0.06, 0.04), body_only(m, rear))
@@ -867,6 +874,7 @@ def divine(m):
 
 
 def aurora(m):
+    m = smooth(m)  # edges along the body, not stepped per slice (playtest 2026-10-10)
     rgb = coat(m, (0.03, 0.10, 0.16), (0.06, 0.16, 0.26), (0.04, 0.12, 0.22))
     flow = m.ez * 2.2 + (fbm(m, 3, 37) - 0.5) * 4 + m.y * 1.5
     curtain = 0.5 + 0.5 * np.sin(flow * 3.2)
@@ -947,6 +955,7 @@ def nebula(m):  # Gas clouds in magenta, violet and cyan, dark dust lanes, newbo
 
 
 def void(m):  # An event horizon: a black core, a glowing accretion spiral, a violet rim
+    m = smooth(m)  # edges along the body, not stepped per slice (playtest 2026-10-10)
     rgb = coat(m, (0.02, 0.01, 0.04), (0.04, 0.02, 0.07), (0.03, 0.01, 0.06))
     dy = m.y - 0.45
     dz = (m.ez - 0.05) * 0.11
@@ -1017,6 +1026,91 @@ def cache(m: Fish, key, make):
     return store[key]
 
 
+class Smooth:
+    """The fish with its body frame smooth along its length. Fish._cross_section and
+    girth() fit the body per slice (48 and 40 along it) and look each texel's slice
+    up, so ez, up, r2 (the fins' outline), theta and the flank height all step at
+    every slice, and an edge drawn on them is a staircase a slice long (playtest
+    2026-10-10: the 'Cuda's Tiger belly line, the Puffer's Tetra stripe, the Moray's
+    Void swirl, the Reef Shark's Aurora stripes). Here every fit is interpolated
+    between the slices' middles, so edges follow the body. Everything else is the
+    fish's own, the fins from blades() too. A recipe opts in with `m = smooth(m)`;
+    the skins that don't opt in keep the stepped frame and stay exactly as they
+    were."""
+
+    def __init__(self, m: Fish, flatten=0.0):
+        self.base = m
+        ys, xc, zc, wx, wz = m.slices
+        if flatten:
+            # Fits smoothed further along the body (in slices), for a line that should
+            # run straight down a lumpy body (the Puffer's spines and fins pull its
+            # per-slice middle up and down)
+            xc, zc, wx, wz = (ndimage.gaussian_filter1d(a, flatten, mode="nearest") for a in (xc, zc, wx, wz))
+        y = m.y
+
+        def along(a):
+            return np.interp(y, ys, a).astype(np.float32)
+
+        self.xc, self.zc = along(xc), along(zc)
+        x, z = m.p[..., 0], m.p[..., 2]
+        self.ex = (x - self.xc) / np.maximum(along(wx), 1e-4)
+        self.ez = (z - self.zc) / np.maximum(along(wz), 1e-4)
+        self.r2 = self.ex * self.ex + self.ez * self.ez
+        self.fin = smoothstep(2.2, 3.4, self.r2) * m.cov
+        zrel = np.clip(self.ez * 0.5 + 0.5, 0, 1)
+        self.up = np.clip(0.6 * zrel + 0.4 * (m.nrm[..., 2] * 0.5 + 0.5), 0, 1)
+        self.theta = np.arctan2(z - self.zc, x - self.xc)
+
+    def __getattr__(self, name):
+        return getattr(self.base, name)
+
+
+def smooth(m, flatten=0.0):
+    """The fish on the smooth body frame (Smooth), made once per fish (and per
+    `flatten`: how many slices more to smooth its fits over)."""
+    if isinstance(m, Smooth):
+        m = m.base
+    return cache(m, f"smooth{flatten}", lambda: Smooth(m, flatten))
+
+
+def texel_step(m, field):
+    """How much `field` changes from a texel to its neighbours on the same piece of
+    skin (the largest change to the four round it; across a UV seam the neighbour is
+    somewhere else on the body and doesn't count)."""
+    f = np.asarray(field, np.float32)
+    near = cache(m, "texel_near", lambda: _texel_near(m))
+    out = np.zeros_like(f)
+    for axis, ok in enumerate(near):
+        d = np.where(ok, np.abs(np.diff(f, axis=axis)), 0)
+        lo = [(0, 1), (0, 0)] if axis == 0 else [(0, 0), (0, 1)]
+        hi = [(1, 0), (0, 0)] if axis == 0 else [(0, 0), (1, 0)]
+        out = np.maximum(out, np.maximum(np.pad(d, lo), np.pad(d, hi)))
+    return out
+
+
+def _texel_near(m):
+    """Which neighbouring texels (down, right) sit next to each other on the body."""
+    p, real = m.p, m.real
+    steps = []
+    for axis in (0, 1):
+        dp = np.linalg.norm(np.diff(p, axis=axis), axis=-1)
+        both = (real[1:] & real[:-1]) if axis == 0 else (real[:, 1:] & real[:, :-1])
+        steps.append((dp, both))
+    typical = float(np.median(np.concatenate([dp[b] for dp, b in steps])))
+    return [b & (dp < typical * 4) for dp, b in steps]
+
+
+def crisp(m, field, at=0.0, texels=1.4, soft=0.0):
+    """A hard edge where `field` (drawn on the body in 3D) crosses `at`, anti-aliased:
+    a straight ramp at least `texels` texels wide (measured on the skin round each
+    texel, so it is as wide as it must be on a thin or a round fish), or `soft` in
+    the field's own units where that is wider. A hard edge is still the rule between
+    a warm colour and a pale one (orange or gold blended softly into white makes
+    peach or beige); a ramp a texel or two wide is far under what the screen counts."""
+    w = np.maximum(texel_step(m, field) * texels, soft) * 0.5 + 1e-6
+    return np.clip((np.asarray(field, np.float32) - at) / (2 * w) + 0.5, 0, 1).astype(np.float32)
+
+
 def blades(m: Fish):
     """The fins as they really are, thin blades of the mesh (Fish.fin guesses from the
     body's outline alone and takes a gill cover or a deep head for a fin): (mask 0..1,
@@ -1026,6 +1120,8 @@ def blades(m: Fish):
     fin only where most of the skin round it is thin and it stands out from the
     body's core. Each fin's reach is its distance from the body over its own
     furthest."""
+    if isinstance(m, Smooth):
+        return blades(m.base)  # the same fins on either frame
 
     def make():
         rng = np.random.default_rng(17)
@@ -1141,7 +1237,9 @@ def girth(m: Fish):
         h = np.interp(np.arange(bins), np.flatnonzero(good), h[good])
         h = ndimage.gaussian_filter1d(h, 1.5, mode="nearest")
         centres = (np.arange(bins) + 0.5) / bins
-        return h[idx].astype(np.float32), (lambda at: float(np.interp(at, centres, h)))
+        # On the smooth frame, between the slices' middles (not stepped per slice)
+        per = np.interp(u, centres, h) if isinstance(m, Smooth) else h[idx]
+        return per.astype(np.float32), (lambda at: float(np.interp(at, centres, h)))
 
     return cache(m, "girth", make)
 
@@ -1461,51 +1559,70 @@ def cuda_yellowtail(m):  # Yellowtail barracuda: blue back, silver flank, one ye
     return done(m, rgb, "gloss", metal=silver * 0.4)
 
 
-def cuda_chevron(m):  # Chevron barracuda: gunmetal with dark chevrons pointing forward
+def cuda_chevron(m):  # Chevron barracuda: bronze-olive back with dark chevrons pointing forward
+    # Its own colour among the 'Cuda's Commons (playtest 2026-10-10: Great, Chevron and
+    # Blackfin were all silver with dark marks): a bronze-olive back over a silver
+    # belly. Almost no blue in the bronze (blue in a bronze is tan, a skin tone), and
+    # red only a little over green, so its blend into the silver stays olive-grey
+    m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
-    rgb = body_coat(m, (0.20, 0.23, 0.27), (0.70, 0.74, 0.80), soft=0.15)
+    rgb = body_coat(m, (0.42, 0.355, 0.05), (0.70, 0.74, 0.80), soft=0.07, line=0.47)
+    rgb = mix(rgb, (0.30, 0.25, 0.035), smoothstep(0.7, 0.95, m.up) * 0.6)
     rgb = sheen(m, rgb, 0.25, (0.85, 0.9, 1.0))
     t = (u - 0.9 * np.abs(v - 0.008)) * 22 + 0.15 * (fbm(m, 6, 104) - 0.5)
     chev = smoothstep(0.62, 0.7, 0.5 + 0.5 * np.cos(2 * np.pi * t))
     chev *= smoothstep(0.15, 0.2, u) * smoothstep(0.86, 0.78, u) * smoothstep(-0.75, -0.5, vn) * smoothstep(1.0, 0.8, vn)
-    rgb = mix(rgb, (0.07, 0.08, 0.11), chev * (1 - fins))
-    rgb = mix(rgb, (0.40, 0.44, 0.50), fins)
-    return done(m, rgb, "satin")
+    rgb = mix(rgb, (0.085, 0.075, 0.025), chev * (1 - fins))
+    rgb = mix(rgb, (0.27, 0.25, 0.12), fins)
+    rgb = mix(rgb, (0.10, 0.09, 0.04), fins * smoothstep(0.6, 0.85, tip))
+    silver = smoothstep(0.5, 0.3, m.up) * (1 - fins)
+    return done(m, rgb, "satin", metal=silver * 0.35)
 
 
-def cuda_blackfin(m):  # Blackfin barracuda: polished steel, every fin tipped jet black
+def cuda_blackfin(m):  # Blackfin barracuda: steel-blue back, silver belly, black fins
+    # Steel blue, not silver (playtest 2026-10-10: it read as a twin of Great and
+    # Chevron), and fins black from a dusky root
+    m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
-    rgb = body_coat(m, (0.56, 0.62, 0.70), (0.84, 0.87, 0.92), soft=0.25)
-    rgb = sheen(m, rgb, 0.45, (0.92, 0.96, 1.0))
+    rgb = body_coat(m, (0.24, 0.34, 0.47), (0.80, 0.84, 0.90), soft=0.1, line=0.52)
+    rgb = mix(rgb, (0.14, 0.21, 0.31), smoothstep(0.75, 0.97, m.up) * 0.7)
+    rgb = sheen(m, rgb, 0.4, (0.88, 0.94, 1.0))
     lateral = smoothstep(0.06, 0.025, np.abs(vn - 0.04)) * smoothstep(0.12, 0.2, u) * smoothstep(0.9, 0.82, u)
-    rgb = mix(rgb, (0.34, 0.38, 0.44), lateral * (1 - fins) * 0.65)
-    rgb = mix(rgb, (0.66, 0.72, 0.80), fins)
-    tips = hard(smoothstep(0.5, 0.58, tip))
-    rgb = mix(rgb, (0.02, 0.02, 0.03), tips)
-    metal = 0.6 * (1 - tips) * (1 - fins * 0.5)
-    rough = 0.22 + 0.5 * tips
+    rgb = mix(rgb, (0.22, 0.30, 0.42), lateral * (1 - fins) * 0.6)
+    rgb = mix(rgb, (0.12, 0.14, 0.18), fins)
+    black = hard(smoothstep(0.18, 0.34, tip)) * fins
+    rgb = mix(rgb, (0.02, 0.02, 0.03), black)
+    metal = 0.55 * (1 - fins)
+    rough = 0.22 + 0.5 * fins
     return done(m, rgb, "gloss", metal=metal, rough=rough)
 
 
-def cuda_chrome(m):  # Mirror chrome: a sky-and-ground reflection, speed streaks from the nose
+def cuda_chrome(m):  # Gunmetal chrome: dark mirror metal, blue-violet speed streaks raking back
+    # Dark gunmetal, not the pale silver-blue it shared with Lunar (playtest
+    # 2026-10-10). The streaks are blue-violet in a wide soft glow: thin near-white
+    # lines on black score high on the moderation classifier
+    m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
     e = m.nrm[..., 2] * 0.6 + np.clip(vn, -1, 1) * 0.4
-    sky = mix(board(m, (0.84, 0.90, 1.0)), (0.34, 0.56, 0.96), smoothstep(0.1, 0.95, e))
-    ground = mix(board(m, (0.36, 0.40, 0.46)), (0.80, 0.84, 0.90), smoothstep(-0.15, -0.9, e))
-    rgb = np.where((e > 0.02)[..., None], sky, ground)
-    rgb = mix(rgb, (0.07, 0.09, 0.14), smoothstep(0.05, 0.0, np.abs(e)))
+    sky = mix(board(m, (0.44, 0.47, 0.54)), (0.22, 0.25, 0.36), smoothstep(0.1, 0.95, e))
+    ground = mix(board(m, (0.13, 0.14, 0.16)), (0.33, 0.35, 0.39), smoothstep(-0.15, -0.9, e))
+    rgb = mix(ground, sky, crisp(m, e - 0.02))
+    rgb = mix(rgb, (0.04, 0.05, 0.08), smoothstep(0.05, 0.0, np.abs(e)))
     streak_p = np.stack([m.ex * 0.05, u * 2.2, vn * 16], -1).astype(np.float32)
     n1 = value_noise(streak_p, 1.0, 105)
     fade = smoothstep(0.95, 0.15, u) * smoothstep(0.0, 0.05, u) * (1 - fins)
-    rgb = mix(rgb, (0.97, 0.98, 1.0), smoothstep(0.72, 0.78, n1) * fade)
-    rgb = mix(rgb, (0.10, 0.14, 0.24), smoothstep(0.26, 0.2, n1) * fade * 0.9)
-    rgb = mix(rgb, (0.26, 0.50, 0.96), smoothstep(0.75, 0.95, m.up) * 0.4)
+    streak = smoothstep(0.70, 0.79, n1) * fade
+    halo = glow_halo(streak, 4) * fade
+    rgb = mix(rgb, (0.20, 0.18, 0.56), halo * 0.55)
+    rgb = mix(rgb, (0.46, 0.42, 0.98), streak)
+    rgb = mix(rgb, (0.12, 0.10, 0.34), smoothstep(0.26, 0.2, n1) * fade * 0.6)
     edge = hard(smoothstep(0.7, 0.78, tip))
     rgb = mix(rgb, (0.02, 0.02, 0.03), edge)
-    return done(m, rgb, "mirror", metal=0.7 * (1 - edge), rough=0.1 + 0.6 * edge, detail=0.4)
+    metal = 0.7 * (1 - edge) * (1 - 0.5 * streak)
+    return done(m, rgb, "mirror", metal=metal, rough=0.1 + 0.6 * edge + 0.15 * streak, detail=0.4)
 
 
 def cuda_comet(m):  # A comet: a blazing cyan head, a tail of sparks pouring back
@@ -1812,40 +1929,51 @@ def mor_jade(m):  # Jade dragon: polished jade, glowing gold filigree scrolls on
 # ---------------------------------------------------------------------------
 
 
-def shk_blacktip(m):  # Blacktip reef shark: blue-grey, white belly and flank band, black tips
+def shk_blacktip(m):  # Blacktip reef shark: warm bronze back, white belly and flank band, black tips
+    # Bronze, not grey (playtest 2026-10-10: Blacktip, Whitetip and Grey Reef were one
+    # grey). A bronze with no blue in it (blue makes it tan, a skin tone) and a hard,
+    # anti-aliased edge into the white (a soft one is beige)
+    m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
     bump = np.exp(-(((u - 0.56) / 0.08) ** 2)) * (1 - fins)
     line = 0.5 + 0.16 * bump
-    w = smoothstep(line - 0.04, line + 0.04, m.up)
-    rgb = mix(board(m, (0.90, 0.93, 0.98)), (0.40, 0.48, 0.58), w)
-    rgb = mix(rgb, (0.40, 0.48, 0.58), fins * smoothstep(0.3, 0.6, m.up))
+    back = mix(board(m, (0.58, 0.34, 0.05)), (0.40, 0.22, 0.03), smoothstep(0.62, 0.97, m.up))
+    rgb = mix(board(m, (0.90, 0.93, 0.98)), back, crisp(m, m.up - line))
+    rgb = mix(rgb, back, fins * crisp(m, m.up - 0.42))
     tips = hard(smoothstep(0.66, 0.73, tip))
     rgb = mix(rgb, (0.03, 0.03, 0.04), tips)
     return done(m, rgb, "satin", detail=1.0)
 
 
-def shk_whitetip(m):  # Whitetip reef shark: dark slate, small dark spots, white-tipped dorsal and tail
+def shk_whitetip(m):  # Whitetip reef shark: dark charcoal-slate, small dark spots, bold white dorsal and tail tips
+    # Dark charcoal-slate with bold white tips on the first dorsal and the tail's upper
+    # lobe (playtest 2026-10-10: it was a twin of Grey Reef)
+    m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
-    rgb = body_coat(m, (0.22, 0.25, 0.29), (0.52, 0.56, 0.62), soft=0.2)
+    rgb = body_coat(m, (0.12, 0.14, 0.17), (0.44, 0.48, 0.55), soft=0.14)
     pts = scatter(m, 45, 260, weight=(1 - fins) * smoothstep(0.35, 0.6, m.up))
     d1, _, i = nearest(m, pts)
     r = (0.003 + 0.003 * np.random.default_rng(261).random(len(pts)))[i]
-    rgb = mix(rgb, (0.10, 0.11, 0.14), smoothstep(r * 1.15, r * 0.8, d1) * 0.85)
-    rgb = mix(rgb, (0.24, 0.27, 0.31), fins)
+    rgb = mix(rgb, (0.05, 0.06, 0.08), smoothstep(r * 1.15, r * 0.8, d1) * 0.85)
+    rgb = mix(rgb, (0.13, 0.15, 0.18), fins)
     dorsal = smoothstep(0.7, 0.85, m.up) * smoothstep(0.22, 0.27, u) * smoothstep(0.58, 0.52, u)
     tail = smoothstep(0.82, 0.86, u) * smoothstep(0.0, 0.03, v)
-    tips = hard(smoothstep(0.66, 0.73, tip) * np.clip(dorsal + tail, 0, 1))
-    rgb = mix(rgb, (0.84, 0.88, 0.96), tips)
+    tips = hard(smoothstep(0.5, 0.58, tip) * np.clip(dorsal + tail, 0, 1))
+    rgb = mix(rgb, (0.86, 0.90, 0.97), tips)
     return done(m, rgb, "satin", detail=1.0, hush=np.maximum(own_dark_fins(m), tips))
 
 
-def shk_grey(m):  # Grey reef shark: even grey, white belly, a broad black trailing edge on the tail
+def shk_grey(m):  # Grey reef shark: steel blue-grey, white belly, a broad black trailing edge on the tail
+    # Steel blue-grey (playtest 2026-10-10: it was the same grey as Blacktip and
+    # Whitetip), the tail's whole trailing edge broad and black, dusky pectorals
+    m = smooth(m)
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
-    rgb = body_coat(m, (0.44, 0.47, 0.51), (0.90, 0.92, 0.96), soft=0.06)
-    rgb = mix(rgb, (0.42, 0.45, 0.49), fins * smoothstep(0.3, 0.6, m.up))
+    rgb = body_coat(m, (0.27, 0.37, 0.51), (0.90, 0.93, 0.98), soft=0.05)
+    rgb = mix(rgb, (0.19, 0.27, 0.39), smoothstep(0.75, 0.97, m.up) * 0.6)
+    rgb = mix(rgb, (0.26, 0.35, 0.48), fins * smoothstep(0.3, 0.6, m.up))
     tail = (fins > 0.4) & (u > 0.8) & m.real
     lo, span = v[tail].min(), max(np.ptp(v[tail]), 1e-4)
     nb = 60
@@ -1859,10 +1987,10 @@ def shk_grey(m):  # Grey reef shark: even grey, white belly, a broad black trail
     umax = np.interp(np.arange(nb), np.flatnonzero(good), umax[good])
     umax = ndimage.gaussian_filter1d(umax, 2.0, mode="nearest")
     at_v = np.interp((v - lo) / span * nb - 0.5, np.arange(nb), umax)
-    trailing = hard(smoothstep(0.045, 0.035, at_v - u)) * smoothstep(0.78, 0.82, u) * fins
-    rgb = mix(rgb, (0.05, 0.05, 0.06), trailing)
-    dusky = smoothstep(0.75, 0.95, tip) * smoothstep(0.75, 0.7, u)
-    rgb = mix(rgb, (0.18, 0.19, 0.22), dusky * 0.8)
+    trailing = hard(smoothstep(0.075, 0.065, at_v - u)) * smoothstep(0.78, 0.82, u) * fins
+    rgb = mix(rgb, (0.04, 0.04, 0.05), trailing)
+    dusky = smoothstep(0.62, 0.9, tip) * smoothstep(0.75, 0.7, u)
+    rgb = mix(rgb, (0.07, 0.08, 0.10), dusky * 0.85)
     return done(m, rgb, "satin", detail=1.0, hush=own_dark_fins(m) * (1 - trailing))
 
 
@@ -2009,32 +2137,41 @@ def shk_boneplate(m):  # Placoderm armour: bone-grey plates over the head and ba
 # ---------------------------------------------------------------------------
 
 
-def ang_seadevil(m):  # Black seadevil: velvet black with a faint cool sheen on the ridges
+def ang_seadevil(m):  # Black seadevil: velvet black with a faint navy sheen on the ridges and back
+    m = smooth(m)
     fins, tip = fin_parts(m)
-    rgb = body_coat(m, (0.032, 0.032, 0.045), (0.05, 0.05, 0.07), soft=0.3)
+    rgb = body_coat(m, (0.035, 0.04, 0.075), (0.028, 0.028, 0.04), soft=0.3)
     ridge = smoothstep(0.02, 0.14, m.fine)
     top = smoothstep(0.3, 0.9, m.nrm[..., 2])
-    rgb = mix(rgb, (0.10, 0.15, 0.28), ridge * 0.75)
-    rgb = mix(rgb, (0.06, 0.08, 0.13), top * 0.45)
-    rgb = mix(rgb, (0.09, 0.13, 0.24), smoothstep(0.75, 0.95, tip) * 0.7)
+    rgb = mix(rgb, (0.10, 0.15, 0.32), ridge * 0.8)
+    rgb = mix(rgb, (0.06, 0.09, 0.19), top * 0.5)
+    rgb = mix(rgb, (0.09, 0.13, 0.28), smoothstep(0.75, 0.95, tip) * 0.7)
     return done(m, rgb, "matte", detail=0.3)
 
 
-def ang_humpback(m):  # Humpback angler: dark olive-grey, darker back, lighter flanks
+def ang_humpback(m):  # Humpback angler: dark umber brown, boldly mottled, darker on the back
+    # Umber, not another near-black (playtest 2026-10-10: the four Commons read the
+    # same). Blue kept near zero, so even the painted strokes' brightest stay out of
+    # the skin-tone rules (a brown with blue in it is tan)
+    m = smooth(m)
     fins, tip = fin_parts(m)
-    u, v, vn = height(m)
-    rgb = body_coat(m, (0.11, 0.13, 0.11), (0.28, 0.31, 0.26), soft=0.3, line=0.6)
-    rgb = mix(rgb, (0.30, 0.33, 0.27), smoothstep(0.5, 0.1, np.abs(vn - 0.05)) * 0.5)
-    rgb = mix(rgb, (0.14, 0.16, 0.14), smoothstep(0.52, 0.66, fbm(m, 7, 300)) * 0.4)
-    rgb = mix(rgb, (0.17, 0.20, 0.17), fins)
-    return done(m, rgb, "matte", detail=0.9)
+    rgb = body_coat(m, (0.17, 0.105, 0.03), (0.31, 0.195, 0.045), soft=0.3, line=0.62)
+    blot = smoothstep(0.5, 0.6, fbm(m, 6, 300))
+    rgb = mix(rgb, (0.085, 0.052, 0.016), blot * 0.85)
+    fleck = smoothstep(0.58, 0.68, fbm(m, 11, 305)) * (1 - blot)
+    rgb = mix(rgb, (0.36, 0.235, 0.05), fleck * 0.6)
+    rgb = mix(rgb, (0.13, 0.085, 0.025), fins)
+    return done(m, rgb, "matte", detail=0.6)
 
 
-def ang_warty(m):  # Warty angler: mottled charcoal and slate-blue, raised cool-grey bumps
+def ang_warty(m):  # Warty angler: olive-ochre frogfish skin under darker raised warts
+    # Olive-ochre (playtest 2026-10-10: it was near-black like the others). The ochre
+    # has no blue in it (blue in it is tan, a skin tone)
+    m = smooth(m)
     fins, tip = fin_parts(m)
     mott = smoothstep(0.44, 0.56, fbm(m, 5, 301))
-    rgb = mix(board(m, (0.14, 0.15, 0.17)), (0.22, 0.28, 0.38), mott)
-    rgb = mix(rgb, (0.26, 0.30, 0.38), smoothstep(0.35, 0.1, m.up) * 0.5)
+    rgb = mix(board(m, (0.30, 0.29, 0.05)), (0.46, 0.35, 0.03), mott)
+    rgb = mix(rgb, (0.21, 0.20, 0.035), smoothstep(0.6, 0.95, m.up) * 0.5)
     pts = scatter(m, 1700, 302, weight=1 - fins * 0.8)
     d1, _, i = nearest(m, pts)
     a, b = offsets(m, pts, i)
@@ -2042,26 +2179,30 @@ def ang_warty(m):  # Warty angler: mottled charcoal and slate-blue, raised cool-
     bump = smoothstep(R, R * 0.7, d1)
     lit = np.clip(0.5 + 0.6 * b / R, 0, 1)
     shade = smoothstep(R * 1.45, R * 1.05, d1) * (1 - bump) * smoothstep(0.0, -0.5, b / R)
-    rgb = mix(rgb, (0.06, 0.07, 0.09), shade * 0.7)
-    rgb = mix(rgb, C(0.42, 0.46, 0.54) * (0.72 + 0.45 * lit)[..., None], bump)
-    rgb = mix(rgb, (0.16, 0.18, 0.22), fins * (1 - bump))
-    return done(m, rgb, "matte", detail=0.7)
+    rgb = mix(rgb, (0.07, 0.065, 0.015), shade * 0.7)
+    rgb = mix(rgb, C(0.19, 0.16, 0.025) * (0.75 + 0.5 * lit)[..., None], bump)
+    rgb = mix(rgb, (0.24, 0.22, 0.04), fins * (1 - bump))
+    return done(m, rgb, "matte", detail=0.6)
 
 
-def ang_football(m):  # Footballfish: cobalt-black with a grid of tiny bony points, deep blue belly
+def ang_football(m):  # Footballfish: slate blue-grey with a grid of pale-blue bony spots
+    # Slate blue-grey (playtest 2026-10-10: it was near-black like the others); the
+    # spots pale blue but on a mid-dark body (a pale skin on the Angler's dark parts
+    # trips the classifier)
+    m = smooth(m)
     fins, tip = fin_parts(m)
-    rgb = body_coat(m, (0.025, 0.04, 0.12), (0.05, 0.12, 0.40), soft=0.2)
-    step = 0.024
+    rgb = body_coat(m, (0.16, 0.21, 0.29), (0.26, 0.32, 0.41), soft=0.25)
+    step = 0.03
     gu = m.y / step
     row = np.floor(gu)
     gv = round_angle(m) * 0.24 / step + 0.5 * (row % 2)
     fu, fv = gu - row, gv - np.floor(gv)
     d = np.hypot(fu - 0.5, fv - 0.5) * step
-    point = smoothstep(0.0034, 0.0024, d) * (1 - fins)
-    ring = smoothstep(0.0058, 0.0044, d) * (1 - point) * (1 - fins)
-    rgb = mix(rgb, (0.01, 0.015, 0.04), ring * 0.7)
-    rgb = mix(rgb, (0.44, 0.52, 0.72), point)
-    rgb = mix(rgb, (0.04, 0.06, 0.16), fins)
+    point = smoothstep(0.0056, 0.0042, d) * (1 - fins)
+    ring = smoothstep(0.0084, 0.0066, d) * (1 - point) * (1 - fins)
+    rgb = mix(rgb, (0.08, 0.10, 0.15), ring * 0.6)
+    rgb = mix(rgb, (0.54, 0.68, 0.88), point)
+    rgb = mix(rgb, (0.13, 0.17, 0.24), fins)
     return done(m, rgb, "satin", detail=0.7)
 
 
@@ -2254,12 +2395,27 @@ def ang_starfall(m):  # Starfall: constellations joined by glowing lines, fallin
 def catch_golden(m):  # Golden: polished gold with the fish's own pattern engraved darker
     L = own_lum(m)
     lines = own_lines(m)
-    gold = mix(board(m, (0.86, 0.54, 0.0)), (1.0, 0.76, 0.04), smoothstep(0.1, 0.85, L))
-    gold = mix(gold, (0.46, 0.24, 0.0), hard(smoothstep(0.35, 0.6, lines)) * 0.85)
-    rgb = sheen(m, gold, 0.3, (1.0, 0.84, 0.22))
+    # A warm, rich gold (playtest 2026-10-10: it read lime under the shallows' blue
+    # light): a few degrees toward orange (about 35-41 degrees, was 38-45; more and
+    # the Nibbler's reads as orange as its Percula), fully saturated, a little
+    # brighter. Golds with no blue in them, hard edges
+    gold = mix(board(m, (0.92, 0.535, 0.0)), (1.0, 0.69, 0.0), smoothstep(0.1, 0.85, L))
+    gold = mix(gold, (0.46, 0.20, 0.0), hard(smoothstep(0.35, 0.6, lines)) * 0.85)
+    # A fine brushed grain running nose to tail (on the smooth frame, so it doesn't
+    # jump at every slice): brushed metal, and it breaks up the big smooth fields of
+    # a plainly painted fish, which the moderation classifier read as skin once
+    # JPEG-packed (the Reef Shark's: 0.72 without it, about 0.01 with it; screen
+    # 2026-10-11)
+    sm = smooth(m)
+    gp = np.stack([sm.ex * 0.02, m.y * 3.0, sm.ez * 40], -1).astype(np.float32)
+    grain = value_noise(gp, 1.0, 410) * 0.6 + value_noise(gp, 2.3, 411) * 0.4
+    gold = gold * (0.9 + 0.2 * grain)[..., None]
+    rgb = sheen(m, gold, 0.3, (1.0, 0.74, 0.06))
     # An even metal map: one that traced the engraving was a grey line drawing, which
-    # the moderation classifier scored 0.5-0.98 (screen, 2026-10-10)
-    return done(m, rgb, "satin", metal=np.full(m.y.shape, 0.6, np.float32), detail=0.4)
+    # the moderation classifier scored 0.5-0.98 (screen, 2026-10-10). Less metal than
+    # before (0.6): metal reflects the water's blue through the gold's own colour,
+    # which comes out green; more of the look is the gold itself now
+    return done(m, rgb, "satin", metal=np.full(m.y.shape, 0.35, np.float32), detail=0.4)
 
 
 def catch_glowing(m):  # Glowing: deep navy, the fish's own lines softly glowing cyan-green
