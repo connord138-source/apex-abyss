@@ -660,18 +660,18 @@ local list: { Shade } = {
 	skin(
 		"CudaChevron",
 		"Chevron",
-		C(70, 78, 90),
+		C(100, 88, 30),
 		C(190, 200, 214),
-		C(60, 66, 76),
-		"Gunmetal with dark chevrons down the flank."
+		C(27, 24, 9),
+		"Bronze-olive with dark chevrons down the flank."
 	),
 	skin(
 		"CudaBlackfin",
 		"Blackfin",
-		C(150, 165, 180),
-		C(225, 232, 242),
+		C(65, 85, 111),
+		C(225, 234, 244),
 		C(14, 16, 20),
-		"Polished steel with jet-black fin tips."
+		"Steel-blue back, silver belly, black fins."
 	),
 	skin(
 		"PufGuineafowl",
@@ -740,68 +740,61 @@ local list: { Shade } = {
 	skin(
 		"ShkBlacktip",
 		"Blacktip",
-		C(100, 118, 138),
-		C(230, 236, 246),
-		C(14, 16, 20),
-		"Blue-grey with black-tipped fins."
+		C(140, 82, 13),
+		C(230, 237, 248),
+		C(13, 12, 14),
+		"Warm bronze with black-tipped fins."
 	),
 	skin(
 		"ShkWhitetip",
 		"Whitetip",
-		C(54, 62, 74),
-		C(200, 210, 224),
-		C(235, 242, 255),
-		"Slate grey with bright white fin tips."
+		C(33, 38, 46),
+		C(111, 121, 139),
+		C(220, 230, 247),
+		"Dark charcoal-slate with bold white tips."
 	),
 	skin(
 		"ShkGrey",
 		"Grey Reef",
-		C(108, 118, 130),
-		C(225, 232, 242),
-		C(30, 34, 40),
-		"Even grey, a black edge on the tail."
+		C(66, 89, 121),
+		C(227, 235, 245),
+		C(21, 23, 27),
+		"Steel blue-grey, a broad black tail edge."
 	),
 	skin("ShkLemon", "Lemon", C(190, 170, 40), C(220, 210, 90), C(170, 150, 30), "Mustard-olive yellow."),
 	skin(
 		"AngSeadevil",
 		"Seadevil",
-		C(12, 14, 20),
-		C(22, 26, 36),
-		C(10, 12, 18),
-		"Velvet black with a faint blue sheen."
+		C(9, 10, 16),
+		C(22, 32, 63),
+		C(7, 8, 13),
+		"Velvet black with a navy sheen."
 	),
-	skin(
-		"AngHumpback",
-		"Humpback",
-		C(52, 60, 50),
-		C(78, 88, 76),
-		C(40, 46, 38),
-		"Dark olive-grey, darker on the back."
-	),
+	skin("AngHumpback", "Humpback", C(72, 46, 10), C(32, 19, 5), C(51, 31, 7), "Dark umber, boldly mottled."),
 	skin(
 		"AngWarty",
 		"Warty",
-		C(48, 54, 64),
-		C(84, 92, 104),
-		C(40, 44, 52),
-		"Mottled charcoal and slate, all bumps."
+		C(109, 85, 8),
+		C(77, 69, 10),
+		C(53, 46, 7),
+		"Olive-ochre, covered in dark warts."
 	),
 	skin(
 		"AngFootball",
 		"Footballfish",
-		C(16, 20, 40),
-		C(24, 34, 70),
-		C(14, 18, 34),
-		"Cobalt-black studded with tiny points."
+		C(40, 52, 72),
+		C(144, 176, 210),
+		C(61, 76, 99),
+		"Slate blue-grey with pale-blue spots."
 	),
 	skin(
 		"CudaChrome",
 		"Chrome",
-		C(200, 214, 230),
-		C(240, 246, 255),
+		C(69, 74, 95),
+		C(119, 111, 220),
 		C(20, 24, 30),
-		"Mirror chrome raked with speed streaks.",
-		{ material = Enum.Material.Metal, reflectance = 0.45, sparkle = C(220, 240, 255) }
+		"Dark gunmetal raked with blue-violet speed streaks.",
+		{ material = Enum.Material.Metal, reflectance = 0.35, sparkle = C(170, 160, 255) }
 	),
 	skin(
 		"CudaComet",
@@ -970,11 +963,13 @@ local list: { Shade } = {
 		"Golden",
 		"Uncommon",
 		{ catch = "Golden" },
-		C(255, 196, 64),
-		C(255, 226, 120),
-		C(220, 160, 30),
-		"Solid gold, its own pattern engraved. 10 Golden catches as this fish.",
-		{ material = Enum.Material.Metal, reflectance = 0.4, sparkle = C(255, 236, 170), aura = "glints" }
+		C(245, 170, 0),
+		C(255, 205, 70),
+		C(200, 123, 0),
+		"Warm brushed gold, its own pattern engraved. 10 Golden catches as this fish.",
+		-- Less mirror than it was: reflecting the blue water, gold read lime (playtest
+		-- 2026-10-10; the skin's metal map went from 0.6 to 0.35)
+		{ material = Enum.Material.Metal, reflectance = 0.2, sparkle = C(255, 226, 150), aura = "glints" }
 	),
 	earned(
 		"CatchGlowing",
