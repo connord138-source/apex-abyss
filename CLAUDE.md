@@ -210,7 +210,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `SchoolController` draws them (foil, Neon teal, Glass, rainbow; sparkles and a
     light; their texture held aside), each with a **glint** (playtest 2026-10-10: a
     Golden Minnow was gone by 100 studs): a four-point star at a fixed 15–21 px out
-    to 240 studs, fading in past 18, only on fish drawn that frame. `HuntService` takes a fish's rarity as it's
+    to 240 studs, fading in past 18, only on fish drawn that frame. It draws on top
+    of the haze (`AlwaysOnTop`; depth-tested, the haze fogged it out past ~100 studs,
+    playtest 2026-10-11), and rock hides it by ray instead: 6 rays a frame from the
+    camera, round the stars in reach, against Terrain and the collidable parts of
+    `Workspace.World`, easing it out and in (`glintBlocked`, `glintVis`). `HuntService` takes a fish's rarity as it's
     eaten (`CatchService.take`) and fires `Events.caught`.
   - **Catch Log and catch tracks:** every prey × rarity with first-catch rewards, row
     rewards and the Master Angler title; per fish, 10 Golden / 10 Glowing / 5 Crystal
@@ -697,7 +701,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   near-black. **The shallows' light is half as blue as it was** (playtest
   2026-10-10: gold skins read lime, lilac read royal blue): base Ambient (40, 56, 68)
   and OutdoorAmbient (78, 104, 118), and the shelf's grade tints keep more red
-  (×0.84–0.87); the haze and deeper grades carry the blue. The sky, surface and upper atmosphere are the other (PC) chat's
+  (×0.84–0.87); the haze and deeper grades carry the blue. **The shallow haze is
+  thinner and less green** (owner, 2026-10-11, after Golden and Bumblebee read olive
+  from ~16 studs and Lilac blue): surface/mid/shelf density 0.64/0.66/0.68 (were
+  0.68/0.72/0.76), colours bluer; the deep grades are unchanged. The sky, surface and upper atmosphere are the other (PC) chat's
   (owner: "I have the other chat working on the sky/upper atmosphere"); don't touch
   `setupLighting`'s Sky or the Surface sheet from this branch.
 - **Exits (owner, 2026-10-08: "a flashing blue box that says EXIT in black on every
@@ -1023,7 +1030,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-09-pc-fixes.md`, `2026-10-09-pc-trench.md`, `2026-10-09-pc-start.md`,
   `2026-10-09-pc-boss.md`, `2026-10-10-pc.md` (boss see-through),
   `2026-10-10-pc-fixes.md` (walls, coral, kelp, food, cursor),
-  `2026-10-10-pc-pullback.md`, `2026-10-11-pc.md` (skins v5, glints, light);
+  `2026-10-10-pc-pullback.md`, `2026-10-11-pc.md` (skins v5, glints, light),
+  `2026-10-11-pc-2.md` (vendor models, glints on top, haze, publish);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

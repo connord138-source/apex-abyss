@@ -116,6 +116,21 @@ local LIGHT_BONUS: { [string]: number } = { Golden = 2, Glowing = 5, Crystal = 7
 local glints: { [number]: Look } = {} -- fish index → its look, while it has a glint
 local glintShown: { [number]: boolean } = {}
 local glintSeen: { [number]: boolean } = {}
+-- The star is drawn on top of the water's haze (playtest 2026-10-11: depth-tested in
+-- the world, the haze fogged it out past ~100 studs, though it was still on), so rock
+-- has to hide it another way: a ray from the camera to the fish, a few a frame, shared
+-- round the stars in reach. It eases out behind rock and back in, never pops.
+local GLINT_CHECKS = 6
+local glintAt: { [number]: Vector3 } = {} -- stars in reach this frame → where their fish is
+local glintBlocked: { [number]: boolean } = {}
+local glintVis: { [number]: number } = {}
+local glintQueue: { number } = {}
+local glintCursor = 0
+local rockParams = RaycastParams.new()
+rockParams.FilterType = Enum.RaycastFilterType.Include
+rockParams.RespectCanCollide = true -- the solid world: Terrain, rock, wrecks, hard coral
+rockParams.IgnoreWater = true
+local rockWorld: Instance? = nil
 
 -- How each rarity looks on a fish: its material and colour (the texture is held
 -- aside), its sparkle and its light
@@ -358,6 +373,8 @@ local function clearLook(index: number, visual: Visual)
 	prisms[index] = nil
 	glints[index] = nil
 	glintShown[index] = nil
+	glintBlocked[index] = nil
+	glintVis[index] = nil
 	for part, saved in look.saved do
 		part.Color = saved.color
 		part.Material = saved.material
@@ -440,7 +457,7 @@ local function setLook(index: number, rarityId: string?)
 	local pixels = GLINT_PIXELS[rarityId] or 15
 	glint.Size = UDim2.fromOffset(pixels, pixels)
 	glint.LightInfluence = 0
-	glint.AlwaysOnTop = false -- rock and kelp still hide it
+	glint.AlwaysOnTop = true -- through the haze; rock hides it by ray (glintBlocked)
 	glint.MaxDistance = GLINT_RANGE
 	glint.Enabled = false
 	local scale = Instance.new("UIScale")
@@ -548,6 +565,7 @@ local function step(dt: number)
 		end
 	end
 	table.clear(glintSeen)
+	table.clear(glintAt)
 	for schoolIndex, school in Schools.list do
 		if (school.center - camera).Magnitude > DRAW_DISTANCE + school.radius then
 			continue
@@ -692,11 +710,19 @@ local function step(dt: number)
 				local away = (frame.Position - camera).Magnitude
 				local scaleBy = math.clamp((away - GLINT_NEAR) / GLINT_FADE, 0, 1)
 				if scaleBy > 0 and away < GLINT_RANGE then
-					glintSeen[index] = true
-					local glintScale = glintLook.glintScale
-					if glintScale then
-						glintScale.Scale = scaleBy * (0.75 + 0.25 * math.sin(now * 5 + index * 1.7))
+					glintAt[index] = frame.Position
+					local vis = glintVis[index] or 0
+					vis += ((if glintBlocked[index] then 0 else 1) - vis) * math.min(1, dt * 8)
+					glintVis[index] = vis
+					if vis > 0.02 then
+						glintSeen[index] = true
+						local glintScale = glintLook.glintScale
+						if glintScale then
+							glintScale.Scale = scaleBy * vis * (0.75 + 0.25 * math.sin(now * 5 + index * 1.7))
+						end
 					end
+				else
+					glintVis[index] = 0
 				end
 			end
 			if not visual.hidden then
@@ -734,6 +760,29 @@ local function step(dt: number)
 					)
 				end
 			end
+		end
+	end
+	-- Rock checks for the stars in reach, a few a frame, round robin
+	table.clear(glintQueue)
+	for index in glintAt do
+		table.insert(glintQueue, index)
+	end
+	if #glintQueue > 0 then
+		if rockWorld == nil or rockWorld.Parent == nil then
+			rockWorld = workspace:FindFirstChild("World")
+			rockParams.FilterDescendantsInstances = if rockWorld
+				then { workspace.Terrain, rockWorld }
+				else { workspace.Terrain }
+		end
+		table.sort(glintQueue)
+		for _ = 1, math.min(GLINT_CHECKS, #glintQueue) do
+			glintCursor = glintCursor % #glintQueue + 1
+			local index = glintQueue[glintCursor]
+			local toFish = glintAt[index] - camera
+			-- Stop a little short, so the fish's own seabed doesn't count
+			local hit =
+				workspace:Raycast(camera, toFish * (1 - 1.5 / math.max(toFish.Magnitude, 1.5)), rockParams)
+			glintBlocked[index] = hit ~= nil
 		end
 	end
 	-- A glint shows only on a rare fish drawn this frame (a school out of reach sits at

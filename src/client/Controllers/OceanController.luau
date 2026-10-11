@@ -30,12 +30,15 @@ type Grade = {
 -- surface allows you to see all the way down ... similar to the underwater feel of
 -- Subnautica"); the deep floor is a deep blue, never black ("a large black
 -- wasteland"); only the Trench goes near-black, and that is OceanController.setDark.
+-- The shelf's three are thinner and less green than they were (owner, 2026-10-11:
+-- the haze turned Golden and Bumblebee olive from ~16 studs and Lilac blue), so
+-- colours hold out to ~40 studs; the deep grades are unchanged.
 local GRADES: { Grade } = {
 	{
 		y = World.surfaceY,
-		color = Color3.fromRGB(54, 146, 172),
+		color = Color3.fromRGB(50, 130, 176),
 		decay = Color3.fromRGB(18, 72, 104),
-		density = 0.68,
+		density = 0.64,
 		-- The shelf's tints keep more red than they did (×0.77 turned gold skins lime,
 		-- playtest 2026-10-10); deeper down the water goes bluer, as it should
 		tint = Color3.fromRGB(222, 238, 246),
@@ -46,9 +49,9 @@ local GRADES: { Grade } = {
 	},
 	{
 		y = World.surfaceY * 0.55,
-		color = Color3.fromRGB(40, 122, 156),
+		color = Color3.fromRGB(38, 108, 160),
 		decay = Color3.fromRGB(12, 56, 92),
-		density = 0.72,
+		density = 0.66,
 		tint = Color3.fromRGB(214, 232, 244),
 		brightness = 0,
 		saturation = 0.03,
@@ -57,9 +60,9 @@ local GRADES: { Grade } = {
 	},
 	{
 		y = World.seabedY,
-		color = Color3.fromRGB(26, 96, 138),
+		color = Color3.fromRGB(26, 86, 146),
 		decay = Color3.fromRGB(8, 42, 78),
-		density = 0.76,
+		density = 0.68,
 		tint = Color3.fromRGB(216, 232, 246),
 		brightness = -0.02,
 		saturation = 0,
