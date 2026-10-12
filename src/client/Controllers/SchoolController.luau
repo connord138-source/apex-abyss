@@ -506,6 +506,35 @@ function SchoolController.rarityOf(index: number): string?
 	return rarities[index]
 end
 
+-- The nearest prey fish a fish `length` long could swallow, within `range` studs of
+-- `from` (the tutorial's guide points at it). Positions come off the shared paths,
+-- so it costs nothing to ask for one that isn't drawn.
+function SchoolController.nearestEdible(from: Vector3, length: number, range: number): Vector3?
+	local now = Timing.clock()
+	local best: Vector3? = nil
+	local bestDistance = range
+	for schoolIndex, school in Schools.list do
+		if (school.center - from).Magnitude > range + school.radius or tideOff[schoolIndex] then
+			continue
+		end
+		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
+		for index = school.first, school.first + school.count - 1 do
+			local fish = Schools.fish[index]
+			local visual = visuals[index]
+			if visual == nil or visual.hidden or not Size.canSwallow(length, fish.length) then
+				continue
+			end
+			local position = Schools.fishFrame(index, schoolFrame, now).Position
+			local distance = (position - from).Magnitude
+			if distance < bestDistance then
+				bestDistance = distance
+				best = position
+			end
+		end
+	end
+	return best
+end
+
 local function onRarity(indices: { number }, codes: { number })
 	for i, index in indices do
 		local code = codes[i]

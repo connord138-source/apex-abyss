@@ -644,7 +644,7 @@ local function buildCursorChip()
 	local text = Ui.label(
 		chip,
 		"Text",
-		"CURSOR FREE · click the water, or tap Alt, to swim again",
+		"CURSOR FREE · click the water, or tap Alt or Tab, to swim again",
 		Ui.FONT_BOLD,
 		14,
 		Ui.color.text,
@@ -676,7 +676,7 @@ local function showControlsHint()
 		elseif
 			Input.isGamepad()
 		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites fish your size · RT dash · LB heal (hold for items) · Y at a stall"
-		else "Mouse to look · WASD swim · Space / Ctrl up and down · swim into smaller fish to eat · LEFT CLICK dash · RIGHT CLICK bites fish your size · E at a stall · H heal · G items · Alt frees the cursor for menus"
+		else "Mouse to look · WASD swim · Space / Ctrl up and down · swim into smaller fish to eat · LEFT CLICK dash · RIGHT CLICK bites fish your size · M map · E at a stall · H heal · G items · Alt frees the cursor for menus"
 	local label = Ui.label(gui, "Controls", text, Ui.FONT_SEMI, 14, Ui.color.muted, UDim2.fromOffset(800, 18))
 	-- Top centre under the safe-zone pill, and below the boss bar or the boss
 	-- countdown while one is up (the countdown sits at the same spot and covered it,

@@ -407,6 +407,15 @@ local function step(dt: number)
 	end
 end
 
+-- Where the boss is while one is up (the map's marker), or nil
+function BossController.position(): Vector3?
+	if state.state ~= "active" or typeof(state.index) ~= "number" then
+		return nil
+	end
+	local position = PredatorController.get(state.index)
+	return position
+end
+
 function BossController.start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	gui = Ui.screen("BossHud", playerGui, 5)

@@ -271,6 +271,23 @@ local function onResult(index: number, backAt: number)
 	end
 end
 
+-- The nearest shell still lying there, within `range` of `from`
+function ShellController.nearest(from: Vector3, range: number): Vector3?
+	local best: Vector3? = nil
+	local bestDistance = range
+	for _, shell in shells do
+		if shell.hidden then
+			continue
+		end
+		local distance = (shell.position - from).Magnitude
+		if distance < bestDistance then
+			bestDistance = distance
+			best = shell.position
+		end
+	end
+	return best
+end
+
 function ShellController.start()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local result = remotes:WaitForChild("ShellResult") :: RemoteEvent

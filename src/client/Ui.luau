@@ -15,8 +15,15 @@ Ui.FONT_SEMI = Font.new(FAMILY, Enum.FontWeight.SemiBold)
 Ui.FONT_BOLD = Font.new(FAMILY, Enum.FontWeight.Bold)
 Ui.FONT_HEAVY = Font.new(FAMILY, Enum.FontWeight.ExtraBold)
 
+-- The design (owner, 2026-10-12: "The UI's look cheap they need to be dialed up
+-- design wise"): every panel is layered, a deep teal-navy glass with a lighter top
+-- and a darker foot (a vertical gradient), a hairline of light along its top edge
+-- and a soft stroke; buttons are gradients with a shaded foot and a light rim that
+-- lift on hover; windows carry a header band with an accent line. Everything
+-- comes through these helpers, so the whole game changes together.
 Ui.color = {
-	panel = Color3.fromRGB(7, 20, 32),
+	panel = Color3.fromRGB(12, 34, 54), -- the top of a panel; the gradient darkens it toward the foot
+	panelFoot = Color3.fromRGB(4, 12, 22),
 	stroke = Color3.fromRGB(130, 214, 240),
 	text = Color3.fromRGB(234, 247, 252),
 	muted = Color3.fromRGB(146, 184, 200),
@@ -26,8 +33,37 @@ Ui.color = {
 	safe = Color3.fromRGB(112, 236, 164),
 	track = Color3.fromRGB(24, 48, 64),
 }
-Ui.PANEL_TRANSPARENCY = 0.3
+Ui.PANEL_TRANSPARENCY = 0.16
 Ui.RADIUS = UDim.new(0, 12)
+
+-- The vertical glass gradient every panel wears (white at the top, so the panel's
+-- own colour shows there, darkening toward the foot)
+local function glass(parent: Instance, foot: number): UIGradient
+	local gradient = Instance.new("UIGradient")
+	gradient.Name = "Glass"
+	gradient.Rotation = 90
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+		ColorSequenceKeypoint.new(0.55, Color3.new(0.78, 0.8, 0.84)),
+		ColorSequenceKeypoint.new(1, Color3.new(foot, foot, foot + 0.03)),
+	})
+	gradient.Parent = parent
+	return gradient
+end
+
+-- A hairline of light along a panel's top edge
+local function topLight(parent: Instance, inset: number, transparency: number)
+	local line = Instance.new("Frame")
+	line.Name = "TopLight"
+	line.BackgroundColor3 = Color3.fromRGB(220, 246, 255)
+	line.BackgroundTransparency = transparency
+	line.BorderSizePixel = 0
+	line.AnchorPoint = Vector2.new(0.5, 0)
+	line.Position = UDim2.new(0.5, 0, 0, 1)
+	line.Size = UDim2.new(1, -inset * 2, 0, 1)
+	line.ZIndex = parent:IsA("GuiObject") and parent.ZIndex or 1
+	line.Parent = parent
+end
 
 function Ui.isTouch(): boolean
 	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -89,9 +125,80 @@ function Ui.panel(parent: Instance, name: string, size: UDim2, position: UDim2, 
 	frame.BackgroundTransparency = Ui.PANEL_TRANSPARENCY
 	frame.BorderSizePixel = 0
 	Ui.corner(frame)
-	Ui.stroke(frame)
+	Ui.stroke(frame, nil, 0.62)
+	glass(frame, 0.34)
+	topLight(frame, 12, 0.84)
 	frame.Parent = parent
 	return frame
+end
+
+-- A small section heading inside a panel or window: accent small caps over a
+-- hairline, so lists and groups read as sections, not loose rows
+function Ui.heading(parent: Instance, name: string, text: string, y: number, width: UDim?): TextLabel
+	local label = Ui.label(
+		parent,
+		name,
+		string.upper(text),
+		Ui.FONT_BOLD,
+		12,
+		Ui.color.accent,
+		UDim2.new(width or UDim.new(1, 0), UDim.new(0, 16)),
+		UDim2.fromOffset(0, y)
+	)
+	local rule = Instance.new("Frame")
+	rule.Name = "Rule"
+	rule.BackgroundColor3 = Ui.color.accent
+	rule.BackgroundTransparency = 0.7
+	rule.BorderSizePixel = 0
+	rule.Position = UDim2.new(0, 0, 1, 2)
+	rule.Size = UDim2.new(1, 0, 0, 1)
+	rule.Parent = label
+	return label
+end
+
+-- A key cap (W, SPACE, LEFT CLICK, RB) for control hints: a dark rounded cap with a
+-- light top edge and bold text, sized to its label
+function Ui.keycap(parent: Instance, name: string, text: string, height: number?): Frame
+	local h = height or 30
+	local cap = Instance.new("Frame")
+	cap.Name = name
+	cap.BackgroundColor3 = Color3.fromRGB(22, 52, 76)
+	cap.BorderSizePixel = 0
+	cap.Size = UDim2.fromOffset(h, h)
+	cap.AutomaticSize = Enum.AutomaticSize.X
+	Ui.corner(cap, UDim.new(0, 7))
+	Ui.stroke(cap, Color3.fromRGB(170, 230, 250), 0.45, 1)
+	glass(cap, 0.55)
+	topLight(cap, 5, 0.6)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 9)
+	padding.PaddingRight = UDim.new(0, 9)
+	padding.Parent = cap
+	local label =
+		Ui.label(cap, "Text", text, Ui.FONT_HEAVY, math.floor(h * 0.46), Ui.color.text, UDim2.new(0, 0, 1, 0))
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.TextYAlignment = Enum.TextYAlignment.Center
+	cap.Parent = parent
+	return cap
+end
+
+-- A small rounded chip of text in a colour (a tag, a count, a state)
+function Ui.chip(parent: Instance, name: string, text: string, color: Color3, height: number?): TextLabel
+	local h = height or 22
+	local chip =
+		Ui.label(parent, name, text, Ui.FONT_BOLD, math.floor(h * 0.55), color, UDim2.fromOffset(0, h))
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.BackgroundTransparency = 0.82
+	chip.BackgroundColor3 = color
+	chip.TextXAlignment = Enum.TextXAlignment.Center
+	Ui.corner(chip, UDim.new(1, 0))
+	Ui.stroke(chip, color, 0.6, 1)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = chip
+	return chip
 end
 
 function Ui.label(
@@ -249,12 +356,12 @@ end
 
 export type ButtonStyle = "primary" | "secondary" | "gold" | "danger" | "disabled"
 
-local BUTTON_COLORS: { [string]: { bg: Color3, text: Color3 } } = {
-	primary = { bg = Color3.fromRGB(46, 170, 214), text = Color3.fromRGB(4, 20, 30) },
-	secondary = { bg = Color3.fromRGB(28, 56, 74), text = Color3.fromRGB(226, 244, 250) },
-	gold = { bg = Color3.fromRGB(255, 196, 76), text = Color3.fromRGB(40, 24, 4) },
-	danger = { bg = Color3.fromRGB(214, 70, 70), text = Color3.fromRGB(255, 236, 236) },
-	disabled = { bg = Color3.fromRGB(30, 44, 54), text = Color3.fromRGB(110, 136, 148) },
+local BUTTON_COLORS: { [string]: { bg: Color3, text: Color3, rim: number } } = {
+	primary = { bg = Color3.fromRGB(58, 186, 230), text = Color3.fromRGB(4, 20, 30), rim = 0.55 },
+	secondary = { bg = Color3.fromRGB(36, 70, 92), text = Color3.fromRGB(226, 244, 250), rim = 0.7 },
+	gold = { bg = Color3.fromRGB(255, 204, 88), text = Color3.fromRGB(40, 24, 4), rim = 0.45 },
+	danger = { bg = Color3.fromRGB(224, 78, 78), text = Color3.fromRGB(255, 236, 236), rim = 0.6 },
+	disabled = { bg = Color3.fromRGB(30, 44, 54), text = Color3.fromRGB(110, 136, 148), rim = 0.9 },
 }
 
 -- Restyles a button made by Ui.button.
@@ -265,6 +372,14 @@ function Ui.setButtonStyle(button: TextButton, style: ButtonStyle)
 	button.AutoButtonColor = false
 	button:SetAttribute("Style", style)
 	button.Selectable = style ~= "disabled"
+	local rim = button:FindFirstChildOfClass("UIStroke")
+	if rim then
+		rim.Transparency = colors.rim
+	end
+	local foot = button:FindFirstChild("Foot")
+	if foot and foot:IsA("Frame") then
+		foot.BackgroundTransparency = if style == "disabled" then 0.85 else 0.68
+	end
 end
 
 -- A rounded button that springs a little when pressed.
@@ -287,19 +402,43 @@ function Ui.button(
 	Ui.corner(button, UDim.new(0, 10))
 	local scale = Instance.new("UIScale")
 	scale.Parent = button
+	-- Layered: a lighter head, a shaded foot, a light rim
+	glass(button, 0.72)
+	Ui.stroke(button, Color3.fromRGB(230, 250, 255), 0.6, 1)
+	topLight(button, 8, 0.55)
+	local foot = Instance.new("Frame")
+	foot.Name = "Foot"
+	foot.BackgroundColor3 = Color3.new(0, 0, 0)
+	foot.BackgroundTransparency = 0.68
+	foot.BorderSizePixel = 0
+	foot.AnchorPoint = Vector2.new(0.5, 1)
+	foot.Position = UDim2.new(0.5, 0, 1, 0)
+	foot.Size = UDim2.new(1, 0, 0, 3)
+	Ui.corner(foot, UDim.new(0, 10))
+	foot.Parent = button
 	Ui.setButtonStyle(button, style or "primary")
+	local hovering = false
+	local function settle()
+		Ui.tween(scale, 0.25, { Scale = if hovering then 1.03 else 1 }, Enum.EasingStyle.Back)
+	end
 	button.MouseButton1Down:Connect(function()
 		Ui.tween(scale, 0.08, { Scale = 0.94 })
 	end)
-	local function release()
-		Ui.tween(scale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
-	end
-	button.MouseButton1Up:Connect(release)
-	button.MouseLeave:Connect(release)
+	button.MouseButton1Up:Connect(settle)
+	button.MouseEnter:Connect(function()
+		if button:GetAttribute("Style") ~= "disabled" then
+			hovering = true
+			settle()
+		end
+	end)
+	button.MouseLeave:Connect(function()
+		hovering = false
+		settle()
+	end)
 	button.SelectionGained:Connect(function()
 		Ui.tween(scale, 0.15, { Scale = 1.04 })
 	end)
-	button.SelectionLost:Connect(release)
+	button.SelectionLost:Connect(settle)
 	button.Parent = parent
 	return button
 end
@@ -322,34 +461,60 @@ function Ui.window(parent: Instance, title: string, subtitle: string, size: Vect
 		UDim2.fromScale(0.5, 0.5),
 		Vector2.new(0.5, 0.5)
 	)
-	frame.BackgroundTransparency = 0.08
+	frame.BackgroundTransparency = 0.03
 	frame.ZIndex = 30
 	local stroke = frame:FindFirstChildOfClass("UIStroke")
 	if stroke then
-		stroke.Transparency = 0.5
+		stroke.Transparency = 0.45
+		stroke.Thickness = 1.5
 	end
+	-- The header band: a lighter strip with an accent line along its foot
+	local band = Instance.new("Frame")
+	band.Name = "Header"
+	band.BackgroundColor3 = Color3.fromRGB(190, 236, 255)
+	band.BackgroundTransparency = 0.93
+	band.BorderSizePixel = 0
+	band.Size = UDim2.new(1, 0, 0, 72)
+	Ui.corner(band)
+	band.Parent = frame
+	local accentLine = Instance.new("Frame")
+	accentLine.Name = "AccentLine"
+	accentLine.BackgroundColor3 = Ui.color.accent
+	accentLine.BackgroundTransparency = 0.35
+	accentLine.BorderSizePixel = 0
+	accentLine.Position = UDim2.new(0, 22, 0, 71)
+	accentLine.Size = UDim2.new(1, -44, 0, 1)
+	accentLine.Parent = frame
+	local accentMark = Instance.new("Frame")
+	accentMark.Name = "AccentMark"
+	accentMark.BackgroundColor3 = Ui.color.accent
+	accentMark.BorderSizePixel = 0
+	accentMark.Position = UDim2.new(0, 22, 0, 70)
+	accentMark.Size = UDim2.fromOffset(56, 3)
+	Ui.corner(accentMark, UDim.new(1, 0))
+	accentMark.Parent = frame
 	local heading = Ui.label(
 		frame,
 		"Title",
-		title,
+		string.upper(title),
 		Ui.FONT_HEAVY,
-		26,
+		24,
 		Ui.color.text,
 		UDim2.new(1, -80, 0, 30),
-		UDim2.fromOffset(22, 16)
+		UDim2.fromOffset(22, 14)
 	)
 	local sub = Ui.label(
 		frame,
 		"Subtitle",
 		subtitle,
 		Ui.FONT,
-		15,
+		14,
 		Ui.color.muted,
 		UDim2.new(1, -80, 0, 18),
-		UDim2.fromOffset(22, 48)
+		UDim2.fromOffset(22, 44)
 	)
 	local close =
-		Ui.button(frame, "Close", "X", UDim2.fromOffset(38, 38), UDim2.new(1, -54, 0, 16), "secondary")
+		Ui.button(frame, "Close", "X", UDim2.fromOffset(38, 38), UDim2.new(1, -54, 0, 17), "secondary")
 	close.FontFace = Ui.FONT_HEAVY
 	close.TextSize = 18
 	local content = Instance.new("Frame")

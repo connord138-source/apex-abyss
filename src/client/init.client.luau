@@ -23,6 +23,7 @@ local OceanController = require(script.Controllers.OceanController)
 local PlanktonController = require(script.Controllers.PlanktonController)
 local PredatorController = require(script.Controllers.PredatorController)
 local BossController = require(script.Controllers.BossController)
+local MapController = require(script.Controllers.MapController)
 local LampController = require(script.Controllers.LampController)
 local AdminController = require(script.Controllers.AdminController)
 local AmbienceController = require(script.Controllers.AmbienceController)
@@ -63,6 +64,7 @@ CameraController.start()
 FishAnimator.start()
 PredatorController.start() -- AI predators: interpolation, tells, tags
 BossController.start() -- world boss: HUD bar, dread, countdown, rewards
+MapController.start() -- the minimap and the full map (M / R3 / tap it)
 LampController.start() -- lamps on fish (an Anglerfish's lure, Deep Lanterns) for the dark
 AdminController.start() -- the owner's admin panel (shows only for admins)
 AmbienceController.start() -- the water's sound: shallow, deep and cavern beds by depth

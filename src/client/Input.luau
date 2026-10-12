@@ -2,9 +2,9 @@
 -- One place for every device's controls, so the swim, camera and HUD code never
 -- cares what the player is holding.
 --
---   PC:       mouse looks (cursor locked; tap Alt or M to free it for the HUD and
+--   PC:       mouse looks (cursor locked; tap Alt to free it for the HUD and
 --             menus, tap again or click the game to lock it; hold Alt for a
---             moment's cursor), the wheel zooms,
+--             moment's cursor), M opens the map, the wheel zooms,
 --             WASD or the arrows swim toward the camera, Space / Ctrl up and
 --             down, LEFT CLICK uses the ability (the Nibbler's Dash), RIGHT
 --             CLICK bites, E shops at a stall. Just the two mouse buttons for
@@ -38,10 +38,10 @@ local Input = {
 	ability = Signal.new(),
 	-- Set by menus to free the mouse
 	cursorWanted = false,
-	-- Alt or M tapped: the cursor stays free for the HUD buttons and panels until
-	-- Alt or M again, or a click on the game (owner, 2026-10-10: "since the cursor is
-	-- tied to swimming there is no way to click on ui panels"). Studio's own window
-	-- can take an Alt tap, so M does the same.
+	-- Alt tapped: the cursor stays free for the HUD buttons and panels until Alt
+	-- again, or a click on the game (owner, 2026-10-10: "since the cursor is tied to
+	-- swimming there is no way to click on ui panels"). Studio's own window can take
+	-- an Alt tap; Tab does the same there. (M used to as well; it opens the map now.)
 	cursorToggled = false,
 	-- (free: boolean) — the player freed or locked the cursor (the HUD's chip)
 	cursorChanged = Signal.new(),
@@ -174,7 +174,7 @@ function Input.start()
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 			UserInputService.MouseIconEnabled = true
 			altDownAt = os.clock()
-		elseif key == Enum.KeyCode.M then
+		elseif key == Enum.KeyCode.Tab then
 			setCursor(not Input.cursorToggled)
 		end
 		local mouse = input.UserInputType

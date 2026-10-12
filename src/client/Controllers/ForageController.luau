@@ -319,6 +319,23 @@ local function onEaten(index: number, backAt: number, eaterUserId: number)
 	end
 end
 
+-- The nearest starfish or shrimp still lying there, within `range` of `from`
+function ForageController.nearest(from: Vector3, range: number): Vector3?
+	local best: Vector3? = nil
+	local bestDistance = range
+	for _, food in foods do
+		if food.hidden then
+			continue
+		end
+		local distance = (food.position - from).Magnitude
+		if distance < bestDistance then
+			bestDistance = distance
+			best = food.position
+		end
+	end
+	return best
+end
+
 function ForageController.start()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local eaten = remotes:WaitForChild("ForageEaten") :: RemoteEvent
