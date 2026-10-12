@@ -204,7 +204,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     sha256 72895dd2...); Undertow's spirals are teal under a wide halo on a
     mid-toned violet, since thin pale lines on its dark body scored 0.21–0.24.
     Every worn skin is fetched ahead when another player wears it (player
-    attributes `WornShade`/`WornSpecies` → `CardPhoto.preloadSkin`).
+    attributes `WornShade`/`WornSpecies` → `CardPhoto.preloadSkin`). **v8
+    (2026-10-12):** relief normal maps on every skin, the Nibbler eye-mask fix and
+    the Diamond and Prismatic retextures (see "The 2026-10-12 batch"); all six GLBs
+    changed.
 - **The pull-back loop (owner, 2026-10-10: "I still feel like we're missing a factor
   that pulls people back over and over. I do want to add random rarities of fish that
   can be eaten for more towards the haul or like 10 total unlocks a skin"; of the four
@@ -359,6 +362,73 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     describes one for a tile; `RewardsService.grant(player, data, reward, bonus)`
     pays one out (daily, gifts, pass all use it). Admin: playtime minutes/reset,
     pass XP, Deep Pass on/off, pass restart.
+- **The 2026-10-12 batch (owner: "The UI's look cheap", the mouse "scroll[s] off of
+  the screen onto my other screen", "Controls need to be more obvious during the
+  tutorial and tutorial needs to be more directed", "too many buttons that boost the
+  fish. Should only be left click to boost right click to bite", the Nibbler's
+  "yellow part that shows up on all skins", rare skins "need to be dialed up a LOT
+  ... full retextures. prismatic needs to be moving across the fish", skins "look
+  pasted on the fish ... The designs need much more depth", "parts need to be actual
+  physical parts ... Variants should also be different/upgrades ... For all playable
+  models", "need a map/mini map"; all built):**
+  - **Controls:** LEFT CLICK dashes, RIGHT CLICK bites; Shift, Q and F are gone
+    (pad RT / RB and the touch buttons stay). Smaller fish are still swallowed by
+    swimming into them. `Input.biteKey()` / `dashKey()` name them for every hint.
+    The mouse lock is asserted every frame (the input render step), on every mouse
+    move and when the window regains focus (`Input.holdMouseLock`); a PC with a
+    touch screen keeps it. **A freed pointer (menus, Alt) can't be fenced:** Roblox
+    has no confine-to-window mode, so in a menu the cursor can still cross to a
+    second monitor; the lock only ever drops for menus now. Alt (or Tab, for
+    Studio, which eats Alt) frees the cursor; **M opens the map** (it no longer
+    toggles the cursor); R3 on a pad.
+  - **Directed tutorial** (`Config/Tutorial` `controls`/`guide`, `TutorialController`):
+    the card shows each step's keys as key caps (`Ui.keycap`) for the device, a
+    trail of neon beads leads from the fish to the step's target (nearest exit,
+    nearest food via `SchoolController.nearestEdible` + `ForageController.nearest`,
+    the den's pool, `ShellController.nearest`) with the distance and an arrow on the
+    card, and a line tells how to free the cursor. BANK HERE had stopped showing
+    since the den record took `state.den`: the den's index is `state.denIndex`.
+  - **Map:** `src/client/MapDraw.luau` draws the sea as a sonar chart (biomes as
+    dot fields in their colours, the hub ring, the drop-off and edge rings, north
+    up); `MapController` keeps a minimap that slides under the fish (PC bottom-right,
+    phone top-right) with the den ◆, a followed treasure X, the boss ● and other
+    fish •, and opens the full map (click/tap it, M, R3) with every biome named and
+    levelled, a legend and where you are. `BossController.position()` feeds it.
+  - **UI design system v2** (`Ui.luau`): panels are layered glass (a vertical
+    gradient, a hairline of light along the top, a stroke), buttons are gradients
+    with a shaded foot, a rim and a hover lift, windows have a header band with an
+    accent line, plus `Ui.heading`, `Ui.keycap`, `Ui.chip`. Everything comes through
+    these helpers, so new UI must too.
+  - **Parts and variants on mesh fish** (`Cosmetics`): a mesh body has no
+    Head/Body1/Stalk parts, so those names are anchors in the fish's unit box
+    (`ANCHORS` per body plan, `UnitW`/`UnitH` from the model) tied to bones (Head,
+    Spine1, Tail); each piece is a Motor6D-jointed part under the Mesh model whose
+    C0 is rewritten every frame from its bone's animated pose (`Cosmetics.follow`
+    from FishAnimator), so a veil tail swings with the tail. Pieces live under the
+    Mesh model so ScaleTo grows them. A variant's `meshScale` draws the fish bigger
+    (`FishBuilder.applyScale`, `Applied` = the drawn length). **One variant per fish**
+    (Sabrecuda, Porcupine Puffer, Dragon Moray, Deepfang Angler joined Puffball and
+    Hammerhead), each rolling only for its fish (`RollOdds.excluded`); the Wardrobe
+    orders them by fish; roll cards photograph parts on the real fish. These are
+    part-built pieces on the Tripo mesh; real variant models can replace them later.
+  - **Moving sheens** (`Config/Shades` `sheen`, `Config/Textures.luau`,
+    `tools/shades/make_sheens.py` → `assets/textures/sheen_*.png`): Prismatic,
+    Diamond, Divine, Aurora, Exotic, Nebula and Void carry a tiling image projected
+    from all six faces of the mesh as Textures that `Cosmetics.animate` slides along
+    the body (sized to the fish as it grows). Ids are 0 until the PC uploads the
+    four PNGs (nothing shows meanwhile); Nebula reuses the H&S galaxy image
+    (129645056585841), which the same account owns.
+  - **Skins v8 (depth):** every skin ships a normal map of its own relief
+    (`relief_normal`: a band-pass of the pattern plus the fish's painted creases,
+    OpenGL +Y; `NORMAL_Y_SIGN` flips it if rivets look sunken in Studio), blended
+    over the fish's own normal map at pack time (`pack_shades.py` `blended_normal`);
+    the creases are never quieted below `DETAIL_FLOOR` 0.8 of their strength. The
+    Nibbler's yellow crescent on every skin was the cream band behind the eye
+    counted as eye (kept from the base texture): `_eyes` keeps only components
+    holding pupil pixels inside a smaller sphere. Diamond is a cut-gem retexture
+    (bevelled facets with dispersion fire, mirror, relief 1.6) and Prismatic a
+    holographic foil (diffraction lines, hue-shifted cells, pearl, metal). Bundle
+    v8: sha256 V8SHA.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -383,13 +453,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   Garden: grow hours".
 - **Controls (owner, 2026-10-07):**
   - **PC stays as built** (the owner likes it): WASD swims relative to the camera (A/D
-    slide sideways), the mouse aims, Space/C go up and down.
+    slide sideways), the mouse aims, Space/C go up and down. **Since 2026-10-12 the
+    mouse buttons are the fish's only buttons: LEFT CLICK dashes, RIGHT CLICK bites**
+    (see "The 2026-10-12 batch"); M opens the map.
   - **Freeing the cursor (owner, 2026-10-10: "need a way to pull up the cursor since
-    the cursor is tied to swimming"):** tap Alt or M (Studio's window can take an
+    the cursor is tied to swimming"):** tap Alt (or Tab; Studio's window can take an
     Alt tap) to free it for the HUD and panels (`Input.cursorToggled`, the HUD's
-    CURSOR FREE chip); tap again, or click the game (that click doesn't bite), to
-    lock it (a click on a HUD panel keeps it free). Holding Alt frees it only while
-    held; menus free it while open.
+    CURSOR FREE chip); tap again, or click the game (that click doesn't dash or
+    bite), to lock it (a click on a HUD panel keeps it free). Holding Alt frees it
+    only while held; menus free it while open. The tutorial card tells new players.
   - **Controller and phone** use the left stick as throttle and rudder: up swims along
     the aim (further is faster), sideways turns the aim, down brakes and backs up
     still facing forward. The right stick, or a drag on the screen, aims (up and down
@@ -1127,10 +1199,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the Deep Pass product id (create it in Creator Hub, 399 R$)
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
-  - models for the growth stages and the other biomes;
-    rolled parts and variants on mesh fish; caustics (needs a texture upload)
+  - models for the growth stages and the other biomes; Tripo models for the
+    exotic variants (they're part-built pieces on the mesh for now); caustics
+    (needs a texture upload); the sheen texture ids (Config/Textures, uploaded by
+    the PC)
   - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
-  - the UI dial-up pass (owner, 2026-10-07: "menus and UI could be dialed up")
   - server-side speed checks
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 

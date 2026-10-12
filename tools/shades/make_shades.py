@@ -240,16 +240,26 @@ class Fish:
             pts = self.pos[hit]
             centre = np.median(pts, 0)
             r3 = float(np.percentile(np.linalg.norm(pts - centre, axis=-1), 90))
-            sphere = (np.linalg.norm(self.pos - centre, axis=-1) < r3 * 1.08) & self.cov
+            sphere = (np.linalg.norm(self.pos - centre, axis=-1) < r3 * 0.92) & self.cov
             mask |= hit | sphere
         # Only the painted eye inside that sphere: the pale sclera and the dark pupil,
         # not the colored skin round it
         sat, val = self.hsv[..., 1], self.hsv[..., 2]
-        eye = ((sat < 0.32) & (val > 0.5)) | (val < 0.3)
+        pupil = val < 0.3
+        eye = ((sat < 0.32) & (val > 0.5)) | pupil
         if FISH.get(self.name, {}).get("keep_vivid"):
             eye |= sat * val > 0.42
         mask &= eye
         mask = ndimage.binary_opening(mask, iterations=1)
+        # Only the pieces joined to a pupil: the Nibbler's cream band runs right behind
+        # its eye, and the piece of it inside the sphere showed on every skin as a
+        # yellow crescent (owner, 2026-10-12)
+        labels, n = ndimage.label(mask)
+        if n:
+            with_pupil = np.unique(labels[mask & pupil])
+            with_pupil = with_pupil[with_pupil > 0]
+            if len(with_pupil):
+                mask = np.isin(labels, with_pupil)
         return ndimage.binary_closing(mask, iterations=2).astype(np.float32)
 
 
@@ -436,13 +446,46 @@ def pearl(m: Fish, rgb, amount=0.35, hue_spread=0.14, base_hue=0.58):
 FINISHES = {"matte": 0.86, "satin": 0.56, "gloss": 0.3, "mirror": 0.14}
 
 
-def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail=1.3, hush=None):
+NORMAL_Y_SIGN = 1.0  # glTF/OpenGL: green is up the image; flip to -1 if rivets look sunken in Studio
+DETAIL_FLOOR = 0.8  # the fish's painted creases (gill, fin rays, mouth) always show at least this much
+
+
+def relief_normal(m: Fish, rgb, height=None, relief=1.0, fine=None):
+    """A tangent-space normal map from a skin's own pattern (rivets, scales, coral,
+    spirals, grout stand out or sink in) and the fish's painted creases, so a skin is
+    lit as a surface, not a decal (owner, 2026-10-12: "They just look pasted on the
+    fish ... The designs need much more depth")."""
+    if height is None:
+        lum = np.asarray(rgb, np.float32) @ np.array([0.299, 0.587, 0.114], np.float32)
+        # Band-pass: the pattern's edges a few texels wide, not its broad fills
+        height = ndimage.gaussian_filter(lum, 1.0) - ndimage.gaussian_filter(lum, 7.0)
+        height = np.clip(height * 3.0, -1, 1)
+    f = m.fine if fine is None else fine
+    height = height + 0.6 * f
+    height = height * m.cov
+    k = 0.9 * relief
+    dx = ndimage.sobel(height, axis=1) / 8.0
+    dy = ndimage.sobel(height, axis=0) / 8.0
+    nx = -dx * k
+    ny = dy * k * NORMAL_Y_SIGN
+    nz = np.ones_like(height)
+    n = np.stack([nx, ny, nz], -1)
+    n /= np.maximum(np.linalg.norm(n, axis=-1, keepdims=True), 1e-6)
+    return n * 0.5 + 0.5
+
+
+def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail=1.3, hush=None, relief=1.0, height=None):
     """A finished skin: the painted strokes back on, the eyes, teeth, mouth and lure
-    as they were, plus its glow (RGB), metal (0..1) and own roughness, if any. The
-    Angler's lure always glows. `hush` (0..1) quiets the painted strokes where a skin
-    paints over the fish's own markings (old band edges showing through as ghosts)."""
+    as they were, plus its glow (RGB), metal (0..1) and own roughness, if any, and a
+    normal map of its own relief (`relief` 0 for a smooth skin; `height` to give the
+    bumps yourself, 0..1 up). The Angler's lure always glows. `hush` (0..1) quiets
+    the painted strokes where a skin paints over the fish's own markings (old band
+    edges showing through as ghosts), but never below DETAIL_FLOOR of them: a skin
+    with no creases read as pasted on."""
     fine = m.fine if hush is None else m.fine * (1 - np.clip(hush, 0, 1))
-    rgb = rgb * (1 + detail * fine)[..., None]
+    strength = max(detail, DETAIL_FLOOR)
+    normal = relief_normal(m, rgb, height, relief, fine) if relief > 0 else None
+    rgb = rgb * (1 + strength * fine)[..., None]
     rgb = np.clip(rgb, 0, 1)
     rgb = mix(rgb, m.color, m.keep)
     rgb[~m.cov] = m.color[~m.cov]
@@ -459,7 +502,30 @@ def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail
         rough = np.clip(rough + 0.12 * m.fine, 0.05, 1)
         rough = rough * (1 - m.eyes) + 0.12 * m.eyes
     rgb, emit, metal, rough = (None if a is None else padded(m, a) for a in (rgb, emit, metal, rough))
-    return {"rgb": rgb, "emit": emit, "metal": metal, "rough": rough, "finish": finish}
+    if normal is not None:
+        # Flat where the eyes and kept paint are, flat in the atlas gaps
+        normal = mix(normal, (0.5, 0.5, 1.0), m.keep)
+        normal = padded_plain(m, normal)
+    return {"rgb": rgb, "emit": emit, "metal": metal, "rough": rough, "normal": normal, "finish": finish}
+
+
+def padded_plain(m: Fish, arr):
+    """padded() without the skin-tone guard (a normal map is never a colour)."""
+    arr = np.asarray(arr, np.float32)
+    known = m.real.astype(np.float32)
+    out = arr * known[..., None]
+    filled = m.real.copy()
+    for sigma in (2, 4, 8, 16, 32, 64, 128):
+        den = ndimage.gaussian_filter(known, sigma)
+        num = np.stack([ndimage.gaussian_filter(arr[..., k] * known, sigma) for k in range(arr.shape[-1])], -1)
+        fill = num / np.maximum(den, 1e-6)[..., None]
+        new = ~filled & (den > 0.05)
+        out[new] = fill[new]
+        filled |= new
+        if filled.all():
+            break
+    out[~filled] = (0.5, 0.5, 1.0)
+    return out
 
 
 def padded(m: Fish, arr):
@@ -815,15 +881,24 @@ def lanternfish(m):  # Navy back, mirror-silver flanks, rows of glowing light or
     return done(m, rgb, "gloss", emit=emit, metal=silver * 0.5)
 
 
-def diamond(m):
-    value, edge = cells(m, 340, seed=31)
-    base = mix(board(m, (0.62, 0.78, 0.96)), SNOW, value)
-    rgb = mix(base, (1.0, 1.0, 1.0), smoothstep(0.012, 0.004, edge))
-    fire = speckle(m, 150, 0.83, seed=32)
-    hue = (m.y * 3 + m.ez) % 1
-    rgb = mix(rgb, hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.6), np.ones_like(hue)], -1)), fire * 0.7)
-    rgb = sheen(m, rgb, 0.25, (1, 1, 1))
-    return done(m, rgb, "mirror", detail=0.6)
+def diamond(m):  # Cut diamond: big bevelled facets, dispersion fire along the bevels, mirror
+    m = smooth(m)
+    value, edge = cells(m, 150, seed=31)
+    d1, d2, _, _ = worley(m, 150, 31)
+    bevel = smoothstep(0.0, 0.06, edge)  # 0 at a facet's edge .. 1 at its heart
+    base = mix(board(m, (0.70, 0.84, 0.98)), (0.86, 0.94, 1.0), value)
+    # Each facet tilts a little, so it catches the light differently from its neighbours
+    facet = mix(base, (0.52, 0.70, 0.96), (1 - value) * 0.5)
+    rgb = mix(facet, (0.98, 1.0, 1.0), smoothstep(0.35, 0.0, bevel) * 0.8)
+    hue = (value * 2.3 + m.y * 1.5) % 1
+    fire_col = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.55), np.ones_like(hue)], -1))
+    fire = smoothstep(0.45, 0.12, bevel) * smoothstep(0.08, 0.0, edge * 0 + (d2 - d1)) * 0.6
+    rgb = mix(rgb, fire_col, np.clip(fire, 0, 1))
+    glints = speckle(m, 160, 0.86, seed=32)
+    rgb = mix(rgb, (1.0, 1.0, 1.0), glints * 0.8)
+    rgb = sheen(m, rgb, 0.3, (1, 1, 1))
+    height = bevel * 0.8  # facets stand proud of their bevels
+    return done(m, rgb, "mirror", metal=np.full(m.y.shape, 0.35, np.float32), detail=0.6, relief=1.6, height=height)
 
 
 def magma(m):
@@ -934,14 +1009,24 @@ def exotic(m):  # A parrotfish mosaic: every scale its own reef color, edged in 
     return done(m, rgb, "gloss", detail=0.6)
 
 
-def prismatic(m):
-    hue = (m.y * 1.6 + m.ez * 0.25 + m.nrm[..., 0] * 0.08) % 1
-    rgb = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.72), np.full_like(hue, 1.0)], -1))
-    rgb = pearl(m, rgb, 0.22, 0.2, 0.55)
-    sparkle = speckle(m, 150, 0.84, seed=43)
-    rgb = mix(rgb, (1.0, 1.0, 1.0), sparkle * 0.8)
-    emit = rgb * 0.18 + sparkle[..., None] * 0.6
-    return done(m, rgb, "gloss", emit=emit, detail=0.7)
+def prismatic(m):  # Holographic foil: diffraction micro-lines, hue-shifted facet cells, chrome under it
+    m = smooth(m)
+    value, edge = cells(m, 90, seed=43)
+    u, v = flank(m)
+    # Diffraction lines: fine stripes whose hue runs through the spectrum along them
+    line_phase = (u * 70 + v * 24) % 1.0
+    lines = 0.5 + 0.5 * np.cos(2 * np.pi * line_phase)
+    hue = (m.y * 1.2 + value * 0.9 + m.nrm[..., 0] * 0.12 + lines * 0.08) % 1
+    foil = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.78), np.full_like(hue, 1.0)], -1))
+    silver = board(m, (0.86, 0.88, 0.92))
+    rgb = mix(silver, foil, 0.55 + 0.35 * lines)
+    rgb = mix(rgb, (1.0, 1.0, 1.0), smoothstep(0.03, 0.0, edge) * 0.5)  # the facets' seams
+    rgb = pearl(m, rgb, 0.25, 0.25, 0.55)
+    sparkle = speckle(m, 160, 0.85, seed=44)
+    rgb = mix(rgb, (1.0, 1.0, 1.0), sparkle * 0.9)
+    emit = foil * 0.22 + sparkle[..., None] * 0.6
+    height = lines * 0.25 + smoothstep(0.0, 0.05, edge) * 0.4
+    return done(m, rgb, "mirror", emit=emit, metal=np.full(m.y.shape, 0.75, np.float32), detail=0.6, relief=1.2, height=height)
 
 
 def nebula(m):  # Gas clouds in magenta, violet and cyan, dark dust lanes, newborn stars
@@ -2896,7 +2981,7 @@ def prune(folder: pathlib.Path, keep: list[str]):
         if stem in STALE_SKIP or stem.startswith("finish_"):
             continue
         shade = stem
-        for suffix in ("_emit", "_metal", "_rough"):
+        for suffix in ("_emit", "_metal", "_rough", "_normal"):
             shade = shade.removesuffix(suffix)
         if shade not in keep:
             path.unlink()
@@ -2934,10 +3019,12 @@ def main():
                 continue
             skin = RECIPES[shade](fish)
             save_rgb(folder / f"{shade}.png", skin["rgb"])
-            for suffix in ("_emit", "_metal", "_rough"):
+            for suffix in ("_emit", "_metal", "_rough", "_normal"):
                 (folder / f"{shade}{suffix}.png").unlink(missing_ok=True)
             if skin["emit"] is not None:
                 save_rgb(folder / f"{shade}_emit.png", skin["emit"])
+            if skin.get("normal") is not None:
+                save_rgb(folder / f"{shade}_normal.png", skin["normal"])
             if skin["metal"] is not None:
                 save_gray(folder / f"{shade}_metal.png", skin["metal"])
             if skin["rough"] is not None:
@@ -2947,6 +3034,7 @@ def main():
                 "emit": skin["emit"] is not None,
                 "metal": skin["metal"] is not None,
                 "rough": skin["rough"] is not None,
+                "normal": skin.get("normal") is not None,
             }
             made += 1
             print(f"[shades] {name}: {shade}", flush=True)

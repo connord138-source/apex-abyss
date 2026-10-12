@@ -90,6 +90,12 @@ def map_node(label):
 
 rough_tex, metal_tex, emit_tex = map_node("rough"), map_node("metal"), map_node("emit")
 own_rough = bsdf.inputs["Roughness"].default_value
+# The skin's relief (make_shades relief_normal, v8): a Normal Map node fed by its
+# normal map, so the review shows the bumps the game lights
+normal_tex = map_node("normal")
+normal_map = tree.nodes.new("ShaderNodeNormalMap")
+normal_map.inputs["Strength"].default_value = 1.0
+own_normal_links = [link.from_socket for link in bsdf.inputs["Normal"].links]
 
 scene = bpy.context.scene
 scene.render.engine = "CYCLES"
@@ -140,11 +146,21 @@ def wear(spec, folder, shade):
         tree.links.remove(link)
     for link in list(bsdf.inputs["Emission Color"].links):
         tree.links.remove(link)
+    for link in list(bsdf.inputs["Normal"].links):
+        tree.links.remove(link)
+    for socket in own_normal_links:
+        tree.links.new(socket, bsdf.inputs["Normal"])
     bsdf.inputs["Roughness"].default_value = own_rough
     bsdf.inputs["Metallic"].default_value = 0.0
     bsdf.inputs["Emission Strength"].default_value = 0.0
     if spec is None:
         return
+    if spec.get("normal") and (folder / f"{shade}_normal.png").exists():
+        for link in list(bsdf.inputs["Normal"].links):
+            tree.links.remove(link)
+        normal_tex.image = grey(folder / f"{shade}_normal.png")
+        tree.links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
+        tree.links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
     rough = folder / (f"{shade}_rough.png" if spec.get("rough") else f"finish_{spec['finish']}.png")
     if rough.exists():
         rough_tex.image = grey(rough)

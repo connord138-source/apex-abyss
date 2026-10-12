@@ -185,7 +185,12 @@ The approved details:
   - switching in the safe zone, and DNA-plus-coral unlocks (the FISH menu)
   - the tutorial: steps 1–4 and 7 below, with markers
   Steps 5 (barracuda) and 6 (Growth Point) come with the predators and the trees.
-- **The tutorial (about 5–8 minutes, as the Nibbler):**
+- **The tutorial (about 5–8 minutes, as the Nibbler; directed since 2026-10-12,
+  owner: "Controls need to be more obvious during the tutorial and tutorial needs
+  to be more directed instead of just a floating Ui": each step's card shows its
+  keys as key caps for the player's device, a trail of lights leads from the fish
+  to the step's target with the distance and an arrow on the card, and the card
+  says how to free the cursor):**
   1. Swim out of your den.
   2. Eat 10 small fish.
   3. Bank your Haul.
@@ -281,7 +286,7 @@ This replaced the finish and mutation plan.
 | Divine / Aurora / Thunder | Legendary | 1 in 500 / 650 / 700 |
 | Exotic / Prismatic / Nebula / Void | Mythic | 1 in 900 / 1,500 / 1,800 / 2,200 |
 | Body parts: Angler Lure, Narwhal Horn, Sawblade Snout, Sail Fin, Veil Tail | Abyssal | 1 in 4,000 to 1 in 6,000 each |
-| Exotic variants: Puffer, Hammerhead | Abyssal | 1 in 8,000 / 1 in 10,000 |
+| Exotic variants, one per fish: Puffball Nibbler, Hammerhead (Reef Shark), Sabrecuda, Porcupine Puffer, Dragon Moray, Deepfang Angler | Abyssal | 1 in 8,000 / 10,000 / 9,000 / 9,000 / 9,000 / 9,000, each only in its own fish's rolls |
 
 - **Luck:**
   - A Lucky Charm doubles every non-coral chance on the next roll.
@@ -291,6 +296,31 @@ This replaced the finish and mutation plan.
   15,000–30,000 for an Abyssal outcome.
 - **Announcements:** Rare and rarer results are announced to the whole server once
   the roller's reveal has landed.
+- **Parts and variants are real pieces on every fish (owner, 2026-10-12: "parts
+  need to be actual physical parts that change the appearance of the fish as well.
+  Right now they do nothing. Variants should also be different/upgrades from the
+  original base fish as well. For all playable models"):** on the imported mesh
+  fish a rolled part hangs from a bone (a Narwhal Horn turns with the head, a Veil
+  Tail swings with the tail, a Sail Fin stands on the back), and every fish has an
+  exotic variant of its own: the Puffball Nibbler (inflated, spiked), the
+  Hammerhead Reef Shark, the Sabrecuda (two sabre fangs, a ridge of spines, a
+  little longer), the Porcupine Puffer (long bone quills, puffed up), the Dragon
+  Moray (horns and a frilled crest the length of its back) and the Deepfang Angler
+  (a crown of three lures and fangs). A variant only rolls for its own fish. Looks
+  only; power stays in the species trees.
+- **Skins have depth (owner, 2026-10-12: "They just look pasted on the fish ... The
+  designs need much more depth"):** every skin ships a normal map of its own
+  pattern's relief (rivets, scales, coral, spirals and grout stand out or sink in)
+  blended over the fish's own, and the fish's painted creases always show through.
+  Diamond is a cut gem (bevelled facets, dispersion fire along the bevels, mirror)
+  and Prismatic a holographic foil (diffraction lines, hue-shifted facets, pearl,
+  chrome under it): full retextures, not recolours.
+- **The top skins move (owner, 2026-10-12: "prismatic needs to be moving across the
+  fish not just static. same with the other highest rarity skins"):** Prismatic,
+  Diamond, Divine, Aurora, Exotic, Nebula and Void carry a sheen, a tiling layer
+  that slides across the body over the skin: holographic bands, glitter, gold
+  motes, aurora veils, drifting stars, a violet veil running backwards (`Config/
+  Shades` `sheen`, the images in `assets/textures/`).
 - **Shades are real skins, each its own look (owner, 2026-10-08, asked twice: "much
   much more variance and depth than just a slight reshape to the existing colors"):**
   every shade is a texture made for each fish from its own texture (`tools/shades`),
@@ -515,6 +545,17 @@ progression**.
 - **The surface** is the ceiling of the map. Boats sit up there and drop hooks. It's a
   ceiling for whole bodies: a big creature's middle stays 30% of its length under it and
   it can't tilt its nose or tail through (`PredatorService.steer`).
+
+### The map (owner, 2026-10-12: "need a map/mini map to show people where they are"; built)
+
+A sonar chart: each biome a field of dots in its colour over its sector and
+radii, the hub a ring in the middle, the shelf's drop-off and the sea's edge as
+dashed rings, north up. The **minimap** sits in the HUD's corner and slides under
+your fish (the arrow in the middle points where you swim); on it are your den
+(◆), the treasure map you're following (X), a world boss while one is up (●) and
+the other fish in the server (•). A click or tap on it, M on a keyboard or R3 on
+a controller opens the **full map**: the whole sea with every biome named and
+levelled, a legend, and where you are (biome, its level range, your depth).
 
 ### World boss events (owner, 2026-10-06)
 

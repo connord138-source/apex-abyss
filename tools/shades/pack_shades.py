@@ -59,8 +59,39 @@ def grey(path: pathlib.Path) -> np.ndarray:
 
 
 normal = fit(find_image("normal"))
+own_normal: np.ndarray | None = None
+if normal is not None:
+    w, h = normal.size
+    px = np.array(normal.pixels[:], np.float32).reshape(h, w, 4)[::-1, :, :3]  # bpy rows run bottom-up
+    if (h, w) != (SIZE, SIZE):
+        px = np.asarray(Image.fromarray((px * 255).astype(np.uint8)).resize((SIZE, SIZE), Image.LANCZOS), np.float32) / 255
+    own_normal = px
 for obj in list(bpy.data.objects):
     bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def blended_normal(shade: str) -> bpy.types.Image | None:
+    """The fish's own normal map with the skin's relief on top (the pattern's own
+    bumps, make_shades relief_normal), as one image for the material."""
+    path = SKINS / f"{shade}_normal.png"
+    if not path.exists():
+        return None
+    with Image.open(path) as img:
+        skin = np.asarray(img.convert("RGB").resize((SIZE, SIZE), Image.LANCZOS), np.float32) / 255
+    a = skin * 2 - 1
+    if own_normal is not None:
+        b = own_normal * 2 - 1
+        # Whiteout blend: the slopes add, the "up" parts multiply
+        n = np.stack([a[..., 0] + b[..., 0], a[..., 1] + b[..., 1], a[..., 2] * b[..., 2]], -1)
+    else:
+        n = a
+    n /= np.maximum(np.linalg.norm(n, axis=-1, keepdims=True), 1e-6)
+    out = PACKED / f"{shade}_nrm.png"
+    Image.fromarray((np.clip(n * 0.5 + 0.5, 0, 1) * 255).astype(np.uint8)).save(out)
+    image = bpy.data.images.load(str(out))
+    image.name = f"{OUT.stem}_{shade}_nrm"
+    image.colorspace_settings.name = "Non-Color"
+    return image
 
 specs = json.loads((SKINS / "skins.json").read_text())
 FISH = SKINS.name
@@ -107,9 +138,10 @@ for index, shade in enumerate(sorted(specs)):
     color = nodes.new("ShaderNodeTexImage")
     color.image = skin
     links.new(color.outputs["Color"], bsdf.inputs["Base Color"])
-    if normal is not None:
+    bump = blended_normal(shade) if spec.get("normal") else None
+    if bump is not None or normal is not None:
         tex = nodes.new("ShaderNodeTexImage")
-        tex.image = normal
+        tex.image = bump if bump is not None else normal
         tex.image.colorspace_settings.name = "Non-Color"
         node = nodes.new("ShaderNodeNormalMap")
         links.new(tex.outputs["Color"], node.inputs["Color"])
