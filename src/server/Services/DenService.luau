@@ -61,7 +61,13 @@ function DenService.refresh(player: Player)
 		return
 	end
 	Guard.run("DenService.build", function()
-		local rates = Garden.rates(data.den.level, MonetizationService.hasPass(player, "DeepGarden"))
+		local rates = Garden.rates(
+			data.den.level,
+			MonetizationService.hasPass(player, "DeepGarden"),
+			if MonetizationService.isPremium(player)
+				then Config.Monetization.tuning.premium.gardenHours
+				else 0
+		)
 		local shellFill = if rates.capShells > 0 then data.garden.shells / rates.capShells else 0
 		-- Furniture only in spots still open (a pass refunded closes its spots)
 		local record = data.den

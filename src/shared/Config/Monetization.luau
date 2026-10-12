@@ -118,6 +118,16 @@ local products: { Product } = {
 		paidRandom = true,
 	},
 	{
+		-- The Tide Pass's paid row for this season (Config/Pass; PassService grants
+		-- it). Bought from the PASS panel, not the Shop.
+		key = "DeepPass",
+		id = 0,
+		name = "Deep Pass",
+		price = 399,
+		description = "This season's paid row of the Tide Pass: three exclusive skins, a title, three den pieces and far more coral, shells and spins, plus 20% more pass XP.",
+		shop = false,
+	},
+	{
 		-- The rewarded video ad's reward (Roblox grants ad rewards as a developer
 		-- product, and they can't be random): doubles a small Haul. Not in the Shop.
 		key = "AdDoubleHaul",
@@ -164,8 +174,15 @@ local Monetization = {
 			},
 			adMaxKg = 60,
 		},
-		-- Free perks
-		premiumCoral = 1.1, -- Roblox Premium members (more Premium playtime → Premium Payouts)
+		-- Free perks. Roblox Premium (owner, 2026-10-12; Creator Rewards pay for paying
+		-- players' time in the game): more coral, bigger playtime gifts, a free wheel
+		-- spin a day, a bigger Coral Garden and a tag; never bite power.
+		premiumCoral = 1.1, -- Roblox Premium members: ×coral from everything
+		premium = {
+			gifts = 1.5, -- ×coral and shells from playtime gifts (Config/Playtime)
+			spins = 1, -- free Treasure Wheel spins a day
+			gardenHours = 4, -- the Coral Garden holds this much longer
+		},
 		-- The Roblox group: `id` 0 until the group exists. Members earn `coral` more;
 		-- joining pays `shells` once.
 		group = { id = 0, coral = 1.05, shells = 100 },

@@ -20,11 +20,12 @@ export type Rates = {
 
 local Garden = {}
 
--- Growth for a den level, with the Deep Garden pass or without.
-function Garden.rates(level: number, deep: boolean): Rates
+-- Growth for a den level, with the Deep Garden pass or without, plus `extraHours`
+-- of room (Roblox Premium's perk, Config/Monetization premium.gardenHours).
+function Garden.rates(level: number, deep: boolean, extraHours: number?): Rates
 	local index = math.clamp(level, 1, #tune.coral)
 	local speed = if deep then deepGarden.rate else 1
-	local hours = if deep then deepGarden.hours else tune.hours
+	local hours = (if deep then deepGarden.hours else tune.hours) + (extraHours or 0)
 	local coral = tune.coral[index] * speed
 	local shells = tune.shells[index] * speed
 	return {

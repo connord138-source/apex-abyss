@@ -16,6 +16,7 @@ local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Catch = require(ReplicatedStorage.Shared.Catch)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local Reward = require(ReplicatedStorage.Shared.Reward)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local Tides = require(ReplicatedStorage.Shared.Tides)
 local ClientState = require(script.Parent.Parent.ClientState)
@@ -570,7 +571,13 @@ local function denRows(list: ScrollingFrame)
 	local passes = s.passes or {}
 	local garden = s.garden
 	if typeof(garden) == "table" then
-		local nextRates = if upgrade then Garden.rates(upgrade.level, passes.DeepGarden == true) else nil
+		local nextRates = if upgrade
+			then Garden.rates(
+				upgrade.level,
+				passes.DeepGarden == true,
+				if state().premium == true then Config.Monetization.tuning.premium.gardenHours else 0
+			)
+			else nil
 		local blurb = `{Ui.number(garden.coralPerHour)} coral and {Ui.number(garden.shellsPerHour)} shells an hour, `
 			.. `holds {garden.hours} h · ×{garden.rest} while you rest here`
 		if nextRates and upgrade then
@@ -1515,7 +1522,7 @@ function MenuController.openStore()
 							next(),
 							"Premium",
 							"Roblox Premium",
-							`Premium members earn +{math.floor((tune.premiumCoral - 1) * 100 + 0.5)}% coral from everything.`,
+							`Premium members earn +{math.floor((tune.premiumCoral - 1) * 100 + 0.5)}% coral from everything, ×{tune.premium.gifts} playtime gifts, {tune.premium.spins} free wheel spin a day, +{tune.premium.gardenHours} h of Coral Garden and a ◆ by their name.`,
 							if premium then "Active" else nil,
 							if premium then "ACTIVE" else "GET PREMIUM",
 							if premium then "disabled" else "secondary",
@@ -1550,7 +1557,9 @@ end
 -- for each finished week.
 function MenuController.openDaily()
 	local Daily = Config.Daily
-	open("Daily Reward", "", Vector2.new(780, 400), function(window)
+	local Playtime = Config.Playtime
+	local premiumTune = Config.Monetization.tuning.premium
+	open("Daily Reward", "", Vector2.new(780, 540), function(window)
 		local holder = Instance.new("Frame")
 		holder.Name = "Days"
 		holder.BackgroundTransparency = 1
@@ -1586,6 +1595,66 @@ function MenuController.openDaily()
 		claim.Activated:Connect(function()
 			ClientState.request("ClaimDaily")
 		end)
+		-- Playtime gifts (owner, 2026-10-12): a ladder for minutes played today, under
+		-- the streak. The DAILY button counts down to the next one.
+		local giftHeader = Ui.label(
+			window.content,
+			"GiftHeader",
+			"PLAYTIME GIFTS",
+			Ui.FONT_HEAVY,
+			15,
+			Ui.color.haul,
+			UDim2.new(1, 0, 0, 18),
+			UDim2.fromOffset(0, 284)
+		)
+		giftHeader.TextXAlignment = Enum.TextXAlignment.Center
+		local gifts = Instance.new("Frame")
+		gifts.Name = "Gifts"
+		gifts.BackgroundTransparency = 1
+		gifts.Position = UDim2.fromOffset(0, 306)
+		gifts.Size = UDim2.new(1, 0, 0, 92)
+		gifts.Parent = window.content
+		local giftLayout = Instance.new("UIListLayout")
+		giftLayout.FillDirection = Enum.FillDirection.Horizontal
+		giftLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		giftLayout.Padding = UDim.new(0, 6)
+		giftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		giftLayout.Parent = gifts
+		local claimGift = Ui.button(
+			window.content,
+			"ClaimGift",
+			"CLAIM GIFT",
+			UDim2.fromOffset(220, 38),
+			UDim2.new(0.5, -110, 0, 402),
+			"gold"
+		)
+		claimGift.FontFace = Ui.FONT_HEAVY
+		claimGift.Activated:Connect(function()
+			ClientState.request("ClaimGift")
+		end)
+		-- Premium's perks, for those without it (never a wall: the gifts come anyway)
+		local premiumButton = Ui.button(
+			window.content,
+			"Premium",
+			"GET PREMIUM",
+			UDim2.fromOffset(150, 38),
+			UDim2.new(0.5, 130, 0, 402),
+			"secondary"
+		)
+		premiumButton.TextSize = 13
+		premiumButton.Activated:Connect(Store.buyPremium)
+		local premiumNote = Ui.label(
+			window.content,
+			"PremiumNote",
+			`Premium: ×{premiumTune.gifts} gifts · {premiumTune.spins} free spin a day · +{premiumTune.gardenHours} h garden`,
+			Ui.FONT_SEMI,
+			12,
+			Ui.color.muted,
+			UDim2.fromOffset(250, 38),
+			UDim2.new(0.5, -380, 0, 402)
+		)
+		premiumNote.TextXAlignment = Enum.TextXAlignment.Right
+		premiumNote.TextWrapped = true
 		-- What was claimed shows in the footer for a few seconds
 		local claimedText, claimedUntil = "", 0
 		local claimed = (ReplicatedStorage:WaitForChild("Remotes") :: Instance):WaitForChild(
@@ -1593,11 +1662,102 @@ function MenuController.openDaily()
 			) :: RemoteEvent
 		local connection = claimed.OnClientEvent:Connect(function(summary: { [string]: any })
 			local got = if typeof(summary.got) == "table" then table.concat(summary.got, " · ") else ""
-			claimedText = `Day {summary.streak} claimed: {got}`
+			claimedText = if summary.kind == "gift"
+				then `{summary.minutes}-minute gift claimed: {got}`
+				else `Day {summary.streak} claimed: {got}`
 			claimedUntil = os.clock() + 4
 			Sfx.play("Bank", { volume = 0.6 })
 			MenuController.rerenderCurrent()
 		end)
+		local function renderGifts()
+			local pt = state().playtime
+			for _, child in gifts:GetChildren() do
+				if child:IsA("GuiObject") then
+					child:Destroy()
+				end
+			end
+			if typeof(pt) ~= "table" then
+				claimGift.Visible = false
+				premiumButton.Visible = false
+				premiumNote.Visible = false
+				return
+			end
+			local now = workspace:GetServerTimeNow()
+			local claimedCount = pt.claimed or 0
+			local unlockedCount = pt.unlocked or 0
+			local bonus = pt.bonus or 1
+			local premium = state().premium == true
+			giftHeader.Text = if pt.claimable
+				then "PLAYTIME GIFTS · A GIFT IS READY"
+				elseif typeof(pt.nextAt) == "number" then `PLAYTIME GIFTS · NEXT IN {clockText(
+					pt.nextAt - now
+				)}`
+				else "PLAYTIME GIFTS · ALL CLAIMED TODAY"
+			for i, gift in Playtime.gifts do
+				local done = i <= claimedCount
+				local ready = not done and i <= unlockedCount
+				local nextOne = not done and not ready and i == unlockedCount + 1
+				local tile = Ui.panel(
+					gifts,
+					`Gift{i}`,
+					UDim2.fromOffset(if gift.big then 108 else 92, 92),
+					UDim2.new()
+				)
+				tile.LayoutOrder = i
+				tile.BackgroundTransparency = if done then 0.55 else 0.15
+				local stroke = tile:FindFirstChildOfClass("UIStroke")
+				if stroke and (ready or gift.big) then
+					stroke.Color = Ui.color.haul
+					stroke.Transparency = if ready then 0 else 0.4
+					stroke.Thickness = if ready then 2.5 else 1.5
+				end
+				local when = Ui.label(
+					tile,
+					"When",
+					`{gift.minutes} MIN`,
+					Ui.FONT_HEAVY,
+					13,
+					if ready then Ui.color.haul else Ui.color.text,
+					UDim2.new(1, 0, 0, 16),
+					UDim2.fromOffset(0, 6)
+				)
+				when.TextXAlignment = Enum.TextXAlignment.Center
+				local body = Ui.label(
+					tile,
+					"Reward",
+					table.concat(Reward.lines(gift, bonus), "\n"),
+					Ui.FONT_BOLD,
+					11,
+					if done then Ui.color.muted else Ui.color.text,
+					UDim2.new(1, -6, 0, 40),
+					UDim2.fromOffset(3, 24)
+				)
+				body.TextXAlignment = Enum.TextXAlignment.Center
+				body.TextYAlignment = Enum.TextYAlignment.Center
+				body.TextWrapped = true
+				local foot = Ui.label(
+					tile,
+					"State",
+					if done
+						then "✓"
+						elseif ready then "READY"
+						elseif nextOne and typeof(pt.nextAt) == "number" then clockText(pt.nextAt - now)
+						else "",
+					Ui.FONT_HEAVY,
+					12,
+					if done then Ui.color.safe else Ui.color.haul,
+					UDim2.new(1, 0, 0, 16),
+					UDim2.new(0, 0, 1, -20)
+				)
+				foot.TextXAlignment = Enum.TextXAlignment.Center
+			end
+			claimGift.Visible = pt.claimable == true
+			premiumButton.Visible = not premium
+			premiumNote.Visible = not premium
+			premiumNote.Text = if premium
+				then ""
+				else `Premium: ×{premiumTune.gifts} gifts · {premiumTune.spins} free spin a day · +{premiumTune.gardenHours} h garden`
+		end
 		local function lines(reward: typeof(Daily.days[1]), bonus: number): string
 			local parts: { string } = {}
 			if reward.coral then
@@ -1706,6 +1866,7 @@ function MenuController.openDaily()
 					foot.TextXAlignment = Enum.TextXAlignment.Center
 				end
 				claim.Visible = daily.claimable == true
+				renderGifts()
 				footer.TextColor3 = if os.clock() < claimedUntil then Ui.color.haul else Ui.color.muted
 				footer.Text = if os.clock() < claimedUntil
 					then claimedText
@@ -1716,6 +1877,250 @@ function MenuController.openDaily()
 			end,
 		}
 	end)
+end
+
+-- The Tide Pass (owner, 2026-10-12; Config/Pass): the season's XP bar, then every
+-- tier as a column with its free reward over its Deep Pass reward, scrolled
+-- sideways; CLAIM ALL takes every unlocked reward, DEEP PASS buys this season's paid
+-- row (a developer product).
+local passScrolled = false
+function MenuController.openPass()
+	local Pass = Config.Pass
+	local product = Config.Monetization.productsByKey[Pass.product]
+	open("Tide Pass", "", Vector2.new(920, 540), function(window)
+		local content = window.content
+		local seasonLabel = Ui.label(
+			content,
+			"Season",
+			"",
+			Ui.FONT_HEAVY,
+			18,
+			Ui.color.text,
+			UDim2.new(1, -310, 0, 24),
+			UDim2.fromOffset(0, 0)
+		)
+		local _, fill =
+			Ui.bar(content, "Xp", UDim2.new(1, -310, 0, 10), UDim2.fromOffset(0, 30), Ui.color.haul)
+		local xpLabel = Ui.label(
+			content,
+			"XpText",
+			"",
+			Ui.FONT_SEMI,
+			13,
+			Ui.color.muted,
+			UDim2.new(1, -310, 0, 16),
+			UDim2.fromOffset(0, 44)
+		)
+		local claimAll = Ui.button(
+			content,
+			"ClaimAll",
+			"CLAIM ALL",
+			UDim2.fromOffset(150, 40),
+			UDim2.new(1, -300, 0, 2),
+			"gold"
+		)
+		claimAll.FontFace = Ui.FONT_HEAVY
+		claimAll.Activated:Connect(function()
+			ClientState.request("ClaimPass")
+		end)
+		local deep = Ui.button(
+			content,
+			"Deep",
+			if product then `DEEP PASS · {Store.price(product.price)}` else "DEEP PASS",
+			UDim2.fromOffset(140, 40),
+			UDim2.new(1, -140, 0, 2),
+			if product and product.id ~= 0 then "gold" else "disabled"
+		)
+		deep.TextSize = 13
+		deep.Activated:Connect(function()
+			Store.buyProduct(Pass.product)
+		end)
+		local rowFree = Ui.label(
+			content,
+			"RowFree",
+			"FREE",
+			Ui.FONT_HEAVY,
+			11,
+			Ui.color.muted,
+			UDim2.fromOffset(36, 16),
+			UDim2.fromOffset(0, 102)
+		)
+		rowFree.Rotation = -90
+		local rowDeep = Ui.label(
+			content,
+			"RowDeep",
+			"DEEP",
+			Ui.FONT_HEAVY,
+			11,
+			Ui.color.haul,
+			UDim2.fromOffset(36, 16),
+			UDim2.fromOffset(0, 290)
+		)
+		rowDeep.Rotation = -90
+		local strip = Instance.new("ScrollingFrame")
+		strip.Name = "Tiers"
+		strip.BackgroundTransparency = 1
+		strip.BorderSizePixel = 0
+		strip.Position = UDim2.fromOffset(28, 70)
+		strip.Size = UDim2.new(1, -28, 1, -70)
+		strip.ScrollingDirection = Enum.ScrollingDirection.X
+		strip.ScrollBarThickness = 6
+		strip.ScrollBarImageColor3 = Ui.color.stroke
+		strip.ElasticBehavior = Enum.ElasticBehavior.Never
+		strip.Selectable = false
+		strip.Parent = content
+		local COLUMN, GAP = 96, 8
+		-- What was claimed shows in the subtitle for a few seconds
+		local claimedText, claimedUntil = "", 0
+		local claimedRemote = (ReplicatedStorage:WaitForChild("Remotes") :: Instance):WaitForChild(
+			"PassClaimed"
+		) :: RemoteEvent
+		local connection = claimedRemote.OnClientEvent:Connect(function(summary: { [string]: any })
+			local got = if typeof(summary.got) == "table" then table.concat(summary.got, " · ") else ""
+			claimedText = `Claimed: {got}`
+			claimedUntil = os.clock() + 5
+			Sfx.play("Bank", { volume = 0.6 })
+			MenuController.rerenderCurrent()
+		end)
+		local function tile(
+			parent: Instance,
+			name: string,
+			y: number,
+			reward: Reward.Reward?,
+			claimed: boolean,
+			unlocked: boolean,
+			locked: boolean,
+			paidRow: boolean
+		)
+			local frame = Ui.panel(parent, name, UDim2.fromOffset(COLUMN, 165), UDim2.fromOffset(0, y))
+			frame.BackgroundTransparency = if claimed then 0.6 elseif locked then 0.35 else 0.12
+			local stroke = frame:FindFirstChildOfClass("UIStroke")
+			if stroke then
+				if unlocked and not claimed and not locked then
+					stroke.Color = Ui.color.haul
+					stroke.Transparency = 0
+					stroke.Thickness = 2.5
+				elseif paidRow then
+					stroke.Color = Ui.color.haul
+					stroke.Transparency = 0.6
+				end
+			end
+			local body = Ui.label(
+				frame,
+				"Reward",
+				if reward then table.concat(Reward.lines(reward), "\n") else "—",
+				Ui.FONT_BOLD,
+				12,
+				if claimed or locked then Ui.color.muted else Ui.color.text,
+				UDim2.new(1, -8, 1, -40),
+				UDim2.fromOffset(4, 10)
+			)
+			body.TextXAlignment = Enum.TextXAlignment.Center
+			body.TextYAlignment = Enum.TextYAlignment.Center
+			body.TextWrapped = true
+			local foot = Ui.label(
+				frame,
+				"State",
+				if claimed
+					then "✓ CLAIMED"
+					elseif locked then "DEEP PASS"
+					elseif unlocked then "READY"
+					else "",
+				Ui.FONT_HEAVY,
+				11,
+				if claimed then Ui.color.safe elseif locked then Ui.color.muted else Ui.color.haul,
+				UDim2.new(1, 0, 0, 16),
+				UDim2.new(0, 0, 1, -22)
+			)
+			foot.TextXAlignment = Enum.TextXAlignment.Center
+			return frame
+		end
+		return {
+			window = window,
+			ticking = true,
+			cleanup = function()
+				connection:Disconnect()
+			end,
+			render = function()
+				local pass = state().pass
+				if typeof(pass) ~= "table" then
+					return
+				end
+				local def = Pass.seasons[((pass.season or 1) - 1) % #Pass.seasons + 1]
+				local tier = pass.tier or 0
+				local tiers = pass.tiers or #def.tiers
+				local per = pass.per or Pass.xpPerTier
+				local xp = pass.xp or 0
+				local into = xp - tier * per
+				local waiting = pass.waiting or 0
+				local left = (pass.endsAt or 0) - workspace:GetServerTimeNow()
+				seasonLabel.Text = `SEASON {pass.season or 1} · {string.upper(def.name)}`
+				window.subtitle.Text = if os.clock() < claimedUntil
+					then claimedText
+					else `{def.blurb} · ends in {Format.duration(left)}`
+				window.subtitle.TextColor3 = if os.clock() < claimedUntil
+					then Ui.color.haul
+					else Ui.color.muted
+				fill.Size = UDim2.fromScale(math.clamp(into / per, 0, 1), 1)
+				xpLabel.Text = if tier < tiers
+					then `TIER {tier} of {tiers} · {Ui.number(into)} / {Ui.number(per)} XP to the next`
+					else `EVERY TIER DONE · OVERTIDE: {Ui.number(into)} / {Ui.number(per)} XP to {Ui.number(
+						Pass.overtide.coral or 0
+					)} coral`
+				claimAll.Text = if waiting > 0 then `CLAIM ALL ({waiting})` else "CLAIM ALL"
+				Ui.setButtonStyle(claimAll, if waiting > 0 then "gold" else "disabled")
+				deep.Visible = pass.paid ~= true and product ~= nil and Store.listed(product.id)
+				rowDeep.Text = if pass.paid then "DEEP ✓" else "DEEP"
+				for _, child in strip:GetChildren() do
+					if child:IsA("GuiObject") then
+						child:Destroy()
+					end
+				end
+				strip.CanvasSize = UDim2.fromOffset(tiers * (COLUMN + GAP), 0)
+				for i = 1, tiers do
+					local entry = def.tiers[i]
+					local column = Instance.new("Frame")
+					column.Name = `Tier{i}`
+					column.BackgroundTransparency = 1
+					column.Position = UDim2.fromOffset((i - 1) * (COLUMN + GAP), 0)
+					column.Size = UDim2.fromOffset(COLUMN, 358)
+					column.Parent = strip
+					local number = Ui.label(
+						column,
+						"Number",
+						`TIER {i}`,
+						Ui.FONT_HEAVY,
+						13,
+						if i == tier + 1
+							then Ui.color.haul
+							elseif i <= tier then Ui.color.text
+							else Ui.color.muted,
+						UDim2.new(1, 0, 0, 18),
+						UDim2.fromOffset(0, 0)
+					)
+					number.TextXAlignment = Enum.TextXAlignment.Center
+					local unlocked = i <= tier
+					tile(column, "Free", 22, entry.free, i <= (pass.claimedFree or 0), unlocked, false, false)
+					tile(
+						column,
+						"Paid",
+						195,
+						entry.paid,
+						pass.paid == true and i <= (pass.claimedPaid or 0),
+						unlocked and pass.paid == true,
+						pass.paid ~= true,
+						true
+					)
+				end
+				-- Open on the tier being worked toward
+				if not passScrolled then
+					passScrolled = true
+					strip.CanvasPosition = Vector2.new(math.max(0, (tier - 1) * (COLUMN + GAP)), 0)
+				end
+			end,
+		}
+	end)
+	passScrolled = false
 end
 
 -- The stall hint: near a counter, a chip over it says which key opens its shop

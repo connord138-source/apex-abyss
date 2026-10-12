@@ -83,8 +83,13 @@ local function step()
 		tag.name.TextColor3 = color
 		local display =
 			string.gsub(string.gsub(string.gsub(player.DisplayName, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+		-- A gold VIP tag and a pale blue diamond for Roblox Premium (◆ renders in
+		-- Roblox fonts; ✦ doesn't)
+		local premium = if character:GetAttribute("Premium") == true
+			then `<font color="#9BE2FF">◆</font> `
+			else ""
 		tag.name.Text = if character:GetAttribute("VIP") == true
-			then `<font color="#FFCC5C">VIP</font> {display}`
+			then `{premium}<font color="#FFCC5C">VIP</font> {display}`
 			else display
 		local title = character:GetAttribute("Title")
 		tag.status.Text = if typeof(title) == "string" and title ~= ""

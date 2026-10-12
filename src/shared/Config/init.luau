@@ -28,4 +28,6 @@ return {
 	Bounties = require(script.Bounties),
 	Leaderboards = require(script.Leaderboards),
 	Wheel = require(script.Wheel),
+	Playtime = require(script.Playtime),
+	Pass = require(script.Pass),
 }

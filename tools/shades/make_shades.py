@@ -2703,6 +2703,85 @@ def week_sea_glass(m):  # Sea glass: frosted pebbles of bottle green, cobalt and
     return done(m, rgb, "satin", detail=0.4)
 
 
+# ---------------------------------------------------------------------------
+# The Tide Pass's skins (Config/Pass season 1; owner, 2026-10-12)
+# ---------------------------------------------------------------------------
+
+
+def pass_tideglass(m):  # Tideglass: frosted sea glass in teal, pale ripple lines, a pearl film
+    m = smooth(m)
+    rgb = body_coat(m, (0.08, 0.40, 0.42), (0.34, 0.66, 0.64), soft=0.3)
+    rgb = mix(rgb, (0.10, 0.34, 0.40), m.fin * 0.8)
+    ripple = smoothstep(0.08, 0.02, contours(m, 3.5, 7, 51, warp=0.25))
+    rgb = mix(rgb, (0.62, 0.90, 0.86), ripple * 0.75)
+    frost = value_noise(m.p, 220, 52)
+    rgb = rgb * (0.92 + 0.16 * frost)[..., None]
+    rgb = pearl(m, rgb, 0.22, 0.10, 0.50)
+    return done(m, rgb, "gloss", detail=0.6)
+
+
+def pass_riptide(m):  # Riptide: deep ocean blue, foam streaks raking back, a glowing current line
+    m = smooth(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.03, 0.10, 0.30), (0.10, 0.30, 0.56), soft=0.28)
+    rgb = mix(rgb, (0.04, 0.12, 0.34), m.fin * 0.7)
+    # Foam streaks: thin slanted stripes torn by noise, cyan-white (never pure white
+    # lines on a dark body: the skin screen reads those as skin)
+    tear = fbm(m, 7, 53)
+    streak = stripes(m, 22, width=0.14, wobble=0.35, slant=0.5, seed=54) * smoothstep(0.42, 0.6, tear)
+    rgb = mix(rgb, (0.58, 0.86, 0.96), streak * 0.85)
+    # The current: a soft band along the mid-flank, flowing, that glows
+    band = smoothstep(0.30, 0.0, np.abs(vn - 0.12)) * (1 - m.fin)
+    flow = 0.5 + 0.5 * np.sin(2 * np.pi * (u * 9 - vn * 0.8))
+    current = band * (0.35 + 0.65 * smoothstep(0.55, 0.95, flow))
+    rgb = mix(rgb, (0.20, 0.72, 0.96), current * 0.6)
+    emit = (current * 0.7)[..., None] * C(0.15, 0.75, 1.0)
+    return done(m, rgb, "satin", emit=emit, detail=0.7)
+
+
+def pass_undertow(m):  # Undertow: ink violet, whirlpools of glowing teal spiralling down the flanks
+    m = smooth(m)
+    u, v, vn = height(m)
+    _, half = girth(m)
+    rgb = body_coat(m, (0.08, 0.04, 0.18), (0.16, 0.10, 0.34), soft=0.3)
+    rgb = mix(rgb, (0.06, 0.04, 0.16), m.fin * 0.7)
+    rng = np.random.default_rng(55)
+    swirl = np.zeros(u.shape, np.float32)
+    for k in range(5):
+        cu = 0.12 + 0.76 * (k + rng.random() * 0.8) / 5
+        cv = (rng.random() - 0.5) * 0.7 * half(cu)
+        radius = max(0.45 * half(cu), 0.02)
+        flip = 1.0 if k % 2 == 0 else -1.0
+        swirl = np.maximum(swirl, spiral(u, v, (cu, cv), radius, turns_rate=5.0, width=0.0024, flip=flip))
+    swirl = swirl * (1 - m.fin) * m.cov
+    halo = glow_halo(swirl > 0.3, 5)
+    rgb = mix(rgb, (0.10, 0.72, 0.70), halo * 0.5)
+    rgb = mix(rgb, (0.55, 1.0, 0.92), swirl)
+    emit = swirl[..., None] * C(0.45, 1.0, 0.90) + (halo * 0.3)[..., None] * C(0.10, 0.70, 0.68)
+    return done(m, rgb, "gloss", emit=emit, detail=0.7)
+
+
+def pass_abyssal_current(m):  # Abyssal Current: the deep's black-green water, a drifting current, bioluminescent motes
+    m = smooth(m)
+    u, v, vn = height(m)
+    rgb = body_coat(m, (0.02, 0.07, 0.09), (0.05, 0.16, 0.18), soft=0.3)
+    rgb = mix(rgb, (0.02, 0.06, 0.08), m.fin * 0.6)
+    drift = fbm(m, 4, 56)
+    band = smoothstep(0.25, 0.0, np.abs(vn + 0.1 + (drift - 0.5) * 0.6)) * (1 - m.fin)
+    rgb = mix(rgb, (0.04, 0.36, 0.34), band * 0.55)
+    motes = speckle(m, 160, 0.88, seed=57) * (1 - m.fin * 0.5) * m.cov
+    halo = glow_halo(motes, 4)
+    rgb = mix(rgb, (0.18, 0.80, 0.70), halo * 0.5)
+    rgb = mix(rgb, (0.70, 1.0, 0.90), motes)
+    rgb = sheen(m, rgb, 0.12, (0.5, 0.9, 0.85))
+    emit = (
+        motes[..., None] * C(0.55, 1.0, 0.85)
+        + (halo * 0.35)[..., None] * C(0.15, 0.75, 0.65)
+        + (band * 0.25)[..., None] * C(0.05, 0.5, 0.45)
+    )
+    return done(m, rgb, "satin", emit=emit, detail=0.7)
+
+
 RECIPES = {
     "Mint": mint,
     "Sunset": sunset,
@@ -2789,6 +2868,10 @@ RECIPES = {
     "WeekReef": week_reef,
     "WeekWreck": week_wreck,
     "WeekSeaGlass": week_sea_glass,
+    "PassTideglass": pass_tideglass,
+    "PassRiptide": pass_riptide,
+    "PassUndertow": pass_undertow,
+    "PassAbyssalCurrent": pass_abyssal_current,
 }
 
 

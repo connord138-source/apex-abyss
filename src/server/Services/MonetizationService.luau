@@ -393,10 +393,12 @@ local function onPassPurchased(player: Player, passId: number, purchased: boolea
 end
 
 -- The VIP tag over the fish (NametagController reads it)
+-- The nametag's perks: the VIP pass and Roblox Premium (NametagController)
 local function tagVip(player: Player)
 	local character = player.Character
 	if character then
 		character:SetAttribute("VIP", MonetizationService.hasPass(player, "VIP"))
+		character:SetAttribute("Premium", MonetizationService.isPremium(player))
 	end
 end
 
@@ -423,8 +425,13 @@ function MonetizationService.start()
 	end)
 	Players.PlayerMembershipChanged:Connect(function(player)
 		if MonetizationService.isPremium(player) then
-			Net.notify(player, "Premium perk: +10% coral from everything you earn!", "rare")
+			Net.notify(
+				player,
+				"Premium perks: +10% coral, ×1.5 playtime gifts, a free wheel spin a day and a bigger Coral Garden!",
+				"rare"
+			)
 		end
+		tagVip(player)
 		DataService.markDirty(player)
 	end)
 	Players.PlayerRemoving:Connect(function(player)

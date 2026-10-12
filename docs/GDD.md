@@ -1026,6 +1026,7 @@ created in Creator Hub, and a live game hides id-0 items.
 | **Server Frenzy** | product | 99 | ×2 growth for the whole server for 15 min, announced; buying again adds 15 min (up to 2 h ahead) |
 | **Shell Pouch** / **Shell Chest** | product | 49 / 199 | 100 / 600 shells (2 / 12 rolls). Paid random items: hidden where policy restricts them, with ODDS one tap away |
 | Double Haul (ad) | ad reward | — | A watched rewarded video doubles a Haul up to 60 kg |
+| **Deep Pass** | product | 399 | This season's paid row of the Tide Pass (below): three skins, a title, three den pieces, far more coral, shells and spins, +20% pass XP. Bought from PASS, not the Shop |
 
 - **Double Haul:** offered on the bank screen after the tutorial when doubling would
   add at least 2 levels (a Haul of ~30% of your banked mass or more). One tap, WATCH
@@ -1039,13 +1040,57 @@ created in Creator Hub, and a live game hides id-0 items.
 - **Coral multipliers** (VIP 1.1, Premium 1.1, group 1.05) apply to coral earned from
   play (`EconomyService.earnCoral`: banking, eating players, predators, bosses, the
   Coral Garden), not to fixed rewards that show their amount (rolls, treasure, daily).
-- **Free perks:** Roblox Premium (+10% coral, more Premium playtime for Premium
-  Payouts), the Roblox group (id 0 until it exists: +5% coral, 100 shells once),
-  rewarded ads.
+- **Free perks:** Roblox Premium (below), the Roblox group (id 0 until it exists:
+  +5% coral, 100 shells once), rewarded ads.
 - **Shop:** SHOP (beside the wallet) or the View button on a controller: Daily reward,
   Boosts, Game passes, Free perks. Purchases open Roblox's own prompts.
 - **Not sold:** coral (it buys Iron Jaw), Kelp Wraps, anything that adds bite damage.
-- **Later:** codes, Pearl crates, a season pass.
+- **Later:** codes, Pearl crates.
+
+### Creator Rewards: pay for playtime (owner, 2026-10-12; built)
+
+Owner: "We need monetizable assets that pay based on play time as well with rewards."
+Roblox replaced Premium Payouts with **Creator Rewards** (July 2025): the Daily
+Engagement Reward pays 5 Robux each time an *Active Spender* (≥ $9.99 spent on Roblox
+in 60 days) plays **ten minutes or more** in a day, counted for the first three
+experiences they open that day; the Audience Expansion Reward pays 35% of a new or
+returning player's first $100. So the game rewards the minutes themselves, gives
+paying players a long goal, and makes Premium worth having, without a wall:
+
+- **Playtime gifts** (`Config/Playtime`, `PlaytimeService`): a ladder of gifts for
+  minutes played today (UTC), claimed from the DAILY panel; the DAILY button counts
+  down to the next gift and lights up (GIFT !) when one waits. The server counts the
+  time every 5 s for every player in the server. Every gift also gives Tide Pass XP.
+
+  | Minutes | 5 | 10 | 15 | 25 | 40 | 60 | 90 |
+  |---|---|---|---|---|---|---|---|
+  | Gift | 150 coral | 25 shells | 300 coral + Kelp Wrap | 40 shells + spin | 600 coral + Kelp Wrap | 1,000 coral + 75 shells + spin | 2,000 coral + Weathered map |
+  | Pass XP | 40 | 80 | 80 | 120 | 160 | 250 | 300 |
+
+- **Roblox Premium** (`Config/Monetization` `premium`): +10% coral from play (as
+  before), ×1.5 coral and shells from playtime gifts, a free Treasure Wheel spin a day
+  (on the first tick of each day), +4 h of Coral Garden room and a ◆ by the name.
+  Convenience and cosmetics only, never bite power. The Premium purchase is offered
+  from the Daily panel (beside CLAIM GIFT), the Shop's Free Perks row and nowhere as a
+  wall.
+- **The Tide Pass** (`Config/Pass`, `PassService`, `MenuController.openPass`, PASS on
+  the HUD): seasons of four weeks on the Tide Clock's week numbers (season 1 starts
+  Monday 2026-10-12 00:00 UTC), 30 tiers of 2,000 XP. XP comes from play: banking
+  (2/kg, 20–300 a bank), catches (2 / 25 / 60 / 150 / 300 by rarity), bounties (150,
+  chest 300), boss kills (400), treasure (100), the daily claim (200) and the
+  playtime gifts. A player on for an hour a day makes ~2,200 a day and finishes in
+  about four weeks; past tier 30 every 2,000 XP pays 500 coral (Overtide). Every tier
+  has a free reward; the **Deep Pass** (399 R$, a developer product bought for the
+  season) opens the paid row and earns ×1.2 XP. Rewards stay at Epic or below (the
+  elite skins are RNG, bosses and treasure): season 1 "Riptide" gives the free row
+  Tideglass (Rare, tier 20), the titles Tide Rider (10) and Riptide Veteran (30),
+  spins, wraps, charms, coral and shells; the paid row Riptide (Epic, tier 1, so the
+  Deep Pass pays at once), Undertow (Epic, 15), Abyssal Current (Epic, 30), the
+  titles Riptide and Abyss Walker, the Sea Glass Lantern, Pearl Pedestal and Crystal
+  Shard den pieces, two maps and far more coral, shells and spins. CLAIM ALL takes
+  every unlocked reward; a skin goes to the fish you're swimming as (the per-fish
+  rule). When a season ends, what a player had unlocked is claimed for them and the
+  record starts again; the Deep Pass is per season.
 
 ### Daily login streak (owner, 2026-10-09; built)
 

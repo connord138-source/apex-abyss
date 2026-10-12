@@ -39,6 +39,8 @@ local OfferController = {}
 local gui: ScreenGui
 local dailyButton: TextButton
 local dailyScale: UIScale
+local passButton: TextButton
+local passScale: UIScale
 local chip: Frame
 local chipText: TextLabel
 local card: Frame? = nil
@@ -309,7 +311,7 @@ local function buildButtons()
 		holder.Name = "StoreButtons"
 		holder.BackgroundTransparency = 1
 		holder.Position = UDim2.fromOffset(258, 144)
-		holder.Size = UDim2.fromOffset(296, 34)
+		holder.Size = UDim2.fromOffset(394, 34)
 		holder.Parent = gui
 		Ui.belowTopBar(gui, holder, 144)
 		local layout = Instance.new("UIListLayout")
@@ -319,6 +321,13 @@ local function buildButtons()
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
 		layout.Parent = holder
 	end
+	-- PASS: the Tide Pass (MenuController.openPass); lit when rewards wait
+	passButton = Ui.button(holder, "Pass", "PASS", UDim2.fromOffset(90, 34), UDim2.new(), "secondary")
+	passButton.LayoutOrder = 9
+	passButton.TextSize = 14
+	passButton.Selectable = false
+	passButton.Activated:Connect(MenuController.openPass)
+	passScale = passButton:FindFirstChildOfClass("UIScale") :: UIScale
 	-- LOG: the Catch Log, bounties, the weekly race and the tides (MenuController.openLog)
 	local log = Ui.button(holder, "Log", "LOG", UDim2.fromOffset(90, 34), UDim2.new(), "secondary")
 	log.LayoutOrder = 10
@@ -360,9 +369,18 @@ end
 local function onState(s: { [string]: any })
 	local daily = s.daily
 	local ready = typeof(daily) == "table" and daily.claimable == true
-	Ui.setButtonStyle(dailyButton, if ready then "gold" else "secondary")
+	-- DAILY also carries the playtime gifts: lit when one is ready, else it counts
+	-- down to the next (step)
+	local playtime = s.playtime
+	local giftReady = typeof(playtime) == "table" and playtime.claimable == true
+	Ui.setButtonStyle(dailyButton, if ready or giftReady then "gold" else "secondary")
 	dailyButton.Selectable = false
-	dailyButton.Text = if ready then "DAILY !" else "DAILY"
+	dailyButton.Text = if ready then "DAILY !" elseif giftReady then "GIFT !" else "DAILY"
+	local pass = s.pass
+	local passReady = typeof(pass) == "table" and (pass.waiting or 0) > 0
+	Ui.setButtonStyle(passButton, if passReady then "gold" else "secondary")
+	passButton.Selectable = false
+	passButton.Text = if passReady then "PASS !" else "PASS"
 	-- Swimming out of the hub takes an open offer down
 	if card and s.inHub == false then
 		closeCard()
@@ -430,12 +448,19 @@ local function step()
 	else
 		chip.Visible = false
 	end
-	-- DAILY breathes while a reward waits
-	if dailyButton.Text ~= "DAILY" then
-		dailyScale.Scale = 1 + math.sin(os.clock() * 4) * 0.05
-	else
-		dailyScale.Scale = 1
+	-- DAILY counts down to the next playtime gift while nothing waits ...
+	local playtime = s.playtime
+	if string.sub(dailyButton.Text, -1) ~= "!" then
+		dailyButton.Text = if typeof(playtime) == "table"
+				and typeof(playtime.nextAt) == "number"
+				and playtime.claimable ~= true
+			then `GIFT {Format.clock(playtime.nextAt - workspace:GetServerTimeNow())}`
+			else "DAILY"
 	end
+	-- ... and DAILY and PASS breathe while a reward waits
+	local breath = 1 + math.sin(os.clock() * 4) * 0.05
+	dailyScale.Scale = if string.sub(dailyButton.Text, -1) == "!" then breath else 1
+	passScale.Scale = if string.sub(passButton.Text, -1) == "!" then breath else 1
 end
 
 function OfferController.start()

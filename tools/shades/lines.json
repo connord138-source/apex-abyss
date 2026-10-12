@@ -113,6 +113,10 @@
   {"id": "WeekReef", "name": "Living Reef", "tier": "Epic", "week": 2, "new": true, "look": "A whole reef painted on: brain coral, sea fans and tiny fish silhouettes in saturated reef colours over turquoise."},
   {"id": "WeekWreck", "name": "Shipwreck", "tier": "Epic", "week": 3, "new": true, "look": "Riveted iron hull plates, orange-red rust streaks (saturated), barnacle clusters and a painted hull number on the flank."},
   {"id": "WeekSeaGlass", "name": "Sea Glass", "tier": "Epic", "week": 4, "new": true, "look": "A mosaic of frosted sea-glass pebbles in bottle green, cobalt and amber, with soft dark grout between them."},
+  {"id": "PassTideglass", "name": "Tideglass", "tier": "Rare", "pass": 1, "new": true, "look": "Frosted sea glass in teal: a mid-toned teal body with pale ripple lines and a soft pearl film (gloss)."},
+  {"id": "PassRiptide", "name": "Riptide", "tier": "Epic", "pass": 1, "new": true, "glow": true, "look": "Deep ocean blue with cyan-white foam streaks raking back along the body and a glowing cyan current band along the mid-flank (glow map)."},
+  {"id": "PassUndertow", "name": "Undertow", "tier": "Epic", "pass": 1, "new": true, "glow": true, "look": "Ink violet with five whirlpools of thin glowing teal spiral lines down the flanks, soft teal halos (glow map)."},
+  {"id": "PassAbyssalCurrent", "name": "Abyssal Current", "tier": "Epic", "pass": 1, "new": true, "glow": true, "look": "The deep's black-green water: a drifting dark-teal current band and scattered bioluminescent motes with soft halos (glow map)."},
   {"id": "AbyssInk", "tier": "Trophy"},
   {"id": "SunkenGold", "tier": "Mythic"},
   {"id": "DrownedPearl", "tier": "Legendary"}

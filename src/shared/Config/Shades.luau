@@ -49,6 +49,7 @@ export type Shade = {
 	species: string?,
 	catch: string?, -- earned on a fish's catch track for this Config/Catch rarity (never rolled)
 	week: number?, -- the Catch of the Week skin of this week in the list (never rolled)
+	pass: number?, -- a Tide Pass skin of this season (Config/Pass; never rolled)
 	blurb: string,
 }
 
@@ -128,12 +129,12 @@ local function skin(
 	}
 end
 
--- A skin every fish can earn (catch track, Catch of the Week), never rolled
+-- A skin every fish can earn (catch track, Catch of the Week, the Tide Pass), never rolled
 local function earned(
 	id: string,
 	name: string,
 	tier: string,
-	how: { catch: string?, week: number? },
+	how: { catch: string?, week: number?, pass: number? },
 	back: Color3,
 	belly: Color3,
 	fin: Color3,
@@ -145,6 +146,7 @@ local function earned(
 	made.refund = 0
 	made.catch = how.catch
 	made.week = how.week
+	made.pass = how.pass
 	return made
 end
 
@@ -1045,6 +1047,52 @@ local list: { Shade } = {
 		C(200, 140, 40),
 		"A mosaic of frosted sea glass. Week 4's catch."
 	),
+	-- The Tide Pass's skins (Config/Pass; owner, 2026-10-12), never rolled: cosmetics
+	-- up to Epic, since the elite skins stay RNG, bosses and treasure
+	earned(
+		"PassTideglass",
+		"Tideglass",
+		"Rare",
+		{ pass = 1 },
+		C(20, 102, 107),
+		C(87, 168, 163),
+		C(26, 87, 102),
+		"Frosted sea glass in teal, pale ripple lines and a pearl film. Season 1's free row, tier 20.",
+		{ material = Enum.Material.Glass, reflectance = 0.15 }
+	),
+	earned(
+		"PassRiptide",
+		"Riptide",
+		"Epic",
+		{ pass = 1 },
+		C(8, 26, 77),
+		C(26, 77, 143),
+		C(10, 31, 87),
+		"Deep ocean blue, foam streaks raking back, a glowing current along the flank. The Deep Pass's first reward.",
+		{ emissive = 0.9, pulse = "wave", aura = "bubbles", light = C(40, 190, 255) }
+	),
+	earned(
+		"PassUndertow",
+		"Undertow",
+		"Epic",
+		{ pass = 1 },
+		C(20, 10, 46),
+		C(41, 26, 87),
+		C(15, 10, 41),
+		"Ink violet with whirlpools of glowing teal spiralling down the flanks. Season 1's Deep Pass, tier 15.",
+		{ emissive = 1.1, pulse = "scan", aura = "motes", light = C(60, 200, 190) }
+	),
+	earned(
+		"PassAbyssalCurrent",
+		"Abyssal Current",
+		"Epic",
+		{ pass = 1 },
+		C(5, 18, 23),
+		C(13, 41, 46),
+		C(5, 15, 20),
+		"The deep's black-green water with a drifting current and bioluminescent motes. Season 1's Deep Pass, tier 30.",
+		{ emissive = 1.2, pulse = "twinkle", aura = "motes", light = C(90, 230, 200) }
+	),
 }
 
 local byId: { [string]: Shade } = {}
@@ -1177,7 +1225,9 @@ for species, ids in LINES do
 	lines[species] = line
 end
 for _, shade in list do
-	if shade.species == nil and not (shade.boss or shade.treasure or shade.catch or shade.week) then
+	if
+		shade.species == nil and not (shade.boss or shade.treasure or shade.catch or shade.week or shade.pass)
+	then
 		error(`Config/Shades: {shade.id} is in no fish's line`)
 	end
 end
@@ -1193,11 +1243,11 @@ local function fits(shadeId: string, speciesId: string): boolean
 end
 
 -- Whether a skin comes out of rolls (its fish's own; never trophies, treasure,
--- catch-track or weekly skins)
+-- catch-track, weekly or Tide Pass skins)
 local function rollable(shade: Shade): boolean
 	return shade.chance > 0
 		and shade.species ~= nil
-		and not (shade.boss or shade.treasure or shade.catch or shade.week)
+		and not (shade.boss or shade.treasure or shade.catch or shade.week or shade.pass)
 end
 
 return {

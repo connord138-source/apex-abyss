@@ -37,6 +37,7 @@ local dailyClaimed = makeEvent("DailyClaimed") -- (summary) to the claimer: a da
 local preyRarity = makeEvent("PreyRarity") -- ({ index }, { code }) to everyone: prey fish turned rare (code 0 = plain again)
 local caught = makeEvent("Caught") -- (summary) to the catcher: a rare catch, a first in the Catch Log, track progress, a skin unlocked
 local tideChanged = makeEvent("TideChanged") -- (tideId, endsAt) to everyone: the tide turned
+local passClaimed = makeEvent("PassClaimed") -- (summary) to the claimer: Tide Pass rewards claimed
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -65,6 +66,8 @@ local REQUESTS: { [string]: number } = {
 	DenPlace = 0.25, -- (slotId, itemId) furniture into a slot ("" clears it)
 	DenColor = 0.25, -- (glowId) the den's glow color
 	ClaimDaily = 1, -- () today's daily streak reward
+	ClaimGift = 0.5, -- () the next playtime gift that's ready (Config/Playtime)
+	ClaimPass = 0.5, -- () every Tide Pass reward unlocked and not yet claimed (Config/Pass)
 	WatchAd = 3, -- () a rewarded video ad (its reward: Double Haul on a small Haul)
 	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
 }
@@ -224,6 +227,10 @@ end
 
 function Net.gardenCollected(player: Player, summary: { [string]: any })
 	gardenCollected:FireClient(player, summary)
+end
+
+function Net.passClaimed(player: Player, summary: { [string]: any })
+	passClaimed:FireClient(player, summary)
 end
 
 function Net.dailyClaimed(player: Player, summary: { [string]: any })

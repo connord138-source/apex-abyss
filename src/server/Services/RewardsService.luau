@@ -7,13 +7,19 @@
 --    Day 1. The seven days loop, and each finished week adds a bonus.
 --  * The Roblox group perk: joining the group pays shells once (and members earn a
 --    little more coral, EconomyService.earnCoral). Off while the group id is 0.
+--  * RewardsService.grant pays out any reward bundle (Shared/Reward): the daily
+--    streak, the playtime gifts (PlaytimeService) and the Tide Pass (PassService)
+--    all use it, so a new kind of reward is added here once.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Reward = require(ReplicatedStorage.Shared.Reward)
+local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
+local Progress = require(script.Parent.Parent.Progress)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local HuntService = require(script.Parent.HuntService)
@@ -47,27 +53,49 @@ function RewardsService.dayOf(streak: number): (number, number)
 	return (math.max(streak, 1) - 1) % length + 1, 1 + Daily.weekBonus * weeks
 end
 
-local function claim(player: Player)
-	local data = DataService.get(player)
-	if data == nil then
-		return
-	end
-	local today = EconomyService.today()
-	local streak, waiting = nextStreak(data, today)
-	if not waiting then
-		Net.notify(player, "Today's reward is claimed. Come back tomorrow!", "info")
-		return
-	end
-	local day, bonus = RewardsService.dayOf(streak)
-	local reward = Daily.days[day]
+-- Pays a reward bundle out, `bonus` × its coral and shells, and names what was got
+-- ("300 coral", "a treasure map"). A skin goes to the fish the player swims as (the
+-- per-fish rule); a title is worn at once when none is; a den piece is owned.
+function RewardsService.grant(
+	player: Player,
+	data: PlayerData,
+	reward: Reward.Reward,
+	bonus: number?
+): { string }
+	local scale = bonus or 1
 	local got: { string } = {}
+	if reward.skin then
+		local shade = Config.Shades.byId[reward.skin]
+		local name = if shade then shade.name else reward.skin
+		if Progress.grantShade(data, reward.skin) then
+			table.insert(got, `the {name} skin ({Progress.species(data).name})`)
+		else
+			table.insert(got, `the {name} skin (already yours)`)
+		end
+	end
+	if reward.title then
+		data.titles[reward.title] = true
+		if data.title == "" then
+			data.title = reward.title
+			local character = player.Character
+			if character then
+				character:SetAttribute("Title", reward.title)
+			end
+		end
+		table.insert(got, `the "{reward.title}" title`)
+	end
+	if reward.den then
+		data.den.owned[reward.den] = true
+		local item = Config.Dens.itemsById[reward.den]
+		table.insert(got, `the {if item then item.name else reward.den} for your den`)
+	end
 	if reward.coral then
-		local coral = math.floor(reward.coral * bonus + 0.5)
+		local coral = math.floor(reward.coral * scale + 0.5)
 		EconomyService.addCoral(player, coral)
 		table.insert(got, `{Format.number(coral)} coral`)
 	end
 	if reward.shells then
-		local shells = math.floor(reward.shells * bonus + 0.5)
+		local shells = math.floor(reward.shells * scale + 0.5)
 		EconomyService.addShells(player, shells)
 		table.insert(got, `{Format.number(shells)} shells`)
 	end
@@ -90,11 +118,36 @@ local function claim(player: Player)
 		if TreasureService.give(player, reward.map) then
 			table.insert(got, "a treasure map")
 		else
-			-- The satchel is full: coral instead, so the day still pays
+			-- The satchel is full: coral instead, so the reward still pays
 			EconomyService.addCoral(player, 500)
 			table.insert(got, "500 coral (your satchel was full)")
 		end
 	end
+	if reward.xp then
+		Events.passXp:fire(player, reward.xp, "reward")
+		table.insert(got, `{Format.number(reward.xp)} pass XP`)
+	end
+	DataService.markDirty(player)
+	return got
+end
+
+local function claim(player: Player)
+	local data = DataService.get(player)
+	if data == nil then
+		return
+	end
+	local today = EconomyService.today()
+	local streak, waiting = nextStreak(data, today)
+	if not waiting then
+		Net.notify(player, "Today's reward is claimed. Come back tomorrow!", "info")
+		return
+	end
+	local day, bonus = RewardsService.dayOf(streak)
+	local reward = Daily.days[day]
+	local got = RewardsService.grant(player, data, reward, bonus)
+	-- A claim is a day played: Tide Pass XP (Config/Pass xp.daily)
+	Events.passXp:fire(player, Config.Pass.xp.daily, "daily")
+	table.insert(got, `{Config.Pass.xp.daily} pass XP`)
 	data.daily = { day = today, streak = streak, best = math.max(data.daily.best, streak) }
 	lastClaimable[player] = false
 	DataService.markDirty(player)

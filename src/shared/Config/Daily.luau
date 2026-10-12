@@ -4,15 +4,9 @@
 -- after the last claim moves the streak on; missing a day starts it again at Day 1.
 -- The seven days loop, and every finished week adds `weekBonus` to the coral and
 -- shells (up to `maxWeeks` weeks), so a long streak is worth keeping.
-export type Reward = {
-	coral: number?,
-	shells: number?,
-	wraps: number?, -- Kelp Wraps (up to the carry cap)
-	charms: { [string]: number }?, -- Config/Shop charm id → count
-	map: string?, -- a Config/Treasure tier
-	spins: number?, -- Treasure Wheel spins (Config/Wheel)
-	big: boolean?, -- the day the ladder builds to (drawn larger)
-}
+local Rewards = require(script.Parent.Rewards)
+
+export type Reward = Rewards.Reward -- (`big` is the day the ladder builds to, drawn larger)
 
 local days: { Reward } = {
 	{ coral = 300 },

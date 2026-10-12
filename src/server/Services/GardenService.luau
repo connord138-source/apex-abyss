@@ -47,7 +47,11 @@ local GardenService = {}
 local watches: { [Player]: Watch } = {}
 
 local function ratesOf(player: Player, data: PlayerData): Garden.Rates
-	return Garden.rates(data.den.level, MonetizationService.hasPass(player, "DeepGarden"))
+	return Garden.rates(
+		data.den.level,
+		MonetizationService.hasPass(player, "DeepGarden"),
+		if MonetizationService.isPremium(player) then Config.Monetization.tuning.premium.gardenHours else 0
+	)
 end
 
 -- Whether the player's fish is inside their own den right now

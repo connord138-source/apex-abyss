@@ -129,6 +129,7 @@ local function advance(player: Player, kind: string, amount: number, rarityId: s
 			local got = pay(player, data, bounty.reward)
 			local text = string.gsub(bounty.text, "{n}", tostring(bounty.count))
 			Net.notify(player, `BOUNTY DONE · {text} · {table.concat(got, ", ")}`, "good")
+			Events.bounty:fire(player, "done")
 		end
 	end
 	if changed then
@@ -140,6 +141,7 @@ local function advance(player: Player, kind: string, amount: number, rarityId: s
 			data.bounties.chest = true
 			local got = pay(player, data, Bounties.chest)
 			Net.notify(player, `BOUNTY CHEST · {table.concat(got, ", ")}`, "rare")
+			Events.bounty:fire(player, "chest")
 		end
 		DataService.markDirty(player)
 	end

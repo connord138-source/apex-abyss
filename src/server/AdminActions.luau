@@ -24,6 +24,8 @@ local FishService = require(script.Parent.Services.FishService)
 local GardenService = require(script.Parent.Services.GardenService)
 local HuntService = require(script.Parent.Services.HuntService)
 local MonetizationService = require(script.Parent.Services.MonetizationService)
+local PassService = require(script.Parent.Services.PassService)
+local PlaytimeService = require(script.Parent.Services.PlaytimeService)
 local TreasureService = require(script.Parent.Services.TreasureService)
 local TutorialService = require(script.Parent.Services.TutorialService)
 local WardrobeService = require(script.Parent.Services.WardrobeService)
@@ -529,7 +531,57 @@ local function wheelLand(_admin: Player, targets: { Player }, index: any): strin
 	return `{names(targets)}'s next spin lands on {segment.label}`
 end
 
+-- Playtime gifts and the Tide Pass
+local function playtimeAdd(_admin: Player, targets: { Player }, minutes: any): string
+	local n = amountOf(minutes, -600)
+	if n == nil then
+		return "Give minutes"
+	end
+	for _, player in targets do
+		PlaytimeService.addMinutes(player, n)
+	end
+	return `{names(targets)}: {if n >= 0 then "+" else ""}{n} min played today`
+end
+
+local function playtimeReset(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		PlaytimeService.reset(player)
+	end
+	return `{names(targets)}: today's playtime starts again`
+end
+
+local function passXp(_admin: Player, targets: { Player }, amount: any): string
+	local n = amountOf(amount, 1)
+	if n == nil then
+		return "Give an amount"
+	end
+	for _, player in targets do
+		PassService.addXp(player, n, "admin")
+	end
+	return `{names(targets)}: +{n} Tide Pass XP`
+end
+
+local function passPaid(_admin: Player, targets: { Player }, which: any): string
+	local on = which == "on"
+	for _, player in targets do
+		PassService.setPaid(player, on)
+	end
+	return `{names(targets)}: Deep Pass {if on then "bought" else "not bought"} this season`
+end
+
+local function passRestart(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		PassService.restart(player)
+	end
+	return `{names(targets)}: Tide Pass record started again`
+end
+
 AdminActions.byName = {
+	playtimeAdd = playtimeAdd :: Handler,
+	playtimeReset = playtimeReset :: Handler,
+	passXp = passXp :: Handler,
+	passPaid = passPaid :: Handler,
+	passRestart = passRestart :: Handler,
 	addCoral = addCoral :: Handler,
 	setCoral = setCoral :: Handler,
 	addShells = addShells :: Handler,

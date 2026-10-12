@@ -373,6 +373,16 @@ local function build()
 	end
 	pickRow("Leaderboard: add to my score", boards, "boardPoints", "ADD", "amount")
 
+	header("PLAYTIME GIFTS · TIDE PASS")
+	amountRow("Playtime: add minutes played today", "minutes", "playtimeAdd", -600, "ADD")
+	actionRow("Playtime: start today again", "playtimeReset", "RESET", "danger")
+	amountRow("Tide Pass: add XP", "xp", "passXp", 1, "ADD")
+	pickRow("Tide Pass: the Deep Pass", {
+		{ label = "Bought this season", value = "on" },
+		{ label = "Not bought", value = "off" },
+	}, "passPaid", "SET")
+	actionRow("Tide Pass: start the record again", "passRestart", "RESTART", "danger")
+
 	header("TREASURE WHEEL")
 	amountRow("Wheel: give spins", "spins", "wheelSpins", 1, "GIVE")
 	local slices: { { label: string, value: any } } = {}

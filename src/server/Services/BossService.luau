@@ -916,6 +916,7 @@ local function rewards(boss: Boss, killer: Player?)
 		end
 		data.stats.bossKills += 1
 		Events.ate:fire(player, 1)
+		Events.bossKill:fire(player)
 		DataService.markDirty(player)
 		Net.bossReward(player, summary)
 		Events.trophies:fire(player)

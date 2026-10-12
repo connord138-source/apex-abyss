@@ -29,6 +29,8 @@ local CatchService = require(Services.CatchService)
 local BountyService = require(Services.BountyService)
 local LeaderboardService = require(Services.LeaderboardService)
 local WheelService = require(Services.WheelService)
+local PlaytimeService = require(Services.PlaytimeService)
+local PassService = require(Services.PassService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -58,6 +60,8 @@ CatchService.start() -- rare catches: which fish are rare, the Catch Log, catch 
 BountyService.start() -- daily bounties and the Bounty Chest
 LeaderboardService.start() -- weekly leaderboards and last week's titles
 WheelService.start() -- the Treasure Wheel: spins, the line, prizes, free spins
+PlaytimeService.start() -- playtime gifts: a ladder of gifts for minutes played today, Premium's daily spin
+PassService.start() -- the Tide Pass: season XP from play, the free and Deep Pass rows
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

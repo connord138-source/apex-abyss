@@ -20,4 +20,7 @@ return {
 	bitPredator = Signal.new(), -- (player, predatorId, boss) a bite on an AI hunter or a world boss landed
 	bossDamage = Signal.new(), -- (player, amount) damage dealt to a world boss
 	treasure = Signal.new(), -- (player, tierId) a treasure chest dug up
+	bounty = Signal.new(), -- (player, "done" | "chest") a daily bounty finished, or the chest paid
+	bossKill = Signal.new(), -- (player) a world boss kill the player helped with
+	passXp = Signal.new(), -- (player, amount, reason) Tide Pass XP from a claim (the daily streak, a playtime gift)
 }

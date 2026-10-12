@@ -103,6 +103,12 @@ export type PlayerData = {
 	-- The Treasure Wheel (Config/Wheel): spins waiting, and when the free-spin clock
 	-- last paid (Unix; 0 = never: a new player's first spin)
 	wheel: { spins: number, lastFree: number },
+	-- Playtime gifts (Config/Playtime): the UTC day, seconds played that day, how many
+	-- gifts on the ladder were claimed, and the last day Premium's free spin came
+	playtime: { day: number, seconds: number, claimed: number, premiumDay: number },
+	-- The Tide Pass (Config/Pass): the season the record is for, its XP, how many
+	-- tiers were claimed on each row, and whether this season's Deep Pass is bought
+	pass: { season: number, xp: number, claimedFree: number, claimedPaid: number, paid: boolean },
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
@@ -164,6 +170,8 @@ local TEMPLATE: PlayerData = {
 	weekly = { week = 0, scores = {}, featured = false },
 	lbChecked = 0,
 	wheel = { spins = 0, lastFree = 0 },
+	playtime = { day = 0, seconds = 0, claimed = 0, premiumDay = 0 },
+	pass = { season = 0, xp = 0, claimedFree = 0, claimedPaid = 0, paid = false },
 	passes = {},
 	groupRewarded = false,
 	purchaseIds = {},

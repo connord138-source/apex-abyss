@@ -324,6 +324,38 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     top-right corner on every screen. `Ads.luau` doesn't poll in Studio (Studio
     never serves ads, and each check logged a warning).
   - **Later:** codes, Pearl crates, the Roblox group (id 0 in `tuning.group`).
+- **Creator Rewards round (owner, 2026-10-12: "We need monetizable assets that pay
+  based on play time as well with rewards"; built):** Roblox's Creator Rewards (July
+  2025, replacing Premium Payouts) pay 5 Robux each time an Active Spender (≥ $9.99
+  spent in 60 days) plays ≥ 10 minutes in a day, for their first three games that
+  day, plus 35% of a new player's first $100. Built for it (GDD §9 "Creator Rewards"):
+  - **Playtime gifts** (`Config/Playtime`, `PlaytimeService`, `data.playtime`): a
+    ladder at 5/10/15/25/40/60/90 minutes played today (UTC), counted every 5 s for
+    every player in the server; claimed one at a time from the DAILY panel (a gift
+    strip under the streak, CLAIM GIFT); the DAILY button reads GIFT m:ss, GIFT !
+    (gold, breathing) or DAILY ! (the streak wins). Each gift gives Tide Pass XP.
+  - **Premium perks** (`Config/Monetization` `tuning.premium`): ×1.5 gift coral and
+    shells, 1 free wheel spin a day (first tick of the day), +4 h Coral Garden
+    (`Garden.rates` third argument) and a `Premium` character attribute → a pale
+    blue ◆ before the name (`NametagController`). GET PREMIUM sits beside CLAIM GIFT
+    for non-members and in the Shop's Free Perks row; never a wall.
+  - **The Tide Pass** (`Config/Pass`, `PassService`, `MenuController.openPass`,
+    PASS button, `data.pass`): 4-week seasons on `Tides.week` from 2026-10-12, 30
+    tiers × 2,000 XP; XP from `Events.banked/caught/bounty/bossKill/treasure/passXp`
+    (new signals `bounty`, `bossKill`, `passXp`); free row + the **Deep Pass**
+    developer product (399 R$, id 0 until created, `shop = false`, bought from the
+    panel; `data.pass.paid`, per season, ×1.2 XP); CLAIM ALL claims everything
+    unlocked; Overtide 500 coral per 2,000 XP past tier 30; a season turning claims
+    what was unlocked and resets. Season 1 "Riptide" skins: PassTideglass (Rare,
+    free 20), PassRiptide (Epic, paid 1), PassUndertow (Epic, paid 15),
+    PassAbyssalCurrent (Epic, paid 30), `pass = 1` in `Config/Shades` (never
+    rolled; recipes `pass_*` in make_shades.py; the universal list in lines.json).
+    Pass rewards stay ≤ Epic.
+  - **Shared reward bundles:** `Config/Rewards.luau` holds the `Reward` type (coral,
+    shells, wraps, charms, map, spins, skin, title, den, xp); `Shared/Reward.lines`
+    describes one for a tile; `RewardsService.grant(player, data, reward, bonus)`
+    pays one out (daily, gifts, pass all use it). Admin: playtime minutes/reset,
+    pass XP, Deep Pass on/off, pass restart.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -1088,7 +1120,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   2026-10-06, and 2,350 were left after the biome and boss concepts. The budget plan is in GDD
   §8.
 - **Not built yet:**
-  - codes, Pearl crates, the Roblox group perk (id 0), pass and product icons
+  - codes, Pearl crates, the Roblox group perk (id 0), pass and product icons;
+    the Deep Pass product id (create it in Creator Hub, 399 R$)
   - chum clouds, Pods and the Apex bounty
   - boats and hooks, depth pressure
   - models for the growth stages and the other biomes;
