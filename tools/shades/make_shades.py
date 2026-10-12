@@ -2743,8 +2743,10 @@ def pass_undertow(m):  # Undertow: ink violet, whirlpools of glowing teal spiral
     m = smooth(m)
     u, v, vn = height(m)
     _, half = girth(m)
-    rgb = body_coat(m, (0.08, 0.04, 0.18), (0.16, 0.10, 0.34), soft=0.3)
-    rgb = mix(rgb, (0.06, 0.04, 0.16), m.fin * 0.7)
+    # Mid-toned violet, teal spirals (not near-white) under a wide soft halo: thin
+    # pale lines on a dark body trip the skin screen (0.21-0.24 on three fish)
+    rgb = body_coat(m, (0.13, 0.08, 0.28), (0.22, 0.15, 0.44), soft=0.3)
+    rgb = mix(rgb, (0.10, 0.07, 0.24), m.fin * 0.7)
     rng = np.random.default_rng(55)
     swirl = np.zeros(u.shape, np.float32)
     for k in range(5):
@@ -2752,12 +2754,12 @@ def pass_undertow(m):  # Undertow: ink violet, whirlpools of glowing teal spiral
         cv = (rng.random() - 0.5) * 0.7 * half(cu)
         radius = max(0.45 * half(cu), 0.02)
         flip = 1.0 if k % 2 == 0 else -1.0
-        swirl = np.maximum(swirl, spiral(u, v, (cu, cv), radius, turns_rate=5.0, width=0.0024, flip=flip))
+        swirl = np.maximum(swirl, spiral(u, v, (cu, cv), radius, turns_rate=5.0, width=0.0032, flip=flip))
     swirl = swirl * (1 - m.fin) * m.cov
-    halo = glow_halo(swirl > 0.3, 5)
-    rgb = mix(rgb, (0.10, 0.72, 0.70), halo * 0.5)
-    rgb = mix(rgb, (0.55, 1.0, 0.92), swirl)
-    emit = swirl[..., None] * C(0.45, 1.0, 0.90) + (halo * 0.3)[..., None] * C(0.10, 0.70, 0.68)
+    halo = glow_halo(swirl > 0.3, 9)
+    rgb = mix(rgb, (0.12, 0.60, 0.62), halo * 0.6)
+    rgb = mix(rgb, (0.22, 0.86, 0.80), swirl)
+    emit = swirl[..., None] * C(0.20, 0.85, 0.78) + (halo * 0.45)[..., None] * C(0.10, 0.60, 0.58)
     return done(m, rgb, "gloss", emit=emit, detail=0.7)
 
 
