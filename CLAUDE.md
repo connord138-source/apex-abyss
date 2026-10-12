@@ -200,6 +200,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     body's middles (on the smooth frame it still kinked behind the pectoral fin) and
     the 'Cuda's Blackfin is deep navy over silver (Great's twin from afar); only the
     Puffer and 'Cuda GLBs changed; the bundle is hosted (sha256 87721930...).
+    **v7 (2026-10-12):** the four Tide Pass skins on every fish (27 a fish, 162;
+    sha256 72895dd2...); Undertow's spirals are teal under a wide halo on a
+    mid-toned violet, since thin pale lines on its dark body scored 0.21–0.24.
     Every worn skin is fetched ahead when another player wears it (player
     attributes `WornShade`/`WornSpecies` → `CardPhoto.preloadSkin`).
 - **The pull-back loop (owner, 2026-10-10: "I still feel like we're missing a factor
