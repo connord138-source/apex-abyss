@@ -724,7 +724,48 @@ end
 
 -- Living shades: each dressed body's worn skins and glow light, so animate drives
 -- the glow without searching the body every frame
-type Live = { skins: { SurfaceAppearance }, light: PointLight?, phase: number }
+type Live = {
+	skins: { SurfaceAppearance },
+	light: PointLight?,
+	phase: number,
+	sheens: { Texture }, -- the moving layer's six faces per part (Config/Shades `sheen`)
+}
+
+-- The faces a moving layer is projected from (a MeshPart takes a Texture as a
+-- projection from each face, as Hatch & Snatch's galaxy finish found)
+local SHEEN_FACES = {
+	Enum.NormalId.Left,
+	Enum.NormalId.Right,
+	Enum.NormalId.Top,
+	Enum.NormalId.Bottom,
+	Enum.NormalId.Front,
+	Enum.NormalId.Back,
+}
+
+-- The layer that moves across a shade's skin: six Textures per part, slid every
+-- frame by Cosmetics.animate. Nothing while its image isn't uploaded (id 0).
+local function sheenLayers(part: BasePart, shade: ShadesConfig.Shade, length: number): { Texture }
+	local sheen = shade.sheen
+	local id = if sheen then (Config.Textures :: { [string]: number })[sheen.texture] else nil
+	if sheen == nil or typeof(id) ~= "number" or id == 0 then
+		return {}
+	end
+	local layers: { Texture } = {}
+	for _, face in SHEEN_FACES do
+		local texture = Instance.new("Texture")
+		texture.Name = "Sheen"
+		texture.Face = face
+		texture.Texture = `rbxassetid://{id}`
+		texture.Transparency = sheen.transparency
+		texture.Color3 = sheen.color or Color3.new(1, 1, 1)
+		texture.StudsPerTileU = sheen.tile * length
+		texture.StudsPerTileV = sheen.tile * length
+		texture:SetAttribute("ShadeEffect", true)
+		texture.Parent = part
+		table.insert(layers, texture)
+	end
+	return layers
+end
 local live: { [Model]: Live } = setmetatable({}, { __mode = "k" }) :: any
 
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
@@ -938,6 +979,7 @@ local function paint(body: Model, look: FishBuilder.Look, shadeId: string?, leng
 		skins = {},
 		light = glowLight(core, shade, length),
 		phase = math.random() * 20,
+		sheens = {},
 	}
 	aura(core, shade, length)
 end
@@ -1006,6 +1048,7 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 		else Color3.new(1, 1, 1)
 	local core: BasePart? = nil
 	local worn: { SurfaceAppearance } = {}
+	local sheens: { Texture } = {}
 	live[body] = nil
 	for _, descendant in mesh:GetDescendants() do
 		if descendant:GetAttribute("ShadeEffect") or descendant.Name == "ShadeSkin" then
@@ -1019,6 +1062,11 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 		local part = descendant :: MeshPart
 		core = core or part
 		local ownTexture = part:GetAttribute("OwnTexture")
+		if shade then
+			for _, layer in sheenLayers(part, shade, length) do
+				table.insert(sheens, layer)
+			end
+		end
 		if spectral then
 			holdOwn(part, true)
 			part.Color = (shade :: ShadesConfig.Shade).back
@@ -1066,6 +1114,7 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 		skins = worn,
 		light = glowLight(core, shade, length),
 		phase = math.random() * 20,
+		sheens = sheens,
 	}
 	aura(core, shade, length)
 end
@@ -1120,6 +1169,32 @@ function Cosmetics.animate(body: Model, shadeId: string?, t: number)
 		return
 	end
 	local state = live[body]
+	local sheen = shade.sheen
+	if state and sheen and #state.sheens > 0 then
+		-- The moving layer: slides along the body (U on the side faces) and drifts
+		-- across it, one tile every 1/speed seconds, sized to the fish as it grows
+		local drawn = body:GetAttribute("Applied")
+		local studs = sheen.tile * (if typeof(drawn) == "number" then drawn else 2)
+		local along = ((t + state.phase) * sheen.speed % 1) * studs
+		local across = ((t + state.phase) * (sheen.drift or 0) % 1) * studs
+		for _, layer in state.sheens do
+			if layer.StudsPerTileU ~= studs then
+				layer.StudsPerTileU = studs
+				layer.StudsPerTileV = studs
+			end
+			local face = layer.Face
+			if face == Enum.NormalId.Front or face == Enum.NormalId.Back then
+				layer.OffsetStudsU = across
+				layer.OffsetStudsV = along
+			elseif face == Enum.NormalId.Left or face == Enum.NormalId.Right then
+				layer.OffsetStudsU = along
+				layer.OffsetStudsV = across
+			else
+				layer.OffsetStudsU = across
+				layer.OffsetStudsV = along
+			end
+		end
+	end
 	if state and (shade.pulse or shade.cycle) then
 		-- The glow map and the light move together; a cycling shade's glow rolls
 		-- through the rainbow too

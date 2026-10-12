@@ -15,6 +15,20 @@ export type Pulse = "breathe" | "heartbeat" | "flicker" | "wave" | "twinkle" | "
 -- What drifts off a fish in the shade (Cosmetics.aura)
 export type Aura = "glints" | "embers" | "frost" | "sparks" | "stars" | "motes" | "bubbles" | "ink"
 
+-- A moving layer over the skin (owner, 2026-10-12: "prismatic needs to be moving
+-- across the fish not just static. same with the other highest rarity skins"): a
+-- tiling texture (a key in Config/Textures) on every face of the mesh that slides
+-- `speed` tiles a second along the body (negative: backwards), one tile every
+-- `tile` body lengths, at `transparency`, tinted `color`. Cosmetics draws it.
+export type Sheen = {
+	texture: string,
+	speed: number,
+	tile: number,
+	transparency: number,
+	color: Color3?,
+	drift: number?, -- a slow slide across the body too (tiles a second)
+}
+
 export type Shade = {
 	id: string,
 	name: string,
@@ -34,6 +48,7 @@ export type Shade = {
 	lampBoost: number?, -- its light is this much brighter in the dark (a colour that reads weak there)
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
+	sheen: Sheen?, -- a layer that moves across the skin (the top skins)
 	-- Living shades (owner, 2026-10-08: "much much more variance and depth"): how
 	-- bright the skin's glow map burns (SurfaceAppearance.EmissiveStrength), how the
 	-- glow moves, and what drifts off the fish. Cosmetics reads them.
@@ -360,6 +375,7 @@ local list: { Shade } = {
 	{
 		id = "Diamond",
 		name = "Diamond",
+		sheen = { texture = "sheenSparkle", speed = 0.1, tile = 0.9, transparency = 0.3, drift = 0.03 },
 		tier = "Epic",
 		chance = 250,
 		refund = 2000,
@@ -418,6 +434,7 @@ local list: { Shade } = {
 	{
 		id = "Divine",
 		name = "Divine",
+		sheen = { texture = "sheenGold", speed = 0.07, tile = 1.1, transparency = 0.3, drift = -0.02 },
 		tier = "Legendary",
 		chance = 500,
 		refund = 4000,
@@ -433,6 +450,7 @@ local list: { Shade } = {
 	{
 		id = "Aurora",
 		name = "Aurora",
+		sheen = { texture = "sheenVeil", speed = 0.16, tile = 1.4, transparency = 0.45, drift = 0.05 },
 		tier = "Legendary",
 		chance = 650,
 		refund = 4500,
@@ -467,6 +485,7 @@ local list: { Shade } = {
 	{
 		id = "Exotic",
 		name = "Exotic",
+		sheen = { texture = "sheenSparkle", speed = 0.2, tile = 1.0, transparency = 0.45, drift = 0.04 },
 		tier = "Mythic",
 		chance = 900,
 		refund = 7000,
@@ -481,6 +500,7 @@ local list: { Shade } = {
 	{
 		id = "Prismatic",
 		name = "Prismatic",
+		sheen = { texture = "sheenPrismatic", speed = 0.35, tile = 1.3, transparency = 0.32, drift = 0.08 },
 		tier = "Mythic",
 		chance = 1500,
 		refund = 12000,
@@ -499,6 +519,7 @@ local list: { Shade } = {
 	{
 		id = "Nebula",
 		name = "Nebula",
+		sheen = { texture = "stars", speed = 0.04, tile = 1.6, transparency = 0.35, drift = 0.015 },
 		tier = "Mythic",
 		chance = 1800,
 		refund = 14000,
@@ -515,6 +536,14 @@ local list: { Shade } = {
 	{
 		id = "Void",
 		name = "Void",
+		sheen = {
+			texture = "sheenVeil",
+			speed = -0.1,
+			tile = 1.2,
+			transparency = 0.55,
+			color = Color3.fromRGB(170, 90, 255),
+			drift = -0.03,
+		},
 		tier = "Mythic",
 		chance = 2200,
 		refund = 16000,

@@ -30,4 +30,5 @@ return {
 	Wheel = require(script.Wheel),
 	Playtime = require(script.Playtime),
 	Pass = require(script.Pass),
+	Textures = require(script.Textures),
 }
