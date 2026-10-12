@@ -428,7 +428,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     holding pupil pixels inside a smaller sphere. Diamond is a cut-gem retexture
     (bevelled facets with dispersion fire, mirror, relief 1.6) and Prismatic a
     holographic foil (diffraction lines, hue-shifted cells, pearl, metal). Bundle
-    v8: sha256 V8SHA.
+    v8: sha256 6e4ab557….
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
