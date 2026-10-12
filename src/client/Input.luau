@@ -6,8 +6,11 @@
 --             menus, tap again or click the game to lock it; hold Alt for a
 --             moment's cursor), the wheel zooms,
 --             WASD or the arrows swim toward the camera, Space / Ctrl up and
---             down, Shift or Q uses the ability (the Nibbler's Dash), click or F
---             bites, E shops at a stall
+--             down, LEFT CLICK uses the ability (the Nibbler's Dash), RIGHT
+--             CLICK bites, E shops at a stall. Just the two mouse buttons for
+--             the fish (owner, 2026-10-12: "too many buttons that boost the fish.
+--             Should only be left click to boost right click to bite"); smaller
+--             fish are swallowed by swimming into them, no button.
 --   Gamepad:  left stick up swims ahead (further = faster), sideways turns, down
 --             backs up; right stick aims (up and down too); RT ability, RB or X
 --             bites, A / B up and down, Y shops at a stall
@@ -71,11 +74,31 @@ local function deadZone(position: Vector2): Vector2
 	return position.Unit * math.min((magnitude - 0.15) / 0.85, 1)
 end
 
+-- Keeps the cursor locked to the window's centre while the fish is being steered
+-- (owner, 2026-10-12: "easy for the mouse to scroll off of the screen onto my other
+-- screen"). The engine drops MouseBehavior back to Default on its own now and then
+-- (focus lost and regained, a core GUI opening and closing, a respawn), so this is
+-- asserted every frame, before the camera reads the mouse and again on every mouse
+-- move, instead of trusting one write to stick. While a menu or the Alt toggle
+-- has freed the cursor it is an ordinary pointer, and Roblox has no way to fence
+-- one inside a window on a second monitor.
+local function holdMouseLock()
+	if Input.wantsMouseLock() then
+		if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		end
+		if UserInputService.MouseIconEnabled then
+			UserInputService.MouseIconEnabled = false
+		end
+	end
+end
+
 -- The sticks, read from the pad's own state every frame as well as from events: a
 -- release that sends no near-zero InputChanged (Studio's Controller Emulator sends
 -- InputChanged (0, 1), then InputEnded) left the fish swimming and the camera
 -- spinning on their own (playtest 2026-10-07), so a missed event can never stick.
 local function pollSticks()
+	holdMouseLock()
 	local pad = stickPad
 	if pad == nil then
 		return
@@ -154,28 +177,29 @@ function Input.start()
 		elseif key == Enum.KeyCode.M then
 			setCursor(not Input.cursorToggled)
 		end
+		local mouse = input.UserInputType
+		local isMouse = mouse == Enum.UserInputType.MouseButton1 or mouse == Enum.UserInputType.MouseButton2
 		-- With the cursor freed, a click on the game (not on a button) takes the mouse
-		-- back for swimming; it doesn't bite
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			and Input.cursorToggled
-			and not Input.cursorWanted
-		then
+		-- back for swimming; it doesn't dash or bite
+		if isMouse and Input.cursorToggled and not Input.cursorWanted then
 			if not overPanel(input.Position) then
 				setCursor(false)
 			end
 			return
 		end
+		if isMouse and not Input.wantsMouseLock() then
+			-- A menu has the cursor: its buttons take the click
+			return
+		end
 		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or key == Enum.KeyCode.F
+			mouse == Enum.UserInputType.MouseButton2
 			or key == Enum.KeyCode.ButtonR1
 			or key == Enum.KeyCode.ButtonX
 		then
 			if not Input.locked then
 				Input.bite:fire()
 			end
-		elseif key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.Q or key == Enum.KeyCode.ButtonR2 then
+		elseif mouse == Enum.UserInputType.MouseButton1 or key == Enum.KeyCode.ButtonR2 then
 			if not Input.locked then
 				Input.ability:fire()
 			end
@@ -202,7 +226,9 @@ function Input.start()
 		end
 	end)
 	UserInputService.InputChanged:Connect(function(input: InputObject, processed: boolean)
-		if input.UserInputType == Enum.UserInputType.Touch and lookTouches[input] then
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			holdMouseLock()
+		elseif input.UserInputType == Enum.UserInputType.Touch and lookTouches[input] then
 			touchLook += Vector2.new(input.Delta.X, input.Delta.Y)
 		elseif input.UserInputType == Enum.UserInputType.MouseWheel then
 			if not processed then
@@ -221,6 +247,7 @@ function Input.start()
 		table.clear(lookTouches)
 		stick1, stick2, touchMove = Vector2.zero, Vector2.zero, Vector2.zero
 	end)
+	UserInputService.WindowFocused:Connect(holdMouseLock)
 	-- Before the camera and the swim read them this frame
 	RunService:BindToRenderStep("ApexSticks", Enum.RenderPriority.Input.Value, pollSticks)
 end
@@ -279,10 +306,11 @@ function Input.vertical(): number
 	return (if up then 1 else 0) - (if dive then 1 else 0)
 end
 
--- Whether the mouse should be locked for looking right now.
+-- Whether the mouse should be locked for looking right now. (A PC with a touch
+-- screen still has a mouse: only a touch-only device keeps a free pointer.)
 function Input.wantsMouseLock(): boolean
 	return UserInputService.MouseEnabled
-		and not UserInputService.TouchEnabled
+		and not Input.isTouch()
 		and not Input.cursorWanted
 		and not Input.cursorToggled
 		and not down("LeftAlt")
@@ -310,6 +338,25 @@ end
 
 function Input.isTouch(): boolean
 	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+end
+
+-- The names of the two fish buttons on this device, for hints and the tutorial
+function Input.biteKey(): string
+	if Input.isTouch() then
+		return "BITE"
+	elseif Input.isGamepad() then
+		return "RB"
+	end
+	return "RIGHT CLICK"
+end
+
+function Input.dashKey(): string
+	if Input.isTouch() then
+		return "DASH"
+	elseif Input.isGamepad() then
+		return "RT"
+	end
+	return "LEFT CLICK"
 end
 
 function Input.isGamepad(): boolean

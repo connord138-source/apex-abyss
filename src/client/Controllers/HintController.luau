@@ -53,12 +53,7 @@ local swallowed = 0 -- prey and forage eaten this session
 local leftHubAt: number? = nil
 
 local function biteKey(): string
-	if Input.isTouch() then
-		return "BITE"
-	elseif Input.isGamepad() then
-		return "RB"
-	end
-	return "F / CLICK"
+	return Input.biteKey()
 end
 
 local function textFor(kind: Kind): string

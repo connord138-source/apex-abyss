@@ -131,7 +131,7 @@ owner disliked "Molt" and this was the recommended replacement.*
 these changes:
 
 - The Nibbler's only ability is a small **Dash** that recharges (no options). It's
-  built: Shift, Q or RT; the touch DASH button.
+  built: left click or RT; the touch DASH button (owner, 2026-10-12: only the two mouse buttons steer the fish: left click dashes, right click bites).
 - A newly unlocked species starts at level 1 (tunable).
 - The **safe zone** is the dens plus the vendor plaza. A banner says when you leave it
   ("LEAVING THE SAFE ZONE", with a protection countdown) and when you're back. Built.

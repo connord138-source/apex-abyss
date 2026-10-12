@@ -396,11 +396,20 @@ end
 
 local function biteKey(): string
 	if device == "touch" then
-		return "the BITE button"
+		return "The BITE button"
 	elseif device == "gamepad" then
 		return "RB or X"
 	end
-	return "Click or F"
+	return "Right click"
+end
+
+local function dashKey(): string
+	if device == "touch" then
+		return "DASH"
+	elseif device == "gamepad" then
+		return "RT"
+	end
+	return "Left click"
 end
 
 local function ready(): boolean
@@ -873,7 +882,7 @@ function StartController.start()
 	local biteLine = guideCard(2, "BITE", "", Ui.color.danger)
 	guideCard(3, "BANK", "Swim home to your den's pool to keep what you ate.", Ui.color.haul)
 	local function refreshBite()
-		biteLine.Text = `{biteKey()} bites fish your size, predators and bosses.`
+		biteLine.Text = `{biteKey()} bites fish your size, predators and bosses. {dashKey()} dashes.`
 	end
 	refreshBite()
 
