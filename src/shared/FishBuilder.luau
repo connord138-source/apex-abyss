@@ -172,6 +172,10 @@ function FishBuilder.buildMesh(body: Model, root: BasePart, template: Model, len
 	model:ScaleTo(1)
 	local extents = model:GetExtentsSize()
 	local unitScale = 1 / math.max(extents.Z, 0.01)
+	-- The body's width and height as fractions of its length (Cosmetics hangs parts
+	-- off the box: a sail on the back, spikes round the belly)
+	body:SetAttribute("UnitW", extents.X * unitScale)
+	body:SetAttribute("UnitH", extents.Y * unitScale)
 	model:ScaleTo(unitScale * length)
 	-- Center the body on the root, nose forward (-Z)
 	model:PivotTo(CFrame.new())
@@ -209,23 +213,27 @@ function FishBuilder.scaled(cframe: CFrame, scale: number): CFrame
 end
 
 -- Resizes a built body to `length` studs (every client eases this as the fish grows).
+-- A mesh body is drawn `MeshScale` times bigger than its length when an exotic
+-- variant inflates it (Cosmetics); `Applied` holds the drawn length.
 function FishBuilder.applyScale(body: Model, length: number)
 	local mesh = body:FindFirstChild("Mesh")
 	local unitScale = body:GetAttribute("UnitScale")
 	if mesh and mesh:IsA("Model") and typeof(unitScale) == "number" then
+		local meshScale = body:GetAttribute("MeshScale")
+		local drawn = length * (if typeof(meshScale) == "number" then meshScale else 1)
 		-- ScaleTo scales the bones with the mesh; the Motor6D's C1 follows the
 		-- primary part's offset
-		mesh:ScaleTo(unitScale * length)
+		mesh:ScaleTo(unitScale * drawn)
 		local primary = mesh.PrimaryPart or mesh:FindFirstChildWhichIsA("MeshPart", true)
 		local joint = primary and primary:FindFirstChild("Mesh")
 		if primary and joint and joint:IsA("Motor6D") then
 			local applied = body:GetAttribute("Applied")
 			if typeof(applied) == "number" and applied > 0 then
 				local c1 = joint.C1
-				joint.C1 = CFrame.new(c1.Position * (length / applied)) * c1.Rotation
+				joint.C1 = CFrame.new(c1.Position * (drawn / applied)) * c1.Rotation
 			end
 		end
-		body:SetAttribute("Applied", length)
+		body:SetAttribute("Applied", drawn)
 	end
 	for _, child in body:GetChildren() do
 		if child:IsA("BasePart") then

@@ -69,6 +69,7 @@ for _, variant in Config.Exotics.variants do
 		tier = "Abyssal",
 		chance = variant.chance,
 		refund = variant.refund,
+		species = variant.species,
 	})
 end
 
@@ -89,6 +90,10 @@ end
 -- already has (it never rolls again for it, owner 2026-10-08; its share goes to
 -- coral, so every other chance stays exactly as it was).
 local function excluded(outcome: Outcome, owned: { [string]: boolean }?, species: string?): boolean
+	if outcome.kind == "variant" then
+		-- An exotic variant reshapes one fish (Config/Exotics), so it only rolls for it
+		return species ~= nil and outcome.species ~= species
+	end
 	if outcome.kind ~= "shade" then
 		return false
 	end

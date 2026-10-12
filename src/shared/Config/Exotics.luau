@@ -80,6 +80,41 @@ local variants: { Variant } = {
 		refund = 30000,
 		blurb = "A wide hammer head with eyes at the tips.",
 	},
+	-- One for every playable fish (owner, 2026-10-12: "Variants should also be
+	-- different/upgrades from the original base fish as well. For all playable
+	-- models"). Each rolls only for its own fish (RollOdds).
+	{
+		id = "Sabrecuda",
+		name = "Sabrecuda",
+		species = "Cuda",
+		chance = 9000,
+		refund = 28000,
+		blurb = "A 'Cuda with two sabre fangs and a ridge of spines down its back. Longer, meaner.",
+	},
+	{
+		id = "Porcupine",
+		name = "Porcupine Puffer",
+		species = "Pufferfish",
+		chance = 9000,
+		refund = 28000,
+		blurb = "Puffed up for good, bristling with long bone quills. Nothing wants a mouthful of it.",
+	},
+	{
+		id = "DragonMoray",
+		name = "Dragon Moray",
+		species = "MorayEel",
+		chance = 9000,
+		refund = 28000,
+		blurb = "Horned, with a frilled crest the whole length of its back. The real dragon of the ruins.",
+	},
+	{
+		id = "Deepfang",
+		name = "Deepfang Angler",
+		species = "Anglerfish",
+		chance = 9000,
+		refund = 28000,
+		blurb = "A crown of three lures and fangs it can't close its mouth over. Lights up a trench.",
+	},
 }
 
 local partsById: { [string]: Part } = {}

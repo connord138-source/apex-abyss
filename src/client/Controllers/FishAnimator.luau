@@ -218,6 +218,8 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 	local wantJaw = if clock < state.snapUntil then 1 else 0
 	state.jaw, state.jawVelocity = Spring.number(state.jaw, state.jawVelocity, wantJaw, 34, dt)
 	setTransform(state, "Jaw", CFrame.Angles(-math.max(state.jaw, 0) * 0.55, 0, 0))
+	-- A mesh body's rolled parts ride its bones (a veil tail swings with the tail)
+	Cosmetics.follow(state.body)
 end
 
 local function step(dt: number)

@@ -445,12 +445,14 @@ local function master(outcome: Outcome): Model?
 	elseif kind == "part" then
 		local cosmetic = Config.Exotics.partsById[outcome.id]
 		if cosmetic then
-			model = fish({ shade = nil, parts = { [cosmetic.slot] = cosmetic.id }, variant = nil }, nil, true)
+			-- On the real fish: mesh bodies wear parts now (Cosmetics.addMeshParts)
+			model =
+				fish({ shade = nil, parts = { [cosmetic.slot] = cosmetic.id }, variant = nil }, nil, false)
 		end
 	elseif kind == "variant" then
 		local variant = Config.Exotics.variantsById[outcome.id]
 		if variant then
-			model = fish({ shade = nil, parts = {}, variant = variant.id }, variant.species, true)
+			model = fish({ shade = nil, parts = {}, variant = variant.id }, variant.species, false)
 		end
 	elseif kind == "coral" then
 		model = coral(outcome.amount or 25)

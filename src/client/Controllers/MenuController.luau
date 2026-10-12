@@ -865,8 +865,20 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 			)
 		end
 	else
-		for _, variant in Config.Exotics.variants do
+		-- Every fish has its own variant (Config/Exotics): this fish's first, then
+		-- the others', each named for the fish it reshapes
+		local current = s.species
+		local ordered = table.clone(Config.Exotics.variants)
+		table.sort(ordered, function(a, b)
+			local aMine, bMine = a.species == current, b.species == current
+			if aMine ~= bMine then
+				return aMine
+			end
+			return a.chance < b.chance
+		end)
+		for _, variant in ordered do
 			local has = (s.variants or {})[variant.id] == true
+			local species = Config.Species.byId[variant.species]
 			add(
 				"variant",
 				variant.id,
@@ -874,7 +886,8 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 				"Abyssal",
 				variant.chance,
 				has,
-				equipped.variant == variant.id
+				equipped.variant == variant.id,
+				if species then `{species.name} only` else nil
 			)
 		end
 	end
