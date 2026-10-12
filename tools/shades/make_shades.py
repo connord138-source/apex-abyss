@@ -474,7 +474,7 @@ def relief_normal(m: Fish, rgb, height=None, relief=1.0, fine=None):
     return n * 0.5 + 0.5
 
 
-def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail=1.3, hush=None, relief=1.0, height=None):
+def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail=1.3, hush=None, relief=1.0, height=None, floor=None):
     """A finished skin: the painted strokes back on, the eyes, teeth, mouth and lure
     as they were, plus its glow (RGB), metal (0..1) and own roughness, if any, and a
     normal map of its own relief (`relief` 0 for a smooth skin; `height` to give the
@@ -483,7 +483,9 @@ def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail
     edges showing through as ghosts), but never below DETAIL_FLOOR of them: a skin
     with no creases read as pasted on."""
     fine = m.fine if hush is None else m.fine * (1 - np.clip(hush, 0, 1))
-    strength = max(detail, DETAIL_FLOOR)
+    # `floor` lowers the creases' floor for one skin (thin pale lines on a dark body
+    # read as skin to the classifier once the creases brightened them: Undertow)
+    strength = max(detail, DETAIL_FLOOR if floor is None else floor)
     normal = relief_normal(m, rgb, height, relief, fine) if relief > 0 else None
     rgb = rgb * (1 + strength * fine)[..., None]
     rgb = np.clip(rgb, 0, 1)
@@ -1016,12 +1018,14 @@ def prismatic(m):  # Holographic foil: diffraction micro-lines, hue-shifted face
     # Diffraction lines: fine stripes whose hue runs through the spectrum along them
     line_phase = (u * 70 + v * 24) % 1.0
     lines = 0.5 + 0.5 * np.cos(2 * np.pi * line_phase)
-    hue = (m.y * 1.2 + value * 0.9 + m.nrm[..., 0] * 0.12 + lines * 0.08) % 1
-    foil = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.78), np.full_like(hue, 1.0)], -1))
+    # The spectrum skips the orange-peach band (hue 0.02-0.13): mixed with silver
+    # and pearl it read as skin to the colour screen (6.4% on the Nibbler, v8)
+    hue = (0.13 + 0.87 * ((m.y * 1.2 + value * 0.9 + m.nrm[..., 0] * 0.12 + lines * 0.08) % 1)) % 1
+    foil = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.88), np.full_like(hue, 1.0)], -1))
     silver = board(m, (0.86, 0.88, 0.92))
-    rgb = mix(silver, foil, 0.55 + 0.35 * lines)
+    rgb = mix(silver, foil, 0.72 + 0.26 * lines)
     rgb = mix(rgb, (1.0, 1.0, 1.0), smoothstep(0.03, 0.0, edge) * 0.5)  # the facets' seams
-    rgb = pearl(m, rgb, 0.25, 0.25, 0.55)
+    rgb = pearl(m, rgb, 0.15, 0.2, 0.55)
     sparkle = speckle(m, 160, 0.85, seed=44)
     rgb = mix(rgb, (1.0, 1.0, 1.0), sparkle * 0.9)
     emit = foil * 0.22 + sparkle[..., None] * 0.6
@@ -2839,13 +2843,14 @@ def pass_undertow(m):  # Undertow: ink violet, whirlpools of glowing teal spiral
         cv = (rng.random() - 0.5) * 0.7 * half(cu)
         radius = max(0.45 * half(cu), 0.02)
         flip = 1.0 if k % 2 == 0 else -1.0
-        swirl = np.maximum(swirl, spiral(u, v, (cu, cv), radius, turns_rate=5.0, width=0.0032, flip=flip))
+        swirl = np.maximum(swirl, spiral(u, v, (cu, cv), radius, turns_rate=5.0, width=0.0036, flip=flip))
     swirl = swirl * (1 - m.fin) * m.cov
     halo = glow_halo(swirl > 0.3, 9)
     rgb = mix(rgb, (0.12, 0.60, 0.62), halo * 0.6)
-    rgb = mix(rgb, (0.22, 0.86, 0.80), swirl)
+    rgb = mix(rgb, (0.16, 0.84, 0.76), swirl)
     emit = swirl[..., None] * C(0.20, 0.85, 0.78) + (halo * 0.45)[..., None] * C(0.10, 0.60, 0.58)
-    return done(m, rgb, "gloss", emit=emit, detail=0.7)
+    # v8: the brighter creases (DETAIL_FLOOR) put it back at 0.22 on the Nibbler
+    return done(m, rgb, "gloss", emit=emit, detail=0.5, floor=0.5)
 
 
 def pass_abyssal_current(m):  # Abyssal Current: the deep's black-green water, a drifting current, bioluminescent motes
