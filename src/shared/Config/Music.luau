@@ -35,7 +35,27 @@ export type Music = {
 
 local Music: Music = {
 	volume = 0.14,
-	loudness = { -- by id: its average PlaybackLoudness (the PC session measures these)
+	loudness = { -- by id: its average PlaybackLoudness (measured in Studio 2026-10-13, 30 s each)
+		[87173382902467] = 194.0, -- Aquatic Atmosphere - Underscore
+		[80280537117632] = 106.4, -- Beneath The Waves - Underscore
+		[97633872384292] = 76.7, -- Kelp Forest - Full instrumental
+		[137371958480889] = 107.3, -- Beneath The Waves - Full instrumental
+		[126273536255517] = 194.1, -- Aquatic Atmosphere - Full instrumental
+		[83836973342490] = 176.7, -- Great Barrier Reef - Full instrumental
+		[73300187566988] = 211.3, -- Ethereal Expedition - Full instrumental
+		[135491429739395] = 238.9, -- Desolate Ocean - Full instrumental
+		[88282617098851] = 131.0, -- Underwater Kingdom - Underscore
+		[93304688532873] = 178.8, -- Infinite Expanse - Full instrumental
+		[81352888696689] = 265.6, -- Endless Sonar - Full instrumental
+		[101185329860830] = 211.4, -- Ethereal Expedition - Underscore
+		[126481946316902] = 132.5, -- Deep Sea Descent - Full instrumental
+		[74998943024781] = 224.5, -- Abyssal Plain - Full instrumental
+		[134719419887499] = 298.7, -- Mariana Trench - Underscore
+		[9040019476] = 123.0, -- The Deep Sea Dwellers
+		[102811657791599] = 188.2, -- Nightmare of the Abyss
+		[9040160517] = 89.6, -- Dangerous Predator
+		[9043603934] = 95.5, -- Predator (a)
+		[1837224922] = 42.9, -- The Kraken Lurks 2
 	},
 	-- loudness × Volume per list: calm under play, the boss a little forward
 	target = {
