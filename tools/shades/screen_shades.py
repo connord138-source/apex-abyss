@@ -50,6 +50,11 @@ RISK_MAX = 25.0
 BLOB_ABS_MAX = 5.0
 NSFW_MAX = 0.20
 NSFW_OVER_BASE = 0.10
+# A tangent-space normal map (flat lilac: R and G near 128, B near 255) is never
+# uploaded, whatever it scores: Roblox terminated the account over one on
+# 2026-10-13 (the Nibbler Living Reef relief map) that scored 0.000 here.
+NORMAL_MAP_B = 200
+NORMAL_MAP_RG = 30
 
 
 # --- Color signals -------------------------------------------------------------
@@ -279,6 +284,8 @@ def write_mask(path: pathlib.Path, rgb: Image.Image, risk: np.ndarray, base_risk
 
 def judge(row: dict) -> list[str]:
     why = []
+    if row.get("normal_map"):
+        why.append("a normal map: never uploaded (the account was terminated over one, 2026-10-13)")
     if row.get("added") is not None:
         if row["added"] > ADDED_MAX:
             why.append(f"adds {row['added']:.1f}% skin tone to its base texture (> {ADDED_MAX})")
@@ -364,6 +371,10 @@ def main(argv=None) -> int:
         row = {"file": label, "model": model, "mutation": mutation}
         scores, masks = color_scores(np.asarray(rgb), alpha, base_masks)
         row.update({k: round(v, 3) for k, v in scores.items()})
+        mean = np.asarray(rgb, np.float32).reshape(-1, 3).mean(0)
+        row["normal_map"] = bool(
+            mean[2] >= NORMAL_MAP_B and abs(mean[0] - 128) < NORMAL_MAP_RG and abs(mean[1] - 128) < NORMAL_MAP_RG
+        )
         if classifier is not None:
             row["nsfw"] = round(classifier.score(rgb), 4)
         return row, masks, rgb

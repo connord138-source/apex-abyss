@@ -428,17 +428,22 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     ColorCorrection cast over the water; nearest first, within Roblox's cap of 31
     Highlights. Client-only (positions replicate anyway); the HUD's ability bar
     shows the reveal in red, then the recharge.
-  - **Skins v8 (depth):** every skin ships a normal map of its own relief
-    (`relief_normal`: a band-pass of the pattern plus the fish's painted creases,
-    OpenGL +Y; `NORMAL_Y_SIGN` flips it if rivets look sunken in Studio), blended
-    over the fish's own normal map at pack time (`pack_shades.py` `blended_normal`);
-    the creases are never quieted below `DETAIL_FLOOR` 0.8 of their strength. The
+  - **Skins v8 (depth):** v8 shipped a normal map of each skin's relief
+    (`relief_normal`, blended over the fish's own at pack time). **The account was
+    terminated over one on 2026-10-13** (the Nibbler Living Reef relief map, asset
+    133593810809027, a flat lilac image our screen scored 0.000); every appeal was
+    accepted and it was reinstated. **v8.1 has no normal maps at all**
+    (`pack_shades.py` `NORMALS = False`, the fish's own included) and
+    `screen_shades.py` flags any image whose mean colour reads as a normal map
+    (B ≥ 200, R and G within 30 of 128). Never upload a normal map; put depth in
+    the colour map. The creases are never quieted below `DETAIL_FLOOR` 0.8 of
+    their strength. The
     Nibbler's yellow crescent on every skin was the cream band behind the eye
     counted as eye (kept from the base texture): `_eyes` keeps only components
     holding pupil pixels inside a smaller sphere. Diamond is a cut-gem retexture
     (bevelled facets with dispersion fire, mirror, relief 1.6) and Prismatic a
     holographic foil (diffraction lines, hue-shifted cells, pearl, metal). Bundle
-    v8: sha256 6e4ab557….
+    v8.1 (v8, 6e4ab557…, carries normal maps: never import it).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -1302,6 +1307,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Skin uploads:** automated image moderation once suspended the owner's account over a
   pale, pinkish unwrapped texture atlas. Screen textures before upload, import in small
   batches, and never upload from another account while one is suspended.
+- **Never upload a normal map** (2026-10-13): Roblox's moderation terminated the account
+  over a flat lilac relief normal map that every check we have scored at zero. All the
+  appeals were accepted within minutes, but the account itself took longer. Skin GLBs
+  carry colour, glow and roughness/metal maps only; `screen_shades.py` flags anything
+  shaped like a normal map. Appeal texts are in `docs/appeals/`.
 - **Paid random items** (crates, eggs) need exact odds summing to 100% shown before
   buying, and must be hidden for `ArePaidRandomItemsRestricted` players.
 - luau-lsp quirk: maps keyed by a singleton union type raise false errors when indexed

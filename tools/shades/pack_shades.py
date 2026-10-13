@@ -5,8 +5,8 @@
 The GLB holds one tiny quad per skin, named for its shade, for the shades in the
 fish's own list only (shade_lines.py: its line plus the universal skins; anything else
 in the folder is left out, and a listed shade with no skin is reported). Each quad's
-material is the skin as it ships (skins.json from make_shades.py): its color map, the
-fish's own normal map, a roughness/metal map (its finish's, shared by every shade with
+material is the skin as it ships (skins.json from make_shades.py): its color map, a
+roughness/metal map (its finish's, shared by every shade with
 that finish, or its own for a metal shade) and, for a glowing shade, its glow map as
 the emissive texture. Importing it uploads the textures and makes a SurfaceAppearance on each quad
 (the importer turns the emissive texture into the glow mask);
@@ -35,6 +35,12 @@ SKINS, OUT = pathlib.Path(argv[1]).resolve(), pathlib.Path(argv[2]).resolve()
 SIZE = int(argv[3]) if len(argv) > 3 else 1024
 PACKED = SKINS / "_packed"
 PACKED.mkdir(exist_ok=True)
+# NEVER pack a normal map (2026-10-13): Roblox terminated the owner's account over
+# one, the Nibbler Living Reef relief map (asset 133593810809027), a flat lilac
+# image our own screen scored 0.000. Every image in these GLBs is uploaded on
+# import, so skins carry no NormalMap at all, not even the fish's own. Depth comes
+# from the colour map's painted creases (make_shades DETAIL_FLOOR) instead.
+NORMALS = False
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=SRC)
@@ -138,8 +144,8 @@ for index, shade in enumerate(sorted(specs)):
     color = nodes.new("ShaderNodeTexImage")
     color.image = skin
     links.new(color.outputs["Color"], bsdf.inputs["Base Color"])
-    bump = blended_normal(shade) if spec.get("normal") else None
-    if bump is not None or normal is not None:
+    bump = blended_normal(shade) if NORMALS and spec.get("normal") else None
+    if NORMALS and (bump is not None or normal is not None):
         tex = nodes.new("ShaderNodeTexImage")
         tex.image = bump if bump is not None else normal
         tex.image.colorspace_settings.name = "Non-Color"
