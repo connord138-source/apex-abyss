@@ -94,6 +94,31 @@ expect(
 	"nothing floats over the pool's middle"
 )
 
+-- Furniture sets: each has pieces and an achievement that opens it; each piece's set
+-- exists; ids are unique
+local seen: { [string]: boolean } = {}
+for _, item in Dens.items do
+	expect(not seen[item.id], `{item.id}: one item per id`)
+	seen[item.id] = true
+	if item.set then
+		expect(Dens.setsById[item.set] ~= nil, `{item.id}: its set {item.set} exists`)
+		expect(item.price > 0, `{item.id}: has a price`)
+	end
+end
+for _, set in Dens.sets do
+	local pieces = 0
+	for _, item in Dens.items do
+		if item.set == set.id then
+			pieces += 1
+		end
+	end
+	expect(pieces >= 6, `{set.id}: {pieces} pieces`)
+	local achievement = Config.Achievements.bySet[set.id]
+	expect(achievement ~= nil and achievement.goal > 0, `{set.id}: an achievement opens it`)
+	expect(Config.Tiers.byId[set.tier] ~= nil, `{set.id}: tier {set.tier} exists`)
+end
+print(`sets: {#Dens.sets} sets, {#Config.Achievements.list} achievements`)
+
 print(if failures == 0 then "dens: OK" else `dens: {failures} failed`)
 if failures > 0 then
 	error("dens test failed")

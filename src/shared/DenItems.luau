@@ -6,6 +6,7 @@
 -- them (DenBuilder) and Build mode's ghost is the same model (BuildController), so
 -- what you aim is what you get. Imported Tripo props (Props.dress) replace the
 -- part-built stand-ins where they exist.
+local Config = require(script.Parent.Config)
 local DensConfig = require(script.Parent.Config.Dens)
 local Props = require(script.Parent.Props)
 
@@ -51,7 +52,9 @@ local function light(on: BasePart, color: Color3, range: number, brightness: num
 	glow.Parent = on
 end
 
--- A box the imported prop is fitted into, or the stand-in that shows without it
+-- A box the imported prop is fitted into, or the stand-in that shows without it. A
+-- Tripo prop faces +X in its GLB (Roblox's import turns it to -X), so `front` turns
+-- it to face the box's look, and the box is fitted turned with it.
 local function dressed(model: Model, item: DensConfig.Item, box: CFrame, color: Color3): Part
 	local stand = part(
 		model,
@@ -62,12 +65,63 @@ local function dressed(model: Model, item: DensConfig.Item, box: CFrame, color: 
 		if item.glow then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	)
 	if item.prop then
-		local prop = Props.dress(stand, item.prop, { cframe = box, size = item.size })
+		local fit, size = box, item.size
+		if item.front then
+			fit = box * CFrame.Angles(0, -math.rad(item.front), 0)
+			size = Vector3.new(size.Z, size.Y, size.X)
+		end
+		local prop = Props.dress(stand, item.prop, { cframe = fit, size = size })
 		if prop and item.glow then
 			Props.tint(prop, color)
 		end
 	end
 	return stand
+end
+
+-- A rug: a flat body in its own color, and its top-down art (Config/Textures
+-- `rug<id>`, tools/props/rug_textures.py) as a Decal on an invisible sheet just
+-- over it. Without the art, rings of its color stand in.
+local function rug(model: Model, item: DensConfig.Item): Part
+	local size = item.size
+	local round = item.rug ~= "square"
+	local function sheet(name: string, inset: number, y: number, color: Color3): Part
+		local made = part(
+			model,
+			name,
+			Vector3.new(size.X - inset, 0.1, size.Z - inset),
+			CFrame.new(0, y, 0),
+			color,
+			Enum.Material.Fabric
+		)
+		if round then
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = made
+		end
+		return made
+	end
+	local body = sheet("Rug", 0, 0.05, item.color)
+	local art = (Config.Textures :: any)[`rug{item.id}`]
+	if typeof(art) == "number" and art > 0 then
+		local face = part(
+			model,
+			"Art",
+			Vector3.new(size.X, 0.05, size.Z),
+			CFrame.new(0, 0.13, 0),
+			item.color,
+			Enum.Material.SmoothPlastic
+		)
+		face.Transparency = 1
+		local decal = Instance.new("Decal")
+		decal.Face = Enum.NormalId.Top
+		decal.Texture = `rbxassetid://{art}`
+		decal.Parent = face
+	else
+		sheet("Border", 0.8, 0.07, item.color:Lerp(Color3.new(0, 0, 0), 0.3))
+		sheet("Field", 1.8, 0.09, item.color:Lerp(Color3.new(1, 1, 1), 0.18))
+		sheet("Heart", size.X * 0.6, 0.11, item.color:Lerp(Color3.new(0, 0, 0), 0.2))
+	end
+	return body
 end
 
 -- The thing `item` in the den's glow color, at the identity frame (move it with
@@ -251,6 +305,8 @@ function DenItems.build(item: DensConfig.Item, glow: Color3, surface: string): M
 		bubbles.Color = ColorSequence.new(Color3.fromRGB(220, 250, 255))
 		bubbles.EmissionDirection = Enum.NormalId.Right -- the cylinder's axis is up
 		bubbles.Parent = main
+	elseif item.rug then
+		main = rug(model, item)
 	elseif surface == "wall" and table.find(item.kinds, "floor") then
 		-- A floor thing on a wall juts out of the rock: its up turned to point out
 		main = dressed(model, item, CFrame.new(0, 0, -size.Y / 2) * CFrame.Angles(math.rad(-90), 0, 0), color)
@@ -264,6 +320,32 @@ function DenItems.build(item: DensConfig.Item, glow: Color3, surface: string): M
 	end
 	if item.glow then
 		light(main, color, 18, 1.3)
+	elseif item.lamp then
+		light(main, item.lamp, 18, 1.2)
+	end
+	-- A few bubbles off the top of a thing that steams (the Vent Cauldron)
+	if item.bubbles and item.id ~= "BubbleColumn" then
+		local vent = part(
+			model,
+			"Steam",
+			Vector3.new(size.X * 0.5, 0.2, size.Z * 0.5),
+			main.CFrame * CFrame.new(0, size.Y * 0.3, 0),
+			item.color,
+			Enum.Material.SmoothPlastic
+		)
+		vent.Transparency = 1
+		local bubbles = Instance.new("ParticleEmitter")
+		bubbles.Rate = 5
+		bubbles.Lifetime = NumberRange.new(1.5, 2.5)
+		bubbles.Speed = NumberRange.new(2, 3.5)
+		bubbles.SpreadAngle = Vector2.new(10, 10)
+		bubbles.Size = NumberSequence.new(0.25, 0.5)
+		bubbles.Transparency = NumberSequence.new(0.3, 0.9)
+		bubbles.LightEmission = 0.3
+		bubbles.Color = ColorSequence.new(Color3.fromRGB(220, 250, 255))
+		bubbles.EmissionDirection = Enum.NormalId.Top
+		bubbles.Shape = Enum.ParticleEmitterShape.Box
+		bubbles.Parent = vent
 	end
 	-- An invisible root at the pivot (what Build mode hits to pick a thing up)
 	local root = part(model, "Root", Vector3.one * 0.2, CFrame.new(), color, Enum.Material.SmoothPlastic)

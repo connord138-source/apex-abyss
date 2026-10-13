@@ -14,6 +14,7 @@ local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Events)
 local Net = require(script.Parent.Net)
 local Progress = require(script.Parent.Progress)
+local AchievementService = require(script.Parent.Services.AchievementService)
 local BossService = require(script.Parent.Services.BossService)
 local BountyService = require(script.Parent.Services.BountyService)
 local CatchService = require(script.Parent.Services.CatchService)
@@ -444,6 +445,21 @@ local function denLevel(_admin: Player, targets: { Player }, level: any): string
 	return `Den set to a {Config.Dens.levels[n].name} for {#targets} player(s) (things that no longer fit went to the tray)`
 end
 
+-- Achievements (each opens a den furniture set): all done, or none
+local function achievementsAll(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		AchievementService.setAll(player, true)
+	end
+	return `Every achievement done (every furniture set open) for {#targets} player(s)`
+end
+
+local function achievementsReset(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		AchievementService.setAll(player, false)
+	end
+	return `Achievements cleared for {#targets} player(s) (anything already met is done again within 30 s)`
+end
+
 local function denItems(_admin: Player, targets: { Player }, count: any): string
 	local n = if typeof(count) == "number" and count == count
 		then math.clamp(math.floor(count), 1, 20)
@@ -647,6 +663,8 @@ AdminActions.byName = {
 	gardenPreview = gardenPreview :: Handler,
 	denLevel = denLevel :: Handler,
 	denItems = denItems :: Handler,
+	achievementsAll = achievementsAll :: Handler,
+	achievementsReset = achievementsReset :: Handler,
 	forceTide = forceTide :: Handler,
 	rareNear = rareNear :: Handler,
 	trackAdd = trackAdd :: Handler,

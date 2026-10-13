@@ -6,7 +6,7 @@
 --   prey (rigged FBX: Minnow, Sardine, Wrasse, Snapper, Grouper; the Barracuda and
 --   ReefShark prey are copies of the 'Cuda and Reef Shark species models)
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
---   props and food (GLB)
+--   props, food and den furniture (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
 -- Studio names a GLB import "Scene" when its root node is unnamed: set its Name to
 -- its file name in the Import Preview before importing. A species import must be
@@ -27,6 +27,16 @@ local PROPS = {
 	Shrimp = true, Starfish = true, Shell = true, Lantern = true, CrystalCluster = true, MarketStall = true,
 	TreasureChest = true,
 	KeeperOutfitter = true, KeeperMason = true, KeeperCharms = true, KeeperDyer = true, KeeperTrophies = true,
+	-- Den furniture, batch 1 (furniture_glb: the seven sets of Config/Dens)
+	AnglerLamp = true, BarrelTable = true, BrainOttoman = true, BronzeCannon = true, BronzeTentacle = true,
+	CaptainsDesk = true, CargoStack = true, ClamBed = true, ColumnPlanter = true, CoralThrone = true,
+	DriftwoodShelf = true, FanCoralScreen = true, GlowCoralBed = true, GlyphTablet = true,
+	GrouperStatue = true, JellyChandelier = true, KelpArmchair = true, KelpHammock = true,
+	KrakenEyeLantern = true, KrakenEyePedestal = true, LavaFirePit = true, LavaLamp = true,
+	MegalodonJawArch = true, ObsidianTable = true, ReefGlobe = true, RuneThrone = true,
+	ScallopLamp = true, SharkToothPlaque = true, ShipAnchor = true, ShipLantern = true,
+	ShipsWheel = true, StaghornChandelier = true, SulfurCrystals = true, TealBrazier = true,
+	TreasurePile = true, TubeWormPlanter = true, VentCauldron = true, VoidThrone = true,
 }
 
 local function folder(name: string): Folder

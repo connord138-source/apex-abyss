@@ -15,6 +15,7 @@ local DenBuilder = require(script.Parent.Parent.DenBuilder)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
+local AchievementService = require(script.Parent.AchievementService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
@@ -231,6 +232,17 @@ local function buy(player: Player, itemId: any)
 	local item = if typeof(itemId) == "string" then Dens.itemsById[itemId] else nil
 	if data == nil or item == nil then
 		return
+	end
+	-- A set's pieces sell once its achievement is done (Config/Achievements)
+	if item.set and not AchievementService.setOpen(data, item.set) then
+		local achievement = Config.Achievements.bySet[item.set]
+		local set = Dens.setsById[item.set]
+		return fail(
+			player,
+			`The {if set then set.name else "set"} set opens with {if achievement
+				then `{achievement.name}: {achievement.blurb}`
+				else "an achievement"}`
+		)
 	end
 	if not EconomyService.spendCoral(player, item.price) then
 		return fail(player, `Not enough coral ({item.price} needed)`)

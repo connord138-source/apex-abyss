@@ -183,6 +183,386 @@
   "task_id": "345434c0-d8f4-4e38-b230-4ffea5f59d5e",
   "type": "text_to_model"
  },
+ "furniture/AnglerLamp": {
+  "credits": 30,
+  "files": [
+   "AnglerLamp.glb",
+   "AnglerLamp_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "504df530-1101-4f4a-994b-eb2b5e52d34a",
+  "type": "image_to_model"
+ },
+ "furniture/BarrelTable": {
+  "credits": 30,
+  "files": [
+   "BarrelTable.glb",
+   "BarrelTable_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "75d517a3-69d3-4c47-8670-9c36b3ae02a3",
+  "type": "image_to_model"
+ },
+ "furniture/BrainOttoman": {
+  "credits": 30,
+  "files": [
+   "BrainOttoman.glb",
+   "BrainOttoman_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "68152e8c-eb95-4244-aae2-4824eaa489d9",
+  "type": "image_to_model"
+ },
+ "furniture/BronzeCannon": {
+  "credits": 30,
+  "files": [
+   "BronzeCannon.glb",
+   "BronzeCannon_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "1cb9c6d2-5b81-49d8-92fe-55ff38059432",
+  "type": "image_to_model"
+ },
+ "furniture/BronzeTentacle": {
+  "credits": 30,
+  "files": [
+   "BronzeTentacle.glb",
+   "BronzeTentacle_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f540364b-b293-4e47-8812-82c78e1ad6f3",
+  "type": "image_to_model"
+ },
+ "furniture/CaptainsDesk": {
+  "credits": 30,
+  "files": [
+   "CaptainsDesk.glb",
+   "CaptainsDesk_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "cf2620aa-51b9-4b34-92de-8655f2138476",
+  "type": "image_to_model"
+ },
+ "furniture/CargoStack": {
+  "credits": 30,
+  "files": [
+   "CargoStack.glb",
+   "CargoStack_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "c4d3ab9e-e05a-492f-8f47-0b26587a3bf8",
+  "type": "image_to_model"
+ },
+ "furniture/ClamBed": {
+  "credits": 30,
+  "files": [
+   "ClamBed.glb",
+   "ClamBed_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "21a11484-436b-4635-bac8-f2d9762a51cf",
+  "type": "image_to_model"
+ },
+ "furniture/ColumnPlanter": {
+  "credits": 30,
+  "files": [
+   "ColumnPlanter.glb",
+   "ColumnPlanter_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f6af9363-b1d7-49d6-adea-9e0d073b7972",
+  "type": "image_to_model"
+ },
+ "furniture/CoralThrone": {
+  "credits": 30,
+  "files": [
+   "CoralThrone.glb",
+   "CoralThrone_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "11dad29b-6da5-4a38-8f56-d1e5dfac0181",
+  "type": "image_to_model"
+ },
+ "furniture/DriftwoodShelf": {
+  "credits": 30,
+  "files": [
+   "DriftwoodShelf.glb",
+   "DriftwoodShelf_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e7694a1d-96f8-49aa-9624-875c5d56ec9d",
+  "type": "image_to_model"
+ },
+ "furniture/FanCoralScreen": {
+  "credits": 30,
+  "files": [
+   "FanCoralScreen.glb",
+   "FanCoralScreen_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "249b22e4-b982-4541-bb0b-67bebb55baab",
+  "type": "image_to_model"
+ },
+ "furniture/GlowCoralBed": {
+  "credits": 30,
+  "files": [
+   "GlowCoralBed.glb",
+   "GlowCoralBed_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "5fd71a24-346b-499a-ba1d-967b92d77b10",
+  "type": "image_to_model"
+ },
+ "furniture/GlyphTablet": {
+  "credits": 30,
+  "files": [
+   "GlyphTablet.glb",
+   "GlyphTablet_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "0d955e6e-ec55-4bb1-b1d8-08cde17b5ce8",
+  "type": "image_to_model"
+ },
+ "furniture/GrouperStatue": {
+  "credits": 30,
+  "files": [
+   "GrouperStatue.glb",
+   "GrouperStatue_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "be956ec1-9621-4604-af67-26bc7a189c5a",
+  "type": "image_to_model"
+ },
+ "furniture/JellyChandelier": {
+  "credits": 30,
+  "files": [
+   "JellyChandelier.glb",
+   "JellyChandelier_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "77b7cb37-a8d5-4419-b8b8-05480a7ea7db",
+  "type": "image_to_model"
+ },
+ "furniture/KelpArmchair": {
+  "credits": 30,
+  "files": [
+   "KelpArmchair.glb",
+   "KelpArmchair_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "2db1dbe6-eba7-42dc-9e47-2f5f685263fd",
+  "type": "image_to_model"
+ },
+ "furniture/KelpHammock": {
+  "credits": 30,
+  "files": [
+   "KelpHammock.glb",
+   "KelpHammock_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "9a85e518-d8ea-4943-b115-a3018f2a774c",
+  "type": "image_to_model"
+ },
+ "furniture/KrakenEyeLantern": {
+  "credits": 30,
+  "files": [
+   "KrakenEyeLantern.glb",
+   "KrakenEyeLantern_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "dbf85f34-8ae2-4f29-85f3-b5863e044b8b",
+  "type": "image_to_model"
+ },
+ "furniture/KrakenEyePedestal": {
+  "credits": 30,
+  "files": [
+   "KrakenEyePedestal.glb",
+   "KrakenEyePedestal_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "b743c6f2-b56b-4e49-a34a-5024a6dbd768",
+  "type": "image_to_model"
+ },
+ "furniture/LavaFirePit": {
+  "credits": 30,
+  "files": [
+   "LavaFirePit.glb",
+   "LavaFirePit_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "1086164f-a8dc-4d09-ae15-cd891a7a60cf",
+  "type": "image_to_model"
+ },
+ "furniture/LavaLamp": {
+  "credits": 30,
+  "files": [
+   "LavaLamp.glb",
+   "LavaLamp_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "9599d7b8-d3c0-46f3-b999-460ba2d063ed",
+  "type": "image_to_model"
+ },
+ "furniture/MegalodonJawArch": {
+  "credits": 30,
+  "files": [
+   "MegalodonJawArch.glb",
+   "MegalodonJawArch_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f3285d93-4164-434c-8009-167734c07399",
+  "type": "image_to_model"
+ },
+ "furniture/ObsidianTable": {
+  "credits": 30,
+  "files": [
+   "ObsidianTable.glb",
+   "ObsidianTable_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "cdbda8e7-816b-4c7c-9868-61b7e0660c8f",
+  "type": "image_to_model"
+ },
+ "furniture/ReefGlobe": {
+  "credits": 30,
+  "files": [
+   "ReefGlobe.glb",
+   "ReefGlobe_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f8e1c41d-0c3d-48f0-9e51-960998b9f88a",
+  "type": "image_to_model"
+ },
+ "furniture/RuneThrone": {
+  "credits": 30,
+  "files": [
+   "RuneThrone.glb",
+   "RuneThrone_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "907f4ffc-c7d4-40a4-a376-a998e4f4c099",
+  "type": "image_to_model"
+ },
+ "furniture/ScallopLamp": {
+  "credits": 30,
+  "files": [
+   "ScallopLamp.glb",
+   "ScallopLamp_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "3819a869-aba3-4aed-af05-d80e27447511",
+  "type": "image_to_model"
+ },
+ "furniture/SharkToothPlaque": {
+  "credits": 30,
+  "files": [
+   "SharkToothPlaque.glb",
+   "SharkToothPlaque_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "054c0bd2-4d26-455c-a0e2-d132175a6400",
+  "type": "image_to_model"
+ },
+ "furniture/ShipAnchor": {
+  "credits": 30,
+  "files": [
+   "ShipAnchor.glb",
+   "ShipAnchor_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "178e3d67-07cc-48c9-bb77-1d670dbbeba4",
+  "type": "image_to_model"
+ },
+ "furniture/ShipLantern": {
+  "credits": 30,
+  "files": [
+   "ShipLantern.glb",
+   "ShipLantern_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "a0aab237-a9be-4c8c-a0bf-986b73075929",
+  "type": "image_to_model"
+ },
+ "furniture/ShipsWheel": {
+  "credits": 30,
+  "files": [
+   "ShipsWheel.glb",
+   "ShipsWheel_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "5dc9bb20-3a89-4f8b-97be-8ed4eb00d4d0",
+  "type": "image_to_model"
+ },
+ "furniture/StaghornChandelier": {
+  "credits": 30,
+  "files": [
+   "StaghornChandelier.glb",
+   "StaghornChandelier_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "93f5afbe-f547-43b1-aea7-8810c1c901a9",
+  "type": "image_to_model"
+ },
+ "furniture/SulfurCrystals": {
+  "credits": 30,
+  "files": [
+   "SulfurCrystals.glb",
+   "SulfurCrystals_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e0e64433-9d7b-4b04-9018-d35043aa3fca",
+  "type": "image_to_model"
+ },
+ "furniture/TealBrazier": {
+  "credits": 30,
+  "files": [
+   "TealBrazier.glb",
+   "TealBrazier_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f67347ba-7bba-41b9-a74b-2ce8be20952b",
+  "type": "image_to_model"
+ },
+ "furniture/TreasurePile": {
+  "credits": 30,
+  "files": [
+   "TreasurePile.glb",
+   "TreasurePile_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "7815bec2-4a19-42b1-b060-7340ae0b89d4",
+  "type": "image_to_model"
+ },
+ "furniture/TubeWormPlanter": {
+  "credits": 30,
+  "files": [
+   "TubeWormPlanter.glb",
+   "TubeWormPlanter_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "3e6f4d1e-248d-4012-966b-60a79a4a24b0",
+  "type": "image_to_model"
+ },
+ "furniture/VentCauldron": {
+  "credits": 30,
+  "files": [
+   "VentCauldron.glb",
+   "VentCauldron_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "ed11fc9b-1b65-4733-825b-b8811fb0608b",
+  "type": "image_to_model"
+ },
+ "furniture/VoidThrone": {
+  "credits": 30,
+  "files": [
+   "VoidThrone.glb",
+   "VoidThrone_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "29b4b0a3-bb25-453a-a40b-da05b2ed70c1",
+  "type": "image_to_model"
+ },
  "furniture_boards/FurnAbyssGlow": {
   "credits": 10,
   "files": [

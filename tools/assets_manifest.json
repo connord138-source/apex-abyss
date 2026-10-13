@@ -40,6 +40,11 @@
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/c9e957d1-85cb-4858-8a30-c72ee6dca09a.zip",
       "into": "assets/shades/glb",
       "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per skin, 27 each (its own 12-skin line from tools/shades/lines.json plus the 15 universal skins: catch track, weekly, Tide Pass season 1, boss and treasure; 162 skins, v7 of 2026-10-12: v6 plus the four Tide Pass skins PassTideglass, PassRiptide, PassUndertow, PassAbyssalCurrent on every fish; all six GLBs changed; every GLB cleared by screen_shades.py with the classifier, highest 0.176; sha256 72895dd2228a51cd...)"
+    },
+    "furniture_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/530c2fa1-0323-4260-9b50-5e3730712f0a.zip",
+      "into": "assets/glb",
+      "contents": "furniture/<Name>.glb: the 38 den furniture pieces of batch 1 (Config/Dens items with a `set`), each cut off its approved board (assets/concepts/Furn*.jpg) and made with Tripo image_to_model (tools/tripo_jobs_furniture_models.json). Every normal map taken out by tools/props/strip_normals.py (never upload a normal map), base colors moved out of skin tones by tools/props/safe_colors.py (the Kraken eye repainted amber first), and all 76 images (color + ORM) cleared by screen_shades.py with the classifier (highest 0.11). Front faces +X in the GLB. sha256 55f68372..."
     }
   }
 }

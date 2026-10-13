@@ -352,6 +352,8 @@ local function build()
 	actionRow("Coral Garden: watch it grow (20 s, look only)", "gardenPreview", "WATCH", "secondary")
 	amountRow("Den: set the level (1-5)", "level", "denLevel", 0, "SET")
 	amountRow("Den: things into the Build tray", "of each (max 20)", "denItems", 0, "GIVE")
+	actionRow("Achievements: all done (every furniture set open)", "achievementsAll", "DONE", "secondary")
+	actionRow("Achievements: clear", "achievementsReset", "CLEAR", "danger")
 
 	header("TIDES · RARE CATCHES · BOUNTIES · WEEKLY")
 	local tides: { { label: string, value: any } } = { { label = "Back to the clock", value = "" } }

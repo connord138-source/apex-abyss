@@ -5,6 +5,7 @@
 --
 --   sheen*: tiling layers that slide across the top skins (tools/shades/
 --           make_sheens.py; Shared/Cosmetics `sheen`)
+--   rug*:   top-down rug art, a Decal on each rug (Shared/DenItems)
 --   stars:  the Hatch & Snatch galaxy starfield, already on the owner's account
 --           (an Image works in every experience its uploader owns)
 return {
@@ -13,4 +14,9 @@ return {
 	sheenGold = 70886974600925, -- assets/textures/sheen_gold.png
 	sheenVeil = 91311902351808, -- assets/textures/sheen_veil.png
 	stars = 129645056585841, -- hatch-and-snatch assets/textures/galaxy_sky.png
+	-- rug*: the den rugs' top-down art (tools/props/rug_textures.py; Shared/DenItems)
+	rugBraidedKelpRug = 0, -- assets/textures/rug_BraidedKelpRug.png
+	rugCoralRug = 0, -- assets/textures/rug_CoralRug.png
+	rugWaveMosaicRug = 0, -- assets/textures/rug_WaveMosaicRug.png
+	rugPlanktonRug = 0, -- assets/textures/rug_PlanktonRug.png
 }

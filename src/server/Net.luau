@@ -38,6 +38,7 @@ local preyRarity = makeEvent("PreyRarity") -- ({ index }, { code }) to everyone:
 local caught = makeEvent("Caught") -- (summary) to the catcher: a rare catch, a first in the Catch Log, track progress, a skin unlocked
 local tideChanged = makeEvent("TideChanged") -- (tideId, endsAt) to everyone: the tide turned
 local passClaimed = makeEvent("PassClaimed") -- (summary) to the claimer: Tide Pass rewards claimed
+local achievement = makeEvent("Achievement") -- (summary) to the player: an achievement done and the den set it opened
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -235,6 +236,10 @@ end
 
 function Net.passClaimed(player: Player, summary: { [string]: any })
 	passClaimed:FireClient(player, summary)
+end
+
+function Net.achievement(player: Player, summary: { [string]: any })
+	achievement:FireClient(player, summary)
 end
 
 function Net.dailyClaimed(player: Player, summary: { [string]: any })

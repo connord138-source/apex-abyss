@@ -121,6 +121,9 @@ export type PlayerData = {
 	-- The Tide Pass (Config/Pass): the season the record is for, its XP, how many
 	-- tiers were claimed on each row, and whether this season's Deep Pass is bought
 	pass: { season: number, xp: number, claimedFree: number, claimedPaid: number, paid: boolean },
+	-- Achievements done (Config/Achievements id → true), each opening a den
+	-- furniture set; marked once, for good (AchievementService)
+	achievements: { [string]: boolean },
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
@@ -193,6 +196,7 @@ local TEMPLATE: PlayerData = {
 	wheel = { spins = 0, lastFree = 0 },
 	playtime = { day = 0, seconds = 0, claimed = 0, premiumDay = 0 },
 	pass = { season = 0, xp = 0, claimedFree = 0, claimedPaid = 0, paid = false },
+	achievements = {},
 	passes = {},
 	groupRewarded = false,
 	purchaseIds = {},

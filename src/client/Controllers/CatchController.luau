@@ -165,11 +165,28 @@ local function onCaught(summary: { [string]: any })
 	end
 end
 
+-- An achievement done (Config/Achievements): the den furniture set it opened
+local function onAchievement(summary: { [string]: any })
+	if typeof(summary) ~= "table" or typeof(summary.name) ~= "string" then
+		return
+	end
+	local tier = Config.Tiers.byId[tostring(summary.tier)]
+	Sfx.play("LevelUp", { volume = 0.7 })
+	banner(
+		"ACHIEVEMENT",
+		string.upper(summary.name),
+		`{summary.blurb} · the {summary.set} set is open in your den menu`,
+		if tier then tier.color else Ui.color.haul
+	)
+end
+
 function CatchController.start()
 	gui = Ui.screen("Catches", Players.LocalPlayer:WaitForChild("PlayerGui"), 7)
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local caught = remotes:WaitForChild("Caught") :: RemoteEvent
 	caught.OnClientEvent:Connect(onCaught)
+	local achievement = remotes:WaitForChild("Achievement") :: RemoteEvent
+	achievement.OnClientEvent:Connect(onAchievement)
 end
 
 return CatchController

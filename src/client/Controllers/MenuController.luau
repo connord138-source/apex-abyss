@@ -605,10 +605,10 @@ local function denRows(list: ScrollingFrame)
 			end)
 		end
 	end
-	-- Things: bought into the Build tray
+	-- Things: bought into the Build tray (the furniture sets come after)
 	denSection(list, next(), "Things · they go into your Build tray")
 	local items = if typeof(den.items) == "table" then den.items else {}
-	for _, item in Dens.items do
+	local function itemRow(item: typeof(Dens.items[1]))
 		local owned = items[item.id] or 0
 		local where = table.concat(item.kinds, " / ")
 		local _, button = row(
@@ -626,6 +626,48 @@ local function denRows(list: ScrollingFrame)
 			button.Activated:Connect(function()
 				ClientState.request("DenBuy", item.id)
 			end)
+		end
+	end
+	for _, item in Dens.items do
+		if item.set == nil then
+			itemRow(item)
+		end
+	end
+	-- Furniture sets (owner, 2026-10-13): an achievement opens each, then its pieces
+	-- are bought one at a time, to mix with any other set's
+	local progress = if typeof(s.achievements) == "table" then s.achievements else {}
+	for _, set in Dens.sets do
+		local achievement = Config.Achievements.bySet[set.id]
+		local tier = Config.Tiers.byId[set.tier]
+		local accent = if tier then tier.color else Ui.color.haul
+		local pieces: { typeof(Dens.items[1]) } = {}
+		for _, item in Dens.items do
+			if item.set == set.id then
+				table.insert(pieces, item)
+			end
+		end
+		local done = achievement == nil or (progress[achievement.id] or 0) >= achievement.goal
+		denSection(list, next(), `{set.name} set · {set.biome}`)
+		if done then
+			for _, item in pieces do
+				itemRow(item)
+			end
+		elseif achievement then
+			local names = {}
+			for _, item in pieces do
+				table.insert(names, item.name)
+			end
+			row(
+				list,
+				next(),
+				`Set{set.id}`,
+				`Locked · {achievement.name}: {achievement.blurb}`,
+				`{set.blurb}. Opens {#pieces} pieces, each bought on its own: {table.concat(names, ", ")}`,
+				`{Ui.number(progress[achievement.id] or 0)} / {Ui.number(achievement.goal)}`,
+				nil,
+				nil,
+				accent
+			)
 		end
 	end
 	-- The floor's stone

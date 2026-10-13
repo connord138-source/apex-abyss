@@ -1,0 +1,233 @@
+{
+ "_comment": "Den furniture batch 1 (approved 2026-10-13): each piece cut off its approved board (assets/concepts/Furn*.jpg) on a clean background by tools/props/furniture_crops.py, then image_to_model. Rugs are textures from the boards; the sulfur crystals were added after the first 37 succeeded.",
+ "jobs": [
+  {
+   "name": "KelpArmchair",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/KelpArmchair.png"
+  },
+  {
+   "name": "KelpHammock",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/KelpHammock.png"
+  },
+  {
+   "name": "ScallopLamp",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ScallopLamp.png"
+  },
+  {
+   "name": "DriftwoodShelf",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/DriftwoodShelf.png"
+  },
+  {
+   "name": "BarrelTable",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/BarrelTable.png"
+  },
+  {
+   "name": "CoralThrone",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/CoralThrone.png"
+  },
+  {
+   "name": "ClamBed",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ClamBed.png"
+  },
+  {
+   "name": "BrainOttoman",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/BrainOttoman.png"
+  },
+  {
+   "name": "StaghornChandelier",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/StaghornChandelier.png"
+  },
+  {
+   "name": "FanCoralScreen",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/FanCoralScreen.png"
+  },
+  {
+   "name": "CaptainsDesk",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/CaptainsDesk.png"
+  },
+  {
+   "name": "ShipsWheel",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ShipsWheel.png"
+  },
+  {
+   "name": "ShipLantern",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ShipLantern.png"
+  },
+  {
+   "name": "BronzeCannon",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/BronzeCannon.png"
+  },
+  {
+   "name": "CargoStack",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/CargoStack.png"
+  },
+  {
+   "name": "ShipAnchor",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ShipAnchor.png"
+  },
+  {
+   "name": "RuneThrone",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/RuneThrone.png"
+  },
+  {
+   "name": "ColumnPlanter",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ColumnPlanter.png"
+  },
+  {
+   "name": "TealBrazier",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/TealBrazier.png"
+  },
+  {
+   "name": "GlyphTablet",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/GlyphTablet.png"
+  },
+  {
+   "name": "GrouperStatue",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/GrouperStatue.png"
+  },
+  {
+   "name": "LavaFirePit",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/LavaFirePit.png"
+  },
+  {
+   "name": "ObsidianTable",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ObsidianTable.png"
+  },
+  {
+   "name": "LavaLamp",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/LavaLamp.png"
+  },
+  {
+   "name": "VentCauldron",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/VentCauldron.png"
+  },
+  {
+   "name": "TubeWormPlanter",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/TubeWormPlanter.png"
+  },
+  {
+   "name": "JellyChandelier",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/JellyChandelier.png"
+  },
+  {
+   "name": "AnglerLamp",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/AnglerLamp.png"
+  },
+  {
+   "name": "GlowCoralBed",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/GlowCoralBed.png"
+  },
+  {
+   "name": "VoidThrone",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/VoidThrone.png"
+  },
+  {
+   "name": "KrakenEyePedestal",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/KrakenEyePedestal.png"
+  },
+  {
+   "name": "MegalodonJawArch",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/MegalodonJawArch.png"
+  },
+  {
+   "name": "KrakenEyeLantern",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/KrakenEyeLantern.png"
+  },
+  {
+   "name": "SharkToothPlaque",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/SharkToothPlaque.png"
+  },
+  {
+   "name": "BronzeTentacle",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/BronzeTentacle.png"
+  },
+  {
+   "name": "TreasurePile",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/TreasurePile.png"
+  },
+  {
+   "name": "ReefGlobe",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/ReefGlobe.png"
+  },
+  {
+   "name": "SulfurCrystals",
+   "group": "furniture",
+   "type": "image_to_model",
+   "image": "assets/tripo/furniture_crops/SulfurCrystals.png"
+  }
+ ]
+}
