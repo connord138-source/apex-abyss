@@ -1342,6 +1342,20 @@ function PredatorController.gap(index: number, point: Vector3): (number?, number
 	return bodyGap(visual, point), visual.shown
 end
 
+-- Every creature drawn right now (not hidden, not dead): what to adorn (its rigged
+-- model, or its body part) and where it is. Blood Sense marks them.
+function PredatorController.drawn(): { { instance: Instance, position: Vector3 } }
+	local list: { { instance: Instance, position: Vector3 } } = {}
+	for _, visual in visuals do
+		if visual.hidden or visual.gone or visual.mode == "dead" then
+			continue
+		end
+		local instance: Instance = if visual.model then visual.model :: Model else visual.body
+		table.insert(list, { instance = instance, position = visual.position })
+	end
+	return list
+end
+
 function PredatorController.get(index: number): (Vector3?, string?, number, number)
 	local visual = visuals[index]
 	if visual == nil or visual.hidden then

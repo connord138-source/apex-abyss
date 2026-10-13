@@ -418,6 +418,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the body (sized to the fish as it grows). Ids are 0 until the PC uploads the
     four PNGs (nothing shows meanwhile); Nebula reuses the H&S galaxy image
     (129645056585841), which the same account owns.
+  - **Blood Sense (owner, 2026-10-13: "it should highlight players through
+    surfaces as a flashing red thermal to show where the other players and
+    predators are"):** `AbilityController` routes the ability button (left click,
+    RT, the touch button, relabelled SENSE) by species: the Reef Shark gets Blood
+    Sense, everyone else Dash. For 7 s (24 s cooldown) every other player's fish
+    and every drawn predator (`PredatorController.drawn()`) wears a Highlight in
+    `AlwaysOnTop` throbbing red → yellow at 2.5 Hz, with a red, drained
+    ColorCorrection cast over the water; nearest first, within Roblox's cap of 31
+    Highlights. Client-only (positions replicate anyway); the HUD's ability bar
+    shows the reveal in red, then the recharge.
   - **Skins v8 (depth):** every skin ships a normal map of its own relief
     (`relief_normal`: a band-pass of the pattern plus the fish's painted creases,
     OpenGL +Y; `NORMAL_Y_SIGN` flips it if rivets look sunken in Studio), blended

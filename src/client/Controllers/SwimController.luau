@@ -361,7 +361,7 @@ function SwimController.start()
 		end
 	end)
 	RunService.PreSimulation:Connect(step)
-	Input.ability:connect(SwimController.dash)
+	-- (the ability button is routed by AbilityController: Dash, or the fish's own)
 
 	-- Server moves (none in the prototype yet, but the remote exists)
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")

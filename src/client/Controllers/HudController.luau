@@ -23,6 +23,7 @@ local Ui = require(script.Parent.Parent.Ui)
 local ForageController = require(script.Parent.ForageController)
 local HuntController = require(script.Parent.HuntController)
 local PredatorController = require(script.Parent.PredatorController)
+local AbilityController = require(script.Parent.AbilityController)
 local SchoolController = require(script.Parent.SchoolController)
 local ShellController = require(script.Parent.ShellController)
 local StartController = require(script.Parent.StartController)
@@ -47,6 +48,7 @@ local haulFill: Frame
 local hintText: TextLabel
 local boostTrack: Frame
 local boostFill: Frame
+local abilityButton: TextButton? = nil
 local healthTrack: Frame
 local healthFill: Frame
 local depthText: TextLabel
@@ -627,6 +629,7 @@ local function buildTouchButtons()
 	dash.Activated:Connect(function()
 		Input.ability:fire()
 	end)
+	abilityButton = dash
 end
 
 -- While the player has freed the cursor (Alt or M), a chip at the top says so and
@@ -789,16 +792,28 @@ local function step(dt: number)
 		safeChip.Visible = false
 	end
 
-	-- The Dash: its bar refills while it recharges, then fades out when ready
-	local bar = SwimController.dashCharge
-	boostAlpha += ((if bar < 0.999 or SwimController.boosting then 1 else 0) - boostAlpha) * Spring.alpha(
+	-- The ability (the Dash, or the Reef Shark's Blood Sense): its bar refills while
+	-- it recharges, then fades out when ready; a running Blood Sense shows red
+	local bar = AbilityController.charge()
+	local sensing = AbilityController.senseLeft() > 0
+	boostAlpha += ((if bar < 0.999 or SwimController.boosting or sensing then 1 else 0) - boostAlpha) * Spring.alpha(
 		6,
 		dt
 	)
-	boostFill.Size = UDim2.fromScale(bar, 1)
+	boostFill.Size = UDim2.fromScale(if sensing then AbilityController.senseLeft() / 7 else bar, 1)
 	boostTrack.BackgroundTransparency = 1 - 0.85 * boostAlpha
 	boostFill.BackgroundTransparency = 1 - boostAlpha
-	boostFill.BackgroundColor3 = if bar < 0.999 then Ui.color.muted else Ui.color.accent
+	boostFill.BackgroundColor3 = if sensing
+		then Ui.color.danger
+		elseif bar < 0.999 then Ui.color.muted
+		else Ui.color.accent
+	local button = abilityButton
+	if button then
+		local label = if AbilityController.name() == "BloodSense" then "SENSE" else "DASH"
+		if button.Text ~= label then
+			button.Text = label
+		end
+	end
 
 	-- Health: shown while hurt
 	local health = if character then character:GetAttribute("Health") else nil

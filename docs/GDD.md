@@ -156,7 +156,7 @@ The approved details:
 | **Pufferfish** | tank / defense | Coral Reef | Puff Up (can't be swallowed 3 s) · Spike Burst · Toxic Cloud |
 | **Moray Eel** | speed / ambush; slips through gaps | Shipwreck Graveyard | Strike (long lunge) · Burrow (hide in rock) · Shock |
 | **'Cuda** (a barracuda; replaced the Squid, owner 2026-10-06) | speed / hit-and-run: the fastest straight-line swimmer, wider turns | Kelp Shallows (the tutorial's reward) | Torpedo (a long charged sprint) · Razor Bite (bites make the target bleed) · Silver Flash (blinds a target briefly) |
-| **Reef Shark** | aggression / bite | Open Blue | Frenzy · Blood Sense · Ram |
+| **Reef Shark** | aggression / bite | Open Blue | Frenzy · Blood Sense (built 2026-10-13: for 7 s every fish and predator shows through rock and murk as a flashing red heat signature, 24 s cooldown; owner: "a flashing red thermal") · Ram |
 | **Anglerfish** | lure hunter of the dark | Abyssal Trench | Lure (pulls prey in) · Lantern Flash (stun) · Deep Sight |
 
 - **Per species:**

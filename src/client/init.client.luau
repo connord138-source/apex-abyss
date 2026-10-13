@@ -22,6 +22,7 @@ local OfferController = require(script.Controllers.OfferController)
 local OceanController = require(script.Controllers.OceanController)
 local PlanktonController = require(script.Controllers.PlanktonController)
 local PredatorController = require(script.Controllers.PredatorController)
+local AbilityController = require(script.Controllers.AbilityController)
 local BossController = require(script.Controllers.BossController)
 local MapController = require(script.Controllers.MapController)
 local LampController = require(script.Controllers.LampController)
@@ -63,6 +64,7 @@ HintController.start() -- EAT / BITE / DANGER / TOO BIG hints while hunting
 CameraController.start()
 FishAnimator.start()
 PredatorController.start() -- AI predators: interpolation, tells, tags
+AbilityController.start() -- the ability button: Dash, or the Reef Shark's Blood Sense
 BossController.start() -- world boss: HUD bar, dread, countdown, rewards
 MapController.start() -- the minimap and the full map (M / R3 / tap it)
 LampController.start() -- lamps on fish (an Anglerfish's lure, Deep Lanterns) for the dark
