@@ -1,27 +1,46 @@
 --!strict
--- Builds a den's base in the world (Config/Dens): carves the room further back and
--- sinks the lower chamber for its level, places the furniture in its slots, lights
--- the lamps in the den's glow color, hangs the trophy wall (the biggest catch, boss
--- teeth and beaks, the title) and tints the Haul Pool. Everything is rebuilt from
--- the saved den record, so it follows its owner from server to server; when a den
--- changes hands the rock is put back first. Props are part-built until the Tripo
--- models are imported (Props.dress).
+-- Builds a den in the world from its owner's record (Config/Dens, Shared/DenSpace):
+--  * the rock (DenCarve), carved again only when the level changes;
+--  * the shell: a flagstone deck on every storey in the den's floor style, stone
+--    curbs round the shafts, pillars with sconces down the big rooms, and orb lamps
+--    hanging from the vaults, lit in the den's glow;
+--  * the things placed in Build mode, kept in step with the record by id;
+--  * the trophy wall on the main room's back wall (the biggest catch, boss teeth and
+--    beaks, the title over the door);
+--  * the Coral Garden (a planter along the back wall, then a bed in the Hall's
+--    middle), its corals growing as it fills.
+-- Everything is rebuilt from the saved record, so it follows its owner from server
+-- to server; when a den changes hands the rock goes back to a Nook first.
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local Layout = require(ReplicatedStorage.Shared.Layout)
-local Props = require(script.Parent.Props)
+local DenItems = require(ReplicatedStorage.Shared.DenItems)
+local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
+local Props = require(ReplicatedStorage.Shared.Props)
+local Cave = require(script.Parent.Cave)
+local DenCarve = require(script.Parent.DenCarve)
 
 local Dens = Config.Dens
 local hub = Config.World.hub
 
 local DenBuilder = {}
 
+export type Placement = {
+	uid: number,
+	id: string,
+	x: number,
+	y: number,
+	z: number,
+	r: number, -- yaw, degrees
+	s: string, -- the surface: "floor", "wall" or "ceiling"
+}
+
 export type Record = {
 	level: number,
-	furniture: { [string]: string },
-	owned: { [string]: boolean },
 	glow: string,
+	floor: string,
+	placed: { Placement },
 }
 
 export type Trophies = {
@@ -33,30 +52,22 @@ export type Trophies = {
 	owner: string,
 }
 
-local ROOM_BACK = 21 -- how far behind the den's middle the carved room already ends (Cave.luau)
-local STONE = Color3.fromRGB(150, 138, 118)
-local WOOD = Color3.fromRGB(110, 86, 60)
+type Built = { model: Model, key: string }
+type DenState = {
+	folder: Folder,
+	shell: Folder,
+	items: Folder,
+	trophies: Folder,
+	carved: number?, -- the level the rock is carved for
+	shellKey: string?, -- level, floor and glow the shell was built for
+	placed: { [number]: Built },
+	trophyKey: string?,
+}
 
-local folders: { [number]: Folder } = {}
--- The garden's floor found by raycast, per den and level (DenBuilder.garden): the
--- height the bed rests at, and the floor's height in a ring round the bed's edge
-type GardenFloor = { level: number, y: number, ring: { number } }
-local gardenFloors: { [number]: GardenFloor } = {}
-local floorUnder: (CFrame, number) -> (number?, { number }) -- (below)
+local STONE = Color3.fromRGB(176, 164, 140)
+local LAMP = Color3.fromRGB(255, 222, 180)
 
-local function denFolder(index: number): Folder
-	local existing = folders[index]
-	if existing and existing.Parent then
-		return existing
-	end
-	local made = Instance.new("Folder")
-	made.Name = `DenBase{index}`
-	local world = workspace:FindFirstChild("World")
-	local hubFolder = world and world:FindFirstChild("Hub")
-	made.Parent = hubFolder or workspace
-	folders[index] = made
-	return made
-end
+local states: { [number]: DenState } = {}
 
 local function part(
 	parent: Instance,
@@ -81,236 +92,324 @@ local function part(
 	return made
 end
 
--- The den's frame at floor level, facing the hub
-local function floorFrame(index: number): CFrame
-	local frame = Layout.denFrame(index)
-	return CFrame.new(Vector3.new(frame.Position.X, hub.denFloorY, frame.Position.Z)) * frame.Rotation
+local function light(on: Instance, color: Color3, range: number, brightness: number)
+	local made = Instance.new("PointLight")
+	made.Color = color
+	made.Range = range
+	made.Brightness = brightness
+	made.Parent = on
 end
 
--- A spot in the den (x right, y up from the floor, z toward the hub), facing the
--- hub. The frame looks at the hub and a CFrame's own +z points behind it, so z is
--- flipped here (playtest 2026-10-07: the trophy wall stood out in the plaza and the
--- furniture sat mirrored front to back)
-local function denSpot(frame: CFrame, x: number, y: number, z: number): CFrame
-	return frame * CFrame.new(x, y, -z)
-end
-
--- Rock back, then the room carved for the level
-local function carve(index: number, level: number)
-	local terrain = workspace.Terrain
-	local frame = floorFrame(index)
-	local back = -frame.LookVector
-	local middle = frame.Position
-	local roomY = hub.denHeight / 2
-	local def = Dens.levels[level] or Dens.levels[1]
-	-- Refill the whole extension and chamber zone with stone
-	local extendCenter = middle + back * (ROOM_BACK + Dens.maxExtend / 2 + 2) + Vector3.new(0, roomY, 0)
-	terrain:FillBlock(
-		CFrame.lookAt(extendCenter, extendCenter + back),
-		Vector3.new(30, hub.denHeight + 8, Dens.maxExtend + 6),
-		Enum.Material.Sandstone
-	)
-	terrain:FillCylinder(
-		CFrame.new(middle + back * 2 + Vector3.new(0, -Dens.maxPit / 2 - 1, 0)),
-		Dens.maxPit + 4,
-		Dens.maxPitRadius + 3,
-		Enum.Material.Rock
-	)
-	-- The room runs back
-	if def.extend > 0 then
-		local center = middle + back * (ROOM_BACK + def.extend / 2 - 1) + Vector3.new(0, roomY, 0)
-		terrain:FillBlock(
-			CFrame.lookAt(center, center + back),
-			Vector3.new(22, hub.denHeight - 2, def.extend + 2),
-			Enum.Material.Air
-		)
-		terrain:FillBall(
-			middle + back * (ROOM_BACK + def.extend - 1) + Vector3.new(0, roomY, 0),
-			10,
-			Enum.Material.Air
-		)
-		-- A floor under it
-		local floorCenter = middle + back * (ROOM_BACK + def.extend / 2) + Vector3.new(0, -1.5, 0)
-		terrain:FillBlock(
-			CFrame.lookAt(floorCenter, floorCenter + back),
-			Vector3.new(30, 3, def.extend + 12),
-			Enum.Material.Sandstone
-		)
-	end
-	-- The lower chamber
-	if def.pit > 0 then
-		terrain:FillCylinder(
-			CFrame.new(middle + back * 2 + Vector3.new(0, -def.pit / 2 + 0.5, 0)),
-			def.pit,
-			def.pitRadius,
-			Enum.Material.Air
-		)
-		terrain:FillCylinder(
-			CFrame.new(middle + back * 2 + Vector3.new(0, -def.pit - 1, 0)),
-			3,
-			def.pitRadius + 2,
-			Enum.Material.Sandstone
-		)
-	end
-end
-
-local function furnish(folder: Folder, index: number, record: Record)
-	local frame = floorFrame(index)
+local function glowOf(record: Record): Color3
 	local glow = Dens.glowsById[record.glow] or Dens.glows[1]
-	for slotId, itemId in record.furniture do
-		local slot = Dens.slotsById[slotId]
-		local item = Dens.itemsById[itemId]
-		if slot == nil or item == nil then
-			continue
-		end
-		local at = denSpot(frame, slot.offset.X, slot.offset.Y, slot.offset.Z)
-			* CFrame.Angles(0, slot.facing, 0)
-		local model = Instance.new("Model")
-		model.Name = item.id
-		model.Parent = folder
-		local color = if item.glow and item.id ~= "CoralLamp" then glow.color else item.color
-		local base: Part
-		if item.id == "Banner" then
-			local pole = part(
-				model,
-				"Pole",
-				Vector3.new(0.4, 0.4, 5),
-				at * CFrame.new(0, item.size.Y / 2, 0),
-				WOOD,
-				Enum.Material.Wood
+	return glow.color
+end
+
+local function stateOf(index: number): DenState
+	local existing = states[index]
+	if existing and existing.folder.Parent then
+		return existing
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = `DenBase{index}`
+	local world = workspace:FindFirstChild("World")
+	local hubFolder = world and world:FindFirstChild("Hub")
+	local function sub(name: string): Folder
+		local made = Instance.new("Folder")
+		made.Name = name
+		made.Parent = folder
+		return made
+	end
+	local made: DenState = {
+		folder = folder,
+		shell = sub("Shell"),
+		items = sub("Items"),
+		trophies = sub("Trophies"),
+		carved = if existing then existing.carved else nil,
+		placed = {},
+	}
+	-- The camera looks past furniture (CameraController ignores this tag)
+	CollectionService:AddTag(made.items, "DenItems")
+	folder.Parent = hubFolder or workspace
+	states[index] = made
+	return made
+end
+
+-- A small, fixed scramble of a tile's corner (flagstone colors and shades)
+local function hash(a: number, b: number, c: number): number
+	return (math.floor(a) * 73856093 + math.floor(b) * 19349663 + c * 83492791) % 1000003
+end
+
+-- The shell: decks, shaft curbs, pillars, lamps
+local function buildShell(state: DenState, index: number, record: Record)
+	state.shell:ClearAllChildren()
+	local frame = DenSpace.frame(index)
+	local level = record.level
+	local glow = glowOf(record)
+	local style = Dens.floorsById[record.floor] or Dens.floors[1]
+	local function spot(x: number, y: number, z: number): CFrame
+		return DenSpace.spot(frame, x, y, z)
+	end
+	-- Decks: flagstones of mixed sizes with thin dark joints between them (the rock
+	-- shows 2 studs under the gaps); the obsidian floor glows in its joints
+	for storey = 1, DenSpace.storeys(level) do
+		local s = DenSpace.storey(storey)
+		for _, tile in DenSpace.tiles(level, storey, 10) do
+			local w, d = tile.x1 - tile.x0, tile.z0 - tile.z1
+			local cx, cz = (tile.x0 + tile.x1) / 2, (tile.z0 + tile.z1) / 2
+			local h = hash(tile.x0, tile.z1, storey)
+			local base = style.colors[h % #style.colors + 1]
+			local deck = part(
+				state.shell,
+				"Deck",
+				Vector3.new(w - 0.14, 3, d - 0.14),
+				spot(cx, s.deck - 1.5, cz),
+				base:Lerp(Color3.new(0, 0, 0), (h // 7 % 6) * 0.018),
+				style.material
 			)
-			base = part(
-				model,
-				"Cloth",
-				Vector3.new(item.size.X, item.size.Y, 0.3),
-				at * CFrame.new(0, 0, 0.3),
-				glow.color,
-				Enum.Material.Fabric
-			)
-			local _ = pole
-		elseif item.id == "DriftwoodTable" then
-			for _, x in { -2, 2 } do
+			deck.CanCollide = true
+			deck.CanQuery = true
+			deck:SetAttribute("DenDeck", storey)
+			if style.seams then
 				part(
-					model,
-					"Stone",
-					Vector3.new(1.6, 2, 1.6),
-					at * CFrame.new(x, 1, 0),
-					STONE,
-					Enum.Material.Slate
+					state.shell,
+					"Seam",
+					Vector3.new(w, 0.2, d),
+					spot(cx, s.deck - 0.4, cz),
+					glow,
+					Enum.Material.Neon
 				)
 			end
-			base = part(
-				model,
-				"Top",
-				Vector3.new(item.size.X, 0.7, item.size.Z),
-				at * CFrame.new(0, 2.3, 0) * CFrame.Angles(0, 0, math.rad(3)),
-				WOOD,
-				Enum.Material.Wood
-			)
-		elseif item.id == "PearlPedestal" then
-			part(
-				model,
-				"Column",
-				Vector3.new(1.6, 3.2, 1.6),
-				at * CFrame.new(0, 1.6, 0),
+		end
+	end
+	-- Curbs round the shafts down, a glowing lip on their inside, and a light where
+	-- each comes out of the ceiling below
+	for _, shaft in DenSpace.shafts(level) do
+		local deck = DenSpace.storey(shaft.from).deck
+		local radius = shaft.radius + 0.7
+		local count = 16
+		local length = 2 * math.pi * radius / count + 0.15
+		for i = 1, count do
+			local around = spot(0, deck, shaft.z) * CFrame.Angles(0, (i - 0.5) / count * 2 * math.pi, 0)
+			local curb = part(
+				state.shell,
+				"Curb",
+				Vector3.new(length, 3, 1.3), -- down to the rock under the deck
+				around * CFrame.new(0, -0.5, -radius),
 				STONE,
 				Enum.Material.Slate
 			)
-			base = part(
-				model,
-				"Pearl",
-				Vector3.one * 2.2,
-				at * CFrame.new(0, 4.2, 0),
-				Color3.fromRGB(240, 240, 246),
-				Enum.Material.SmoothPlastic
+			curb.CanCollide = true
+			part(
+				state.shell,
+				"Lip",
+				Vector3.new(length, 0.16, 0.3),
+				around * CFrame.new(0, 1.0, -radius + 0.55),
+				glow,
+				Enum.Material.Neon
 			)
-			base.Shape = Enum.PartType.Ball
-			base.Reflectance = 0.35
-		elseif item.id == "BubbleColumn" then
-			base = part(
-				model,
-				"Vent",
-				Vector3.new(2, 0.8, 2),
-				at * CFrame.new(0, 0.4, 0),
-				Color3.fromRGB(70, 80, 90),
-				Enum.Material.Basalt
-			)
-			base.Shape = Enum.PartType.Cylinder
-			base.CFrame = at * CFrame.new(0, 0.4, 0) * CFrame.Angles(0, 0, math.rad(90))
-			local bubbles = Instance.new("ParticleEmitter")
-			bubbles.Rate = 12
-			bubbles.Lifetime = NumberRange.new(2.5, 4)
-			bubbles.Speed = NumberRange.new(3, 5)
-			bubbles.SpreadAngle = Vector2.new(6, 6)
-			bubbles.Size = NumberSequence.new(0.3, 0.7)
-			bubbles.Transparency = NumberSequence.new(0.2, 0.8)
-			bubbles.LightEmission = 0.4
-			bubbles.Color = ColorSequence.new(Color3.fromRGB(220, 250, 255))
-			bubbles.EmissionDirection = Enum.NormalId.Right
-			bubbles.Parent = base
-		else
-			-- A stand-in block the prop replaces
-			base = part(
-				model,
-				"Body",
-				item.size,
-				at * CFrame.new(0, item.size.Y / 2, 0),
-				color,
-				if item.glow then Enum.Material.Neon else Enum.Material.SmoothPlastic
-			)
-			if item.prop then
-				local dressed = Props.dress(
-					base,
-					item.prop,
-					{ cframe = at * CFrame.new(0, item.size.Y / 2, 0), size = item.size }
-				)
-				if dressed then
-					base.Transparency = 1
-					if item.glow then
-						Props.tint(dressed, color)
-					end
+		end
+		local below = part(
+			state.shell,
+			"ShaftLight",
+			Vector3.one * 0.5,
+			spot(0, DenSpace.storey(shaft.to).ceiling - 3, shaft.z),
+			glow,
+			Enum.Material.SmoothPlastic
+		)
+		below.Transparency = 1
+		light(below, glow, 30, 0.9)
+	end
+	-- Pillars down the big rooms, up into the vault, every other one with a sconce
+	for n, pillar in DenSpace.pillars(level) do
+		local room = Dens.roomsById[pillar.room]
+		if room == nil then
+			continue
+		end
+		local s = DenSpace.storey(room.storey)
+		local height = DenSpace.vaultAt(room, math.abs(pillar.x)) + 1.5
+		local foot = spot(pillar.x, s.deck, pillar.z)
+		local shaftPart = part(
+			state.shell,
+			"Pillar",
+			Vector3.new(height, 2.6, 2.6),
+			foot * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			STONE,
+			Enum.Material.Slate
+		)
+		shaftPart.Shape = Enum.PartType.Cylinder
+		shaftPart.CanCollide = true
+		local plinth = part(
+			state.shell,
+			"Plinth",
+			Vector3.new(3.8, 1.1, 3.8),
+			foot * CFrame.new(0, 0.55, 0),
+			STONE,
+			Enum.Material.Slate
+		)
+		plinth.CanCollide = true
+		part(
+			state.shell,
+			"Capital",
+			Vector3.new(3.6, 0.9, 3.6),
+			foot * CFrame.new(0, height - 1.2, 0),
+			STONE,
+			Enum.Material.Slate
+		)
+		-- The sconce faces the room's middle
+		local inward = if pillar.x > 0 then -1 else 1
+		local sconce = part(
+			state.shell,
+			"Sconce",
+			Vector3.new(0.5, 1.2, 0.8),
+			foot * CFrame.new(inward * 1.45, 7, 0),
+			glow,
+			Enum.Material.Neon
+		)
+		if n % 2 == 1 then
+			light(sconce, glow, 16, 0.9)
+		end
+	end
+	-- Orb lamps hanging down the middle of every storey below, one every 16 studs
+	for storey = 2, DenSpace.storeys(level) do
+		local s = DenSpace.storey(storey)
+		local rooms = DenSpace.rooms(level, storey)
+		local front, back = -math.huge, math.huge
+		for _, room in rooms do
+			front = math.max(front, room.z0)
+			back = math.min(back, room.z1)
+		end
+		local z = front - 8
+		while z > back + 4 do
+			local vault = 0
+			for _, room in rooms do
+				if z <= room.z0 and z >= room.z1 then
+					vault = math.max(vault, DenSpace.vaultAt(room, 0))
 				end
 			end
+			if vault > 0 then
+				local top = s.deck + vault
+				part(
+					state.shell,
+					"Cord",
+					Vector3.new(0.15, 4, 0.15),
+					spot(0, top - 1.5, z),
+					STONE,
+					Enum.Material.Metal
+				)
+				local orb = part(
+					state.shell,
+					"Orb",
+					Vector3.one * 1.8,
+					spot(0, top - 4.2, z),
+					glow:Lerp(Color3.new(1, 1, 1), 0.5),
+					Enum.Material.Glass
+				)
+				orb.Shape = Enum.PartType.Ball
+				orb.Transparency = 0.2
+				local core = part(
+					state.shell,
+					"Core",
+					Vector3.one * 0.8,
+					spot(0, top - 4.2, z),
+					LAMP,
+					Enum.Material.Neon
+				)
+				core.Shape = Enum.PartType.Ball
+				light(core, LAMP, 34, 0.75)
+			end
+			z -= 16
 		end
-		if item.glow then
-			local light = Instance.new("PointLight")
-			light.Color = color
-			light.Brightness = 1.3
-			light.Range = 18
-			light.Parent = base
+	end
+	-- Two orb lamps down the Burrow
+	if level >= 2 then
+		for _, z in { -22, -33 } do
+			part(
+				state.shell,
+				"Cord",
+				Vector3.new(0.15, 3, 0.15),
+				spot(0, 21.5, z),
+				STONE,
+				Enum.Material.Metal
+			)
+			local core =
+				part(state.shell, "Core", Vector3.one * 1.1, spot(0, 19.5, z), LAMP, Enum.Material.Neon)
+			core.Shape = Enum.PartType.Ball
+			light(core, LAMP, 26, 0.7)
 		end
 	end
 end
 
--- The carved back wall is ragged and bulges in at plaque height, so a plaque at the
--- nominal wall sat up to 5 studs inside the rock (playtest 2026-10-10: the whole
--- trophy wall was hidden). Each column (a plaque, its trim and what's mounted over
--- it) is brought forward until it clears the nearest rock across the plaque's face.
+-- The placed things, kept in step with the record by id
+local function syncItems(state: DenState, index: number, record: Record)
+	local frame = DenSpace.frame(index)
+	local glow = glowOf(record)
+	local wanted: { [number]: boolean } = {}
+	for _, placement in record.placed do
+		local item = Dens.itemsById[placement.id]
+		if item == nil then
+			continue
+		end
+		local key =
+			`{placement.id}|{placement.x}|{placement.y}|{placement.z}|{placement.r}|{placement.s}|{record.glow}`
+		wanted[placement.uid] = true
+		local have = state.placed[placement.uid]
+		if have and have.key == key and have.model.Parent then
+			continue
+		end
+		if have then
+			have.model:Destroy()
+		end
+		local model = DenItems.build(item, glow, placement.s)
+		model:PivotTo(
+			DenSpace.spot(frame, placement.x, placement.y, placement.z)
+				* CFrame.Angles(0, math.rad(placement.r), 0)
+		)
+		model:SetAttribute("DenUid", placement.uid)
+		-- Build mode picks things up by aiming at them
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.CanQuery = true
+			end
+		end
+		model.Parent = state.items
+		state.placed[placement.uid] = { model = model, key = key }
+	end
+	for uid, built in state.placed do
+		if not wanted[uid] then
+			built.model:Destroy()
+			state.placed[uid] = nil
+		end
+	end
+end
+
+-- The carved back wall is ragged and bulges in and out at plaque height, so each
+-- column (a plaque, its trim and what's mounted over it) is set onto the rock by
+-- raycast: brought forward out of a bulge, or back to a wall that's further away
+-- (playtest 2026-10-10: the whole trophy wall was hidden inside the rock)
 local PLAQUE_Y = 11
 local WALL_REACH = 14 -- the rays start this far in front of the nominal wall
 local function seatTrophies(frame: CFrame, backZ: number, columns: { [number]: { BasePart } })
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { workspace.Terrain }
-	local toWall = frame:VectorToWorldSpace(Vector3.new(0, 0, WALL_REACH + 10))
+	local toWall = frame:VectorToWorldSpace(Vector3.new(0, 0, WALL_REACH + 12))
 	for x, items in columns do
 		if items[1].Parent == nil then
 			continue
 		end
 		local face: number? = nil -- the rock nearest the room, as a z in the den
-		-- A grid over the plaque and its trim, edges and corners included (rock at the
-		-- very edge still cut the end off a title)
 		for _, across in { -3.3, -1.6, 0, 1.6, 3.3 } do
 			for _, up in { -2.2, 0, 2.5 } do
-				local origin = denSpot(frame, x + across, PLAQUE_Y + up, backZ + WALL_REACH).Position
+				local origin = DenSpace.spot(frame, x + across, PLAQUE_Y + up, backZ + WALL_REACH).Position
 				local hit = workspace:Raycast(origin, toWall, params)
 				if hit then
 					face = math.max(face or -math.huge, backZ + WALL_REACH - hit.Distance)
 				end
 			end
 		end
-		local shift = if face then math.clamp(face + 0.45 - backZ, 0, 8) else 0
-		if shift > 0 then
+		local shift = if face then math.clamp(face + 0.45 - backZ, -10, 8) else 0
+		if shift ~= 0 then
 			local move = frame:VectorToWorldSpace(Vector3.new(0, 0, -shift))
 			for _, item in items do
 				item.CFrame += move
@@ -319,20 +418,20 @@ local function seatTrophies(frame: CFrame, backZ: number, columns: { [number]: {
 	end
 end
 
--- Trophies on the back wall: plaques with a label, the biggest catch's model on one
-local function trophyWall(folder: Folder, index: number, record: Record, trophies: Trophies)
-	local frame = floorFrame(index)
-	local def = Dens.levels[record.level] or Dens.levels[1]
-	local backZ = -(ROOM_BACK + def.extend) + 2.5
-	local glow = Dens.glowsById[record.glow] or Dens.glows[1]
+local function trophyWall(state: DenState, index: number, record: Record, trophies: Trophies)
+	local folder = state.trophies
+	folder:ClearAllChildren()
+	local frame = DenSpace.frame(index)
+	local backZ = Dens.backWall[if record.level >= 2 then 2 else 1] + 2.5
+	local glow = glowOf(record)
 	local columns: { [number]: { BasePart } } = {}
 	local function mount(x: number, item: BasePart)
 		local column = columns[x] or {}
 		table.insert(column, item)
 		columns[x] = column
 	end
-	local function plaque(x: number, title: string, line: string, accent: Color3): Part
-		local at = denSpot(frame, x, PLAQUE_Y, backZ)
+	local function plaque(x: number, title: string, line: string, accent: Color3)
+		local at = DenSpace.spot(frame, x, PLAQUE_Y, backZ)
 		local board = part(
 			folder,
 			"Plaque",
@@ -375,14 +474,13 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 		bottom.TextColor3 = Color3.fromRGB(226, 240, 246)
 		bottom.Text = line
 		bottom.Parent = gui
-		return board
 	end
 	-- The biggest catch, with the prey's own model mounted above the plaque
 	local prey = Config.Prey.byId[trophies.bestPrey]
 	local catchLine = if prey
 		then `{prey.name} · {string.format("%.1f", trophies.bestPreyMass)} kg`
 		else "Nothing yet"
-	plaque(-7, "BIGGEST CATCH", catchLine, glow.color)
+	plaque(-7, "BIGGEST CATCH", catchLine, glow)
 	if prey then
 		local models = ReplicatedStorage:FindFirstChild("PreyModels")
 		local template = models and models:FindFirstChild(prey.id)
@@ -393,7 +491,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 				true
 			)
 			else nil
-		local at = denSpot(frame, -7, 14.6, backZ + 1.5) * CFrame.Angles(0, math.rad(90), 0)
+		local at = DenSpace.spot(frame, -7, 14.6, backZ + 1.5) * CFrame.Angles(0, math.rad(90), 0)
 		if mesh then
 			local clone = mesh:Clone()
 			for _, child in clone:GetChildren() do
@@ -427,7 +525,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			folder,
 			"Tooth",
 			Vector3.new(1.4, 3.2, 0.8),
-			denSpot(frame, 0, 14.4, backZ + 1) * CFrame.Angles(0, 0, math.rad(180)),
+			DenSpace.spot(frame, 0, 14.4, backZ + 1) * CFrame.Angles(0, 0, math.rad(180)),
 			Color3.fromRGB(236, 232, 220),
 			Enum.Material.SmoothPlastic
 		)
@@ -445,7 +543,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			folder,
 			"Beak",
 			Vector3.new(2, 2, 2),
-			denSpot(frame, 7, 14.4, backZ + 1),
+			DenSpace.spot(frame, 7, 14.4, backZ + 1),
 			Color3.fromRGB(40, 30, 36),
 			Enum.Material.SmoothPlastic
 		)
@@ -464,7 +562,7 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 			folder,
 			"Title",
 			Vector3.new(10, 1.6, 0.4),
-			denSpot(frame, 0, hub.denHeight - 3, 12),
+			DenSpace.spot(frame, 0, hub.denHeight - 3, 12),
 			Color3.fromRGB(60, 66, 74),
 			Enum.Material.Slate
 		)
@@ -479,179 +577,332 @@ local function trophyWall(folder: Folder, index: number, record: Record, trophie
 		label.Size = UDim2.fromScale(1, 1)
 		label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
 		label.TextScaled = true
-		label.TextColor3 = glow.color
+		label.TextColor3 = glow
 		label.Text = string.upper(trophies.title)
 		label.Parent = gui
 	end
 end
 
--- The Coral Garden (Config/Dens garden): a stone basin of sand on the floor under
--- the trophy plaques, its corals growing as it fills (`fill` 0..1 by coral,
--- `shellFill` by shells), sparkling and lit in the den's glow color once full.
--- Rebuilt on its own as it grows (GardenService), so the den isn't.
-local CORALS = {
+-- The Coral Garden (Config/Dens garden, DenSpace.garden): a stone planter set into
+-- the deck, sand inside, and a reef of corals that grows as the garden fills
+-- (`fill` 0..1 by coral, `shellFill` by shells), sparkling and lit once full. The
+-- owner's word on the first one: "just sticks with spheres on the table"
+-- (2026-10-13), so the corals are the imported reef props where they're in, and
+-- part-built shapes of the same corals where they aren't. Rebuilt on its own as it
+-- grows (GardenService), so the den isn't.
+type Coral = { kind: string, x: number, z: number, size: number, color: Color3, turn: number }
+
+local REEF = {
 	Color3.fromRGB(255, 112, 130),
 	Color3.fromRGB(255, 156, 84),
 	Color3.fromRGB(186, 112, 236),
 	Color3.fromRGB(255, 212, 96),
 	Color3.fromRGB(110, 214, 200),
-}
-local SPRIGS = {
-	Vector2.new(0, -0.6),
-	Vector2.new(-1.9, -1.2),
-	Vector2.new(1.9, -1.1),
-	Vector2.new(-1.1, 1.0),
-	Vector2.new(1.2, 1.1),
-	Vector2.new(-2.7, 0.4),
-	Vector2.new(2.7, 0.5),
+	Color3.fromRGB(120, 170, 255),
 }
 
-function DenBuilder.garden(index: number, record: Record, fill: number, shellFill: number)
-	local folder = denFolder(index)
-	local old = folder:FindFirstChild("Garden")
-	if old then
-		old:Destroy()
+-- Where the corals stand, by shape: x across the planter, z front (+) to back (-),
+-- both as fractions of its half-width and half-depth; the first ones grow first
+local LAYOUTS: { [string]: { Coral } } = {
+	trough = {
+		{ kind = "Staghorn", x = 0, z = -0.35, size = 3.6, color = REEF[1], turn = 0.4 },
+		{ kind = "Fan", x = -0.55, z = -0.55, size = 3.8, color = REEF[2], turn = 0.2 },
+		{ kind = "Brain", x = 0.42, z = 0.1, size = 2.0, color = REEF[4], turn = 1.1 },
+		{ kind = "Sponge", x = 0.78, z = -0.4, size = 3.0, color = REEF[3], turn = 2.0 },
+		{ kind = "Anemone", x = -0.25, z = 0.3, size = 1.6, color = REEF[5], turn = 0.7 },
+		{ kind = "Fan", x = 0.55, z = -0.6, size = 3.2, color = REEF[6], turn = -0.3 },
+		{ kind = "Staghorn", x = -0.82, z = -0.2, size = 2.8, color = REEF[3], turn = 2.4 },
+		{ kind = "Anemone", x = 0.18, z = 0.45, size = 1.3, color = REEF[1], turn = 1.9 },
+		{ kind = "Brain", x = -0.6, z = 0.35, size = 1.5, color = REEF[2], turn = 0.3 },
+	},
+	bed = {
+		{ kind = "Staghorn", x = 0, z = -0.05, size = 5.2, color = REEF[1], turn = 0.2 },
+		{ kind = "Fan", x = -0.35, z = -0.45, size = 5, color = REEF[2], turn = 0.5 },
+		{ kind = "Brain", x = 0.4, z = 0.2, size = 2.8, color = REEF[4], turn = 1.4 },
+		{ kind = "Sponge", x = 0.5, z = -0.4, size = 4.2, color = REEF[3], turn = 2.2 },
+		{ kind = "Anemone", x = -0.45, z = 0.35, size = 2.2, color = REEF[5], turn = 0.9 },
+		{ kind = "Fan", x = 0.3, z = -0.65, size = 4.2, color = REEF[6], turn = -0.4 },
+		{ kind = "Staghorn", x = -0.62, z = -0.05, size = 3.6, color = REEF[3], turn = 2.6 },
+		{ kind = "Brain", x = -0.1, z = 0.55, size = 2.0, color = REEF[2], turn = 0.4 },
+		{ kind = "Anemone", x = 0.7, z = 0.15, size = 1.8, color = REEF[1], turn = 1.7 },
+		{ kind = "Sponge", x = -0.25, z = -0.7, size = 3.2, color = REEF[4], turn = 0.8 },
+		{ kind = "Anemone", x = 0.15, z = 0.7, size = 1.5, color = REEF[6], turn = 2.9 },
+	},
+}
+
+local PROP_OF = {
+	Staghorn = "StaghornCoral",
+	Fan = "FanCoral",
+	Brain = "BrainCoral",
+	Sponge = "TubeSponge",
+	Anemone = "Anemone",
+}
+
+-- A coral of `kind`, `height` tall, standing on `foot` (part-built when the prop
+-- isn't imported): branching staghorn, a fan, a round brain, a cluster of tubes, a
+-- fuzzy anemone
+local function coral(parent: Instance, kind: string, foot: CFrame, height: number, color: Color3)
+	local box = Vector3.new(height * 0.9, height, height * 0.9)
+	if kind == "Brain" then
+		box = Vector3.new(height * 1.3, height, height * 1.3)
+	elseif kind == "Fan" then
+		box = Vector3.new(height, height, height * 0.3)
 	end
-	local def = Dens.levels[record.level] or Dens.levels[1]
-	local glow = Dens.glowsById[record.glow] or Dens.glows[1]
-	local z = -(ROOM_BACK + def.extend) + Dens.garden.fromBack
-	local base = denSpot(floorFrame(index), 0, 0, z)
-	-- The bed sits on the Terrain floor where it really is: the voxel floor rises
-	-- above the den's nominal floor (retest 2026-10-09: the bed was 0.6 studs under
-	-- it in a Nook and 1.7-4.6 under in the bigger dens, out of sight)
-	local nominal = base.Position.Y
-	local known = gardenFloors[index]
-	if known and known.level == record.level then
-		base = CFrame.new(0, known.y - nominal, 0) * base
-	end
-	local model = Instance.new("Model")
-	model.Name = "Garden"
-	local bed = part(
-		model,
-		"Bed",
-		Vector3.new(1.3, 7.6, 7.6),
-		base * CFrame.new(0, 0.55, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		STONE,
-		Enum.Material.Slate
-	)
-	bed.Shape = Enum.PartType.Cylinder
-	-- A footing under it: the bed rests on the floor's high side, and on a sloping
-	-- floor the low side showed a 2-3 stud gap (retest 2026-10-09). It goes only as
-	-- deep as the floor falls away, with rubble where it falls most, so it reads as
-	-- rock and not a flower pot (playtest 2026-10-09)
-	local depth = 4
-	local ring: { number } = if known and known.level == record.level then known.ring else {}
-	if #ring > 0 then
-		local low = math.huge
-		for _, y in ring do
-			low = math.min(low, y)
+	local stand =
+		part(parent, "Coral", box, foot * CFrame.new(0, box.Y / 2, 0), color, Enum.Material.SmoothPlastic)
+	stand.Transparency = 1
+	local template = Props.template("WorldProps", PROP_OF[kind] or "")
+	if template then
+		local prop = Props.dress(stand, PROP_OF[kind], { cframe = stand.CFrame, size = box })
+		if prop then
+			Props.tint(prop, color:Lerp(Color3.new(1, 1, 1), 0.35))
+			return
 		end
-		depth = math.clamp(base.Position.Y - low + 0.9, 0.8, 6)
 	end
-	local footing = part(
-		model,
-		"Footing",
-		Vector3.new(depth, 7.0, 7.0),
-		base * CFrame.new(0, 0.1 - depth / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		STONE:Lerp(Color3.new(0, 0, 0), 0.15),
-		Enum.Material.Rock
-	)
-	footing.Shape = Enum.PartType.Cylinder
-	for i, y in ring do
-		local drop = base.Position.Y - y
-		if drop > 0.35 then
-			local angle = (i - 1) / #ring * 2 * math.pi
-			local size =
-				Vector3.new(1.5 + (i % 3) * 0.45, math.min(drop + 0.7, 4.6), 1.3 + ((i + 1) % 3) * 0.4)
-			part(
-				model,
-				"Rubble",
-				size,
-				base
-					* CFrame.Angles(0, angle, 0)
-					* CFrame.new(0, -drop + size.Y / 2 - 0.35, -3.45)
-					* CFrame.Angles(
-						math.rad(9 * (i % 3 - 1)),
-						math.rad(23 * i),
-						math.rad(7 * ((i + 1) % 3 - 1))
-					),
-				STONE:Lerp(Color3.new(0, 0, 0), 0.08 + (i % 2) * 0.1),
-				Enum.Material.Rock
+	local shade = color:Lerp(Color3.new(0, 0, 0), 0.18)
+	if kind == "Staghorn" then
+		-- A trunk that forks twice, every branch tapering, tips paler
+		local function branch(from: CFrame, length: number, thick: number, depth: number)
+			local tip = from * CFrame.new(0, length, 0)
+			local limb = part(
+				parent,
+				"Branch",
+				Vector3.new(length, thick, thick),
+				from * CFrame.new(0, length / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
+				if depth == 0 then color:Lerp(Color3.new(1, 1, 1), 0.25) else color,
+				Enum.Material.SmoothPlastic
 			)
+			limb.Shape = Enum.PartType.Cylinder
+			if depth > 0 then
+				for i = 1, 2 do
+					local spread = math.rad(28 + depth * 4) * (if i == 1 then 1 else -1)
+					branch(
+						tip * CFrame.Angles(0, i * 1.9 + depth, 0) * CFrame.Angles(spread, 0, 0),
+						length * 0.72,
+						thick * 0.72,
+						depth - 1
+					)
+				end
+			end
 		end
-	end
-	local sand = part(
-		model,
-		"Sand",
-		Vector3.new(0.3, 6.6, 6.6),
-		base * CFrame.new(0, 1.15, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(226, 208, 168),
-		Enum.Material.Sand
-	)
-	sand.Shape = Enum.PartType.Cylinder
-	local rim = part(
-		model,
-		"Rim",
-		Vector3.new(0.12, 7.75, 7.75),
-		base * CFrame.new(0, 1.22, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		glow.color,
-		Enum.Material.Neon
-	)
-	rim.Shape = Enum.PartType.Cylinder
-	rim.Transparency = 0.55
-	-- The corals fill one after another; even an empty garden shows buds
-	local top = base * CFrame.new(0, 1.3, 0)
-	for i, spot in SPRIGS do
-		local grown = math.clamp(fill * #SPRIGS - (i - 1), 0, 1)
-		local size = 0.18 + 0.82 * grown
-		local color = CORALS[(i - 1) % #CORALS + 1]
-		local foot = top * CFrame.new(spot.X, 0, spot.Y) * CFrame.Angles(0, i * 1.7, 0)
-		local height = 0.5 + 2.6 * size
-		local stalk = part(
-			model,
-			"Coral",
-			Vector3.new(height, 0.42 * size + 0.12, 0.42 * size + 0.12),
-			foot * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		branch(foot, height * 0.38, height * 0.14, 2)
+	elseif kind == "Fan" then
+		local fan = part(
+			parent,
+			"Fan",
+			Vector3.new(0.18, height, height),
+			foot * CFrame.new(0, height * 0.45, 0) * CFrame.Angles(0, math.rad(90), 0),
 			color,
+			Enum.Material.Fabric
+		)
+		fan.Shape = Enum.PartType.Cylinder
+		part(
+			parent,
+			"Stem",
+			Vector3.new(0.35, height * 0.25, 0.35),
+			foot * CFrame.new(0, height * 0.12, 0),
+			shade,
+			Enum.Material.SmoothPlastic
+		)
+	elseif kind == "Brain" then
+		local brain = part(
+			parent,
+			"Brain",
+			Vector3.new(height * 1.25, height, height * 1.25),
+			foot * CFrame.new(0, height * 0.42, 0),
+			color,
+			Enum.Material.Pebble
+		)
+		brain.Shape = Enum.PartType.Ball
+	elseif kind == "Sponge" then
+		for i, t in { { 0, 0, 1 }, { 0.38, 0.1, 0.72 }, { -0.3, 0.32, 0.6 } } do
+			local h = height * t[3]
+			local tube = part(
+				parent,
+				"Tube",
+				Vector3.new(h, height * 0.26, height * 0.26),
+				foot
+					* CFrame.new(t[1] * height * 0.5, h / 2, t[2] * height * 0.5)
+					* CFrame.Angles(0, 0, math.rad(90)),
+				if i == 1 then color else shade,
+				Enum.Material.SmoothPlastic
+			)
+			tube.Shape = Enum.PartType.Cylinder
+			local mouth = part(
+				parent,
+				"Mouth",
+				Vector3.new(0.05, height * 0.18, height * 0.18),
+				foot
+					* CFrame.new(t[1] * height * 0.5, h + 0.02, t[2] * height * 0.5)
+					* CFrame.Angles(0, 0, math.rad(90)),
+				Color3.fromRGB(30, 18, 40),
+				Enum.Material.SmoothPlastic
+			)
+			mouth.Shape = Enum.PartType.Cylinder
+		end
+	else -- Anemone
+		local stalk = part(
+			parent,
+			"Stalk",
+			Vector3.new(height * 0.45, height * 0.5, height * 0.5),
+			foot * CFrame.new(0, height * 0.22, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			shade,
 			Enum.Material.SmoothPlastic
 		)
 		stalk.Shape = Enum.PartType.Cylinder
-		if grown > 0.35 then
-			for side = -1, 1, 2 do
-				local length = height * 0.55
-				local branch = part(
-					model,
-					"Branch",
-					Vector3.new(length, 0.3 * size + 0.08, 0.3 * size + 0.08),
-					foot
-						* CFrame.new(0, height * 0.45, 0)
-						* CFrame.Angles(0, 0, math.rad(90 + side * 38))
-						* CFrame.new(length / 2, 0, 0),
-					color,
-					Enum.Material.SmoothPlastic
-				)
-				branch.Shape = Enum.PartType.Cylinder
-			end
-		end
-		local cap = part(
-			model,
-			"Polyp",
-			Vector3.one * (0.3 + 0.45 * size),
-			foot * CFrame.new(0, height, 0),
-			color:Lerp(Color3.new(1, 1, 1), 0.25),
-			if grown >= 1 then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		local crown = part(
+			parent,
+			"Crown",
+			Vector3.new(height * 1.1, height * 0.6, height * 1.1),
+			foot * CFrame.new(0, height * 0.55, 0),
+			color,
+			Enum.Material.Grass
 		)
-		cap.Shape = Enum.PartType.Ball
+		crown.Shape = Enum.PartType.Ball
+	end
+end
+
+function DenBuilder.garden(index: number, record: Record, fill: number, shellFill: number)
+	local state = stateOf(index)
+	local old = state.folder:FindFirstChild("Garden")
+	if old then
+		old:Destroy()
+	end
+	local spot = DenSpace.garden(record.level)
+	local s = DenSpace.storey(spot.storey)
+	local frame = DenSpace.frame(index)
+	local glow = glowOf(record)
+	local model = Instance.new("Model")
+	model.Name = "Garden"
+	local center = DenSpace.spot(frame, 0, s.deck, spot.z)
+	local hw, hd = spot.width / 2, spot.depth / 2
+	local sandTop = -0.35
+	if spot.shape == "trough" then
+		-- A long stone planter against the back wall: a lip at the deck's height, a
+		-- glowing seam along its front, sand a little under the lip
+		part(
+			model,
+			"Basin",
+			Vector3.new(spot.width, 2.4, spot.depth),
+			center * CFrame.new(0, -1.3, 0),
+			STONE,
+			Enum.Material.Slate
+		)
+		for _, side in { -1, 1 } do
+			part(
+				model,
+				"Lip",
+				Vector3.new(spot.width + 0.6, 0.7, 0.6),
+				center * CFrame.new(0, 0.1, side * (hd + 0.05)),
+				STONE:Lerp(Color3.new(1, 1, 1), 0.08),
+				Enum.Material.Slate
+			)
+			local cap = part(
+				model,
+				"End",
+				Vector3.new(0.7, spot.depth + 0.6, spot.depth + 0.6),
+				center * CFrame.new(side * (hw + 0.1), 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
+				STONE:Lerp(Color3.new(1, 1, 1), 0.08),
+				Enum.Material.Slate
+			)
+			cap.Shape = Enum.PartType.Cylinder
+		end
+		part(
+			model,
+			"Seam",
+			Vector3.new(spot.width, 0.14, 0.2),
+			center * CFrame.new(0, 0.48, -(hd + 0.36)),
+			glow,
+			Enum.Material.Neon
+		)
+		part(
+			model,
+			"Sand",
+			Vector3.new(spot.width - 0.4, 0.3, spot.depth - 0.4),
+			center * CFrame.new(0, sandTop - 0.15, 0),
+			Color3.fromRGB(226, 208, 168),
+			Enum.Material.Sand
+		)
+	else
+		-- A sunken oval bed: a ring of rounded stones, a glow under them, sand below
+		-- the deck
+		-- (an oval: a cylinder mesh stretched, since a Cylinder part is always round;
+		-- its axis is the part's X, turned up)
+		local function oval(
+			name: string,
+			thick: number,
+			grow: number,
+			y: number,
+			color: Color3,
+			material: Enum.Material
+		)
+			local disc = part(
+				model,
+				name,
+				Vector3.new(thick, spot.width + grow, spot.depth + grow),
+				center * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90)),
+				color,
+				material
+			)
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Cylinder
+			mesh.Parent = disc
+		end
+		oval("Sand", 0.6, 0, sandTop - 0.3, Color3.fromRGB(226, 208, 168), Enum.Material.Sand)
+		oval("Glow", 0.2, 0.8, -0.2, glow, Enum.Material.Neon)
+		local stones = 22
+		for i = 1, stones do
+			local a = (i - 0.5) / stones * 2 * math.pi
+			local x, z = math.cos(a) * (hw + 0.3), math.sin(a) * (hd + 0.3)
+			local big = 1.4 + (i % 3) * 0.35
+			local stone = part(
+				model,
+				"Stone",
+				Vector3.new(big * 1.3, big * 0.8, big),
+				center
+					* CFrame.new(x, big * 0.18, z)
+					* CFrame.Angles(0, -a + (i % 2) * 0.4, (i % 3 - 1) * 0.12),
+				STONE:Lerp(Color3.new(0, 0, 0), (i % 4) * 0.05),
+				Enum.Material.Slate
+			)
+			stone.Shape = Enum.PartType.Ball
+			stone.CanCollide = true
+		end
+		-- A couple of boulders in the bed among the corals
+		for i, at in { Vector2.new(-0.15, 0.25), Vector2.new(0.62, -0.25) } do
+			local rock = part(
+				model,
+				"Rock",
+				Vector3.new(1.8, 1.2, 1.5) * (1 + i * 0.25),
+				center * CFrame.new(at.X * hw, sandTop + 0.3, at.Y * hd) * CFrame.Angles(0.2, i, 0.1),
+				STONE:Lerp(Color3.new(0, 0, 0), 0.12),
+				Enum.Material.Rock
+			)
+			rock.Shape = Enum.PartType.Ball
+		end
+	end
+	-- The reef grows one coral after another; even an empty garden shows young ones
+	local layout = LAYOUTS[spot.shape] or LAYOUTS.trough
+	for i, c in layout do
+		local grown = math.clamp(fill * #layout - (i - 1), 0, 1)
+		local height = c.size * (0.3 + 0.7 * grown)
+		-- (the center's own +z runs back into the rock, the layout's z toward the hub)
+		local foot = center
+			* CFrame.new(c.x * hw * 0.85, sandTop, -c.z * hd * 0.8)
+			* CFrame.Angles(0, c.turn, 0)
+		coral(model, c.kind, foot, height, c.color)
 	end
 	-- Shells washed up on the sand
-	for i = 1, math.floor(shellFill * 5 + 0.001) do
-		local angle = i * 2.1
+	for i = 1, math.floor(shellFill * 6 + 0.001) do
+		local a = i * 2.3
 		local shell = part(
 			model,
 			"Shell",
-			Vector3.new(0.7, 0.3, 0.6),
-			top * CFrame.new(math.cos(angle) * 2.6, 0.05, math.sin(angle) * 2.6) * CFrame.Angles(0, angle, 0),
-			Color3.fromRGB(242, 228, 204),
+			Vector3.new(0.8, 0.3, 0.7),
+			center
+				* CFrame.new(math.cos(a) * hw * 0.6, sandTop + 0.1, math.sin(a) * hd * 0.55)
+				* CFrame.Angles(0, a, 0),
+			Color3.fromRGB(236, 230, 214),
 			Enum.Material.SmoothPlastic
 		)
 		local mesh = Instance.new("SpecialMesh")
@@ -659,91 +910,40 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 		mesh.Parent = shell
 	end
 	-- Full: it sparkles and glows, so a glance says "collect me"
+	local anchor = part(
+		model,
+		"Anchor",
+		Vector3.one * 0.5,
+		center * CFrame.new(0, 2, 0),
+		glow,
+		Enum.Material.SmoothPlastic
+	)
+	anchor.Transparency = 1
 	if fill >= 0.999 then
-		local light = Instance.new("PointLight")
-		light.Color = glow.color
-		light.Range = 14
-		light.Brightness = 1.4
-		light.Parent = sand
+		light(anchor, glow, 18, 1.5)
 		local sparkle = Instance.new("ParticleEmitter")
-		sparkle.Rate = 6
-		sparkle.Lifetime = NumberRange.new(1.2, 2)
+		sparkle.Rate = 9
+		sparkle.Lifetime = NumberRange.new(1.2, 2.2)
 		sparkle.Speed = NumberRange.new(0.5, 1.5)
-		sparkle.SpreadAngle = Vector2.new(25, 25)
+		sparkle.SpreadAngle = Vector2.new(40, 40)
 		sparkle.Size = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0),
-			NumberSequenceKeypoint.new(0.3, 0.35),
+			NumberSequenceKeypoint.new(0.3, 0.4),
 			NumberSequenceKeypoint.new(1, 0),
 		})
 		sparkle.LightEmission = 1
-		sparkle.Color = ColorSequence.new(glow.color)
-		sparkle.EmissionDirection = Enum.NormalId.Right -- the cylinder's axis is up
-		sparkle.Parent = sand
+		sparkle.Color = ColorSequence.new(glow)
+		sparkle.Shape = Enum.ParticleEmitterShape.Box
+		anchor.Size = Vector3.new(spot.width * 0.8, 1, spot.depth * 0.8)
+		sparkle.Parent = anchor
+	else
+		light(anchor, glow, 12, 0.5 + fill * 0.6)
 	end
-	model.Parent = folder
-	if known == nil or known.level ~= record.level then
-		-- Terrain carved this frame doesn't answer a raycast until a later one, so
-		-- the floor is found a moment after the den is built
-		task.delay(0.5, function()
-			local floorY, floorRing = floorUnder(base, nominal)
-			if floorY == nil or model.Parent == nil then
-				return
-			end
-			gardenFloors[index] = { level = record.level, y = floorY, ring = floorRing }
-			-- Again, on the floor now, with a footing cut to its slope
-			DenBuilder.garden(index, record, fill, shellFill)
-		end)
-	end
+	model.Parent = state.folder
 end
 
--- The top of the Terrain floor round `at` (the highest of five rays, so nothing is
--- buried), or nil when none of them finds the floor near `nominal`; and the floor's
--- height in eight directions just outside the bed's edge (the top where a ray
--- misses), for the footing
-local RING_RADIUS = 3.8
-function floorUnder(spot: CFrame, nominal: number): (number?, { number })
-	local at = spot.Position
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { workspace.Terrain }
-	local best: number? = nil
-	for _, offset in
-		{
-			Vector3.zero,
-			Vector3.new(2.6, 0, 0),
-			Vector3.new(-2.6, 0, 0),
-			Vector3.new(0, 0, 2.6),
-			Vector3.new(0, 0, -2.6),
-		}
-	do
-		local origin = Vector3.new(at.X, nominal + 12, at.Z) + offset
-		local hit = workspace:Raycast(origin, Vector3.new(0, -24, 0), params)
-		if hit and hit.Position.Y > nominal - 3 and hit.Position.Y < nominal + 9 then
-			best = math.max(best or -math.huge, hit.Position.Y)
-		end
-	end
-	if best == nil then
-		return nil, {}
-	end
-	local top = best - 0.15
-	local ring: { number } = {}
-	for i = 1, 8 do
-		local angle = (i - 1) / 8 * 2 * math.pi
-		-- The same directions the footing's rubble is laid in
-		local edge = (spot * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0, -RING_RADIUS)).Position
-		local origin = Vector3.new(edge.X, nominal + 12, edge.Z)
-		local hit = workspace:Raycast(origin, Vector3.new(0, -24, 0), params)
-		ring[i] = if hit
-				and hit.Position.Y > nominal - 8
-				and hit.Position.Y < top
-			then hit.Position.Y
-			else top
-	end
-	return top, ring
-end
-
--- Builds (or rebuilds) den `index` from its owner's record (`fill` and `shellFill`:
--- the Coral Garden's, 0..1)
+-- Builds (or brings up to date) den `index` from its owner's record (`fill` and
+-- `shellFill`: the Coral Garden's, 0..1)
 function DenBuilder.build(
 	index: number,
 	record: Record,
@@ -751,24 +951,42 @@ function DenBuilder.build(
 	fill: number?,
 	shellFill: number?
 )
-	DenBuilder.clear(index, false)
-	carve(index, record.level)
-	local folder = denFolder(index)
-	furnish(folder, index, record)
-	trophyWall(folder, index, record, trophies)
-	DenBuilder.garden(index, record, fill or 0, shellFill or 0)
+	local state = stateOf(index)
+	if state.carved ~= record.level then
+		Cave.apply(workspace.Terrain, DenCarve.ops(index, record.level))
+		state.carved = record.level
+	end
+	local shellKey = `{record.level}|{record.floor}|{record.glow}`
+	if state.shellKey ~= shellKey then
+		buildShell(state, index, record)
+		state.shellKey = shellKey
+	end
+	syncItems(state, index, record)
+	local trophyKey =
+		`{record.level}|{record.glow}|{trophies.bestPrey}|{trophies.bestPreyMass}|{trophies.teeth}|{trophies.beaks}|{trophies.title}`
+	if state.trophyKey ~= trophyKey then
+		trophyWall(state, index, record, trophies)
+		state.trophyKey = trophyKey
+	end
+	if fill then
+		DenBuilder.garden(index, record, fill, shellFill or 0)
+	end
+end
+
+-- Only the placed things (Build mode)
+function DenBuilder.items(index: number, record: Record)
+	syncItems(stateOf(index), index, record)
 end
 
 -- Takes a den's base down; with `refill` the rock goes back to a plain Nook
 function DenBuilder.clear(index: number, refill: boolean)
-	local folder = folders[index]
-	if folder then
-		folder:Destroy()
-		folders[index] = nil
+	local state = states[index]
+	if state then
+		state.folder:Destroy()
+		states[index] = nil
 	end
-	gardenFloors[index] = nil
 	if refill then
-		carve(index, 1)
+		Cave.apply(workspace.Terrain, DenCarve.reset(index))
 	end
 end
 

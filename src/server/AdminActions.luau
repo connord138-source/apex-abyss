@@ -21,6 +21,7 @@ local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local DataService = require(script.Parent.Services.DataService)
 local EconomyService = require(script.Parent.Services.EconomyService)
 local FishService = require(script.Parent.Services.FishService)
+local DenService = require(script.Parent.Services.DenService)
 local GardenService = require(script.Parent.Services.GardenService)
 local HuntService = require(script.Parent.Services.HuntService)
 local MonetizationService = require(script.Parent.Services.MonetizationService)
@@ -424,6 +425,31 @@ local function gardenHours(_admin: Player, targets: { Player }, hours: any): str
 	return `Coral Garden grown by {n} h for {count} player(s) (collected within a few seconds while in their den)`
 end
 
+-- Dens (Build mode testing): a den's level, and things for the tray
+local function denLevel(_admin: Player, targets: { Player }, level: any): string
+	local n = if typeof(level) == "number" and level == level then math.floor(level) else nil
+	if n == nil or n < 1 or n > #Config.Dens.levels then
+		return `Give a level 1-{#Config.Dens.levels}`
+	end
+	for _, player in targets do
+		DenService.setLevel(player, n)
+	end
+	return `Den set to a {Config.Dens.levels[n].name} for {#targets} player(s) (things that no longer fit went to the tray)`
+end
+
+local function denItems(_admin: Player, targets: { Player }, count: any): string
+	local n = if typeof(count) == "number" and count == count
+		then math.clamp(math.floor(count), 1, 20)
+		else nil
+	if n == nil then
+		return "Give a count"
+	end
+	for _, player in targets do
+		DenService.giveItems(player, n)
+	end
+	return `{n} of every den thing into the Build tray for {#targets} player(s)`
+end
+
 -- The Tide Clock: force a tide on every server client for 10 minutes ("" = the clock)
 local function forceTide(_admin: Player, _targets: { Player }, id: any): string
 	if id == "" then
@@ -611,6 +637,8 @@ AdminActions.byName = {
 	dailyStreak = dailyStreak :: Handler,
 	dailyBreak = dailyBreak :: Handler,
 	gardenHours = gardenHours :: Handler,
+	denLevel = denLevel :: Handler,
+	denItems = denItems :: Handler,
 	forceTide = forceTide :: Handler,
 	rareNear = rareNear :: Handler,
 	trackAdd = trackAdd :: Handler,

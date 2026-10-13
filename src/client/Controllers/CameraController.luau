@@ -8,6 +8,7 @@
 -- back from it pull the camera in, snapping in and easing back out. Under a ceiling
 -- (or on the seabed) it slides along the rock instead of collapsing into the fish,
 -- and when it does end up close, your own fish fades so it doesn't fill the view.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -210,6 +211,10 @@ local function update(dt: number)
 		if folder then
 			table.insert(ignore, folder)
 		end
+	end
+	-- and the things in the dens (the camera looks past a lamp, not into it)
+	for _, folder in CollectionService:GetTagged("DenItems") do
+		table.insert(ignore, folder)
 	end
 	rayParams.FilterDescendantsInstances = ignore
 	local clearance = math.clamp(length * tuning.clearance, tuning.clearanceMin, tuning.clearanceMax)

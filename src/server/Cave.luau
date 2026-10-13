@@ -148,6 +148,51 @@ local function nearOpening(angle: number, margin: number): boolean
 	return false
 end
 
+-- A den's main room (the Nook): a lozenge of air with a flat floor and a round
+-- doorway. DenCarve runs it again when a den is put back to a Nook.
+function Cave.denRoom(ops: { Op }, den: number)
+	local frame = Layout.denFrame(den)
+	local back = -frame.LookVector -- the frame faces the hub; the room runs outward
+	local middle = frame.Position
+	local roomY = DEN_FLOOR + hub.denHeight / 2
+	local mid = Vector3.new(middle.X, roomY, middle.Z)
+	ball(ops, AIR, mid, 14)
+	ball(ops, AIR, mid - back * 11, 12)
+	ball(ops, AIR, mid + back * 10 + Vector3.new(0, -1, 0), 11)
+	block(
+		ops,
+		AIR,
+		CFrame.lookAt(mid + Vector3.new(0, -8, 0), mid + Vector3.new(0, -8, 0) + back),
+		Vector3.new(24, 12, 30)
+	)
+	-- The doorway through the wall, a little above the floor
+	local door = mid - back * (hub.denDepth / 2) -- at hub.radius
+	cylinder(ops, AIR, Vector3.new(door.X, DEN_FLOOR + 11, door.Z), back, 22, 10)
+	block(
+		ops,
+		AIR,
+		CFrame.lookAt(Vector3.new(door.X, DEN_FLOOR + 5, door.Z), door + back),
+		Vector3.new(18, 10, 22)
+	)
+end
+
+-- A den's floor, put back after the carving
+function Cave.denFloor(ops: { Op }, den: number)
+	local frame = Layout.denFrame(den)
+	local floorCenter = Vector3.new(frame.Position.X, DEN_FLOOR / 2 - 2, frame.Position.Z)
+	block(
+		ops,
+		SANDSTONE,
+		CFrame.lookAt(floorCenter, floorCenter + frame.LookVector),
+		Vector3.new(32, DEN_FLOOR + 4, 42)
+	)
+end
+
+-- The fill helpers, for DenCarve
+Cave.ball = ball
+Cave.block = block
+Cave.cylinder = cylinder
+
 -- Every fill, in order: fill the rock, carve the rooms, then put the floors back.
 function Cave.ops(): { Op }
 	local ops: { Op } = {}
@@ -326,29 +371,7 @@ function Cave.ops(): { Op }
 
 	-- 5. The den rooms: a lozenge of air with a flat floor and a round doorway
 	for den = 1, Layout.DEN_COUNT do
-		local frame = Layout.denFrame(den)
-		local back = -frame.LookVector -- the frame faces the hub; the room runs outward
-		local middle = frame.Position
-		local roomY = DEN_FLOOR + hub.denHeight / 2
-		local mid = Vector3.new(middle.X, roomY, middle.Z)
-		ball(ops, AIR, mid, 14)
-		ball(ops, AIR, mid - back * 11, 12)
-		ball(ops, AIR, mid + back * 10 + Vector3.new(0, -1, 0), 11)
-		block(
-			ops,
-			AIR,
-			CFrame.lookAt(mid + Vector3.new(0, -8, 0), mid + Vector3.new(0, -8, 0) + back),
-			Vector3.new(24, 12, 30)
-		)
-		-- The doorway through the wall, a little above the floor
-		local door = mid - back * (hub.denDepth / 2) -- at hub.radius
-		cylinder(ops, AIR, Vector3.new(door.X, DEN_FLOOR + 11, door.Z), back, 22, 10)
-		block(
-			ops,
-			AIR,
-			CFrame.lookAt(Vector3.new(door.X, DEN_FLOOR + 5, door.Z), door + back),
-			Vector3.new(18, 10, 22)
-		)
+		Cave.denRoom(ops, den)
 	end
 
 	-- 6. The tunnels: round tubes out to the shallows, roughened
@@ -383,17 +406,13 @@ function Cave.ops(): { Op }
 		end
 	end
 
-	-- 7. Floors back: the cavern floor at 0, den floors at DEN_FLOOR, tunnel floors at 1
-	cylinder(ops, ROCK, center + Vector3.new(0, -16, 0), Vector3.yAxis, 32, hub.radius + hub.denDepth + 40)
+	-- 7. Floors back: the cavern floor at 0, den floors at DEN_FLOOR, tunnel floors at 1.
+	-- The rock under the floor goes all the way down to the shelf's hollow: the dome's
+	-- ball reaches 84 under the floor, and it left a hidden void under the plaza that
+	-- the dens' lower storeys would have opened into (2026-10-13)
+	cylinder(ops, ROCK, center + Vector3.new(0, -44, 0), Vector3.yAxis, 88, hub.radius + hub.denDepth + 40)
 	for den = 1, Layout.DEN_COUNT do
-		local frame = Layout.denFrame(den)
-		local floorCenter = Vector3.new(frame.Position.X, DEN_FLOOR / 2 - 2, frame.Position.Z)
-		block(
-			ops,
-			SANDSTONE,
-			CFrame.lookAt(floorCenter, floorCenter + frame.LookVector),
-			Vector3.new(32, DEN_FLOOR + 4, 42)
-		)
+		Cave.denFloor(ops, den)
 	end
 	for segment = 1, hub.segments do
 		if Layout.segmentKind(segment) == "tunnel" then

@@ -48,6 +48,9 @@ local Input = {
 	cursorChanged = Signal.new(),
 	-- Set while the start screen is up: the fish doesn't swim, look, bite or dash
 	locked = false,
+	-- Set while Build mode is on: the mouse buttons and triggers place things
+	-- instead of biting and dashing (BuildController binds them)
+	building = false,
 }
 
 local ALT_TAP = 0.35 -- seconds: an Alt let go sooner than this toggles the cursor
@@ -195,11 +198,11 @@ function Input.start()
 			or key == Enum.KeyCode.ButtonR1
 			or key == Enum.KeyCode.ButtonX
 		then
-			if not Input.locked then
+			if not Input.locked and not Input.building then
 				Input.bite:fire()
 			end
 		elseif mouse == Enum.UserInputType.MouseButton1 or key == Enum.KeyCode.ButtonR2 then
-			if not Input.locked then
+			if not Input.locked and not Input.building then
 				Input.ability:fire()
 			end
 		end

@@ -94,16 +94,21 @@ function Layout.counterDistance(angleDegrees: number, point: Vector3): number
 	return (localPoint - closest).Magnitude
 end
 
--- How far back from the cavern wall a den's room can reach once fully upgraded: the
--- room's own depth, DenBuilder's carve behind it (ROOM_BACK 21 from the den's
--- middle, then up to Dens.maxExtend more and a rounded back), plus a margin
-local DEN_REACH = hub.radius + hub.denDepth / 2 + 21 + Config.Dens.maxExtend + 12
-local DEN_BOTTOM = hub.denFloorY - Config.Dens.maxPit - 4
+-- A den's reach (Config/Dens): the main storey runs back from the cavern wall into
+-- the Burrow, and the storeys below run from under the plaza's rim (`maxFront`) far
+-- back under the sand (`maxBack`), down to the Sanctum's floor
+local Dens = Config.Dens
+local DEN_MIDDLE = hub.radius + hub.denDepth / 2
+local MAIN_REACH = DEN_MIDDLE - Dens.backWall[#Dens.backWall] + 12
+local LOW_FROM = DEN_MIDDLE - Dens.maxFront
+local LOW_TO = DEN_MIDDLE - Dens.maxBack + 6
+local LOW_TOP = hub.denFloorY - 6 -- below this, a den's lower storeys
+local DEN_BOTTOM = hub.denFloorY + Dens.storeys[#Dens.storeys].floor - 4
 local DEN_TOP = hub.denFloorY + hub.denHeight + 6
 local SEGMENT_HALF = math.pi / hub.segments
 
--- The den a position is inside (its index), or nil. The whole room counts, however
--- far an upgrade carved it back (playtest 2026-10-08: the back of a Burrow was
+-- The den a position is inside (its index), or nil. The whole house counts, however
+-- far an upgrade dug it back and down (playtest 2026-10-08: the back of a Burrow was
 -- outside the safe zone).
 function Layout.denAt(position: Vector3): number?
 	local offset = position - hub.center
@@ -111,7 +116,11 @@ function Layout.denAt(position: Vector3): number?
 		return nil
 	end
 	local flat = Vector2.new(offset.X, offset.Z).Magnitude
-	if flat < hub.radius or flat > DEN_REACH then
+	if offset.Y < LOW_TOP then
+		if flat < LOW_FROM or flat > LOW_TO then
+			return nil
+		end
+	elseif flat < hub.radius or flat > MAIN_REACH then
 		return nil
 	end
 	local angle = math.atan2(offset.Z, offset.X)

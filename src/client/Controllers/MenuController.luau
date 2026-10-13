@@ -32,6 +32,10 @@ local Tiers = Config.Tiers
 local MenuController = {
 	-- Set while an offer card is up: the phone's stall button sat on its edge
 	stallButtonHidden = false,
+	-- Set by BuildController: the den menu's BUILD button calls it
+	startBuild = nil :: (() -> ())?,
+	-- Set while Build mode is on: no stall hints
+	building = false,
 }
 
 type Menu = {
@@ -459,90 +463,64 @@ function MenuController.openShop(vendorId: string, anchor: Vector3?)
 	currentShop = vendorId
 end
 
--- Your den (Config/Dens): the upgrade, the glow color, and every open slot. Picking
--- a slot lists what fits it (owned things are free to place; the rest cost coral).
-local denPickSlot: string? = nil
+-- Your den (Config/Dens): Build mode, the upgrade, the Coral Garden, the things to
+-- buy (into the Build tray), the floor's stone and the glow color.
+local function denSection(list: ScrollingFrame, order: number, text: string)
+	local frame = Instance.new("Frame")
+	frame.Name = `Section{order}`
+	frame.LayoutOrder = order
+	frame.Size = UDim2.new(1, -8, 0, 30)
+	frame.BackgroundTransparency = 1
+	local label = Ui.label(
+		frame,
+		"Text",
+		string.upper(text),
+		Ui.FONT_HEAVY,
+		13,
+		Ui.color.accent,
+		UDim2.new(1, -16, 0, 18),
+		UDim2.fromOffset(8, 10)
+	)
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	frame.Parent = list
+end
+
+local function denRecord(): any
+	local s = state()
+	return s.den or { level = 1, glow = "Teal", floor = "Flagstone", owned = {}, items = {}, placed = {} }
+end
 
 local function denRows(list: ScrollingFrame)
 	local s = state()
-	local den = s.den or { level = 1, furniture = {}, owned = {}, glow = "Teal" }
+	local den = denRecord()
 	local Dens = Config.Dens
 	local order = 0
 	local function next(): number
 		order += 1
 		return order
 	end
-	local pickSlot = denPickSlot
-	if pickSlot then
-		local slot = Dens.slotsById[pickSlot]
-		local current = den.furniture[pickSlot]
-		local _, back = row(
-			list,
-			next(),
-			"Back",
-			`Spot {pickSlot}`,
-			`{slot.kind} spot · tap an item to place it`,
-			nil,
-			"BACK",
-			"secondary"
-		)
-		if back then
-			back.Activated:Connect(function()
-				denPickSlot = nil
-				MenuController.rerenderCurrent()
-			end)
-		end
-		if current then
-			local item = Dens.itemsById[current]
-			local _, clear = row(
-				list,
-				next(),
-				"Clear",
-				`Take out the {if item then item.name else current}`,
-				"Leaves the spot empty",
-				nil,
-				"CLEAR",
-				"danger"
-			)
-			if clear then
-				clear.Activated:Connect(function()
-					ClientState.request("DenPlace", pickSlot, "")
-					denPickSlot = nil
-				end)
+	local placed = if typeof(den.placed) == "table" then #den.placed else 0
+	local capacity = if typeof(s.denCapacity) == "number" then s.denCapacity else 15
+	-- Build mode
+	local _, build = row(
+		list,
+		next(),
+		"Build",
+		"Build your den",
+		"Place, move and turn your things on any floor, wall or ceiling",
+		`{placed} / {capacity} placed`,
+		"BUILD",
+		"gold",
+		Ui.color.haul
+	)
+	if build then
+		build.Activated:Connect(function()
+			local start = MenuController.startBuild
+			MenuController.close()
+			if start then
+				start()
 			end
-		end
-		for _, item in Dens.items do
-			if not table.find(item.kinds, slot.kind) then
-				continue
-			end
-			local owned = den.owned[item.id] == true
-			local action = if current == item.id
-				then "PLACED"
-				elseif owned then "PLACE"
-				else coralText(item.price)
-			local style: Ui.ButtonStyle = if current == item.id
-				then "disabled"
-				elseif owned then "primary"
-				else priceStyle(item.price)
-			local _, button = row(
-				list,
-				next(),
-				item.id,
-				item.name,
-				item.blurb,
-				if owned then "Owned" else nil,
-				action,
-				style,
-				item.color
-			)
-			if button and current ~= item.id then
-				button.Activated:Connect(function()
-					ClientState.request("DenPlace", pickSlot, item.id)
-					denPickSlot = nil
-				end)
-			end
-		end
-		return
+		end)
 	end
 	-- The upgrade
 	local level = Dens.levels[den.level] or Dens.levels[1]
@@ -554,7 +532,7 @@ local function denRows(list: ScrollingFrame)
 			"Upgrade",
 			`Upgrade to a {upgrade.name}`,
 			upgrade.blurb,
-			`Now: {level.name} (level {level.level})`,
+			`holds {upgrade.capacity}`,
 			coralText(upgrade.cost),
 			priceStyle(upgrade.cost),
 			Ui.color.haul
@@ -565,7 +543,7 @@ local function denRows(list: ScrollingFrame)
 			end)
 		end
 	else
-		row(list, next(), "Upgrade", `A {level.name}`, level.blurb, "Fully upgraded", nil, nil, Ui.color.haul)
+		row(list, next(), "Upgrade", `A {level.name}`, level.blurb, "Fully dug", nil, nil, Ui.color.haul)
 	end
 	-- The Coral Garden: what it grows here, and the Deep Garden pass
 	local passes = s.passes or {}
@@ -607,101 +585,15 @@ local function denRows(list: ScrollingFrame)
 			end)
 		end
 	end
-	-- The glow color
-	for _, glow in Dens.glows do
-		local owned = glow.price == 0 or den.owned[`Glow:{glow.id}`] == true
-		local worn = den.glow == glow.id
-		local _, button = row(
-			list,
-			next(),
-			`Glow{glow.id}`,
-			`{glow.name} glow`,
-			"Your lamps, banners and trophy trims",
-			nil,
-			if worn then "LIT" elseif owned then "SET" else coralText(glow.price),
-			if worn then "disabled" elseif owned then "secondary" else priceStyle(glow.price),
-			glow.color
-		)
-		if button and not worn then
-			button.Activated:Connect(function()
-				ClientState.request("DenColor", glow.id)
-			end)
-		end
-	end
-	-- The slots open at this level, and the ones the next level opens
-	for i = 1, #Dens.levels do
-		local def = Dens.levels[i]
-		for _, slotId in def.slots do
-			local slot = Dens.slotsById[slotId]
-			local itemId = den.furniture[slotId]
-			local item = if itemId then Dens.itemsById[itemId] else nil
-			if i <= den.level then
-				local _, button = row(
-					list,
-					next(),
-					`Slot{slotId}`,
-					`Spot {slotId} · {slot.kind}`,
-					if item then item.name else "Empty",
-					nil,
-					"CHANGE",
-					"secondary",
-					if item then item.color else nil
-				)
-				if button then
-					button.Activated:Connect(function()
-						denPickSlot = slotId
-						MenuController.rerenderCurrent()
-					end)
-				end
-			elseif i == den.level + 1 then
-				row(
-					list,
-					next(),
-					`Slot{slotId}`,
-					`Spot {slotId} · {slot.kind}`,
-					`Opens with the {def.name}`,
-					nil,
-					"LOCKED",
-					"disabled"
-				)
-			end
-		end
-	end
-	-- The Den Expansion pass's spots (open at any level)
+	-- The Den Expansion pass: more things at any level
 	local expansion = Config.Monetization.passesByKey.DenExpansion
-	local hasExpansion = passes.DenExpansion == true
-	if hasExpansion then
-		for _, slot in Dens.slots do
-			if slot.pass ~= "DenExpansion" then
-				continue
-			end
-			local itemId = den.furniture[slot.id]
-			local item = if itemId then Dens.itemsById[itemId] else nil
-			local _, button = row(
-				list,
-				next(),
-				`Slot{slot.id}`,
-				`Spot {slot.id} · {slot.kind}`,
-				if item then item.name else "Empty · Den Expansion",
-				nil,
-				"CHANGE",
-				"secondary",
-				if item then item.color else nil
-			)
-			if button then
-				button.Activated:Connect(function()
-					denPickSlot = slot.id
-					MenuController.rerenderCurrent()
-				end)
-			end
-		end
-	elseif expansion and Store.listed(expansion.id) then
+	if not passes.DenExpansion and expansion and Store.listed(expansion.id) then
 		local _, button = row(
 			list,
 			next(),
 			"Expansion",
 			"Den Expansion",
-			"Four more spots (two on the floor, two on the walls), open at any level",
+			`Place {Dens.expansionCapacity} more things in your den, at any level`,
 			nil,
 			Store.price(expansion.price),
 			"gold",
@@ -713,20 +605,89 @@ local function denRows(list: ScrollingFrame)
 			end)
 		end
 	end
+	-- Things: bought into the Build tray
+	denSection(list, next(), "Things · they go into your Build tray")
+	local items = if typeof(den.items) == "table" then den.items else {}
+	for _, item in Dens.items do
+		local owned = items[item.id] or 0
+		local where = table.concat(item.kinds, " / ")
+		local _, button = row(
+			list,
+			next(),
+			`Item{item.id}`,
+			item.name,
+			`{item.blurb} · {where}`,
+			if owned > 0 then `{owned} owned` else nil,
+			coralText(item.price),
+			priceStyle(item.price),
+			item.color
+		)
+		if button then
+			button.Activated:Connect(function()
+				ClientState.request("DenBuy", item.id)
+			end)
+		end
+	end
+	-- The floor's stone
+	denSection(list, next(), "Floors · the stone of every deck")
+	local owned = if typeof(den.owned) == "table" then den.owned else {}
+	for _, style in Dens.floors do
+		local has = style.price == 0 or owned[`Floor:{style.id}`] == true
+		local laid = den.floor == style.id
+		local _, button = row(
+			list,
+			next(),
+			`Floor{style.id}`,
+			style.name,
+			style.blurb,
+			nil,
+			if laid then "LAID" elseif has then "LAY" else coralText(style.price),
+			if laid then "disabled" elseif has then "secondary" else priceStyle(style.price),
+			style.colors[1]
+		)
+		if button and not laid then
+			button.Activated:Connect(function()
+				ClientState.request("DenFloor", style.id)
+			end)
+		end
+	end
+	-- The glow color
+	denSection(list, next(), "Glow · lamps, banners, trims and seams")
+	for _, glow in Dens.glows do
+		local has = glow.price == 0 or owned[`Glow:{glow.id}`] == true
+		local worn = den.glow == glow.id
+		local _, button = row(
+			list,
+			next(),
+			`Glow{glow.id}`,
+			`{glow.name} glow`,
+			"Your lamps, banners and trophy trims",
+			nil,
+			if worn then "LIT" elseif has then "SET" else coralText(glow.price),
+			if worn then "disabled" elseif has then "secondary" else priceStyle(glow.price),
+			glow.color
+		)
+		if button and not worn then
+			button.Activated:Connect(function()
+				ClientState.request("DenColor", glow.id)
+			end)
+		end
+	end
 end
 
 local function denSubtitle(): string
 	local s = state()
-	local den = s.den or { level = 1 }
+	local den = denRecord()
 	local level = Config.Dens.levels[den.level] or Config.Dens.levels[1]
-	return `{level.name} · level {level.level}   ·   Visitors can look, only you can change it   ·   You have {Ui.number(
+	local placed = if typeof(den.placed) == "table" then #den.placed else 0
+	local capacity = if typeof(s.denCapacity) == "number" then s.denCapacity else level.capacity
+	return `{level.name} · level {level.level} · {placed}/{capacity} things   ·   Visitors look, only you change it   ·   {Ui.number(
 		coral()
 	)} coral`
 end
 
 function MenuController.openDen(anchor: Vector3?)
-	denPickSlot = nil
-	open("YOUR DEN", denSubtitle(), Vector2.new(700, 480), function(window)
+	open("YOUR DEN", denSubtitle(), Vector2.new(720, 520), function(window)
 		local list = Ui.list(window.content)
 		return {
 			window = window,
@@ -2767,13 +2728,18 @@ local function updateHint(root: BasePart?)
 			denSpot = pool
 		end
 	end
+	if MenuController.building then
+		best = nil
+	end
 	nearVendor = best
 	local show = best ~= nil and current == nil
 	local touch = Input.isTouch()
 	hintGui.Enabled = show and not touch
 	shopButton.Visible = show and touch and not MenuController.stallButtonHidden
 	if show and best then
-		local label = if best == "__den" then "YOUR DEN" else `SHOP · {Shop.vendorsById[best].name}`
+		local label = if best == "__den"
+			then (if touch or Input.isGamepad() then "YOUR DEN" else "YOUR DEN   ·   B  BUILD")
+			else `SHOP · {Shop.vendorsById[best].name}`
 		if touch then
 			shopButton.Text = label
 		else

@@ -349,6 +349,8 @@ local function build()
 	amountRow("Daily: set the streak", "days", "dailyStreak", 0, "SET")
 	actionRow("Daily: miss a day (streak resets)", "dailyBreak", "BREAK", "danger")
 	amountRow("Coral Garden: grow hours", "hours (max 48)", "gardenHours", 0, "GROW")
+	amountRow("Den: set the level (1-5)", "level", "denLevel", 0, "SET")
+	amountRow("Den: things into the Build tray", "of each (max 20)", "denItems", 0, "GIVE")
 
 	header("TIDES · RARE CATCHES · BOUNTIES · WEEKLY")
 	local tides: { { label: string, value: any } } = { { label = "Back to the clock", value = "" } }

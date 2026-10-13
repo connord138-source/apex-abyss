@@ -59,8 +59,20 @@ export type PlayerData = {
 		bestPrey: string, -- the biggest fish ever eaten (Config/Prey id) and its mass
 		bestPreyMass: number,
 	},
-	-- The den base (Config/Dens): level, furniture by slot, what's owned, the glow color
-	den: { level: number, furniture: { [string]: string }, owned: { [string]: boolean }, glow: string },
+	-- The den base (Config/Dens): its level, glow and floor, the things placed in it
+	-- (Build mode) and how many of each thing are owned, the glows and floors bought
+	den: {
+		level: number,
+		glow: string,
+		floor: string,
+		owned: { [string]: boolean }, -- "Glow:<id>", "Floor:<id>"
+		items: { [string]: number }, -- copies of each thing (placed or in the tray)
+		placed: { { uid: number, id: string, x: number, y: number, z: number, r: number, s: string } },
+		nextUid: number,
+		-- retired: things by slot, before Build mode (DenService moves them into
+		-- `placed`, and things bought then, kept in `owned`, into `items`)
+		furniture: { [string]: string },
+	},
 	coral: number, -- the currency (vendors)
 	trophies: { [string]: number }, -- boss currencies (MegalodonTeeth, KrakenBeaks)
 	titles: { [string]: boolean }, -- earned titles
@@ -143,7 +155,16 @@ local TEMPLATE: PlayerData = {
 		bestPrey = "",
 		bestPreyMass = 0,
 	},
-	den = { level = 1, furniture = {}, owned = {}, glow = "Teal" },
+	den = {
+		level = 1,
+		glow = "Teal",
+		floor = "Flagstone",
+		owned = {},
+		items = {},
+		placed = {},
+		nextUid = 1,
+		furniture = {},
+	},
 	coral = 0,
 	trophies = {},
 	titles = {},

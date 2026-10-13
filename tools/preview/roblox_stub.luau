@@ -34,6 +34,7 @@ C.__index = function(c, k)
 	if k == "RightVector" then return c.r.x end
 	if k == "UpVector" then return c.r.y end
 	if k == "LookVector" then return -c.r.z end
+	if k == "Rotation" then return cf(vec(0, 0, 0), c.r) end
 	if k == "Inverse" then
 		return function(self)
 			local r = self.r
