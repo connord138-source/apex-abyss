@@ -12,6 +12,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Ground = require(ReplicatedStorage.Shared.Ground)
+local Spring = require(script.Parent.Parent.Spring)
 local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
@@ -100,6 +102,8 @@ type Visual = {
 	grabs: { [number]: number }, -- a squid's held fish: userId → when the grab times out
 	presence: number, -- 0..1: how far a boss has faded in out of the water (Config/Bosses `sight`)
 	shown: number, -- the opacity last applied to the body
+	roll: number, -- banked into its turn (radians; right side down is negative)
+	rollVelocity: number,
 	jaw: Highlight,
 	glow: PointLight,
 	blood: ParticleEmitter?,
@@ -463,6 +467,8 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		-- A boss that fades in starts unseen, wherever it rises
 		presence = if SIGHT[def.id] and SIGHT[def.id].far then 0 else 1,
 		shown = 0,
+		roll = 0,
+		rollVelocity = 0,
 		jaw = jaw,
 		glow = glow,
 		blood = nil,
@@ -667,8 +673,20 @@ local function sampleAt(visual: Visual, t: number): (Vector3, Vector3)
 			local b = samples[i + 1]
 			local alpha = math.clamp((t - a.at) / math.max(b.at - a.at, 1e-3), 0, 1)
 			local heading = a.heading:Lerp(b.heading, alpha)
-			return a.position:Lerp(b.position, alpha),
-				if heading.Magnitude > 1e-3 then heading.Unit else b.heading
+			-- A curve through the samples (Catmull-Rom), not straight lines between
+			-- them: a turning fish drew a polygon of 0.1 s chords (owner, 2026-10-13:
+			-- "Their tracking should also be more fluid")
+			local p1, p2 = a.position, b.position
+			local p0 = if i > 1 then samples[i - 1].position else p1 * 2 - p2
+			local p3 = if i + 2 <= count then samples[i + 2].position else p2 * 2 - p1
+			local t2, t3 = alpha * alpha, alpha * alpha * alpha
+			local position = (
+				p1 * 2
+				+ (p2 - p0) * alpha
+				+ (p0 * 2 - p1 * 5 + p2 * 4 - p3) * t2
+				+ (p1 * 3 - p0 - p2 * 3 + p3) * t3
+			) * 0.5
+			return position, if heading.Magnitude > 1e-3 then heading.Unit else b.heading
 		end
 	end
 	local first = samples[1]
@@ -811,14 +829,30 @@ local function step(dt: number)
 			continue
 		end
 		local position, heading = sampleAt(visual, renderAt)
+		-- Never drawn into the ground: the curve and the extrapolation past the last
+		-- sample can dip a hair below where the server keeps it
+		local belly = Ground.y(position.X, position.Z) + visual.def.length * 0.12 + 1
+		if position.Y < belly then
+			position = Vector3.new(position.X, belly, position.Z)
+		end
 		visual.position = position
 		-- Turn smoothly toward the streamed heading
+		local before = visual.heading
 		local blended = visual.heading:Lerp(heading, 1 - math.exp(-dt * 8))
 		visual.heading = if blended.Magnitude > 1e-3 then blended.Unit else heading
+		-- Bank into the turn, like the player's own fish (right side down turning right)
+		local flatBefore = Vector3.new(before.X, 0, before.Z)
+		local flatNow = Vector3.new(visual.heading.X, 0, visual.heading.Z)
+		local yawRate = 0
+		if dt > 0 and flatBefore.Magnitude > 1e-3 and flatNow.Magnitude > 1e-3 then
+			yawRate = math.asin(math.clamp(flatBefore.Unit:Cross(flatNow.Unit).Y, -1, 1)) / dt
+		end
+		local wantRoll = math.clamp(yawRate * 0.35, -0.5, 0.5) * (if visual.boss then 0.5 else 1)
+		visual.roll, visual.rollVelocity = Spring.number(visual.roll, visual.rollVelocity, wantRoll, 6, dt)
 		if visual.boss and not visual.hidden then
 			solid(visual)
 		end
-		local frame = frameOf(position, visual.heading)
+		local frame = frameOf(position, visual.heading) * CFrame.Angles(0, 0, visual.roll)
 		local relative = speedOf(visual) / math.max(visual.def.speed, 1)
 		if visual.model then
 			swimBones(visual, dt, relative)

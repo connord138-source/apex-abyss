@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
@@ -57,6 +58,8 @@ export type Predator = {
 	onHit: ((Predator, Player, number, Vector3) -> number)?,
 	-- A boss's stagger meter (0..1), streamed to clients
 	meter: number,
+	-- Which way it peels off after a strike (+1 right, -1 left), for a looping pass
+	peel: number,
 }
 
 local PredatorService = {
@@ -92,7 +95,9 @@ local function randomWaypoint(def: Def): Vector3
 		local distance = rng:NextNumber(def.band[1], def.band[2])
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 		if not Seafloor.inTrench(x, z, 30) then
-			return Vector3.new(x, Seafloor.y(x, z) + rng:NextNumber(def.depth[1], def.depth[2]), z)
+			-- Over the real ground: a waypoint inside a reef head was swum straight into
+			local ground = math.max(Seafloor.y(x, z), Ground.y(x, z))
+			return Vector3.new(x, ground + rng:NextNumber(def.depth[1], def.depth[2]), z)
 		end
 	end
 	local fallback = math.rad(if def.angles then (def.angles[1] + def.angles[2]) / 2 else 0)
@@ -112,6 +117,7 @@ local function spawn(predator: Predator, at: Vector3?)
 	predator.waypointUntil = Timing.clock() + 12
 	predator.hitBy = {}
 	predator.meter = 0
+	predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
 	Net.predatorEvent("spawned", predator.index, {
 		id = predator.def.id,
 		x = predator.position.X,
@@ -197,14 +203,94 @@ end
 -- How far below the surface a creature's middle must stay, as a share of its length
 -- (its back plus a dorsal fin)
 local CEILING_SHARE = 0.3
+-- A body's half-height as a share of its length (its belly under its middle)
+local BODY_HALF = 0.12
+-- Water kept between the belly and the ground, at the least (studs)
+local BELLY_GAP = 1.5
+-- How far ahead (seconds of travel) the ground is read, so a creature climbs over a
+-- reef head before it reaches it instead of popping up on top of it
+local LOOK_AHEAD = 1.4
 
--- Moves a predator toward a desired velocity: it accelerates, turns no faster than
--- `turnRate` (its own by default), and stays in the water column.
+-- The highest ground under a creature's body (tail to nose) and along the stretch
+-- of water it's about to cross: the real ground (Shared/Ground: the Terrain and the
+-- solid dressing), not the nominal floor, which reef heads, ridges, wrecks and
+-- chimneys rise far above (owner, 2026-10-13: "the predator fish will phase through
+-- the sand in the ground")
+local function groundAround(predator: Predator, position: Vector3, velocity: Vector3): (number, number)
+	local def = predator.def
+	local flat = Vector3.new(velocity.X, 0, velocity.Z)
+	local facing = Vector3.new(predator.heading.X, 0, predator.heading.Z)
+	local direction = if flat.Magnitude > 1
+		then flat.Unit
+		elseif facing.Magnitude > 1e-3 then facing.Unit
+		else Vector3.xAxis
+	local half = def.length * 0.5
+	local under = -math.huge
+	for _, along in { -half, 0, half } do
+		local at = position + direction * along
+		under = math.max(under, Ground.y(at.X, at.Z))
+	end
+	local reach = half + flat.Magnitude * LOOK_AHEAD
+	local ahead = under
+	for _, share in { 0.5, 1 } do
+		local at = position + direction * (half + (reach - half) * share)
+		ahead = math.max(ahead, Ground.y(at.X, at.Z))
+	end
+	return under, ahead
+end
+
+-- The height above the ground a creature likes to keep: its roaming band's floor
+-- while it roams, closer down while it hunts (prey sits on the sand)
+local function preferredGap(predator: Predator): number
+	local def = predator.def
+	local hard = def.length * BODY_HALF + BELLY_GAP
+	if
+		not predator.custom
+		and (predator.mode == "hunt" or predator.mode == "windup" or predator.mode == "recover")
+	then
+		return hard + 2
+	end
+	return math.max(def.depth[1] * 0.6, 5) + def.length * BODY_HALF
+end
+
+-- Moves a predator toward a desired velocity and keeps it in the water column.
+-- A plain predator swims like a fish (owner, 2026-10-13: "Their tracking should also
+-- be more fluid and realistic"): it turns its body toward where it wants to go,
+-- easing into the turn and turning slower at speed, and swims along its heading,
+-- speeding up briskly and slowing gently, so it sweeps round in arcs instead of
+-- sliding sideways at a target. A boss (`custom`) keeps the direct velocity model its
+-- charges, jets and breaches were tuned on. Both read the real ground ahead and
+-- climb over it, and never sink into it.
 local function steer(predator: Predator, desired: Vector3, dt: number, turnRate: number?)
 	local def = predator.def
-	predator.velocity = predator.velocity:Lerp(desired, 1 - math.exp(-dt * 2.2))
-	if predator.velocity.Magnitude > 0.5 then
-		predator.heading = rotateToward(predator.heading, predator.velocity, (turnRate or def.turnRate) * dt)
+	-- Climb over the ground ahead before reaching it
+	local _, ahead = groundAround(predator, predator.position, predator.velocity)
+	local want = ahead + preferredGap(predator)
+	if predator.position.Y < want then
+		local climb = math.min((want - predator.position.Y) * 1.6, def.speed * 0.9)
+		desired = Vector3.new(desired.X, math.max(desired.Y, climb), desired.Z)
+	end
+	if predator.custom then
+		predator.velocity = predator.velocity:Lerp(desired, 1 - math.exp(-dt * 2.2))
+		if predator.velocity.Magnitude > 0.5 then
+			predator.heading =
+				rotateToward(predator.heading, predator.velocity, (turnRate or def.turnRate) * dt)
+		end
+	else
+		local wantSpeed = desired.Magnitude
+		local wantDirection = if wantSpeed > 1e-3 then desired / wantSpeed else predator.heading
+		local speedNow = predator.velocity.Magnitude
+		-- Turns slower the faster it goes, and eases in as it lines up (no snap)
+		local rate = (turnRate or def.turnRate)
+			* (1.25 - 0.45 * math.clamp(speedNow / math.max(def.speed, 1), 0, 1))
+		local angle = math.acos(math.clamp(predator.heading:Dot(wantDirection), -1, 1))
+		local turn = math.min(rate * dt, angle * (1 - math.exp(-dt * 5)))
+		predator.heading = rotateToward(predator.heading, wantDirection, turn)
+		-- Swims along its heading: slows in a hard turn, speeds up briskly, eases off
+		local goal = wantSpeed * (1 - 0.35 * math.clamp(angle / math.pi, 0, 1))
+		local change = if goal > speedNow then def.speed * 1.6 else def.speed * 0.9
+		local speed = speedNow + math.clamp(goal - speedNow, -change * dt, change * dt)
+		predator.velocity = predator.velocity:Lerp(predator.heading * speed, 1 - math.exp(-dt * 6))
 	end
 	local position = predator.position + predator.velocity * dt
 	-- Never out past the map's wall (the squid chased a fish 4,700 studs out,
@@ -232,15 +318,36 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 			predator.velocity -= outward * into
 		end
 	end
-	local floor = Seafloor.y(position.X, position.Z)
+	-- Never into the ground: the belly stays over the highest ground under the body.
+	-- A boss also keeps its old height off the nominal floor, which its fight was
+	-- tuned on (the Megalodon stays up in the blue; a fish on the sand is out of reach)
+	local under = groundAround(predator, position, predator.velocity)
+	local floor = under + def.length * BODY_HALF + BELLY_GAP
+	if predator.custom then
+		floor = math.max(floor, Seafloor.y(position.X, position.Z) + math.max(def.depth[1] * 0.6, 5))
+	end
 	-- The surface is a ceiling for the whole body, not just its middle: a big
 	-- creature's back and fin sit well above its axis (playtest 2026-10-10: the
 	-- Megalodon chased a fish at the surface, its middle stopped 12 studs under, and
 	-- its back and fin broke through the surface sheet)
 	local ceiling = World.surfaceY - math.max(12, def.length * CEILING_SHARE)
-	local y = math.clamp(position.Y, floor + math.max(def.depth[1] * 0.6, 5), ceiling)
+	local y = math.clamp(position.Y, math.min(floor, ceiling), ceiling)
 	if y >= ceiling and predator.velocity.Y > 0 then
 		predator.velocity = Vector3.new(predator.velocity.X, 0, predator.velocity.Z)
+	end
+	if y <= floor + 0.05 and predator.velocity.Y < 0 then
+		predator.velocity = Vector3.new(predator.velocity.X, 0, predator.velocity.Z)
+	end
+	-- ...and its nose doesn't dig in: near the ground it can only point down so far
+	local reachDown = def.length * 0.45
+	local noseAt = position + predator.heading * reachDown
+	local noseGround = Ground.y(noseAt.X, noseAt.Z)
+	local roomDown = (y - noseGround - def.length * BODY_HALF * 0.5 - BELLY_GAP) / math.max(reachDown, 1)
+	if predator.heading.Y < 0 and roomDown < 1 and -predator.heading.Y > math.max(roomDown, 0) then
+		local flat = Vector3.new(predator.heading.X, 0, predator.heading.Z)
+		local tilt = -math.max(roomDown, 0)
+		local level = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.xAxis
+		predator.heading = (level * math.sqrt(math.max(1 - tilt * tilt, 0)) + Vector3.yAxis * tilt).Unit
 	end
 	-- ...and its nose and tail stay under too: near the surface it can only tilt so far
 	local reach = def.length * 0.45
@@ -288,18 +395,34 @@ local function simulate(predator: Predator, dt: number, now: number)
 			predator.waypoint = randomWaypoint(def)
 			predator.waypointUntil = now + 12
 		end
-		desired = (predator.waypoint - predator.position).Unit * speed * Predators.roamSpeed
+		-- A lazy weave and a slow swell in pace, so a cruising fish doesn't fly a ruler
+		local phase = now * 0.35 + predator.index * 1.7
+		local toWaypoint = (predator.waypoint - predator.position).Unit
+		local weave = CFrame.fromAxisAngle(Vector3.yAxis, math.sin(phase) * 0.3)
+		desired = (weave:VectorToWorldSpace(toWaypoint) + Vector3.yAxis * math.sin(phase * 0.6) * 0.08).Unit
+			* speed
+			* Predators.roamSpeed
+			* (0.85 + 0.15 * math.sin(phase * 0.5))
 	else
 		local root, fishLength = targetRoot(predator)
 		if root == nil then
 			predator.mode = "roam"
 			desired = predator.velocity
 		else
-			-- Lead the target a little
-			local aim = root.Position + root.AssemblyLinearVelocity * 0.3
+			-- Lead the target by the time it takes to close the gap, and keep the aim off
+			-- the ground (a fish on the sand is struck from just above it)
+			local gap = (root.Position - mouthOf(predator)).Magnitude
+			local lead = math.clamp(gap / math.max(speed, 1), 0, 1.2)
+			local aim = root.Position + root.AssemblyLinearVelocity * lead
+			local aimFloor = Ground.y(aim.X, aim.Z) + def.length * BODY_HALF + BELLY_GAP
+			aim = Vector3.new(aim.X, math.max(aim.Y, aimFloor), aim.Z)
 			local toTarget = aim - mouthOf(predator)
 			if predator.mode == "hunt" then
-				desired = (if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading) * speed
+				-- Stalks in at a cruise, then sprints the last stretch
+				local burst = 0.75 + 0.45 * (1 - math.clamp((gap - 10) / 35, 0, 1))
+				desired = (if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading)
+					* speed
+					* burst
 				if (root.Position - mouthOf(predator)).Magnitude <= def.biteReach + fishLength * 0.5 then
 					predator.mode = "windup"
 					predator.modeUntil = now + def.telegraph
@@ -327,9 +450,15 @@ local function simulate(predator: Predator, dt: number, now: number)
 					)
 					predator.mode = "recover"
 					predator.modeUntil = now + (if hit then def.biteCooldown else def.biteCooldown * 0.6)
+					-- The strike carries it on through, and it peels off to one side
+					predator.velocity += predator.heading * def.speed * 0.5
+					predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
 				end
-			else -- recover: coast past, then come round
-				desired = predator.heading * def.speed * 0.5
+			else -- recover: peel off to one side and loop round for another pass
+				local away = CFrame.fromAxisAngle(Vector3.yAxis, -predator.peel * 0.7)
+				desired = (away:VectorToWorldSpace(predator.heading) + Vector3.yAxis * 0.15).Unit
+					* def.speed
+					* 0.8
 				if now >= predator.modeUntil then
 					predator.mode = "hunt"
 				end
@@ -503,6 +632,7 @@ local function make(def: Def, custom: boolean?): Predator
 		custom = custom,
 		onHit = nil,
 		meter = 0,
+		peel = 1,
 	}
 	nextIndex += 1
 	predators[predator.index] = predator

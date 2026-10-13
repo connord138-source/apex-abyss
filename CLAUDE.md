@@ -534,6 +534,22 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     UnreliableRemoteEvent; `PredatorController` interpolates 0.15 s behind, draws the
     `PreyModels` mesh (parts until imported) with a red PREDATOR tag and health bar.
     A predator with `custom` set skips the plain behaviour (bosses drive it).
+    **Real ground and fluid swimming (owner, 2026-10-13: "the predator fish will
+    phase through the sand in the ground ... Their tracking should also be more
+    fluid and realistic"):** `Shared/Ground.luau` gives the real ground's top in a
+    column (a ray down from the surface against the Terrain and the solid parts of
+    `World.Biomes` Rocks/Coral/Wrecks/Ruins/Vents, cached per 4-stud cell; a miss
+    answers `Seafloor.y` uncached). `PredatorService.steer` reads it under the body
+    and 1.4 s ahead: it climbs over reef heads before reaching them, the belly never
+    goes below the ground + `BODY_HALF` × length + 1.5, and the nose can't point
+    into it. Waypoints sit over it, and the hunt aims over it. A plain predator
+    swims along its heading (turns ease in and slow with speed, it slows in a hard
+    turn, accelerates briskly), weaves lazily while roaming, leads its target by the
+    time to close, cruises in and sprints the last 35 studs, carries through a
+    strike and peels off to one side to loop back. Bosses keep their direct velocity
+    model and their old height off the nominal floor. The client draws a
+    Catmull-Rom curve through the samples, banks into turns and never draws a body
+    below the ground.
   - **Megalodon (built 2026-10-07):** `Config/Bosses.luau` + `BossService` on top of the
     predators. A world event about every 30 min (4 min in Studio; 2 min warning,
     `_G.ApexBoss.summon()` / `.hurt(0.5)` from the Server command bar), patrolling the
