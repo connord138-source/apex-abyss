@@ -789,7 +789,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     floor down to there; the dome's carve had left a hidden void under the plaza).
     Five levels: Nook → Burrow 1,000 (the main room runs back) → Hall 12,000 (a shaft
     to a vaulted hall at y −30) → Grotto 45,000 (wings, a deep back) → Sanctum
-    150,000 (a second shaft to y −62), holding 15/30/50/75/100 things (+25 Den
+    150,000 (a second shaft to y −66), holding 15/30/50/75/100 things (+25 Den
     Expansion). `Config/Dens` `rooms` (bands across the den's axis, each 5 studs
     inside the line to the next den), `storeys` (deck, floor, ceiling), `shafts`,
     `gardenSpots`. `Shared/DenSpace` (both sides): decks as a 2-stud grid merged into
@@ -819,11 +819,29 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     voxelized: no den reaches another, a tunnel, the sea or the shelf's hollow;
     slice images). Run both after any change to `Config/Dens`, `DenCarve` or
     `Cave`, and `check_exits.py` as before.
-  - **Furniture batch 1 (concepts, 2026-10-13):** 42 pieces on seven boards
-    (`assets/concepts/Furn*.jpg`, GDD §6 "Den furniture, batch 1"): six biome sets
-    (Kelp Cottage → Abyss Glow, Common → Mythic) plus boss trophies; waiting for the
-    owner's approval before 3D. Pass and reward den pieces go into `den.items` (the
-    Build tray), never `den.owned`.
+  - **Rock floors and shafts (PC report 2026-10-13: both shafts solid, no
+    flagstones on the main storey):** Roblox's Air fills take occupancy away rather
+    than clearing it (one pass over fresh rock left 0.21), so every den Air op is
+    applied twice (`DenCarve` `twice`), the shafts are cut `SHAFT_CUT` 3 studs wider
+    than their opening (`radius`: Hall 7, Sanctum 8) and 6 into the vault below, and
+    each storey's rock floor is 5–6 studs under its deck on a voxel line (Terrain drew
+    the surface up to ~4.6 over its fill, through the flagstones); the decks are slabs
+    down to it. Storeys: deck 1 / −34 / −70, floor −4 / −40 / −76. The Haul Pool sits
+    in a stone basin with a rim. A thing standing on another may hang over a hole's
+    edge if deck is within 2 studs (`DenSpace.nearDeck`).
+  - **Furniture batch 1 (owner, 2026-10-13: "Approve all, players will need to
+    complete achievements to unlock the ability to purchase each set with coral.
+    Once a set is unlocked, pieces are individually bought, not the entire set";
+    built, GDD §6 "Den furniture, batch 1"):** seven sets of six (`Config/Dens`
+    `sets`, items with `set`), each opened by one achievement (`Config/Achievements`,
+    `AchievementService`: lifetime tallies, marked once in `data.achievements`, a
+    banner, `state.achievements`); pieces are bought one at a time with coral in the
+    den menu (DenService refuses a locked set). 38 Tripo models (`furniture_glb`,
+    cut off the boards by `tools/props/furniture_crops.py`), four rugs drawn as
+    Decals (`assets/textures/rug_*.png`, ids in `Config/Textures`). Pieces with
+    their own light carry `lamp`; Tripo props face +X in the GLB (`front = 90`).
+    Pass and reward den pieces go into `den.items` (the Build tray), never
+    `den.owned`.
   - The trophy wall, visitors (look only, the whole house is safe: `Layout.denAt`)
     and the sign ("<NAME>'S SANCTUM") work as in v1. The camera looks past den
     furniture (tag `DenItems`).
@@ -1279,7 +1297,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-10-pc-fixes.md` (walls, coral, kelp, food, cursor),
   `2026-10-10-pc-pullback.md`, `2026-10-11-pc.md` (skins v5, glints, light),
   `2026-10-11-pc-2.md` (vendor models, exits, rounded rocks, safe cave, no regen, item
-  wheel, growth, skins v6, glints, haze, publish);
+  wheel, growth, skins v6, glints, haze, publish)
+  `2026-10-13-pc.md` (dens v2: shafts plugged, Build mode, garden, map);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -1353,6 +1372,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Skin uploads:** automated image moderation once suspended the owner's account over a
   pale, pinkish unwrapped texture atlas. Screen textures before upload, import in small
   batches, and never upload from another account while one is suspended.
+- **Every Tripo GLB carries a normal map** (`NormalGL_*.png`, found 2026-10-13, in the
+  props, prey and vendor bundles imported before the rule too): run
+  `tools/props/strip_normals.py` on every Tripo model before it's bundled, then
+  `safe_colors.py`, then the screen. Never re-import an older bundle that still holds
+  one.
 - **Never upload a normal map** (2026-10-13): Roblox's moderation terminated the account
   over a flat lilac relief normal map that every check we have scored at zero. All the
   appeals were accepted within minutes, but the account itself took longer. Skin GLBs

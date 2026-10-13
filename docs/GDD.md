@@ -629,7 +629,7 @@ in once these steps are done."
     y −30 under the plaza ring, the Coral Garden moves to its middle; holds 50.
   - **Grotto** (45,000): the hall opens into wide wings and a deep grotto at the
     back; holds 75.
-  - **Sanctum** (150,000): a second shaft to the deepest storey at y −62, the
+  - **Sanctum** (150,000): a second shaft to the deepest storey at y −66, the
     grandest room; holds 100.
   At the top level that is about 10,000 sq studs of floor over three storeys (a Nook
   had 384). Rooms are barrel vaults with alcoves, 5 studs of rock inside the line to
@@ -674,41 +674,47 @@ in once these steps are done."
 - Later: rolled furniture, rugs and lamps (Tripo models), den items won from bosses
   (the jaw arch, the Kraken-eye lantern), a visit button.
 
-### Den furniture, batch 1 (concepts 2026-10-13, awaiting the owner's approval)
+### Den furniture, batch 1 (approved and built 2026-10-13)
 
 The owner: "We will have furniture, rugs, lamps, and tons of items that will be rolled
-in once these steps are done." Six sets, one per biome, plus the boss trophies the
-boss design promised ("den items worth fighting for"). The boards are
-`assets/concepts/Furn*.jpg` (Nano Banana Pro through the Tripo API with
-`assets/concepts/FurnitureStyleRef.jpg`, the hub plaza and vendors concepts, as the
-style reference; `tools/tripo_jobs_furniture_boards.json`, 70 credits).
+in once these steps are done", then on the seven boards: "Approve all, players will need
+to complete achievements to unlock the ability to purchase each set with coral. Once a
+set is unlocked, pieces are individually bought, not the entire set. This makes them
+interchangeable if wanted." The boards are `assets/concepts/Furn*.jpg`.
 
-| Set | Biome | Tier | Pieces |
-|---|---|---|---|
-| Kelp Cottage | Kelp Shallows | Common | kelp-woven armchair, kelp hammock, barrel table, scallop-shell floor lamp, driftwood shelf, braided kelp rug |
-| Reef Palace | Coral Reef | Uncommon–Rare | coral throne, giant clam bed with a pearl, brain-coral ottoman, staghorn chandelier (ceiling), fan-coral screen, coral rug |
-| Shipwreck Captain | Shipwreck Graveyard | Rare | captain's desk, ship's wheel (wall), hanging ship lantern (ceiling), bronze cannon, barrels and crate, anchor with rope |
-| Sunken Temple | Sunken Ruins | Epic | rune throne, broken-column planter, teal-flame brazier, glyph tablet (wall), grouper guardian statue, wave mosaic rug |
-| Vent Forge | Hydrothermal Vents | Epic | lava fire pit, obsidian table, lava lamp, sulfur crystals, cauldron on a vent, tube-worm planter |
-| Abyss Glow | Abyssal Trench | Legendary–Mythic | jellyfish chandelier (ceiling), anglerfish-lure lamp, bioluminescent coral bed, void-crystal throne, plankton swirl rug, kraken-eye orb pedestal |
-| Boss Trophies | bosses, treasure | exclusive | megalodon jaw arch (swim through it), kraken-eye lantern, shark-tooth plaque (wall), bronze tentacle, treasure pile, reef globe |
+| Set | Biome | Tier | Opened by (Config/Achievements) | Pieces (coral each) |
+|---|---|---|---|---|
+| Kelp Cottage | Kelp Shallows | Common | Settling In: bank 25 hauls | kelp armchair, kelp hammock, barrel table, scallop lamp, driftwood shelf, braided kelp rug (400–900) |
+| Reef Palace | Coral Reef | Uncommon | Golden Touch: catch 25 Golden fish | coral throne, giant clam bed, brain coral ottoman, staghorn chandelier (ceiling), fan coral screen, coral rug (1,500–4,000) |
+| Shipwreck Captain | Shipwreck Graveyard | Rare | Treasure Hunter: dig up 10 chests | captain's desk, ship's wheel (wall), ship's lantern (ceiling), bronze cannon, barrels and crate, anchor (3,500–6,500) |
+| Sunken Temple | Sunken Ruins | Epic | Deep Diver: reach LV 50 | rune throne, column planter, teal brazier, glyph tablet (wall), grouper guardian, wave mosaic (6,000–14,000) |
+| Vent Forge | Hydrothermal Vents | Epic | Glow Getter: catch 15 Glowing fish | lava fire pit, obsidian table, lava lamp, sulfur crystals, vent cauldron, tube worm planter (9,000–16,000) |
+| Abyss Glow | Abyssal Trench | Legendary | Apex of the Abyss: reach LV 80 | jellyfish chandelier (ceiling), angler lure lamp, glow coral bed, void throne, plankton swirl rug, kraken eye orb (18,000–40,000) |
+| Boss Trophies | world bosses | Trophy | Monster Hunter: help down 3 world bosses | Megalodon jaw arch (swim through), kraken-eye lantern (ceiling), shark tooth plaque (wall), bronze tentacle, treasure hoard, reef globe (20,000–60,000) |
 
-**How they're got (proposed; the code already counts copies, so any mix works):**
-- Kelp Cottage, Reef Palace and Shipwreck pieces: coral in the den menu.
-- Sunken Temple, Vent Forge and Abyss Glow: a **Den Crate** opened with coral only. It
-  shows exact odds, and duplicates are kept (more copies to place). Coral is never
-  sold for Robux, so the crate is not a paid random item.
-- Boss trophies: Megalodon Teeth and Kraken Beaks at the Trophy Hunter, plus Captain's
-  treasure chests (the treasure pile and the reef globe).
-
-**3D:** with 1,160 Tripo credits, the hero pieces go through a clean per-piece sheet
-and image-to-model (35 credits each: the thrones, beds, chandeliers, jaw arch, lava
-lamp, statue, about 12). The rest go text-to-model from the board's description (20
-each), which is about 1,020 credits in all. A ~400-credit top-up would let every piece
-take the image route. Textures are screened (`screen_shades.py`'s colour and
-classifier checks, `tools/props/safe_colors.py`) before any upload. Pink and cream
-areas (the screen's fan coral, the shelf's shells, the shark tooth) are recoloured if
-flagged.
+- **Achievements** (`Config/Achievements`, `AchievementService`) are measured from the
+  save's lifetime tallies (`stats.banks`, `catchLog`, `treasures.found`, the best level
+  of any fish, `stats.bossKills`), so earlier play counts. Each is marked done once and
+  for good (`data.achievements`), with an ACHIEVEMENT banner naming the set it opened;
+  progress goes to the client as `state.achievements`.
+- **Buying:** the den menu lists each set under its own heading: an open set's pieces
+  with their prices, a locked set's achievement with progress and the pieces it holds.
+  DenService refuses a locked set's piece. Bought pieces go into the Build tray like
+  every other thing, so any piece stands beside any other set's.
+- **Lights:** lamps and glowing pieces light in their own colour (`lamp`), not the
+  den's glow.
+- **3D:** each piece was cut off its board on a clean background
+  (`tools/props/furniture_segment.py`, `furniture_crops.py`) and made with Tripo
+  image_to_model (`tools/tripo_jobs_furniture_models.json`, 38 × 30 credits). Every
+  normal map was taken out (`tools/props/strip_normals.py`), skin tones moved out
+  (`safe_colors.py`; the Kraken eye repainted amber first), and all 76 images cleared
+  by the screen with the classifier (`furniture_glb`). Fronts face +X in the GLB
+  (`front = 90`). Rugs are top-down art unwarped off the boards
+  (`tools/props/rug_textures.py`, `assets/textures/rug_*.png`), drawn as a Decal on a
+  flat rug once their ids are in `Config/Textures`.
+- **Later:** a second tier of each achievement could open a gilded or glowing finish of
+  its set, and Tide Pass seasons can carry a den piece on the paid row (into
+  `den.items`, never `den.owned`).
 
 ### The shelf layout (owner, 2026-10-07; built)
 
