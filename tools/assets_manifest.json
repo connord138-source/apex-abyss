@@ -37,7 +37,7 @@
       "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept. v2 of 2026-10-11 (sha256 917bf7b7...): the base colors of the Mason, Outfitter, Dyer and Charms moved out of skin tones by tools/props/safe_colors.py (salmon to vivid orange, cream to cool white, tan to greige, browns darker), and all five cleared by screen_shades.py with the classifier (highest 0.016). Front faces +X in the GLB."
     },
     "shade_skins": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/dd6b6462-4757-4ec9-a74b-fcfedb66ac4d.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/c9e957d1-85cb-4858-8a30-c72ee6dca09a.zip",
       "into": "assets/shades/glb",
       "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per skin, 27 each (its own 12-skin line from tools/shades/lines.json plus the 15 universal skins: catch track, weekly, Tide Pass season 1, boss and treasure; 162 skins, v7 of 2026-10-12: v6 plus the four Tide Pass skins PassTideglass, PassRiptide, PassUndertow, PassAbyssalCurrent on every fish; all six GLBs changed; every GLB cleared by screen_shades.py with the classifier, highest 0.176; sha256 72895dd2228a51cd...)"
     }
