@@ -435,7 +435,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     accepted and it was reinstated. **v8.1 has no normal maps at all**
     (`pack_shades.py` `NORMALS = False`, the fish's own included) and
     `screen_shades.py` flags any image whose mean colour reads as a normal map
-    (B ≥ 200, R and G within 30 of 128). Never upload a normal map; put depth in
+    (B ≥ 240 with a spread ≤ 10, R and G within 20 of 128). Never upload a normal map; put depth in
     the colour map. The creases are never quieted below `DETAIL_FLOOR` 0.8 of
     their strength. The
     Nibbler's yellow crescent on every skin was the cream band behind the eye

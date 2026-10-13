@@ -53,8 +53,11 @@ NSFW_OVER_BASE = 0.10
 # A tangent-space normal map (flat lilac: R and G near 128, B near 255) is never
 # uploaded, whatever it scores: Roblox terminated the account over one on
 # 2026-10-13 (the Nibbler Living Reef relief map) that scored 0.000 here.
-NORMAL_MAP_B = 200
-NORMAL_MAP_RG = 30
+# Real ones sit at B ~253 with a spread under 3; the lilac and pearl skins (B 222
+# and 241, but wide spreads and R/G far from 128) must not trip it.
+NORMAL_MAP_B = 240
+NORMAL_MAP_B_SPREAD = 10
+NORMAL_MAP_RG = 20
 
 
 # --- Color signals -------------------------------------------------------------
@@ -371,9 +374,13 @@ def main(argv=None) -> int:
         row = {"file": label, "model": model, "mutation": mutation}
         scores, masks = color_scores(np.asarray(rgb), alpha, base_masks)
         row.update({k: round(v, 3) for k, v in scores.items()})
-        mean = np.asarray(rgb, np.float32).reshape(-1, 3).mean(0)
+        flat = np.asarray(rgb, np.float32).reshape(-1, 3)
+        mean, spread = flat.mean(0), flat.std(0)
         row["normal_map"] = bool(
-            mean[2] >= NORMAL_MAP_B and abs(mean[0] - 128) < NORMAL_MAP_RG and abs(mean[1] - 128) < NORMAL_MAP_RG
+            mean[2] >= NORMAL_MAP_B
+            and spread[2] <= NORMAL_MAP_B_SPREAD
+            and abs(mean[0] - 128) < NORMAL_MAP_RG
+            and abs(mean[1] - 128) < NORMAL_MAP_RG
         )
         if classifier is not None:
             row["nsfw"] = round(classifier.score(rgb), 4)
