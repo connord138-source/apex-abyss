@@ -191,7 +191,7 @@ local function eatPlayer(victim: Player, eater: Player)
 		lost = 0
 	end
 	-- Eating much smaller players pays almost nothing, so farming new fish is pointless
-	local ratio = math.clamp(victimLength / eaterLength / hunt.swallowRatio, 0, 1)
+	local ratio = math.clamp(Size.ratio(victimLength, eaterLength) / hunt.swallowRatio, 0, 1)
 	local farm = math.max(ratio * ratio, 0.02)
 	local gain = (lost * hunt.playerHaulShare + Progress.mass(victimData) * hunt.playerBaseShare) * farm
 	EconomyService.earnCoral(eater, economy.eatPlayerCoral * farm)
@@ -405,7 +405,7 @@ local function onBite(player: Player, userId: any)
 		end
 	end
 	targetSession.bitBy[player.UserId] = now
-	local ratio = math.clamp((length / targetLength) ^ 2, 0.04, 1.5)
+	local ratio = math.clamp(Size.ratio(length, targetLength) ^ 2, 0.04, 1.5)
 	local attackerData = DataService.get(player)
 	local jaw = Perks.bite(if attackerData then attackerData.upgrades else nil)
 	local species = if attackerData then Progress.species(attackerData).stats.bite else 1

@@ -116,13 +116,15 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 					rng:NextNumber(-1, 1)
 				) * spread
 			local size = sizeOf()
+			-- (its own mass's length, so a trophy eases like any other fish)
+			local own = Size.length(prey.mass * size ^ 3)
 			table.insert(fish, {
 				school = #list,
 				prey = prey.id,
 				offset = offset,
 				phase = rng:NextNumber(0, 2 * math.pi),
-				length = length * size,
-				radius = length * size * 0.3,
+				length = own,
+				radius = own * 0.3,
 				size = size,
 				mass = prey.mass * size ^ 3,
 			})

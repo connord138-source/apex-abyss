@@ -12,8 +12,30 @@ local LOG_GROWTH = math.log(size.levelGrowth)
 
 local Size = {}
 
+-- A fish's drawn length: its raw length (lengthScale × mass^(1/3)) up to the knee,
+-- then easing toward the cap, so a max-size fish still fits its den (Config/Tuning
+-- `lengthKnee`, `lengthCap`). Smooth at the knee (slope 1 either side).
+local KNEE, CAP = size.lengthKnee, size.lengthCap
+
 function Size.length(mass: number): number
-	return size.lengthScale * math.max(mass, 1e-4) ^ (1 / 3)
+	local raw = size.lengthScale * math.max(mass, 1e-4) ^ (1 / 3)
+	if raw <= KNEE then
+		return raw
+	end
+	local span = CAP - KNEE
+	return KNEE + span * (1 - math.exp(-(raw - KNEE) / span))
+end
+
+-- The raw length a drawn length stands for: what size ratios (swallowing, bites,
+-- aggro, predators) and swim speed are measured in, so easing the bodies changed
+-- none of the balance. Lengths at or past the cap read as a very big fish.
+function Size.raw(length: number): number
+	if length <= KNEE then
+		return length
+	end
+	local span = CAP - KNEE
+	local t = math.min((length - KNEE) / span, 0.999)
+	return KNEE - span * math.log(1 - t)
 end
 
 -- The mass a dive actually shows: banked mass plus the Haul, up to the cap.
@@ -47,16 +69,21 @@ end
 
 -- Whether a fish of length `eater` can swallow one of length `prey` whole.
 function Size.canSwallow(eater: number, prey: number): boolean
-	return prey < eater * hunt.swallowRatio
+	return Size.raw(prey) < Size.raw(eater) * hunt.swallowRatio
+end
+
+-- How many times bigger `a` is than `b`, in raw lengths
+function Size.ratio(a: number, b: number): number
+	return Size.raw(a) / math.max(Size.raw(b), 1e-4)
 end
 
 -- Swimming, scaled by length: bigger fish are faster in studs but slower to turn.
 function Size.topSpeed(length: number): number
-	return swim.baseSpeed * length ^ swim.speedExponent
+	return swim.baseSpeed * Size.raw(length) ^ swim.speedExponent
 end
 
 function Size.turnRate(length: number): number
-	return swim.turnRate * length ^ swim.turnExponent
+	return swim.turnRate * Size.raw(length) ^ swim.turnExponent
 end
 
 -- The physics collider: a ball about as thick as the body.

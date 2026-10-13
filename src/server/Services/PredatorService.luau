@@ -176,7 +176,7 @@ local function pickTarget(predator: Predator, now: number): Player?
 		end
 		local length = character:GetAttribute("Length")
 		local fishLength = if typeof(length) == "number" then length else 2
-		if fishLength < def.length * def.ignoreBelow and not provoked then
+		if Size.raw(fishLength) < def.length * def.ignoreBelow and not provoked then
 			continue
 		end
 		local score = fishLength + (if provoked then 50 else 0) - distance * 0.05
@@ -570,7 +570,7 @@ local function onBite(player: Player, index: any)
 		end
 	end
 	local ratio = math.clamp(
-		(length / def.length) ^ Predators.biteRatioPower,
+		(Size.raw(length) / def.length) ^ Predators.biteRatioPower,
 		Predators.biteRatioMin,
 		Predators.biteRatioMax
 	)

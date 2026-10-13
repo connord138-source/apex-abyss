@@ -17,7 +17,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Config = require(ReplicatedStorage.Shared.Config)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Input = require(script.Parent.Parent.Input)
 local Ui = require(script.Parent.Parent.Ui)
@@ -41,8 +40,6 @@ local RULES: { [Kind]: Rule } = {
 	tooBig = { tag = "TOO BIG", color = Ui.color.haul, cooldown = 30, cap = 3 },
 }
 local HOLD = 4.5 -- seconds a hint stays up
-
-local swallowRatio = Config.Tuning.hunt.swallowRatio
 
 local gui: ScreenGui
 local chip: Frame? = nil
@@ -201,7 +198,7 @@ local function check()
 			local otherLength = lengthOf(other)
 			local gap = (otherRoot.Position - mouth).Magnitude - reach - otherLength * 0.4
 			if not HuntController.isSafe(other) then
-				if otherLength * swallowRatio > length and gap < length * 3 then
+				if Size.canSwallow(otherLength, length) and gap < length * 3 then
 					show("danger")
 					return
 				elseif not Size.canSwallow(length, otherLength) and gap < length * 1.2 then

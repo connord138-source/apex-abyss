@@ -3,7 +3,16 @@
 -- prototype; the economy sim settles the progression ones later.
 return {
 	size = {
-		lengthScale = 2, -- body length in studs = lengthScale × mass^(1/3)
+		lengthScale = 2, -- raw length in studs = lengthScale × mass^(1/3)
+		-- Bodies ease off past the knee toward the cap (owner, 2026-10-14: "Each den
+		-- should be large enough that a max size player can fit in it ... full grown
+		-- shark should be a bit larger than an actual shark and max size for fish
+		-- should all be relatively the same but not ridiculously large"): LV 60 draws
+		-- 12 studs (was 15), LV 80 15.7 (was 30), LV 100 16.9 (was 59), and a full
+		-- Haul at LV 100 17 (was 103). The Reef Shark predator is 14. Size ratios and
+		-- swim speed still use the raw length (Shared/Size `raw`).
+		lengthKnee = 6,
+		lengthCap = 17,
 		startMass = 1, -- a brand-new fish (2 studs long)
 		-- A dive grows you live up to this many times your banked length; the Haul
 		-- keeps counting past it, but you have to bank to grow further

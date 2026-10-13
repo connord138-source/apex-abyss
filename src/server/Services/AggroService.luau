@@ -52,7 +52,7 @@ local function pickFish(root: BasePart, length: number, now: number): number?
 		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
 		for index = school.first, school.first + school.count - 1 do
 			local fish = Schools.fish[index]
-			if fish.length < length * aggro.ratio or (fishReadyAt[index] or 0) > now then
+			if Size.ratio(fish.length, length) < aggro.ratio or (fishReadyAt[index] or 0) > now then
 				continue
 			end
 			if HuntService.preyEaten(index, now) then
