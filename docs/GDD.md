@@ -674,6 +674,42 @@ in once these steps are done."
 - Later: rolled furniture, rugs and lamps (Tripo models), den items won from bosses
   (the jaw arch, the Kraken-eye lantern), a visit button.
 
+### Den furniture, batch 1 (concepts 2026-10-13, awaiting the owner's approval)
+
+The owner: "We will have furniture, rugs, lamps, and tons of items that will be rolled
+in once these steps are done." Six sets, one per biome, plus the boss trophies the
+boss design promised ("den items worth fighting for"). The boards are
+`assets/concepts/Furn*.jpg` (Nano Banana Pro through the Tripo API with
+`assets/concepts/FurnitureStyleRef.jpg`, the hub plaza and vendors concepts, as the
+style reference; `tools/tripo_jobs_furniture_boards.json`, 70 credits).
+
+| Set | Biome | Tier | Pieces |
+|---|---|---|---|
+| Kelp Cottage | Kelp Shallows | Common | kelp-woven armchair, kelp hammock, barrel table, scallop-shell floor lamp, driftwood shelf, braided kelp rug |
+| Reef Palace | Coral Reef | Uncommon–Rare | coral throne, giant clam bed with a pearl, brain-coral ottoman, staghorn chandelier (ceiling), fan-coral screen, coral rug |
+| Shipwreck Captain | Shipwreck Graveyard | Rare | captain's desk, ship's wheel (wall), hanging ship lantern (ceiling), bronze cannon, barrels and crate, anchor with rope |
+| Sunken Temple | Sunken Ruins | Epic | rune throne, broken-column planter, teal-flame brazier, glyph tablet (wall), grouper guardian statue, wave mosaic rug |
+| Vent Forge | Hydrothermal Vents | Epic | lava fire pit, obsidian table, lava lamp, sulfur crystals, cauldron on a vent, tube-worm planter |
+| Abyss Glow | Abyssal Trench | Legendary–Mythic | jellyfish chandelier (ceiling), anglerfish-lure lamp, bioluminescent coral bed, void-crystal throne, plankton swirl rug, kraken-eye orb pedestal |
+| Boss Trophies | bosses, treasure | exclusive | megalodon jaw arch (swim through it), kraken-eye lantern, shark-tooth plaque (wall), bronze tentacle, treasure pile, reef globe |
+
+**How they're got (proposed; the code already counts copies, so any mix works):**
+- Kelp Cottage, Reef Palace and Shipwreck pieces: coral in the den menu.
+- Sunken Temple, Vent Forge and Abyss Glow: a **Den Crate** opened with coral only. It
+  shows exact odds, and duplicates are kept (more copies to place). Coral is never
+  sold for Robux, so the crate is not a paid random item.
+- Boss trophies: Megalodon Teeth and Kraken Beaks at the Trophy Hunter, plus Captain's
+  treasure chests (the treasure pile and the reef globe).
+
+**3D:** with 1,160 Tripo credits, the hero pieces go through a clean per-piece sheet
+and image-to-model (35 credits each: the thrones, beds, chandeliers, jaw arch, lava
+lamp, statue, about 12). The rest go text-to-model from the board's description (20
+each), which is about 1,020 credits in all. A ~400-credit top-up would let every piece
+take the image route. Textures are screened (`screen_shades.py`'s colour and
+classifier checks, `tools/props/safe_colors.py`) before any upload. Pink and cream
+areas (the screen's fan coral, the shelf's shells, the shark tooth) are recoloured if
+flagged.
+
 ### The shelf layout (owner, 2026-10-07; built)
 
 The owner: "biomes need to be spread out and clearly different biomes with some

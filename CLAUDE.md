@@ -819,6 +819,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     voxelized: no den reaches another, a tunnel, the sea or the shelf's hollow;
     slice images). Run both after any change to `Config/Dens`, `DenCarve` or
     `Cave`, and `check_exits.py` as before.
+  - **Furniture batch 1 (concepts, 2026-10-13):** 42 pieces on seven boards
+    (`assets/concepts/Furn*.jpg`, GDD §6 "Den furniture, batch 1"): six biome sets
+    (Kelp Cottage → Abyss Glow, Common → Mythic) plus boss trophies; waiting for the
+    owner's approval before 3D. Pass and reward den pieces go into `den.items` (the
+    Build tray), never `den.owned`.
   - The trophy wall, visitors (look only, the whole house is safe: `Layout.denAt`)
     and the sign ("<NAME>'S SANCTUM") work as in v1. The camera looks past den
     furniture (tag `DenItems`).

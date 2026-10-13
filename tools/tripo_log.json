@@ -183,6 +183,69 @@
   "task_id": "345434c0-d8f4-4e38-b230-4ffea5f59d5e",
   "type": "text_to_model"
  },
+ "furniture_boards/FurnAbyssGlow": {
+  "credits": 10,
+  "files": [
+   "FurnAbyssGlow.png"
+  ],
+  "status": "success",
+  "task_id": "a8db05d9-5e93-49e3-a11b-17533e189f96",
+  "type": "generate_image"
+ },
+ "furniture_boards/FurnKelpCottage": {
+  "credits": 10,
+  "files": [
+   "FurnKelpCottage.png"
+  ],
+  "status": "success",
+  "task_id": "404884e2-38a3-4be7-8485-7f593887bfd6",
+  "type": "generate_image"
+ },
+ "furniture_boards/FurnReefPalace": {
+  "credits": 10,
+  "files": [
+   "FurnReefPalace.png"
+  ],
+  "status": "success",
+  "task_id": "b50cd321-3159-4d1e-976a-bd362f8eef07",
+  "type": "generate_image"
+ },
+ "furniture_boards/FurnShipwreck": {
+  "credits": 10,
+  "files": [
+   "FurnShipwreck.png"
+  ],
+  "status": "success",
+  "task_id": "e2d67664-c867-4215-92a6-965684cd1b36",
+  "type": "generate_image"
+ },
+ "furniture_boards/FurnSunkenTemple": {
+  "credits": 10,
+  "files": [
+   "FurnSunkenTemple.png"
+  ],
+  "status": "success",
+  "task_id": "1f42df75-1a68-4de4-9c26-50bdb19571b2",
+  "type": "generate_image"
+ },
+ "furniture_boards/FurnTrophies": {
+  "credits": 10,
+  "files": [
+   "FurnTrophies.png"
+  ],
+  "status": "success",
+  "task_id": "232444c2-7152-4217-8e41-091c33704b40",
+  "type": "generate_image"
+ },
+ "furniture_boards/FurnVentForge": {
+  "credits": 10,
+  "files": [
+   "FurnVentForge.png"
+  ],
+  "status": "success",
+  "task_id": "48a327c0-8f60-45cf-8043-68996ea17ee1",
+  "type": "generate_image"
+ },
  "marketing/Boss": {
   "credits": 10,
   "files": [

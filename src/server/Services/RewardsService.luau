@@ -55,7 +55,7 @@ end
 
 -- Pays a reward bundle out, `bonus` × its coral and shells, and names what was got
 -- ("300 coral", "a treasure map"). A skin goes to the fish the player swims as (the
--- per-fish rule); a title is worn at once when none is; a den piece is owned.
+-- per-fish rule); a title is worn at once when none is; a den piece goes into the Build tray.
 function RewardsService.grant(
 	player: Player,
 	data: PlayerData,
@@ -85,9 +85,10 @@ function RewardsService.grant(
 		table.insert(got, `the "{reward.title}" title`)
 	end
 	if reward.den then
-		data.den.owned[reward.den] = true
+		-- One more copy in the Build tray (den v2: things are counted, not flagged)
+		data.den.items[reward.den] = (data.den.items[reward.den] or 0) + 1
 		local item = Config.Dens.itemsById[reward.den]
-		table.insert(got, `the {if item then item.name else reward.den} for your den`)
+		table.insert(got, `a {if item then item.name else reward.den} for your den (in your Build tray)`)
 	end
 	if reward.coral then
 		local coral = math.floor(reward.coral * scale + 0.5)

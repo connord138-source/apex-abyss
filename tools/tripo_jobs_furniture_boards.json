@@ -1,0 +1,60 @@
+{
+ "jobs": [
+  {
+   "name": "FurnKelpCottage",
+   "group": "furniture_boards",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/FurnitureStyleRef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy, like the stalls, lanterns and crates in the cave), draw a furniture set sheet for a fish's underwater home, the Kelp Cottage set: six separate pieces in a neat grid of three across and two down with clear space around each, every piece whole and fully visible in a three-quarter view from slightly above, all at one consistent scale, on a plain flat muted teal background, no characters, no fish, no people, no text, no labels, no numbers, no watermark. The pieces: (1) a squat armchair woven from olive-green kelp ribbons over a driftwood frame with a moss cushion; (2) a hammock bed of woven kelp strung between two driftwood posts; (3) a round table made from a barnacled wooden barrel with a driftwood top; (4) a floor lamp: a twisted driftwood pole with an upturned scallop-shell shade glowing warm amber; (5) a low driftwood shelf holding glass jars, shells and kelp bundles; (6) a round braided rug of green and teal kelp strands lying flat. Palette: olive and kelp greens, teal, weathered grey-brown driftwood, warm amber glow. No pale pink, peach or beige anywhere."
+  },
+  {
+   "name": "FurnReefPalace",
+   "group": "furniture_boards",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/FurnitureStyleRef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy, like the stalls, lanterns and crates in the cave), draw a furniture set sheet for a fish's underwater home, the Reef Palace set: six separate pieces in a neat grid of three across and two down with clear space around each, every piece whole and fully visible in a three-quarter view from slightly above, all at one consistent scale, on a plain flat muted teal background, no characters, no fish, no people, no text, no labels, no numbers, no watermark. The pieces: (1) a throne grown from orange and purple branching coral with a teal anemone cushion; (2) a bed inside a giant open clam shell, deep blue-violet outside, with a large pearl at its head and a teal kelp blanket; (3) a round ottoman that is a yellow brain coral; (4) a chandelier of branching purple staghorn coral holding small glowing sea-glass orbs, hanging from a short chain; (5) a folding screen of three tall fan corals, orange, purple and teal, in grey driftwood frames; (6) an oval rug patterned with teal, orange and purple coral shapes lying flat. Palette: vivid orange, royal purple, teal, sunny yellow, deep blue, glowing aqua. No pale pink, peach or beige anywhere."
+  },
+  {
+   "name": "FurnShipwreck",
+   "group": "furniture_boards",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/FurnitureStyleRef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy, like the stalls, lanterns and crates in the cave), draw a furniture set sheet for a fish's underwater home, the Shipwreck Captain set: six separate pieces in a neat grid of three across and two down with clear space around each, every piece whole and fully visible in a three-quarter view from slightly above, all at one consistent scale, on a plain flat muted teal background, no characters, no fish, no people, no text, no labels, no numbers, no watermark. The pieces: (1) a captain's writing desk of dark weathered wood with brass corners, a spyglass and a rolled map on top; (2) a ship's steering wheel of dark wood with a brass hub, mounted flat on a round wooden wall plaque; (3) a hanging ship's lantern of aged brass with green sea-glass panes glowing, on a short chain; (4) a small bronze ship's cannon on a wooden carriage with little wheels; (5) a stack of three barnacled barrels and a crate as one piece; (6) a big dark iron anchor standing upright with a coiled rope round its shank. Palette: dark brown wood, aged brass, verdigris green, rusty dark iron, warm lantern glow. No pale pink, peach or beige anywhere."
+  },
+  {
+   "name": "FurnSunkenTemple",
+   "group": "furniture_boards",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/FurnitureStyleRef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy, like the stalls, lanterns and crates in the cave), draw a furniture set sheet for a fish's underwater home, the Sunken Temple set: six separate pieces in a neat grid of three across and two down with clear space around each, every piece whole and fully visible in a three-quarter view from slightly above, all at one consistent scale, on a plain flat muted teal background, no characters, no fish, no people, no text, no labels, no numbers, no watermark. The pieces: (1) a stone throne carved with wave glyphs and glowing teal runes; (2) a broken fluted stone column cut short, used as a planter with sea grass growing out of its top; (3) a bronze brazier on three legs holding a cold teal flame; (4) a tall stone tablet with a carved fish relief and glowing teal glyphs, flat-backed to stand against a wall; (5) a stone guardian statue of a grouper fish standing on its tail on a square plinth; (6) a square mosaic rug of blue and gold stone tiles in a wave pattern lying flat. Palette: weathered grey-green stone, verdigris bronze, glowing teal, gold accents, deep blue. No pale pink, peach or beige anywhere."
+  },
+  {
+   "name": "FurnVentForge",
+   "group": "furniture_boards",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/FurnitureStyleRef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy, like the stalls, lanterns and crates in the cave), draw a furniture set sheet for a fish's underwater home, the Vent Forge set: six separate pieces in a neat grid of three across and two down with clear space around each, every piece whole and fully visible in a three-quarter view from slightly above, all at one consistent scale, on a plain flat muted teal background, no characters, no fish, no people, no text, no labels, no numbers, no watermark. The pieces: (1) a round fire pit of black basalt rock with glowing orange lava cracks; (2) a heavy table of black obsidian with glowing orange veins on chunky basalt legs; (3) a lava lamp: a tall glass column with glowing orange-red blobs on a dark iron base; (4) a cluster of bright yellow sulfur crystals growing from a dark rock; (5) a dark iron cauldron sitting on a small smoking vent; (6) a planter of red and white striped tube worms in a black rock pot. Palette: black basalt, glowing orange, sulfur yellow, deep red, dark iron, white. No pale pink, peach or beige anywhere."
+  },
+  {
+   "name": "FurnAbyssGlow",
+   "group": "furniture_boards",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/FurnitureStyleRef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy, like the stalls, lanterns and crates in the cave), draw a furniture set sheet for a fish's underwater home, the Abyss Glow set: six separate pieces in a neat grid of three across and two down with clear space around each, every piece whole and fully visible in a three-quarter view from slightly above, all at one consistent scale, on a plain flat muted teal background, no characters, no fish, no people, no text, no labels, no numbers, no watermark. The pieces: (1) a jellyfish chandelier: a big translucent violet bell with glowing cyan tentacles hanging down, from a short chain; (2) a floor lamp like an anglerfish lure: a curved dark stalk ending in a glowing cyan bulb; (3) a bed resting on glowing blue bioluminescent coral with a dark navy cover; (4) a throne of black stone with violet void crystals growing from its back; (5) a round dark navy rug with swirls of glowing cyan plankton dots lying flat; (6) a stone pedestal holding a giant glowing amber kraken eye inside a glass orb. Palette: black, deep navy, glowing cyan, violet, a little amber. No pale pink, peach or beige anywhere."
+  },
+  {
+   "name": "FurnTrophies",
+   "group": "furniture_boards",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/FurnitureStyleRef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy, like the stalls, lanterns and crates in the cave), draw a furniture set sheet for a fish's underwater home, the Boss Trophy set: six separate pieces in a neat grid of three across and two down with clear space around each, every piece whole and fully visible in a three-quarter view from slightly above, all at one consistent scale, on a plain flat muted teal background, no characters, no fish, no people, no text, no labels, no numbers, no watermark. The pieces: (1) a huge megalodon jaw arch: a giant grey shark jawbone with rows of bright white triangular teeth standing upright as an arch on a stone base, big enough to swim through; (2) a wrought iron lantern holding a glowing violet squid eye; (3) a single giant shark tooth mounted on a dark wooden wall plaque; (4) a coiled giant squid tentacle cast in dark bronze, on a round base; (5) an open treasure chest spilling gold coins and pearls; (6) a glass dome on a brass stand with a tiny glowing coral reef inside. Palette: bone grey, bright white, dark iron, violet glow, dark bronze, gold, teal glow. No pale pink, peach or beige anywhere."
+  }
+ ]
+}
