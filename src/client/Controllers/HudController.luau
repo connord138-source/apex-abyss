@@ -647,7 +647,7 @@ local function buildCursorChip()
 	local text = Ui.label(
 		chip,
 		"Text",
-		"CURSOR FREE · click the water, or tap Alt or Tab, to swim again",
+		"CURSOR FREE · click the water, or tap Alt, to swim again",
 		Ui.FONT_BOLD,
 		14,
 		Ui.color.text,

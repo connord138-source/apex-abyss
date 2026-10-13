@@ -236,7 +236,16 @@ local function step()
 		if label then
 			local biome = Biomes.at(root.Position)
 			local depth = Config.World.surfaceY - root.Position.Y
-			label.Text = if biome
+			-- The hub first: under it is the kelp ring or no biome, so a den read
+			-- OPEN WATER (playtest 2026-10-12)
+			local denHere = Layout.denAt(root.Position)
+			local s = ClientState.current
+			local own = if s and typeof(s.denIndex) == "number" then s.denIndex else 0
+			label.Text = if denHere
+				then `{if denHere == own then "YOUR DEN" else "A DEN"} · THE HUB · safe`
+				elseif Layout.inHub(root.Position) then "THE HUB · safe"
+				elseif
+					biome
 				then `{string.upper(biome.name)} · LV {biome.minLevel}–{biome.maxLevel} · {Format.distance(
 					depth
 				)} down`

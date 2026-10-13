@@ -40,8 +40,9 @@ local Input = {
 	cursorWanted = false,
 	-- Alt tapped: the cursor stays free for the HUD buttons and panels until Alt
 	-- again, or a click on the game (owner, 2026-10-10: "since the cursor is tied to
-	-- swimming there is no way to click on ui panels"). Studio's own window can take
-	-- an Alt tap; Tab does the same there. (M used to as well; it opens the map now.)
+	-- swimming there is no way to click on ui panels"). (Tab used to as well, for
+	-- Studio, but in a game it opens Roblox's player list, playtest 2026-10-12; M
+	-- used to, and opens the map now.)
 	cursorToggled = false,
 	-- (free: boolean) — the player freed or locked the cursor (the HUD's chip)
 	cursorChanged = Signal.new(),
@@ -174,8 +175,6 @@ function Input.start()
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 			UserInputService.MouseIconEnabled = true
 			altDownAt = os.clock()
-		elseif key == Enum.KeyCode.Tab then
-			setCursor(not Input.cursorToggled)
 		end
 		local mouse = input.UserInputType
 		local isMouse = mouse == Enum.UserInputType.MouseButton1 or mouse == Enum.UserInputType.MouseButton2

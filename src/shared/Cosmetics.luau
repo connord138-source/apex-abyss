@@ -376,15 +376,56 @@ local VARIANTS: { [string]: VariantShape } = {
 			EyeL = CFrame.new(-0.3, 0.03, -0.1),
 			EyeR = CFrame.new(0.3, 0.03, -0.1),
 		},
+		-- A widened head, not a plate on it (playtest 2026-10-12: "a flat paddle laid
+		-- on the snout"): a bridge round the snout's middle and two thick lobes swept
+		-- back to the eyes at their tips
 		extra = {
 			{
 				name = "Hammer",
 				parent = "Head",
-				size = Vector3.new(0.64, 0.06, 0.13),
-				c0 = CFrame.new(0, 0.02, -0.1),
+				size = Vector3.new(0.2, 0.075, 0.13),
+				c0 = CFrame.new(0, 0, -0.1),
 				c1 = CFrame.new(),
 				shape = "Ellipsoid",
 				color = "back",
+			} :: PartSpec,
+			{
+				name = "HammerL",
+				parent = "Head",
+				size = Vector3.new(0.34, 0.065, 0.1),
+				c0 = CFrame.new(-0.15, 0, -0.088) * CFrame.Angles(0, math.rad(10), 0),
+				c1 = CFrame.new(),
+				shape = "Ellipsoid",
+				color = "back",
+			} :: PartSpec,
+			{
+				name = "HammerR",
+				parent = "Head",
+				size = Vector3.new(0.34, 0.065, 0.1),
+				c0 = CFrame.new(0.15, 0, -0.088) * CFrame.Angles(0, math.rad(-10), 0),
+				c1 = CFrame.new(),
+				shape = "Ellipsoid",
+				color = "back",
+			} :: PartSpec,
+			{
+				name = "HammerEyeL",
+				parent = "Head",
+				size = Vector3.one * 0.04,
+				c0 = CFrame.new(-0.305, 0.006, -0.062),
+				c1 = CFrame.new(),
+				shape = "Ball",
+				color = "fixed",
+				fixed = Color3.fromRGB(18, 20, 24),
+			} :: PartSpec,
+			{
+				name = "HammerEyeR",
+				parent = "Head",
+				size = Vector3.one * 0.04,
+				c0 = CFrame.new(0.305, 0.006, -0.062),
+				c1 = CFrame.new(),
+				shape = "Ball",
+				color = "fixed",
+				fixed = Color3.fromRGB(18, 20, 24),
 			} :: PartSpec,
 		} :: { PartSpec },
 	},
@@ -511,19 +552,34 @@ type Rigged = {
 local meshRigs: { [Model]: { Rigged } } = {}
 
 -- Per body plan: where the head sits (its length as a fraction of the body's,
--- from the nose), its height, the back's height over the middle, the tail stalk
-type AnchorTune = { head: number?, headY: number?, bodyY: number?, stalkZ: number? }
+-- from the nose), its height, the back's height over the middle, the tail stalk,
+-- and `partScale`: rolled parts are made for the round graybox body (Body1 0.39 of
+-- the length tall), so on a slender fish they're drawn smaller, as much as its
+-- body is thinner. The heights were measured from the rigged FBX (the body's top
+-- at Body1, the snout's middle) and set so a sail stands a third deep in the back:
+-- on the Moray Eel a graybox-sized sail touched the back only at its lowest point
+-- and read as floating a body height above it (playtest 2026-10-12), and the
+-- Hammerhead's paddle lay on top of the snout (the head anchor sat 0.07 of the
+-- length over the shark's snout)
+type AnchorTune = {
+	head: number?,
+	headY: number?,
+	bodyY: number?,
+	stalkZ: number?,
+	partScale: number?,
+}
 local ANCHORS: { [string]: AnchorTune } = {
 	Nibbler = {},
-	Cuda = { head = 0.3 },
+	Cuda = { head = 0.3, headY = -0.039, bodyY = -0.023, partScale = 0.65 },
 	Puffer = { head = 0.38 },
-	Eel = { head = 0.16, stalkZ = 0.42 },
-	Shark = { head = 0.3 },
-	Angler = { head = 0.46, headY = 0.03 },
+	Eel = { head = 0.16, headY = -0.037, bodyY = -0.043, stalkZ = 0.42, partScale = 0.55 },
+	Shark = { head = 0.3, headY = -0.05, bodyY = -0.032, partScale = 0.8 },
+	Angler = { head = 0.46, headY = 0.03, bodyY = -0.026 },
 }
 
--- The anchors of a mesh body, in its unit box, and the box's dims
-local function meshAnchors(body: Model): ({ [string]: CFrame }, Dims)
+-- The anchors of a mesh body, in its unit box, the box's dims and the plan's part
+-- scale
+local function meshAnchors(body: Model): ({ [string]: CFrame }, Dims, number)
 	local plan = body:GetAttribute("Plan")
 	local tune: AnchorTune = ANCHORS[if typeof(plan) == "string" then plan else ""] or ({} :: AnchorTune)
 	local w = body:GetAttribute("UnitW")
@@ -542,7 +598,25 @@ local function meshAnchors(body: Model): ({ [string]: CFrame }, Dims)
 		Body3 = CFrame.new(0, bodyY * 0.6, 0.28),
 		Stalk = CFrame.new(0, 0, tune.stalkZ or 0.38),
 	},
-		dims
+		dims,
+		tune.partScale or 1
+end
+
+-- A rolled part's pieces drawn `k` times their size (sizes and the offsets inside
+-- the part; where it hangs on the body stays)
+local function scaledSpecs(specs: { PartSpec }, k: number): { PartSpec }
+	if k == 1 then
+		return specs
+	end
+	local out: { PartSpec } = {}
+	for _, spec in specs do
+		local copy = table.clone(spec)
+		copy.size = spec.size * k
+		copy.c0 = CFrame.new(spec.c0.Position * k) * spec.c0.Rotation
+		copy.c1 = CFrame.new(spec.c1.Position * k) * spec.c1.Rotation
+		table.insert(out, copy)
+	end
+	return out
 end
 
 local function meshBones(mesh: Model): { [string]: Bone }
@@ -635,6 +709,20 @@ local function addMeshParts(
 		elseif anchors[spec.parent] then
 			parentFrame = anchors[spec.parent]
 			bone = boneFor(bones, spec.parent)
+			if string.sub(spec.parent, 1, 4) == "Body" and parentFrame then
+				-- A piece on the back rides the spine bone under it, so it sways with
+				-- that stretch of the body (Spine1 sits near the head on a long fish)
+				local at = (toPrimary * parentFrame).Position
+				local best = math.huge
+				for _, candidate in bones do
+					local rest = boneLocal(candidate, false).Position / drawn
+					local distance = (rest - at).Magnitude
+					if distance < best then
+						best = distance
+						bone = candidate
+					end
+				end
+			end
 		end
 		if parentFrame == nil then
 			continue
@@ -1124,7 +1212,7 @@ function Cosmetics.apply(body: Model, look: FishBuilder.Look, dress: Dress, leng
 	if body:GetAttribute("Mesh") and mesh and mesh:IsA("Model") then
 		stripMesh(body, mesh)
 		paintMesh(body, dress.shade, length)
-		local anchors, dims = meshAnchors(body)
+		local anchors, dims, partScale = meshAnchors(body)
 		local bones = meshBones(mesh)
 		local variant = if dress.variant then VARIANTS[dress.variant] else nil
 		if variant then
@@ -1135,7 +1223,7 @@ function Cosmetics.apply(body: Model, look: FishBuilder.Look, dress: Dress, leng
 			local id = dress.parts[slot]
 			local cosmetic = if id then PARTS[id] else nil
 			if cosmetic then
-				addMeshParts(body, mesh, cosmetic.parts, look, anchors, bones)
+				addMeshParts(body, mesh, scaledSpecs(cosmetic.parts, partScale), look, anchors, bones)
 			end
 		end
 		return
