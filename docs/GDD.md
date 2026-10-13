@@ -606,7 +606,7 @@ cartoonish Schedule I vibes, but the undersea horror aspect for the bosses."
   passes, red APEX PREDATOR tags, "SOMETHING STIRS BELOW". Menace from scale, light
   and sound; no gore.
 
-### Den bases (owner, 2026-10-07; v1 built)
+### Den bases (owner, 2026-10-07; v2 built 2026-10-13)
 
 "I was also envisioning the dens being an upgradable base that gets bigger and
 deeper as it upgrades. Other players can go in and check out your base but can't
@@ -614,23 +614,65 @@ take or do anything. You can display trophies from large fish killed/bosses kill
 and set up furniture so that it's your den. Upgrades and furniture/colors would cost
 currency. Coral lamps, etc."
 
-- **Levels:** Nook (start) → Burrow (2,500 coral: the room runs 6 studs further back,
-  two wall spots) → Hall (12,000: 12 back, a chamber 10 deep under the floor, three
-  chamber spots) → Grotto (45,000: 18 back, the chamber 14 deep and wider, two more
-  wall spots and one chamber spot). The sign reads "<NAME>'S GROTTO".
-- **Furniture:** 12 spots in all (4 floor, 4 wall, 4 chamber). Fourteen pieces, 150 to
-  1,200 coral, bought once and moved freely after: Coral Lamp, Kelp Bed, Shell Pile,
-  Anemone Garden, Brain Coral, Tube Sponges, Driftwood Table, Pearl Pedestal,
-  Treasure Chest, Bubble Column, Crystal Shard, Sea Glass Lantern, Sea Fan, Banner.
-- **Colors:** a glow color for the den's lamps, banners and trophy trims: Teal free,
+v2 (owner, 2026-10-13): "The middle of the dens also looks pretty crude and it's just
+sticks with spheres on the table. The dens need to be larger and have much more depth
+so players can build in them and show them off. It's meant to be like the players
+house/base. We will have furniture, rugs, lamps, and tons of items that will be rolled
+in once these steps are done."
+
+- **A house dug down.** The hub stands on solid rock to y −80, so a den grows down
+  into it. Five levels:
+  - **Nook** (start): the main room (pool, garden planter, trophy wall), holds 15
+    things.
+  - **Burrow** (1,000 coral): the main room runs back to r 150, holds 30.
+  - **Hall** (12,000): a shaft in the Burrow's floor drops to a vaulted hall at
+    y −30 under the plaza ring, the Coral Garden moves to its middle; holds 50.
+  - **Grotto** (45,000): the hall opens into wide wings and a deep grotto at the
+    back; holds 75.
+  - **Sanctum** (150,000): a second shaft to the deepest storey at y −62, the
+    grandest room; holds 100.
+  At the top level that is about 10,000 sq studs of floor over three storeys (a Nook
+  had 384). Rooms are barrel vaults with alcoves, 5 studs of rock inside the line to
+  the next den. The sign reads "<NAME>'S SANCTUM".
+- **Decks:** every storey has a flat flagstone floor (tiles of mixed sizes with dark
+  joints) to build on. Six floor styles: Flagstone (free), Driftwood Planks 800,
+  Sandstone Tiles 1,500, Pearl Marble 4,000, Reef Mosaic 6,000, Glowing Obsidian
+  12,000 (the den's glow in its joints).
+- **Architecture:** stone curbs with a glowing lip round the shafts, pillars with
+  sconces down the big rooms, orb lamps hanging down the vaults, all in the den's
+  glow.
+- **Build mode:** placing things is free-form. In your own den, press B (or BUILD in
+  the den menu).
+  - You keep swimming and aim with the camera. A ghost shows where the thing goes:
+    green, or red with the reason.
+  - Things go on decks, walls or ceilings, whichever they're made for, and can stand
+    on each other (a lamp on a table, a table on a rug).
+  - Aim at a placed thing to pick it up and move it, or put it back in the tray.
+  - Turn in 15° steps.
+  - Every thing bought goes into the Build tray (copies count).
+  - Den Expansion adds 25 to the cap.
+  - The server checks every request against the den's space (`Shared/DenSpace`).
+- **Things:** 16 so far, 150 to 1,200 coral:
+  - Floor: Coral Lamp, Kelp Bed, Woven Kelp Rug, Shell Pile, Anemone Garden, Brain
+    Coral, Tube Sponges, Driftwood Table, Pearl Pedestal, Treasure Chest, Bubble
+    Column, Crystal Shard (also walls).
+  - Walls: Sea Glass Lantern, Sea Fan, Banner.
+  - Ceiling: Jellyfish Lamp.
+  The rolled furniture, rugs and lamps come next.
+- **Colors:** a glow color for the den's lamps, banners, trims and seams: Teal free,
   Gold, Rose, Violet, Lime, Ice and Ember 300 each.
-- **Trophy wall:** three plaques on the back wall fill themselves: BIGGEST CATCH (the
-  heaviest prey ever eaten, its model mounted above), MEGALODON (teeth taken) and
-  GIANT SQUID (beaks taken); the worn title hangs over the door.
-- **Visiting:** anyone can swim into any den (dens stay safe zones) and look; only the
-  holder can bank there or change anything.
-- Later: free placement, den items won from bosses (the jaw arch, the Kraken-eye
-  lantern), more pieces and themes.
+- **Coral Garden:** a stone planter along the main room's back wall (Nook, Burrow),
+  then an oval bed ringed with stones in the middle of the Hall. Corals (staghorn,
+  fan, brain, tube sponges, anemones; the Tripo reef props where imported) grow one
+  by one as it fills, and it sparkles when full. A Sanctum grows 380 coral and 16
+  shells an hour.
+- **Trophy wall:** three plaques on the main room's back wall fill themselves:
+  BIGGEST CATCH (the heaviest prey ever eaten, its model mounted above), MEGALODON
+  (teeth taken) and GIANT SQUID (beaks taken); the worn title hangs over the door.
+- **Visiting:** anyone can swim into any den (the whole house is a safe zone) and
+  look; only the holder can bank there or change anything.
+- Later: rolled furniture, rugs and lamps (Tripo models), den items won from bosses
+  (the jaw arch, the Kraken-eye lantern), a visit button.
 
 ### The shelf layout (owner, 2026-10-07; built)
 
@@ -1060,7 +1102,7 @@ created in Creator Hub, and a live game hides id-0 items.
 |---|---|---|---|
 | **×2 Mass** | pass | 399 | Every Haul gain counts double (prey, forage, players, predators, bosses, treasure) |
 | **VIP** | pass | 299 | Gold VIP tag on the nametag, +10% coral from play |
-| **Den Expansion** | pass | 149 | Four more furniture spots (X1–X4: two floor, two wall), at any den level |
+| **Den Expansion** | pass | 149 | 25 more things placed in the den, at any den level |
 | **Deep Garden** | pass | 129 | The Coral Garden grows 50% faster and holds 16 h instead of 8 |
 | **Second Chance** | product | 39 | Bought on the eaten screen: the Haul just lost comes back (once, within 3 min). Bought any other time: a Second Chance charm (hold up to 5) |
 | **Double Haul** Small / Big / Huge | product | 19 / 49 / 99 | Doubles the Haul just banked; the tier is the Haul's size (≤ 60 kg, ≤ 2.5 t, more) |

@@ -304,8 +304,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Rule:** sell growth and safety, never bite damage. Coral (it buys Iron Jaw) and
     Kelp Wraps are never sold for Robux.
   - **Passes:** ×2 Mass 399 (every Haul gain ×2), VIP 299 (gold nametag tag, +10%
-    coral), Den Expansion 149 (the "extra den slots": spots X1–X4 at any level, `pass`
-    on a `Config/Dens` slot), Deep Garden 129 (Coral Garden ×1.5 and 16 h).
+    coral), Den Expansion 149 (the "extra den slots": 25 more things placed at any level, `Config/Dens` `expansionCapacity`), Deep Garden 129 (Coral Garden ×1.5 and 16 h).
   - **Second Chance** 39: bought on the eaten screen it returns the Haul just lost
     (`data.lostHaul`, once, within 3 min of being eaten); otherwise it's a charm (hold up to 5).
   - **Double Haul** (the owner's idea) 19/49/99 by the Haul's size (≤ 60 kg, ≤ 2.5 t,
@@ -378,8 +377,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     move and when the window regains focus (`Input.holdMouseLock`); a PC with a
     touch screen keeps it. **A freed pointer (menus, Alt) can't be fenced:** Roblox
     has no confine-to-window mode, so in a menu the cursor can still cross to a
-    second monitor; the lock only ever drops for menus now. Alt (or Tab, for
-    Studio, which eats Alt) frees the cursor; **M opens the map** (it no longer
+    second monitor; the lock only ever drops for menus now. Alt frees the cursor
+    (Tab did too until 2026-10-13: in a game it opens Roblox's player list); **M opens the map** (it no longer
     toggles the cursor); R3 on a pad.
   - **Directed tutorial** (`Config/Tutorial` `controls`/`guide`, `TutorialController`):
     the card shows each step's keys as key caps (`Ui.keycap`) for the device, a
@@ -411,6 +410,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Hammerhead), each rolling only for its fish (`RollOdds.excluded`); the Wardrobe
     orders them by fish; roll cards photograph parts on the real fish. These are
     part-built pieces on the Tripo mesh; real variant models can replace them later.
+    **Fit to the body (playtest 2026-10-12: the Moray Eel's Sail Fin and Veil Tail
+    floated a body height over its back; the Hammerhead was "a flat paddle laid on
+    the snout"):** rolled parts are sized for the round graybox body, so `ANCHORS`
+    carries a `partScale` for slender fish (Eel 0.55, Cuda 0.65, Shark 0.8) and
+    head/back heights measured from the rigged FBX (snout middle, back top), set so a
+    sail stands a third deep in the back; back pieces ride the spine bone nearest
+    them. The Hammerhead is a bridge round the snout and two thick swept lobes with
+    the eyes at their tips.
   - **Moving sheens** (`Config/Shades` `sheen`, `Config/Textures.luau`,
     `tools/shades/make_sheens.py` → `assets/textures/sheen_*.png`): Prismatic,
     Diamond, Divine, Aurora, Exotic, Nebula and Void carry a tiling image projected
@@ -473,8 +480,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     mouse buttons are the fish's only buttons: LEFT CLICK dashes, RIGHT CLICK bites**
     (see "The 2026-10-12 batch"); M opens the map.
   - **Freeing the cursor (owner, 2026-10-10: "need a way to pull up the cursor since
-    the cursor is tied to swimming"):** tap Alt (or Tab; Studio's window can take an
-    Alt tap) to free it for the HUD and panels (`Input.cursorToggled`, the HUD's
+    the cursor is tied to swimming"):** tap Alt to free it for the HUD and panels (`Input.cursorToggled`, the HUD's
     CURSOR FREE chip); tap again, or click the game (that click doesn't dash or
     bite), to lock it (a click on a HUD panel keeps it free). Holding Alt frees it
     only while held; menus free it while open. The tutorial card tells new players.
@@ -772,32 +778,50 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   maps, heal, get eaten, title, restart or finish the tutorial (testers: species
   select at once), teleport to a biome, summon/hurt/dismiss a boss), `AdminController` (ADMIN button bottom-left, target me/everyone/
   next player). The `Admin` RemoteFunction answers a line of text.
-- **Den bases (owner, 2026-10-07: "an upgradable base that gets bigger and deeper as
-  it upgrades. Other players can go in and check out your base but can't take or do
-  anything. You can display trophies ... set up furniture ... Upgrades and
-  furniture/colors would cost currency. Coral lamps, etc"):** built as v1.
-  `Config/Dens.luau`: four levels (Nook → Burrow 2,500 → Hall 12,000 → Grotto 45,000
-  coral) that carve the room 6/12/18 studs further back into the seamount and, from
-  Hall, sink a lower chamber under the floor (10 then 14 deep); 12 furniture slots
-  (floor, wall, chamber) unlocked by level; a catalog of 14 pieces (Coral Lamp, Kelp
-  Bed, Shell Pile, Anemone Garden, corals and sponges, Driftwood Table, Pearl
-  Pedestal, a decor Treasure Chest, Bubble Column, Crystal Shard, Sea Glass Lantern,
-  Sea Fan, Banner; 150–1,200 coral, bought once then free to move) and seven glow
-  colors (Teal free, the rest 300) that light the lamps, banners and trophy trims.
-  The record (`data.den`: level, furniture by slot, owned, glow) is in the save and
-  follows the player to whichever den they hold; `DenService` (requests DenUpgrade,
-  DenPlace, DenColor; only the holder can change it) builds it with `DenBuilder`
-  (Terrain carve: the rock is refilled first so a freed den goes back to a Nook; parts
-  with `Props.dress` for the Tripo props) when the den is assigned or changed. The
-  **trophy wall** on the back wall fills itself: the biggest catch (a mounted prey
-  model and its mass, `data.stats.bestPrey/bestPreyMass` from HuntService), Megalodon
-  teeth and Kraken beaks taken, and the worn title over the door
-  (`Events.trophies`). Visitors can swim in (dens are safe) and only look; banking
-  stays owner-only. The whole carved room is safe however far it was upgraded back
-  (`Layout.denAt`, used by `Layout.inHub`; the back of a Burrow was outside the safe
-  zone, playtest 2026-10-08). Menu: the stall hint shows YOUR DEN at your own Haul Pool
-  (`MenuController.openDen`: upgrade, glow, slots → pick list). The seamount's foot
-  was widened (Cave terrace +36, down to −26) so upgraded dens stay inside the rock.
+- **Den bases v2 (owner, 2026-10-13: "The dens need to be larger and have much more
+  depth so players can build in them and show them off. It's meant to be like the
+  players house/base. We will have furniture, rugs, lamps, and tons of items that
+  will be rolled in"; the garden was "just sticks with spheres on the table"; built,
+  GDD §6 "Den bases"; v1 was 2026-10-07: "an upgradable base that gets bigger and
+  deeper ... Other players can go in and check out your base but can't take or do
+  anything ... trophies ... furniture ... Coral lamps"):**
+  - **Dug down:** the hub's rock is solid to y −80 (Cave now fills under the cavern
+    floor down to there; the dome's carve had left a hidden void under the plaza).
+    Five levels: Nook → Burrow 1,000 (the main room runs back) → Hall 12,000 (a shaft
+    to a vaulted hall at y −30) → Grotto 45,000 (wings, a deep back) → Sanctum
+    150,000 (a second shaft to y −62), holding 15/30/50/75/100 things (+25 Den
+    Expansion). `Config/Dens` `rooms` (bands across the den's axis, each 5 studs
+    inside the line to the next den), `storeys` (deck, floor, ceiling), `shafts`,
+    `gardenSpots`. `Shared/DenSpace` (both sides): decks as a 2-stud grid merged into
+    flagstone tiles, holes (pool, shafts, garden, pillars), `check` (may a thing go
+    there). `server/DenCarve` writes the Terrain ops: the house's zone back to stone,
+    the Nook (`Cave.denRoom`), the Burrow, barrel vaults with alcoves, floors under
+    the decks, shafts. `DenBuilder` carves only when the level changes, builds the
+    shell (decks in a floor style, curbs, pillars, orb lamps), keeps placed things in
+    step by uid, seats the trophy wall both ways, and the Coral Garden (a planter on
+    the back wall, then an oval bed in the Hall's middle, Tripo corals or part-built
+    staghorn/fan/brain/sponge/anemone growing one by one).
+  - **Build mode** (`BuildController`, `DenService`): B in your own den or BUILD in
+    the den menu. You swim and aim with the camera; a ghost shows green or red with
+    the reason; things go on decks, walls or ceilings (`kinds`) or on each other;
+    aim at a placed thing to pick it up or X to put it away; R/F turn 15°, Q/E pick
+    from the tray; pad RT/LT/LB/RB/D-pad/X/B, phone buttons. `Input.building` stops
+    bite and dash meanwhile. Requests DenBuy, DenPlace, DenMove, DenStore (0 = all),
+    DenFloor, DenColor, DenUpgrade, each checked again on the server. Record
+    `data.den`: level, glow, floor, owned (glows and floors), items (copies),
+    placed {uid, id, x, y, z, r, s}, nextUid; old slot furniture moves into
+    `placed` once (`DenService.migrate`), old owned things become tray copies.
+  - Six floor styles (Flagstone free → Glowing Obsidian 12,000), 16 things (new:
+    Woven Kelp Rug, Jellyfish Lamp on the ceiling), seven glows.
+  - Checks from the cloud: `LUAU=<luau> bash tools/tests/run_dens.sh` (rooms inside
+    their wedge, tiles cover the decks once, holes, placement answers) and `LEVEL=5
+    LUAU=<luau> bash tools/preview/run_dens.sh <dir>` (the cavern plus all 12 dens
+    voxelized: no den reaches another, a tunnel, the sea or the shelf's hollow;
+    slice images). Run both after any change to `Config/Dens`, `DenCarve` or
+    `Cave`, and `check_exits.py` as before.
+  - The trophy wall, visitors (look only, the whole house is safe: `Layout.denAt`)
+    and the sign ("<NAME>'S SANCTUM") work as in v1. The camera looks past den
+    furniture (tag `DenItems`).
 - **Roll reveal cards are photos (owner, 2026-10-07: "better designs for the random
   rolls"; 2026-10-08: "photos for the rolls need to be dialed way up and look much
   more professional"):** every reel card is a lit 3D shot (`src/client/CardPhoto.luau`
@@ -1235,7 +1259,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     exotic variants (they're part-built pieces on the mesh for now); caustics
     (needs a texture upload); the sheen texture ids (Config/Textures, uploaded by
     the PC)
-  - den decor beyond v1: free placement, more pieces, den items from bosses (jaw arch, Kraken-eye lantern)
+  - den things beyond the first 16 (the rolled furniture, rugs and lamps; Tripo models), den items from bosses (jaw arch, Kraken-eye lantern)
   - server-side speed checks
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 

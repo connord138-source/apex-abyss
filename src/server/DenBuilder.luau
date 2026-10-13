@@ -826,8 +826,7 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 	else
 		-- A sunken oval bed: a ring of rounded stones, a glow under them, sand below
 		-- the deck
-		-- (an oval: a cylinder mesh stretched, since a Cylinder part is always round;
-		-- its axis is the part's X, turned up)
+		-- (an oval: a flattened sphere mesh, since a Cylinder part is always round)
 		local function oval(
 			name: string,
 			thick: number,
@@ -839,13 +838,13 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 			local disc = part(
 				model,
 				name,
-				Vector3.new(thick, spot.width + grow, spot.depth + grow),
-				center * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90)),
+				Vector3.new(spot.width + grow, thick, spot.depth + grow),
+				center * CFrame.new(0, y, 0),
 				color,
 				material
 			)
 			local mesh = Instance.new("SpecialMesh")
-			mesh.MeshType = Enum.MeshType.Cylinder
+			mesh.MeshType = Enum.MeshType.Sphere
 			mesh.Parent = disc
 		end
 		oval("Sand", 0.6, 0, sandTop - 0.3, Color3.fromRGB(226, 208, 168), Enum.Material.Sand)

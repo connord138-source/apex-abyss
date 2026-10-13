@@ -123,10 +123,14 @@ function Layout.denAt(position: Vector3): number?
 	elseif flat < hub.radius or flat > MAIN_REACH then
 		return nil
 	end
+	-- The main storey is the den's own segment; below it there are no tunnels, and
+	-- a den's halls reach out to the line halfway to the next den (dens are two
+	-- segments apart)
+	local half = if offset.Y < LOW_TOP then SEGMENT_HALF * 2 else SEGMENT_HALF
 	local angle = math.atan2(offset.Z, offset.X)
 	for index, segment in denSegments do
 		local delta = (angle - Layout.segmentAngle(segment) + math.pi) % (2 * math.pi) - math.pi
-		if math.abs(delta) <= SEGMENT_HALF then
+		if math.abs(delta) <= half then
 			return index
 		end
 	end

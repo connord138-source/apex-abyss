@@ -47,7 +47,7 @@ local passes: { Pass } = {
 		id = 2022452343,
 		name = "Den Expansion",
 		price = 149,
-		description = "Four more furniture spots in your den (two on the floor, two on the walls), at any den level.",
+		description = "Place 25 more things in your den, at any den level.",
 	},
 	{
 		key = "DeepGarden",

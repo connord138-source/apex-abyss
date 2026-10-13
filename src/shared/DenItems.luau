@@ -251,9 +251,12 @@ function DenItems.build(item: DensConfig.Item, glow: Color3, surface: string): M
 		bubbles.Color = ColorSequence.new(Color3.fromRGB(220, 250, 255))
 		bubbles.EmissionDirection = Enum.NormalId.Right -- the cylinder's axis is up
 		bubbles.Parent = main
-	elseif surface == "wall" then
-		-- Juts out of the rock: the stand-in's up turned to point out of the wall
+	elseif surface == "wall" and table.find(item.kinds, "floor") then
+		-- A floor thing on a wall juts out of the rock: its up turned to point out
 		main = dressed(model, item, CFrame.new(0, 0, -size.Y / 2) * CFrame.Angles(math.rad(-90), 0, 0), color)
+	elseif surface == "wall" then
+		-- A wall thing hangs flat on the rock, standing out by its depth
+		main = dressed(model, item, CFrame.new(0, 0, -size.Z / 2), color)
 	elseif surface == "ceiling" then
 		main = dressed(model, item, CFrame.new(0, -size.Y / 2, 0), color)
 	else
@@ -272,7 +275,9 @@ end
 -- The thing's box at the identity frame (Build mode's clearance and pick-up box)
 function DenItems.box(item: DensConfig.Item, surface: string): (CFrame, Vector3)
 	local size = item.size
-	if surface == "wall" then
+	if surface == "wall" and table.find(item.kinds, "floor") then
+		return CFrame.new(0, 0, -size.Y / 2) * CFrame.Angles(math.rad(-90), 0, 0), size
+	elseif surface == "wall" then
 		return CFrame.new(0, 0, -size.Z / 2), size
 	elseif surface == "ceiling" then
 		return CFrame.new(0, -size.Y / 2, 0), size

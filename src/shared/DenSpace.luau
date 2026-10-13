@@ -324,7 +324,9 @@ function DenSpace.check(level: number, item: DensConfig.Item, surface: string, a
 		end
 		return { ok = true }
 	end
-	if not DenSpace.inside(level, at, 3) then
+	-- (6 studs of slack: the rock bulges in and out round the rooms, and the ends of
+	-- the main room and the Burrow are rounded well past their floors)
+	if not DenSpace.inside(level, at, 6) then
 		return { ok = false, why = "That's outside your den" }
 	end
 	local storey = DenSpace.storeyAt(at.Y) or 1
