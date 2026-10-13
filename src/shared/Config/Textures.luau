@@ -15,8 +15,8 @@ return {
 	sheenVeil = 91311902351808, -- assets/textures/sheen_veil.png
 	stars = 129645056585841, -- hatch-and-snatch assets/textures/galaxy_sky.png
 	-- rug*: the den rugs' top-down art (tools/props/rug_textures.py; Shared/DenItems)
-	rugBraidedKelpRug = 0, -- assets/textures/rug_BraidedKelpRug.png
-	rugCoralRug = 0, -- assets/textures/rug_CoralRug.png
-	rugWaveMosaicRug = 0, -- assets/textures/rug_WaveMosaicRug.png
-	rugPlanktonRug = 0, -- assets/textures/rug_PlanktonRug.png
+	rugBraidedKelpRug = 135571701796831, -- assets/textures/rug_BraidedKelpRug.png
+	rugCoralRug = 73878696309005, -- assets/textures/rug_CoralRug.png
+	rugWaveMosaicRug = 79461762014413, -- assets/textures/rug_WaveMosaicRug.png
+	rugPlanktonRug = 132153678493833, -- assets/textures/rug_PlanktonRug.png
 }
