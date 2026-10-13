@@ -8,9 +8,9 @@
 --   stars:  the Hatch & Snatch galaxy starfield, already on the owner's account
 --           (an Image works in every experience its uploader owns)
 return {
-	sheenPrismatic = 0, -- assets/textures/sheen_prismatic.png
-	sheenSparkle = 0, -- assets/textures/sheen_sparkle.png
-	sheenGold = 0, -- assets/textures/sheen_gold.png
-	sheenVeil = 0, -- assets/textures/sheen_veil.png
+	sheenPrismatic = 121725548181831, -- assets/textures/sheen_prismatic.png
+	sheenSparkle = 120522622169733, -- assets/textures/sheen_sparkle.png
+	sheenGold = 70886974600925, -- assets/textures/sheen_gold.png
+	sheenVeil = 91311902351808, -- assets/textures/sheen_veil.png
 	stars = 129645056585841, -- hatch-and-snatch assets/textures/galaxy_sky.png
 }
