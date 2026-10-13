@@ -39,7 +39,10 @@ export type Room = {
 	pillars: number?, -- stone columns down each side, this far apart
 }
 
--- A round shaft from one storey's floor down to the next storey's ceiling
+-- A round shaft from one storey's floor down to the next storey's ceiling. `radius`
+-- is the opening inside its curb; the rock is cut 3 studs wider (DenCarve), since a
+-- cylinder of air cut through Terrain's 4-stud voxels at a slant clears a good deal
+-- less than its radius (playtest 2026-10-13: at 6 only a 2-stud box got through)
 export type Shaft = { id: string, level: number, from: number, to: number, z: number, radius: number }
 
 -- Where the Coral Garden stands at a level: a trough along the main room's back
@@ -117,11 +120,16 @@ local levels: { Level } = {
 }
 
 -- Main floor y 0 is world y 4 (Config/World hub.denFloorY); the Hall's deck is at
--- world -30 and the Sanctum's at -62 (the hub's rock runs solid to -80)
+-- world -30 and the Sanctum's at -66 (the hub's rock runs solid to -80). The rock
+-- floor under each deck is 5–6 studs down, on a 4-stud voxel line: Terrain draws
+-- its surface up to ~4.6 studs above where it's filled, and with 1–2 studs of room
+-- it came up through the flagstones (playtest 2026-10-13: none showed on the main
+-- storey; sandy wedges between them below). The decks are thick slabs down to it.
+-- 8 studs of rock stay between one storey's floor and the next one's ceiling.
 local storeys: { Storey } = {
-	{ deck = 1, floor = 0, ceiling = 24 },
-	{ deck = -34, floor = -36, ceiling = -12 },
-	{ deck = -66, floor = -68, ceiling = -44 },
+	{ deck = 1, floor = -4, ceiling = 24 },
+	{ deck = -34, floor = -40, ceiling = -12 },
+	{ deck = -70, floor = -76, ceiling = -48 },
 }
 
 -- Each room keeps 5 studs of rock from the line between it and the next den
@@ -140,8 +148,8 @@ local rooms: { Room } = {
 }
 
 local shafts: { Shaft } = {
-	{ id = "HallShaft", level = 3, from = 1, to = 2, z = -30, radius = 6 },
-	{ id = "SanctumShaft", level = 5, from = 2, to = 3, z = -62, radius = 7 },
+	{ id = "HallShaft", level = 3, from = 1, to = 2, z = -29, radius = 7 },
+	{ id = "SanctumShaft", level = 5, from = 2, to = 3, z = -62, radius = 8 },
 }
 
 local gardenSpots: { GardenSpot } = {

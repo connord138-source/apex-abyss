@@ -77,9 +77,22 @@ expect(ok(DenSpace.check(1, lantern, "wall", v(12.5, 8, 0))), "a lantern on the 
 expect(not ok(DenSpace.check(1, lantern, "wall", v(40, 8, 0))), "no lantern outside the den")
 expect(ok(DenSpace.check(3, lamp, "floor", v(10, -34, 10))), "a lamp on the Hall deck")
 expect(not ok(DenSpace.check(2, lamp, "floor", v(10, -34, 10))), "no Hall before level 3")
-expect(ok(DenSpace.check(5, jelly, "ceiling", v(0, -46, -60))), "a jelly lamp on the Sanctum's vault")
-expect(not ok(DenSpace.check(5, jelly, "ceiling", v(0, -64, -60))), "a ceiling lamp needs height")
-expect(ok(DenSpace.check(5, lamp, "floor", v(0, -64, -60))), "stacked on something on the Sanctum deck")
+expect(ok(DenSpace.check(5, jelly, "ceiling", v(0, -50, -60))), "a jelly lamp on the Sanctum's vault")
+expect(not ok(DenSpace.check(5, jelly, "ceiling", v(0, -68, -60))), "a ceiling lamp needs height")
+expect(ok(DenSpace.check(5, lamp, "floor", v(0, -68, -60))), "stacked on something on the Sanctum deck")
+
+expect(
+	not ok(DenSpace.check(1, lamp, "floor", v(0, 1, DenSpace.POOL_Z))),
+	"nothing stands on the pool"
+)
+expect(
+	ok(DenSpace.check(1, lamp, "floor", v(DenSpace.POOL_RADIUS + 0.2, 3.3, DenSpace.POOL_Z))),
+	"a lamp on a table at the pool's edge"
+)
+expect(
+	not ok(DenSpace.check(1, lamp, "floor", v(0, 3.3, DenSpace.POOL_Z))),
+	"nothing floats over the pool's middle"
+)
 
 print(if failures == 0 then "dens: OK" else `dens: {failures} failed`)
 if failures > 0 then

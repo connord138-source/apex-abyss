@@ -425,6 +425,13 @@ local function gardenHours(_admin: Player, targets: { Player }, hours: any): str
 	return `Coral Garden grown by {n} h for {count} player(s) (collected within a few seconds while in their den)`
 end
 
+local function gardenPreview(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		GardenService.preview(player, 20)
+	end
+	return `Coral Garden growing from empty to full over 20 s for {#targets} player(s) (only the look)`
+end
+
 -- Dens (Build mode testing): a den's level, and things for the tray
 local function denLevel(_admin: Player, targets: { Player }, level: any): string
 	local n = if typeof(level) == "number" and level == level then math.floor(level) else nil
@@ -637,6 +644,7 @@ AdminActions.byName = {
 	dailyStreak = dailyStreak :: Handler,
 	dailyBreak = dailyBreak :: Handler,
 	gardenHours = gardenHours :: Handler,
+	gardenPreview = gardenPreview :: Handler,
 	denLevel = denLevel :: Handler,
 	denItems = denItems :: Handler,
 	forceTide = forceTide :: Handler,

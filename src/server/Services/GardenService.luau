@@ -40,6 +40,7 @@ type Watch = {
 	lastCollect: number,
 	away: number?, -- seconds away before this session (until the first collection)
 	shown: number, -- the fill step the garden was last drawn at
+	previewing: boolean?, -- an admin preview is drawing it (GardenService.preview)
 }
 
 local GardenService = {}
@@ -65,7 +66,7 @@ end
 local function redraw(player: Player, data: PlayerData, force: boolean?)
 	local watch = watches[player]
 	local den = FishService.denOf(player)
-	if watch == nil or den == nil then
+	if watch == nil or den == nil or watch.previewing then
 		return
 	end
 	local rates = ratesOf(player, data)
@@ -144,6 +145,35 @@ function GardenService.fastForward(player: Player, hours: number)
 	end
 	DataService.markDirty(player)
 	redraw(player, data, true)
+end
+
+-- Admin testing: draws the garden growing from empty to full over `seconds`, one
+-- coral after another, then full and sparkling for a few seconds, then as it really
+-- is. Only the look: nothing grows or is collected (playtest 2026-10-13: "grow
+-- hours" jumps straight to full, so the growth couldn't be seen).
+function GardenService.preview(player: Player, seconds: number)
+	local watch = watches[player]
+	local den = FishService.denOf(player)
+	local data = DataService.get(player)
+	if watch == nil or den == nil or data == nil or watch.previewing then
+		return
+	end
+	watch.previewing = true
+	task.spawn(function()
+		local steps = 28
+		for i = 0, steps do
+			if watches[player] ~= watch then
+				return
+			end
+			Guard.run("GardenService.preview", function()
+				DenBuilder.garden(den, data.den, i / steps, math.min(1, i / steps * 1.2))
+			end)
+			task.wait(seconds / steps)
+		end
+		task.wait(4)
+		watch.previewing = nil
+		redraw(player, data, true)
+	end)
 end
 
 function GardenService.start()

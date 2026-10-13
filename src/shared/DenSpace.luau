@@ -209,6 +209,18 @@ function DenSpace.onDeck(level: number, storey: number, x: number, z: number): b
 	return DenSpace.cells(level, storey)[key(math.floor(x / CELL), math.floor(z / CELL))] == true
 end
 
+-- Whether there's deck within a cell (2 studs) of (x, z)
+function DenSpace.nearDeck(level: number, storey: number, x: number, z: number): boolean
+	for dx = -CELL, CELL, CELL do
+		for dz = -CELL, CELL, CELL do
+			if DenSpace.onDeck(level, storey, x + dx, z + dz) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 -- The deck as tiles: the cells merged greedily into rectangles at most `most` studs
 -- on a side (flagstones of mixed sizes), in a fixed order
 function DenSpace.tiles(level: number, storey: number, most: number): { Tile }
@@ -320,7 +332,11 @@ function DenSpace.check(level: number, item: DensConfig.Item, surface: string, a
 			return { ok = false, why = "Put it on the floor" }
 		end
 		if not DenSpace.onDeck(level, storey, at.X, at.Z) then
-			return { ok = false, why = "That's not on your floor" }
+			-- Standing on something (a lamp on a table by the pool) its middle may hang
+			-- over a hole's edge, with deck close by (playtest 2026-10-13)
+			if at.Y < deck + 0.3 or not DenSpace.nearDeck(level, storey, at.X, at.Z) then
+				return { ok = false, why = "That's not on your floor" }
+			end
 		end
 		return { ok = true }
 	end

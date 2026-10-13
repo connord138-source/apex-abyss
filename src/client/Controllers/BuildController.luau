@@ -29,6 +29,7 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
+local MapController = require(script.Parent.MapController)
 local MenuController = require(script.Parent.MenuController)
 local SwimController = require(script.Parent.SwimController)
 
@@ -265,6 +266,28 @@ local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): S
 		if table.find(item.kinds, "floor") then
 			-- A floor thing aimed at a wall or a ceiling drops to the floor below
 			local down = workspace:Raycast(position + normal * 1.5, Vector3.new(0, -60, 0), params)
+			-- Aimed at the side of a placed thing by the pool or the garden, the drop in
+			-- front of it falls into the hole: then it goes on that thing's top
+			-- (playtest 2026-10-13)
+			local dropped = down
+			local onIt = uidOf(hit.Instance) ~= nil
+			if
+				onIt
+				and (
+					dropped == nil
+					or dropped.Normal.Y <= 0.6
+					or not DenSpace.check(level, item, "floor", DenSpace.toLocal(frame, dropped.Position)).ok
+				)
+			then
+				local top = workspace:Raycast(
+					position - normal * 0.6 + Vector3.new(0, 8, 0),
+					Vector3.new(0, -12, 0),
+					params
+				)
+				if top and top.Normal.Y > 0.6 and uidOf(top.Instance) ~= nil then
+					down = top
+				end
+			end
 			if down == nil or down.Normal.Y <= 0.6 then
 				return nil
 			end
@@ -636,6 +659,16 @@ function BuildController.isActive(): boolean
 	return active
 end
 
+-- The tray's size and place for the device in use now (a phone's is taller, for
+-- its row of buttons, and sits higher; playtest 2026-10-13: laid out for a mouse
+-- and then shown with the phone's row, the row hung over the HAUL card)
+local function layoutTray()
+	local touch = Input.isTouch()
+	panel.Size = UDim2.fromOffset(if touch then 600 else 760, if touch then 172 else 146)
+	panel.Position = UDim2.new(0.5, 0, 1, if touch then -150 else -120)
+	touchRow.Visible = touch
+end
+
 function BuildController.start()
 	if active then
 		return
@@ -650,7 +683,7 @@ function BuildController.start()
 	MenuController.building = true
 	turning = 0
 	controlsLabel.Text = controlsText()
-	touchRow.Visible = Input.isTouch()
+	layoutTray()
 	panel.Visible = true
 	bind()
 	select(nil)
@@ -688,13 +721,9 @@ local function buildGui()
 		gui,
 		"Tray",
 		UDim2.fromOffset(if touch then 600 else 760, if touch then 172 else 146),
-		UDim2.new(0.5, 0, 1, if touch then -12 else -120),
+		UDim2.new(0.5, 0, 1, if touch then -150 else -120),
 		Vector2.new(0.5, 1)
 	)
-	if touch then
-		-- Phones: above the bottom-left stick and right buttons, centred
-		panel.Position = UDim2.new(0.5, 0, 1, -150)
-	end
 	panel.Visible = false
 	header = Ui.label(
 		panel,
@@ -853,6 +882,7 @@ function BuildController.startController()
 			and not Input.isTouch()
 			and not Input.isGamepad()
 			and not MenuController.isOpen()
+			and not MapController.isOpen()
 			and insideOwnDen()
 		if hintChip.Visible ~= show then
 			hintChip.Visible = show

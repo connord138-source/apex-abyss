@@ -19,6 +19,9 @@ local DenCarve = {}
 local SANDSTONE = Enum.Material.Sandstone
 local AIR = Enum.Material.Air
 
+-- How much wider than its opening a shaft is cut (Config/Dens Shaft)
+DenCarve.SHAFT_CUT = 3
+
 -- The Burrow's run back from the Nook (the main storey)
 local BURROW = { x = 11, z0 = -12, z1 = -38, height = 22 }
 
@@ -35,6 +38,34 @@ function DenCarve.ops(index: number, level: number): { Cave.Op }
 	end
 	local along = -frame.LookVector -- +z in the den is toward the hub; this runs back
 	local rng = Random.new(Config.World.seed + 31 * index)
+	-- Every Air op cut twice: Terrain's Air fills take occupancy away rather than
+	-- clearing it, so one pass over fresh rock leaves voxels the shape only partly
+	-- covers ~0.2 full, enough to plug a shaft or poke up through a deck (playtest
+	-- 2026-10-13: both shafts read solid after one cut, clear after two)
+	local function twice(from: number)
+		for i = from, #ops do
+			table.insert(ops, ops[i])
+		end
+	end
+	-- Clears a storey's rooms from their rock floor up past the deck, so the rock
+	-- sits a voxel or more under the flagstones (Config/Dens storeys)
+	local function underDecks(storey: number)
+		local s = DenSpace.storey(storey)
+		-- Up to the first voxel line above the deck (voxels lie on world multiples of 4)
+		local floorY = Config.World.hub.denFloorY
+		local top = math.ceil((floorY + s.deck) / 4 + 0.01) * 4 - floorY
+		local first = #ops + 1
+		for _, room in DenSpace.rooms(level, storey) do
+			box(
+				AIR,
+				0,
+				(s.floor + top) / 2,
+				(room.z0 + room.z1) / 2,
+				Vector3.new(room.x * 2, top - s.floor, room.z0 - room.z1)
+			)
+		end
+		twice(first)
+	end
 
 	-- 1. Back to stone: the Burrow's zone, every lower room with a margin (5 studs
 	-- inside the line to the next den, so never into a neighbour), and the shafts
@@ -55,14 +86,14 @@ function DenCarve.ops(index: number, level: number): { Cave.Op }
 	end
 	for _, shaft in Dens.shafts do
 		local top = DenSpace.storey(shaft.from).floor
-		local bottom = DenSpace.storey(shaft.to).ceiling - 2
+		local bottom = DenSpace.storey(shaft.to).ceiling - 8
 		Cave.cylinder(
 			ops,
 			SANDSTONE,
 			at(0, (top + bottom) / 2, shaft.z),
 			Vector3.yAxis,
 			top - bottom,
-			shaft.radius + 2
+			shaft.radius + DenCarve.SHAFT_CUT + 2
 		)
 	end
 
@@ -86,6 +117,8 @@ function DenCarve.ops(index: number, level: number): { Cave.Op }
 	if level >= 2 then
 		box(SANDSTONE, 0, -4, (BURROW.z0 + BURROW.z1) / 2 - 2, Vector3.new(30, 8, BURROW.z0 - BURROW.z1 + 8))
 	end
+	-- Room under the main storey's deck, down to its floor (see underDecks)
+	underDecks(1)
 
 	-- 3. The storeys below: barrel vaults, roughened, their floors put back under
 	-- the decks (the barrel's lower half runs below the floor)
@@ -118,14 +151,26 @@ function DenCarve.ops(index: number, level: number): { Cave.Op }
 				Vector3.new(2 * room.x + 4, s.floor - bottom, room.z0 - room.z1)
 			)
 		end
+		underDecks(storey)
 	end
 
-	-- 4. The shafts between the storeys
+	-- 4. The shafts between the storeys, cut wider than their openings (a slanted
+	-- cylinder clears a good deal less than its radius of 4-stud voxels) and on
+	-- well into the vault below (cut only to its ceiling, a voxel of rock stayed)
+	local first = #ops + 1
 	for _, shaft in DenSpace.shafts(level) do
 		local top = DenSpace.storey(shaft.from).floor + 1
-		local bottom = DenSpace.storey(shaft.to).ceiling - 2
-		Cave.cylinder(ops, AIR, at(0, (top + bottom) / 2, shaft.z), Vector3.yAxis, top - bottom, shaft.radius)
+		local bottom = DenSpace.storey(shaft.to).ceiling - 6
+		Cave.cylinder(
+			ops,
+			AIR,
+			at(0, (top + bottom) / 2, shaft.z),
+			Vector3.yAxis,
+			top - bottom,
+			shaft.radius + DenCarve.SHAFT_CUT
+		)
 	end
+	twice(first)
 	return ops
 end
 

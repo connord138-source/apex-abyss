@@ -349,6 +349,7 @@ local function build()
 	amountRow("Daily: set the streak", "days", "dailyStreak", 0, "SET")
 	actionRow("Daily: miss a day (streak resets)", "dailyBreak", "BREAK", "danger")
 	amountRow("Coral Garden: grow hours", "hours (max 48)", "gardenHours", 0, "GROW")
+	actionRow("Coral Garden: watch it grow (20 s, look only)", "gardenPreview", "WATCH", "secondary")
 	amountRow("Den: set the level (1-5)", "level", "denLevel", 0, "SET")
 	amountRow("Den: things into the Build tray", "of each (max 20)", "denItems", 0, "GIVE")
 

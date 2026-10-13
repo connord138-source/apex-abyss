@@ -150,10 +150,12 @@ local function buildShell(state: DenState, index: number, record: Record)
 	local function spot(x: number, y: number, z: number): CFrame
 		return DenSpace.spot(frame, x, y, z)
 	end
-	-- Decks: flagstones of mixed sizes with thin dark joints between them (the rock
-	-- shows 2 studs under the gaps); the obsidian floor glows in its joints
+	-- Decks: flagstones of mixed sizes with thin dark joints between them, each a
+	-- slab down to the rock floor under it (Config/Dens storeys); the obsidian floor
+	-- glows in its joints
 	for storey = 1, DenSpace.storeys(level) do
 		local s = DenSpace.storey(storey)
+		local thick = s.deck - s.floor + 0.5
 		for _, tile in DenSpace.tiles(level, storey, 10) do
 			local w, d = tile.x1 - tile.x0, tile.z0 - tile.z1
 			local cx, cz = (tile.x0 + tile.x1) / 2, (tile.z0 + tile.z1) / 2
@@ -162,8 +164,8 @@ local function buildShell(state: DenState, index: number, record: Record)
 			local deck = part(
 				state.shell,
 				"Deck",
-				Vector3.new(w - 0.14, 3, d - 0.14),
-				spot(cx, s.deck - 1.5, cz),
+				Vector3.new(w - 0.14, thick, d - 0.14),
+				spot(cx, s.deck - thick / 2, cz),
 				base:Lerp(Color3.new(0, 0, 0), (h // 7 % 6) * 0.018),
 				style.material
 			)
@@ -182,20 +184,23 @@ local function buildShell(state: DenState, index: number, record: Record)
 			end
 		end
 	end
-	-- Curbs round the shafts down, a glowing lip on their inside, and a light where
-	-- each comes out of the ceiling below
+	-- Curbs round the shafts down, lining the mouth to below the rock floor, a
+	-- glowing lip on their inside, and a light where each comes out of the ceiling
+	-- below
 	for _, shaft in DenSpace.shafts(level) do
-		local deck = DenSpace.storey(shaft.from).deck
+		local from = DenSpace.storey(shaft.from)
+		local deck = from.deck
 		local radius = shaft.radius + 0.7
-		local count = 16
+		local count = 20
 		local length = 2 * math.pi * radius / count + 0.15
+		local depth = deck + 1 - (from.floor - 1)
 		for i = 1, count do
 			local around = spot(0, deck, shaft.z) * CFrame.Angles(0, (i - 0.5) / count * 2 * math.pi, 0)
 			local curb = part(
 				state.shell,
 				"Curb",
-				Vector3.new(length, 3, 1.3), -- down to the rock under the deck
-				around * CFrame.new(0, -0.5, -radius),
+				Vector3.new(length, depth, 1.3),
+				around * CFrame.new(0, 1 - depth / 2, -radius),
 				STONE,
 				Enum.Material.Slate
 			)
@@ -219,6 +224,37 @@ local function buildShell(state: DenState, index: number, record: Record)
 		)
 		below.Transparency = 1
 		light(below, glow, 30, 0.9)
+	end
+	-- The Haul Pool sits in a stone basin with a rim (the pool itself is a glowing
+	-- disc a stud thick: WorldService)
+	do
+		local s = DenSpace.storey(1)
+		local r = DenSpace.POOL_RADIUS
+		local fill = 0.45 - (s.floor - 0.5)
+		local basin = part(
+			state.shell,
+			"PoolBasin",
+			Vector3.new(fill, (r + 0.85) * 2, (r + 0.85) * 2),
+			spot(0, 0.45 - fill / 2, DenSpace.POOL_Z) * CFrame.Angles(0, 0, math.rad(90)),
+			STONE:Lerp(Color3.new(0, 0, 0), 0.25),
+			Enum.Material.Slate
+		)
+		basin.Shape = Enum.PartType.Cylinder
+		local count = 18
+		local radius = r + 0.45
+		local length = 2 * math.pi * radius / count + 0.12
+		for i = 1, count do
+			local around = spot(0, s.deck, DenSpace.POOL_Z)
+				* CFrame.Angles(0, (i - 0.5) / count * 2 * math.pi, 0)
+			part(
+				state.shell,
+				"PoolRim",
+				Vector3.new(length, 1.1, 0.9),
+				around * CFrame.new(0, -0.15, -radius),
+				STONE:Lerp(Color3.new(1, 1, 1), 0.06),
+				Enum.Material.Slate
+			)
+		end
 	end
 	-- Pillars down the big rooms, up into the vault, every other one with a sconce
 	for n, pillar in DenSpace.pillars(level) do
@@ -630,11 +666,12 @@ local LAYOUTS: { [string]: { Coral } } = {
 	},
 }
 
+-- (no Sponge: the imported TubeSponge reads as two flat boxes up close, playtest
+-- 2026-10-13, so the garden's sponges are always the part-built tubes)
 local PROP_OF = {
 	Staghorn = "StaghornCoral",
 	Fan = "FanCoral",
 	Brain = "BrainCoral",
-	Sponge = "TubeSponge",
 	Anemone = "Anemone",
 }
 
@@ -780,11 +817,13 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 	if spot.shape == "trough" then
 		-- A long stone planter against the back wall: a lip at the deck's height, a
 		-- glowing seam along its front, sand a little under the lip
+		-- (down to the rock floor under the deck)
+		local depth = s.deck - 0.1 - s.floor
 		part(
 			model,
 			"Basin",
-			Vector3.new(spot.width, 2.4, spot.depth),
-			center * CFrame.new(0, -1.3, 0),
+			Vector3.new(spot.width, depth, spot.depth),
+			center * CFrame.new(0, -0.1 - depth / 2, 0),
 			STONE,
 			Enum.Material.Slate
 		)
@@ -847,6 +886,16 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 			mesh.MeshType = Enum.MeshType.Sphere
 			mesh.Parent = disc
 		end
+		-- Stone under the bed, down to the rock floor
+		local depth = s.deck - 0.9 - s.floor
+		part(
+			model,
+			"Footing",
+			Vector3.new(spot.width + 1.4, depth, spot.depth + 1.4),
+			center * CFrame.new(0, -0.9 - depth / 2, 0),
+			STONE:Lerp(Color3.new(0, 0, 0), 0.2),
+			Enum.Material.Slate
+		)
 		oval("Sand", 0.6, 0, sandTop - 0.3, Color3.fromRGB(226, 208, 168), Enum.Material.Sand)
 		oval("Glow", 0.2, 0.8, -0.2, glow, Enum.Material.Neon)
 		local stones = 22
