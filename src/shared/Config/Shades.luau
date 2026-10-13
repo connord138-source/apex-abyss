@@ -1255,7 +1255,8 @@ for species, ids in LINES do
 end
 for _, shade in list do
 	if
-		shade.species == nil and not (shade.boss or shade.treasure or shade.catch or shade.week or shade.pass)
+		shade.species == nil
+		and not (shade.boss or shade.treasure or shade.catch or shade.week or shade.pass)
 	then
 		error(`Config/Shades: {shade.id} is in no fish's line`)
 	end
