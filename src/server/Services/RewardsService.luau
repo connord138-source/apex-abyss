@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Reward = require(ReplicatedStorage.Shared.Reward)
+local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
@@ -157,6 +158,38 @@ local function claim(player: Player)
 	-- 2026-10-09)
 end
 
+-- A redeem code (Config/Codes): once per player, before it ends. Answers whether
+-- it paid and a line for the Codes window.
+local lastRedeem: { [Player]: number } = {}
+local function redeem(player: Player, text: any): (boolean, string)
+	local data = DataService.get(player)
+	if data == nil or typeof(text) ~= "string" or #text > 40 then
+		return false, "Type a code"
+	end
+	local now = os.clock()
+	if now - (lastRedeem[player] or 0) < 1 then
+		return false, "One moment…"
+	end
+	lastRedeem[player] = now
+	local code = Config.Codes.normalize(text)
+	local entry = Config.Codes.byCode[code]
+	if entry == nil then
+		return false, "That code doesn't work"
+	end
+	if entry.ends and Timing.now() > entry.ends then
+		return false, "That code has ended"
+	end
+	if data.codes[code] then
+		return false, "You've already used that code"
+	end
+	data.codes[code] = true
+	local got = RewardsService.grant(player, data, entry.reward)
+	DataService.markDirty(player)
+	local line = `Code {code}: {table.concat(got, ", ")}`
+	Net.notify(player, line, "good")
+	return true, line
+end
+
 -- Pays the one-time group reward
 local function rewardGroup(player: Player, data: PlayerData)
 	if data.groupRewarded then
@@ -169,6 +202,7 @@ end
 
 function RewardsService.start()
 	Net.onRequest("ClaimDaily", claim)
+	Net.onRedeem(redeem)
 	DataService.loaded:connect(function(player: Player, data: PlayerData)
 		local _, waiting = nextStreak(data, EconomyService.today())
 		lastClaimable[player] = waiting
@@ -181,6 +215,7 @@ function RewardsService.start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		lastClaimable[player] = nil
+		lastRedeem[player] = nil
 	end)
 	-- A new UTC day while someone's online: their panel shows the new claim
 	Guard.loop("RewardsService.daily", 30, function()

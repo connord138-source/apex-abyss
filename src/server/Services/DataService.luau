@@ -125,6 +125,7 @@ export type PlayerData = {
 	-- Achievements done (Config/Achievements id → true), each opening a den
 	-- furniture set; marked once, for good (AchievementService)
 	achievements: { [string]: boolean },
+	codes: { [string]: boolean }, -- redeem codes used (Config/Codes)
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
@@ -199,6 +200,7 @@ local TEMPLATE: PlayerData = {
 	playtime = { day = 0, seconds = 0, claimed = 0, premiumDay = 0 },
 	pass = { season = 0, xp = 0, claimedFree = 0, claimedPaid = 0, paid = false },
 	achievements = {},
+	codes = {},
 	passes = {},
 	groupRewarded = false,
 	purchaseIds = {},

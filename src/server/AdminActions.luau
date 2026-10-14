@@ -445,6 +445,14 @@ local function denLevel(_admin: Player, targets: { Player }, level: any): string
 	return `Den set to a {Config.Dens.levels[n].name} for {#targets} player(s) (things that no longer fit went to the tray)`
 end
 
+-- Redeem codes: forget which were used, so they can be tested again
+local function codesReset(_admin: Player, targets: { Player }): string
+	local count = each(targets, function(_player, data)
+		table.clear(data.codes)
+	end)
+	return `Codes can be redeemed again by {count} player(s)`
+end
+
 -- Achievements (each opens a den furniture set): all done, or none
 local function achievementsAll(_admin: Player, targets: { Player }): string
 	for _, player in targets do
@@ -665,6 +673,7 @@ AdminActions.byName = {
 	denItems = denItems :: Handler,
 	achievementsAll = achievementsAll :: Handler,
 	achievementsReset = achievementsReset :: Handler,
+	codesReset = codesReset :: Handler,
 	forceTide = forceTide :: Handler,
 	rareNear = rareNear :: Handler,
 	trackAdd = trackAdd :: Handler,

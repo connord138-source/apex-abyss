@@ -32,4 +32,5 @@ return {
 	Pass = require(script.Pass),
 	Textures = require(script.Textures),
 	Achievements = require(script.Achievements),
+	Codes = require(script.Codes),
 }

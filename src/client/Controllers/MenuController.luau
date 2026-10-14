@@ -1564,6 +1564,20 @@ function MenuController.openStore()
 						if premiumButton and not premium then
 							premiumButton.Activated:Connect(Store.buyPremium)
 						end
+						local _, codesButton = row(
+							list,
+							next(),
+							"Codes",
+							"Codes",
+							"Got a code from the group or the game page? Redeem it here.",
+							nil,
+							"REDEEM",
+							"secondary",
+							Ui.color.haul
+						)
+						if codesButton then
+							codesButton.Activated:Connect(MenuController.openCodes)
+						end
 						if tune.group.id ~= 0 then
 							local member = s.inGroup == true
 							tallRow(
@@ -1583,6 +1597,84 @@ function MenuController.openStore()
 			}
 		end
 	)
+end
+
+-- Redeem codes (Config/Codes): a box, REDEEM and the server's answer. Its own
+-- window, so the box keeps its text (the Shop redraws every second).
+function MenuController.openCodes()
+	open("Codes", "Each code works once", Vector2.new(460, 230), function(window)
+		local box = Instance.new("TextBox")
+		box.Name = "Code"
+		box.PlaceholderText = "Type a code"
+		box.Text = ""
+		box.ClearTextOnFocus = false
+		box.FontFace = Ui.FONT_BOLD
+		box.TextSize = 20
+		box.TextColor3 = Ui.color.text
+		box.PlaceholderColor3 = Ui.color.muted
+		box.BackgroundColor3 = Ui.color.track
+		box.BackgroundTransparency = 0.2
+		box.BorderSizePixel = 0
+		box.Size = UDim2.new(1, -150, 0, 46)
+		box.Position = UDim2.fromOffset(0, 10)
+		Ui.corner(box, UDim.new(0, 10))
+		Ui.stroke(box, Ui.color.haul, 0.5, 1)
+		box.Parent = window.content
+		local answer = Ui.label(
+			window.content,
+			"Answer",
+			"",
+			Ui.FONT_SEMI,
+			15,
+			Ui.color.muted,
+			UDim2.new(1, 0, 0, 44),
+			UDim2.fromOffset(0, 66)
+		)
+		answer.TextWrapped = true
+		answer.TextXAlignment = Enum.TextXAlignment.Left
+		answer.TextYAlignment = Enum.TextYAlignment.Top
+		local redeem = Ui.button(
+			window.content,
+			"Redeem",
+			"REDEEM",
+			UDim2.fromOffset(136, 46),
+			UDim2.new(1, -136, 0, 10),
+			"gold"
+		)
+		local busy = false
+		local function send()
+			if busy or box.Text == "" then
+				return
+			end
+			busy = true
+			answer.Text = "Checking…"
+			answer.TextColor3 = Ui.color.muted
+			local remotes = ReplicatedStorage:WaitForChild("Remotes")
+			local remote = remotes:WaitForChild("RedeemCode") :: RemoteFunction
+			local ok, paid, line = pcall(function()
+				return remote:InvokeServer(box.Text)
+			end)
+			busy = false
+			if not answer.Parent then
+				return
+			end
+			if ok and typeof(line) == "string" then
+				answer.Text = line
+				answer.TextColor3 = if paid then Ui.color.safe else Ui.color.danger
+				Sfx.play(if paid then "Bank" else "TooBig", { volume = 0.5 })
+			else
+				answer.Text = "Couldn't reach the server · try again"
+				answer.TextColor3 = Ui.color.danger
+			end
+		end
+		redeem.Activated:Connect(send)
+		box.FocusLost:Connect(function(enter)
+			if enter then
+				send()
+			end
+		end)
+		return { window = window, render = function() end }
+	end)
 end
 
 -- The daily login streak (DAILY on the HUD; it opens by itself on joining when a

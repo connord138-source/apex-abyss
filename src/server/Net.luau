@@ -98,6 +98,10 @@ local getBoards = Instance.new("RemoteFunction")
 getBoards.Name = "GetBoards" -- () -> the weekly leaderboards (LeaderboardService)
 getBoards.Parent = folder
 
+local redeem = Instance.new("RemoteFunction")
+redeem.Name = "RedeemCode" -- (text) -> (ok, message): a redeem code (Config/Codes)
+redeem.Parent = folder
+
 local getShells = Instance.new("RemoteFunction")
 getShells.Name = "GetShells" -- () -> { positions, golden, hidden }
 getShells.Parent = folder
@@ -254,6 +258,10 @@ end
 
 function Net.onGetRarities(handler: (Player) -> { [string]: number })
 	getRarities.OnServerInvoke = handler
+end
+
+function Net.onRedeem(handler: (Player, any) -> (boolean, string))
+	redeem.OnServerInvoke = handler
 end
 
 function Net.onGetBoards(handler: (Player) -> { [string]: any })

@@ -353,6 +353,7 @@ local function build()
 	amountRow("Den: set the level (1-5)", "level", "denLevel", 0, "SET")
 	amountRow("Den: things into the Build tray", "of each (max 20)", "denItems", 0, "GIVE")
 	actionRow("Achievements: all done (every furniture set open)", "achievementsAll", "DONE", "secondary")
+	actionRow("Codes: use them again (Config/Codes)", "codesReset", "RESET", "secondary")
 	actionRow("Achievements: clear", "achievementsReset", "CLEAR", "danger")
 
 	header("TIDES · RARE CATCHES · BOUNTIES · WEEKLY")
