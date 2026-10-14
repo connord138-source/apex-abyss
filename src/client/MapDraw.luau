@@ -175,6 +175,10 @@ local function labels(world: Frame, scale: number)
 		if biome.radiusFrom == 0 then
 			radius = (biome.radiusTo + hub.radius + 40) / 2
 			mid = 300 -- the kelp ring's name sits to the north-west of the hub
+		elseif biome.id == "HydrothermalVents" then
+			-- Its sector wraps round the wreck bay's: at the middle (175°) its name lay
+			-- on the Shipwreck Graveyard's level line (PC playtest 2026-10-14, M1)
+			mid = 150
 		end
 		local x, z = polar(radius, mid)
 		local holder = Instance.new("Frame")
