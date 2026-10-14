@@ -10,10 +10,10 @@ Run this after the overnight brief's last step (or between steps if the overnigh
   - Under a shade that isn't imported yet, it wears Natural tinted.
 - Other players' fish with no shade preload their Natural skin (`RollController` → `CardPhoto.preloadSkin`).
 - The Nibbler and Puffer have no teeth and didn't change.
-- `shade_skins` is now **v8.2** (sha256 starts `SHA8`). Only four GLBs changed: `Angler_Shades.glb`, `Cuda_Shades.glb`, `MorayEel_Shades.glb` and `ReefShark_Shades.glb`.
+- `shade_skins` is now **v8.2** (sha256 starts `feb731f3`). Only four GLBs changed: `Angler_Shades.glb`, `Cuda_Shades.glb`, `MorayEel_Shades.glb` and `ReefShark_Shades.glb`.
   - They hold 28 quads each (27 skins plus Natural).
   - None carries a normal map.
-  - Every one exited 0 on the classifier screen (highest SCORE).
+  - Every one exited 0 on the classifier screen (highest 0.172, the Moray's PassRiptide; the four Natural skins 0.002–0.083).
 
 ## Steps
 
@@ -21,7 +21,7 @@ Run this after the overnight brief's last step (or between steps if the overnigh
 2. Fetch the new bundle:
    - Delete `assets/shades/glb`.
    - Run `python tools/fetch_assets.py`. It fetches `shade_skins` because its link changed.
-   - Check that the zip's sha256 starts `SHA8`.
+   - It should print `fetched shade_skins: 6 file(s) ... (sha256 feb731f3)`. The fetcher now checks each bundle against the manifest's sha256 and refuses a mismatch; if it does, stop and report it.
 3. Screen the four changed GLBs one at a time (`python tools/shades/screen_shades.py assets/shades/glb/<Fish>_Shades.glb --base assets/shades/maps`). Each must exit 0. If any doesn't, stop and report it; don't import it.
 4. Import into **`ApexAbyss.rbxl`** (File → Open from File):
    - Import the four GLBs with File → Import 3D, **one at a time**. Wait about 3 minutes between them for moderation.

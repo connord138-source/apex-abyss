@@ -561,6 +561,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     tinted, under a shade not imported yet); `CardPhoto.preloadSkin` fetches it for
     other players with no shade. The Nibbler and Puffer have no teeth. A new fish
     with teeth gets a teeth.json entry (docs/ASSETS.md "Teeth are always bone white").
+    Bundle v8.2: sha256 feb731f3… (the four toothed fish's GLBs changed, 28 quads
+    each; Nibbler and Puffer byte-identical to v8.1; 204 images screened, none
+    flagged, highest 0.172).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

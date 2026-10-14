@@ -15,6 +15,7 @@ What lands where (all gitignored):
 tools/studio/organize_imports.luau files the imports after Studio brings them in.
 """
 
+import hashlib
 import io
 import json
 import pathlib
@@ -40,13 +41,19 @@ for name, bundle in manifest.get("bundles", {}).items():
         request = urllib.request.Request(url, headers={"User-Agent": "apex-abyss-assets"})
         with urllib.request.urlopen(request, timeout=600) as response:
             data = response.read()
+        # A bundle that isn't the one screened is never unpacked (it could be an
+        # older one with normal maps, or a skin that failed the screen)
+        want = bundle.get("sha256")
+        got = hashlib.sha256(data).hexdigest()
+        if want and got != want:
+            raise ValueError(f"sha256 {got[:8]} is not the manifest's {want[:8]}")
         into.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             archive.extractall(into)
             files = [n for n in archive.namelist() if not n.endswith("/")]
         sources[name] = url
         count += 1
-        print(f"fetched {name}: {len(files)} file(s) -> {bundle['into']}")
+        print(f"fetched {name}: {len(files)} file(s) -> {bundle['into']} (sha256 {got[:8]})")
     except Exception as error:  # noqa: BLE001
         failed.append((name, str(error)))
 SOURCES.write_text(json.dumps(sources, indent=1, sort_keys=True) + "\n")

@@ -51,9 +51,11 @@
       "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0)."
     },
     "shade_skins": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/c9e957d1-85cb-4858-8a30-c72ee6dca09a.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/b35fe59a-7034-4dcd-b584-5eeaeb64cd1f.zip",
       "into": "assets/shades/glb",
-      "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per skin, 27 each (its own 12-skin line from tools/shades/lines.json plus the 15 universal skins: catch track, weekly, Tide Pass season 1, boss and treasure; 162 skins, v7 of 2026-10-12: v6 plus the four Tide Pass skins PassTideglass, PassRiptide, PassUndertow, PassAbyssalCurrent on every fish; all six GLBs changed; every GLB cleared by screen_shades.py with the classifier, highest 0.176; sha256 72895dd2228a51cd...)"
+      "sha256": "feb731f36be32b43b29795839a4c375fdae34fef58062b0b05f23cb329894062",
+      "clean": "no normal maps (pack_shades.py NORMALS = False); every GLB cleared by screen_shades.py with the classifier, 204 images in the four changed GLBs, none flagged, highest 0.172",
+      "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per skin, 27 each (its own 12-skin line from tools/shades/lines.json plus the 15 universal skins), and a 28th, Natural (the fish's own texture with bone-white teeth), on the four toothed fish. v8.2 of 2026-10-14: v8.1 (no normal maps) with the teeth painted a neutral bone white on every skin of the Angler, Cuda, MorayEel and ReefShark (tools/shades/teeth.json); the Nibbler and Puffer GLBs are byte-identical to v8.1."
     },
     "furniture_glb": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/530c2fa1-0323-4260-9b50-5e3730712f0a.zip",
