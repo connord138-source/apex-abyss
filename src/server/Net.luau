@@ -67,6 +67,7 @@ local REQUESTS: { [string]: number } = {
 	DenBuy = 0.2, -- (itemId) one more of a den thing, into the Build tray
 	DenPlace = 0.12, -- (itemId, surface, x, y, z, yaw) a thing from the tray into the den
 	DenMove = 0.12, -- (uid, surface, x, y, z, yaw) a placed thing somewhere else
+	DenLayout = 0.5, -- (setId, x, y, z, facing) a set's starter layout from the tray
 	DenStore = 0.12, -- (uid) a placed thing back into the tray (0: everything)
 	DenColor = 0.25, -- (glowId) the den's glow color
 	DenFloor = 0.25, -- (floorId) the decks' stone

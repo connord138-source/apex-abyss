@@ -647,7 +647,13 @@ local function denRows(list: ScrollingFrame)
 			end
 		end
 		local done = achievement == nil or (progress[achievement.id] or 0) >= achievement.goal
-		denSection(list, next(), `{set.name} set · {set.biome}`)
+		denSection(
+			list,
+			next(),
+			if done and Dens.layouts[set.id]
+				then `{set.name} set · {set.biome} · L in Build mode lays out the pieces you have`
+				else `{set.name} set · {set.biome}`
+		)
 		if done then
 			for _, item in pieces do
 				itemRow(item)

@@ -392,4 +392,93 @@ function DenSpace.check(level: number, item: DensConfig.Item, surface: string, a
 	return { ok = true }
 end
 
+export type LayoutPlacement = { id: string, x: number, y: number, z: number, r: number }
+
+-- Where a starter layout (Config/Dens `layouts`) fits on the floor round `anchor`
+-- (den frame), its front turned to `facing` degrees (0 faces +z): every piece on the
+-- deck to its corners, clear of the floor things already placed (rugs only clash
+-- with rugs, others with others, so a chair may stand on your rug). It tries the
+-- spot, then rings 2 studs apart up to 24 out, each facing you first and then the
+-- other three ways. Nil and why when nothing fits.
+function DenSpace.fitLayout(
+	level: number,
+	placed: { Placed },
+	pieces: { DensConfig.LayoutPiece },
+	anchor: Vector3,
+	facing: number
+): ({ LayoutPlacement }?, string?)
+	local storey = DenSpace.storeyAt(anchor.Y)
+	if storey == nil or storey > DenSpace.storeys(level) then
+		return nil, "Aim at your floor"
+	end
+	local deck = DenSpace.storey(storey).deck
+	type Spot = { x: number, z: number, radius: number, flat: boolean }
+	local taken: { Spot } = {}
+	for _, other in placed do
+		local item = Dens.itemsById[other.id]
+		if item and other.s == "floor" and math.abs(other.y - deck) < 0.5 then
+			local radius = 0.4 * math.max(item.size.X, item.size.Z)
+			table.insert(taken, { x = other.x, z = other.z, radius = radius, flat = item.flat == true })
+		end
+	end
+	local function clear(x: number, z: number, radius: number, flat: boolean, list: { Spot }): boolean
+		for _, spot in list do
+			if spot.flat == flat and (x - spot.x) ^ 2 + (z - spot.z) ^ 2 < (radius + spot.radius) ^ 2 then
+				return false
+			end
+		end
+		return true
+	end
+	local function try(ax: number, az: number, turn: number): { LayoutPlacement }?
+		local c, s = math.cos(math.rad(turn)), math.sin(math.rad(turn))
+		local out: { LayoutPlacement } = {}
+		local mine: { Spot } = {}
+		for _, piece in pieces do
+			local item = Dens.itemsById[piece.id]
+			if item == nil then
+				return nil
+			end
+			local x = ax + piece.x * c - piece.z * s
+			local z = az + piece.x * s + piece.z * c
+			local r = (piece.r + turn) % 360
+			if not DenSpace.check(level, item, "floor", Vector3.new(x, deck, z)).ok then
+				return nil
+			end
+			local rc, rs = math.cos(math.rad(r)), math.sin(math.rad(r))
+			for _, corner in { { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } } do
+				local lx, lz = corner[1] * 0.42 * item.size.X, corner[2] * 0.42 * item.size.Z
+				if not DenSpace.onDeck(level, storey, x + lx * rc + lz * rs, z + lx * rs - lz * rc) then
+					return nil
+				end
+			end
+			local radius = 0.4 * math.max(item.size.X, item.size.Z)
+			local flat = item.flat == true
+			if not clear(x, z, radius, flat, taken) then
+				return nil
+			end
+			table.insert(mine, { x = x, z = z, radius = radius, flat = flat })
+			table.insert(out, { id = item.id, x = x, y = deck, z = z, r = r })
+		end
+		return out
+	end
+	local base = math.floor(facing / 90 + 0.5) * 90
+	local turns = { base % 360, (base + 90) % 360, (base - 90) % 360, (base + 180) % 360 }
+	for ring = 0, 12 do
+		for _, turn in turns do
+			for i = -ring, ring do
+				for k = -ring, ring do
+					if math.max(math.abs(i), math.abs(k)) ~= ring then
+						continue
+					end
+					local fit = try(anchor.X + i * 2, anchor.Z + k * 2, turn)
+					if fit then
+						return fit, nil
+					end
+				end
+			end
+		end
+	end
+	return nil, "Not enough open floor here · aim at a roomier spot"
+end
+
 return DenSpace

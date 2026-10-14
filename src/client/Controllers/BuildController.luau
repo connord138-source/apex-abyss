@@ -10,10 +10,19 @@
 -- request against the den's space again (DenService, Shared/DenSpace).
 --
 --   PC          aim: the camera · LEFT CLICK place / pick up · RIGHT CLICK drop it
---               R / F turn · Q / E pick a thing · X put away · B done
---   Controller  RT place / pick up · LT drop it · LB / RB turn · D-pad pick · X put
---               away · B done
---   Phone       aim: drag · PLACE, TURN, PUT AWAY, DONE and the tray's tiles
+--               R / F turn · Q / E pick a thing · X put away · G snap on/off
+--               L lay out the picked thing's set · B done
+--   Controller  RT place / pick up · LT drop it · LB / RB turn · D-pad left/right
+--               pick · D-pad up snap · D-pad down lay out · X put away · B done
+--   Phone       aim: drag · PLACE, TURN, SNAP, LAY OUT, PUT AWAY, DROP, DONE and
+--               the tray's tiles
+--
+-- Snapping (owner, 2026-10-14; on by default, G turns it off): turns go in 45°
+-- steps (15° off); a floor thing lines up with a neighbour's x or z when within
+-- 0.8 studs, and with rock close behind it, it backs onto the wall facing out; a
+-- wall thing lines up with a neighbour's height. Starter layouts: with a set's piece
+-- picked (or aimed at), L lays out every piece of that set in your tray round the
+-- spot you aim at, facing you (Config/Dens `layouts`, DenService `DenLayout`).
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -38,7 +47,11 @@ local Dens = Config.Dens
 local BuildController = {}
 
 local REACH = 70 -- how far the aim reaches
-local TURN = 15 -- degrees a tap of turn
+local TURN = 15 -- degrees a tap of turn (snapping off)
+local SNAP_TURN = 45 -- with snapping on
+local ALIGN = 0.8 -- a floor thing lines up with a neighbour this close
+local ALIGN_WALL = 1.2 -- a wall thing with a neighbour's height this close
+local WALL_GAP = 2.5 -- a floor thing backs onto rock this close behind it
 local TURN_REPEAT = 0.1 -- a held turn repeats this often
 local GOOD = Color3.fromRGB(112, 236, 164)
 local BAD = Color3.fromRGB(255, 96, 96)
@@ -46,7 +59,7 @@ local PICK = Color3.fromRGB(255, 220, 120)
 local PRIORITY = 3500
 
 type Selection = { id: string, uid: number? } -- uid: moving a placed thing
-type Spot = { ok: boolean, surface: string, at: Vector3, turn: number, why: string? }
+type Spot = { ok: boolean, surface: string, at: Vector3, turn: number, why: string?, snapped: boolean? }
 
 local active = false
 local selection: Selection? = nil
@@ -56,6 +69,9 @@ local aimedUid: number? = nil
 local turning = 0 -- -1, 0, 1 while a turn is held
 local nextTurn = 0
 local hiddenUid: number? = nil
+local snapOn = true
+local lastFloor: Vector3? = nil -- the last floor spot aimed at (den frame)
+local aimedSet: string? = nil -- the set of the placed thing aimed at
 
 local gui: ScreenGui
 local panel: Frame
@@ -64,6 +80,7 @@ local statusLabel: TextLabel
 local controlsLabel: TextLabel
 local trayFrame: ScrollingFrame
 local touchRow: Frame
+local snapButton: TextButton? = nil
 local hintChip: TextLabel
 
 local ghost: Model? = nil
@@ -255,6 +272,89 @@ local function snapHalf(n: number): number
 	return math.floor(n * 2 + 0.5) / 2
 end
 
+local function turnStep(): number
+	return if snapOn then SNAP_TURN else TURN
+end
+
+-- Snapping a floor thing: x and z line up with the nearest neighbour's within
+-- ALIGN, then, with rock (or a pillar) within WALL_GAP of where its back would be,
+-- it backs onto that wall facing out. Returns the new spot and turn, and whether
+-- anything snapped.
+local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number, boolean)
+	local x, z, r = at.X, at.Z, turn
+	local snapped = false
+	local s = selection
+	local bestX, bestZ = ALIGN, ALIGN
+	for _, other in denRecord().placed or {} do
+		if (s and other.uid == s.uid) or other.s ~= "floor" or math.abs((other.y or 0) - at.Y) > 0.5 then
+			continue
+		end
+		local dx, dz = math.abs(other.x - at.X), math.abs(other.z - at.Z)
+		if dx < bestX then
+			bestX, x, snapped = dx, other.x, true
+		end
+		if dz < bestZ then
+			bestZ, z, snapped = dz, other.z, true
+		end
+	end
+	if item.flat then
+		return Vector3.new(x, at.Y, z), r, snapped
+	end
+	local frame = DenSpace.frame(ownIndex())
+	local folder = denFolder()
+	local include: { Instance } = { workspace.Terrain }
+	local shell = folder and folder:FindFirstChild("Shell")
+	if shell then
+		table.insert(include, shell)
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = include
+	local origin = DenSpace.spot(frame, x, at.Y + math.min(1.5, item.size.Y / 2), z).Position
+	local depth = item.size.Z
+	local reach = WALL_GAP + math.max(item.size.X, item.size.Z) / 2 + 1
+	local bestGap, bestMove: Vector3?, bestTurn = WALL_GAP, nil, r
+	-- Each way in the den's frame (dx, dz) and the turn that faces away from it
+	for _, way in { { 0, 1, 180 }, { 0, -1, 0 }, { 1, 0, 90 }, { -1, 0, 270 } } do
+		local direction = frame:VectorToWorldSpace(Vector3.new(way[1], 0, -way[2]))
+		local hit = workspace:Raycast(origin, direction * reach, params)
+		if hit then
+			local distance = (hit.Position - origin).Magnitude
+			local gap = distance - depth / 2
+			if gap < bestGap and gap > -depth / 2 then
+				bestGap = gap
+				bestMove = Vector3.new(way[1], 0, way[2]) * (distance - depth / 2 - 0.15)
+				bestTurn = way[3]
+			end
+		end
+	end
+	if bestMove then
+		x += bestMove.X
+		z += bestMove.Z
+		r = bestTurn
+		snapped = true
+	end
+	return Vector3.new(x, at.Y, z), r, snapped
+end
+
+-- A wall thing's height lines up with the nearest neighbour wall thing's, else
+-- whole studs
+local function snapWall(at: Vector3): Vector3
+	local s = selection
+	local best, y = ALIGN_WALL, math.floor(at.Y + 0.5)
+	for _, other in denRecord().placed or {} do
+		if (s and other.uid == s.uid) or other.s ~= "wall" then
+			continue
+		end
+		local d = math.abs((other.y or 0) - at.Y)
+		local near = math.abs(other.x - at.X) + math.abs(other.z - at.Z) < 30
+		if near and d < best then
+			best, y = d, other.y
+		end
+	end
+	return Vector3.new(at.X, y, at.Z)
+end
+
 -- Where the selected thing would go, from what the aim hits
 local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): Spot?
 	local frame = DenSpace.frame(ownIndex())
@@ -326,11 +426,32 @@ local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): S
 		turn = math.deg(math.atan2(-look.X, -look.Z))
 		at = Vector3.new(at.X, snapHalf(at.Y), at.Z)
 	end
-	local check = DenSpace.check(level, item, surface, at)
 	local s = selection
-	if check.ok and surface == "floor" then
-		check = DenSpace.resting(level, denRecord().placed or {}, at, if s then s.uid else nil)
+	local function valid(where: Vector3): DenSpace.Check
+		local check = DenSpace.check(level, item, surface, where)
+		if check.ok and surface == "floor" then
+			check = DenSpace.resting(level, denRecord().placed or {}, where, if s then s.uid else nil)
+		end
+		return check
 	end
+	-- Snapping: the snapped spot when it's allowed, else the free one
+	local snapped = false
+	if
+		snapOn
+		and surface == "floor"
+		and at.Y < (DenSpace.storey(DenSpace.storeyAt(at.Y) or 1).deck + 0.3)
+	then
+		local snapAt, snapTurn, did = snapFloor(item, at, turn)
+		if did and valid(snapAt).ok then
+			at, turn, snapped = snapAt, snapTurn, true
+		end
+	elseif snapOn and surface == "wall" then
+		local snapAt = snapWall(at)
+		if snapAt ~= at and valid(snapAt).ok then
+			at, snapped = snapAt, true
+		end
+	end
+	local check = valid(at)
 	local ok, why = check.ok, check.why
 	if ok and s and s.uid == nil then
 		if inTray(item.id) <= 0 then
@@ -339,7 +460,7 @@ local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): S
 			ok, why = false, `Your den holds {capacity()} things · upgrade it for more`
 		end
 	end
-	return { ok = ok, surface = surface, at = at, turn = turn % 360, why = why }
+	return { ok = ok, surface = surface, at = at, turn = turn % 360, why = why, snapped = snapped }
 end
 
 local function showGhost(item: any, at: Spot)
@@ -389,12 +510,15 @@ local function step()
 	end
 	-- A held turn
 	if turning ~= 0 and os.clock() >= nextTurn then
-		yaw = (yaw + turning * TURN) % 360
+		yaw = (yaw + turning * turnStep()) % 360
 		nextTurn = os.clock() + TURN_REPEAT
 	end
 	local params = rayParams()
 	local ray = aimRay()
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * REACH, params)
+	lastFloor = if hit and hit.Normal.Y > 0.6
+		then DenSpace.toLocal(DenSpace.frame(ownIndex()), hit.Position)
+		else nil
 	local s = selection
 	if s == nil then
 		-- Nothing picked: aim at a placed thing to pick it up
@@ -402,8 +526,10 @@ local function step()
 		local uid, model = uidOf(if hit then hit.Instance else nil)
 		aimedUid = uid
 		aimLight.Adornee = model
+		local aimedItem = if model then Dens.itemsById[model.Name] else nil
+		aimedSet = if aimedItem and aimedItem.set and Dens.layouts[aimedItem.set] then aimedItem.set else nil
 		if model then
-			local item = Dens.itemsById[model.Name]
+			local item = aimedItem
 			setStatus(
 				`{if item then item.name else "A thing"} · {if Input.isTouch()
 					then "PICK UP to move it"
@@ -422,6 +548,7 @@ local function step()
 	end
 	aimLight.Adornee = nil
 	aimedUid = nil
+	aimedSet = nil
 	local item = Dens.itemsById[s.id]
 	if item == nil then
 		select(nil)
@@ -436,7 +563,12 @@ local function step()
 	end
 	showGhost(item, found)
 	if found.ok then
-		setStatus(`{item.name} · {found.surface} · {math.floor(found.turn + 0.5)}°`, GOOD)
+		setStatus(
+			`{item.name} · {found.surface} · {math.floor(found.turn + 0.5)}°{if found.snapped
+				then " · snapped"
+				else ""}`,
+			GOOD
+		)
 	else
 		setStatus(`{item.name} · {found.why or "can't go there"}`, BAD)
 	end
@@ -486,6 +618,47 @@ local function putAway()
 		select(nil)
 		Sfx.play("UiOpen", { volume = 0.35, pitch = 0.8 })
 	end
+end
+
+-- The set whose starter layout L would lay out: the picked thing's, or the aimed one's
+local function layoutSet(): string?
+	local s = selection
+	local item = if s then Dens.itemsById[s.id] else nil
+	if item and item.set and Dens.layouts[item.set] then
+		return item.set
+	end
+	return aimedSet
+end
+
+-- Lays out a set round the floor spot aimed at, its front toward the camera
+local function layOut()
+	local setId = layoutSet()
+	local anchor = lastFloor
+	if setId == nil then
+		Sfx.play("TooBig", { volume = 0.35 })
+		setStatus("Pick a piece of a furniture set first", BAD)
+		return
+	end
+	if anchor == nil then
+		Sfx.play("TooBig", { volume = 0.35 })
+		setStatus("Aim at your floor to lay the set out there", BAD)
+		return
+	end
+	local frame = DenSpace.frame(ownIndex())
+	local camera = DenSpace.toLocal(frame, workspace.CurrentCamera.CFrame.Position)
+	local facing = math.deg(math.atan2(-(camera.X - anchor.X), camera.Z - anchor.Z)) % 360
+	ClientState.request("DenLayout", setId, anchor.X, anchor.Y, anchor.Z, facing)
+	select(nil)
+	Sfx.play("Shell", { volume = 0.5, pitch = 0.7 })
+end
+
+local function toggleSnap()
+	snapOn = not snapOn
+	if snapOn then
+		yaw = math.floor(yaw / SNAP_TURN + 0.5) * SNAP_TURN % 360
+	end
+	Sfx.play("UiOpen", { volume = 0.3, pitch = if snapOn then 1.2 else 0.9 })
+	BuildController.refresh()
 end
 
 local function cycle(by: number)
@@ -562,7 +735,10 @@ function BuildController.refresh()
 		return
 	end
 	local placed = #(denRecord().placed or {})
-	header.Text = `BUILD MODE  ·  {placed} / {capacity()} placed`
+	header.Text = `BUILD MODE  ·  {placed} / {capacity()} placed  ·  SNAP {if snapOn then "ON" else "OFF"}`
+	if snapButton then
+		snapButton.Text = if snapOn then "SNAP ON" else "SNAP OFF"
+	end
 	for _, child in trayFrame:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
@@ -580,11 +756,11 @@ end
 
 local function controlsText(): string
 	if Input.isTouch() then
-		return "Drag to aim · tap a thing in the tray, then PLACE"
+		return "Drag to aim · tap a thing in the tray, then PLACE · LAY OUT sets a whole set"
 	elseif Input.isGamepad() then
-		return "RT place / pick up · LT drop · LB RB turn · D-pad pick · X put away · B done"
+		return "RT place / pick up · LT drop · LB RB turn · D-pad: left/right pick, up snap, down lay out set · X put away · B done"
 	end
-	return "LEFT CLICK place / pick up · RIGHT CLICK drop · R F turn · Q E pick · X put away · B done · Alt frees the cursor"
+	return "LEFT CLICK place / pick up · RIGHT CLICK drop · R F turn · Q E pick · G snap · L lay out set · X put away · B done · Alt frees the cursor"
 end
 
 local function bind()
@@ -618,7 +794,7 @@ local function bind()
 	ContextActionService:BindActionAtPriority("ApexBuildTurn", function(_, inputState, input)
 		local by = if input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.ButtonL1 then -1 else 1
 		if inputState == Enum.UserInputState.Begin then
-			yaw = (yaw + by * TURN) % 360
+			yaw = (yaw + by * turnStep()) % 360
 			turning = by
 			nextTurn = os.clock() + 0.35
 		elseif inputState == Enum.UserInputState.End and turning == by then
@@ -645,10 +821,22 @@ local function bind()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, Enum.KeyCode.B, Enum.KeyCode.ButtonB)
-	-- The stall menu, the HUD's D-pad menus and the item wheel wait till you're done
+	ContextActionService:BindActionAtPriority("ApexBuildSnap", function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			toggleSnap()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, PRIORITY, Enum.KeyCode.G, Enum.KeyCode.DPadUp)
+	ContextActionService:BindActionAtPriority("ApexBuildLayout", function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			layOut()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, PRIORITY, Enum.KeyCode.L, Enum.KeyCode.DPadDown)
+	-- The stall menu and the HUD's D-pad menus wait till you're done
 	ContextActionService:BindActionAtPriority("ApexBuildQuiet", function()
 		return Enum.ContextActionResult.Sink
-	end, false, PRIORITY, Enum.KeyCode.ButtonY, Enum.KeyCode.DPadUp, Enum.KeyCode.DPadDown, Enum.KeyCode.G)
+	end, false, PRIORITY, Enum.KeyCode.ButtonY)
 end
 
 local function unbind()
@@ -660,6 +848,8 @@ local function unbind()
 			"ApexBuildPick",
 			"ApexBuildAway",
 			"ApexBuildDone",
+			"ApexBuildSnap",
+			"ApexBuildLayout",
 			"ApexBuildQuiet",
 		}
 	do
@@ -676,7 +866,7 @@ end
 -- and then shown with the phone's row, the row hung over the HAUL card)
 local function layoutTray()
 	local touch = Input.isTouch()
-	panel.Size = UDim2.fromOffset(if touch then 600 else 760, if touch then 172 else 146)
+	panel.Size = UDim2.fromOffset(if touch then 680 else 860, if touch then 172 else 146)
 	panel.Position = UDim2.new(0.5, 0, 1, if touch then -150 else -120)
 	touchRow.Visible = touch
 end
@@ -732,7 +922,7 @@ local function buildGui()
 	panel = Ui.panel(
 		gui,
 		"Tray",
-		UDim2.fromOffset(if touch then 600 else 760, if touch then 172 else 146),
+		UDim2.fromOffset(if touch then 680 else 860, if touch then 172 else 146),
 		UDim2.new(0.5, 0, 1, if touch then -150 else -120),
 		Vector2.new(0.5, 1)
 	)
@@ -807,6 +997,8 @@ local function buildGui()
 				yaw = (yaw + 45) % 360
 			end,
 		},
+		{ text = "SNAP ON", style = "secondary", run = toggleSnap },
+		{ text = "LAY OUT", style = "secondary", run = layOut },
 		{ text = "PUT AWAY", style = "secondary", run = putAway },
 		{
 			text = "DROP",
@@ -817,17 +1009,21 @@ local function buildGui()
 		},
 		{ text = "DONE", style = "gold", run = BuildController.stop },
 	}
+	local share = 1 / #buttons
 	for i, spec in buttons do
 		local button = Ui.button(
 			touchRow,
 			spec.text,
 			spec.text,
-			UDim2.new(0.2, -6, 1, 0),
-			UDim2.new((i - 1) * 0.2, 0, 0, 0),
+			UDim2.new(share, -6, 1, 0),
+			UDim2.new((i - 1) * share, 0, 0, 0),
 			spec.style
 		)
-		button.TextSize = 14
+		button.TextSize = 13
 		button.Activated:Connect(spec.run)
+		if spec.text == "SNAP ON" then
+			snapButton = button
+		end
 	end
 	-- The chip that says B builds, while you're in your own den
 	hintChip = Ui.label(

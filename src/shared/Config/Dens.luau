@@ -921,6 +921,67 @@ local sets: { Set } = {
 	},
 }
 
+-- Starter layouts (owner, 2026-10-14: "yes add the snapping and starter layouts"):
+-- each set's floor pieces as a ready arrangement round a spot, front (+z) toward
+-- you. In Build mode, with a piece of the set picked, L lays out every piece of it
+-- you have in the tray where you aim (DenSpace.fitLayout finds room: it tries the
+-- spot, then spirals out, turned to face you first); each piece can be moved after.
+-- Wall and ceiling pieces stay in the tray to hang where you like. x, z in studs
+-- from the spot; r is the piece's turn (0 faces you, 90 faces your left).
+export type LayoutPiece = { id: string, x: number, z: number, r: number }
+
+local layouts: { [string]: { LayoutPiece } } = {
+	KelpCottage = {
+		{ id = "BraidedKelpRug", x = 0, z = 0, r = 0 },
+		{ id = "KelpArmchair", x = -2.2, z = -1.5, r = -20 },
+		{ id = "BarrelTable", x = 2.2, z = 0.5, r = 0 },
+		{ id = "ScallopLamp", x = -5.6, z = -3, r = 0 },
+		{ id = "DriftwoodShelf", x = 2, z = -5.6, r = 0 },
+		{ id = "KelpHammock", x = 8.5, z = -1, r = 90 },
+	},
+	ReefPalace = {
+		{ id = "CoralRug", x = 0, z = 0, r = 0 },
+		{ id = "CoralThrone", x = 0, z = -2.5, r = 0 },
+		{ id = "BrainOttoman", x = 3.5, z = 1.5, r = 0 },
+		{ id = "FanCoralScreen", x = 0, z = -7.5, r = 0 },
+		{ id = "ClamBed", x = -8, z = -2, r = -90 },
+	},
+	Shipwreck = {
+		{ id = "CaptainsDesk", x = 0, z = -2, r = 0 },
+		{ id = "CargoStack", x = -7, z = -2.5, r = 0 },
+		{ id = "BronzeCannon", x = 6.5, z = 1, r = -90 },
+		{ id = "ShipAnchor", x = -6.5, z = 4, r = 25 },
+	},
+	SunkenTemple = {
+		{ id = "WaveMosaicRug", x = 0, z = 0, r = 0 },
+		{ id = "RuneThrone", x = 0, z = -2.2, r = 0 },
+		{ id = "TealBrazier", x = -4.2, z = -1, r = 0 },
+		{ id = "ColumnPlanter", x = 4.2, z = -1, r = 0 },
+		{ id = "GrouperStatue", x = 0, z = 6.5, r = 180 },
+	},
+	VentForge = {
+		{ id = "LavaFirePit", x = 0, z = 1, r = 0 },
+		{ id = "ObsidianTable", x = 0, z = -5.5, r = 0 },
+		{ id = "LavaLamp", x = -6, z = -5.5, r = 0 },
+		{ id = "SulfurCrystals", x = 6, z = -5.5, r = 0 },
+		{ id = "VentCauldron", x = 5, z = 2.5, r = 0 },
+		{ id = "TubeWormPlanter", x = -5, z = 2.5, r = 0 },
+	},
+	AbyssGlow = {
+		{ id = "PlanktonRug", x = 0, z = 0, r = 0 },
+		{ id = "VoidThrone", x = 0, z = -2, r = 0 },
+		{ id = "AnglerLamp", x = -4.8, z = -1, r = 20 },
+		{ id = "KrakenEyePedestal", x = 4.5, z = -1, r = 0 },
+		{ id = "GlowCoralBed", x = 0, z = -10.5, r = 0 },
+	},
+	Trophies = {
+		{ id = "MegalodonJawArch", x = 0, z = -5, r = 0 },
+		{ id = "BronzeTentacle", x = -7, z = 4.5, r = 30 },
+		{ id = "TreasurePile", x = 7, z = 4.5, r = -30 },
+		{ id = "ReefGlobe", x = 0, z = 4, r = 0 },
+	},
+}
+
 export type Glow = { id: string, name: string, color: Color3, price: number }
 
 local glows: { Glow } = {
@@ -1004,6 +1065,7 @@ return {
 	itemsById = index(items),
 	sets = sets,
 	setsById = index(sets),
+	layouts = layouts,
 	glows = glows,
 	glowsById = index(glows),
 	floors = floors,

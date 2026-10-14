@@ -9,6 +9,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local DensConfig = require(ReplicatedStorage.Shared.Config.Dens)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Garden = require(ReplicatedStorage.Shared.Garden)
 local DenBuilder = require(script.Parent.Parent.DenBuilder)
@@ -296,6 +297,59 @@ local function place(player: Player, itemId: any, surface: any, x: any, y: any, 
 	placedChanged(player, data, den)
 end
 
+-- A set's starter layout (Config/Dens `layouts`) laid out round a spot: every piece
+-- of it you have in the tray (up to the den's room for things), fitted on the floor
+-- by DenSpace.fitLayout. `facing` turns its front toward the camera.
+local function layout(player: Player, setId: any, x: any, y: any, z: any, facing: any)
+	local data, den = mine(player)
+	local pieces = if typeof(setId) == "string" then Dens.layouts[setId] else nil
+	local _, at, turn = readSpot("floor", x, y, z, facing)
+	if data == nil or den == nil or pieces == nil or at == nil or turn == nil then
+		return
+	end
+	local record = data.den
+	local room = capacityOf(player, record) - #record.placed
+	local have: { [string]: number } = {}
+	local chosen: { DensConfig.LayoutPiece } = {}
+	for _, piece in pieces do
+		have[piece.id] = have[piece.id] or inTray(record, piece.id)
+		if have[piece.id] > 0 and #chosen < room then
+			have[piece.id] -= 1
+			table.insert(chosen, piece)
+		end
+	end
+	local set = Dens.setsById[setId]
+	local name = if set then set.name else "set"
+	if #chosen == 0 then
+		if room <= 0 then
+			return fail(player, `Your den holds {capacityOf(player, record)} things · upgrade it for more`)
+		end
+		return fail(player, `No {name} floor pieces in your tray`)
+	end
+	local fit, why = DenSpace.fitLayout(record.level, record.placed, chosen, at, turn)
+	if fit == nil then
+		return fail(player, why or "Not enough open floor here")
+	end
+	for _, spot in fit do
+		table.insert(record.placed, {
+			uid = record.nextUid,
+			id = spot.id,
+			x = snap(spot.x),
+			y = snap(spot.y),
+			z = snap(spot.z),
+			r = snap(spot.r % 360),
+			s = "floor",
+		})
+		record.nextUid += 1
+	end
+	placedChanged(player, data, den)
+	Net.notify(
+		player,
+		`Laid out {#fit} {name} piece{if #fit == 1 then "" else "s"} · move any of them as you like`,
+		"good"
+	)
+end
+
 local function find(record: DenRecord, uid: any): (number?, Placement?)
 	if typeof(uid) ~= "number" then
 		return nil, nil
@@ -444,6 +498,7 @@ function DenService.start()
 	Net.onRequest("DenBuy", buy)
 	Net.onRequest("DenPlace", place)
 	Net.onRequest("DenMove", move)
+	Net.onRequest("DenLayout", layout)
 	Net.onRequest("DenStore", store)
 	Net.onRequest("DenColor", color)
 	Net.onRequest("DenFloor", floor)
