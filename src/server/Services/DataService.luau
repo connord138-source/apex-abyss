@@ -56,6 +56,7 @@ export type PlayerData = {
 		rolls: number,
 		coralEarned: number,
 		bossKills: number, -- world boss kills helped with
+		bestLevel: number?, -- the best level any fish has reached (achievements)
 		bestPrey: string, -- the biggest fish ever eaten (Config/Prey id) and its mass
 		bestPreyMass: number,
 	},
@@ -155,6 +156,7 @@ local TEMPLATE: PlayerData = {
 		rolls = 0,
 		coralEarned = 0,
 		bossKills = 0,
+		bestLevel = 1,
 		bestPrey = "",
 		bestPreyMass = 0,
 	},

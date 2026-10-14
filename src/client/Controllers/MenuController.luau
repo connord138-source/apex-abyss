@@ -657,17 +657,28 @@ local function denRows(list: ScrollingFrame)
 			for _, item in pieces do
 				table.insert(names, item.name)
 			end
-			row(
+			local frame = row(
 				list,
 				next(),
 				`Set{set.id}`,
-				`Locked · {achievement.name}: {achievement.blurb}`,
-				`{set.blurb}. Opens {#pieces} pieces, each bought on its own: {table.concat(names, ", ")}`,
+				`Locked · {achievement.name}`,
+				`{achievement.blurb} to open it. {#pieces} pieces, each bought on its own: {table.concat(
+					names,
+					", "
+				)}`,
 				`{Ui.number(progress[achievement.id] or 0)} / {Ui.number(achievement.goal)}`,
 				nil,
 				nil,
 				accent
 			)
+			-- (the piece list runs to two lines: playtest 2026-10-13, it ran off the edge)
+			frame.Size = UDim2.new(1, -8, 0, 84)
+			local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
+			if blurb then
+				blurb.TextWrapped = true
+				blurb.TextYAlignment = Enum.TextYAlignment.Top
+				blurb.Size = UDim2.new(1, -320, 0, 40)
+			end
 		end
 	end
 	-- The floor's stone
@@ -2790,6 +2801,12 @@ local function updateHint(root: BasePart?)
 			hintText.Text = label
 		end
 	end
+end
+
+-- Whether the hint at your den's pool is up (it already says B · BUILD, so Build
+-- mode's own hint stands aside: a screenshot of 2026-10-14 showed both)
+function MenuController.denHintShown(): boolean
+	return nearVendor == "__den" and current == nil
 end
 
 function MenuController.start()

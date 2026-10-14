@@ -306,6 +306,15 @@ local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): S
 	local at = DenSpace.toLocal(frame, position)
 	local turn = yaw
 	if surface == "floor" then
+		-- Through a joint between flagstones the ray reaches the rock under the
+		-- deck: lift it onto the deck (playtest 2026-10-13)
+		local storey = DenSpace.storeyAt(at.Y)
+		if storey then
+			local deck = DenSpace.storey(storey).deck
+			if at.Y < deck - 0.1 and DenSpace.nearDeck(level, storey, at.X, at.Z) then
+				at = Vector3.new(at.X, deck, at.Z)
+			end
+		end
 		at = Vector3.new(snapHalf(at.X), math.floor(at.Y * 100 + 0.5) / 100, snapHalf(at.Z))
 	elseif surface == "wall" then
 		-- Faces out of the rock: its look is the wall's normal, flattened
@@ -318,8 +327,11 @@ local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): S
 		at = Vector3.new(at.X, snapHalf(at.Y), at.Z)
 	end
 	local check = DenSpace.check(level, item, surface, at)
-	local ok, why = check.ok, check.why
 	local s = selection
+	if check.ok and surface == "floor" then
+		check = DenSpace.resting(level, denRecord().placed or {}, at, if s then s.uid else nil)
+	end
+	local ok, why = check.ok, check.why
 	if ok and s and s.uid == nil then
 		if inTray(item.id) <= 0 then
 			ok, why = false, `No {item.name} left`
@@ -883,6 +895,7 @@ function BuildController.startController()
 			and not Input.isGamepad()
 			and not MenuController.isOpen()
 			and not MapController.isOpen()
+			and not MenuController.denHintShown()
 			and insideOwnDen()
 		if hintChip.Visible ~= show then
 			hintChip.Visible = show

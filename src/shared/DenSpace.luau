@@ -315,6 +315,42 @@ end
 
 export type Check = { ok: boolean, why: string? }
 
+export type Placed = { uid: number, id: string, x: number, y: number, z: number, r: number, s: string }
+
+-- Whether a floor thing at `at` stands on the deck or on top of another placed
+-- floor thing (a lamp on a table, a table on a rug): raised off the deck, its pivot
+-- must be within 0.9 of something's top and inside that thing's turned footprint
+-- (playtest 2026-10-13: one stood on a pillar's sconce ledge). `except` is the uid
+-- being moved.
+function DenSpace.resting(level: number, placed: { Placed }, at: Vector3, except: number?): Check
+	local storey = DenSpace.storeyAt(at.Y)
+	if storey == nil then
+		return { ok = false, why = "Put it on the floor" }
+	end
+	if at.Y <= DenSpace.storey(storey).deck + 0.3 then
+		return { ok = true }
+	end
+	for _, other in placed do
+		local item = Dens.itemsById[other.id]
+		if other.uid == except or other.s ~= "floor" or item == nil then
+			continue
+		end
+		if math.abs(other.y + item.size.Y - at.Y) > 0.9 then
+			continue
+		end
+		-- Into the other thing's own frame (its turn is about y in the den's frame,
+		-- whose z runs the other way to a CFrame's)
+		local turn = math.rad(other.r)
+		local dx, dz = at.X - other.x, at.Z - other.z
+		local lx = dx * math.cos(turn) + dz * math.sin(turn)
+		local lz = dx * math.sin(turn) - dz * math.cos(turn)
+		if math.abs(lx) <= item.size.X / 2 + 0.4 and math.abs(lz) <= item.size.Z / 2 + 0.4 then
+			return { ok = true }
+		end
+	end
+	return { ok = false, why = "Put it on the floor, or on top of something" }
+end
+
 -- Whether `item` may go at `at` (its pivot, in the den's frame) on `surface` in a
 -- den of `level`. A floor thing stands on a deck (or on something on it); a wall or
 -- ceiling thing goes against the rock inside the rooms.

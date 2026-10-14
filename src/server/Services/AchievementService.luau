@@ -36,9 +36,13 @@ function AchievementService.measure(data: PlayerData, achievement: Achievement):
 	elseif measure == "treasures" then
 		return data.treasures.found
 	elseif measure == "level" then
-		local best = 1
+		-- The best level any fish has ever reached (kept, so it never goes back down)
+		local best = math.max(1, data.stats.bestLevel or 0)
 		for _, record in data.species do
 			best = math.max(best, Size.level(record.mass))
+		end
+		if best > (data.stats.bestLevel or 0) then
+			data.stats.bestLevel = best
 		end
 		return best
 	elseif measure == "bossKills" then

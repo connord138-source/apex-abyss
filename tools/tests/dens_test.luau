@@ -94,6 +94,18 @@ expect(
 	"nothing floats over the pool's middle"
 )
 
+-- Resting: off the deck only on top of a placed floor thing, inside its footprint
+local tableItem = Dens.itemsById.DriftwoodTable
+local placed = { { uid = 1, id = "DriftwoodTable", x = 4, y = 1, z = 6, r = 90, s = "floor" } }
+local top = 1 + tableItem.size.Y
+expect(ok(DenSpace.resting(1, placed, v(4, 1, 6))), "on the deck")
+expect(ok(DenSpace.resting(1, placed, v(4, top, 6))), "on the table's top")
+-- turned 90°, the table's 6-stud length runs along z
+expect(ok(DenSpace.resting(1, placed, v(4, top, 8.5))), "along the turned table")
+expect(not ok(DenSpace.resting(1, placed, v(6.5, top, 6))), "past the turned table's width")
+expect(not ok(DenSpace.resting(1, placed, v(4, 9, 6))), "floating over it")
+expect(not ok(DenSpace.resting(1, placed, v(4, top, 6), 1)), "not on the thing being moved")
+
 -- Furniture sets: each has pieces and an achievement that opens it; each piece's set
 -- exists; ids are unique
 local seen: { [string]: boolean } = {}

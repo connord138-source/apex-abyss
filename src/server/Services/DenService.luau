@@ -282,6 +282,9 @@ local function place(player: Player, itemId: any, surface: any, x: any, y: any, 
 		return fail(player, `Your den holds {capacityOf(player, record)} things · upgrade it for more`)
 	end
 	local check = DenSpace.check(record.level, item, face, at)
+	if check.ok and face == "floor" then
+		check = DenSpace.resting(record.level, record.placed, at)
+	end
 	if not check.ok then
 		return fail(player, check.why or "That doesn't go there")
 	end
@@ -317,6 +320,9 @@ local function move(player: Player, uid: any, surface: any, x: any, y: any, z: a
 		return
 	end
 	local check = DenSpace.check(data.den.level, item, face, at)
+	if check.ok and face == "floor" then
+		check = DenSpace.resting(data.den.level, data.den.placed, at, placement.uid)
+	end
 	if not check.ok then
 		return fail(player, check.why or "That doesn't go there")
 	end
