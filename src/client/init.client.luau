@@ -11,6 +11,7 @@ local CatchController = require(script.Controllers.CatchController)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
+local ChumController = require(script.Controllers.ChumController)
 local GardenController = require(script.Controllers.GardenController)
 local HealController = require(script.Controllers.HealController)
 local ItemWheelController = require(script.Controllers.ItemWheelController)
@@ -78,6 +79,7 @@ KelpController.start() -- kelp near the camera sways in the current
 PlanktonController.start() -- glowing plankton in the deepest water, wakes through it
 HuntController.start()
 SchoolController.start()
+ChumController.start() -- chum clouds, Blood Tide slicks and the Whale Fall: drawn and eaten here
 NametagController.start()
 task.spawn(ShellController.start) -- waits for the server's shell spots
 task.spawn(ForageController.start) -- waits for the server's starfish and shrimp spots

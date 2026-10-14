@@ -33,4 +33,5 @@ return {
 	Textures = require(script.Textures),
 	Achievements = require(script.Achievements),
 	Codes = require(script.Codes),
+	Chum = require(script.Chum),
 }

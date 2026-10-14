@@ -322,6 +322,10 @@ local function build()
 	pickRow("Hurt the boss", fractions, "hurtBoss", "HURT")
 	actionRow("Send the boss away", "endBoss", "DISMISS", "danger")
 
+	header("WORLD EVENTS")
+	actionRow("Whale Fall now (a random biome, on the map)", "whaleNow", "START", "secondary")
+	amountRow("Chum in front of the target (kg)", "kg, e.g. 20", "chumHere", 1, "BURST")
+
 	header("MONETIZATION (NO ROBUX)")
 	local passes: { { label: string, value: any } } = {}
 	for _, pass in Config.Monetization.passes do

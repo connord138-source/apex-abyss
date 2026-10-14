@@ -18,6 +18,7 @@ local AchievementService = require(script.Parent.Services.AchievementService)
 local BossService = require(script.Parent.Services.BossService)
 local BountyService = require(script.Parent.Services.BountyService)
 local CatchService = require(script.Parent.Services.CatchService)
+local ChumService = require(script.Parent.Services.ChumService)
 local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local DataService = require(script.Parent.Services.DataService)
 local EconomyService = require(script.Parent.Services.EconomyService)
@@ -323,6 +324,25 @@ local function endBoss(_admin: Player, _targets: { Player }): string
 	end
 	BossService.dismiss()
 	return `{boss.def.name} sent away`
+end
+
+-- World events: a Whale Fall now; chum bursting at each target (as if a fish with
+-- that Haul was eaten there)
+local function whaleNow(_admin: Player, _targets: { Player }): string
+	return ChumService.whaleNow()
+end
+
+local function chumHere(_admin: Player, targets: { Player }, amount: any): string
+	local kg = amountOf(amount, 1) or 20
+	local count = 0
+	for _, player in targets do
+		local _, root = FishService.character(player)
+		if root then
+			ChumService.burstAt(root.Position + root.CFrame.LookVector * 14, kg)
+			count += 1
+		end
+	end
+	return `{kg} kg of chum in front of {count} player(s)`
 end
 
 -- Monetization testing (no Robux): grant or take a pass, run a product's effect,
@@ -658,6 +678,8 @@ AdminActions.byName = {
 	finishTutorial = finishTutorial :: Handler,
 	goTo = goTo :: Handler,
 	summonBoss = summonBoss :: Handler,
+	whaleNow = whaleNow :: Handler,
+	chumHere = chumHere :: Handler,
 	hurtBoss = hurtBoss :: Handler,
 	endBoss = endBoss :: Handler,
 	grantPass = grantPass :: Handler,

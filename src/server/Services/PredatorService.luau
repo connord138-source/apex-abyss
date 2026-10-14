@@ -22,6 +22,7 @@ local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local Progress = require(script.Parent.Parent.Progress)
+local ChumService = require(script.Parent.ChumService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
@@ -392,8 +393,16 @@ local function simulate(predator: Predator, dt: number, now: number)
 	local speed = def.speed * fast
 	if predator.mode == "roam" then
 		if (predator.waypoint - predator.position).Magnitude < 8 or now > predator.waypointUntil then
-			predator.waypoint = randomWaypoint(def)
-			predator.waypointUntil = now + 12
+			-- Chum in the water draws it in (Config/Chum `lure`); else a new spot to roam
+			local chum = ChumService.nearest(predator.position, Config.Chum.lure)
+			if chum and not nearHub(chum, def.length) then
+				local around = rng:NextUnitVector() * def.length * 0.6
+				predator.waypoint = chum + Vector3.new(around.X, math.abs(around.Y) + 3, around.Z)
+				predator.waypointUntil = now + 6
+			else
+				predator.waypoint = randomWaypoint(def)
+				predator.waypointUntil = now + 12
+			end
 		end
 		-- A lazy weave and a slow swell in pace, so a cruising fish doesn't fly a ruler
 		local phase = now * 0.35 + predator.index * 1.7

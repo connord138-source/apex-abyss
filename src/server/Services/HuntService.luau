@@ -196,6 +196,10 @@ local function eatPlayer(victim: Player, eater: Player)
 	local gain = (lost * hunt.playerHaulShare + Progress.mass(victimData) * hunt.playerBaseShare) * farm
 	EconomyService.earnCoral(eater, economy.eatPlayerCoral * farm)
 	local offer = if saved then nil else rememberLost(victimData, lost)
+	local _, victimRoot = FishService.character(victim)
+	if victimRoot and lost > 0 then
+		Events.burst:fire(victim, victimRoot.Position, lost * Config.Chum.share, victimLength)
+	end
 	victimSession.haul = 0
 	victimSession.alive = false
 	victimData.stats.timesEaten += 1
@@ -214,8 +218,9 @@ local function eatPlayer(victim: Player, eater: Player)
 	Net.notify(eater, `You ate {victim.DisplayName}!`, "good")
 	FishService.respawnIn(victim, hunt.respawnSeconds)
 	DataService.markDirty(victim)
-	addHaul(eater, gain)
+	local added = addHaul(eater, gain)
 	Events.ate:fire(eater, 1)
+	Events.atePlayer:fire(eater, victim, added)
 end
 
 local function onEatPrey(player: Player, batch: any)
@@ -535,6 +540,12 @@ function HuntService.feed(player: Player, mass: number): number
 	return addHaul(player, mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()))
 end
 
+-- Adds food that's already in Haul units (chum: a share of a lost Haul), with ×2
+-- Mass and Server Frenzy. Returns the kg added.
+function HuntService.gain(player: Player, amount: number): number
+	return addHaul(player, amount)
+end
+
 -- Every fish's session (alive, inHub, safeUntil, ...), for creatures choosing a
 -- target (PredatorService). Read only.
 function HuntService.sessions(): { [Player]: Session }
@@ -569,6 +580,10 @@ function HuntService.kill(player: Player, source: string)
 		lost = 0
 	end
 	local offer = if saved then nil else rememberLost(data, lost)
+	local _, root = FishService.character(player)
+	if root and lost > 0 then
+		Events.burst:fire(player, root.Position, lost * Config.Chum.share, liveLength(player) or 2)
+	end
 	session.haul = 0
 	session.alive = false
 	data.stats.timesEaten += 1

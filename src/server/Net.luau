@@ -39,6 +39,7 @@ local caught = makeEvent("Caught") -- (summary) to the catcher: a rare catch, a 
 local tideChanged = makeEvent("TideChanged") -- (tideId, endsAt) to everyone: the tide turned
 local passClaimed = makeEvent("PassClaimed") -- (summary) to the claimer: Tide Pass rewards claimed
 local achievement = makeEvent("Achievement") -- (summary) to the player: an achievement done and the den set it opened
+local chum = makeEvent("Chum") -- (kind, payload) to everyone: chum clouds and the Whale Fall (add, eat, remove, warn)
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -51,6 +52,7 @@ local REQUESTS: { [string]: number } = {
 	Bite = 0.35, -- (userId)
 	Collect = 0.03, -- (shell spot index)
 	EatForage = 0.05, -- ({ number }) forage spot indexes, batched by the client
+	EatChum = 0.05, -- ({ { cloudId, chunkIndex } }) chum chunks, batched by the client
 	Roll = 0.4, -- ()
 	Buy = 0.2, -- (kind: "upgrade" | "charm" | "dye" | "shells", id: string)
 	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)
@@ -97,6 +99,10 @@ getRarities.Parent = folder
 local getBoards = Instance.new("RemoteFunction")
 getBoards.Name = "GetBoards" -- () -> the weekly leaderboards (LeaderboardService)
 getBoards.Parent = folder
+
+local getChum = Instance.new("RemoteFunction")
+getChum.Name = "GetChum" -- () -> { clouds, warn } the chum clouds and any Whale Fall coming
+getChum.Parent = folder
 
 local redeem = Instance.new("RemoteFunction")
 redeem.Name = "RedeemCode" -- (text) -> (ok, message): a redeem code (Config/Codes)
@@ -258,6 +264,14 @@ end
 
 function Net.onGetRarities(handler: (Player) -> { [string]: number })
 	getRarities.OnServerInvoke = handler
+end
+
+function Net.chum(kind: string, payload: { [string]: any })
+	chum:FireAllClients(kind, payload)
+end
+
+function Net.onGetChum(handler: (Player) -> { [string]: any })
+	getChum.OnServerInvoke = handler
 end
 
 function Net.onRedeem(handler: (Player, any) -> (boolean, string))

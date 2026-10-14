@@ -23,4 +23,9 @@ return {
 	bounty = Signal.new(), -- (player, "done" | "chest") a daily bounty finished, or the chest paid
 	bossKill = Signal.new(), -- (player) a world boss kill the player helped with
 	passXp = Signal.new(), -- (player, amount, reason) Tide Pass XP from a claim (the daily streak, a playtime gift)
+	-- (victim, position, haul, length) a fish was eaten: `haul` of its lost Haul bursts
+	-- into chum (ChumService)
+	burst = Signal.new(),
+	-- (eater, victim, gain) a player ate another player (pods share it, the Apex bounty pays)
+	atePlayer = Signal.new(),
 }

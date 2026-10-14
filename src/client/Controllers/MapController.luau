@@ -21,6 +21,7 @@ local MapDraw = require(script.Parent.Parent.MapDraw)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
 local BossController = require(script.Parent.BossController)
+local ChumController = require(script.Parent.ChumController)
 local MenuController = require(script.Parent.MenuController)
 local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
@@ -44,6 +45,7 @@ local DEN = Color3.fromRGB(255, 204, 92)
 local TREASURE = Color3.fromRGB(255, 120, 90)
 local BOSS = Color3.fromRGB(255, 70, 70)
 local OTHER = Color3.fromRGB(226, 240, 248)
+local WHALE = Color3.fromRGB(150, 214, 230)
 
 -- The treasure site being followed, if any (the Satchel's FOLLOW)
 local function treasureSite(): Vector3?
@@ -80,6 +82,15 @@ local function placeMarks(map: MapDraw.Map)
 		local mark = map.marks.Boss
 		if mark and mark:IsA("TextLabel") then
 			mark.TextTransparency = 0.25 + 0.25 * math.sin(os.clock() * 5)
+		end
+	end
+	local whaleAt = ChumController.whale()
+	if whaleAt then
+		MapDraw.mark(map, "Whale", whaleAt, WHALE, "W", 16)
+		keep.Whale = true
+		local mark = map.marks.Whale
+		if mark and mark:IsA("TextLabel") then
+			mark.TextTransparency = 0.2 + 0.2 * math.sin(os.clock() * 3)
 		end
 	end
 	local me = Players.LocalPlayer
@@ -173,8 +184,9 @@ local function openFull()
 	legendRow(side, 134, "◆", DEN, "Your den: bank your Haul there")
 	legendRow(side, 158, "X", TREASURE, "The treasure map you're following")
 	legendRow(side, 182, "●", BOSS, "A world boss, while one is up")
-	legendRow(side, 206, "•", OTHER, "Other fish in this server")
-	Ui.heading(side, "SeaHeading", "The sea", 248)
+	legendRow(side, 206, "W", WHALE, "A Whale Fall: food for everyone")
+	legendRow(side, 230, "•", OTHER, "Other fish in this server")
+	Ui.heading(side, "SeaHeading", "The sea", 266)
 	local notes = Ui.label(
 		side,
 		"Notes",
@@ -183,7 +195,7 @@ local function openFull()
 		13,
 		Ui.color.muted,
 		UDim2.new(1, 0, 0, 150),
-		UDim2.fromOffset(0, 272)
+		UDim2.fromOffset(0, 290)
 	)
 	notes.TextWrapped = true
 	notes.TextYAlignment = Enum.TextYAlignment.Top

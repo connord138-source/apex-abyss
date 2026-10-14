@@ -19,6 +19,7 @@ export type Tide = {
 	smallHaul: number?, -- prey under `smallMass` kg × this (the Sardine Run)
 	coral: number?, -- coral from rare catches × this
 	hunters: { speed: number, aggro: number }?, -- AI predators faster and keener
+	chum: boolean?, -- chum slicks appear round players (Config/Chum `slick`), clouds linger
 	schools: boolean?, -- its own schools come out (Config/Prey zones with `tide`)
 }
 
@@ -45,13 +46,14 @@ local list: { Tide } = {
 	{
 		id = "Blood",
 		name = "Blood Tide",
-		blurb = "Rare fish ×2 · Haul ×1.25 · hunters faster and hungrier",
+		blurb = "Rare fish ×2 · Haul ×1.25 · chum in the water · hunters faster and hungrier",
 		weight = 2,
 		color = Color3.fromRGB(230, 60, 70),
 		tint = 0.14,
 		rarity = { Golden = 2, Glowing = 2, Crystal = 2 },
 		haul = 1.25,
 		hunters = { speed = 1.2, aggro = 1.5 },
+		chum = true,
 	},
 	{
 		id = "Sardine",

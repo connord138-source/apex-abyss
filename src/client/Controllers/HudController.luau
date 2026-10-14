@@ -21,6 +21,7 @@ local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
 local Ui = require(script.Parent.Parent.Ui)
 local ForageController = require(script.Parent.ForageController)
+local ChumController = require(script.Parent.ChumController)
 local HuntController = require(script.Parent.HuntController)
 local PredatorController = require(script.Parent.PredatorController)
 local AbilityController = require(script.Parent.AbilityController)
@@ -906,6 +907,14 @@ function HudController.start()
 	end)
 	ForageController.ate:connect(function(mass: number, position: Vector3)
 		pop(`+{string.format("%.2f", mass * growthNow())}`, Ui.color.haul, position)
+	end)
+	ChumController.ate:connect(function(mass: number, position: Vector3)
+		local kg = mass * growthNow()
+		pop(
+			`CHUM +{if kg < 10 then string.format("%.1f", kg) else tostring(math.floor(kg))}`,
+			Ui.color.danger,
+			position
+		)
 	end)
 	PredatorController.hit:connect(function(damage: number, position: Vector3)
 		pop(`-{math.floor(damage + 0.5)}`, Ui.color.danger, position)
