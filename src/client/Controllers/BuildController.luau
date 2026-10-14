@@ -644,6 +644,17 @@ end
 local function layOut()
 	local setId = layoutSet()
 	local anchor = lastFloor
+	if anchor == nil and selection == nil and aimedUid then
+		-- Aimed at a placed piece (L lays out its set): the aim hits the piece, not
+		-- the floor, so lay it out round where that piece stands (PC playtest
+		-- 2026-10-14, B2: L on an aimed piece did nothing)
+		for _, placement in denRecord().placed or {} do
+			if placement.uid == aimedUid then
+				anchor = Vector3.new(placement.x, placement.y, placement.z)
+				break
+			end
+		end
+	end
 	if setId == nil then
 		Sfx.play("TooBig", { volume = 0.35 })
 		setStatus("Pick a piece of a furniture set first", BAD, 2.5)
