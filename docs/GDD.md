@@ -114,6 +114,15 @@ owner disliked "Molt" and this was the recommended replacement.*
   - A tutorial levels it up before any other species can be picked.
   - The starter stays upgradeable as it grows. It's the all-rounder: equal at
     everything, while the other species each specialize in a playstyle.
+- **Bodies stay a believable size** (owner, 2026-10-14: "Each den should be large
+  enough that a max size player can fit in it ... full grown shark should be a bit
+  larger than an actual shark and max size for fish should all be relatively the
+  same but not ridiculously large"): a fish's drawn length follows its mass up to
+  6 studs, then eases toward 17 (`Config/Tuning` `lengthKnee`, `lengthCap`): LV 30
+  5.4 studs, LV 60 12, LV 80 15.7, LV 100 16.9 (15.6 ft); a full Haul never passes
+  17. The Reef Shark predator is 14. Size ratios (swallowing, bites, aggro,
+  predators) and swim speed use the raw length (`Size.raw`), so the balance is as
+  it was; only bodies, colliders, mouths and the camera shrank.
 - **Every species levels up separately**, like Hungry Shark. More to grind and more
   playtime.
 - **Every species has its own upgrade tree.** It has a few ability options to pick
@@ -548,9 +557,16 @@ progression**.
 
 ### The map (owner, 2026-10-12: "need a map/mini map to show people where they are"; built)
 
-A sonar chart: each biome a field of dots in its colour over its sector and
-radii, the hub a ring in the middle, the shelf's drop-off and the sea's edge as
-dashed rings, north up. The **minimap** sits in the HUD's corner and slides under
+**The real seafloor from above** (owner, 2026-10-14: "needs to be an actual
+accurate mini map not dots"): `tools/map/make_chart.py` rasterizes the Terrain fill
+ops the server applies and draws each column's top surface as a chart (depth
+shading from the shelf to the Trench's floor, relief lit from the north-west,
+contours every 40 studs, lava caps in orange; a cool palette, screened clean),
+`assets/textures/map_chart.png` (1024 px for 3,200 studs), uploaded as
+`Config/Textures` `mapChart`. The biomes' borders are dotted over it and the sea's
+edge ringed, north up; until the id is in, the old sonar chart (biome dot fields)
+shows. Re-run the tool after any change to the Terrain (`Shelf.luau`, `Cave.luau`)
+and re-upload. The **minimap** sits in the HUD's corner and slides under
 your fish (the arrow in the middle points where you swim); on it are your den
 (◆), the treasure map you're following (X), a world boss while one is up (●) and
 the other fish in the server (•). A click or tap on it, M on a keyboard or R3 on

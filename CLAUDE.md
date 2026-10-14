@@ -134,6 +134,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Frozen Shelf is dropped for now** (owner: not much sea life; maybe a later
     update). The **Sunken Ruins replace it** (owner approved).
 - **Creatures:**
+  - **Bodies ease off toward 17 studs** (owner, 2026-10-14: "Each den should be
+    large enough that a max size player can fit in it ... full grown shark should
+    be a bit larger than an actual shark and max size for fish should all be
+    relatively the same but not ridiculously large"): `Size.length` follows the raw
+    curve (2 × mass^⅓) to `lengthKnee` 6, then eases toward `lengthCap` 17 (LV 60
+    12, LV 80 15.7, LV 100 16.9; a full Haul never passes 17; collider ≤ 6.8, 8.5
+    for the Puffer). Size ratios (`Size.canSwallow`, `Size.ratio`: swallowing,
+    player bites and XP, aggro, predator damage and interest) and swim speed use
+    `Size.raw`, so the balance didn't move. Compare sizes with those, never with
+    drawn lengths.
   - Lines grow Fry → Juvenile → Adult → Apex.
   - Hard evolutions branch off at Apex with conditions and show as ??? in the Index
     (Megalodon, Kraken, Leviathan Eel, Void Manta).
@@ -387,9 +397,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the den's pool, `ShellController.nearest`) with the distance and an arrow on the
     card, and a line tells how to free the cursor. BANK HERE had stopped showing
     since the den record took `state.den`: the den's index is `state.denIndex`.
-  - **Map:** `src/client/MapDraw.luau` draws the sea as a sonar chart (biomes as
-    dot fields in their colours, the hub ring, the drop-off and edge rings, north
-    up); `MapController` keeps a minimap that slides under the fish (PC bottom-right,
+  - **Map:** `src/client/MapDraw.luau` draws the real seafloor from above
+    (owner, 2026-10-14: "needs to be an actual accurate mini map not dots"):
+    `tools/map/make_chart.py` rasterizes the Terrain fill ops (run_world.sh's
+    dump) into a depth-shaded, relief-lit chart with contours
+    (`assets/textures/map_chart.png`, `Config/Textures` `mapChart`; re-run and
+    re-upload after any Terrain change), the biomes' borders dotted over it; the old
+    sonar chart (biome dot fields) until the id is in. `MapController` keeps a minimap that slides under the fish (PC bottom-right,
     phone top-right) with the den ◆, a followed treasure X, the boss ● and other
     fish •, and opens the full map (click/tap it, M, R3) with every biome named and
     levelled, a legend and where you are. `BossController.position()` feeds it.
@@ -828,7 +842,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the surface up to ~4.6 over its fill, through the flagstones); the decks are slabs
     down to it. Storeys: deck 1 / −34 / −70, floor −4 / −40 / −76. The Haul Pool sits
     in a stone basin with a rim. A thing standing on another may hang over a hole's
-    edge if deck is within 2 studs (`DenSpace.nearDeck`).
+    edge if deck is within 2 studs (`DenSpace.nearDeck`); raised off the deck it
+    must stand on top of a placed floor thing, inside its turned footprint
+    (`DenSpace.resting`, checked by the server on place and move and by the ghost).
+    An aim through a joint between flagstones lifts onto the deck.
   - **Furniture batch 1 (owner, 2026-10-13: "Approve all, players will need to
     complete achievements to unlock the ability to purchase each set with coral.
     Once a set is unlocked, pieces are individually bought, not the entire set";
