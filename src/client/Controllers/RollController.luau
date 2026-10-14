@@ -915,9 +915,14 @@ function RollController.start()
 		local function fetch()
 			local shade = other:GetAttribute("WornShade")
 			local species = other:GetAttribute("WornSpecies")
-			if typeof(shade) == "string" and shade ~= "" and typeof(species) == "string" then
-				CardPhoto.preloadSkin(species, shade)
+			if typeof(species) ~= "string" then
+				return
 			end
+			-- No shade: the fish's Natural skin (its white teeth), when it has one
+			CardPhoto.preloadSkin(
+				species,
+				if typeof(shade) == "string" and shade ~= "" then shade else "Natural"
+			)
 		end
 		other:GetAttributeChangedSignal("WornShade"):Connect(fetch)
 		other:GetAttributeChangedSignal("WornSpecies"):Connect(fetch)

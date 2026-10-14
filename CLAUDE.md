@@ -547,6 +547,18 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     holographic foil (diffraction lines, hue-shifted cells, pearl, metal). Bundle
     v8.1: sha256 9a523a58… (285 images, no normal maps, highest classifier 0.127;
     v8, 6e4ab557…, carries normal maps: never import it).
+  - **Bone-white teeth (owner, 2026-10-14: "make sure the teeth are always teeth
+    white and not the color of the skin. All fish should always have bone white
+    teeth"; skins v8.2):** the Angler's fangs and the 'Cuda's teeth had taken each
+    skin's colour, and the Reef Shark's tiny teeth too. `tools/shades/teeth.json`
+    marks each toothed fish's mouth (boxes on the head views and a colour rule; the
+    shark's `slot` rule reads `bake_mouth.py` close-ups), and every skin paints those
+    texels `BONE` (0.93, 0.92, 0.88), satin, no glow or metal. Each toothed fish
+    (Angler, Cuda, MorayEel, ReefShark) also packs a **Natural** skin, its own
+    texture with white teeth, that `Cosmetics.paintMesh` wears with no shade (and,
+    tinted, under a shade not imported yet); `CardPhoto.preloadSkin` fetches it for
+    other players with no shade. The Nibbler and Puffer have no teeth. A new fish
+    with teeth gets a teeth.json entry (docs/ASSETS.md "Teeth are always bone white").
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

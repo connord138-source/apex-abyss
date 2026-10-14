@@ -106,7 +106,8 @@ if FISH in shade_lines.fishes():
     missing = [s for s in wanted if s not in specs or not (SKINS / f"{s}.png").exists()]
     if missing:
         print(f"[pack] {FISH}: no skin for {', '.join(missing)} (screened out or not made); packing the rest")
-    specs = {s: specs[s] for s in wanted if s in specs}
+    # (plus the Natural skin: the own look with white teeth, worn with no shade on)
+    specs = {s: specs[s] for s in wanted + ["Natural"] if s in specs}
 rm_images: dict[str, bpy.types.Image] = {}
 
 

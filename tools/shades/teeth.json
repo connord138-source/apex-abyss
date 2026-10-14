@@ -1,0 +1,7 @@
+{
+ "_comment": "Mouths marked on the bake's five head views (bake_maps.py faces, 512 px): [view, x0, y0, x1, y1]. Inside a box, texels matching the fish's tooth colour `rule` are teeth; make_shades.py paints them bone white on every skin and the Natural skin (owner, 2026-10-14: 'All fish should always have bone white teeth'). Rule `slot` is for teeth too small for those views (the Reef Shark's): bake_mouth.py renders close-ups of `mouth` (centre in the bake's body frame, radius, model units) to <maps>/<Fish>.mouth.npz and the teeth are the light bits inside the mouth's dark slot. The Nibbler and Puffer have no teeth.",
+ "Angler": {"rule": "pale_warm", "boxes": [[0, 147, 192, 378, 320], [1, 179, 192, 390, 320], [2, 115, 192, 333, 320], [3, 198, 192, 314, 333], [4, 173, 192, 314, 333]]},
+ "Cuda": {"rule": "warm", "boxes": [[0, 173, 262, 352, 320], [1, 122, 250, 320, 314], [2, 211, 250, 403, 314], [3, 70, 243, 218, 307], [4, 294, 243, 448, 307]]},
+ "MorayEel": {"rule": "pale", "boxes": [[0, 211, 275, 326, 320], [1, 122, 269, 256, 320], [2, 320, 269, 416, 320], [3, 64, 262, 186, 314], [4, 371, 262, 448, 314]]},
+ "ReefShark": {"rule": "slot", "mouth": {"centre": [-0.035, -0.42, -0.1], "radius": 0.08}}
+}

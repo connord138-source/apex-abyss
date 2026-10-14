@@ -1079,7 +1079,10 @@ end
 -- variants hang off its bones (addMeshParts).
 -- A fish's skin for a shade: ReplicatedStorage.ShadeSkins.<Fish>.<Shade>, a
 -- SurfaceAppearance (or a StringValue holding a texture id), made by tools/shades and
--- filed by tools/studio/organize_shades.luau. Nil until it's imported.
+-- filed by tools/studio/organize_shades.luau. Nil until it's imported. A toothed fish
+-- (tools/shades/teeth.json) also has a "Natural" skin: its own texture with bone-white
+-- teeth (owner, 2026-10-14: "All fish should always have bone white teeth"), worn when
+-- it has no shade.
 local function skinFor(plan: string?, shadeId: string): Instance?
 	local root = ReplicatedStorage:FindFirstChild("ShadeSkins")
 	local folder = if root and plan then root:FindFirstChild(plan) else nil
@@ -1126,9 +1129,10 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 	local shade = if shadeId then Config.Shades.byId[shadeId] else nil
 	local spectral = shade ~= nil and shade.spectral == true
 	local plan = body:GetAttribute("MeshPlan")
-	local skin = if shade and not spectral
-		then skinFor(if typeof(plan) == "string" then plan else nil, shade.id)
-		else nil
+	local planName = if typeof(plan) == "string" then plan else nil
+	local skin = if shade and not spectral then skinFor(planName, shade.id) else nil
+	-- No shade (or a shade not imported yet): the fish's own look, white teeth and all
+	local natural = if skin == nil and not spectral then skinFor(planName, "Natural") else nil
 	-- Without its skin imported yet, a shade tints the texture (multiplies, so it can
 	-- only darken; the skin is the real look)
 	local tint = if shade and skin == nil
@@ -1178,6 +1182,16 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 			part.Color = Color3.new(1, 1, 1)
 			part.Material = Enum.Material.Plastic
 			part.Transparency = (shade :: ShadesConfig.Shade).transparency or 0
+		elseif natural and natural:IsA("SurfaceAppearance") then
+			holdOwn(part, true)
+			local clone = natural:Clone()
+			clone.Name = "ShadeSkin"
+			clone.Color = tint
+			clone.EmissiveStrength = 1
+			clone.Parent = part
+			part.Color = Color3.new(1, 1, 1)
+			part.Material = Enum.Material.Plastic
+			part.Transparency = if shade then shade.transparency or 0 else 0
 		else
 			holdOwn(part, false)
 			if typeof(ownTexture) == "string" then

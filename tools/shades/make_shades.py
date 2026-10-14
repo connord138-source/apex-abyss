@@ -60,6 +60,10 @@ SIZE = 1024
 # test misses it, `mirror` copies its right side's fins to its left; `fins` finds
 # them another way (the 'Cuda's are
 # painted yellow, the eel's is the ridge along its back)
+# Teeth are this, shaded like their own paint (Fish._tooth_colour): a neutral bone
+# white, a touch warm but never beige (the skin screen)
+BONE = (0.93, 0.92, 0.88)
+
 FISH = {
     "Nibbler": {"teeth": False, "keep_vivid": False, "blade": 0.045, "blade_top": 0.035},
     "Cuda": {"teeth": True, "keep_vivid": False, "fins": "yellow", "blade_top": 0.012},
@@ -112,7 +116,7 @@ def hsv_to_rgb(hsv):
 class Fish:
     """A fish's texture and its texels' places on the body, at SIZE."""
 
-    def __init__(self, name: str, npz: pathlib.Path, picks):
+    def __init__(self, name: str, npz: pathlib.Path, picks, teeth=None):
         d = np.load(npz)
         color = Image.fromarray(d["color"]).resize((SIZE, SIZE), Image.LANCZOS)
         self.name = name
@@ -135,6 +139,7 @@ class Fish:
         # padded())
         self.length = float(d["length"])
         self.faces = d["faces"]
+        self.maps = pathlib.Path(npz).parent
         self.hsv = rgb_to_hsv(self.color)
         self.lum = self.color @ np.array([0.299, 0.587, 0.114], np.float32)
         # Body frame: y 0 at the snout .. 1 at the tail tip; x and z in body lengths
@@ -143,6 +148,8 @@ class Fish:
         self._cross_section()
         self.fine = self._fine_detail()
         self.keep = self._keep_mask(picks)
+        self.teeth = self._teeth(teeth)
+        self.tooth = self._tooth_colour()
 
     # ---- the body's cross-section along its length: core ellipse, fins, countershade
     def _cross_section(self):
@@ -219,6 +226,93 @@ class Fish:
             keep = np.maximum(keep, np.maximum(smoothstep(0.42, 0.6, vivid), lure.astype(np.float32)) * self.cov)
             self.lure = np.clip(ndimage.gaussian_filter((lure & self.cov).astype(np.float32), 0.8), 0, 1)
         return np.clip(ndimage.gaussian_filter(keep, 0.8), 0, 1)
+
+    def _teeth(self, spec):
+        """The teeth (owner, 2026-10-14: "All fish should always have bone white
+        teeth"): mouths marked on the bake's head views (teeth.json boxes); inside
+        them, texels of the fish's own tooth colour (`rule`), grown to the whole of
+        each tooth's piece of the atlas. Soft-edged, 0..1."""
+        mask = np.zeros((SIZE, SIZE), np.float32)
+        if not spec:
+            return mask
+        if spec["rule"] == "slot":
+            return self._slot_teeth(spec)
+        r, g, b = self.color[..., 0], self.color[..., 1], self.color[..., 2]
+        hue, sat, val = self.hsv[..., 0], self.hsv[..., 1], self.hsv[..., 2]
+        rule = spec["rule"]
+        if rule == "pale_warm":  # the Angler's beige fangs
+            cand = (val > 0.45) & (sat < 0.5) & (r >= b - 0.02)
+        elif rule == "warm":  # the 'Cuda's peach teeth on a white-blue jaw
+            cand = (r > b + 0.06) & (val > 0.45) & ((hue < 0.11) | (hue > 0.9))
+        else:  # "pale": off-white teeth on a coloured body (the Moray)
+            cand = (val > 0.55) & (sat < 0.35)
+        cand &= self.cov
+        hits = np.zeros((SIZE, SIZE), bool)
+        for view, x0, y0, x1, y1 in spec["boxes"]:
+            face = self.faces[view][y0:y1, x0:x1]
+            sel = face[..., 5] > 0.5
+            u, v = face[..., 3][sel], face[..., 4][sel]
+            tx = np.clip((u % 1.0) * SIZE, 0, SIZE - 1).astype(int)
+            ty = np.clip((1 - v % 1.0) * SIZE, 0, SIZE - 1).astype(int)
+            hits[ty, tx] = True
+        seed = ndimage.binary_dilation(hits, iterations=2) & cand
+        labels, n = ndimage.label(cand)
+        if n == 0:
+            return mask
+        counts = ndimage.sum(seed, labels, range(1, n + 1))
+        sizes = ndimage.sum(cand, labels, range(1, n + 1))
+        # A piece is a tooth when enough of it was seen inside a mouth box (and it's
+        # not a whole pale belly that happens to touch one)
+        good = np.flatnonzero((counts >= 3) & (counts >= sizes * 0.02) & (sizes < 60000)) + 1
+        teeth = np.isin(labels, good)
+        teeth = ndimage.binary_closing(teeth, iterations=1) & self.cov
+        return np.clip(ndimage.gaussian_filter(teeth.astype(np.float32), 0.7) * 1.4, 0, 1)
+
+    def _slot_teeth(self, spec):
+        """Teeth too small for the head views (the Reef Shark's, a pixel or two
+        each): bake_mouth.py's close-ups of the mouth (<Fish>.mouth.npz beside the
+        maps, rendered at teeth.json `mouth`), where the teeth are the light bits
+        inside the dark slot of the mouth. Texels many of them land on are teeth;
+        lone hits along UV seams are dropped."""
+        path = self.maps / f"{self.name}.mouth.npz"
+        assert path.exists(), f"{path} missing: run bake_mouth.py with teeth.json's mouth for {self.name}"
+        views = np.load(path)["faces"].astype(np.float32)
+        hits = np.zeros((SIZE, SIZE), np.float32)
+        for face in views:
+            rgb, seen = face[..., :3], face[..., 5] > 0.5
+            r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+            val = rgb.max(-1)
+            # The slot: dark and purple (the back's dark grey has more green)
+            dark = seen & (val < 0.3) & (r > g + 0.015) & (b > g + 0.03)
+            slot = ndimage.binary_fill_holes(ndimage.binary_closing(dark, iterations=6)) & seen
+            slot = ndimage.binary_opening(slot, iterations=3)
+            tooth = slot & ~dark & (val > 0.3)
+            u, v = face[..., 3][tooth], face[..., 4][tooth]
+            tx = np.clip((u % 1.0) * SIZE, 0, SIZE - 1).astype(int)
+            ty = np.clip((1 - v % 1.0) * SIZE, 0, SIZE - 1).astype(int)
+            np.add.at(hits, (ty, tx), 1.0)
+        dense = ndimage.gaussian_filter(np.minimum(hits, 1.0), 2.0) > 0.12
+        # The teeth are painted lavender grey: bluer than the belly's pale grey and
+        # the flank's mid grey, which seams and the lips' edges also land on
+        r, g, b = self.color[..., 0], self.color[..., 1], self.color[..., 2]
+        lavender = (b > g + 0.05) & (r > g - 0.025) & (self.hsv[..., 2] > 0.3)
+        teeth = ndimage.binary_closing(dense, iterations=2) & self.cov & lavender
+        labels, n = ndimage.label(teeth)
+        if n:
+            sizes = ndimage.sum(teeth, labels, range(1, n + 1))
+            teeth = np.isin(labels, np.flatnonzero(sizes >= 150) + 1)
+        teeth = ndimage.binary_closing(teeth, iterations=1) & self.cov
+        return np.clip(ndimage.gaussian_filter(teeth.astype(np.float32), 0.7) * 1.4, 0, 1)
+
+    def _tooth_colour(self):
+        """Bone white, shaded like the teeth's own paint (darker at the roots)."""
+        bone = np.array(BONE, np.float32)
+        sel = self.teeth > 0.5
+        if not sel.any():
+            return np.broadcast_to(bone, self.color.shape).copy()
+        mean = float(np.mean(self.lum[sel]))
+        shade = np.clip(0.97 + 0.2 * (self.lum - mean) / max(mean, 1e-3), 0.88, 1.05)
+        return np.clip(bone * shade[..., None], 0, 1)
 
     def _eyes(self, picks):
         """Eyes marked on the side renders (eyes.json): the texels under each pick,
@@ -490,25 +584,38 @@ def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail
     rgb = rgb * (1 + strength * fine)[..., None]
     rgb = np.clip(rgb, 0, 1)
     rgb = mix(rgb, m.color, m.keep)
+    # Teeth are always bone white, whatever the skin (owner, 2026-10-14)
+    rgb = mix(rgb, m.tooth, m.teeth)
     rgb[~m.cov] = m.color[~m.cov]
     if emit is not None:
-        emit = np.clip(np.asarray(emit, np.float32), 0, 1) * (1 - m.keep)[..., None]
+        emit = np.clip(np.asarray(emit, np.float32), 0, 1) * (1 - np.maximum(m.keep, m.teeth))[..., None]
     if m.lure is not None:
         lure = m.color * m.lure[..., None]
         emit = lure if emit is None else np.maximum(emit, lure)
     if emit is not None:
         emit = emit * m.cov[..., None]
     if metal is not None:
-        metal = np.clip(metal, 0, 1) * (1 - m.keep) * m.cov
+        metal = np.clip(metal, 0, 1) * (1 - np.maximum(m.keep, m.teeth)) * m.cov
     if rough is not None:
         rough = np.clip(rough + 0.12 * m.fine, 0.05, 1)
         rough = rough * (1 - m.eyes) + 0.12 * m.eyes
+        rough = rough * (1 - m.teeth) + 0.35 * m.teeth
     rgb, emit, metal, rough = (None if a is None else padded(m, a) for a in (rgb, emit, metal, rough))
     if normal is not None:
         # Flat where the eyes and kept paint are, flat in the atlas gaps
         normal = mix(normal, (0.5, 0.5, 1.0), m.keep)
         normal = padded_plain(m, normal)
     return {"rgb": rgb, "emit": emit, "metal": metal, "rough": rough, "normal": normal, "finish": finish}
+
+
+def natural(m: Fish):
+    """The fish's own look with bone-white teeth: worn when no shade is (Cosmetics),
+    so the teeth are white on every fish, skin or not. Its lure glows as in every skin."""
+    rgb = mix(m.color, m.tooth, m.teeth)
+    emit = m.color * m.lure[..., None] if m.lure is not None else None
+    if emit is not None:
+        emit = padded(m, emit * m.cov[..., None])
+    return {"rgb": padded(m, rgb), "emit": emit, "metal": None, "rough": None, "normal": None, "finish": "satin"}
 
 
 def padded_plain(m: Fish, arr):
@@ -3001,23 +3108,37 @@ def main():
     maps, out = pathlib.Path(args[0]), pathlib.Path(args[1])
     names = args[2:] or [p.stem for p in sorted(maps.glob("*.npz"))]
     eyes = json.loads((HERE / "eyes.json").read_text())
+    teeth = json.loads((HERE / "teeth.json").read_text())
     todo = {s for f in names for s in shade_lines.shades(f) if not only or s in only}
     missing = sorted(todo - set(RECIPES))
     if missing:
         raise SystemExit(f"[shades] lines.json names shades with no recipe: {', '.join(missing)}")
     for name in names:
         wanted = shade_lines.shades(name)
-        fish = Fish(name, maps / f"{name}.npz", eyes.get(name, {}).get("picks", []))
+        fish = Fish(name, maps / f"{name}.npz", eyes.get(name, {}).get("picks", []), teeth.get(name))
         folder = out / name
         folder.mkdir(parents=True, exist_ok=True)
         dbg = fish.color.copy()
         dbg = mix(dbg, (1, 0, 1), fish.keep * 0.8)
         dbg = mix(dbg, (0, 1, 0), fish.fin * 0.5)
+        dbg = mix(dbg, (1, 0.5, 0), fish.teeth * 0.9)
         Image.fromarray((np.clip(dbg, 0, 1) * 255).astype(np.uint8)).save(folder / "eyes_debug.png")
         manifest_path = folder / "skins.json"
         manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
-        manifest = {k: v for k, v in manifest.items() if k in wanted}
-        prune(folder, wanted)
+        manifest = {k: v for k, v in manifest.items() if k in wanted or k == "Natural"}
+        # The Natural skin (own look, white teeth) for a fish with teeth
+        natural_wanted = name in teeth
+        prune(folder, wanted + (["Natural"] if natural_wanted else []))
+        if natural_wanted and (not only or "Natural" in only):
+            skin = natural(fish)
+            save_rgb(folder / "Natural.png", skin["rgb"])
+            (folder / "Natural_emit.png").unlink(missing_ok=True)
+            if skin["emit"] is not None:
+                save_rgb(folder / "Natural_emit.png", skin["emit"])
+            manifest["Natural"] = {"finish": "satin", "emit": skin["emit"] is not None, "metal": False, "rough": False, "normal": False}
+            print(f"[shades] {name}: Natural", flush=True)
+        elif not natural_wanted:
+            manifest.pop("Natural", None)
         made = 0
         for shade in wanted:
             if only and shade not in only:

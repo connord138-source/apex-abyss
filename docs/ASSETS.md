@@ -19,7 +19,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`; v2 colors made safe by `tools/props/safe_colors.py` and screened 2026-10-11) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `furniture_glb` | the 38 den furniture pieces of batch 1, `furniture/<Name>.glb` (GLB; cut off `assets/concepts/Furn*.jpg` by `tools/props/furniture_crops.py`, Tripo image_to_model; normal maps taken out by `tools/props/strip_normals.py`, colors made safe by `safe_colors.py`, all 76 images screened 2026-10-13; front faces +X) | `ReplicatedStorage.WorldProps.<Name>` |
-| `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (23 quads each: its own 12-skin line plus the 11 universal skins, with color, finish/metal and glow maps; tools/shades v6, screened 2026-10-11) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
+| `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
@@ -112,8 +112,31 @@ starts with `m = smooth(m)` (the fits interpolated between slices; `flatten` for
 line that should run straight down a lumpy body) and draws hard edges with `crisp()`
 (an anti-aliased ramp at least a texel and a half wide). Older skins keep the stepped
 frame so they don't change. Eyes are picked on the side face renders (`find_eyes.py`,
-then checked by hand in `eyes.json`); the teeth, mouth and the Angler's lure are
-kept from the fish's own texture.
+then checked by hand in `eyes.json`); the mouth and the Angler's lure are kept from
+the fish's own texture.
+
+**Teeth are always bone white** (owner, 2026-10-14: "All fish should always have bone
+white teeth"; the Angler's and 'Cuda's had taken the skin's colour). `tools/shades/teeth.json`
+marks each toothed fish's mouth on the bake's head views (boxes in the 512 px `faces`)
+with a colour `rule` for its painted teeth (`pale_warm` the Angler's beige fangs, `warm`
+the 'Cuda's peach teeth, `pale` the Moray's); `_teeth` takes the matching texels seen in
+a box and grows them to each tooth's whole piece of the atlas. The Reef Shark's teeth
+are a pixel or two in those views, so its rule is `slot`: `bake_mouth.py` renders
+close-ups of the mouth at teeth.json's `mouth` (centre in the bake's body frame and
+radius) to `assets/shades/maps/<Fish>.mouth.npz`, once per fish:
+
+```
+python3.11 tools/shades/bake_mouth.py -- assets/tripo/species/ReefShark.glb assets/shades/maps/ReefShark.mouth.npz -0.035,-0.42,-0.10 0.08
+```
+
+and the teeth are the light bits inside the mouth's dark slot (lavender texels many
+views land on). Every skin then paints the teeth `BONE` (0.93, 0.92, 0.88), shaded a
+little by their own paint, satin, with no glow or metal on them. Each toothed fish also
+gets a **Natural** skin (its own texture, white teeth, the Angler's lure glowing), which
+`Cosmetics` wears when the fish has no shade (or a shade not imported yet, tinted).
+The Nibbler and Puffer have no teeth. After adding a fish with teeth, mark it in
+teeth.json and check the mask (`eyes_debug.png` in its skins folder shows the teeth in orange) and a
+close render (`tools/marketing/render_fish.py`).
 
 In Studio: File → Import 3D, one `assets/shades/glb/<Fish>_Shades.glb` at a time
 (wait a few minutes between them for moderation), then run
