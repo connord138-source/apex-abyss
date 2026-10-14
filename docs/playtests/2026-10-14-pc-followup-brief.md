@@ -23,7 +23,7 @@ Never upload an image that a screen didn't clear, and never re-import the Nibble
 
 ## 3. Deep Pass id
 
-Game Settings → Monetization → Developer Products: copy the **Deep Pass** product's id into `src/shared/Config/Monetization.luau` (the `key = "DeepPass"` entry's `id`, now 0) and commit ("Deep Pass product id").
+The id is **3718493448** (from Connor), already in `src/shared/Config/Monetization.luau` (the `key = "DeepPass"` entry) on `claude/world`. Check it matches the **Deep Pass** row in Game Settings → Monetization → Developer Products. If it doesn't, put in the one Studio shows and commit ("Deep Pass product id").
 
 - Check: open the PASS panel. The Deep Pass row is live, not greyed out.
 - A Studio test purchase unlocks the paid row.

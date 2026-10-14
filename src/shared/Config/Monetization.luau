@@ -121,7 +121,7 @@ local products: { Product } = {
 		-- The Tide Pass's paid row for this season (Config/Pass; PassService grants
 		-- it). Bought from the PASS panel, not the Shop.
 		key = "DeepPass",
-		id = 0,
+		id = 3718493448,
 		name = "Deep Pass",
 		price = 399,
 		description = "This season's paid row of the Tide Pass: three exclusive skins, a title, three den pieces and far more coral, shells and spins, plus 20% more pass XP.",

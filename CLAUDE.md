@@ -453,7 +453,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     PASS button, `data.pass`): 4-week seasons on `Tides.week` from 2026-10-12, 30
     tiers × 2,000 XP; XP from `Events.banked/caught/bounty/bossKill/treasure/passXp`
     (new signals `bounty`, `bossKill`, `passXp`); free row + the **Deep Pass**
-    developer product (399 R$, id 0 until created, `shop = false`, bought from the
+    developer product (399 R$, id 3718493448, `shop = false`, bought from the
     panel; `data.pass.paid`, per season, ×1.2 XP); CLAIM ALL claims everything
     unlocked; Overtide 500 coral per 2,000 XP past tier 30; a season turning claims
     what was unlocked and resets. Season 1 "Riptide" skins: PassTideglass (Rare,
@@ -1431,8 +1431,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   2026-10-06, and 2,350 were left after the biome and boss concepts. The budget plan is in GDD
   §8.
 - **Not built yet:**
-  - Pearl crates, the Roblox group perk (id 0), pass and product icons;
-    the Deep Pass product id (create it in Creator Hub, 399 R$)
+  - Pearl crates, the Roblox group perk (id 0), pass and product icons
   - a `WorldProps.WhaleFall` model (the carcass is part-built); enforcing the speed
     checks (log-only until playtests clear them)
   - models for the growth stages and the other biomes; Tripo models for the
