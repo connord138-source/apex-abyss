@@ -53,6 +53,10 @@ local REQUESTS: { [string]: number } = {
 	Collect = 0.03, -- (shell spot index)
 	EatForage = 0.05, -- ({ number }) forage spot indexes, batched by the client
 	EatChum = 0.05, -- ({ { cloudId, chunkIndex } }) chum chunks, batched by the client
+	PodInvite = 1, -- (userId) ask another player into your pod
+	PodAccept = 0.5, -- () join the pod you were invited to
+	PodDecline = 0.5, -- () turn the invite down
+	PodLeave = 0.5, -- () leave your pod
 	Roll = 0.4, -- ()
 	Buy = 0.2, -- (kind: "upgrade" | "charm" | "dye" | "shells", id: string)
 	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)

@@ -33,6 +33,13 @@ local function lengthOf(character: Model): number
 	return if typeof(length) == "number" then length else 2
 end
 
+-- Whether another player is in our pod (PodService's `Pod` attribute): podmates
+-- can't eat or bite each other
+function HuntController.podmate(player: Player): boolean
+	local mine = Players.LocalPlayer:GetAttribute("Pod")
+	return typeof(mine) == "number" and mine ~= 0 and player:GetAttribute("Pod") == mine
+end
+
 -- Whether a fish can't be eaten or bitten right now (in the hub or protected).
 function HuntController.isSafe(character: Model): boolean
 	if character:GetAttribute("InHub") == true then
@@ -58,7 +65,7 @@ local function nearby(range: number): { { player: Player, character: Model, root
 		end
 		local character = player.Character
 		local otherRoot = character and character:FindFirstChild("HumanoidRootPart")
-		if character and otherRoot and otherRoot:IsA("BasePart") then
+		if character and otherRoot and otherRoot:IsA("BasePart") and not HuntController.podmate(player) then
 			local gap = (otherRoot.Position - mouth).Magnitude
 				- Size.reach(length)
 				- lengthOf(character) * 0.4

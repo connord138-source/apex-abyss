@@ -325,6 +325,8 @@ local function build()
 	header("WORLD EVENTS")
 	actionRow("Whale Fall now (a random biome, on the map)", "whaleNow", "START", "secondary")
 	amountRow("Chum in front of the target (kg)", "kg, e.g. 20", "chumHere", 1, "BURST")
+	actionRow("Apex: crown the target now", "apexCrown", "CROWN", "secondary")
+	amountRow("Apex: add to the bounty (coral)", "coral, e.g. 1000", "apexBounty", 0, "ADD")
 
 	header("MONETIZATION (NO ROBUX)")
 	local passes: { { label: string, value: any } } = {}

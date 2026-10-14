@@ -147,6 +147,14 @@ local upgrades: { Upgrade } = {
 		costs = { 300, 900, 2200, 5000, 11000 },
 	},
 	{
+		id = "Hide",
+		vendor = "Outfitter",
+		name = "Pressure Hide",
+		blurb = "Dive as if 4 levels higher per level (depth pressure)",
+		per = 4,
+		costs = { 400, 1200, 3000, 7000, 15000 },
+	},
+	{
 		id = "Chamber",
 		vendor = "Mason",
 		name = "Haul Chamber",

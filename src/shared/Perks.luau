@@ -35,6 +35,11 @@ function Perks.bite(upgrades: { [string]: number }?): number
 	return 1 + per("Jaw") * Perks.level(upgrades, "Jaw")
 end
 
+-- Extra levels against depth pressure (Pressure Hide).
+function Perks.depth(upgrades: { [string]: number }?): number
+	return per("Hide") * Perks.level(upgrades, "Hide")
+end
+
 -- Banked share of a Haul (Haul Chamber).
 function Perks.bank(upgrades: { [string]: number }?): number
 	return 1 + per("Chamber") * Perks.level(upgrades, "Chamber")

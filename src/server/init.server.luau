@@ -11,6 +11,9 @@ local EconomyService = require(Services.EconomyService)
 local ShellService = require(Services.ShellService)
 local ForageService = require(Services.ForageService)
 local ChumService = require(Services.ChumService)
+local PodService = require(Services.PodService)
+local ApexService = require(Services.ApexService)
+local PressureService = require(Services.PressureService)
 local RollService = require(Services.RollService)
 local WardrobeService = require(Services.WardrobeService)
 local ShopService = require(Services.ShopService)
@@ -44,6 +47,9 @@ EconomyService.start() -- coral and shells on the HUD
 ShellService.start() -- shell spots (after the world exists)
 ForageService.start() -- starfish and shrimp on the seabed
 ChumService.start() -- chum clouds from eaten fish, Blood Tide slicks, the Whale Fall
+PodService.start() -- pods of up to 3: invites, no friendly fire, shared kills
+ApexService.start() -- the Apex bounty on the biggest fish in the server
+PressureService.start() -- depth pressure: too deep for your level hurts
 RollService.start() -- 50 shells = a roll
 WardrobeService.start() -- spawned: dress the fish
 ShopService.start() -- the plaza's vendors

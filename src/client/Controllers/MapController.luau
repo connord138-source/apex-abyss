@@ -46,6 +46,8 @@ local TREASURE = Color3.fromRGB(255, 120, 90)
 local BOSS = Color3.fromRGB(255, 70, 70)
 local OTHER = Color3.fromRGB(226, 240, 248)
 local WHALE = Color3.fromRGB(150, 214, 230)
+local APEX = Color3.fromRGB(255, 204, 92)
+local PODMATE = Color3.fromRGB(110, 236, 220)
 
 -- The treasure site being followed, if any (the Satchel's FOLLOW)
 local function treasureSite(): Vector3?
@@ -102,7 +104,15 @@ local function placeMarks(map: MapDraw.Map)
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		if root and root:IsA("BasePart") then
 			local id = `P{player.UserId}`
-			MapDraw.mark(map, id, root.Position, OTHER, "•", 16)
+			local myPod = me:GetAttribute("Pod")
+			if workspace:GetAttribute("ApexUserId") == player.UserId then
+				-- The Apex shows to everyone, wherever it is (Config/Pvp `apex`)
+				MapDraw.mark(map, id, root.Position, APEX, "★", 18)
+			elseif typeof(myPod) == "number" and myPod ~= 0 and player:GetAttribute("Pod") == myPod then
+				MapDraw.mark(map, id, root.Position, PODMATE, "•", 20)
+			else
+				MapDraw.mark(map, id, root.Position, OTHER, "•", 16)
+			end
 			keep[id] = true
 		end
 	end
@@ -185,8 +195,10 @@ local function openFull()
 	legendRow(side, 158, "X", TREASURE, "The treasure map you're following")
 	legendRow(side, 182, "●", BOSS, "A world boss, while one is up")
 	legendRow(side, 206, "W", WHALE, "A Whale Fall: food for everyone")
-	legendRow(side, 230, "•", OTHER, "Other fish in this server")
-	Ui.heading(side, "SeaHeading", "The sea", 266)
+	legendRow(side, 230, "★", APEX, "The Apex: eat it for its bounty")
+	legendRow(side, 254, "•", PODMATE, "Your podmates")
+	legendRow(side, 278, "•", OTHER, "Other fish in this server")
+	Ui.heading(side, "SeaHeading", "The sea", 312)
 	local notes = Ui.label(
 		side,
 		"Notes",
@@ -195,7 +207,7 @@ local function openFull()
 		13,
 		Ui.color.muted,
 		UDim2.new(1, 0, 0, 150),
-		UDim2.fromOffset(0, 290)
+		UDim2.fromOffset(0, 336)
 	)
 	notes.TextWrapped = true
 	notes.TextYAlignment = Enum.TextYAlignment.Top

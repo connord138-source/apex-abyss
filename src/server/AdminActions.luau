@@ -18,6 +18,7 @@ local AchievementService = require(script.Parent.Services.AchievementService)
 local BossService = require(script.Parent.Services.BossService)
 local BountyService = require(script.Parent.Services.BountyService)
 local CatchService = require(script.Parent.Services.CatchService)
+local ApexService = require(script.Parent.Services.ApexService)
 local ChumService = require(script.Parent.Services.ChumService)
 local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local DataService = require(script.Parent.Services.DataService)
@@ -343,6 +344,24 @@ local function chumHere(_admin: Player, targets: { Player }, amount: any): strin
 		end
 	end
 	return `{kg} kg of chum in front of {count} player(s)`
+end
+
+-- The Apex bounty: crown the first target now (the server takes it back if a
+-- clearly bigger fish is swimming), or add coral to the bounty
+local function apexCrown(_admin: Player, targets: { Player }): string
+	if #targets == 0 then
+		return "No target"
+	end
+	local target = targets[1]
+	ApexService.crown(target)
+	return `{target.DisplayName} is the Apex`
+end
+
+local function apexBounty(_admin: Player, _targets: { Player }, amount: any): string
+	local n = amountOf(amount, 0) or 1000
+	ApexService.addBounty(n)
+	local apex, bounty = ApexService.current()
+	return if apex then `{apex.DisplayName}'s bounty is {math.floor(bounty)} coral` else "No Apex right now"
 end
 
 -- Monetization testing (no Robux): grant or take a pass, run a product's effect,
@@ -679,6 +698,8 @@ AdminActions.byName = {
 	goTo = goTo :: Handler,
 	summonBoss = summonBoss :: Handler,
 	whaleNow = whaleNow :: Handler,
+	apexCrown = apexCrown :: Handler,
+	apexBounty = apexBounty :: Handler,
 	chumHere = chumHere :: Handler,
 	hurtBoss = hurtBoss :: Handler,
 	endBoss = endBoss :: Handler,

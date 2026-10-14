@@ -13,6 +13,8 @@
 --   BITE      a fish your size, a predator or a boss is at your mouth
 --   DANGER    a fish big enough to swallow you is close
 --   TOO BIG   a prey fish too big to swallow is at your mouth
+--   SCHOOL    a fish big enough to swallow you is close, and so is another small
+--             fish: bitten together, their masses add up (Config/Pvp `school`)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -30,7 +32,7 @@ local SwimController = require(script.Parent.SwimController)
 
 local HintController = {}
 
-type Kind = "eat" | "bite" | "danger" | "tooBig"
+type Kind = "eat" | "bite" | "danger" | "tooBig" | "school"
 type Rule = { tag: string, color: Color3, cooldown: number, cap: number }
 
 local RULES: { [Kind]: Rule } = {
@@ -38,6 +40,7 @@ local RULES: { [Kind]: Rule } = {
 	bite = { tag = "BITE", color = Ui.color.danger, cooldown = 30, cap = 5 },
 	danger = { tag = "DANGER", color = Ui.color.danger, cooldown = 35, cap = 3 },
 	tooBig = { tag = "TOO BIG", color = Ui.color.haul, cooldown = 30, cap = 3 },
+	school = { tag = "SCHOOL", color = Color3.fromRGB(110, 236, 220), cooldown = 40, cap = 3 },
 }
 local HOLD = 4.5 -- seconds a hint stays up
 
@@ -60,6 +63,8 @@ local function textFor(kind: Kind): string
 		return `Press {biteKey()} to bite fish your size, predators and bosses. Bites wear them down.`
 	elseif kind == "danger" then
 		return "That fish is big enough to swallow you. Dash away or hide!"
+	elseif kind == "school" then
+		return `Bite it together! Fish biting the same target within 2 s add up their mass. {biteKey()} to bite.`
 	end
 	return "Too big to swallow yet. Eat smaller fish and grow first."
 end
@@ -190,16 +195,38 @@ local function check()
 	local length = SwimController.length()
 	local mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
 	local reach = Size.reach(length)
-	-- Other players: one your size is a bite, a much bigger one is a danger
+	-- Other players: one your size is a bite, a much bigger one is a danger (or, with
+	-- another small fish close by, a school's target)
+	local friends = 0
 	for _, player in Players:GetPlayers() do
 		local other = player.Character
 		local otherRoot = other and other:FindFirstChild("HumanoidRootPart")
-		if player ~= Players.LocalPlayer and other and otherRoot and otherRoot:IsA("BasePart") then
+		if
+			player ~= Players.LocalPlayer
+			and other
+			and otherRoot
+			and otherRoot:IsA("BasePart")
+			and not Size.canSwallow(lengthOf(other), length)
+			and (otherRoot.Position - root.Position).Magnitude < 40
+		then
+			friends += 1
+		end
+	end
+	for _, player in Players:GetPlayers() do
+		local other = player.Character
+		local otherRoot = other and other:FindFirstChild("HumanoidRootPart")
+		if
+			player ~= Players.LocalPlayer
+			and other
+			and otherRoot
+			and otherRoot:IsA("BasePart")
+			and not HuntController.podmate(player)
+		then
 			local otherLength = lengthOf(other)
 			local gap = (otherRoot.Position - mouth).Magnitude - reach - otherLength * 0.4
 			if not HuntController.isSafe(other) then
 				if Size.canSwallow(otherLength, length) and gap < length * 3 then
-					show("danger")
+					show(if friends > 0 then "school" else "danger")
 					return
 				elseif not Size.canSwallow(length, otherLength) and gap < length * 1.2 then
 					show("bite")

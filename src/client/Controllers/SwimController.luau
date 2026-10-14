@@ -28,6 +28,7 @@ local World = Config.World
 local SwimController = {
 	velocity = Vector3.zero,
 	boosting = false, -- mid-Dash
+	slipstream = false, -- in a podmate's slipstream (faster)
 	dashCharge = 1, -- 0..1; the Dash is ready at 1
 	-- () — a bite lunge started (the animator snaps the jaw)
 	lunged = Signal.new(),
@@ -196,6 +197,40 @@ local function onCharacter(newCharacter: Model)
 	SwimController.spawned:fire(newCharacter)
 end
 
+-- Whether we're in a podmate's slipstream: one ahead of us within range, inside the
+-- cone of our heading, and swimming our way
+local function slipstreamOf(me: BasePart): boolean
+	local pod = Players.LocalPlayer:GetAttribute("Pod")
+	if typeof(pod) ~= "number" or pod == 0 then
+		return false
+	end
+	local tune = Config.Pvp.pods.slipstream
+	local velocity = me.AssemblyLinearVelocity
+	if velocity.Magnitude < 2 then
+		return false
+	end
+	local heading = velocity.Unit
+	for _, player in Players:GetPlayers() do
+		if player == Players.LocalPlayer or player:GetAttribute("Pod") ~= pod then
+			continue
+		end
+		local other = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if other and other:IsA("BasePart") then
+			local offset = other.Position - me.Position
+			local distance = offset.Magnitude
+			if
+				distance > 0.5
+				and distance <= tune.range
+				and offset.Unit:Dot(heading) >= tune.cone
+				and other.AssemblyLinearVelocity:Dot(heading) > 0
+			then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function step(dt: number)
 	clock += dt
 	local currentRoot = root
@@ -210,6 +245,12 @@ local function step(dt: number)
 	local healing = if character then character:GetAttribute("Healing") else nil
 	if typeof(healing) == "number" and healing > Timing.clock() then
 		top *= Config.Tuning.heal.wrapSlow
+	end
+	-- A podmate's slipstream: close behind one swimming the same way is faster
+	-- (Config/Pvp `pods.slipstream`)
+	SwimController.slipstream = slipstreamOf(currentRoot)
+	if SwimController.slipstream then
+		top *= Config.Pvp.pods.slipstream.speed
 	end
 	local camera = workspace.CurrentCamera.CFrame
 

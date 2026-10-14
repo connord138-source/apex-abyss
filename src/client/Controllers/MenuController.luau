@@ -19,6 +19,7 @@ local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Reward = require(ReplicatedStorage.Shared.Reward)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local Tides = require(ReplicatedStorage.Shared.Tides)
+local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
@@ -1547,6 +1548,26 @@ function MenuController.openStore()
 								end)
 							end
 						end
+						-- Pods: here too, so a controller can reach them (POD is a HUD button)
+						local pod = if typeof(s.pod) == "table" then s.pod else nil
+						local podCount = if pod and typeof(pod.members) == "table" then #pod.members else 0
+						local _, podButton = row(
+							list,
+							next(),
+							"Pod",
+							"Pod",
+							"Team up with up to 2 friends: no eating each other, slipstream, shared kills",
+							if pod and pod.invite
+								then "Invite waiting!"
+								elseif podCount > 0 then `{podCount} in your pod`
+								else nil,
+							"OPEN",
+							if pod and pod.invite then "gold" else "secondary",
+							Ui.color.safe
+						)
+						if podButton then
+							podButton.Activated:Connect(MenuController.openPod)
+						end
 						-- Free perks
 						heading(list, next(), "FREE PERKS")
 						local premium = s.premium == true
@@ -1591,6 +1612,138 @@ function MenuController.openStore()
 								nil,
 								Ui.color.safe
 							)
+						end
+					end)
+				end,
+			}
+		end
+	)
+end
+
+-- Pods (Config/Pvp `pods`, PodService): who's in yours, an invite waiting, and
+-- everyone else in the server to invite. Podmates can't eat each other, swim faster
+-- in each other's slipstream and share the Haul from player kills.
+function MenuController.openPod()
+	local tune = Config.Pvp.pods
+	open(
+		"Pod",
+		`Swim with up to {tune.size - 1} friends · no eating each other · slipstream · shared kills`,
+		Vector2.new(640, 500),
+		function(window)
+			local list = Ui.list(window.content, 6)
+			return {
+				window = window,
+				ticking = true,
+				render = function()
+					local s = state()
+					local pod = if typeof(s.pod) == "table" then s.pod else { id = 0, members = {} }
+					local members = if typeof(pod.members) == "table" then pod.members else {}
+					local inPod: { [number]: boolean } = {}
+					for _, member in members do
+						inPod[member.id] = true
+					end
+					local order = 0
+					local function next(): number
+						order += 1
+						return order
+					end
+					rerender(list, function()
+						local offer = pod.invite
+						if typeof(offer) == "table" then
+							local left = math.max(0, math.floor((offer.expires or 0) - Timing.clock()))
+							heading(list, next(), "INVITE")
+							local _, yes = row(
+								list,
+								next(),
+								"Accept",
+								`{offer.from} wants you in their pod`,
+								`Runs out in {left} s`,
+								nil,
+								"JOIN",
+								"gold",
+								Ui.color.safe
+							)
+							if yes then
+								yes.Activated:Connect(function()
+									ClientState.request("PodAccept")
+								end)
+							end
+							local _, no =
+								row(list, next(), "Decline", "Not now", "", nil, "DECLINE", "secondary")
+							if no then
+								no.Activated:Connect(function()
+									ClientState.request("PodDecline")
+								end)
+							end
+						end
+						heading(
+							list,
+							next(),
+							if #members > 0 then `YOUR POD ({#members}/{tune.size})` else "YOUR POD"
+						)
+						if #members == 0 then
+							row(
+								list,
+								next(),
+								"Alone",
+								"You're swimming alone",
+								"Invite someone below",
+								nil,
+								nil,
+								nil
+							)
+						end
+						for _, member in members do
+							local me = member.id == Players.LocalPlayer.UserId
+							row(
+								list,
+								next(),
+								`Member{member.id}`,
+								if me then `{member.name} (you)` else member.name,
+								if me then "" else "Podmate: no eating each other",
+								nil,
+								nil,
+								nil,
+								Ui.color.safe
+							)
+						end
+						if #members > 0 then
+							local _, leave =
+								row(list, next(), "Leave", "Leave the pod", "", nil, "LEAVE", "danger")
+							if leave then
+								leave.Activated:Connect(function()
+									ClientState.request("PodLeave")
+								end)
+							end
+						end
+						heading(list, next(), "IN THIS SERVER")
+						local full = #members >= tune.size
+						local any = false
+						for _, player in Players:GetPlayers() do
+							if player == Players.LocalPlayer or inPod[player.UserId] then
+								continue
+							end
+							any = true
+							local theirs = player:GetAttribute("Pod")
+							local busy = typeof(theirs) == "number" and theirs ~= 0
+							local _, ask = row(
+								list,
+								next(),
+								`Player{player.UserId}`,
+								player.DisplayName,
+								if busy then "In another pod" else "",
+								nil,
+								if busy or full then "—" else "INVITE",
+								if busy or full then "disabled" else "primary"
+							)
+							if ask and not busy and not full then
+								ask.Activated:Connect(function()
+									ClientState.request("PodInvite", player.UserId)
+								end)
+							end
+						end
+						if not any then
+							row(list, next(), "Nobody", "Nobody else is here yet", "", nil, nil, nil)
 						end
 					end)
 				end,

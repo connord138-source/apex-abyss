@@ -322,12 +322,29 @@ local function onEatPrey(player: Player, batch: any)
 	end
 end
 
+-- Whether two players share a pod (PodService sets the `Pod` attribute; read here
+-- so this service needn't require that one)
+local function podmates(a: Player, b: Player): boolean
+	local pod = a:GetAttribute("Pod")
+	return typeof(pod) == "number" and pod ~= 0 and pod == b:GetAttribute("Pod")
+end
+
+-- A fish's live mass (banked plus Haul, capped), for schooling
+local function liveMassOf(player: Player): number
+	local data = DataService.get(player)
+	local session = sessions[player]
+	if data == nil or session == nil then
+		return 0
+	end
+	return Size.liveMass(Progress.mass(data), session.haul)
+end
+
 local function targetOf(player: Player, userId: any): (Player?, Session?, BasePart?)
 	if not finite(userId) then
 		return nil, nil, nil
 	end
 	local target = Players:GetPlayerByUserId(userId)
-	if target == nil or target == player then
+	if target == nil or target == player or podmates(player, target) then
 		return nil, nil, nil
 	end
 	local session = sessions[target]
@@ -369,9 +386,10 @@ local function onEatPlayer(player: Player, userId: any)
 	eatPlayer(target, player)
 end
 
--- A bite on a fish too big to swallow. Small fish do little alone, but every
--- other fish that bit the same target in the last few seconds adds to the damage
--- (schooling).
+-- A bite on a fish too big to swallow. Small fish do little alone, but a school
+-- bites together (Config/Pvp `school`): everyone who bit the same target in the last
+-- few seconds, close to the biter, bites with their combined mass, so a school of
+-- small fish can bring down one far bigger than any of them.
 local function onBite(player: Player, userId: any)
 	local session = sessions[player]
 	local _, root = FishService.character(player)
@@ -403,21 +421,37 @@ local function onBite(player: Player, userId: any)
 		return
 	end
 	session.lastBiteAt = now
+	local schooling = Config.Pvp.school
 	local school = 0
+	local mass = liveMassOf(player)
 	for otherId, at in targetSession.bitBy do
-		if otherId ~= player.UserId and now - at < 2.5 then
+		if otherId == player.UserId or now - at >= schooling.window then
+			continue
+		end
+		local other = Players:GetPlayerByUserId(otherId)
+		local otherRoot: BasePart? = nil
+		if other then
+			_, otherRoot = FishService.character(other)
+		end
+		if other and otherRoot and (otherRoot.Position - root.Position).Magnitude <= schooling.range then
 			school += 1
+			mass += liveMassOf(other)
 		end
 	end
 	targetSession.bitBy[player.UserId] = now
-	local ratio = math.clamp(Size.ratio(length, targetLength) ^ 2, 0.04, 1.5)
+	-- The school's combined mass against the target's (raw lengths: Size.ratio)
+	local targetMass = math.max(liveMassOf(target), 1e-3)
+	local ratio = math.clamp((mass / targetMass) ^ (2 / 3), 0.04, 1.5)
 	local attackerData = DataService.get(player)
 	local jaw = Perks.bite(if attackerData then attackerData.upgrades else nil)
 	local species = if attackerData then Progress.species(attackerData).stats.bite else 1
-	local damage = hunt.biteDamage * ratio * (1 + 0.35 * school) * jaw * species
+	local damage = hunt.biteDamage * ratio * (1 + schooling.bonus * school) * jaw * species
 	targetSession.health -= damage
 	targetSession.lastHitAt = now
 	Net.hit(player, target, damage)
+	if school > 0 then
+		Net.notify(player, `SCHOOL BITE ×{school + 1}`, "good")
+	end
 	local character = FishService.character(target)
 	if character then
 		character:SetAttribute("Health", math.max(targetSession.health, 0))

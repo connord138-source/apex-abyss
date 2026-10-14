@@ -57,6 +57,7 @@ export type PlayerData = {
 		coralEarned: number,
 		bossKills: number, -- world boss kills helped with
 		bestLevel: number?, -- the best level any fish has reached (achievements)
+		apexKills: number?, -- Apex bounties claimed (ApexService)
 		bestPrey: string, -- the biggest fish ever eaten (Config/Prey id) and its mass
 		bestPreyMass: number,
 	},

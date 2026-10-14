@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Ui = require(script.Parent.Parent.Ui)
 local HuntController = require(script.Parent.HuntController)
@@ -71,7 +72,11 @@ local function step()
 		local theirs = if typeof(length) == "number" then length else 2
 		tag.gui.StudsOffsetWorldSpace = Vector3.new(0, theirs * 0.45 + 1.5, 0)
 		local color, status
-		if HuntController.isSafe(character) then
+		local apexId = workspace:GetAttribute("ApexUserId")
+		local apex = apexId == player.UserId
+		if HuntController.podmate(player) then
+			color, status = Color3.fromRGB(110, 236, 220), "PODMATE"
+		elseif HuntController.isSafe(character) then
 			color, status = Ui.color.accent, "SAFE"
 		elseif Size.canSwallow(theirs, myLength) then
 			color, status = Ui.color.danger, "DANGER"
@@ -96,6 +101,14 @@ local function step()
 			then `{status} · {string.upper(title)}`
 			else status
 		tag.status.TextColor3 = color
+		-- The Apex: a crown line everyone can read from far off (Config/Pvp `apex`)
+		if apex then
+			local bounty = workspace:GetAttribute("ApexBounty")
+			tag.status.Text =
+				`★ APEX · {Format.number(if typeof(bounty) == "number" then bounty else 0)} BOUNTY · {status}`
+			tag.status.TextColor3 = Color3.fromRGB(255, 204, 92)
+		end
+		tag.gui.MaxDistance = if apex then 900 else 220
 	end
 end
 

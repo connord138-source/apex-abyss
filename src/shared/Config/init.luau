@@ -34,4 +34,5 @@ return {
 	Achievements = require(script.Achievements),
 	Codes = require(script.Codes),
 	Chum = require(script.Chum),
+	Pvp = require(script.Pvp),
 }
