@@ -441,7 +441,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     free 20), PassRiptide (Epic, paid 1), PassUndertow (Epic, paid 15),
     PassAbyssalCurrent (Epic, paid 30), `pass = 1` in `Config/Shades` (never
     rolled; recipes `pass_*` in make_shades.py; the universal list in lines.json).
-    Pass rewards stay ≤ Epic.
+    Pass rewards stay ≤ Epic. **The Deep Pass icon** (`marketing/deep_pass_512.png`,
+    `_alt` the shark alone; owner, 2026-10-14, of generated key art: "nothing to do
+    with deep pass and ... clearly AI") is built from the game itself: real renders
+    of the models in the three Season 1 skins (`tools/marketing/render_fish.py`) on
+    a card drawn in the UI palette and fonts (`tools/marketing/pass_icon.py`);
+    screened 0.16 / 0.05. Make product and pass art this way, not with image models.
   - **Shared reward bundles:** `Config/Rewards.luau` holds the `Reward` type (coral,
     shells, wraps, charms, map, spins, skin, title, den, xp); `Shared/Reward.lines`
     describes one for a tile; `RewardsService.grant(player, data, reward, bonus)`

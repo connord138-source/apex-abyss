@@ -635,6 +635,24 @@
   "task_id": "02d4f3ee-392f-454e-b6a1-3986320d37ff",
   "type": "generate_image"
  },
+ "marketing/DeepPassA": {
+  "credits": 10,
+  "files": [
+   "DeepPassA.png"
+  ],
+  "status": "success",
+  "task_id": "998873f3-cae0-4170-9e39-fecf3651820e",
+  "type": "generate_image"
+ },
+ "marketing/DeepPassB": {
+  "credits": 10,
+  "files": [
+   "DeepPassB.png"
+  ],
+  "status": "success",
+  "task_id": "62ad3e66-344f-4cbf-bc20-cde63c7ba10f",
+  "type": "generate_image"
+ },
  "marketing/Grow": {
   "credits": 10,
   "files": [
