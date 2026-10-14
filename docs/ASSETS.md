@@ -130,7 +130,9 @@ python3.11 tools/shades/bake_mouth.py -- assets/tripo/species/ReefShark.glb asse
 ```
 
 and the teeth are the light bits inside the mouth's dark slot (lavender texels many
-views land on). Every skin then paints the teeth `BONE` (0.93, 0.92, 0.88), shaded a
+views land on). Every skin then paints the teeth `BONE` (0.92, 0.92, 0.91; neutral on
+purpose: a warmer bone white reads as pale cream to `screen_shades.py` and got two Reef
+Shark skins flagged), shaded a
 little by their own paint, satin, with no glow or metal on them. Each toothed fish also
 gets a **Natural** skin (its own texture, white teeth, the Angler's lure glowing), which
 `Cosmetics` wears when the fish has no shade (or a shade not imported yet, tinted).

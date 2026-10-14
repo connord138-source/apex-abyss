@@ -553,7 +553,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     skin's colour, and the Reef Shark's tiny teeth too. `tools/shades/teeth.json`
     marks each toothed fish's mouth (boxes on the head views and a colour rule; the
     shark's `slot` rule reads `bake_mouth.py` close-ups), and every skin paints those
-    texels `BONE` (0.93, 0.92, 0.88), satin, no glow or metal. Each toothed fish
+    texels `BONE` (0.92, 0.92, 0.91), satin, no glow or metal (a warmer bone,
+    0.93/0.92/0.88, counts as pale cream on the screen, Cr − Cb ≥ 3, and two shark
+    skins were flagged for it: keep teeth neutral white). Each toothed fish
     (Angler, Cuda, MorayEel, ReefShark) also packs a **Natural** skin, its own
     texture with white teeth, that `Cosmetics.paintMesh` wears with no shade (and,
     tinted, under a shade not imported yet); `CardPhoto.preloadSkin` fetches it for

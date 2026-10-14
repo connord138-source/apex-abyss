@@ -61,8 +61,9 @@ SIZE = 1024
 # them another way (the 'Cuda's are
 # painted yellow, the eel's is the ridge along its back)
 # Teeth are this, shaded like their own paint (Fish._tooth_colour): a neutral bone
-# white, a touch warm but never beige (the skin screen)
-BONE = (0.93, 0.92, 0.88)
+# white. Any warmer and screen_shades.py counts it as pale cream (Cr - Cb >= 3): the
+# first try, (0.93, 0.92, 0.88), added 1% cream to two Reef Shark skins and was flagged
+BONE = (0.92, 0.92, 0.91)
 
 FISH = {
     "Nibbler": {"teeth": False, "keep_vivid": False, "blade": 0.045, "blade_top": 0.035},
@@ -266,7 +267,7 @@ class Fish:
         good = np.flatnonzero((counts >= 3) & (counts >= sizes * 0.02) & (sizes < 60000)) + 1
         teeth = np.isin(labels, good)
         teeth = ndimage.binary_closing(teeth, iterations=1) & self.cov
-        return np.clip(ndimage.gaussian_filter(teeth.astype(np.float32), 0.7) * 1.4, 0, 1)
+        return np.clip(ndimage.gaussian_filter(teeth.astype(np.float32), 0.6) * 1.8, 0, 1)
 
     def _slot_teeth(self, spec):
         """Teeth too small for the head views (the Reef Shark's, a pixel or two
@@ -302,7 +303,7 @@ class Fish:
             sizes = ndimage.sum(teeth, labels, range(1, n + 1))
             teeth = np.isin(labels, np.flatnonzero(sizes >= 150) + 1)
         teeth = ndimage.binary_closing(teeth, iterations=1) & self.cov
-        return np.clip(ndimage.gaussian_filter(teeth.astype(np.float32), 0.7) * 1.4, 0, 1)
+        return np.clip(ndimage.gaussian_filter(teeth.astype(np.float32), 0.6) * 1.8, 0, 1)
 
     def _tooth_colour(self):
         """Bone white, shaded like the teeth's own paint (darker at the roots)."""
