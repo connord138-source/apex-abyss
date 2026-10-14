@@ -28,6 +28,7 @@ local ApexService = {}
 
 local apex: Player? = nil
 local bounty = 0
+local forced = false -- crowned from the admin panel: kept even alone in the server
 local lastTick = 0
 
 local function publish()
@@ -52,6 +53,7 @@ local function crown(player: Player?)
 	if player == apex then
 		return
 	end
+	forced = false
 	apex = player
 	bounty = tune.base
 	publish()
@@ -67,6 +69,7 @@ end
 -- Admin: crown a player now (nil: nobody)
 function ApexService.crown(player: Player?)
 	crown(player)
+	forced = player ~= nil
 end
 
 -- Admin: add to the bounty
@@ -133,7 +136,7 @@ function ApexService.start()
 			end
 		end
 		if #Players:GetPlayers() < tune.minPlayers then
-			if current then
+			if current and not forced then
 				crown(nil)
 			end
 			return

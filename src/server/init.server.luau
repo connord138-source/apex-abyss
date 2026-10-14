@@ -15,6 +15,7 @@ local PodService = require(Services.PodService)
 local ApexService = require(Services.ApexService)
 local PressureService = require(Services.PressureService)
 local HookService = require(Services.HookService)
+local SpeedService = require(Services.SpeedService)
 local RollService = require(Services.RollService)
 local WardrobeService = require(Services.WardrobeService)
 local ShopService = require(Services.ShopService)
@@ -52,6 +53,7 @@ PodService.start() -- pods of up to 3: invites, no friendly fire, shared kills
 ApexService.start() -- the Apex bounty on the biggest fish in the server
 PressureService.start() -- depth pressure: too deep for your level hurts
 HookService.start() -- fishing boats drop baited hooks; hooked fish are reeled up
+SpeedService.start() -- lenient speed checks, logged to the Output (nothing enforced yet)
 RollService.start() -- 50 shells = a roll
 WardrobeService.start() -- spawned: dress the fish
 ShopService.start() -- the plaza's vendors

@@ -153,6 +153,7 @@ end
 -- Moves a player's fish on the server and on their own client. The client owns
 -- its fish's physics, so a server-only move can be undone by its next frame.
 function Net.teleport(player: Player, cframe: CFrame)
+	player:SetAttribute("MovedAt", os.clock()) -- (SpeedService: not the player's own swimming)
 	local character = player.Character
 	if character then
 		character:PivotTo(cframe)
@@ -246,6 +247,7 @@ end
 -- Pushes a player's fish (a tail sweep, a shockwave): the client owns its physics,
 -- so it adds the velocity itself.
 function Net.shove(player: Player, velocity: Vector3)
+	player:SetAttribute("MovedAt", os.clock())
 	shove:FireClient(player, velocity)
 end
 
