@@ -190,6 +190,13 @@ local function check()
 		leftHubAt = nil
 		return
 	end
+	-- Hooked, grabbed or under pressure: those panels take the hint's place over
+	-- the HAUL card (on a phone they overlapped it: PC playtest 2026-10-14, X2)
+	local pressure = character:GetAttribute("Pressure")
+	if SwimController.isHeld() or (typeof(pressure) == "number" and pressure > 0) then
+		hide()
+		return
+	end
 	local now = os.clock()
 	leftHubAt = leftHubAt or now
 	local length = SwimController.length()
