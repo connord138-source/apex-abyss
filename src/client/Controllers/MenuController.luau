@@ -1337,12 +1337,15 @@ function MenuController.openSatchel()
 							nil,
 							tier.color
 						)
-						frame.Size = UDim2.new(1, -8, 0, 56)
+						-- Two lines: the Weathered and Captain's odds ran past one and were
+						-- cut at "..." (PC playtest 2026-10-14, D3b)
+						frame.Size = UDim2.new(1, -8, 0, 74)
 						frame.BackgroundTransparency = 0.6
 						local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
 						if blurb then
-							blurb.Size = UDim2.new(1, -40, 0, 18)
-							blurb.TextTruncate = Enum.TextTruncate.AtEnd
+							blurb.Size = UDim2.new(1, -40, 0, 36)
+							blurb.TextWrapped = true
+							blurb.TextYAlignment = Enum.TextYAlignment.Top
 						end
 					end
 				end)
