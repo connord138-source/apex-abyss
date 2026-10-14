@@ -5,6 +5,7 @@
 --
 --   sheen*: tiling layers that slide across the top skins (tools/shades/
 --           make_sheens.py; Shared/Cosmetics `sheen`)
+--   mapChart: the real seafloor from above, behind the maps (MapDraw)
 --   rug*:   top-down rug art, a Decal on each rug (Shared/DenItems)
 --   stars:  the Hatch & Snatch galaxy starfield, already on the owner's account
 --           (an Image works in every experience its uploader owns)
@@ -14,6 +15,9 @@ return {
 	sheenGold = 70886974600925, -- assets/textures/sheen_gold.png
 	sheenVeil = 91311902351808, -- assets/textures/sheen_veil.png
 	stars = 129645056585841, -- hatch-and-snatch assets/textures/galaxy_sky.png
+	-- the sea chart behind the minimap and the full map (tools/map/make_chart.py;
+	-- src/client/MapDraw)
+	mapChart = 0, -- assets/textures/map_chart.png
 	-- rug*: the den rugs' top-down art (tools/props/rug_textures.py; Shared/DenItems)
 	rugBraidedKelpRug = 135571701796831, -- assets/textures/rug_BraidedKelpRug.png
 	rugCoralRug = 73878696309005, -- assets/textures/rug_CoralRug.png

@@ -1,8 +1,10 @@
 --!strict
--- Draws the sea as a sonar chart (owner, 2026-10-12: "need a map/mini map to show
--- people where they are"): every biome as a field of dots in its colour over its
--- sector and radii (Config/Biomes), the hub as a ring in the middle, the shelf's
--- drop-off and the map's edge as dashed rings, north up. The same chart serves the
+-- Draws the sea as a chart (owner, 2026-10-12: "need a map/mini map to show people
+-- where they are"; 2026-10-14: "needs to be an actual accurate mini map not dots"):
+-- the real seafloor seen from above (Config/Textures `mapChart`, made from the
+-- Terrain's own fill ops by tools/map/make_chart.py: depth shading, relief,
+-- contours), the biomes' borders dotted over it and the map's edge ring, north up.
+-- Until the chart's id is in, every biome is a field of dots in its colour instead. The same chart serves the
 -- HUD's minimap (a window that slides with the fish) and the full map (the whole
 -- sea in a menu window, with the biomes' names and levels). Markers (you, your den,
 -- a treasure X, the boss, other fish) sit on top and are moved every frame.
@@ -27,6 +29,9 @@ export type Map = {
 
 local DOT_STEP = 95 -- studs between dots in a biome's field
 local RING_STEP = 48 -- studs between dashes on a ring
+local BORDER_STEP = 34 -- studs between dots on a biome's border
+-- Studs from the middle to the chart image's edge (tools/map/make_chart.py SPAN)
+local CHART_SPAN = 1600
 
 local function dot(
 	parent: Instance,
@@ -99,6 +104,60 @@ local function chart(world: Frame, scale: number, dotPx: number)
 	ring(world, hub.radius + hub.wallThickness, scale, math.max(2, dotPx - 1), Ui.color.text, 0.35)
 	ring(world, World.shelf.radius, scale, math.max(2, dotPx - 1), Ui.color.text, 0.72)
 	ring(world, World.boundsRadius, scale, math.max(2, dotPx - 1), Ui.color.danger, 0.6)
+end
+
+-- The chart image: the real seafloor, `CHART_SPAN` studs each way from the middle
+-- (false while its id isn't in)
+local function chartImage(world: Frame, scale: number): boolean
+	local id = (Config.Textures :: any).mapChart
+	if typeof(id) ~= "number" or id <= 0 then
+		return false
+	end
+	local image = Instance.new("ImageLabel")
+	image.Name = "Chart"
+	image.BackgroundTransparency = 1
+	image.BorderSizePixel = 0
+	image.Image = `rbxassetid://{id}`
+	image.ScaleType = Enum.ScaleType.Stretch
+	image.Size = UDim2.fromOffset(2 * CHART_SPAN * scale, 2 * CHART_SPAN * scale)
+	image.Position = UDim2.fromOffset(-CHART_SPAN * scale, -CHART_SPAN * scale)
+	image.ZIndex = 0
+	image.Parent = world
+	return true
+end
+
+-- The biomes' borders, dotted over the chart: the shallows' outer arc, the radial
+-- edges between neighbouring sectors, and the map's edge
+local function borders(world: Frame, scale: number, dotPx: number)
+	local function line(r0: number, r1: number, degrees: number)
+		local r = r0
+		while r <= r1 do
+			local x, z = polar(r, degrees)
+			dot(world, x, z, scale, dotPx, Ui.color.text, 0.55)
+			r += BORDER_STEP
+		end
+	end
+	local function arc(radius: number, from: number, to: number)
+		if to <= from then
+			to += 360
+		end
+		local count = math.max(2, math.floor(math.rad(to - from) * radius / BORDER_STEP))
+		for i = 0, count do
+			local x, z = polar(radius, from + (to - from) * i / count)
+			dot(world, x, z, scale, dotPx, Ui.color.text, 0.55)
+		end
+	end
+	for _, biome in Config.Biomes.list do
+		if not biome.live then
+			continue
+		end
+		if biome.radiusFrom == 0 then
+			arc(biome.radiusTo, 0, 360)
+		elseif not (biome.angleFrom == 0 and biome.angleTo == 360) then
+			line(biome.radiusFrom, biome.radiusTo, biome.angleFrom)
+		end
+	end
+	ring(world, World.boundsRadius, scale, math.max(2, dotPx), Ui.color.danger, 0.45)
 end
 
 -- The biomes' names and levels at their sectors' middles (the full map)
@@ -177,7 +236,11 @@ function MapDraw.new(parent: Instance, size: number, scale: number, named: boole
 	world.Size = UDim2.fromOffset(0, 0)
 	world.Position = UDim2.fromOffset(size / 2, size / 2)
 	world.Parent = frame
-	chart(world, scale, if named then 4 else 5)
+	if chartImage(world, scale) then
+		borders(world, scale, if named then 2 else 3)
+	else
+		chart(world, scale, if named then 4 else 5)
+	end
 	if named then
 		labels(world, scale)
 	end
