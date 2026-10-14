@@ -495,7 +495,17 @@ local function showGhost(item: any, at: Spot)
 	end
 end
 
-local function setStatus(text: string, color: Color3?)
+-- A message from a key press (L with nothing to lay out) is held a moment; the
+-- aim's own line is written every frame and wiped it at once, so L seemed to do
+-- nothing (PC playtest 2026-10-14, B2)
+local statusHeldUntil = 0
+
+local function setStatus(text: string, color: Color3?, hold: number?)
+	if hold then
+		statusHeldUntil = os.clock() + hold
+	elseif os.clock() < statusHeldUntil then
+		return
+	end
 	statusLabel.Text = text
 	statusLabel.TextColor3 = color or Ui.color.muted
 end
@@ -636,12 +646,12 @@ local function layOut()
 	local anchor = lastFloor
 	if setId == nil then
 		Sfx.play("TooBig", { volume = 0.35 })
-		setStatus("Pick a piece of a furniture set first", BAD)
+		setStatus("Pick a piece of a furniture set first", BAD, 2.5)
 		return
 	end
 	if anchor == nil then
 		Sfx.play("TooBig", { volume = 0.35 })
-		setStatus("Aim at your floor to lay the set out there", BAD)
+		setStatus("Aim at your floor to lay the set out there", BAD, 2.5)
 		return
 	end
 	local frame = DenSpace.frame(ownIndex())
