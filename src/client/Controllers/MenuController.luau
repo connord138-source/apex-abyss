@@ -1843,6 +1843,12 @@ function MenuController.openCodes()
 				send()
 			end
 		end)
+		if Input.isTouch() then
+			-- Phones: at the top, so the box stays above the on-screen keyboard (in
+			-- the middle the keyboard hid it: PC playtest 2026-10-14, X2)
+			window.frame.AnchorPoint = Vector2.new(0.5, 0)
+			window.frame.Position = UDim2.new(0.5, 0, 0, 6)
+		end
 		return { window = window, render = function() end }
 	end)
 end
