@@ -29,11 +29,17 @@ local ApexService = {}
 local apex: Player? = nil
 local bounty = 0
 local forced = false -- crowned from the admin panel: kept even alone in the server
+local reign = 0 -- seconds the Apex has swum out of the hub
+local claims: { [string]: number } = {} -- "eater:victim" user ids → clock of the last claim
 local lastTick = 0
 
 local function publish()
 	workspace:SetAttribute("ApexUserId", if apex then apex.UserId else 0)
 	workspace:SetAttribute("ApexBounty", math.floor(bounty))
+	-- Where it is, for maps beyond the streaming radius (its fish isn't there)
+	local character = if apex then apex.Character else nil
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	workspace:SetAttribute("ApexAt", if root and root:IsA("BasePart") then root.Position else nil)
 end
 
 local function liveMass(player: Player): number?
@@ -56,6 +62,7 @@ local function crown(player: Player?)
 	forced = false
 	apex = player
 	bounty = tune.base
+	reign = 0
 	publish()
 	if player then
 		Net.notifyAll(
@@ -70,6 +77,7 @@ end
 function ApexService.crown(player: Player?)
 	crown(player)
 	forced = player ~= nil
+	reign = tune.minReign -- (so a test kill pays at once)
 end
 
 -- Admin: add to the bounty
@@ -87,6 +95,24 @@ local function onAtePlayer(eater: Player, victim: Player, _gain: number)
 	if victim ~= apex then
 		return
 	end
+	local now = os.clock()
+	local key = `{math.min(eater.UserId, victim.UserId)}:{math.max(eater.UserId, victim.UserId)}`
+	local fresh = reign >= tune.minReign and now - (claims[key] or -math.huge) >= tune.pairCooldown
+	if not fresh then
+		Net.notifyAll(`{eater.DisplayName} took down the APEX {victim.DisplayName}`, "info")
+		Net.notify(
+			eater,
+			if reign < tune.minReign
+				then "Its reign was too short for a bounty"
+				else "No bounty: you two traded the crown too recently",
+			"info"
+		)
+		apex = nil
+		bounty = 0
+		publish()
+		return
+	end
+	claims[key] = now
 	local paid = math.floor(bounty)
 	EconomyService.addCoral(eater, paid)
 	local data = DataService.get(eater)
@@ -132,6 +158,9 @@ function ApexService.start()
 				current = nil
 			elseif not session.inHub then
 				bounty = math.min(tune.cap, bounty + tune.perMinute * dt / 60)
+				reign += dt
+				publish()
+			else
 				publish()
 			end
 		end

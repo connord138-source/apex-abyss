@@ -12,6 +12,7 @@ local Pressure = require(ReplicatedStorage.Shared.Pressure)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Guard = require(script.Parent.Parent.Guard)
 local Progress = require(script.Parent.Parent.Progress)
+local BossService = require(script.Parent.BossService)
 local DataService = require(script.Parent.DataService)
 local FishService = require(script.Parent.FishService)
 local HuntService = require(script.Parent.HuntService)
@@ -30,6 +31,8 @@ end
 
 function PressureService.start()
 	Guard.loop("PressureService", TICK, function()
+		local boss = BossService.active()
+		local bossAt = if boss then boss.predator.position else nil
 		for player, session in HuntService.sessions() do
 			local character, root = FishService.character(player)
 			local data = DataService.get(player)
@@ -38,7 +41,12 @@ function PressureService.start()
 				continue
 			end
 			local band = Pressure.limit(PressureService.level(data))
-			local deep = session.alive and not session.inHub and band ~= nil and root.Position.Y < band.y
+			local nearBoss = bossAt ~= nil and (root.Position - bossAt).Magnitude < tune.bossRange
+			local deep = session.alive
+				and not session.inHub
+				and not nearBoss
+				and band ~= nil
+				and root.Position.Y < band.y
 			if not deep then
 				if built[player] then
 					built[player] = nil

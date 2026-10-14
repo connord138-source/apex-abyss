@@ -9,6 +9,8 @@ local HttpService = game:GetService("HttpService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Perks = require(ReplicatedStorage.Shared.Perks)
+local Pressure = require(ReplicatedStorage.Shared.Pressure)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -72,8 +74,10 @@ local function pickTier(weights: { [string]: number }): MapTier?
 end
 
 -- A dig site for a tier: on the seabed, in the tier's distance band, not in the
--- trench. Falls back to the sand level if the raycast finds nothing.
-local function pickSite(tier: MapTier): Vector3
+-- trench, and above `deepest` (the holder's crush depth, Config/Pvp `pressure`: a map
+-- must never send a fish where the pressure kills it). Falls back to the sand level
+-- if the raycast finds nothing.
+local function pickSite(tier: MapTier, deepest: number?): Vector3
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { workspace.Terrain } -- the floor itself: the chest sits in the sand
@@ -89,7 +93,12 @@ local function pickSite(tier: MapTier): Vector3
 			Vector3.new(0, -(World.surfaceY + 40), 0),
 			params
 		)
-		if hit and hit.Normal.Y > 0.7 and hit.Position.Y < 40 then
+		if
+			hit
+			and hit.Normal.Y > 0.7
+			and hit.Position.Y < 40
+			and hit.Position.Y > (deepest or -math.huge) + 4
+		then
 			return hit.Position
 		end
 	end
@@ -124,7 +133,8 @@ function TreasureService.give(player: Player, tierId: string): boolean
 	if #held >= Treasure.maxHeld then
 		return false
 	end
-	local site = pickSite(tier)
+	local band = Pressure.limit(Size.level(Progress.mass(data)) + Perks.depth(data.upgrades))
+	local site = pickSite(tier, if band then band.y else nil)
 	table.insert(held, {
 		id = HttpService:GenerateGUID(false),
 		tier = tier.id,

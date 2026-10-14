@@ -40,8 +40,10 @@ local MAX_CLOUDS = 24
 local clouds: { [number]: Entry } = {}
 local nextId = 1
 local rng = Random.new()
-local whale: { at: Vector3, floor: number, biome: Biomes.Biome, startsAt: number }? = nil
+-- The Whale Fall announced or under way (`cloud`: its cloud's id once it's sinking)
+local whale: { at: Vector3, floor: number, biome: Biomes.Biome, startsAt: number, cloud: number? }? = nil
 local nextWhaleAt = 0
+local warned = false -- the next whale has been announced
 
 local floorParams = RaycastParams.new()
 floorParams.FilterType = Enum.RaycastFilterType.Include
@@ -205,7 +207,7 @@ local function onEat(player: Player, batch: any)
 	local now = Timing.clock()
 	-- The client's reach and suction (as forage), with room for the chunk's own size
 	local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * 1.35 + 1.6 + slack
-	local fed, count = 0, 0
+	local fed, fresh, count = 0, 0, 0
 	for _, pair in batch do
 		if typeof(pair) ~= "table" then
 			continue
@@ -215,7 +217,7 @@ local function onEat(player: Player, batch: any)
 		if entry == nil or typeof(index) ~= "number" or entry.cloud.chunks[index] == nil then
 			continue
 		end
-		if (entry.eaten[index] or 0) > now then
+		if (entry.eaten[index] or 0) > now or now >= entry.cloud.ends then
 			continue
 		end
 		-- Where it is now, or a moment ago (the eater saw it a little in the past)
@@ -232,11 +234,22 @@ local function onEat(player: Player, batch: any)
 			backAt = if backAt == math.huge then -1 else backAt,
 			by = player.UserId,
 		})
-		fed += entry.cloud.chunks[index].m
+		-- A dead fish's chum is Haul that was already grown (×2 Mass, Frenzy): it
+		-- goes back on as it is, so kills don't compound; slicks and whales are new food
+		if entry.cloud.kind == "chum" then
+			fed += entry.cloud.chunks[index].m
+		else
+			fresh += entry.cloud.chunks[index].m
+		end
 		count += 1
 	end
 	if fed > 0 then
-		HuntService.gain(player, fed)
+		HuntService.gain(player, fed, true)
+	end
+	if fresh > 0 then
+		HuntService.gain(player, fresh)
+	end
+	if count > 0 then
 		Events.ate:fire(player, count)
 	end
 end
@@ -276,8 +289,13 @@ local function warnWhale(startsAt: number): boolean
 		local site, floor = siteIn(biome)
 		if site then
 			local top = math.min(floor + tune.whale.height, World.surfaceY - 30)
-			whale =
-				{ at = Vector3.new(site.X, top, site.Z), floor = floor, biome = biome, startsAt = startsAt }
+			whale = {
+				at = Vector3.new(site.X, top, site.Z),
+				floor = floor,
+				biome = biome,
+				startsAt = startsAt,
+				cloud = nil,
+			}
 			Net.chum("warn", { x = site.X, y = top, z = site.Z, biome = biome.name, startsAt = startsAt })
 			Net.notifyAll(`A WHALE FALL is coming down in the {biome.name} · it's on your map`, "rare")
 			return true
@@ -292,7 +310,7 @@ local function startWhale()
 		return
 	end
 	local kg = chunkKg(w.biome) * tune.whale.chunkScale
-	add(
+	w.cloud = add(
 		"whale",
 		w.at,
 		w.floor,
@@ -317,9 +335,13 @@ end
 -- Admin: a Whale Fall now (announced, sinking in a few seconds)
 function ChumService.whaleNow(): string
 	local now = Timing.clock()
+	if whale then
+		return "A Whale Fall is already coming or under way"
+	end
 	if not warnWhale(now + 5) then
 		return "Couldn't find a spot"
 	end
+	warned = true
 	nextWhaleAt = now + 5
 	local w = whale
 	return if w then `Whale Fall in the {w.biome.name} in 5 s` else "Whale Fall started"
@@ -371,7 +393,6 @@ function ChumService.start()
 		}
 	end)
 	scheduleWhale(Timing.clock(), true)
-	local warned = false
 	local lastSlick = 0
 	Guard.loop("ChumService", 1, function()
 		local now = Timing.clock()
@@ -379,7 +400,9 @@ function ChumService.start()
 		for id, entry in clouds do
 			if now >= entry.cloud.ends then
 				remove(id)
-				if entry.cloud.kind == "whale" then
+				-- (only the whale it was: the next may be announced already)
+				local w = whale
+				if entry.cloud.kind == "whale" and w and w.cloud == id then
 					whale = nil
 					Net.chum("warn", { done = true })
 				end
@@ -398,7 +421,11 @@ function ChumService.start()
 				end
 			end
 		end
-		-- The Whale Fall's clock
+		-- The Whale Fall's clock (one at a time: the next waits for this one to end)
+		local current = whale
+		if current and current.cloud and not warned then
+			nextWhaleAt = math.max(nextWhaleAt, now + tune.whale.warn + 1)
+		end
 		if not warned and now >= nextWhaleAt - tune.whale.warn then
 			warned = warnWhale(nextWhaleAt)
 			if not warned then

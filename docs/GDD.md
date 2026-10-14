@@ -94,13 +94,15 @@ owner disliked "Molt" and this was the recommended replacement.*
   more players) is the Apex: a gold ★ on everyone's map, a gold outline and an APEX
   line on its nametag. Its bounty starts at 500 coral and grows 150 a minute while it
   swims out of the hub (cap 6,000); whoever eats it takes the bounty, and the first
-  claim gives the Apex Hunter title. A creature kill just ends the reign. The crown
-  only moves to a fish 10% heavier. (`Config/Pvp` `apex`, `ApexService`.)
+  claim gives the Apex Hunter title. A bounty pays only after a 2-minute reign out of
+  the hub and never twice between the same two players within 20 minutes, so friends
+  can't trade the crown for coral. A creature kill just ends the reign. The crown only
+  moves to a fish 10% heavier. (`Config/Pvp` `apex`, `ApexService`.)
 - **Hooks from above (built 2026-10-14):** five boats drift over the sea, dark hulls
   against the surface, dropping a line every 20–45 s with a bait fish 60–300 studs
   down. The bait is a big meal, but swallowing it hooks you: the line reels you up.
-  Mash BITE or DASH (7 times) to break free with the bait, or a podmate bites the
-  line; landed after 9 s, the fisherman keeps 30% of your Haul. (`Config/Hooks`,
+  Mash BITE or DASH (10 times, after at least 3 s on the line) to break free with the
+  bait, or a podmate bites the line; landed after 9 s, the fisherman keeps 30% of your Haul. (`Config/Hooks`,
   `HookService`.)
 - **Depth pressure (built 2026-10-14):** "depth pressure gates biomes, not walls."
   Four bands sit 10 levels under the biomes they guard: off the shelf below y −60
@@ -108,7 +110,8 @@ owner disliked "Molt" and this was the recommended replacement.*
   basins below −480 LV 55 (Vents 65), the Trench's depths below −640 LV 70 (Trench
   80). Too deep for your level, the pressure builds for 6 s (a meter, the screen's
   edges closing in, creaks), then costs 3% of max health a second until you rise. The
-  hub and dens are exempt. The Outfitter's Pressure Hide counts 4 levels per level (5
+  hub and dens are exempt, and so is the water within 500 studs of a world boss (the
+  fights are for everyone). Treasure maps put their X where the holder can dig. The Outfitter's Pressure Hide counts 4 levels per level (5
   levels). (`Config/Pvp` `pressure`, `PressureService`.)
 
 ## 6. Teams
@@ -1235,7 +1238,7 @@ created in Creator Hub, and a live game hides id-0 items.
 - **Not sold:** coral (it buys Iron Jaw), Kelp Wraps, anything that adds bite damage.
 - **Codes (built 2026-10-14):** the Shop's Free Perks has a Codes row; REDEEM opens a
   box. Each code (`Config/Codes`) pays a reward bundle once per player and can end at
-  a set time. Launch codes: APEX (1,000 coral, 50 shells), DEEPDIVE (2 Kelp Wraps, a
+  a set time. Launch codes: APEX (1,000 coral, 50 shells), DEEPDIVE (60 shells, a
   wheel spin), MEGALODON (750 coral, a Lucky Charm), NIBBLER (100 shells).
 - **Later:** Pearl crates.
 

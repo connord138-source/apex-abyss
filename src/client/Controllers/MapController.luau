@@ -96,6 +96,19 @@ local function placeMarks(map: MapDraw.Map)
 		end
 	end
 	local me = Players.LocalPlayer
+	-- The Apex shows wherever it is: its position is published (ApexService), since
+	-- its fish isn't streamed in beyond the streaming radius
+	local apexId = workspace:GetAttribute("ApexUserId")
+	local apexAt = workspace:GetAttribute("ApexAt")
+	if typeof(apexId) == "number" and apexId ~= me.UserId and typeof(apexAt) == "Vector3" then
+		local apex = Players:GetPlayerByUserId(apexId)
+		local character = apex and apex.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root == nil then
+			MapDraw.mark(map, "Apex", apexAt, APEX, "★", 18)
+			keep.Apex = true
+		end
+	end
 	for _, player in Players:GetPlayers() do
 		if player == me then
 			continue

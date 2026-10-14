@@ -57,6 +57,15 @@ function SpeedService.start()
 				tracks[player] = nil
 				continue
 			end
+			-- A grab or a hook drags the fish (not its own swimming): start again after
+			local character = FishService.character(player)
+			if
+				character
+				and (character:GetAttribute("HeldBy") ~= nil or character:GetAttribute("HookedBy") ~= nil)
+			then
+				tracks[player] = nil
+				continue
+			end
 			local track = tracks[player]
 			local movedAt = player:GetAttribute("MovedAt")
 			if track == nil or (typeof(movedAt) == "number" and movedAt >= track.at - 0.5) then

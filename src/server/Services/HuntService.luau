@@ -218,9 +218,10 @@ local function eatPlayer(victim: Player, eater: Player)
 	Net.notify(eater, `You ate {victim.DisplayName}!`, "good")
 	FishService.respawnIn(victim, hunt.respawnSeconds)
 	DataService.markDirty(victim)
-	local added = addHaul(eater, gain)
+	addHaul(eater, gain)
 	Events.ate:fire(eater, 1)
-	Events.atePlayer:fire(eater, victim, added)
+	-- (the gain before ×2 Mass and Frenzy: a podmate's share gets its own)
+	Events.atePlayer:fire(eater, victim, gain)
 end
 
 local function onEatPrey(player: Player, batch: any)
@@ -586,10 +587,10 @@ function HuntService.takeHaul(player: Player, share: number): number
 	return taken
 end
 
--- Adds food that's already in Haul units (chum: a share of a lost Haul), with ×2
--- Mass and Server Frenzy. Returns the kg added.
-function HuntService.gain(player: Player, amount: number): number
-	return addHaul(player, amount)
+-- Adds food that's already in Haul units, with ×2 Mass and Server Frenzy unless
+-- `raw` (chum: a lost Haul that was grown already). Returns the kg added.
+function HuntService.gain(player: Player, amount: number, raw: boolean?): number
+	return addHaul(player, amount, raw)
 end
 
 -- Every fish's session (alive, inHub, safeUntil, ...), for creatures choosing a

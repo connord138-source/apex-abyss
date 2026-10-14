@@ -398,8 +398,8 @@ export type LayoutPlacement = { id: string, x: number, y: number, z: number, r: 
 -- (den frame), its front turned to `facing` degrees (0 faces +z): every piece on the
 -- deck to its corners, clear of the floor things already placed (rugs only clash
 -- with rugs, others with others, so a chair may stand on your rug). It tries the
--- spot, then rings 2 studs apart up to 24 out, each facing you first and then the
--- other three ways. Nil and why when nothing fits.
+-- spot, then rings 2 studs apart up to 24 out, facing you; then the same turned
+-- the other three ways. Nil and why when nothing fits.
 function DenSpace.fitLayout(
 	level: number,
 	placed: { Placed },
@@ -432,7 +432,6 @@ function DenSpace.fitLayout(
 	local function try(ax: number, az: number, turn: number): { LayoutPlacement }?
 		local c, s = math.cos(math.rad(turn)), math.sin(math.rad(turn))
 		local out: { LayoutPlacement } = {}
-		local mine: { Spot } = {}
 		for _, piece in pieces do
 			local item = Dens.itemsById[piece.id]
 			if item == nil then
@@ -456,15 +455,15 @@ function DenSpace.fitLayout(
 			if not clear(x, z, radius, flat, taken) then
 				return nil
 			end
-			table.insert(mine, { x = x, z = z, radius = radius, flat = flat })
 			table.insert(out, { id = item.id, x = x, y = deck, z = z, r = r })
 		end
 		return out
 	end
 	local base = math.floor(facing / 90 + 0.5) * 90
 	local turns = { base % 360, (base + 90) % 360, (base - 90) % 360, (base + 180) % 360 }
-	for ring = 0, 12 do
-		for _, turn in turns do
+	-- Facing you anywhere in reach first, then turned the other ways
+	for _, turn in turns do
+		for ring = 0, 12 do
 			for i = -ring, ring do
 				for k = -ring, ring do
 					if math.max(math.abs(i), math.abs(k)) ~= ring then

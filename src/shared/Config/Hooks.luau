@@ -17,7 +17,9 @@ return {
 	minBait = 0.4,
 	reel = 7, -- studs a second the line pulls a hooked fish up
 	hold = 9, -- seconds before a hooked fish is landed
-	struggleNeed = 7, -- mashes to break free
+	struggleNeed = 10, -- mashes to break free
+	struggleGap = 0.15, -- seconds between mashes that count
+	minHooked = 3, -- seconds on the line before a fish can break free
 	landedShare = 0.3, -- of the Haul the fisherman keeps when it lands you
 	biteRange = 26, -- a podmate biting within this many studs of a hooked fish cuts the line
 }

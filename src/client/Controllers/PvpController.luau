@@ -134,11 +134,18 @@ local function buildGui()
 	apexLight.OutlineColor = APEX
 	apexLight.OutlineTransparency = 0.15
 	apexLight.DepthMode = Enum.HighlightDepthMode.Occluded
-	apexLight.Parent = gui
+	local holder = Instance.new("Folder")
+	holder.Name = "ApexCrown"
+	holder.Parent = workspace
+	apexLight.Parent = holder
 end
 
 local function step()
 	local now = os.clock()
+	-- Below the tide chip, and below the boss bar while one is up
+	local top = math.max(96, Ui.bossBottom() + 40)
+	apexChip.Position = UDim2.new(0.5, 0, 0, top)
+	slipChip.Position = UDim2.new(0.5, 0, 0, top + 24)
 	-- The Apex: a gold outline on its fish for everyone else, a chip for itself
 	local apexId = workspace:GetAttribute("ApexUserId")
 	local bounty = workspace:GetAttribute("ApexBounty")

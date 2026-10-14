@@ -33,6 +33,7 @@ type Hook = {
 	taken: Player?,
 	hookedAt: number,
 	struggles: number,
+	lastStruggle: number,
 }
 
 type Boat = {
@@ -161,6 +162,7 @@ local function drop(boat: Boat, now: number)
 		taken = nil,
 		hookedAt = 0,
 		struggles = 0,
+		lastStruggle = 0,
 	}
 	nextHookId += 1
 	boat.liftAt = now + tune.line
@@ -209,15 +211,17 @@ end
 
 local function struggle(player: Player)
 	local hook = hookedBy[player]
-	if hook == nil then
+	local now = Timing.clock()
+	if hook == nil or now - hook.lastStruggle < tune.struggleGap then
 		return
 	end
+	hook.lastStruggle = now
 	hook.struggles += 1
 	local character = FishService.character(player)
 	if character then
 		character:SetAttribute("HookStruggle", math.clamp(hook.struggles / tune.struggleNeed, 0, 1))
 	end
-	if hook.struggles >= tune.struggleNeed then
+	if hook.struggles >= tune.struggleNeed and now - hook.hookedAt >= tune.minHooked then
 		release(player, "free")
 	end
 end
@@ -248,7 +252,9 @@ local function step()
 			-- Drifting round the sea
 			boat.angle += boat.turn * tune.drift * TICK / boat.radius
 			local x, z = math.cos(boat.angle) * boat.radius, math.sin(boat.angle) * boat.radius
-			boat.yaw = math.atan2(-math.sin(boat.angle) * boat.turn, math.cos(boat.angle) * boat.turn)
+			-- (the hull's length runs along its X: CFrame.Angles(0, yaw, 0) points X at
+			-- (cos yaw, 0, -sin yaw), which must be the drift (-sin a, 0, cos a) × turn)
+			boat.yaw = math.atan2(-math.cos(boat.angle) * boat.turn, -math.sin(boat.angle) * boat.turn)
 			boat.position = Vector3.new(x, World.surfaceY, z)
 			if now >= boat.nextAt then
 				drop(boat, now)

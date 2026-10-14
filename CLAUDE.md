@@ -60,14 +60,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Chum** (`ChumService`, `Shared/Chum`, `ChumController`): an eaten fish (by a
     player or a creature) bursts 40% of its lost Haul into 4–14 chunks that sink
     slowly where it died (45 s); any fish swallows a chunk by swimming into it, its kg
-    straight onto the Haul (`HuntService.gain`); chunks ride shared clock paths, so the
+    straight onto the Haul (`HuntService.gain`, raw: that Haul was grown with ×2 Mass
+    and Frenzy already, so kills don't compound; slick and whale chunks are new food
+    and get them); clients send at most 12 a batch; chunks ride shared clock paths, so the
     server checks each eat and clients draw them (`EatChum`). AI predators within 320
-    studs swim to a cloud (`ChumService.nearest`). HuntService fires `Events.burst`
+    studs swim to a cloud (`ChumService.nearest`) inside their own band and sector
+    (`PredatorService` `inRange`). HuntService fires `Events.burst`
     (no require cycle).
   - **Blood Tide chum** (`Config/Tides` `chum`): a slick of 7 chunks appears near a
     random player out in the biomes every 20 s, and clouds linger ×1.5.
-  - **Whale Fall** (the tide event): about every 26 min (5 in Studio, first 13 min /
-    90 s after start) a dead whale sinks into a random biome, announced a minute
+  - **Whale Fall** (the tide event): about every 26 min (6 in Studio, first 13 min /
+    90 s after start; one at a time) a dead whale sinks into a random biome, announced a minute
     ahead with a W on the map; it settles and feeds everyone for 5 min, 18 chunks
     growing back 14 s after eaten, sized ×3 the biome's chunk (`biomeChunk` 0.05 ×
     the banked mass at the biome's middle level). Part-built carcass (bitten flank,
@@ -87,20 +90,28 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the Apex: Workspace attributes `ApexUserId`/`ApexBounty`, a gold ★ on every map,
     a gold outline and a ★ APEX line on its nametag (seen to 900 studs), its own chip.
     Bounty 500 coral + 150/min while it's out of the hub (cap 6,000); the player who
-    eats it gets it (+ the Apex Hunter title the first time, `stats.apexKills`). A
-    creature kill or leaving ends the reign unpaid. The crown moves only to a fish 10%
-    heavier. Admin can crown (kept even solo) and add bounty.
+    eats it gets it (+ the Apex Hunter title the first time, `stats.apexKills`), but
+    only after a 2-minute reign out of the hub and never twice between the same two
+    players within 20 min (`minReign`, `pairCooldown`; review 2026-10-14: two friends
+    trading kills farmed ~80k coral an hour). A creature kill or leaving ends the reign
+    unpaid. The crown moves only to a fish 10% heavier. Its position is published
+    (`ApexAt`) so the ★ shows beyond the streaming radius. Admin can crown (kept even
+    solo, eligible at once) and add bounty.
   - **Depth pressure** (`PressureService`, `Shared/Pressure`): bands 10 levels under
     the biomes they guard: below y −60 needs LV 25, −330 LV 40, −480 LV 55, −640 LV
     70. Too deep, the `Pressure` attribute fills over 6 s (meter, blue squeeze at the
     screen's edges, creaks, "rise above N ft"), then 3% max health a second. Never in
-    the hub or the dens. The Outfitter's **Pressure Hide** (5 levels, 400 → 15,000
-    coral) counts 4 levels each (`Perks.depth`).
+    the hub or the dens, nor within 500 studs of a world boss that's up (the Giant
+    Squid lurks below the deepest band; a boss fight is for everyone). Treasure dig
+    sites are picked above the holder's crush depth (`TreasureService.give`). The
+    Outfitter's **Pressure Hide** (5 levels, 400 → 15,000 coral) counts 4 levels each
+    (`Perks.depth`).
   - **Hooks** (`HookService`, `HookController`): 5 boats drift 280–1,300 studs out
     (dark hulls under the surface) and every 20–45 s drop a line 60–300 studs down with
     a silver bait fish (BAIT tag). Swallowing it gives a big meal (`bait` 0.4 × the
     biome's middle-level mass) and hooks you (`HookedBy` attribute): reeled up at 7
-    studs/s; 7 mashes of BITE/DASH (`StruggleHook`) break free with the bait, a
+    studs/s; 10 mashes of BITE/DASH (`StruggleHook`, 0.15 s apart, after 3 s on the
+    line) break free with the bait, a
     podmate's BITE within 26 studs cuts the line (`BiteLine`), landed after 9 s the
     fisherman keeps 30% of your Haul (`HuntService.takeHaul`). `SwimController.holdBy`
     takes holds from more than one source ("creature" for boss grabs, "hook"), and
@@ -111,7 +122,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `Net.shove` stamp a `MovedAt` player attribute and a respawn resets the baseline.
     Enforce only after playtests show no false positives.
 - **Redeem codes (2026-10-14; GDD §9 "Later: codes"):** `Config/Codes.luau` (APEX,
-  DEEPDIVE, MEGALODON, NIBBLER; matched without case or spaces; `ends` Unix time), once
+  DEEPDIVE, MEGALODON, NIBBLER; rewards that always fit, never wraps a full carry would
+  swallow; matched without case or spaces; `ends` Unix time), once
   per player (`data.codes`), paid by `RewardsService.grant`, through the `RedeemCode`
   RemoteFunction; the Shop's Free Perks has a Codes row whose REDEEM opens its own
   window (the Shop redraws every second, which would clear a text box). Admin: Codes:

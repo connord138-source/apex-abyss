@@ -64,7 +64,7 @@ local function textFor(kind: Kind): string
 	elseif kind == "danger" then
 		return "That fish is big enough to swallow you. Dash away or hide!"
 	elseif kind == "school" then
-		return `Bite it together! Fish biting the same target within 2 s add up their mass. {biteKey()} to bite.`
+		return `Too big alone: bite it together ({biteKey()}), and your masses add up. Or dash away!`
 	end
 	return "Too big to swallow yet. Eat smaller fish and grow first."
 end

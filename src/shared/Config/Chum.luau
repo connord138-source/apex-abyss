@@ -32,7 +32,7 @@ return {
 	whale = {
 		every = 26 * 60, -- seconds between whale falls
 		first = 13 * 60, -- the first, after the server starts
-		studioEvery = 5 * 60,
+		studioEvery = 6 * 60,
 		studioFirst = 90,
 		warn = 60, -- announced this long before it starts to sink
 		height = 150, -- starts this far above the floor

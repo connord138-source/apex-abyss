@@ -16,7 +16,7 @@ export type Code = {
 
 local list: { Code } = {
 	{ code = "APEX", reward = { coral = 1000, shells = 50 }, note = "launch: store page" },
-	{ code = "DEEPDIVE", reward = { wraps = 2, spins = 1 }, note = "launch: group shout" },
+	{ code = "DEEPDIVE", reward = { shells = 60, spins = 1 }, note = "launch: group shout" },
 	{ code = "MEGALODON", reward = { coral = 750, charms = { Lucky = 1 } }, note = "launch: boss trailer" },
 	{ code = "NIBBLER", reward = { shells = 100 }, note = "launch: thumbnail" },
 }

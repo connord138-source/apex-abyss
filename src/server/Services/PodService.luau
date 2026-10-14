@@ -104,6 +104,10 @@ local function invite(player: Player, userId: any)
 	if podOf[target] then
 		return Net.notify(player, `{target.DisplayName} is in another pod`, "bad")
 	end
+	local pending = invites[target]
+	if pending and pending.from == player and Timing.clock() < pending.expires then
+		return -- (already asked: no toast every second)
+	end
 	invites[target] =
 		{ from = player, pod = if pod then pod.id else 0, expires = Timing.clock() + tune.inviteSeconds }
 	Net.notify(target, `{player.DisplayName} invited you to their pod · open POD to accept`, "good")
@@ -119,6 +123,9 @@ local function accept(player: Player)
 		return Net.notify(player, "That invite ran out", "info")
 	end
 	local from = offer.from
+	if PodService.together(player, from) then
+		return -- (both invited each other: already together)
+	end
 	local pod = podOf[from]
 	if pod == nil then
 		pod = { id = nextId, members = { from } }
@@ -130,10 +137,19 @@ local function accept(player: Player)
 	if #pod.members >= tune.size then
 		return Net.notify(player, `{from.DisplayName}'s pod is full`, "bad")
 	end
-	leave(player, true)
+	if podOf[player] and podOf[player] ~= pod then
+		leave(player, true)
+	end
 	table.insert(pod.members, player)
 	podOf[player] = pod
 	setAttribute(player, pod)
+	-- Invites between podmates are moot now
+	for _, member in pod.members do
+		local waiting = invites[member]
+		if waiting and PodService.together(waiting.from, member) then
+			invites[member] = nil
+		end
+	end
 	for _, member in pod.members do
 		Net.notify(
 			member,

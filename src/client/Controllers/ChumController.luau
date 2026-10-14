@@ -367,10 +367,14 @@ local function step()
 	if #moveParts > 0 then
 		workspace:BulkMoveTo(moveParts, moveFrames, Enum.BulkMoveMode.FireCFrameChanged)
 	end
+	-- At most 12 a send (the server drops a bigger batch): the rest go next time
 	if #batch > 0 and now - lastSend >= SEND_INTERVAL then
 		lastSend = now
-		ClientState.request("EatChum", batch)
-		batch = {}
+		local send = {}
+		for i = 1, math.min(#batch, 12) do
+			table.insert(send, table.remove(batch, 1))
+		end
+		ClientState.request("EatChum", send)
 	end
 end
 

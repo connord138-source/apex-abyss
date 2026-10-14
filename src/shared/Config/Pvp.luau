@@ -26,6 +26,10 @@ return {
 		base = 500, -- coral
 		perMinute = 150, -- while the Apex swims out of the hub
 		cap = 6000,
+		-- Paid only once the Apex has swum `minReign` seconds out of the hub, and never
+		-- twice between the same two players within `pairCooldown` (no trading the crown)
+		minReign = 120,
+		pairCooldown = 20 * 60,
 		title = "Apex Hunter", -- for the first bounty claimed
 	},
 	-- Depth pressure gates the deep biomes (owner's design: "depth pressure gates
@@ -42,5 +46,8 @@ return {
 		},
 		grace = 6,
 		damage = 0.03,
+		-- A world boss fight is for the whole server: no pressure within this many
+		-- studs of a boss that's up (the Giant Squid lurks below the deepest band)
+		bossRange = 500,
 	},
 }

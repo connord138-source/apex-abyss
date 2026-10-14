@@ -154,6 +154,24 @@ local function nearHub(position: Vector3, margin: number): boolean
 	return Vector3.new(position.X - hub.X, 0, position.Z - hub.Z).Magnitude < Predators.hubKeepOut + margin
 end
 
+-- Whether a point is in a creature's own water: its band round the hub and its
+-- sector (chum doesn't draw a reef shark into the kelp)
+local function inRange(def: Def, position: Vector3): boolean
+	local hub = World.hub.center
+	local offset = Vector3.new(position.X - hub.X, 0, position.Z - hub.Z)
+	local r = offset.Magnitude
+	if r < def.band[1] - 40 or r > def.band[2] + 40 then
+		return false
+	end
+	local sector = def.angles
+	if sector == nil then
+		return true
+	end
+	local angle = math.deg(math.atan2(offset.Z, offset.X)) % 360
+	local span = (sector[2] - sector[1]) % 360
+	return span == 0 or (angle - sector[1]) % 360 <= span
+end
+
 -- The fish worth hunting: alive, not safe, in range, big enough (or it bit us).
 local function pickTarget(predator: Predator, now: number): Player?
 	local def = predator.def
@@ -395,7 +413,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 		if (predator.waypoint - predator.position).Magnitude < 8 or now > predator.waypointUntil then
 			-- Chum in the water draws it in (Config/Chum `lure`); else a new spot to roam
 			local chum = ChumService.nearest(predator.position, Config.Chum.lure)
-			if chum and not nearHub(chum, def.length) then
+			if chum and not nearHub(chum, def.length) and inRange(def, chum) then
 				local around = rng:NextUnitVector() * def.length * 0.6
 				predator.waypoint = chum + Vector3.new(around.X, math.abs(around.Y) + 3, around.Z)
 				predator.waypointUntil = now + 6
