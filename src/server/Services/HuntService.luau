@@ -574,6 +574,18 @@ function HuntService.feed(player: Player, mass: number): number
 	return addHaul(player, mass * hunt.preyGain * Perks.feast(data.boosts, Timing.now()))
 end
 
+-- Takes a share of a fish's Haul away (a fisherman landing it). Returns the kg taken.
+function HuntService.takeHaul(player: Player, share: number): number
+	local session = sessions[player]
+	if session == nil or session.haul <= 0 then
+		return 0
+	end
+	local taken = session.haul * math.clamp(share, 0, 1)
+	session.haul -= taken
+	refreshSize(player)
+	return taken
+end
+
 -- Adds food that's already in Haul units (chum: a share of a lost Haul), with ×2
 -- Mass and Server Frenzy. Returns the kg added.
 function HuntService.gain(player: Player, amount: number): number

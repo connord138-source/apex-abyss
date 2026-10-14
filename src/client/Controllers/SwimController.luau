@@ -47,7 +47,16 @@ local lastBiteAt = -math.huge
 local dashUntil = 0
 local dashStarted = false
 local clock = 0
-local heldPoint: Vector3? = nil -- a boss's grab drags the fish here
+-- What's holding the fish and where it drags it: "creature" (a boss's grab) or
+-- "hook" (a fisherman's line, HookController)
+local holds: { [string]: Vector3? } = {}
+
+local function heldAt(): Vector3?
+	for _, point in holds do
+		return point
+	end
+	return nil
+end
 
 local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vector3
 	local dot = math.clamp(from:Dot(to), -1, 1)
@@ -111,8 +120,8 @@ end
 
 -- Starts a Dash if it has recharged; returns whether it did.
 function SwimController.dash(): boolean
-	if heldPoint then
-		ClientState.request("Struggle")
+	if next(holds) ~= nil then
+		SwimController.struggle()
 		return false
 	end
 	if root == nil or SwimController.dashCharge < 1 then
@@ -141,11 +150,26 @@ end
 -- can only struggle). Nil lets go. PredatorController sets it from the HeldBy
 -- attribute the server puts on the character.
 function SwimController.hold(point: Vector3?)
-	heldPoint = point
+	holds.creature = point
+end
+
+-- The same for another holder (`source`: "hook")
+function SwimController.holdBy(source: string, point: Vector3?)
+	holds[source] = point
 end
 
 function SwimController.isHeld(): boolean
-	return heldPoint ~= nil
+	return next(holds) ~= nil
+end
+
+-- A mash (BITE or DASH while held): tells whatever holds the fish
+function SwimController.struggle()
+	if holds.hook then
+		ClientState.request("StruggleHook")
+	end
+	if holds.creature then
+		ClientState.request("Struggle")
+	end
 end
 
 -- Starts a bite lunge if the cooldown allows; returns whether it did.
@@ -283,7 +307,7 @@ local function step(dt: number)
 	local reversing = throttle < -0.05 and intent <= 0.05 and not boosting
 
 	local velocity = SwimController.velocity
-	local held = heldPoint
+	local held = heldAt()
 	if held then
 		-- Dragged toward the beak: no swimming, just the pull
 		local pull = held - currentRoot.Position

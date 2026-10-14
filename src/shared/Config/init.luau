@@ -35,4 +35,5 @@ return {
 	Codes = require(script.Codes),
 	Chum = require(script.Chum),
 	Pvp = require(script.Pvp),
+	Hooks = require(script.Hooks),
 }

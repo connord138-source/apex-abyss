@@ -40,6 +40,7 @@ local tideChanged = makeEvent("TideChanged") -- (tideId, endsAt) to everyone: th
 local passClaimed = makeEvent("PassClaimed") -- (summary) to the claimer: Tide Pass rewards claimed
 local achievement = makeEvent("Achievement") -- (summary) to the player: an achievement done and the den set it opened
 local chum = makeEvent("Chum") -- (kind, payload) to everyone: chum clouds and the Whale Fall (add, eat, remove, warn)
+local hooks = makeEvent("Hooks") -- ({ boats }) to everyone: the fishing boats and their lines, about once a second
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -57,6 +58,9 @@ local REQUESTS: { [string]: number } = {
 	PodAccept = 0.5, -- () join the pod you were invited to
 	PodDecline = 0.5, -- () turn the invite down
 	PodLeave = 0.5, -- () leave your pod
+	TakeBait = 0.3, -- (hookId) swallow a hook's bait (and get hooked)
+	StruggleHook = 0.05, -- () mash to break free of a hook
+	BiteLine = 0.3, -- (userId) bite a hooked podmate's line
 	Roll = 0.4, -- ()
 	Buy = 0.2, -- (kind: "upgrade" | "charm" | "dye" | "shells", id: string)
 	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)
@@ -272,6 +276,10 @@ end
 
 function Net.chum(kind: string, payload: { [string]: any })
 	chum:FireAllClients(kind, payload)
+end
+
+function Net.hooks(payload: { [string]: any })
+	hooks:FireAllClients(payload)
 end
 
 function Net.onGetChum(handler: (Player) -> { [string]: any })

@@ -13,6 +13,7 @@ local FishAnimator = require(script.Controllers.FishAnimator)
 local ForageController = require(script.Controllers.ForageController)
 local ChumController = require(script.Controllers.ChumController)
 local PvpController = require(script.Controllers.PvpController)
+local HookController = require(script.Controllers.HookController)
 local GardenController = require(script.Controllers.GardenController)
 local HealController = require(script.Controllers.HealController)
 local ItemWheelController = require(script.Controllers.ItemWheelController)
@@ -82,6 +83,7 @@ HuntController.start()
 SchoolController.start()
 ChumController.start() -- chum clouds, Blood Tide slicks and the Whale Fall: drawn and eaten here
 PvpController.start() -- the POD button, the Apex crown and bounty, depth pressure
+HookController.start() -- fishing boats, their lines and bait; hooked fish reeled up
 NametagController.start()
 task.spawn(ShellController.start) -- waits for the server's shell spots
 task.spawn(ForageController.start) -- waits for the server's starfish and shrimp spots

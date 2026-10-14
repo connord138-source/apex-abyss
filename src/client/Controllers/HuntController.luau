@@ -111,7 +111,7 @@ end
 
 local function onBite()
 	if SwimController.isHeld() then
-		ClientState.request("Struggle")
+		SwimController.struggle()
 		return
 	end
 	if not SwimController.lunge() then
