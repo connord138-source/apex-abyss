@@ -84,24 +84,51 @@ owner disliked "Molt" and this was the recommended replacement.*
 - **Spawn protection:** a few seconds after leaving the hub (*tunable*).
 - **Size-gated terrain:** kelp, wreck holes and cave tunnels are too tight for big
   fish. Small fish hide there and eels ambush from them.
-- **Chum:** a player who gets eaten bursts into a cloud of their unbanked Haul, which
-  sets off a frenzy among everyone nearby (and NPC predators come for it too).
-- **Apex bounty:** the biggest player on the server glows on everyone's sonar, and
-  whoever brings them down earns the bounty.
-- **Hooks from above:** boat silhouettes on the surface drop baited hooks. The bait is
-  a big meal, but a hooked fish has to mash to break free, or a podmate can bite the
-  line.
+- **Chum (built 2026-10-14):** a fish that gets eaten (by a player or a creature)
+  bursts 40% of its lost Haul into a cloud of 4–14 chunks that sink slowly where it
+  died for 45 s. Any fish swallows a chunk by swimming into it, its kg straight onto
+  the Haul, so a kill sets off a frenzy; AI predators within 320 studs come for the
+  cloud too. During a Blood Tide, slicks of chum appear near players out in the
+  biomes and clouds linger longer. (`Config/Chum`, `ChumService`.)
+- **Apex bounty (built 2026-10-14):** the heaviest fish in the server (LV 10+, two or
+  more players) is the Apex: a gold ★ on everyone's map, a gold outline and an APEX
+  line on its nametag. Its bounty starts at 500 coral and grows 150 a minute while it
+  swims out of the hub (cap 6,000); whoever eats it takes the bounty, and the first
+  claim gives the Apex Hunter title. A creature kill just ends the reign. The crown
+  only moves to a fish 10% heavier. (`Config/Pvp` `apex`, `ApexService`.)
+- **Hooks from above (built 2026-10-14):** five boats drift over the sea, dark hulls
+  against the surface, dropping a line every 20–45 s with a bait fish 60–300 studs
+  down. The bait is a big meal, but swallowing it hooks you: the line reels you up.
+  Mash BITE or DASH (7 times) to break free with the bait, or a podmate bites the
+  line; landed after 9 s, the fisherman keeps 30% of your Haul. (`Config/Hooks`,
+  `HookService`.)
+- **Depth pressure (built 2026-10-14):** "depth pressure gates biomes, not walls."
+  Four bands sit 10 levels under the biomes they guard: off the shelf below y −60
+  needs LV 25 (Open Blue 35), the deep floor below −330 LV 40 (Ruins 50), the vent
+  basins below −480 LV 55 (Vents 65), the Trench's depths below −640 LV 70 (Trench
+  80). Too deep for your level, the pressure builds for 6 s (a meter, the screen's
+  edges closing in, creaks), then costs 3% of max health a second until you rise. The
+  hub and dens are exempt. The Outfitter's Pressure Hide counts 4 levels per level (5
+  levels). (`Config/Pvp` `pressure`, `PressureService`.)
 
 ## 6. Teams
 
-- **Schooling (the headline twist):**
+- **Schooling (the headline twist; built 2026-10-14):**
   - Small players who swim close together form a school.
-  - The school's combined mass can bite a predator bigger than any one of them.
-  - It keeps the top player from snowballing, and teams form without any lobby.
-- **Pods of up to 3:**
-  - You can't eat a podmate.
-  - Swimming in a podmate's slipstream gives a speed boost.
-  - Kill XP is shared.
+  - The school's combined mass can bite a predator bigger than any one of them: a
+    bite counts everyone who bit the same fish in the last 2.5 s within 40 studs, and
+    their combined live mass against the target's sets the damage, +15% per extra
+    biter (SCHOOL BITE ×N).
+  - It keeps the top player from snowballing, and teams form without any lobby. A
+    SCHOOL hint says so when a fish that can swallow you is near and so is another
+    small fish.
+- **Pods of up to 3 (built 2026-10-14; POD on the HUD, or the Shop on a controller):**
+  - Invite anyone in the server; they JOIN or DECLINE within 30 s; LEAVE any time.
+  - You can't eat or bite a podmate (nametag PODMATE, teal on the map).
+  - Swimming in a podmate's slipstream (within 18 studs behind one going your way)
+    is 15% faster.
+  - Kill XP is shared: when a podmate eats a player, podmates within 220 studs get
+    half the Haul it gained.
 
 ## 7. Creatures
 
@@ -728,6 +755,20 @@ interchangeable if wanted." The boards are `assets/concepts/Furn*.jpg`.
   (`front = 90`). Rugs are top-down art unwarped off the boards
   (`tools/props/rug_textures.py`, `assets/textures/rug_*.png`), drawn as a Decal on a
   flat rug once their ids are in `Config/Textures`.
+- **Placing (owner, 2026-10-14: free placement, plus "the snapping and starter
+  layouts"):** things stay free to place anywhere they fit, with two helpers:
+  - **Snapping** (on by default; G, D-pad up or SNAP turns it off): turns go in 45°
+    steps (15° off); a floor thing lines up with a neighbour's x or z when within 0.8
+    studs, and with rock or a pillar just behind it backs onto that wall facing out; a
+    wall thing matches a neighbour's height. A snapped spot is used only when it's
+    allowed; otherwise the free one.
+  - **Starter layouts** (`Config/Dens` `layouts`): each set has an arrangement of its
+    floor pieces (a rug with a chair and table on it, lamps and shelves round them).
+    With a piece of the set picked or aimed at, L (D-pad down, LAY OUT) lays out every
+    piece of that set in the tray round the floor spot aimed at, facing you. It finds
+    room itself (the spot, then rings out to 24 studs, each way round) and keeps clear
+    of what's there; rugs only clash with rugs. Every piece can be moved after; wall
+    and ceiling pieces stay in the tray to hang by hand.
 - **Later:** a second tier of each achievement could open a gilded or glowing finish of
   its set, and Tide Pass seasons can carry a den piece on the paid row (into
   `den.items`, never `den.owned`).
@@ -1053,7 +1094,13 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   §8 "World boss events".
 - **Bioluminescent Night:** a dark sea, and glowing skins can drop.
 - These became the **Tide Clock** (2026-10-10, below): Blood Tide, the Sardine Run and
-  Bioluminescent Night are tides now; Whale Fall is still to come.
+  Bioluminescent Night are tides now.
+- **Whale Fall (built 2026-10-14):** a world event about every 26 minutes, between the
+  bosses. A minute's warning ("A WHALE FALL is coming down in the Coral Reef") and a W
+  on every map; the carcass sinks 150 studs to the floor and feeds the whole server for
+  five minutes: 18 chunks round it, each growing back 14 s after it's eaten, sized by
+  the biome's level (a Trench whale is worth far more than a kelp one). AI predators
+  come for it too. (`Config/Chum` `whale`.)
 
 ### The pull-back loop (owner, 2026-10-10; built)
 
@@ -1186,7 +1233,11 @@ created in Creator Hub, and a live game hides id-0 items.
 - **Shop:** SHOP (beside the wallet) or the View button on a controller: Daily reward,
   Boosts, Game passes, Free perks. Purchases open Roblox's own prompts.
 - **Not sold:** coral (it buys Iron Jaw), Kelp Wraps, anything that adds bite damage.
-- **Later:** codes, Pearl crates.
+- **Codes (built 2026-10-14):** the Shop's Free Perks has a Codes row; REDEEM opens a
+  box. Each code (`Config/Codes`) pays a reward bundle once per player and can end at
+  a set time. Launch codes: APEX (1,000 coral, 50 shells), DEEPDIVE (2 Kelp Wraps, a
+  wheel spin), MEGALODON (750 coral, a Lucky Charm), NIBBLER (100 shells).
+- **Later:** Pearl crates.
 
 ### Creator Rewards: pay for playtime (owner, 2026-10-12; built)
 

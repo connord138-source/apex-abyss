@@ -48,11 +48,74 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **PvP:** always on in the biomes, with protections.
   - The hub plaza and the dens are safe, and there's spawn protection.
   - Size-gated terrain gives small fish places to hide.
-  - Chum clouds, an Apex bounty on the biggest player, and baited hooks dropped by boats.
+  - Chum clouds, an Apex bounty on the biggest player, and baited hooks dropped by boats
+    (all built 2026-10-14, below).
 - **Teams:**
   - **Schooling:** nearby small players' combined mass can bite a bigger predator. This
     is the headline twist.
   - **Pods of up to 3:** no friendly fire, a slipstream speed boost and shared kill XP.
+- **The PvP round (owner, 2026-10-14: "I want to knock out as much as we can this
+  round"; every approved twist built, GDD §5/§6):** tuning in `Config/Pvp.luau`,
+  `Config/Chum.luau`, `Config/Hooks.luau`.
+  - **Chum** (`ChumService`, `Shared/Chum`, `ChumController`): an eaten fish (by a
+    player or a creature) bursts 40% of its lost Haul into 4–14 chunks that sink
+    slowly where it died (45 s); any fish swallows a chunk by swimming into it, its kg
+    straight onto the Haul (`HuntService.gain`); chunks ride shared clock paths, so the
+    server checks each eat and clients draw them (`EatChum`). AI predators within 320
+    studs swim to a cloud (`ChumService.nearest`). HuntService fires `Events.burst`
+    (no require cycle).
+  - **Blood Tide chum** (`Config/Tides` `chum`): a slick of 7 chunks appears near a
+    random player out in the biomes every 20 s, and clouds linger ×1.5.
+  - **Whale Fall** (the tide event): about every 26 min (5 in Studio, first 13 min /
+    90 s after start) a dead whale sinks into a random biome, announced a minute
+    ahead with a W on the map; it settles and feeds everyone for 5 min, 18 chunks
+    growing back 14 s after eaten, sized ×3 the biome's chunk (`biomeChunk` 0.05 ×
+    the banked mass at the biome's middle level). Part-built carcass (bitten flank,
+    ribs) until a `WorldProps.WhaleFall` exists.
+  - **Pods** (`PodService`, POD on the HUD row, the Shop's Pod row for controllers,
+    `MenuController.openPod`): invite, JOIN/DECLINE within 30 s, LEAVE. The `Pod`
+    player attribute is the source of truth for the server (`HuntService` `podmates`
+    in `targetOf`: no eat, no bite) and clients (nametag PODMATE, teal map dot, no
+    auto-eat). Slipstream ×1.15 within 18 studs behind a podmate swimming your way
+    (`SwimController` `slipstreamOf`); a podmate's player kill gives podmates within
+    220 studs half its gain (`Events.atePlayer`).
+  - **Schooling:** a bite counts every other biter of the same fish in the last 2.5 s
+    within 40 studs: their combined live mass against the target's sets the damage
+    ((mass ratio)^⅔, clamped 0.04–1.5), +15% per extra biter; the biter sees SCHOOL
+    BITE ×N. `HintController` shows SCHOOL (not DANGER) when another small fish is near.
+  - **Apex bounty** (`ApexService`): the heaviest live fish (LV 10+, 2+ players) is
+    the Apex: Workspace attributes `ApexUserId`/`ApexBounty`, a gold ★ on every map,
+    a gold outline and a ★ APEX line on its nametag (seen to 900 studs), its own chip.
+    Bounty 500 coral + 150/min while it's out of the hub (cap 6,000); the player who
+    eats it gets it (+ the Apex Hunter title the first time, `stats.apexKills`). A
+    creature kill or leaving ends the reign unpaid. The crown moves only to a fish 10%
+    heavier. Admin can crown (kept even solo) and add bounty.
+  - **Depth pressure** (`PressureService`, `Shared/Pressure`): bands 10 levels under
+    the biomes they guard: below y −60 needs LV 25, −330 LV 40, −480 LV 55, −640 LV
+    70. Too deep, the `Pressure` attribute fills over 6 s (meter, blue squeeze at the
+    screen's edges, creaks, "rise above N ft"), then 3% max health a second. Never in
+    the hub or the dens. The Outfitter's **Pressure Hide** (5 levels, 400 → 15,000
+    coral) counts 4 levels each (`Perks.depth`).
+  - **Hooks** (`HookService`, `HookController`): 5 boats drift 280–1,300 studs out
+    (dark hulls under the surface) and every 20–45 s drop a line 60–300 studs down with
+    a silver bait fish (BAIT tag). Swallowing it gives a big meal (`bait` 0.4 × the
+    biome's middle-level mass) and hooks you (`HookedBy` attribute): reeled up at 7
+    studs/s; 7 mashes of BITE/DASH (`StruggleHook`) break free with the bait, a
+    podmate's BITE within 26 studs cuts the line (`BiteLine`), landed after 9 s the
+    fisherman keeps 30% of your Haul (`HuntService.takeHaul`). `SwimController.holdBy`
+    takes holds from more than one source ("creature" for boss grabs, "hook"), and
+    `SwimController.struggle` sends the mash to whichever holds you.
+  - **Speed checks** (`SpeedService`, log-only): a fish moving more than its fastest
+    possible (Fins, species, a Dash throughout, slipstream) ×1.5 + 25 studs in a second,
+    three times in 30 s, writes `[SpeedCheck] ...` to the Output. `Net.teleport` and
+    `Net.shove` stamp a `MovedAt` player attribute and a respawn resets the baseline.
+    Enforce only after playtests show no false positives.
+- **Redeem codes (2026-10-14; GDD §9 "Later: codes"):** `Config/Codes.luau` (APEX,
+  DEEPDIVE, MEGALODON, NIBBLER; matched without case or spaces; `ends` Unix time), once
+  per player (`data.codes`), paid by `RewardsService.grant`, through the `RedeemCode`
+  RemoteFunction; the Shop's Free Perks has a Codes row whose REDEEM opens its own
+  window (the Shop redraws every second, which would clear a text box). Admin: Codes:
+  use them again.
 - **Servers:** 12 players.
 - **Species (owner, 2026-10-06):**
   - **Everyone starts as the same small googly-eyed fish** (working name Nibbler).
@@ -295,7 +358,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Depth pressure** gates biomes, not walls.
   - The whole map is underwater, and the surface is the ceiling.
 - **Tide events:** Blood Tide, Sardine Run, Whale Fall, Leviathan Rising and
-  Bioluminescent Night.
+  Bioluminescent Night. (Whale Fall is a world event since 2026-10-14, see the PvP
+  round; Leviathan Rising became the boss events.)
 - **Monetization (built 2026-10-09; owner: "ready for monetization"):**
   `Config/Monetization.luau` (names, prices, descriptions, Creator Hub ids, tuning),
   `MonetizationService` (ported from Hatch & Snatch: passes checked with Roblox on join
@@ -859,6 +923,19 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     their own light carry `lamp`; Tripo props face +X in the GLB (`front = 90`).
     Pass and reward den pieces go into `den.items` (the Build tray), never
     `den.owned`.
+  - **Snapping and starter layouts (owner, 2026-10-14: free placement plus "the
+    snapping and starter layouts"):** snapping is on by default (G / D-pad up / SNAP
+    toggles it; header SNAP ON/OFF): turns go in 45° steps (15° off), a floor thing
+    lines up with a neighbour's x or z within 0.8 studs, and with rock or a pillar
+    within 2.5 studs behind it backs onto that wall facing out (4 rays in the den's
+    frame against Terrain + Shell); a wall thing matches a neighbour's height within
+    1.2 (else whole studs). A snapped spot is used only if it passes the same checks.
+    `Config/Dens` `layouts`: each set's floor pieces as an arrangement round a spot;
+    with a set's piece picked or aimed at, L / D-pad down / LAY OUT lays out every one
+    in the tray round the floor spot aimed at, facing the camera
+    (`DenSpace.fitLayout`: the spot, then rings 2 studs apart to 24, each way round;
+    rugs only clash with rugs; `DenLayout` request). `run_dens.sh` checks every layout
+    fits an empty Nook/Burrow and Hall and that a second keeps clear of the first.
   - The trophy wall, visitors (look only, the whole house is safe: `Layout.denAt`)
     and the sign ("<NAME>'S SANCTUM") work as in v1. The camera looks past den
     furniture (tag `DenItems`).
@@ -1291,16 +1368,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   2026-10-06, and 2,350 were left after the biome and boss concepts. The budget plan is in GDD
   §8.
 - **Not built yet:**
-  - codes, Pearl crates, the Roblox group perk (id 0), pass and product icons;
+  - Pearl crates, the Roblox group perk (id 0), pass and product icons;
     the Deep Pass product id (create it in Creator Hub, 399 R$)
-  - chum clouds, Pods and the Apex bounty
-  - boats and hooks, depth pressure
+  - a `WorldProps.WhaleFall` model (the carcass is part-built); enforcing the speed
+    checks (log-only until playtests clear them)
   - models for the growth stages and the other biomes; Tripo models for the
     exotic variants (they're part-built pieces on the mesh for now); caustics
     (needs a texture upload); the sheen texture ids (Config/Textures, uploaded by
     the PC)
-  - den things beyond the first 16 (the rolled furniture, rugs and lamps; Tripo models), den items from bosses (jaw arch, Kraken-eye lantern)
-  - server-side speed checks
+  - den items from bosses (jaw arch, Kraken-eye lantern) as Trophy Hunter buys
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 
 ## Playtests
@@ -1393,7 +1469,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   props, prey and vendor bundles imported before the rule too): run
   `tools/props/strip_normals.py` on every Tripo model before it's bundled, then
   `safe_colors.py`, then the screen. Never re-import an older bundle that still holds
-  one.
+  one. **All seven older bundles were cleaned and re-hosted 2026-10-14** (manifest
+  `sha256` and `clean` per bundle): FBX through `tools/props/fbx_strip_normals.py`, a
+  byte-level edit that drops only the normal map's Texture/Video/connections (a
+  Blender re-export rotated the body and changed the bind matrices), colour maps the
+  screen flagged through `safe_colors.py` (MarketStall's canvas atlas scored 0.97 with
+  the classifier) and back into FBX with `tools/props/fbx_swap_color.py`. Re-import a
+  bundle only when its model needs replacing; the cleaned images would be new uploads.
 - **Never upload a normal map** (2026-10-13): Roblox's moderation terminated the account
   over a flat lilac relief normal map that every check we have scored at zero. All the
   appeals were accepted within minutes, but the account itself took longer. Skin GLBs

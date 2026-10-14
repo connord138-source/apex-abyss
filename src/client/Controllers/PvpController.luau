@@ -23,6 +23,7 @@ local CRUSH = Color3.fromRGB(80, 120, 255)
 local gui: ScreenGui
 local podButton: TextButton? = nil
 local apexChip: TextLabel
+local slipChip: TextLabel
 local pressureFrame: Frame
 local pressureFill: Frame
 local pressureText: TextLabel
@@ -78,6 +79,21 @@ local function buildGui()
 	apexChip.TextXAlignment = Enum.TextXAlignment.Center
 	apexChip.TextStrokeTransparency = 0.4
 	apexChip.Visible = false
+	-- A podmate's slipstream (SwimController.slipstream): a small chip under the Apex one
+	slipChip = Ui.label(
+		gui,
+		"Slipstream",
+		`SLIPSTREAM +{math.floor((Config.Pvp.pods.slipstream.speed - 1) * 100 + 0.5)}% SPEED`,
+		Ui.FONT_HEAVY,
+		13,
+		Color3.fromRGB(110, 236, 220),
+		UDim2.fromOffset(260, 18),
+		UDim2.new(0.5, 0, 0, 120)
+	)
+	slipChip.AnchorPoint = Vector2.new(0.5, 0)
+	slipChip.TextXAlignment = Enum.TextXAlignment.Center
+	slipChip.TextStrokeTransparency = 0.5
+	slipChip.Visible = false
 	-- The pressure squeeze: dark blue edges closing in
 	squeeze = Instance.new("Frame")
 	squeeze.Name = "Squeeze"
@@ -140,6 +156,7 @@ local function step()
 		apexLight.Adornee = character
 		apexLight.OutlineTransparency = 0.15 + 0.25 * math.sin(now * 3) ^ 2
 	end
+	slipChip.Visible = SwimController.slipstream
 	-- Depth pressure
 	local character = SwimController.character()
 	local pressure = if character then character:GetAttribute("Pressure") else nil
