@@ -34,6 +34,10 @@ return {
 		first = 13 * 60, -- the first, after the server starts
 		studioEvery = 6 * 60,
 		studioFirst = 90,
+		-- Quiet water after a whale before the next is announced (PC overnight
+		-- 2026-10-14: in Studio the next was announced a second after one ended,
+		-- so one was always coming or under way)
+		rest = 120,
 		warn = 60, -- announced this long before it starts to sink
 		height = 150, -- starts this far above the floor
 		sinkSeconds = 30,

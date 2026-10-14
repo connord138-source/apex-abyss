@@ -35,6 +35,11 @@ end
 
 -- A big centred line or two for a skin unlock or the Catch of the Week
 local function banner(kicker: string, title: string, sub: string, color: Color3)
+	local held = Ui.stageWait()
+	if held > 0 then
+		task.delay(held + 0.2, banner, kicker, title, sub, color)
+		return
+	end
 	local old = gui:FindFirstChild("CatchBanner")
 	if old then
 		old:Destroy()

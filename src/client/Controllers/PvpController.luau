@@ -174,10 +174,13 @@ local function step()
 		local depth = if typeof(crushY) == "number"
 			then Format.depth(Config.World.surfaceY - crushY)
 			else "here"
-		pressureText.Text = if level >= 1
-			then `CRUSHING · too deep for your level · rise above {depth}`
+		-- In the tutorial the deep only warns (PressureService)
+		local safe = character ~= nil and character:GetAttribute("PressureSafe") == true
+		pressureText.Text = if safe
+			then `TOO DEEP FOR NOW · head back up above {depth}`
+			elseif level >= 1 then `CRUSHING · too deep for your level · rise above {depth}`
 			else `PRESSURE BUILDING · rise above {depth}`
-		pressureText.TextColor3 = if level >= 1 then Ui.color.danger else Ui.color.text
+		pressureText.TextColor3 = if level >= 1 and not safe then Ui.color.danger else Ui.color.text
 		pressureFill.Size = UDim2.fromScale(level, 1)
 		squeeze.BackgroundTransparency = 1 - 0.55 * level
 		if now - lastCreak > (if level >= 1 then 1.6 else 3) then

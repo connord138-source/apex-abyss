@@ -1004,6 +1004,8 @@ function DenBuilder.build(
 		Cave.apply(workspace.Terrain, DenCarve.ops(index, record.level))
 		state.carved = record.level
 	end
+	-- Clients read which shafts this den has (SwimController's shaft lift)
+	state.folder:SetAttribute("Level", record.level)
 	local shellKey = `{record.level}|{record.floor}|{record.glow}`
 	if state.shellKey ~= shellKey then
 		buildShell(state, index, record)

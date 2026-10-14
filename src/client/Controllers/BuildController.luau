@@ -280,7 +280,7 @@ end
 -- ALIGN, then, with rock (or a pillar) within WALL_GAP of where its back would be,
 -- it backs onto that wall facing out. Returns the new spot and turn, and whether
 -- anything snapped.
-local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number, boolean)
+local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number, boolean, Vector3?)
 	local x, z, r = at.X, at.Z, turn
 	local snapped = false
 	local s = selection
@@ -298,7 +298,7 @@ local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number
 		end
 	end
 	if item.flat then
-		return Vector3.new(x, at.Y, z), r, snapped
+		return Vector3.new(x, at.Y, z), r, snapped, nil
 	end
 	local frame = DenSpace.frame(ownIndex())
 	local folder = denFolder()
@@ -314,6 +314,7 @@ local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number
 	local depth = item.size.Z
 	local reach = WALL_GAP + math.max(item.size.X, item.size.Z) / 2 + 1
 	local bestGap, bestMove: Vector3?, bestTurn = WALL_GAP, nil, r
+	local away: Vector3? = nil
 	-- Each way in the den's frame (dx, dz) and the turn that faces away from it
 	for _, way in { { 0, 1, 180 }, { 0, -1, 0 }, { 1, 0, 90 }, { -1, 0, 270 } } do
 		local direction = frame:VectorToWorldSpace(Vector3.new(way[1], 0, -way[2]))
@@ -325,6 +326,7 @@ local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number
 				bestGap = gap
 				bestMove = Vector3.new(way[1], 0, way[2]) * (distance - depth / 2 - 0.15)
 				bestTurn = way[3]
+				away = Vector3.new(-way[1], 0, -way[2])
 			end
 		end
 	end
@@ -334,7 +336,7 @@ local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number
 		r = bestTurn
 		snapped = true
 	end
-	return Vector3.new(x, at.Y, z), r, snapped
+	return Vector3.new(x, at.Y, z), r, snapped, if bestMove then away else nil
 end
 
 -- A wall thing's height lines up with the nearest neighbour wall thing's, else
@@ -441,7 +443,18 @@ local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): S
 		and surface == "floor"
 		and at.Y < (DenSpace.storey(DenSpace.storeyAt(at.Y) or 1).deck + 0.3)
 	then
-		local snapAt, snapTurn, did = snapFloor(item, at, turn)
+		local snapAt, snapTurn, did, away = snapFloor(item, at, turn)
+		-- Backed onto a pillar, the piece sat in the pillar's deck hole and was
+		-- refused (PC overnight 2026-10-14): nudge it straight out until it fits
+		if did and away and not valid(snapAt).ok then
+			for step = 1, 8 do
+				local nudged = snapAt + away * (0.5 * step)
+				if valid(nudged).ok then
+					snapAt = nudged
+					break
+				end
+			end
+		end
 		if did and valid(snapAt).ok then
 			at, turn, snapped = snapAt, snapTurn, true
 		end

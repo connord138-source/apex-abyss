@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Chum = require(ReplicatedStorage.Shared.Chum)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Tides = require(ReplicatedStorage.Shared.Tides)
@@ -254,8 +255,33 @@ local function onEat(player: Player, batch: any)
 	end
 end
 
--- A spot in a biome, on its floor
+-- Open floor for a carcass: nothing of the world's dressing (ruins, wrecks, reef
+-- rock, chimneys) stands over the spot or round it, so the whale settles on the sand
+-- where it's seen from above (PC overnight 2026-10-14: one in the Sunken Ruins came
+-- to rest under a ruin's lintel, hidden among the pillars)
+local function openFloor(x: number, z: number, floor: number): boolean
+	local reach = tune.whale.length * 0.45
+	for _, offset in
+		{
+			Vector2.zero,
+			Vector2.new(reach, 0),
+			Vector2.new(-reach, 0),
+			Vector2.new(0, reach),
+			Vector2.new(0, -reach),
+		}
+	do
+		local px, pz = x + offset.X, z + offset.Y
+		local terrain = if offset == Vector2.zero then floor else floorUnder(px, pz, World.surfaceY - 5)
+		if Ground.y(px, pz) > terrain + 3 then
+			return false
+		end
+	end
+	return true
+end
+
+-- A spot in a biome, on its floor (open floor if one turns up in 40 tries)
 local function siteIn(biome: Biomes.Biome): (Vector3?, number)
+	local fallback: Vector3? = nil
 	for _ = 1, 40 do
 		local span = (biome.angleTo - biome.angleFrom) % 360
 		local angle = math.rad(biome.angleFrom + rng:NextNumber(0, if span == 0 then 360 else span))
@@ -270,8 +296,15 @@ local function siteIn(biome: Biomes.Biome): (Vector3?, number)
 		local at = Biomes.at(probe)
 		if at and at.id == biome.id then
 			local floor = floorUnder(x, z, World.surfaceY - 5)
-			return Vector3.new(x, floor, z), floor
+			if openFloor(x, z, floor) then
+				return Vector3.new(x, floor, z), floor
+			end
+			-- Over dressing, the carcass rests on top of it, never inside
+			fallback = fallback or Vector3.new(x, Ground.y(x, z), z)
 		end
+	end
+	if fallback then
+		return fallback, fallback.Y
 	end
 	return nil, 0
 end
@@ -332,11 +365,30 @@ local function scheduleWhale(now: number, first: boolean)
 	nextWhaleAt = now + delay
 end
 
--- Admin: a Whale Fall now (announced, sinking in a few seconds)
+-- Admin: a Whale Fall now (announced, sinking in a few seconds). One that's only
+-- announced sinks in 5 s instead; one that's feeding ends and a fresh one comes (PC
+-- overnight 2026-10-14: in Studio one was nearly always coming or under way, so the
+-- button was refused most of the time)
 function ChumService.whaleNow(): string
 	local now = Timing.clock()
-	if whale then
-		return "A Whale Fall is already coming or under way"
+	local current = whale
+	if current and current.cloud == nil then
+		current.startsAt = now + 5
+		nextWhaleAt = now + 5
+		warned = true
+		Net.chum("warn", {
+			x = current.at.X,
+			y = current.at.Y,
+			z = current.at.Z,
+			biome = current.biome.name,
+			startsAt = current.startsAt,
+		})
+		return `The Whale Fall in the {current.biome.name} sinks in 5 s`
+	end
+	if current and current.cloud then
+		remove(current.cloud)
+		whale = nil
+		Net.chum("warn", { done = true })
 	end
 	if not warnWhale(now + 5) then
 		return "Couldn't find a spot"
@@ -405,6 +457,10 @@ function ChumService.start()
 				if entry.cloud.kind == "whale" and w and w.cloud == id then
 					whale = nil
 					Net.chum("warn", { done = true })
+					-- Quiet water before the next is announced
+					if not warned then
+						nextWhaleAt = math.max(nextWhaleAt, now + tune.whale.rest + tune.whale.warn)
+					end
 				end
 				continue
 			end

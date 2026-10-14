@@ -101,13 +101,20 @@ local function step()
 			then `{status} · {string.upper(title)}`
 			else status
 		tag.status.TextColor3 = color
-		-- The Apex: a crown line everyone can read from far off (Config/Pvp `apex`)
+		-- The Apex: a crown line everyone can read from far off (Config/Pvp `apex`):
+		-- heavier, bigger and darker-edged (PC overnight 2026-10-14: small and dim at
+		-- 70 studs, readable only from 30)
 		if apex then
 			local bounty = workspace:GetAttribute("ApexBounty")
 			tag.status.Text =
 				`★ APEX · {Format.number(if typeof(bounty) == "number" then bounty else 0)} BOUNTY · {status}`
-			tag.status.TextColor3 = Color3.fromRGB(255, 204, 92)
+			tag.status.TextColor3 = Color3.fromRGB(255, 214, 110)
 		end
+		tag.status.FontFace = if apex then Ui.FONT_HEAVY else Ui.FONT_SEMI
+		tag.status.TextSize = if apex then 18 else 13
+		tag.status.Size = UDim2.new(1, 0, 0, if apex then 22 else 16)
+		tag.status.TextStrokeTransparency = if apex then 0.15 else 0.7
+		tag.gui.Size = UDim2.fromOffset(if apex then 300 else 200, if apex then 50 else 44)
 		tag.gui.MaxDistance = if apex then 900 else 220
 	end
 end

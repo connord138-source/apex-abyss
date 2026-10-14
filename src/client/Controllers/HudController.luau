@@ -344,6 +344,7 @@ local function celebrate(summary: { [string]: any })
 		and typeof(summary.levelBefore) == "number"
 		and summary.level > summary.levelBefore
 	Sfx.play("Bank", { volume = 0.7 })
+	Ui.holdStage(3)
 	if leveled then
 		task.delay(0.45, function()
 			Sfx.play("LevelUp", { volume = 0.75 })

@@ -102,9 +102,13 @@ local function pickSite(tier: MapTier, deepest: number?): Vector3
 			return hit.Position
 		end
 	end
+	-- No luck: a spot on the shelf's sand, inside its edge, which is above every
+	-- crush depth (the old fallback ignored it and could land off the shelf, out over
+	-- the deep floor; PC overnight 2026-10-14)
 	local angle = rng:NextNumber(0, 2 * math.pi)
-	local distance = (tier.minDistance + tier.maxDistance) / 2
-	return Vector3.new(math.cos(angle) * distance, World.seabedY, math.sin(angle) * distance)
+	local distance = math.min((tier.minDistance + tier.maxDistance) / 2, World.shelf.radius - 60)
+	local x, z = math.cos(angle) * distance, math.sin(angle) * distance
+	return Vector3.new(x, Seafloor.y(x, z), z)
 end
 
 local COMPASS = { "east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east" }

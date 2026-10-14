@@ -50,6 +50,7 @@ export type Predator = {
 	target: Player?,
 	waypoint: Vector3,
 	waypointUntil: number,
+	lureAt: number, -- when it next looks for chum while roaming
 	respawnAt: number,
 	-- Damage dealt by each player this life, and when they last bit (the school bonus)
 	hitBy: { [Player]: { damage: number, at: number } },
@@ -410,14 +411,21 @@ local function simulate(predator: Predator, dt: number, now: number)
 	local fast = hunters(predator)
 	local speed = def.speed * fast
 	if predator.mode == "roam" then
-		if (predator.waypoint - predator.position).Magnitude < 8 or now > predator.waypointUntil then
-			-- Chum in the water draws it in (Config/Chum `lure`); else a new spot to roam
+		local reached = (predator.waypoint - predator.position).Magnitude < 8 or now > predator.waypointUntil
+		-- Chum in the water draws it in (Config/Chum `lure`), looked for every second so
+		-- a fresh cloud turns it at once (PC overnight 2026-10-14: checked only at each
+		-- new waypoint, every 6–12 s, a Barracuda took ~15 s to arrive); else a new
+		-- spot to roam
+		if reached or now >= predator.lureAt then
+			predator.lureAt = now + 1
 			local chum = ChumService.nearest(predator.position, Config.Chum.lure)
 			if chum and not nearHub(chum, def.length) and inRange(def, chum) then
-				local around = rng:NextUnitVector() * def.length * 0.6
-				predator.waypoint = chum + Vector3.new(around.X, math.abs(around.Y) + 3, around.Z)
-				predator.waypointUntil = now + 6
-			else
+				if reached or (predator.waypoint - chum).Magnitude > def.length * 1.5 then
+					local around = rng:NextUnitVector() * def.length * 0.6
+					predator.waypoint = chum + Vector3.new(around.X, math.abs(around.Y) + 3, around.Z)
+					predator.waypointUntil = now + 6
+				end
+			elseif reached then
 				predator.waypoint = randomWaypoint(def)
 				predator.waypointUntil = now + 12
 			end
@@ -654,6 +662,7 @@ local function make(def: Def, custom: boolean?): Predator
 		target = nil,
 		waypoint = Vector3.zero,
 		waypointUntil = 0,
+		lureAt = 0,
 		respawnAt = 0,
 		hitBy = {},
 		custom = custom,

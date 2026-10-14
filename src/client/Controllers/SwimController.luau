@@ -12,6 +12,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
@@ -87,6 +89,34 @@ local function limitPitch(direction: Vector3): Vector3
 	end
 	local y = math.sign(direction.Y) * maxY
 	return (flat.Unit * math.sqrt(1 - y * y) + Vector3.new(0, y, 0)).Unit
+end
+
+-- A den shaft the fish is under or in, as the point on its axis level with the
+-- fish (nil when there's none). The den's level comes from its DenBase folder
+-- (DenBuilder), so a shaft only counts once it's carved.
+local function shaftAxis(position: Vector3): Vector3?
+	local index = Layout.denAt(position)
+	if index == nil then
+		return nil
+	end
+	local world = workspace:FindFirstChild("World")
+	local hub = world and world:FindFirstChild("Hub")
+	local base = hub and hub:FindFirstChild(`DenBase{index}`)
+	local level = if base then base:GetAttribute("Level") else nil
+	if typeof(level) ~= "number" then
+		return nil
+	end
+	local frame = DenSpace.frame(index)
+	local here = DenSpace.toLocal(frame, position)
+	for _, shaft in DenSpace.shafts(level) do
+		local top = DenSpace.storey(shaft.from).deck + 6
+		local bottom = DenSpace.storey(shaft.to).ceiling - 14
+		local off = Vector2.new(here.X, here.Z - shaft.z).Magnitude
+		if here.Y < top and here.Y > bottom and off < shaft.radius + 6 then
+			return DenSpace.spot(frame, 0, here.Y, shaft.z).Position
+		end
+	end
+	return nil
 end
 
 function SwimController.length(): number
@@ -343,6 +373,21 @@ local function step(dt: number)
 		velocity = heading * math.max(speed, top * swim.boostMultiplier * 0.8)
 	else
 		velocity *= math.exp(-swim.drag * dt)
+	end
+
+	-- Den shafts lift: under or in a shaft and swimming mostly up or down, the fish
+	-- goes straight and eases onto the shaft's axis. The pitch limit turns straight
+	-- up into 80° along the heading, so a big fish under the Sanctum's mouth slid
+	-- along the vault instead of rising into it (PC overnight 2026-10-14)
+	if not held and not lunging and not reversing and intent > 0.05 and math.abs(wish.Unit.Y) > 0.55 then
+		local axis = shaftAxis(currentRoot.Position)
+		if axis then
+			local toAxis = Vector3.new(axis.X - currentRoot.Position.X, 0, axis.Z - currentRoot.Position.Z)
+			local pull = if toAxis.Magnitude > 0.3
+				then toAxis.Unit * math.min(toAxis.Magnitude * 2.5, top * 0.6)
+				else Vector3.zero
+			velocity = Vector3.new(0, math.sign(wish.Y) * velocity.Magnitude, 0) + pull
+		end
 	end
 
 	-- The surface is the ceiling, and the map has edges

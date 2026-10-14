@@ -58,7 +58,12 @@ function PressureService.start()
 			built[player] = seconds
 			character:SetAttribute("Pressure", math.min(seconds / tune.grace, 1))
 			character:SetAttribute("CrushY", if band then band.y else 0)
-			if seconds > tune.grace then
+			-- A fish still in the tutorial is warned but never crushed: its steps stay
+			-- on the shelf, and a new player who wanders off it shouldn't die for it
+			-- (PC overnight 2026-10-14)
+			local learning = not data.tutorial.done
+			character:SetAttribute("PressureSafe", learning)
+			if seconds > tune.grace and not learning then
 				HuntService.damage(player, tune.damage * TICK, "the crushing deep", true)
 			end
 		end

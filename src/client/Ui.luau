@@ -316,6 +316,18 @@ function Ui.centreBannerUp(): boolean
 end
 
 -- A player's own banner takes the spot from a tide's (the tide stays on its chip)
+-- The middle of the screen is one stage: a big moment (the bank celebration) holds
+-- it, and a banner that comes in meanwhile waits its turn (PC overnight 2026-10-14:
+-- an achievement banner drew on top of the bank celebration)
+local stageHeldUntil = 0
+function Ui.holdStage(seconds: number)
+	stageHeldUntil = math.max(stageHeldUntil, os.clock() + seconds)
+end
+-- Seconds until the stage is free (0 when it is)
+function Ui.stageWait(): number
+	return math.max(0, stageHeldUntil - os.clock())
+end
+
 function Ui.clearTideBanner()
 	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
 	local tides = playerGui and playerGui:FindFirstChild("Tides")
@@ -527,6 +539,29 @@ function Ui.window(parent: Instance, title: string, subtitle: string, size: Vect
 	scale.Scale = 0.92
 	scale.Parent = frame
 	Ui.tween(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	-- Phones: Roblox's buttons sit over the screen's top-left corner, and a tall
+	-- window's title ran under them (PC overnight 2026-10-14): while the header is
+	-- in the top bar's band, the title and subtitle start right of the buttons
+	if Ui.isTouch() then
+		local function clear()
+			local inset = GuiService.TopbarInset
+			local perDesign = frame.AbsoluteSize.X / math.max(size.X, 1)
+			local over = inset.Min.X - frame.AbsolutePosition.X
+			local shift = if frame.AbsolutePosition.Y < inset.Max.Y
+					and over > 0
+					and perDesign > 0
+				then math.ceil(over / perDesign) + 8
+				else 0
+			heading.Position = UDim2.fromOffset(22 + shift, 14)
+			heading.Size = UDim2.new(1, -80 - shift, 0, 30)
+			sub.Position = UDim2.fromOffset(22 + shift, 44)
+			sub.Size = UDim2.new(1, -80 - shift, 0, 18)
+		end
+		frame:GetPropertyChangedSignal("AbsolutePosition"):Connect(clear)
+		frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(clear)
+		GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(clear)
+		task.defer(clear)
+	end
 	return { frame = frame, content = content, close = close, title = heading, subtitle = sub }
 end
 

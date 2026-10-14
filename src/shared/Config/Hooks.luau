@@ -13,7 +13,9 @@ return {
 	line = 70, -- seconds a line stays down untouched
 	depth = { 60, 300 }, -- the bait this far under the surface (and 20+ over the floor)
 	-- The bait's kg: this × the banked mass at the middle of the biome's level range
-	bait = 0.4,
+	-- (0.4 until the PC overnight 2026-10-14: +73 kg for a LV 21 fish with ×2 Mass,
+	-- more than most fish, and breaking free keeps it all)
+	bait = 0.25,
 	minBait = 0.4,
 	reel = 7, -- studs a second the line pulls a hooked fish up
 	hold = 9, -- seconds before a hooked fish is landed

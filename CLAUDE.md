@@ -121,6 +121,25 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     three times in 30 s, writes `[SpeedCheck] ...` to the Output. `Net.teleport` and
     `Net.shove` stamp a `MovedAt` player attribute and a respawn resets the baseline.
     Enforce only after playtests show no false positives.
+  - **Overnight follow-ups (PC report 2026-10-14, every system passed; fixes on
+    `claude/world`):** after a whale ends the water stays quiet `rest` 120 s before
+    the next is announced (in Studio one was always coming or under way), the
+    admin's "Whale Fall now" makes an announced whale sink in 5 s or ends a feeding
+    one and brings a fresh one, and a whale settles only on open floor
+    (`ChumService` `openFloor`: no dressing over the spot or 27 studs round it, by
+    `Shared/Ground`; one in the Ruins came to rest under a lintel), else on top of
+    the dressing. A fish still in the tutorial is warned by the pressure meter
+    (TOO DEEP FOR NOW, `PressureSafe` attribute) but never crushed. AI predators
+    look for chum every second while roaming (`lureAt`; ~15 s to arrive before, as
+    it was only checked at a new waypoint). A Captain's map that finds no site in
+    40 tries falls back to the shelf's sand inside its edge, above every crush
+    depth. Bait is 0.25 of the biome's middle mass (was 0.4: +73 kg for a LV 21 fish
+    with ×2 Mass). The Apex's nametag line is heavier, bigger and gold-edged (dim at
+    70 studs). The middle of the screen is one stage (`Ui.holdStage` /
+    `Ui.stageWait`): the bank celebration holds it 3 s and the catch and
+    achievement banners wait their turn. On phones a window's title and subtitle
+    start right of Roblox's top-left buttons while its header is in the top bar's
+    band (`Ui.window`).
 - **Redeem codes (2026-10-14; GDD §9 "Later: codes"):** `Config/Codes.luau` (APEX,
   DEEPDIVE, MEGALODON, NIBBLER; rewards that always fit, never wraps a full carry would
   swallow; matched without case or spaces; `ends` Unix time), once
@@ -944,6 +963,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     must stand on top of a placed floor thing, inside its turned footprint
     (`DenSpace.resting`, checked by the server on place and move and by the ghost).
     An aim through a joint between flagstones lifts onto the deck.
+  - **Shaft lift (PC report 2026-10-14: a LV 100 fish couldn't rise straight up the
+    Sanctum shaft; it slid along the vault):** the swim's pitch limit (80°) turns
+    straight up into 80° along the heading, so a fish under a mouth drifted off it.
+    Under or in a shaft (within its radius + 6 of the axis, from 14 below the lower
+    storey's ceiling to 6 over the upper deck) and swimming mostly up or down,
+    `SwimController` moves the fish straight and eases it onto the axis
+    (`shaftAxis`; the den's level is the `Level` attribute DenBuilder sets on
+    `Hub.DenBase<i>`). Backing a piece onto a pillar left it in the pillar's deck
+    hole, refused: Build mode now nudges a backed spot straight out until it fits
+    (`snapFloor` returns the way out).
   - **Furniture batch 1 (owner, 2026-10-13: "Approve all, players will need to
     complete achievements to unlock the ability to purchase each set with coral.
     Once a set is unlocked, pieces are individually bought, not the entire set";
@@ -1425,7 +1454,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-10-pc-pullback.md`, `2026-10-11-pc.md` (skins v5, glints, light),
   `2026-10-11-pc-2.md` (vendor models, exits, rounded rocks, safe cave, no regen, item
   wheel, growth, skins v6, glints, haze, publish)
-  `2026-10-13-pc.md` (dens v2: shafts plugged, Build mode, garden, map);
+  `2026-10-13-pc.md` (dens v2: shafts plugged, Build mode, garden, map),
+  `2026-10-14-pc-overnight.md` (the PvP round, snapping and layouts, codes, map
+  image id; 12 fixes on `claude/core-systems`, not published: Publish As was
+  refused by the PC session's permission check, so Connor publishes);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
