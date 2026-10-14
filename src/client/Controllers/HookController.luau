@@ -284,6 +284,11 @@ function HookController.start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	local gui = Ui.screen("Hooks", playerGui, 7)
 	panel = Ui.panel(gui, "Hooked", UDim2.fromOffset(440, 58), UDim2.new(0.5, 0, 0.7, 0), Vector2.new(0.5, 0))
+	if Input.isTouch() then
+		-- Phones: up where the pressure meter sits; at 0.7 it covered the top of
+		-- the HAUL card and the ITEMS button (PC playtest 2026-10-14, X2)
+		panel.Position = UDim2.new(0.5, 0, 0.62, 0)
+	end
 	panel.Visible = false
 	panelText = Ui.label(
 		panel,
