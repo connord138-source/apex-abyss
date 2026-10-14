@@ -1578,7 +1578,7 @@ function MenuController.openStore()
 						-- Free perks
 						heading(list, next(), "FREE PERKS")
 						local premium = s.premium == true
-						local _, premiumButton = tallRow(
+						local premiumRow, premiumButton = tallRow(
 							list,
 							next(),
 							"Premium",
@@ -1589,6 +1589,13 @@ function MenuController.openStore()
 							if premium then "disabled" else "secondary",
 							Ui.color.safe
 						)
+						-- Its blurb runs to three lines: the tall row's two cut it off at
+						-- "Coral Garden and a" (PC playtest 2026-10-14, C1)
+						premiumRow.Size = UDim2.new(1, -8, 0, 96)
+						local premiumBlurb = premiumRow:FindFirstChild("Blurb") :: TextLabel?
+						if premiumBlurb then
+							premiumBlurb.Size = UDim2.new(1, -320, 0, 56)
+						end
 						if premiumButton and not premium then
 							premiumButton.Activated:Connect(Store.buyPremium)
 						end
