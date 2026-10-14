@@ -2,39 +2,53 @@
   "_comment": "Hosted bundles of the game's 3D models (docs/ASSETS.md). fetch_assets.py downloads and unzips each into assets/. Rebuilt 2026-10-07 from Tripo batch 1, plus the Megalodon boss.",
   "bundles": {
     "species_fbx": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/87744775-0fe7-4a82-b783-0349493adab1.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/33aba3b0-f7b2-41a0-bdb0-6f2e7e4b6c40.zip",
       "into": "assets/fbx",
-      "contents": "species/<SpeciesId>.fbx: Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged: Root/Head/Spine1..N/Tail)"
+      "contents": "species/<SpeciesId>.fbx: Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged: Root/Head/Spine1..N/Tail)",
+      "sha256": "bfc03955f68cc0a1778bcbe24a721f6b598764c4ff741edf9ff099dd6b173f30",
+      "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0)."
     },
     "prey_glb": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/8609d09c-82cd-4e4b-b3e9-15599de3bc4b.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/4df855dc-3e37-4674-b314-5d7c834792ae.zip",
       "into": "assets/glb",
-      "contents": "prey/<PreyId>.glb: Minnow, Sardine, Wrasse, Snapper, Grouper, Barracuda, ReefShark (static, squared up, facing -Z)"
+      "contents": "prey/<PreyId>.glb: Minnow, Sardine, Wrasse, Snapper, Grouper, Barracuda, ReefShark (static, squared up, facing -Z)",
+      "sha256": "f5cdbc2630ca5f2184607b40baa65c0c2a33a7b27137d6f5cd617787d11add8a",
+      "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0). Colour maps moved out of skin tones by safe_colors.py: Barracuda, Grouper, Minnow."
     },
     "props_glb": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/63c1f02d-2b61-4180-a055-5b1ef404e18e.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/925a9042-fbb1-47cb-a8be-d389613a3db8.zip",
       "into": "assets/glb",
-      "contents": "props/<Name>.glb: GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall"
+      "contents": "props/<Name>.glb: GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall",
+      "sha256": "033eb6874628ed3e651be57bad65f29693bac4b3c0d37fa306fbe05227389652",
+      "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0). Colour maps moved out of skin tones by safe_colors.py: BrainCoral, Lantern, MarketStall, Shell, StaghornCoral."
     },
     "boss_fbx": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/4eff942d-2b94-4088-b725-9899d642efeb.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/83219213-b7cd-4b85-869d-36d5dbdc58a8.zip",
       "into": "assets/fbx",
-      "contents": "bosses/Megalodon.fbx (7 spine segments), bosses/GiantSquid.fbx (6; the arms trail and wave); rigged like species, import to FishModels.<Id>"
+      "contents": "bosses/Megalodon.fbx (7 spine segments), bosses/GiantSquid.fbx (6; the arms trail and wave); rigged like species, import to FishModels.<Id>",
+      "sha256": "0e7788565783d2180fe0414d9debbd6bf64f6d66f5a3f1a8d99fb3e606fc7aff",
+      "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0)."
     },
     "prey_fbx": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/6cd9c5a1-2c2c-422a-ad93-4e71e228b943.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/7fddf06f-6558-4298-a428-b90e9bf8e28f.zip",
       "into": "assets/fbx",
-      "contents": "prey/<PreyId>.fbx: Minnow, Sardine, Wrasse, Snapper, Grouper (rigged, 4 spine segments; replaces the static prey_glb set, which still works)"
+      "contents": "prey/<PreyId>.fbx: Minnow, Sardine, Wrasse, Snapper, Grouper (rigged, 4 spine segments; replaces the static prey_glb set, which still works)",
+      "sha256": "cf23c633e1cee56e54ea998ca4c1696fe0ba77a5777aa2dee9879f0c619ee55e",
+      "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0). Colour maps moved out of skin tones by safe_colors.py: Grouper, Minnow."
     },
     "props2_glb": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/92de7226-58e5-43b7-8b5b-d9622ff8b73e.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/327e54de-f3bf-4af8-86ea-f5aae3d6c8e9.zip",
       "into": "assets/glb",
-      "contents": "props/TreasureChest.glb (the dig site's chest, half out of the sand)"
+      "contents": "props/TreasureChest.glb (the dig site's chest, half out of the sand)",
+      "sha256": "f87c95228c53fa8e7fa83ac7fe3b1987c75087ab008e098442ba5c5910c0043c",
+      "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0). Colour maps moved out of skin tones by safe_colors.py: TreasureChest."
     },
     "vendors_glb": {
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/9d3c7f7b-a357-4119-9ebd-6ec95fb131b6.zip",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/d0a01424-9cab-4372-9b18-79d225eaa48e.zip",
       "into": "assets/glb",
-      "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept. v2 of 2026-10-11 (sha256 917bf7b7...): the base colors of the Mason, Outfitter, Dyer and Charms moved out of skin tones by tools/props/safe_colors.py (salmon to vivid orange, cream to cool white, tan to greige, browns darker), and all five cleared by screen_shades.py with the classifier (highest 0.016). Front faces +X in the GLB."
+      "contents": "props/Keeper<VendorId>.glb: KeeperOutfitter (hermit crab), KeeperMason (octopus), KeeperCharms (sea turtle), KeeperDyer (pufferfish), KeeperTrophies (scarred grouper); the shopkeepers, from the approved Vendors concept. v2 of 2026-10-11 (sha256 917bf7b7...): the base colors of the Mason, Outfitter, Dyer and Charms moved out of skin tones by tools/props/safe_colors.py (salmon to vivid orange, cream to cool white, tan to greige, browns darker), and all five cleared by screen_shades.py with the classifier (highest 0.016). Front faces +X in the GLB.",
+      "sha256": "330ecfc41c1362a9f626428beee2cd3631df60fbebaa0db20a897fd1b5074a22",
+      "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0)."
     },
     "shade_skins": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/c9e957d1-85cb-4858-8a30-c72ee6dca09a.zip",
