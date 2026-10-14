@@ -351,18 +351,21 @@ local function showControls(step: TutorialConfig.Step)
 		holder.AutomaticSize = Enum.AutomaticSize.X
 		holder.LayoutOrder = i
 		holder.Parent = capsRow
+		-- The cap over its caption, centred: the holder is as wide as the wider of
+		-- the two (a long caption under a short cap, "free the cursor for buttons"
+		-- under ALT, ran into the next one: PC playtest 2026-10-14, R1)
+		local stack = Instance.new("UIListLayout")
+		stack.FillDirection = Enum.FillDirection.Vertical
+		stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		stack.Padding = UDim.new(0, 4)
+		stack.SortOrder = Enum.SortOrder.LayoutOrder
+		stack.Parent = holder
 		local cap = Ui.keycap(holder, "Cap", key, 30)
-		cap.Position = UDim2.new()
-		local caption = Ui.label(
-			holder,
-			"Does",
-			control.does,
-			Ui.FONT_SEMI,
-			11,
-			Ui.color.muted,
-			UDim2.new(1, 0, 0, 14),
-			UDim2.fromOffset(0, 34)
-		)
+		cap.LayoutOrder = 1
+		local caption =
+			Ui.label(holder, "Does", control.does, Ui.FONT_SEMI, 11, Ui.color.muted, UDim2.fromOffset(0, 14))
+		caption.AutomaticSize = Enum.AutomaticSize.X
+		caption.LayoutOrder = 2
 		caption.TextXAlignment = Enum.TextXAlignment.Center
 		caption.TextWrapped = false
 	end

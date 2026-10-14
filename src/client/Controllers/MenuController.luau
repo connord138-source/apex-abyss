@@ -678,13 +678,20 @@ local function denRows(list: ScrollingFrame)
 				nil,
 				accent
 			)
-			-- (the piece list runs to two lines: playtest 2026-10-13, it ran off the edge)
-			frame.Size = UDim2.new(1, -8, 0, 84)
+			-- (the piece list runs to two lines: playtest 2026-10-13, it ran off the edge;
+			-- two lines still cut six pieces at the fourth, PC playtest 2026-10-14 N1, so a
+			-- locked row, which has no button, gives the list the button's width and a
+			-- third line, with the progress at the right edge)
+			frame.Size = UDim2.new(1, -8, 0, 98)
 			local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
 			if blurb then
 				blurb.TextWrapped = true
 				blurb.TextYAlignment = Enum.TextYAlignment.Top
-				blurb.Size = UDim2.new(1, -320, 0, 40)
+				blurb.Size = UDim2.new(1, -190, 0, 58)
+			end
+			local status = frame:FindFirstChild("Status") :: TextLabel?
+			if status then
+				status.Position = UDim2.new(1, -150, 0.5, -10)
 			end
 		end
 	end
@@ -1330,12 +1337,15 @@ function MenuController.openSatchel()
 							nil,
 							tier.color
 						)
-						frame.Size = UDim2.new(1, -8, 0, 56)
+						-- Two lines: the Weathered and Captain's odds ran past one and were
+						-- cut at "..." (PC playtest 2026-10-14, D3b)
+						frame.Size = UDim2.new(1, -8, 0, 74)
 						frame.BackgroundTransparency = 0.6
 						local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
 						if blurb then
-							blurb.Size = UDim2.new(1, -40, 0, 18)
-							blurb.TextTruncate = Enum.TextTruncate.AtEnd
+							blurb.Size = UDim2.new(1, -40, 0, 36)
+							blurb.TextWrapped = true
+							blurb.TextYAlignment = Enum.TextYAlignment.Top
 						end
 					end
 				end)
@@ -1571,7 +1581,7 @@ function MenuController.openStore()
 						-- Free perks
 						heading(list, next(), "FREE PERKS")
 						local premium = s.premium == true
-						local _, premiumButton = tallRow(
+						local premiumRow, premiumButton = tallRow(
 							list,
 							next(),
 							"Premium",
@@ -1582,6 +1592,13 @@ function MenuController.openStore()
 							if premium then "disabled" else "secondary",
 							Ui.color.safe
 						)
+						-- Its blurb runs to three lines: the tall row's two cut it off at
+						-- "Coral Garden and a" (PC playtest 2026-10-14, C1)
+						premiumRow.Size = UDim2.new(1, -8, 0, 96)
+						local premiumBlurb = premiumRow:FindFirstChild("Blurb") :: TextLabel?
+						if premiumBlurb then
+							premiumBlurb.Size = UDim2.new(1, -320, 0, 56)
+						end
 						if premiumButton and not premium then
 							premiumButton.Activated:Connect(Store.buyPremium)
 						end
@@ -1826,6 +1843,12 @@ function MenuController.openCodes()
 				send()
 			end
 		end)
+		if Input.isTouch() then
+			-- Phones: at the top, so the box stays above the on-screen keyboard (in
+			-- the middle the keyboard hid it: PC playtest 2026-10-14, X2)
+			window.frame.AnchorPoint = Vector2.new(0.5, 0)
+			window.frame.Position = UDim2.new(0.5, 0, 0, 6)
+		end
 		return { window = window, render = function() end }
 	end)
 end
