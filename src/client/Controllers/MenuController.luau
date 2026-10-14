@@ -678,13 +678,20 @@ local function denRows(list: ScrollingFrame)
 				nil,
 				accent
 			)
-			-- (the piece list runs to two lines: playtest 2026-10-13, it ran off the edge)
-			frame.Size = UDim2.new(1, -8, 0, 84)
+			-- (the piece list runs to two lines: playtest 2026-10-13, it ran off the edge;
+			-- two lines still cut six pieces at the fourth, PC playtest 2026-10-14 N1, so a
+			-- locked row, which has no button, gives the list the button's width and a
+			-- third line, with the progress at the right edge)
+			frame.Size = UDim2.new(1, -8, 0, 98)
 			local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
 			if blurb then
 				blurb.TextWrapped = true
 				blurb.TextYAlignment = Enum.TextYAlignment.Top
-				blurb.Size = UDim2.new(1, -320, 0, 40)
+				blurb.Size = UDim2.new(1, -190, 0, 58)
+			end
+			local status = frame:FindFirstChild("Status") :: TextLabel?
+			if status then
+				status.Position = UDim2.new(1, -150, 0.5, -10)
 			end
 		end
 	end
