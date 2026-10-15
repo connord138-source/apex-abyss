@@ -228,6 +228,37 @@ def glb_base(path: pathlib.Path):
     return None
 
 
+def fbx_base(path: pathlib.Path):
+    """A rigged fish FBX's own color texture: the image embedded in the Video that feeds
+    a Material's DiffuseColor (the same record tools/props/fbx_swap_color.py swaps). The
+    PC has the species FBX (assets/fbx/species) but not the cloud's baked .npz maps, so
+    this is its base (PC follow-up 2026-10-14: without one the strict fallback flagged
+    the 'Cuda's Natural skin and a Reef Shark skin)."""
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "props"))
+    import fbx_strip_normals as F
+
+    data = path.read_bytes()
+    top, _after, _sentinel = F.parse_records(data, 27, len(data))
+    objects = next(r for r in top if r.name == b"Objects")
+    conns = next(r for r in top if r.name == b"Connections")
+    uid = {F.decode_props(r.props_raw, r.nprops)[0][1]: r for r in objects.children}
+    links = [F.decode_props(c.props_raw, c.nprops) for c in conns.children]
+    diffuse = {
+        p[1][1]
+        for p in links
+        if p[0][1] == b"OP" and len(p) > 3 and p[3][1] == b"DiffuseColor" and getattr(uid.get(p[1][1]), "name", None) == b"Texture"
+    }
+    for p in links:
+        video = uid.get(p[1][1])
+        if p[2][1] in diffuse and video is not None and video.name == b"Video":
+            content = next((c for c in video.children if c.name == b"Content"), None)
+            if content is not None and content.props_raw[:1] == b"R":
+                size = struct.unpack_from("<I", content.props_raw, 1)[0]
+                if size > 0:
+                    return Image.open(io.BytesIO(content.props_raw[5 : 5 + size])).convert("RGB")
+    return None
+
+
 def collect(targets: list[str]):
     """(label, model, mutation, image, png) for every texture to screen:
     <Model>/<Mutation>.png (or .jpg) and the mutation images in <Model>_Skins.glb,
@@ -262,12 +293,15 @@ def prepare(img: Image.Image):
 
 
 def base_image(model: str, base_dirs: list[pathlib.Path]):
-    """The model's own color texture: <Model>.npz (bake_maps.py) or <Model>.glb."""
+    """The model's own color texture: <Model>.npz (bake_maps.py), <Model>.glb or the
+    rigged <Model>.fbx (assets/fbx/species, all a PC has)."""
     for d in base_dirs:
         if (d / f"{model}.npz").exists():
             return Image.fromarray(np.load(d / f"{model}.npz")["color"])
         if (d / f"{model}.glb").exists():
             return glb_base(d / f"{model}.glb")
+        if (d / f"{model}.fbx").exists():
+            return fbx_base(d / f"{model}.fbx")
     return None
 
 
@@ -344,7 +378,9 @@ def move_flagged(flagged: list[dict], dest: pathlib.Path):
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("targets", nargs="+", help="skin PNGs, folders of <Fish>/<Shade>.png, or *_Shades.glb")
-    ap.add_argument("--base", action="append", default=[], help="folder of <Model>.npz or <Model>.glb (repeatable)")
+    ap.add_argument(
+        "--base", action="append", default=[], help="folder of <Model>.npz, <Model>.glb or <Model>.fbx (repeatable)"
+    )
     ap.add_argument("--controls", action="store_true", help="also list each model's own texture as a row")
     ap.add_argument("--no-classifier", action="store_true", help="color signals only (fast)")
     ap.add_argument("--csv", help="write every row here")
@@ -362,7 +398,7 @@ def main(argv=None) -> int:
     base_dirs = [pathlib.Path(b) for b in args.base]
     for t in args.targets:
         base_dirs += [pathlib.Path(t) / "maps", pathlib.Path(t).parent / "maps"]
-    base_dirs += [root / "assets/shades/maps", root / "assets/glb"]
+    base_dirs += [root / "assets/shades/maps", root / "assets/glb", root / "assets/fbx/species"]
     base_dirs = [d for d in dict.fromkeys(base_dirs) if d.is_dir()]
 
     classifier = None if args.no_classifier else load_classifier()

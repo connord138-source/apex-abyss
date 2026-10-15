@@ -726,11 +726,18 @@ local function updateHint()
 	local active = spin
 	local busy = (typeof(queued) == "number" and queued > 0)
 		or (active ~= nil and Workspace:GetServerTimeNow() < active.start + active.duration + 2)
+	-- Your own win still showing (nobody waiting): it's your turn again, not a line
+	-- to join (PC follow-up 2026-10-14)
+	local mine = active ~= nil
+		and active.spinnerId == player.UserId
+		and not (typeof(queued) == "number" and queued > 0)
 	local text: string
 	if spins <= 0 then
 		text = "NO SPINS LEFT"
+	elseif busy and not mine then
+		text = `JOIN THE LINE ({spins})`
 	else
-		text = if busy then `JOIN THE LINE ({spins})` else `SPIN ({spins})`
+		text = if busy then `SPIN AGAIN ({spins})` else `SPIN ({spins})`
 	end
 	local free = if nextFreeAt > 0
 		then `next free in {Format.duration(math.max(0, nextFreeAt - Workspace:GetServerTimeNow()))}`

@@ -17,6 +17,11 @@ return {
 	-- more than most fish, and breaking free keeps it all)
 	bait = 0.25,
 	minBait = 0.4,
+	-- ...but never more than this many levels' worth for the fish that takes it (a
+	-- bait hangs near the surface whatever the biome: a LV 21 fish took a 4.6 t
+	-- Trench bait, PC follow-up 2026-10-14). A fish at the biome's middle level gets
+	-- about 2 levels from `bait`, so the cap only bites on fish under the biome.
+	baitLevels = 3,
 	reel = 7, -- studs a second the line pulls a hooked fish up
 	hold = 9, -- seconds before a hooked fish is landed
 	struggleNeed = 10, -- mashes to break free

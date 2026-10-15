@@ -137,7 +137,11 @@ Shark skins flagged), shaded a
 little by their own paint, satin, with no glow or metal on them. Each toothed fish also
 gets a **Natural** skin (its own texture, white teeth, the Angler's lure glowing), which
 `Cosmetics` wears when the fish has no shade (or a shade not imported yet, tinted).
-The Nibbler and Puffer have no teeth. After adding a fish with teeth, mark it in
+A moving sheen (a Texture, which can't be masked) skips the face a toothed fish's head
+points out of, so the teeth stay white from the front. The screen's base for each fish
+is its own texture: the baked `<Fish>.npz` in the cloud, or the colour image inside
+`assets/fbx/species/<Fish>.fbx` on the PC (`fbx_base`, the same pixels), found without
+`--base`. The Nibbler and Puffer have no teeth. After adding a fish with teeth, mark it in
 teeth.json and check the mask (`eyes_debug.png` in its skins folder shows the teeth in orange) and a
 close render (`tools/marketing/render_fish.py`).
 

@@ -140,7 +140,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     it was only checked at a new waypoint). A Captain's map that finds no site in
     40 tries falls back to the shelf's sand inside its edge, above every crush
     depth. Bait is 0.25 of the biome's middle mass (was 0.4: +73 kg for a LV 21 fish
-    with ×2 Mass). The Apex's nametag line is heavier, bigger and gold-edged (dim at
+    with ×2 Mass), and never more than `baitLevels` 3 levels' worth for the fish
+    that takes it (PC follow-up 2026-10-14: bait hangs near the surface whatever
+    the biome, and a LV 21 fish took a 4.6 t Trench bait; a fish at the biome's
+    middle level gets ~2 levels, so only fish under the biome are capped). The Apex's nametag line is heavier, bigger and gold-edged (dim at
     70 studs). The middle of the screen is one stage (`Ui.holdStage` /
     `Ui.stageWait`): the bank celebration holds it 3 s and the catch and
     achievement banners wait their turn. On phones a window's title and subtitle
@@ -584,7 +587,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (Angler, Cuda, MorayEel, ReefShark) also packs a **Natural** skin, its own
     texture with white teeth, that `Cosmetics.paintMesh` wears with no shade (and,
     tinted, under a shade not imported yet); `CardPhoto.preloadSkin` fetches it for
-    other players with no shade. The Nibbler and Puffer have no teeth. A new fish
+    other players with no shade. A moving sheen can't be masked, so on a toothed
+    fish (one with a Natural skin) it leaves out the face its head points out of
+    (`Cosmetics` `headFace`; PC follow-up 2026-10-14: Nebula turned the Reef
+    Shark's teeth violet from the front). The PC's screen reads each fish's own
+    texture from `assets/fbx/species/<Fish>.fbx` (`screen_shades.py` `fbx_base`,
+    identical to the cloud's .npz bases), so no `--base` is needed there. The
+    Nibbler and Puffer have no teeth. A new fish
     with teeth gets a teeth.json entry (docs/ASSETS.md "Teeth are always bone white").
     Bundle v8.2: sha256 feb731f3… (the four toothed fish's GLBs changed, 28 quads
     each; Nibbler and Puffer byte-identical to v8.1; 204 images screened, none
@@ -1441,8 +1450,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - enforcing the speed checks (log-only until playtests clear them)
   - models for the growth stages and the other biomes; Tripo models for the
     exotic variants (they're part-built pieces on the mesh for now); caustics
-    (needs a texture upload); the sheen texture ids (Config/Textures, uploaded by
-    the PC)
+    (needs a texture upload)
   - den items from bosses (jaw arch, Kraken-eye lantern) as Trophy Hunter buys
   - The progression numbers are placeholders: one full dive banks about 16 levels.
 
@@ -1461,7 +1469,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   `2026-10-13-pc.md` (dens v2: shafts plugged, Build mode, garden, map),
   `2026-10-14-pc-overnight.md` (the PvP round, snapping and layouts, codes, map
   image id; 12 fixes on `claude/core-systems`, not published: Publish As was
-  refused by the PC session's permission check, so Connor publishes);
+  refused by the PC session's permission check, so Connor publishes),
+  `2026-10-14-pc-followup.md` (teeth v8.2 imported, Deep Pass id checked, F1–F10
+  pass; Publish As refused again, "Create Public Surface": **Connor publishes,
+  briefs no longer ask the PC to**);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

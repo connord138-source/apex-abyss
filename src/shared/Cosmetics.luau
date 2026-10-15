@@ -830,9 +830,30 @@ local SHEEN_FACES = {
 	Enum.NormalId.Back,
 }
 
+-- The face of `part` the fish's head points out of (`forward` in the part's own frame)
+local function headFace(part: BasePart, forward: Vector3): Enum.NormalId
+	local own = part.CFrame:VectorToObjectSpace(forward)
+	local best, bestDot = Enum.NormalId.Front, -math.huge
+	for _, face in SHEEN_FACES do
+		local dot = Vector3.FromNormalId(face):Dot(own)
+		if dot > bestDot then
+			best, bestDot = face, dot
+		end
+	end
+	return best
+end
+
 -- The layer that moves across a shade's skin: six Textures per part, slid every
--- frame by Cosmetics.animate. Nothing while its image isn't uploaded (id 0).
-local function sheenLayers(part: BasePart, shade: ShadesConfig.Shade, length: number): { Texture }
+-- frame by Cosmetics.animate. Nothing while its image isn't uploaded (id 0). A
+-- Texture can't be masked, so a toothed fish leaves out the face its head points
+-- out of (`skip`): seen from the front, Nebula turned the Reef Shark's small teeth
+-- violet (PC follow-up 2026-10-14), and teeth are always bone white.
+local function sheenLayers(
+	part: BasePart,
+	shade: ShadesConfig.Shade,
+	length: number,
+	skip: Enum.NormalId?
+): { Texture }
 	local sheen = shade.sheen
 	local id = if sheen then (Config.Textures :: { [string]: number })[sheen.texture] else nil
 	if sheen == nil or typeof(id) ~= "number" or id == 0 then
@@ -840,6 +861,9 @@ local function sheenLayers(part: BasePart, shade: ShadesConfig.Shade, length: nu
 	end
 	local layers: { Texture } = {}
 	for _, face in SHEEN_FACES do
+		if face == skip then
+			continue
+		end
 		local texture = Instance.new("Texture")
 		texture.Name = "Sheen"
 		texture.Face = face
@@ -1133,6 +1157,9 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 	local skin = if shade and not spectral then skinFor(planName, shade.id) else nil
 	-- No shade (or a shade not imported yet): the fish's own look, white teeth and all
 	local natural = if skin == nil and not spectral then skinFor(planName, "Natural") else nil
+	-- A fish with teeth (it has a Natural skin) keeps the moving sheen off its mouth
+	local toothed = skinFor(planName, "Natural") ~= nil
+	local forward = body:GetPivot().LookVector
 	-- Without its skin imported yet, a shade tints the texture (multiplies, so it can
 	-- only darken; the skin is the real look)
 	local tint = if shade and skin == nil
@@ -1155,7 +1182,7 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 		core = core or part
 		local ownTexture = part:GetAttribute("OwnTexture")
 		if shade then
-			for _, layer in sheenLayers(part, shade, length) do
+			for _, layer in sheenLayers(part, shade, length, if toothed then headFace(part, forward) else nil) do
 				table.insert(sheens, layer)
 			end
 		end

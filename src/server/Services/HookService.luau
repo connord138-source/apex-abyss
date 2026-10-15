@@ -16,6 +16,8 @@ local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
+local Progress = require(script.Parent.Parent.Progress)
+local DataService = require(script.Parent.DataService)
 local FishService = require(script.Parent.FishService)
 local HuntService = require(script.Parent.HuntService)
 local PodService = require(script.Parent.PodService)
@@ -195,8 +197,13 @@ local function takeBait(player: Player, id: any)
 	if (hook.position - mouth).Magnitude > Size.reach(length) * 1.35 + 3 + slack then
 		return
 	end
+	-- At most a few levels' worth for the fish that takes it: a bait is sized by the
+	-- biome under the boat but hangs near the surface, in reach of any fish (PC
+	-- follow-up 2026-10-14: a LV 21 fish took a 4.6 t Trench bait and broke free)
+	local data = DataService.get(player)
+	local cap = if data then Progress.mass(data) * (Size.massForLevel(1 + tune.baitLevels) - 1) else 0
 	local now = Timing.clock()
-	local added = HuntService.gain(player, hook.mass)
+	local added = HuntService.gain(player, math.min(hook.mass, math.max(tune.minBait, cap)))
 	hook.taken = player
 	hook.hookedAt = now
 	hookedBy[player] = hook
