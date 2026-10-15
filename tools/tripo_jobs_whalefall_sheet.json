@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    {
+      "name": "WhaleFallA",
+      "group": "whalefall_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/StyleSheet.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft lighting; a touch more realistic than a toy), draw ONE huge dead humpback whale lying still on its side on the sea floor, alone, large and centered, filling the frame lengthwise, seen from a three-quarter side view a little from above, its whole body visible from head to tail flukes: a long chunky body, a slate blue-grey back, a cool pale blue-grey grooved throat and belly, long pectoral flippers lying flat, tail flukes resting on the ground, the eye shut as a simple closed line, clusters of grey barnacles on the head and flipper. Two big rounded bite notches are taken out of its upper flank, and through them a row of clean bone-white ribs shows over a dark slate-blue hollow. No blood, no red, no pink, no flesh tones, no gore. On a plain flat pale grey background, no ground, no sand, no shadow, no water, no other creatures, no text, no watermark. A clean model sheet for 3D conversion."
+    },
+    {
+      "name": "WhaleFallB",
+      "group": "whalefall_sheets",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/concepts/Megalodon.jpg",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art with big flat-shaded facets, muted cool colors, undersea horror mood but clean and readable), draw ONE huge dead grey whale lying on its side as if resting on the sea floor, alone, large and centered, filling the frame lengthwise, seen from a three-quarter side view a little from above, its whole body visible from blunt head to tail flukes: a long heavy faceted body, dark blue-grey skin mottled with paler grey patches and barnacle clusters, a cool pale grey belly, flippers lying flat, the flukes resting flat, the eye closed. A big rounded section of its upper flank has been bitten away, showing a row of clean bone-white ribs arching over a dark navy hollow, with a few smaller bite notches along the back. No blood, no red, no pink, no flesh tones, no gore. On a plain flat pale grey background, no ground, no sand, no shadow, no water, no other creatures, no light rays, no text, no watermark. A clean model sheet for 3D conversion."
+    }
+  ]
+}

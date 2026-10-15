@@ -26,6 +26,7 @@ local PROPS = {
 	BrainCoral = true, FanCoral = true, StaghornCoral = true, TubeSponge = true, Anemone = true,
 	Shrimp = true, Starfish = true, Shell = true, Lantern = true, CrystalCluster = true, MarketStall = true,
 	TreasureChest = true,
+	WhaleFall = true, -- the Whale Fall's carcass (whalefall_glb), drawn by ChumController
 	KeeperOutfitter = true, KeeperMason = true, KeeperCharms = true, KeeperDyer = true, KeeperTrophies = true,
 	-- Den furniture, batch 1 (furniture_glb: the seven sets of Config/Dens)
 	AnglerLamp = true, BarrelTable = true, BrainOttoman = true, BronzeCannon = true, BronzeTentacle = true,

@@ -36,6 +36,13 @@
       "sha256": "cf23c633e1cee56e54ea998ca4c1696fe0ba77a5777aa2dee9879f0c619ee55e",
       "clean": "No normal maps (stripped 2026-10-14: strip_normals.py for GLBs, fbx_strip_normals.py byte-level for FBX); screened with the classifier (exit 0). Colour maps moved out of skin tones by safe_colors.py: Grouper, Minnow."
     },
+    "whalefall_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/4a041b25-82c4-421e-bacd-48e4e9edcc2b.zip",
+      "into": "assets/glb",
+      "contents": "props/WhaleFall.glb: the Whale Fall's carcass (2026-10-15, owner: the part-built one 'looks very rough'), a chunky low-poly humpback resting on the floor with two bites showing bone-white ribs, no blood (concept tools/tripo_jobs_whalefall_sheet.json WhaleFallA, Tripo image_to_model). Lengthwise along the GLB's Z, head at +Z (-Z once imported); ChumController fits it by length and turns it onto X.",
+      "sha256": "d3ac4436dce497a6ad8de4b3cb7f1765419a7a9b7e1295b3bfc8ea3892c26d7a",
+      "clean": "Normal map stripped by strip_normals.py; base colour through safe_colors.py (1.1% pale texels, the ribs and barnacles, to cool white); both images (Color, ORM) cleared by screen_shades.py with the classifier (0.000 / 0.046)."
+    },
     "props2_glb": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/327e54de-f3bf-4af8-86ea-f5aae3d6c8e9.zip",
       "into": "assets/glb",

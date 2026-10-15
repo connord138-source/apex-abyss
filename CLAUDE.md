@@ -73,8 +73,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     90 s after start; one at a time) a dead whale sinks into a random biome, announced a minute
     ahead with a W on the map; it settles and feeds everyone for 5 min, 18 chunks
     growing back 14 s after eaten, sized ×3 the biome's chunk (`biomeChunk` 0.05 ×
-    the banked mass at the biome's middle level). Part-built carcass (bitten flank,
-    ribs) until a `WorldProps.WhaleFall` exists.
+    the banked mass at the biome's middle level). **The carcass is a model**
+    (owner, 2026-10-15: the part-built one "looks very rough"): `WorldProps.WhaleFall`
+    (`whalefall_glb`), a chunky low-poly humpback resting on the floor, eye shut,
+    barnacles, two bites showing bone-white ribs over a dark hollow, no blood (concept
+    `tools/tripo_jobs_whalefall_sheet.json` WhaleFallA, then image_to_model; normal
+    map stripped, screened 0.000). It lies lengthwise along its own Z, so
+    `ChumController.carcass` fits it by length (60 studs) and turns it onto X, its
+    middle on the cloud's centre; part-built until imported.
   - **Pods** (`PodService`, POD on the HUD row, the Shop's Pod row for controllers,
     `MenuController.openPod`): invite, JOIN/DECLINE within 30 s, LEAVE. The `Pod`
     player attribute is the source of truth for the server (`HuntService` `podmates`
@@ -1432,8 +1438,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   §8.
 - **Not built yet:**
   - Pearl crates, the Roblox group perk (id 0), pass and product icons
-  - a `WorldProps.WhaleFall` model (the carcass is part-built); enforcing the speed
-    checks (log-only until playtests clear them)
+  - enforcing the speed checks (log-only until playtests clear them)
   - models for the growth stages and the other biomes; Tripo models for the
     exotic variants (they're part-built pieces on the mesh for now); caustics
     (needs a texture upload); the sheen texture ids (Config/Textures, uploaded by

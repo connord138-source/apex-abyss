@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    {
+      "name": "WhaleFallA",
+      "group": "whalefall",
+      "type": "image_to_model",
+      "image": "assets/tripo/whalefall_sheets/WhaleFallA.png"
+    },
+    {
+      "name": "WhaleFallB",
+      "group": "whalefall",
+      "type": "image_to_model",
+      "image": "assets/tripo/whalefall_sheets/WhaleFallB.png"
+    }
+  ]
+}

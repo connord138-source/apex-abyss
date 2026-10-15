@@ -1177,5 +1177,43 @@
   "status": "success",
   "task_id": "60149ce2-9bf8-421d-a99f-6e1dd6088d2e",
   "type": "image_to_model"
+ },
+ "whalefall/WhaleFallA": {
+  "credits": 30,
+  "files": [
+   "WhaleFallA.glb",
+   "WhaleFallA_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "cb79d3c9-783d-4a4c-909c-a8849a10656d",
+  "type": "image_to_model"
+ },
+ "whalefall/WhaleFallB": {
+  "credits": 30,
+  "files": [
+   "WhaleFallB.glb",
+   "WhaleFallB_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "edd4a0e9-6c29-495a-ab9a-8766f1a16011",
+  "type": "image_to_model"
+ },
+ "whalefall_sheets/WhaleFallA": {
+  "credits": 10,
+  "files": [
+   "WhaleFallA.png"
+  ],
+  "status": "success",
+  "task_id": "32137f88-bc19-4a90-85ca-6b54abd23c68",
+  "type": "generate_image"
+ },
+ "whalefall_sheets/WhaleFallB": {
+  "credits": 10,
+  "files": [
+   "WhaleFallB.png"
+  ],
+  "status": "success",
+  "task_id": "a1fd4ed5-f3ba-49f0-89d4-8e18865d70dc",
+  "type": "generate_image"
  }
 }

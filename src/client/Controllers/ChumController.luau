@@ -109,8 +109,27 @@ local function carcass(parent: Instance): Model
 	local model = Instance.new("Model")
 	model.Name = "WhaleFall"
 	local L = tune.whale.length
-	local prop = PropParts.make("WhaleFall", Vector3.new(L, L * 0.3, L * 0.3), model)
+	-- The imported whale (whalefall_glb) lies lengthwise along its own Z, head at
+	-- -Z, flippers spread about 0.7 of its length: fitted by its length, then
+	-- turned a quarter round onto X
+	local props = ReplicatedStorage:FindFirstChild("WorldProps")
+	local template = props and props:FindFirstChild("WhaleFall")
+	local extents = if template and template:IsA("Model") then template:GetExtentsSize() else Vector3.zero
+	local alongZ = extents.Z > extents.X
+	local box = if alongZ then Vector3.new(L * 0.8, L * 0.3, L) else Vector3.new(L, L * 0.3, L * 0.8)
+	local prop = PropParts.make("WhaleFall", box, model)
 	if prop then
+		local turn = if alongZ then CFrame.Angles(0, -math.pi / 2, 0) else CFrame.identity
+		for i, part in prop.parts do
+			part.CFrame = turn * prop.offsets[i]
+		end
+		-- Its middle on the cloud's center (6 studs over the floor), so the belly
+		-- rests a little into the sand
+		local _, size = model:GetBoundingBox()
+		local drop = CFrame.new(0, -size.Y * 0.5, 0)
+		for _, part in prop.parts do
+			part.CFrame = drop * part.CFrame
+		end
 		local anchor = Instance.new("Part")
 		anchor.Name = "Root"
 		anchor.Anchored = true
@@ -118,11 +137,9 @@ local function carcass(parent: Instance): Model
 		anchor.CanCollide = false
 		anchor.CanQuery = false
 		anchor.Size = Vector3.one
+		anchor.CFrame = CFrame.identity
 		anchor.Parent = model
 		model.PrimaryPart = anchor
-		for i, part in prop.parts do
-			part.CFrame = prop.offsets[i] * CFrame.new(0, -L * 0.15, 0)
-		end
 	else
 		local body = ellipsoid(model, CARCASS, Vector3.new(L * 0.62, L * 0.2, L * 0.22), "Root")
 		model.PrimaryPart = body
