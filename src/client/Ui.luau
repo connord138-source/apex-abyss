@@ -63,6 +63,24 @@ local function topLight(parent: Instance, inset: number, transparency: number)
 	line.Size = UDim2.new(1, -inset * 2, 0, 1)
 	line.ZIndex = parent:IsA("GuiObject") and parent.ZIndex or 1
 	line.Parent = parent
+	-- A panel that lays its children out in a list or grid would give the hairline a
+	-- slot of its own, sized from the panel, so an auto-sized chip grew to fit it (PC
+	-- 2026-10-15: the Treasure Wheel's chip was 1,309 px wide): such a panel has none
+	local function drop(child: Instance)
+		if child:IsA("UIGridStyleLayout") then
+			line:Destroy()
+		end
+	end
+	for _, child in parent:GetChildren() do
+		drop(child)
+	end
+	local watch: RBXScriptConnection
+	watch = parent.ChildAdded:Connect(function(child)
+		drop(child)
+		if line.Parent == nil then
+			watch:Disconnect()
+		end
+	end)
 end
 
 function Ui.isTouch(): boolean

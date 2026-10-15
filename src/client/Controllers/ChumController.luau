@@ -56,6 +56,8 @@ type Drawn = {
 	emitter: ParticleEmitter,
 	carcass: Model?,
 	yaw: number,
+	crushed: { [BasePart]: number }, -- dressing hidden under a settled carcass (its old modifier)
+	crushAt: number,
 }
 
 local drawn: { [number]: Drawn } = {}
@@ -105,7 +107,7 @@ end
 
 -- The whale: the imported prop, or a part-built carcass with a bitten flank and
 -- bare ribs (lengthwise along X, head at +X)
-local function carcass(parent: Instance): Model
+local function carcass(parent: Instance, deep: boolean): Model
 	local model = Instance.new("Model")
 	model.Name = "WhaleFall"
 	local L = tune.whale.length
@@ -193,17 +195,60 @@ local function carcass(parent: Instance): Model
 	end
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(160, 214, 224)
-	light.Range = 45
-	light.Brightness = 0.6
+	-- Brighter on the deep floors, where the carcass was a dark shape past ~70 studs
+	-- (PC 2026-10-15, the Open Blue)
+	light.Range = if deep then 60 else 45
+	light.Brightness = if deep then 1 else 0.6
 	light.Parent = model.PrimaryPart
 	model.Parent = parent
 	return model
+end
+
+-- Small corals and boulders poking up through a settled carcass are hidden on this
+-- client while it lies there, as if crushed under it (PC 2026-10-15: sponges and
+-- staghorns through a Coral Reef whale's flukes). Only pieces whose middle is under
+-- the body; big rock, wrecks and ruins are kept out from under it by the server.
+local CRUSH_FOLDERS = { "Coral", "Rocks" }
+local DEEP_FLOOR = -150 -- below this a whale lies on a deep floor (the shelf's sand is near 0)
+local CRUSH_MAX = 26 -- studs: anything bigger stays
+
+local function crush(d: Drawn, at: CFrame)
+	local world = workspace:FindFirstChild("World")
+	local biomes = if world then world:FindFirstChild("Biomes") else nil
+	if biomes == nil then
+		return
+	end
+	local include: { Instance } = {}
+	for _, name in CRUSH_FOLDERS do
+		local folder = biomes:FindFirstChild(name)
+		if folder then
+			table.insert(include, folder)
+		end
+	end
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = include
+	params.RespectCanCollide = false
+	local L = tune.whale.length
+	for _, part in workspace:GetPartBoundsInBox(at, Vector3.new(L, 18, L * 0.55), params) do
+		if d.crushed[part] or math.max(part.Size.X, part.Size.Y, part.Size.Z) > CRUSH_MAX then
+			continue
+		end
+		local p = at:PointToObjectSpace(part.Position)
+		if (p.X / (L * 0.5)) ^ 2 + (p.Z / (L * 0.27)) ^ 2 <= 1.1 then
+			d.crushed[part] = part.LocalTransparencyModifier
+			part.LocalTransparencyModifier = 1
+		end
+	end
 end
 
 local function remove(id: number)
 	local d = drawn[id]
 	if d then
 		drawn[id] = nil
+		for part, before in d.crushed do
+			part.LocalTransparencyModifier = before
+		end
 		d.folder:Destroy()
 	end
 end
@@ -224,6 +269,7 @@ local function add(payload: { [string]: any })
 		ends = payload.ends,
 		chunks = payload.chunks,
 		biome = payload.biome,
+		yaw = if typeof(payload.yaw) == "number" then payload.yaw else nil,
 	}
 	local folder = Instance.new("Folder")
 	folder.Name = `Chum{cloud.id}`
@@ -265,8 +311,10 @@ local function add(payload: { [string]: any })
 		pieces = pieces,
 		murk = murk,
 		emitter = emitter,
-		carcass = if cloud.kind == "whale" then carcass(folder) else nil,
-		yaw = (cloud.id * 2.39996) % (2 * math.pi),
+		carcass = if cloud.kind == "whale" then carcass(folder, cloud.floor < DEEP_FLOOR) else nil,
+		yaw = Chum.yaw(cloud),
+		crushed = {},
+		crushAt = 0,
 	}
 	drawn[cloud.id] = d
 	for key, backAt in payload.eaten or {} do
@@ -332,6 +380,11 @@ local function step()
 					* CFrame.Angles(0, d.yaw, 0)
 					* CFrame.Angles(math.rad(14), 0, math.rad(-12 * sinking - 6))
 			)
+			-- Once it's nearly down, and again now and then as dressing streams in
+			if sinking < 0.15 and now >= d.crushAt then
+				d.crushAt = now + 2
+				crush(d, CFrame.new(cloud.x, cloud.floor + 6, cloud.z) * CFrame.Angles(0, d.yaw, 0))
+			end
 		end
 		-- Fades out over its last seconds
 		local fade = math.clamp((cloud.ends - now) / 3, 0, 1)

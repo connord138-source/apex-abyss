@@ -42,7 +42,15 @@ local clouds: { [number]: Entry } = {}
 local nextId = 1
 local rng = Random.new()
 -- The Whale Fall announced or under way (`cloud`: its cloud's id once it's sinking)
-local whale: { at: Vector3, floor: number, biome: Biomes.Biome, startsAt: number, cloud: number? }? = nil
+local whale: {
+	at: Vector3,
+	floor: number,
+	yaw: number,
+	biome: Biomes.Biome,
+	startsAt: number,
+	cloud: number?,
+}? =
+	nil
 local nextWhaleAt = 0
 local warned = false -- the next whale has been announced
 
@@ -82,6 +90,7 @@ local function payload(entry: Entry): { [string]: any }
 		ends = cloud.ends,
 		chunks = cloud.chunks,
 		biome = cloud.biome,
+		yaw = cloud.yaw,
 		eaten = eaten,
 	}
 end
@@ -103,7 +112,8 @@ local function add(
 	spread: number,
 	seconds: number,
 	biome: Biomes.Biome?,
-	respawn: number?
+	respawn: number?,
+	yaw: number?
 ): number
 	-- Room for it: the oldest goes
 	local total, oldest, oldestBorn = 0, nil, math.huge
@@ -119,7 +129,7 @@ local function add(
 	local id = nextId
 	nextId += 1
 	local chunks: { Chum.Chunk } = {}
-	for _, offset in Chum.offsets(kind, count, spread, id * 7919) do
+	for _, offset in Chum.offsets(kind, count, spread, id * 7919, yaw) do
 		table.insert(chunks, { m = each, ox = offset[1], oy = offset[2], oz = offset[3] })
 	end
 	local now = Timing.clock()
@@ -134,6 +144,7 @@ local function add(
 		ends = now + seconds,
 		chunks = chunks,
 		biome = if biome then biome.id else nil,
+		yaw = yaw,
 	}
 	local entry: Entry = { cloud = cloud, eaten = {}, respawn = respawn }
 	clouds[id] = entry
@@ -255,33 +266,65 @@ local function onEat(player: Player, batch: any)
 	end
 end
 
--- Open floor for a carcass: nothing of the world's dressing (ruins, wrecks, reef
--- rock, chimneys) stands over the spot or round it, so the whale settles on the sand
--- where it's seen from above (PC overnight 2026-10-14: one in the Sunken Ruins came
--- to rest under a ruin's lintel, hidden among the pillars)
-local function openFloor(x: number, z: number, floor: number): boolean
-	local reach = tune.whale.length * 0.45
-	for _, offset in
-		{
-			Vector2.zero,
-			Vector2.new(reach, 0),
-			Vector2.new(-reach, 0),
-			Vector2.new(0, reach),
-			Vector2.new(0, -reach),
-		}
-	do
-		local px, pz = x + offset.X, z + offset.Y
-		local terrain = if offset == Vector2.zero then floor else floorUnder(px, pz, World.surfaceY - 5)
-		if Ground.y(px, pz) > terrain + 3 then
-			return false
+-- How much of the world's dressing a carcass at (x, z), turned `yaw`, would lie in:
+-- 0 is open floor. Columns every 6 studs over its whole footprint where the solid
+-- ground stands over the sand (Shared/Ground), plus every piece of dressing, solid or
+-- soft, in the box it fills (PC overnight 2026-10-14: one in the Sunken Ruins came to
+-- rest under a ruin's lintel; PC 2026-10-15: five columns let the reef's sponges and
+-- staghorns through the flukes and flank of a Coral Reef whale).
+local DRESSING = { "Rocks", "Coral", "Wrecks", "Ruins", "Vents" } -- under Workspace.World.Biomes
+local overlap: OverlapParams? = nil
+
+local function dressingParams(): OverlapParams?
+	if overlap then
+		return overlap
+	end
+	local world = workspace:FindFirstChild("World")
+	local biomes = if world then world:FindFirstChild("Biomes") else nil
+	if biomes == nil then
+		return nil
+	end
+	local include: { Instance } = {}
+	for _, name in DRESSING do
+		local folder = biomes:FindFirstChild(name)
+		if folder then
+			table.insert(include, folder)
 		end
 	end
-	return true
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = include
+	params.RespectCanCollide = false
+	overlap = params
+	return params
 end
 
--- A spot in a biome, on its floor (open floor if one turns up in 40 tries)
-local function siteIn(biome: Biomes.Biome): (Vector3?, number)
-	local fallback: Vector3? = nil
+local function blocked(x: number, z: number, floor: number, yaw: number): number
+	local length = tune.whale.length
+	local frame = CFrame.new(x, floor, z) * CFrame.Angles(0, yaw, 0)
+	local count = 0
+	for along = -length * 0.5, length * 0.5 + 0.01, 6 do
+		for across = -length * 0.24, length * 0.24 + 0.01, 6 do
+			local p = frame:PointToWorldSpace(Vector3.new(along, 0, across))
+			local terrain = floorUnder(p.X, p.Z, World.surfaceY - 5)
+			if Ground.y(p.X, p.Z) > terrain + 2.5 then
+				count += 3
+			end
+		end
+	end
+	local params = dressingParams()
+	if params then
+		local box = frame * CFrame.new(0, 9, 0)
+		count += #workspace:GetPartBoundsInBox(box, Vector3.new(length, 14, length * 0.5), params)
+	end
+	return count
+end
+
+-- A spot in a biome on its floor, and the carcass's turn: the first of 40 tries with
+-- open floor under its whole footprint, else the try with the least dressing in the
+-- way (ChumController hides the small corals still poking through on each client)
+local function siteIn(biome: Biomes.Biome): (Vector3?, number, number)
+	local best: Vector3?, bestYaw, bestScore = nil, 0, math.huge
 	for _ = 1, 40 do
 		local span = (biome.angleTo - biome.angleFrom) % 360
 		local angle = math.rad(biome.angleFrom + rng:NextNumber(0, if span == 0 then 360 else span))
@@ -296,17 +339,20 @@ local function siteIn(biome: Biomes.Biome): (Vector3?, number)
 		local at = Biomes.at(probe)
 		if at and at.id == biome.id then
 			local floor = floorUnder(x, z, World.surfaceY - 5)
-			if openFloor(x, z, floor) then
-				return Vector3.new(x, floor, z), floor
+			local yaw = rng:NextNumber(0, 2 * math.pi)
+			local score = blocked(x, z, floor, yaw)
+			if score == 0 then
+				return Vector3.new(x, floor, z), floor, yaw
 			end
-			-- Over dressing, the carcass rests on top of it, never inside
-			fallback = fallback or Vector3.new(x, Ground.y(x, z), z)
+			if score < bestScore then
+				best, bestYaw, bestScore = Vector3.new(x, floor, z), yaw, score
+			end
 		end
 	end
-	if fallback then
-		return fallback, fallback.Y
+	if best then
+		return best, best.Y, bestYaw
 	end
-	return nil, 0
+	return nil, 0, 0
 end
 
 -- Picks the next Whale Fall's biome and spot, and announces it
@@ -319,12 +365,13 @@ local function warnWhale(startsAt: number): boolean
 	end
 	for _ = 1, 6 do
 		local biome = live[rng:NextInteger(1, #live)]
-		local site, floor = siteIn(biome)
+		local site, floor, yaw = siteIn(biome)
 		if site then
 			local top = math.min(floor + tune.whale.height, World.surfaceY - 30)
 			whale = {
 				at = Vector3.new(site.X, top, site.Z),
 				floor = floor,
+				yaw = yaw,
 				biome = biome,
 				startsAt = startsAt,
 				cloud = nil,
@@ -352,7 +399,8 @@ local function startWhale()
 		tune.whale.length * 0.45,
 		tune.whale.feed,
 		w.biome,
-		tune.whale.respawn
+		tune.whale.respawn,
+		w.yaw
 	)
 	Net.notifyAll(`The whale is sinking into the {w.biome.name} · feed while it lasts!`, "rare")
 end

@@ -80,7 +80,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `tools/tripo_jobs_whalefall_sheet.json` WhaleFallA, then image_to_model; normal
     map stripped, screened 0.000). It lies lengthwise along its own Z, so
     `ChumController.carcass` fits it by length (60 studs) and turns it onto X, its
-    middle on the cloud's centre; part-built until imported.
+    middle on the cloud's centre; part-built until imported. **Clear of the
+    dressing (PC 2026-10-15: ~3 of 18 chunks inside the body, reef sponges and
+    staghorns through the flukes):** the server picks the carcass's turn with its
+    spot (`cloud.yaw`, `Chum.yaw`); its chunks ring it in an oval 4–12 studs past
+    its ends and 14–22 beside it, turned with it (`Chum.offsets`); a spot is scored
+    over the whole footprint (`ChumService` `blocked`: Ground columns every 6 studs
+    plus every piece of dressing in its box) and the first open one or the least
+    blocked of 40 wins; each client hides small corals and boulders whose middle
+    lies under a settled carcass (`ChumController` `crush`, LocalTransparencyModifier,
+    put back when it goes). On the deep floors its light is range 60, brightness 1.
   - **Pods** (`PodService`, POD on the HUD row, the Shop's Pod row for controllers,
     `MenuController.openPod`): invite, JOIN/DECLINE within 30 s, LEAVE. The `Pod`
     player attribute is the source of truth for the server (`HuntService` `podmates`
@@ -517,7 +526,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     fish •, and opens the full map (click/tap it, M, R3) with every biome named and
     levelled, a legend and where you are. `BossController.position()` feeds it.
   - **UI design system v2** (`Ui.luau`): panels are layered glass (a vertical
-    gradient, a hairline of light along the top, a stroke), buttons are gradients
+    gradient, a hairline of light along the top, a stroke; a panel given a list or
+    grid layout drops its hairline, which would take a slot sized from the panel:
+    the Treasure Wheel's auto-sized chip grew to 1,309 px, PC 2026-10-15), buttons are gradients
     with a shaded foot, a rim and a hover lift, windows have a header band with an
     accent line, plus `Ui.heading`, `Ui.keycap`, `Ui.chip`. Everything comes through
     these helpers, so new UI must too.
@@ -1472,7 +1483,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   refused by the PC session's permission check, so Connor publishes),
   `2026-10-14-pc-followup.md` (teeth v8.2 imported, Deep Pass id checked, F1–F10
   pass; Publish As refused again, "Create Public Surface": **Connor publishes,
-  briefs no longer ask the PC to**);
+  briefs no longer ask the PC to**), `2026-10-15-pc.md` (whale model imported,
+  bait cap, sheen off teeth, screen base; chunks inside the whale, reef coral
+  through it, the wheel chip full width);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

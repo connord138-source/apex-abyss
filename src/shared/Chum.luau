@@ -19,6 +19,7 @@ export type Cloud = {
 	ends: number,
 	chunks: { Chunk },
 	biome: string?,
+	yaw: number?, -- a whale: the carcass's turn about Y (its length lies along X, turned)
 }
 
 local tune = Config.Chum
@@ -49,21 +50,38 @@ function Chum.chunk(cloud: Cloud, i: number, t: number): Vector3
 	return Vector3.new(x, math.max(y, cloud.floor + 0.6), z)
 end
 
+-- A whale's turn about Y: the carcass lies along X turned by this (the server picks it
+-- with the spot; old payloads without one fall back to the id)
+function Chum.yaw(cloud: Cloud): number
+	return cloud.yaw or (cloud.id * 2.39996) % (2 * math.pi)
+end
+
 -- A chunk's drawn size (studs across) from its kg
 function Chum.size(m: number): number
 	return math.clamp(0.55 + m ^ (1 / 3) * 0.4, 0.6, 3.2)
 end
 
 -- Chunk offsets round a middle (deterministic from `seed`): a loose ball for chum,
--- a ring round the carcass for a whale
-function Chum.offsets(kind: string, count: number, spread: number, seed: number): { { number } }
+-- an oval round the carcass for a whale, clear of its body (PC 2026-10-15: a round
+-- ring up to 27 studs out put about 3 of 18 inside a 60-stud whale), turned with it
+function Chum.offsets(kind: string, count: number, spread: number, seed: number, yaw: number?): { { number } }
 	local rng = Random.new(seed)
 	local list: { { number } } = {}
+	local turn = yaw or 0
+	local cos, sin = math.cos(turn), math.sin(turn)
+	local half = tune.whale.length * 0.5
 	for i = 1, count do
 		if kind == "whale" then
 			local angle = (i / count) * 2 * math.pi + rng:NextNumber(-0.2, 0.2)
-			local r = rng:NextNumber(spread * 0.45, spread)
-			table.insert(list, { math.cos(angle) * r, rng:NextNumber(-2, 9), math.sin(angle) * r })
+			local out = rng:NextNumber()
+			-- In the carcass's own frame: 4–12 studs past its ends, 14–22 beside it
+			local along = math.cos(angle) * (half + 4 + out * 8)
+			local across = math.sin(angle) * (half * 0.47 + out * 8)
+			-- Turned as CFrame.Angles(0, yaw, 0) turns the drawn carcass
+			table.insert(
+				list,
+				{ along * cos + across * sin, rng:NextNumber(-2, 9), -along * sin + across * cos }
+			)
 		else
 			local angle = rng:NextNumber(0, 2 * math.pi)
 			local r = spread * math.sqrt(rng:NextNumber())
