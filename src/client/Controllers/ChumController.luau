@@ -58,6 +58,7 @@ type Drawn = {
 	yaw: number,
 	crushed: { [BasePart]: number }, -- dressing hidden under a settled carcass (its old modifier)
 	crushAt: number,
+	rim: Highlight?, -- a deep floor's carcass: a faint outline through the haze
 }
 
 local drawn: { [number]: Drawn } = {}
@@ -204,6 +205,24 @@ local function carcass(parent: Instance, deep: boolean): Model
 	return model
 end
 
+-- On the deep floors a light can't reach through the haze, and a carcass was only a
+-- faint shape past ~50 studs (PC 2026-10-15 round 2): a faint cool outline, like the
+-- eerie rim predators wear in the dark, hidden by rock in front of it
+local RIM = Color3.fromRGB(150, 205, 230)
+local RIM_RANGE = { 40, 200 } -- studs from the camera: none closer (it reads by its light), gone past
+local function rim(model: Model): Highlight
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "WhaleRim"
+	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+	highlight.FillColor = RIM
+	highlight.OutlineColor = RIM
+	highlight.FillTransparency = 1
+	highlight.OutlineTransparency = 1
+	highlight.Adornee = model
+	highlight.Parent = model
+	return highlight
+end
+
 -- Small corals and boulders poking up through a settled carcass are hidden on this
 -- client while it lies there, as if crushed under it (PC 2026-10-15: sponges and
 -- staghorns through a Coral Reef whale's flukes). Only pieces whose middle is under
@@ -315,7 +334,12 @@ local function add(payload: { [string]: any })
 		yaw = Chum.yaw(cloud),
 		crushed = {},
 		crushAt = 0,
+		rim = nil,
 	}
+	local body = d.carcass
+	if body and cloud.floor < DEEP_FLOOR then
+		d.rim = rim(body)
+	end
 	drawn[cloud.id] = d
 	for key, backAt in payload.eaten or {} do
 		local i = tonumber(key)
@@ -380,6 +404,18 @@ local function step()
 					* CFrame.Angles(0, d.yaw, 0)
 					* CFrame.Angles(math.rad(14), 0, math.rad(-12 * sinking - 6))
 			)
+			local outline = d.rim
+			if outline then
+				-- Fades in past RIM_RANGE[1] and out toward RIM_RANGE[2], and with the
+				-- carcass's own fade at the end
+				local away = (center - camera).Magnitude
+				local inner = math.clamp((away - RIM_RANGE[1]) / 30, 0, 1)
+				local outer = math.clamp((RIM_RANGE[2] - away) / 40, 0, 1)
+				local strength = inner * outer * math.clamp((cloud.ends - now) / 3, 0, 1)
+				outline.OutlineTransparency = 1 - 0.6 * strength
+				outline.FillTransparency = 1 - 0.14 * strength
+				outline.Enabled = strength > 0.01
+			end
 			-- Once it's nearly down, and again now and then as dressing streams in
 			if sinking < 0.15 and now >= d.crushAt then
 				d.crushAt = now + 2

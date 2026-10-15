@@ -89,7 +89,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     plus every piece of dressing in its box) and the first open one or the least
     blocked of 40 wins; each client hides small corals and boulders whose middle
     lies under a settled carcass (`ChumController` `crush`, LocalTransparencyModifier,
-    put back when it goes). On the deep floors its light is range 60, brightness 1.
+    put back when it goes). On the deep floors its light is range 60, brightness 1,
+    and since no light reaches through the haze there (PC 2026-10-15 round 2: a
+    faint shape past ~50 studs) it wears a faint cool outline (`WhaleRim`, a
+    Highlight, Occluded) from 40 to 200 studs. The sand under the footprint must be
+    level within `LEVEL` 3 studs (PC fix 4e0a67d: a dune buried the flukes, a hump
+    left the tail in the water), and a deep biome's whale lies on its deep floor,
+    never on the shelf's lip above the drop-off. Admin "Whale Fall on reef coral"
+    (`whaleCoral`) puts one on level reef sand among small corals to show the hiding.
   - **Pods** (`PodService`, POD on the HUD row, the Shop's Pod row for controllers,
     `MenuController.openPod`): invite, JOIN/DECLINE within 30 s, LEAVE. The `Pod`
     player attribute is the source of truth for the server (`HuntService` `podmates`
@@ -1485,7 +1492,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   pass; Publish As refused again, "Create Public Surface": **Connor publishes,
   briefs no longer ask the PC to**), `2026-10-15-pc.md` (whale model imported,
   bait cap, sheen off teeth, screen base; chunks inside the whale, reef coral
-  through it, the wheel chip full width);
+  through it, the wheel chip full width), `2026-10-15-pc-2.md` (chunks clear,
+  chips fit, the PC's level-sand fix; deep whales still faint at 70 studs);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

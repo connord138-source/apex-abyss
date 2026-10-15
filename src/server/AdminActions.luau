@@ -333,6 +333,13 @@ local function whaleNow(_admin: Player, _targets: { Player }): string
 	return ChumService.whaleNow()
 end
 
+-- A test: a Whale Fall on level reef sand among small corals, so the corals under
+-- the carcass can be seen hidden and coming back (PC 2026-10-15 round 2: every reef
+-- whale had found open sand, so the hiding had never run)
+local function whaleCoral(_admin: Player, _targets: { Player }): string
+	return ChumService.whaleNow(true)
+end
+
 local function chumHere(_admin: Player, targets: { Player }, amount: any): string
 	local kg = amountOf(amount, 1) or 20
 	local count = 0
@@ -698,6 +705,7 @@ AdminActions.byName = {
 	goTo = goTo :: Handler,
 	summonBoss = summonBoss :: Handler,
 	whaleNow = whaleNow :: Handler,
+	whaleCoral = whaleCoral :: Handler,
 	apexCrown = apexCrown :: Handler,
 	apexBounty = apexBounty :: Handler,
 	chumHere = chumHere :: Handler,

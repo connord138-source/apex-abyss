@@ -304,7 +304,9 @@ local function dressingParams(): OverlapParams?
 	return params
 end
 
-local function blocked(x: number, z: number, floor: number, yaw: number): number
+-- Also answers its two parts: the columns' count (uneven sand, solid dressing) and
+-- how many pieces of dressing are in the box
+local function blocked(x: number, z: number, floor: number, yaw: number): (number, number, number)
 	local length = tune.whale.length
 	local frame = CFrame.new(x, floor, z) * CFrame.Angles(0, yaw, 0)
 	local count = 0
@@ -320,19 +322,25 @@ local function blocked(x: number, z: number, floor: number, yaw: number): number
 			end
 		end
 	end
+	local parts = 0
 	local params = dressingParams()
 	if params then
 		local box = frame * CFrame.new(0, 9, 0)
-		count += #workspace:GetPartBoundsInBox(box, Vector3.new(length, 14, length * 0.5), params)
+		parts = #workspace:GetPartBoundsInBox(box, Vector3.new(length, 14, length * 0.5), params)
 	end
-	return count
+	return count + parts, count, parts
 end
 
 -- A spot in a biome on its floor, and the carcass's turn: the first of 40 tries with
 -- open floor under its whole footprint, else the try with the least dressing in the
--- way (ChumController hides the small corals still poking through on each client)
-local function siteIn(biome: Biomes.Biome): (Vector3?, number, number)
+-- way (ChumController hides the small corals still poking through on each client).
+-- A deep biome's whale lies on its deep floor, never on the shelf's lip above the
+-- drop-off (PC 2026-10-15 round 2: a Trench whale settled at y 8 at radius ~893).
+-- `crush` (an admin test) wants the opposite: level sand with the most small
+-- dressing in the box, so the hiding can be seen working.
+local function siteIn(biome: Biomes.Biome, crush: boolean?): (Vector3?, number, number)
 	local best: Vector3?, bestYaw, bestScore = nil, 0, math.huge
+	local crushAt: Vector3?, crushYaw, crushParts = nil, 0, 0
 	for _ = 1, 40 do
 		local span = (biome.angleTo - biome.angleFrom) % 360
 		local angle = math.rad(biome.angleFrom + rng:NextNumber(0, if span == 0 then 360 else span))
@@ -347,8 +355,17 @@ local function siteIn(biome: Biomes.Biome): (Vector3?, number, number)
 		local at = Biomes.at(probe)
 		if at and at.id == biome.id then
 			local floor = floorUnder(x, z, World.surfaceY - 5)
+			if biome.deep and floor > World.deep.floorY + 120 then
+				continue
+			end
 			local yaw = rng:NextNumber(0, 2 * math.pi)
-			local score = blocked(x, z, floor, yaw)
+			local score, rough, parts = blocked(x, z, floor, yaw)
+			if crush then
+				if rough == 0 and parts > crushParts then
+					crushAt, crushYaw, crushParts = Vector3.new(x, floor, z), yaw, parts
+				end
+				continue
+			end
 			if score == 0 then
 				return Vector3.new(x, floor, z), floor, yaw
 			end
@@ -357,23 +374,30 @@ local function siteIn(biome: Biomes.Biome): (Vector3?, number, number)
 			end
 		end
 	end
+	if crushAt then
+		return crushAt, crushAt.Y, crushYaw
+	end
 	if best then
 		return best, best.Y, bestYaw
 	end
 	return nil, 0, 0
 end
 
--- Picks the next Whale Fall's biome and spot, and announces it
-local function warnWhale(startsAt: number): boolean
+-- Picks the next Whale Fall's biome and spot, and announces it (`crush`: an admin
+-- test, in the Coral Reef among its corals)
+local function warnWhale(startsAt: number, crush: boolean?): boolean
 	local live: { Biomes.Biome } = {}
 	for _, biome in Config.Biomes.list do
-		if biome.live then
+		if biome.live and (not crush or biome.id == "CoralReef") then
 			table.insert(live, biome)
 		end
 	end
+	if #live == 0 then
+		return false
+	end
 	for _ = 1, 6 do
 		local biome = live[rng:NextInteger(1, #live)]
-		local site, floor, yaw = siteIn(biome)
+		local site, floor, yaw = siteIn(biome, crush)
 		if site then
 			local top = math.min(floor + tune.whale.height, World.surfaceY - 30)
 			whale = {
@@ -425,9 +449,18 @@ end
 -- announced sinks in 5 s instead; one that's feeding ends and a fresh one comes (PC
 -- overnight 2026-10-14: in Studio one was nearly always coming or under way, so the
 -- button was refused most of the time)
-function ChumService.whaleNow(): string
+function ChumService.whaleNow(crush: boolean?): string
 	local now = Timing.clock()
 	local current = whale
+	if crush and current then
+		-- The test always brings a fresh whale in the reef
+		if current.cloud then
+			remove(current.cloud)
+		end
+		whale = nil
+		Net.chum("warn", { done = true })
+		current = nil
+	end
 	if current and current.cloud == nil then
 		current.startsAt = now + 5
 		nextWhaleAt = now + 5
@@ -446,8 +479,8 @@ function ChumService.whaleNow(): string
 		whale = nil
 		Net.chum("warn", { done = true })
 	end
-	if not warnWhale(now + 5) then
-		return "Couldn't find a spot"
+	if not warnWhale(now + 5, crush) then
+		return if crush then "No level reef sand among corals found; try again" else "Couldn't find a spot"
 	end
 	warned = true
 	nextWhaleAt = now + 5
