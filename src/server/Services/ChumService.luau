@@ -267,12 +267,17 @@ local function onEat(player: Player, batch: any)
 end
 
 -- How much of the world's dressing a carcass at (x, z), turned `yaw`, would lie in:
--- 0 is open floor. Columns every 6 studs over its whole footprint where the solid
--- ground stands over the sand (Shared/Ground), plus every piece of dressing, solid or
--- soft, in the box it fills (PC overnight 2026-10-14: one in the Sunken Ruins came to
+-- 0 is open, level floor. Columns every 6 studs over its whole footprint where the
+-- solid ground stands over the sand (Shared/Ground) or the sand itself rises or falls
+-- more than LEVEL from its middle, plus every piece of dressing, solid or soft, in the
+-- box it fills (PC overnight 2026-10-14: one in the Sunken Ruins came to
 -- rest under a ruin's lintel; PC 2026-10-15: five columns let the reef's sponges and
 -- staghorns through the flukes and flank of a Coral Reef whale).
 local DRESSING = { "Rocks", "Coral", "Wrecks", "Ruins", "Vents" } -- under Workspace.World.Biomes
+-- Studs the sand may rise or fall under the footprint from its middle (PC 2026-10-15
+-- round 2: a Coral Reef dune buried a whale's flukes, and one on a hump left its tail
+-- floating ~9 studs over the sand)
+local LEVEL = 3
 local overlap: OverlapParams? = nil
 
 local function dressingParams(): OverlapParams?
@@ -309,6 +314,9 @@ local function blocked(x: number, z: number, floor: number, yaw: number): number
 			local terrain = floorUnder(p.X, p.Z, World.surfaceY - 5)
 			if Ground.y(p.X, p.Z) > terrain + 2.5 then
 				count += 3
+			end
+			if math.abs(terrain - floor) > LEVEL then
+				count += 1
 			end
 		end
 	end
