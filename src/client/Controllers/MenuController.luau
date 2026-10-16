@@ -2671,10 +2671,23 @@ function MenuController.openPass()
 		local columns: { PassColumn } = {}
 		local builtFor = ""
 
+		-- Screen pixels per canvas offset: CanvasPosition and AbsoluteSize count screen
+		-- pixels, so where the window is scaled down (phones) they're smaller than the
+		-- column offsets they're measured against (PC 2026-10-16, PS1: the right-hand
+		-- columns never got their photos on the phone)
+		local function canvasScale(): number
+			local offset = strip.CanvasSize.X.Offset
+			if offset <= 0 or strip.AbsoluteCanvasSize.X <= 0 then
+				return 1
+			end
+			return strip.AbsoluteCanvasSize.X / offset
+		end
+
 		-- Photos are made only for the columns in (or next to) view, as they scroll in
 		local function attachVisible()
-			local left = strip.CanvasPosition.X - (COLUMN + GAP)
-			local right = strip.CanvasPosition.X + strip.AbsoluteSize.X + (COLUMN + GAP)
+			local scale = canvasScale()
+			local left = strip.CanvasPosition.X / scale - (COLUMN + GAP)
+			local right = (strip.CanvasPosition.X + strip.AbsoluteSize.X) / scale + (COLUMN + GAP)
 			for i, column in columns do
 				local x = (i - 1) * (COLUMN + GAP)
 				if column.attached or x + COLUMN < left or x > right then
@@ -2690,6 +2703,8 @@ function MenuController.openPass()
 			end
 		end
 		local scrolled = strip:GetPropertyChangedSignal("CanvasPosition"):Connect(attachVisible)
+		-- The canvas's screen size settles a frame after it's set
+		local resized = strip:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(attachVisible)
 
 		local function build(
 			def: { tiers: { { free: Reward.Reward?, paid: Reward.Reward? } } },
@@ -2763,6 +2778,7 @@ function MenuController.openPass()
 			cleanup = function()
 				connection:Disconnect()
 				scrolled:Disconnect()
+				resized:Disconnect()
 			end,
 			render = function()
 				local pass = state().pass
@@ -2829,7 +2845,8 @@ function MenuController.openPass()
 				-- Open on the tier being worked toward
 				if not passScrolled then
 					passScrolled = true
-					strip.CanvasPosition = Vector2.new(math.max(0, (tier - 1) * (COLUMN + GAP)), 0)
+					strip.CanvasPosition =
+						Vector2.new(math.max(0, (tier - 1) * (COLUMN + GAP) * canvasScale()), 0)
 				end
 				attachVisible()
 			end,
