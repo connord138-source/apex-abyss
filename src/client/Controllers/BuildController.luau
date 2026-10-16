@@ -109,6 +109,7 @@ local trayDrag = false -- a thing pressed in the tray, to be let go on the floor
 local pressAt = Vector2.zero
 local pressClock = 0
 local tapAt: Vector2? = nil -- a phone's last tap: where it aims
+local buttonClock = 0 -- when a Build button or tray tile was last pressed
 local pinchFrom: number? = nil
 local viewParams = RaycastParams.new()
 viewParams.FilterType = Enum.RaycastFilterType.Include
@@ -145,6 +146,7 @@ local HIDE_ON_TOUCH = {
 	"StallButton",
 	"WheelButtons",
 	"Tutorial",
+	"Admin",
 }
 local hiddenGuis: { ScreenGui } = {}
 local relayout: () -> () = function() end -- layoutTray, once it's defined
@@ -1029,6 +1031,7 @@ local function tile(parent: Instance, id: string, order: number)
 	)
 	count.TextXAlignment = Enum.TextXAlignment.Left
 	button.Activated:Connect(function()
+		buttonClock = os.clock()
 		if not trayDrag then
 			select({ id = id })
 		end
@@ -1452,7 +1455,10 @@ local function buildGui()
 			spec.style
 		)
 		button.TextSize = 13
-		button.Activated:Connect(spec.run)
+		button.Activated:Connect(function()
+			buttonClock = os.clock()
+			spec.run()
+		end)
 		if spec.text == "SNAP ON" then
 			snapButton = button
 		elseif spec.text == "TRAY ▼" then
@@ -1582,14 +1588,23 @@ function BuildController.startController()
 		end
 	end)
 	-- A phone taps the floor to place, or a placed thing to pick it up, and pinches
-	-- to zoom
+	-- to zoom. A tap on the bar or a tray tile comes here too, unprocessed (PC
+	-- 2026-10-16 round 2, B1: picking a tile, TRAY and TURN each placed the thing
+	-- picked as well), so a tap over the bar, or one that pressed a Build button
+	-- (either way round), is the button's alone
 	UserInputService.TouchTapInWorld:Connect(function(position: Vector2, processed: boolean)
-		if not active or processed then
+		if not active or processed or overPanel(position) then
 			return
 		end
-		tapAt = position
-		step()
-		place()
+		local at = os.clock()
+		task.delay(0.05, function()
+			if not active or math.abs(buttonClock - at) < 0.3 then
+				return
+			end
+			tapAt = position
+			step()
+			place()
+		end)
 	end)
 	UserInputService.TouchPinch:Connect(
 		function(_, scale: number, _, pinchState: Enum.UserInputState, processed)
