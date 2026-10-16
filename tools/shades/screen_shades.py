@@ -10,7 +10,8 @@ only after a run that exits 0.
     python tools/shades/screen_shades.py assets/shades/skins --no-classifier --masks screen_masks
 
 Inputs: skin PNGs (<Fish>/<Shade>.png; eyes_debug is skipped) and packed
-<Fish>_Shades.glb files (pack_shades.py names their images <Fish>_Shades_<Shade>).
+<Fish>_Shades.glb files (pack_shades.py names their images <Fish>_Shades_<Shade>), or
+patch packs <Fish>_ShadesPatch.glb (images <Fish>_ShadesPatch_<Shade>).
 The control is each fish's own color texture (<Fish>.npz from bake_maps.py, in
 assets/shades/maps), uploaded with the fish long ago; a skin is judged on what it
 adds to it. The classifier needs `pip install torch transformers` (CPU is fine).
@@ -272,9 +273,11 @@ def collect(targets: list[str]):
         for f in files:
             suffix = f.suffix.lower()
             if suffix == ".glb" and (f == p or f.parent == p):
-                model = f.stem.removesuffix("_Shades")
+                # <Fish>_Shades.glb, or a patch pack <Fish>_ShadesPatch.glb (pack_shades --only)
+                pack = "_ShadesPatch" if f.stem.endswith("_ShadesPatch") else "_Shades"
+                model = f.stem.removesuffix(pack)
                 for name, img in glb_skins(f):
-                    mutation = name.removeprefix(f"{model}_Shades_")
+                    mutation = name.removeprefix(f"{model}{pack}_")
                     yield f"{f.name}:{name}", model, mutation, img, f.parent.parent / model / f"{mutation}.png"
             elif suffix in (".png", ".jpg", ".jpeg") and f.stem not in SKIP:
                 with Image.open(f) as img:  # closed straight away (Windows won't move an open file)
