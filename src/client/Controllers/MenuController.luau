@@ -1579,6 +1579,24 @@ function MenuController.openStore()
 						if podButton then
 							podButton.Activated:Connect(MenuController.openPod)
 						end
+						-- The Tide Pass: here too, so a controller can reach it (PASS is a HUD
+						-- button; PC 2026-10-16, PS1)
+						local pass = if typeof(s.pass) == "table" then s.pass else nil
+						local waiting = if pass and typeof(pass.waiting) == "number" then pass.waiting else 0
+						local _, passButton = row(
+							list,
+							next(),
+							"TidePass",
+							"Tide Pass",
+							"This season's free row and the Deep Pass: every reward and what's unlocked",
+							if waiting > 0 then `{waiting} to claim` else nil,
+							"OPEN",
+							if waiting > 0 then "gold" else "secondary",
+							Ui.color.accent
+						)
+						if passButton then
+							passButton.Activated:Connect(MenuController.openPass)
+						end
 						-- Free perks
 						heading(list, next(), "FREE PERKS")
 						local premium = s.premium == true
@@ -2653,10 +2671,23 @@ function MenuController.openPass()
 		local columns: { PassColumn } = {}
 		local builtFor = ""
 
+		-- Screen pixels per canvas offset: CanvasPosition and AbsoluteSize count screen
+		-- pixels, so where the window is scaled down (phones) they're smaller than the
+		-- column offsets they're measured against (PC 2026-10-16, PS1: the right-hand
+		-- columns never got their photos on the phone)
+		local function canvasScale(): number
+			local offset = strip.CanvasSize.X.Offset
+			if offset <= 0 or strip.AbsoluteCanvasSize.X <= 0 then
+				return 1
+			end
+			return strip.AbsoluteCanvasSize.X / offset
+		end
+
 		-- Photos are made only for the columns in (or next to) view, as they scroll in
 		local function attachVisible()
-			local left = strip.CanvasPosition.X - (COLUMN + GAP)
-			local right = strip.CanvasPosition.X + strip.AbsoluteSize.X + (COLUMN + GAP)
+			local scale = canvasScale()
+			local left = strip.CanvasPosition.X / scale - (COLUMN + GAP)
+			local right = (strip.CanvasPosition.X + strip.AbsoluteSize.X) / scale + (COLUMN + GAP)
 			for i, column in columns do
 				local x = (i - 1) * (COLUMN + GAP)
 				if column.attached or x + COLUMN < left or x > right then
@@ -2672,6 +2703,8 @@ function MenuController.openPass()
 			end
 		end
 		local scrolled = strip:GetPropertyChangedSignal("CanvasPosition"):Connect(attachVisible)
+		-- The canvas's screen size settles a frame after it's set
+		local resized = strip:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(attachVisible)
 
 		local function build(
 			def: { tiers: { { free: Reward.Reward?, paid: Reward.Reward? } } },
@@ -2745,6 +2778,7 @@ function MenuController.openPass()
 			cleanup = function()
 				connection:Disconnect()
 				scrolled:Disconnect()
+				resized:Disconnect()
 			end,
 			render = function()
 				local pass = state().pass
@@ -2811,7 +2845,8 @@ function MenuController.openPass()
 				-- Open on the tier being worked toward
 				if not passScrolled then
 					passScrolled = true
-					strip.CanvasPosition = Vector2.new(math.max(0, (tier - 1) * (COLUMN + GAP)), 0)
+					strip.CanvasPosition =
+						Vector2.new(math.max(0, (tier - 1) * (COLUMN + GAP) * canvasScale()), 0)
 				end
 				attachVisible()
 			end,
