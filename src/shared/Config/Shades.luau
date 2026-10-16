@@ -1317,7 +1317,8 @@ local LAYERS: { [string]: Sheen } = {
 	WeekWave = layer("sheenCurrent", 0.3, 1.1, 0.35),
 	PassAbyssalCurrent = layer("sheenCurrent", 0.25, 1.2, 0.3, { color = C(120, 255, 200), drift = 0.03 }),
 	Xray = layer("sheenCurrent", 0.6, 1.0, 0.5, { color = C(150, 255, 200) }),
-	Magma = layer("sheenLava", 0.06, 0.9, 0.1, { drift = 0.015 }),
+	-- (half see-through: the skin's own lava rivers carry the cracks; this is heat moving through)
+	Magma = layer("sheenLava", 0.06, 0.9, 0.45, { drift = 0.015 }),
 	Glacier = layer("sheenFacets", 0.07, 1.0, 0.25, { drift = 0.02 }),
 	PassUndertow = layer("sheenCurrent", 0.35, 1.0, 0.3, { color = C(120, 255, 230), drift = 0.1 }),
 	PufCoralBloom = layer("sheenCaustic", 0.1, 1.0, 0.4, { drift = 0.02 }),

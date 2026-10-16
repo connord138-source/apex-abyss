@@ -20,6 +20,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `whalefall_glb` | WhaleFall (GLB; the Whale Fall's carcass, 2026-10-15; lengthwise along its Z, head at +Z in the GLB; normal map stripped, colours made safe, screened) | `ReplicatedStorage.WorldProps.WhaleFall` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`; v2 colors made safe by `tools/props/safe_colors.py` and screened 2026-10-11) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `furniture_glb` | the 38 den furniture pieces of batch 1, `furniture/<Name>.glb` (GLB; cut off `assets/concepts/Furn*.jpg` by `tools/props/furniture_crops.py`, Tripo image_to_model; normal maps taken out by `tools/props/strip_normals.py`, colors made safe by `safe_colors.py`, all 76 images screened 2026-10-13; front faces +X) | `ReplicatedStorage.WorldProps.<Name>` |
+| `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -148,6 +149,22 @@ close render (`tools/marketing/render_fish.py`).
 In Studio: File → Import 3D, one `assets/shades/glb/<Fish>_Shades.glb` at a time
 (wait a few minutes between them for moderation), then run
 `tools/studio/organize_shades.luau` in the Command Bar and save the place.
+
+**Patch packs (2026-10-16):** a retexture of a few skins ships as
+`<Fish>_ShadesPatch.glb` holding only those quads, so only their images are uploaded:
+`pack_shades.py ... assets/shades/patch/<Fish>_ShadesPatch.glb --only=Shade,Shade`
+(it refuses `--only` under a `_Shades` name, since a partial full pack would empty
+the fish's folder, and a `_ShadesPatch` name without `--only`). `organize_shades.luau`
+files a patch's skins without clearing the rest. Import patches after the full packs,
+never in the same organize run. The v9 patch (`shade_patch_v9`) is CatchCrystal on
+every fish and Magma on the MorayEel.
+
+**Sheens** (`tools/shades/make_sheens.py [name ...]`, python3.11 + scipy): tiling
+512² layers in `assets/textures/`, uploaded as Images and keyed in
+`Config/Textures`. Their colour fills the whole image and alpha says where they
+show, so the classifier sees a coloured field; screen them with
+`screen_shades.py assets/textures/sheen_<name>.png` (exit 0, classifier on). The v9
+five (lava, caustic, facets, current, bolt) scored 0.000–0.002.
 
 ## Checks
 

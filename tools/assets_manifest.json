@@ -64,6 +64,13 @@
       "clean": "no normal maps (pack_shades.py NORMALS = False); every GLB cleared by screen_shades.py with the classifier, 204 images in the four changed GLBs, none flagged, highest 0.172",
       "contents": "<Fish>_Shades.glb for Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler: one quad per skin, 27 each (its own 12-skin line from tools/shades/lines.json plus the 15 universal skins), and a 28th, Natural (the fish's own texture with bone-white teeth), on the four toothed fish. v8.2 of 2026-10-14: v8.1 (no normal maps) with the teeth painted a neutral bone white on every skin of the Angler, Cuda, MorayEel and ReefShark (tools/shades/teeth.json); the Nibbler and Puffer GLBs are byte-identical to v8.1."
     },
+    "shade_patch_v9": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/f8d7fda3-6122-403f-adf9-03d9c4b99bc0.zip",
+      "into": "assets/shades/patch",
+      "sha256": "db7d971c0aa6ad3f6a85906f5191eaee390b3e1fc55a3d768206be3805fd36da",
+      "clean": "no normal maps; every patch GLB cleared by screen_shades.py with the classifier, 31 rows, none flagged, highest 0.021",
+      "contents": "<Fish>_ShadesPatch.glb for all six fish (2026-10-16, skins v9): only the retextured skins, filed by organize_shades.luau without clearing the fish's other skins. CatchCrystal (cut crystal shards) on every fish, and Magma (basalt plates split by lava rivers) on the MorayEel. Import after the full shade_skins packs, never in the same organize run."
+    },
     "furniture_glb": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/530c2fa1-0323-4260-9b50-5e3730712f0a.zip",
       "into": "assets/glb",

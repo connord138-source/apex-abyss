@@ -663,7 +663,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Thunder); the uploaded ones are reused (gold on gold skins, tinted sparkle on
     glow and pearl skins, stars on space, prismatic on Prism). Their colour is set
     everywhere and alpha says where they show, so the classifier sees a coloured
-    field, not bright lines on black. Ids 0 until the PC uploads the five PNGs.
+    field, not bright lines on black (screened 0.000–0.002). Ids 0 until the PC
+    uploads the five PNGs.
+  - **Skins v9 retextures (patch packs):** Magma (Moray) is ~115 cool basalt plates,
+    each its own tone with pits and a lit rim, split by recessed lava rivers that run
+    white-yellow to deep red with a strong glow map; Catch Crystal (every fish) is
+    clusters of long prism shards with lit and shaded faces, a milky veil, rainbow
+    sparks at some tips, a druzy crust between and frosted fins (gloss, 0.2 metal).
+    They ship as `<Fish>_ShadesPatch.glb` (bundle `shade_patch_v9`, sha256
+    db7d971c…, highest classifier 0.021), packed with `pack_shades.py --only`
+    and filed by `organize_shades.luau` without clearing the fish's other skins.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
