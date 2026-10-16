@@ -1262,6 +1262,108 @@ for _, shade in list do
 	end
 end
 
+-- Moving layers on every Rare and better skin (owner, 2026-10-16: "you only made 2-3
+-- skins interactive ... A lot of the other ones should be moving textures or have
+-- elements that make theme desireable. Still too many flat models"): each gets a
+-- layer that suits it (lava seeping through Magma's cracks, light glinting off
+-- crystal and ice, sunlit ripples over sea glass and reefs, a current raking back,
+-- live arcs on Thunder, gold glints on gold, stars on space), and an aura where it
+-- had none. The textures are in Config/Textures (sheenLava, sheenCaustic,
+-- sheenFacets, sheenCurrent and sheenBolt are coloured, so they keep no tint; the
+-- white sparkle is tinted to each skin).
+local function layer(
+	texture: string,
+	speed: number,
+	tile: number,
+	transparency: number,
+	extra: { color: Color3?, drift: number? }?
+): Sheen
+	return {
+		texture = texture,
+		speed = speed,
+		tile = tile,
+		transparency = transparency,
+		color = extra and extra.color,
+		drift = extra and extra.drift,
+	}
+end
+
+local LAYERS: { [string]: Sheen } = {
+	-- Uncommon (the Golden catch track)
+	CatchGolden = layer("sheenGold", 0.06, 1.2, 0.45),
+	-- Rare
+	CudaChrome = layer("sheenCurrent", 0.45, 1.0, 0.35, { color = C(190, 170, 255) }),
+	ShkBoneplate = layer("sheenSparkle", 0.06, 1.2, 0.5, { color = C(220, 230, 240) }),
+	Lunar = layer("sheenSparkle", 0.05, 1.4, 0.45, { color = C(200, 215, 255), drift = 0.01 }),
+	ShkScarred = layer("sheenCaustic", 0.12, 1.1, 0.6),
+	PufUrchin = layer("sheenSparkle", 0.12, 0.9, 0.4, { color = C(90, 255, 220) }),
+	Glowspot = layer("sheenSparkle", 0.08, 0.8, 0.4, { color = C(80, 230, 255) }),
+	Tidepool = layer("sheenCaustic", 0.1, 1.0, 0.4, { drift = 0.02 }),
+	Mandarin = layer("sheenCurrent", 0.2, 1.1, 0.45),
+	MorSerpent = layer("sheenGold", 0.08, 1.2, 0.35),
+	PassTideglass = layer("sheenCaustic", 0.08, 1.0, 0.45, { drift = 0.02 }),
+	CatchGlowing = layer("sheenSparkle", 0.1, 1.0, 0.4, { color = C(120, 255, 200) }),
+	MorRibbon = layer("sheenCurrent", 0.35, 0.9, 0.4),
+	AngGlassveins = layer("sheenCaustic", 0.06, 1.2, 0.5),
+	Lanternfish = layer("sheenSparkle", 0.15, 0.9, 0.4, { color = C(140, 220, 255) }),
+	-- Epic
+	CatchCrystal = layer("sheenFacets", 0.12, 0.9, 0.15, { drift = 0.03 }),
+	PassRiptide = layer("sheenCurrent", 0.5, 1.0, 0.25),
+	WeekSeaGlass = layer("sheenCaustic", 0.1, 1.0, 0.35, { drift = 0.02 }),
+	WeekWreck = layer("sheenCaustic", 0.08, 1.2, 0.55),
+	WeekReef = layer("sheenCaustic", 0.1, 1.0, 0.45, { drift = 0.02 }),
+	AngAbyssEye = layer("sheenSparkle", 0.05, 1.0, 0.4, { color = C(255, 190, 60) }),
+	CatchPrism = layer("sheenPrismatic", 0.3, 1.3, 0.35, { drift = 0.06 }),
+	WeekWave = layer("sheenCurrent", 0.3, 1.1, 0.35),
+	PassAbyssalCurrent = layer("sheenCurrent", 0.25, 1.2, 0.3, { color = C(120, 255, 200), drift = 0.03 }),
+	Xray = layer("sheenCurrent", 0.6, 1.0, 0.5, { color = C(150, 255, 200) }),
+	Magma = layer("sheenLava", 0.06, 0.9, 0.1, { drift = 0.015 }),
+	Glacier = layer("sheenFacets", 0.07, 1.0, 0.25, { drift = 0.02 }),
+	PassUndertow = layer("sheenCurrent", 0.35, 1.0, 0.3, { color = C(120, 255, 230), drift = 0.1 }),
+	PufCoralBloom = layer("sheenCaustic", 0.1, 1.0, 0.4, { drift = 0.02 }),
+	-- Legendary
+	Thunder = layer("sheenBolt", 0.9, 0.8, 0.05),
+	DrownedPearl = layer("sheenSparkle", 0.07, 1.1, 0.35, { color = C(225, 210, 255) }),
+	MorJade = layer("sheenGold", 0.1, 1.0, 0.3),
+	PufSunburst = layer("sheenGold", 0.15, 0.9, 0.25),
+	AngLanternKing = layer("sheenGold", 0.1, 1.0, 0.3, { drift = 0.02 }),
+	-- Mythic
+	CudaComet = layer("stars", 0.25, 1.4, 0.3, { drift = 0.02 }),
+	SunkenGold = layer("sheenGold", 0.08, 1.1, 0.25),
+	AngStarfall = layer("stars", 0.06, 1.5, 0.3, { drift = 0.015 }),
+	-- Trophy
+	AbyssInk = layer("sheenCurrent", 0.15, 1.2, 0.4, { color = C(150, 110, 255), drift = 0.05 }),
+}
+local AURAS: { [string]: Aura } = {
+	CudaChrome = "glints",
+	ShkBoneplate = "glints",
+	PufUrchin = "motes",
+	Mandarin = "glints",
+	MorSerpent = "glints",
+	PassTideglass = "bubbles",
+	MorRibbon = "glints",
+	AngGlassveins = "motes",
+	Lanternfish = "motes",
+	WeekSeaGlass = "bubbles",
+	WeekWreck = "bubbles",
+	WeekReef = "bubbles",
+	WeekWave = "bubbles",
+	Xray = "motes",
+	PufCoralBloom = "bubbles",
+}
+for id, sheen in LAYERS do
+	local shade = byId[id]
+	assert(shade, `Config/Shades LAYERS: no shade {id}`)
+	assert(shade.sheen == nil, `Config/Shades LAYERS: {id} already has a sheen`)
+	shade.sheen = sheen
+end
+for id, aura in AURAS do
+	local shade = byId[id]
+	assert(shade, `Config/Shades AURAS: no shade {id}`)
+	assert(shade.aura == nil, `Config/Shades AURAS: {id} already has an aura`)
+	shade.aura = aura :: any -- (luau-lsp reads the map's values as plain strings)
+end
+
 -- Whether a fish of `speciesId` can have a skin: one of its own line, or one every
 -- fish can have ("" = no skin, which always fits)
 local function fits(shadeId: string, speciesId: string): boolean
