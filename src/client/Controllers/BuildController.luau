@@ -294,26 +294,34 @@ local function rayParams(): RaycastParams
 	return params
 end
 
--- The floor of a storey at the den's level, as x and z limits in the den's frame
-local function storeyBox(storey: number): (number, number, number, number)
-	local level = denRecord().level or 1
-	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
-	for _, room in DenSpace.rooms(level, storey) do
-		minX = math.min(minX, -room.x)
-		maxX = math.max(maxX, room.x)
-		minZ = math.min(minZ, room.z0, room.z1)
-		maxZ = math.max(maxZ, room.z0, room.z1)
-	end
-	if minX == math.huge then
-		return -10, 10, -10, 10
-	end
-	return minX, maxX, minZ, maxZ
-end
+-- The view's focus stays over a storey's floor: the nearest spot inside one of its
+-- rooms, VIEW_INSET from the walls. (Clamped to the box round all the rooms, its
+-- corners lay in the rock, where the camera's ray out of the rock started inside it,
+-- so panning took the view through the walls into the hub and the open sea: PC
+-- 2026-10-16 BD2.)
+local VIEW_INSET = 3
 
 local function clampView()
-	local minX, maxX, minZ, maxZ = storeyBox(view.storey)
-	view.x = math.clamp(view.x, minX, maxX)
-	view.z = math.clamp(view.z, minZ, maxZ)
+	local level = denRecord().level or 1
+	local bestX, bestZ, bestGap = view.x, view.z, math.huge
+	for _, room in DenSpace.rooms(level, view.storey) do
+		local half = math.max(room.x - VIEW_INSET, 0)
+		local near, far = math.min(room.z0, room.z1), math.max(room.z0, room.z1)
+		local z0, z1 = near + VIEW_INSET, far - VIEW_INSET
+		if z0 > z1 then
+			z0, z1 = (near + far) / 2, (near + far) / 2
+		end
+		local x = math.clamp(view.x, -half, half)
+		local z = math.clamp(view.z, z0, z1)
+		local gap = (x - view.x) ^ 2 + (z - view.z) ^ 2
+		if gap < bestGap then
+			bestX, bestZ, bestGap = x, z, gap
+		end
+	end
+	if bestGap == math.huge then
+		bestX, bestZ = math.clamp(view.x, -10, 10), math.clamp(view.z, -10, 10)
+	end
+	view.x, view.z = bestX, bestZ
 end
 
 -- Up or down a storey (-1 up, +1 down), keeping the view's spot as near as it can
