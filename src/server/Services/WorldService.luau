@@ -1660,8 +1660,22 @@ local function buildWheel(parent: Instance)
 	)
 end
 
+-- The toon materials (Config/Materials) are made in Studio and saved in the place:
+-- say so when one has its image but no variant (the material stays stock)
+local function checkToonMaterials()
+	local MaterialService = game:GetService("MaterialService")
+	for key, toon in Config.Materials.toon do
+		if toon.id ~= 0 and MaterialService:FindFirstChild("Toon" .. key) == nil then
+			warn(
+				`[WorldService] toon material Toon{key} isn't in the place: run tools/studio/make_toon_materials.luau in Studio's Command Bar and save`
+			)
+		end
+	end
+end
+
 function WorldService.start()
 	setupLighting()
+	checkToonMaterials()
 	root = folder("World", workspace)
 	buildSeabed()
 	buildBounds(folder("Bounds", root))

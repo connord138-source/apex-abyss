@@ -424,9 +424,33 @@ end
 
 -- Writes the ops into the Terrain (server start). Fill order matters: later ops
 -- overwrite earlier ones where they overlap.
+-- A Terrain material's colour. While its toon variant is on (Config/Materials: a
+-- MaterialService override; its map averages ~0.8 and darkens what wears it), the
+-- colour is lifted to keep the world as bright; the toon lava carries its own colour,
+-- so it isn't tinted at all.
+function Cave.paint(terrain: Terrain, material: Enum.Material, color: Color3)
+	local MaterialService = game:GetService("MaterialService")
+	local ok, override = pcall(function()
+		return MaterialService:GetBaseMaterialOverride(material)
+	end)
+	if ok and override ~= "" then
+		if material == Enum.Material.CrackedLava then
+			color = Color3.new(1, 1, 1)
+		else
+			local lift = Config.Materials.terrainLift
+			color = Color3.new(
+				math.min(color.R * lift, 1),
+				math.min(color.G * lift, 1),
+				math.min(color.B * lift, 1)
+			)
+		end
+	end
+	terrain:SetMaterialColor(material, color)
+end
+
 function Cave.apply(terrain: Terrain, ops: { Op })
 	for material, color in Cave.COLORS do
-		terrain:SetMaterialColor(material, color)
+		Cave.paint(terrain, material, color)
 	end
 	for _, op in ops do
 		if op.kind == "ball" then

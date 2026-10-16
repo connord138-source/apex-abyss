@@ -31,6 +31,7 @@ return {
 	Playtime = require(script.Playtime),
 	Pass = require(script.Pass),
 	Textures = require(script.Textures),
+	Materials = require(script.Materials),
 	Achievements = require(script.Achievements),
 	Codes = require(script.Codes),
 	Chum = require(script.Chum),

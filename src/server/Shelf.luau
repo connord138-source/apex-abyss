@@ -505,7 +505,7 @@ end
 
 function Shelf.apply(terrain: Terrain, ops: { Op })
 	for material, color in Shelf.COLORS do
-		terrain:SetMaterialColor(material, color)
+		Cave.paint(terrain, material, color)
 	end
 	Cave.apply(terrain, ops)
 end
