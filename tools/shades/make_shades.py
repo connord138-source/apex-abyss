@@ -1011,16 +1011,137 @@ def diamond(m):  # Cut diamond: big bevelled facets, dispersion fire along the b
     return done(m, rgb, "mirror", metal=np.full(m.y.shape, 0.35, np.float32), detail=0.6, relief=1.6, height=height)
 
 
-def magma(m):
-    rgb = coat(m, (0.10, 0.08, 0.08), (0.18, 0.12, 0.10), (0.12, 0.08, 0.07))
-    cracks = net(m, 150, 0.010, seed=33)
-    halo = glow_halo(cracks, 5)
-    rgb = mix(rgb, (0.85, 0.18, 0.0), halo * 0.75)
-    rgb = mix(rgb, (1.0, 0.55, 0.0), cracks)
-    hot = cracks * smoothstep(0.6, 1, fbm(m, 9, 34))
-    rgb = mix(rgb, (1.0, 0.88, 0.25), hot)
-    emit = cracks[..., None] * C(1.0, 0.45, 0.0) + (halo * 0.5)[..., None] * C(0.9, 0.15, 0.0) + hot[..., None] * C(1.0, 0.8, 0.2)
-    return done(m, rgb, "satin", emit=emit, detail=0.7)
+def plate_field(m: Fish, count, seed, weight=None, round_k=0.0025):
+    """Plates on the body (Voronoi round scattered points, in 3D): per texel its
+    distance to the nearest plate edge (to the bisector with the nearer of its two
+    nearest neighbours, corners rounded by a smooth minimum `round_k` wide, so gaps
+    open into small pools where three plates meet), the plate's index, its centre,
+    and the direction across the nearest edge (toward the neighbouring plate) laid on
+    the skin. Body lengths."""
+    pts = scatter(m, count, seed, weight)
+    tree = cKDTree(pts)
+    d, i = tree.query(m.p.reshape(-1, 3), k=3)
+    shape = m.y.shape
+    p = m.p.reshape(-1, 3)
+    c1, c2, c3 = pts[i[:, 0]], pts[i[:, 1]], pts[i[:, 2]]
+    e2 = (d[:, 1] ** 2 - d[:, 0] ** 2) / (2 * np.maximum(np.linalg.norm(c2 - c1, axis=1), 1e-6))
+    e3 = (d[:, 2] ** 2 - d[:, 0] ** 2) / (2 * np.maximum(np.linalg.norm(c3 - c1, axis=1), 1e-6))
+    k = round_k
+    edge = np.maximum(-k * np.logaddexp(-e2 / k, -e3 / k), 0)
+    cn = np.where((e2 <= e3)[:, None], c2, c3)
+    across = (p - c1) / np.maximum(d[:, :1], 1e-6) - (p - cn) / np.maximum(np.linalg.norm(p - cn, axis=1, keepdims=True), 1e-6)
+    n = m.nrm.reshape(-1, 3)
+    across = across - n * (across * n).sum(-1, keepdims=True)
+    across /= np.maximum(np.linalg.norm(across, axis=1, keepdims=True), 1e-6)
+    out = (p - c1) - n * ((p - c1) * n).sum(-1, keepdims=True)  # from the plate's middle, on the skin
+    return (
+        edge.reshape(shape).astype(np.float32),
+        i[:, 0].reshape(shape),
+        d[:, 0].reshape(shape).astype(np.float32),
+        across.reshape(shape + (3,)).astype(np.float32),
+        out.reshape(shape + (3,)).astype(np.float32),
+        len(pts),
+    )
+
+
+def painted_light(m: Fish, tilt, strength=1.0):
+    """How much a surface tilted by `tilt` (a vector on the skin) catches a light from
+    above and a little ahead, against the skin as it is: + lit, - in shade. Painted
+    into the colour map (no normal maps, ever: 2026-10-13)."""
+    light = np.array([0.0, -0.35, 0.94], np.float32)
+    light /= np.linalg.norm(light)
+    n2 = m.nrm + tilt * strength
+    n2 /= np.maximum(np.linalg.norm(n2, axis=-1, keepdims=True), 1e-6)
+    return (n2 @ light) - (m.nrm @ light)
+
+
+def magma(m):  # Lava gaps: raised basalt crust plates over recessed rivers of glowing lava
+    """Owner, 2026-10-16: "The one where its lava should have texture that looks like
+    lava gaps". Dark cool basalt plates stand proud (rims lit from above on one side,
+    shaded on the other, a slight dome, rough grain, a few cooling cracks); between
+    them rivers of lava, wide in places and pinched thin in others, white-yellow at
+    the core of the wide ones, orange, then deep red at the plate edges, the glow
+    bleeding onto the rims, embers flecked about. Depth is painted in the colour map.
+    Orange is never blended into anything pale (the lava's edge is deep red against
+    near-black crust), and the yellow-white core keeps its blue low."""
+    m = smooth(m)
+    # Smaller plates on the head
+    weight = 1 + 1.4 * smoothstep(0.3, 0.06, m.y)
+    edge, idx, f1, across, out, count = plate_field(m, 115, 330, weight)
+    rng = np.random.default_rng(331)
+    # The rivers' half-width wanders along each gap: wide, then pinched thin
+    wander = fbm_at(m.p, 14, 332, 3)
+    half = 0.0011 + 0.0105 * smoothstep(0.3, 0.84, wander) ** 1.5
+    half = half * (1.0 - 0.3 * smoothstep(0.3, 0.05, m.y))  # finer round the head's small plates
+    widest = 0.0011 + 0.0105
+    plate = crisp(m, edge - half, 0.0, texels=1.6)  # 0 lava .. 1 crust
+    lava = 1 - plate
+    q = np.maximum(edge - half, 0)  # into the plate from its edge
+    # --- The crust: a plate's own tone, grain, pits, its domed and bevelled top
+    tone = (0.75 + 0.5 * rng.random(count))[idx]
+    grain = value_noise(m.p, 260, 333) * 0.55 + value_noise(m.p, 610, 334) * 0.45
+    crust = C(0.105, 0.11, 0.128) * (tone * (0.8 + 0.4 * grain))[..., None]
+    crust = mix(crust, (0.05, 0.055, 0.068), smoothstep(0.62, 0.8, fbm(m, 40, 335)) * 0.6)  # darker scoria patches
+    bevel = 0.0085
+    slope = smoothstep(bevel, 0.0, q) ** 1.2  # steep at the rim, flat on top
+    # The rim falls away toward the gap (tilting across the edge); the top is domed
+    radius = np.maximum(np.percentile(f1[m.real], 70), 1e-4)
+    tilt = across * (1.3 * slope)[..., None] + out / radius * 0.55
+    shade = painted_light(m, tilt)
+    lit = np.clip(shade * 2.6, -1, 1)
+    crust = crust * (1 + 0.7 * lit)[..., None]
+    # A cool, hard highlight along the rims facing the light; a dark lip on the far side
+    rim = smoothstep(0.0, 0.0012, q) * smoothstep(0.0055, 0.0018, q)
+    crust = mix(crust, (0.42, 0.44, 0.5), np.clip(lit * 1.3, 0, 1) * rim * 0.85)
+    crust = mix(crust, (0.01, 0.01, 0.014), np.clip(-lit * 1.3, 0, 1) * rim * 0.75)
+    # Vesicles: small gas pits, dark with a lit lower lip
+    d1, _, _, _ = worley(m, 5000, 336)
+    pit = smoothstep(0.0016, 0.0009, d1) * smoothstep(0.003, 0.006, q)
+    crust = mix(crust, (0.025, 0.025, 0.03), pit * 0.85)
+    # Cooling cracks inside the plates: thin dark lines, a few with a red heart
+    cf = fbm(m, 22, 337)
+    crack_line = smoothstep(0.0085, 0.003, np.abs(cf - 0.5)) * smoothstep(0.004, 0.008, q)
+    crack_line *= smoothstep(0.45, 0.6, fbm(m, 9, 338))  # only in places
+    crust = mix(crust, (0.02, 0.018, 0.02), crack_line * 0.85)
+    ember_crack = crack_line * smoothstep(0.62, 0.72, fbm(m, 7, 339))
+    crust = mix(crust, (0.62, 0.06, 0.0), ember_crack * 0.6)
+    # The lava's glow bleeding up onto the rims (more beside a wide river)
+    width_here = np.clip(half / widest, 0, 1)
+    bleed = np.exp(-q / 0.0035) * (0.45 + 0.55 * width_here) * plate
+    crust = mix(crust, (0.70, 0.10, 0.0), bleed * 0.7)
+    crust = mix(crust, (0.95, 0.30, 0.0), np.exp(-q / 0.0012) * width_here * plate * 0.5)
+    # --- The lava: hottest in the middle of a wide river, deep red at the plate edges
+    t = np.clip(edge / np.maximum(half, 1e-6), 0, 1)  # 0 the river's middle .. 1 its bank
+    flow = fbm_at(m.p * np.array([1.0, 0.35, 1.0], np.float32), 70, 340, 3)  # streaks in the flow
+    heat = (1 - t) ** 1.2 * (0.35 + 0.65 * width_here ** 0.8) * (0.85 + 0.3 * flow)
+    heat = np.clip(heat + 0.12 * (1 - t), 0, 1)
+    stops = np.array([0.0, 0.22, 0.45, 0.68, 0.86, 1.0], np.float32)
+    cols = np.array(
+        [(0.42, 0.02, 0.0), (0.78, 0.07, 0.0), (1.0, 0.30, 0.0), (1.0, 0.52, 0.0), (1.0, 0.76, 0.05), (1.0, 0.92, 0.42)],
+        np.float32,
+    )
+    melt = np.stack([np.interp(heat, stops, cols[:, k]) for k in range(3)], -1).astype(np.float32)
+    # Dark crust rafts drifting in the wide rivers
+    r1, _, _, _ = worley(m, 2600, 341)
+    raft = smoothstep(0.0022, 0.0014, r1) * smoothstep(0.55, 0.85, width_here) * (t < 0.75)
+    melt = mix(melt, (0.30, 0.03, 0.0), raft * 0.8)
+    rgb = mix(crust, melt, lava)
+    # Embers: bright flecks on the crust near the rivers
+    sparks = scatter(m, 260, 342, weight=np.exp(-q / 0.005) * plate)
+    s1, _, si = nearest(m, sparks)
+    size = (0.0006 + 0.0009 * np.random.default_rng(343).random(len(sparks)) ** 2)[si]
+    ember = smoothstep(size * 1.4, size * 0.6, s1) * plate
+    rgb = mix(rgb, (1.0, 0.62, 0.02), ember)
+    glow = melt * (0.55 + 0.45 * heat)[..., None] * (lava * (1 - 0.7 * raft))[..., None]
+    halo = glow_halo(lava * (0.4 + 0.6 * width_here), 4)
+    emit = (
+        glow
+        + C(0.75, 0.12, 0.0) * (bleed * 0.55 + halo * 0.25 * plate)[..., None]
+        + C(1.0, 0.55, 0.0) * ember[..., None]
+        + C(0.7, 0.08, 0.0) * (ember_crack * 0.5)[..., None]
+    )
+    # The fish's own painted creases stay on the crust, not in the molten rivers
+    return done(m, rgb, "satin", emit=emit, detail=0.5, hush=lava * 0.95, relief=0)
 
 
 def glacier(m):  # Ice in strata: layers of teal and cyan, a frosted cap, rime

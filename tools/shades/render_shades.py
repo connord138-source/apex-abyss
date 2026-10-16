@@ -1,6 +1,6 @@
 """Renders a fish wearing each of its shade skins, three-quarter view, for review.
 
-    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [Shade ...]
+    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [zoom=2.5 focus=0.3 res=900x600] [Shade ...]
 
 Writes <out_dir>/<Fish>_<Shade>.png (the fish's own texture as <Fish>_Base.png), by
 default every shade in the fish's own list (shade_lines.py: its line, then the
@@ -26,7 +26,13 @@ SRC, SKINS, OUT = argv[0], pathlib.Path(argv[1]).resolve(), pathlib.Path(argv[2]
 rest = argv[3:]
 FLIP = "flip" in rest
 PAIR = "pair" in rest
-rest = [a for a in rest if a not in ("flip", "pair")]
+# Close-ups for review: zoom=<x> (2.5 frames about 40% of the fish) centred at
+# focus=<f> along it (0 the snout .. 1 the tail tip), res=<w>x<h>
+OPTS = dict(a.split("=", 1) for a in rest if "=" in a)
+ZOOM = float(OPTS.get("zoom", 1.0))
+FOCUS = float(OPTS["focus"]) if "focus" in OPTS else None
+RES = tuple(int(x) for x in OPTS.get("res", "520x360").split("x"))
+rest = [a for a in rest if a not in ("flip", "pair") and "=" not in a]
 NAME = pathlib.Path(SRC).stem
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -67,6 +73,8 @@ if not head_low:
 co = np.array([v.co[:] for v in body.data.vertices])
 mn, mx = co.min(0), co.max(0)
 mid = Vector(((mn + mx) / 2).tolist())
+if FOCUS is not None:
+    mid.y = mn[1] + FOCUS * (mx[1] - mn[1])
 
 # The color texture node, to swap skins into
 bsdf = next(n for n in body.material_slots[0].material.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
@@ -102,7 +110,7 @@ scene.render.engine = "CYCLES"
 scene.cycles.device = "CPU"
 scene.cycles.samples = 24
 scene.cycles.use_denoising = True
-scene.render.resolution_x, scene.render.resolution_y = 520, 360
+scene.render.resolution_x, scene.render.resolution_y = RES
 scene.view_settings.view_transform = "Standard"
 world = bpy.data.worlds.new("W")
 scene.world = world
@@ -117,7 +125,7 @@ for energy, rot in ((3.2, (50, 0, 30)), (1.2, (110, 0, 200))):
     scene.collection.objects.link(obj)
 cam_data = bpy.data.cameras.new("Cam")
 cam_data.type = "ORTHO"
-cam_data.ortho_scale = length * 1.25
+cam_data.ortho_scale = length * 1.25 / ZOOM
 cam = bpy.data.objects.new("Cam", cam_data)
 scene.collection.objects.link(cam)
 scene.camera = cam
