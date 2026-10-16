@@ -2775,24 +2775,191 @@ def catch_glowing(m):  # Glowing: deep navy, the fish's own lines softly glowing
     return done(m, rgb, "satin", emit=emit, detail=0.5)
 
 
-def catch_crystal(m):  # Crystal: mid-toned icy facets, a few glints, cool refractions
-    pts = scatter(m, 280, 400)
-    d1, d2, i = nearest(m, pts)
-    rng = np.random.default_rng(401)
-    dirs = rng.normal(size=(len(pts), 3)).astype(np.float32)
+def texel_size(m: Fish):
+    """A texel's typical width on the body, in body lengths."""
+
+    def make():
+        near = cache(m, "texel_near", lambda: _texel_near(m))
+        steps = [np.linalg.norm(np.diff(m.p, axis=a), axis=-1)[ok] for a, ok in enumerate(near)]
+        return float(np.median(np.concatenate(steps)))
+
+    return cache(m, "texel_size", make)
+
+
+def crystal_matrix(m: Fish, size, seed):
+    """Druzy: a crust of tiny crystal facets (cells about `size` across), each catching
+    the light at its own angle, darker seams between. Returns (rgb, cell tone 0..1)."""
+    texel = texel_size(m)
+    area = float(m.real.sum()) * texel * texel
+    count = int(np.clip(area / (size * size), 300, 60000))
+    d1, d2, i, n = worley(m, count, seed)
+    rng = np.random.default_rng(seed + 1)
+    dirs = rng.normal(size=(n, 3)).astype(np.float32)
     dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
-    facet = 0.5 + 0.5 * (dirs[i] * m.nrm).sum(-1)
-    rgb = mix(board(m, (0.14, 0.34, 0.58)), (0.50, 0.74, 0.90), smoothstep(0.15, 0.95, facet))
-    rgb = mix(rgb, (0.66, 0.86, 0.98), smoothstep(0.0035, 0.0012, d2 - d1) * 0.7)
-    n = m.nrm
-    hue = 0.52 + 0.1 * np.sin(n[..., 0] * 3 + n[..., 2] * 2 + m.y * 5)
-    film = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.45), np.full_like(hue, 0.85)], -1))
-    rgb = mix(rgb, film, 0.2)
-    crack = smoothstep(0.012, 0.0, np.abs(fbm(m, 6, 402) - 0.5))
-    rgb = mix(rgb, (0.10, 0.24, 0.46), crack * 0.5)
-    glint = speckle(m, 120, 0.9, seed=403)
-    rgb = mix(rgb, (0.80, 0.90, 1.0), glint * 0.7)
-    return done(m, rgb, "gloss", detail=0.4)
+    facet = np.clip(0.5 + 0.5 * (dirs[i] * m.nrm).sum(-1), 0, 1)
+    tone = (rng.random(n).astype(np.float32))[i]
+    rgb = mix(board(m, (0.12, 0.30, 0.45)), (0.28, 0.54, 0.67), smoothstep(0.1, 0.95, facet * 0.7 + tone * 0.3))
+    seam = smoothstep(texel * 1.4, texel * 0.4, d2 - d1)
+    rgb = mix(rgb, (0.06, 0.16, 0.28), seam * 0.45)
+    return rgb, facet
+
+
+def catch_crystal(m):  # Crystal: clusters of long faceted quartz shards grown along the body
+    """Owner, 2026-10-16: "crystal should have a crystal texture" (v8's was a flat
+    mosaic). Clusters of elongated, double-terminated prisms fan back along the body
+    over a druzy crust, drawn one over another so they overlap like a real growth:
+    each shard a lit face and a shadowed face meeting at a bright ridge, faceted
+    tips, a dark seam round it and a soft cast shadow below, a milky veil and bright
+    refraction planes inside, now and then a spark of fire at a tip. Icy blue to aqua,
+    mid-toned (large near-white areas trip the classifier on dark-part fish), cool
+    whites only. Clearly not Diamond: long prisms, not bevelled cut facets. All of the
+    depth is painted in the colour map (no normal maps, ever: 2026-10-13)."""
+    rng = np.random.default_rng(420)
+    texel = texel_size(m)
+    hh, _ = girth(m)
+    fins, reach = fin_parts(m)
+    shape = m.y.shape
+    P = m.p.reshape(-1, 3)
+    N = m.nrm.reshape(-1, 3)
+    body = (m.real & (fins < 0.4) & (m.eyes < 0.5)).reshape(-1)
+    idx_body = np.flatnonzero(body)
+    tree = cKDTree(P[idx_body])
+    # Shard width follows the body's girth (an eel gets slim ones), within limits
+    w_here = np.clip(0.2 * hh, 0.007, 0.06).reshape(-1)
+    w_mean = float(np.mean(w_here[idx_body]))
+    area = float(body.sum()) * texel * texel
+    shard_area = 8.0 * w_mean * w_mean
+    count = int(np.clip(2.5 * area / shard_area, 100, 2400))
+    matrix, _ = crystal_matrix(m, w_mean * 0.32, 421)
+    rgb = matrix.reshape(-1, 3).copy()
+    covered = np.zeros(len(P), np.float32)
+    light2 = np.array([-0.35, 1.0], np.float32)
+    light2 /= np.linalg.norm(light2)
+    xc = m.xc.reshape(-1)
+    centres = scatter(m, max(count // 6, 12), 422, weight=(1 - fins) * m.real)
+    # Each cluster's fan points back along the body, tipped up or down a little
+    order = rng.permutation(len(centres))
+    made = 0
+    for ci in order:
+        c0 = centres[ci]
+        _, j = tree.query(c0)
+        j = idx_body[j]
+        n0 = N[j]
+        # Along the body, or (on a face looking straight ahead or back) up it
+        ref = np.array([0, 1, 0], np.float32) if abs(n0[1]) < 0.8 else np.array([0, 0, 1], np.float32)
+        fwd = ref - n0 * float(n0 @ ref)
+        fwd /= max(np.linalg.norm(fwd), 1e-6)
+        sgn = 1.0 if P[j, 0] >= xc[j] else -1.0
+        up = np.cross(n0, fwd) * sgn
+        w0 = w_here[j]
+        # Mostly back along the body; some forward (most of them on the snout, where a
+        # fan pointing back would leave the very front bare)
+        y0 = float(m.y.reshape(-1)[j])
+        forward = rng.random() < 0.2 + 0.6 * float(smoothstep(0.16, 0.04, y0))
+        theta0 = rng.normal(0, 0.45) + (np.pi if forward else 0.0)
+        k = int(rng.integers(5, 10))
+        for _ in range(k):
+            theta = theta0 + rng.uniform(-0.95, 0.95)
+            W = w0 * rng.uniform(0.55, 1.15)
+            Lb = W * rng.uniform(1.0, 2.6)
+            T = W * rng.uniform(0.8, 1.3)
+            e_s = np.cos(theta) * fwd + np.sin(theta) * up
+            e_t = -np.sin(theta) * fwd + np.cos(theta) * up
+            base = c0 + (rng.uniform(-0.6, 0.6) * W) * up + (rng.uniform(-0.6, 0.6) * W) * fwd
+            ctr = base + e_s * (Lb + T) * rng.uniform(0.35, 0.85)
+            reach_r = Lb + T + 0.6 * W
+            hits = tree.query_ball_point(ctr, reach_r)
+            if len(hits) < 8:
+                continue
+            ids = idx_body[np.asarray(hits)]
+            d = P[ids] - ctr
+            same = (N[ids] @ n0) > 0.25
+            ids, d = ids[same], d[same]
+            if len(ids) < 8:
+                continue
+            sl, tl = d @ e_s, d @ e_t
+            a = np.abs(sl)
+            f = np.abs(tl) / W + np.maximum(0, (a - Lb) / T)
+            aa = texel * 1.3 * (1 / W + 1 / T) * 0.6
+            cov = np.clip((1 - f) / (2 * aa) + 0.5, 0, 1)
+            # A soft shadow cast below and behind it (the light is above and ahead)
+            delta = up * (0.3 * W) - fwd * (0.15 * W)
+            ss, ts = sl + delta @ e_s, tl + delta @ e_t
+            fs = np.abs(ts) / W + np.maximum(0, (np.abs(ss) - Lb) / T)
+            shadow = np.clip((1 - fs) / 0.25, 0, 1) * (1 - cov)
+            # The faces: body (two long faces) and tips (four facets), lit by their tilt
+            tip = a > Lb
+            ts_sign = np.where(tl >= 0, 1.0, -1.0)
+            ss_sign = np.where(sl >= 0, 1.0, -1.0)
+            et2 = np.array([-np.sin(theta), np.cos(theta)], np.float32)
+            es2 = np.array([np.cos(theta), np.sin(theta)], np.float32)
+            tilt_body = ts_sign[:, None] * et2
+            tilt_tip = ss_sign[:, None] * es2 + 0.7 * ts_sign[:, None] * et2
+            tilt_tip /= np.linalg.norm(tilt_tip, axis=1, keepdims=True)
+            tilt = np.where(tip[:, None], tilt_tip, tilt_body)
+            lit = np.clip(0.5 + 0.5 * (tilt @ light2) + rng.uniform(-0.08, 0.08), 0, 1)
+            hue = rng.uniform(0.49, 0.58)
+            hi = hsv_to_rgb(np.array([[hue - 0.01, 0.36, 0.92]], np.float32))[0]
+            lo = hsv_to_rgb(np.array([[hue + 0.02, 0.70, 0.46]], np.float32))[0]
+            col = lo + (hi - lo) * (lit ** 1.3)[:, None]
+            # Across a face: brighter toward the ridge on the lit face, a soft reflection band
+            across = np.abs(tl) / W
+            col = col * (1 + 0.18 * (lit - 0.5)[:, None] * (1 - across)[:, None])
+            band = np.exp(-(((across - 0.42) / 0.12) ** 2)) * (lit > 0.6) * (~tip)
+            col = mix(col, (0.70, 0.90, 0.98), band * 0.35)
+            # The milky veil inside, thicker toward the base
+            veil = smoothstep(0.42, 0.72, fbm_at(P[ids] / W * 0.08, 9, 423 + made % 7, 3))
+            veil = veil * np.clip(1 - f, 0, 1) * (0.5 + 0.5 * np.clip(-sl / (Lb + T) + 0.5, 0, 1))
+            col = mix(col, (0.60, 0.78, 0.88), veil * 0.4)
+            # Refraction planes: a line along it and one across at a slant, bright with a dark twin
+            rw = texel * 1.1
+            t1 = rng.uniform(-0.65, 0.65) * W
+            along = np.exp(-(((tl - t1) / rw) ** 2)) * smoothstep(Lb * 1.1, Lb * 0.4, np.abs(sl - rng.uniform(-0.5, 0.5) * Lb))
+            phi = rng.uniform(0.5, 1.2) * rng.choice([-1, 1])
+            off = rng.uniform(-0.6, 0.6) * Lb
+            dist = (sl - off) * np.sin(phi) - tl * np.cos(phi)
+            slant = np.exp(-((dist / rw) ** 2)) * (f < 0.85)
+            dark = np.exp(-(((dist - 2.2 * rw) / rw) ** 2)) * (f < 0.85)
+            col = mix(col, (0.06, 0.20, 0.38), dark * 0.45)
+            col = mix(col, (0.80, 0.95, 1.0), np.clip(along * 0.55 + slant * 0.7, 0, 1))
+            # The ridge where the two faces meet, to the tips, and the line where the tips start
+            ridge = np.exp(-((tl / (texel * 1.2)) ** 2)) * (a < Lb + T)
+            shoulder = np.exp(-(((a - Lb) / (texel * 1.1)) ** 2)) * (np.abs(tl) < W)
+            col = mix(col, (0.84, 0.96, 1.0), ridge * 0.85)
+            col = mix(col, (0.72, 0.90, 1.0), shoulder * 0.45 * (lit > 0.5) + 0.0)
+            col = mix(col, lo * 0.55, shoulder * 0.4 * (lit <= 0.5))
+            # A dark seam round it, so overlapping shards read apart
+            seam = smoothstep(1 - 2.4 * texel / W, 1.0, f)
+            col = mix(col, lo * 0.45, seam * 0.7)
+            # Fire: a spark of colour at a tip, now and then
+            if rng.random() < 0.4:
+                tipx = (Lb + T) * rng.choice([-1, 1])
+                r = np.hypot(sl - tipx * 0.9, tl)
+                spark = np.exp(-((r / (texel * 2.2)) ** 2)) + 0.35 * np.exp(-((r / (texel * 6)) ** 2))
+                fire_hue = rng.uniform(0.13, 0.75)
+                fire = hsv_to_rgb(np.array([[fire_hue, 0.85, 1.0]], np.float32))[0]
+                col = mix(col, fire, np.clip(spark, 0, 1) * 0.85)
+            cur = rgb[ids]
+            # Translucent: a little of what lies under it shows through (not the ridge)
+            col = mix(col, cur, 0.16 * (1 - ridge) * (1 - seam))
+            cur = cur * (1 - 0.45 * shadow)[:, None]
+            rgb[ids] = cur * (1 - cov)[:, None] + col * cov[:, None]
+            covered[ids] = np.maximum(covered[ids], cov)
+            made += 1
+    rgb = rgb.reshape(shape + (3,))
+    # The fins: frosted crystal blades, deeper at the root, clear and bright at the edge
+    fin_rgb, _ = crystal_matrix(m, w_mean * 0.22, 424)
+    fin_rgb = mix(fin_rgb, (0.30, 0.62, 0.78), 0.62)
+    streak = smoothstep(0.86, 0.97, value_noise(m.p * np.array([1.0, 0.25, 1.0], np.float32), 90, 426))
+    fin_rgb = mix(fin_rgb, (0.66, 0.88, 0.97), streak * 0.5)
+    fin_rgb = mix(fin_rgb, (0.62, 0.86, 0.96), smoothstep(0.75, 0.98, reach) * 0.6)
+    rgb = mix(rgb, fin_rgb, np.clip(fins * 1.2, 0, 1))
+    # A few glints on the druzy between the shards
+    glint = speckle(m, 150, 0.9, seed=425) * (1 - covered.reshape(shape)) * (1 - fins)
+    rgb = mix(rgb, (0.78, 0.92, 1.0), glint * 0.7)
+    # The fish's own band edges and creases stay on the crust, not drawn across a shard
+    cover = covered.reshape(shape) * (1 - fins)
+    return done(m, rgb, "gloss", metal=np.full(m.y.shape, 0.2, np.float32), detail=0.4, hush=cover * 0.85, relief=0)
 
 
 def catch_prism(m):  # Prism: brushed silver with a soft cool rainbow film, its own pattern in full colour

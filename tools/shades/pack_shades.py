@@ -1,6 +1,14 @@
 """Packs a fish's shade skins into one GLB for Studio's 3D importer.
 
     <blender python> tools/shades/pack_shades.py -- <fish.glb> <skins_dir>/<Fish> <out.glb> [size]
+    <blender python> tools/shades/pack_shades.py -- <fish.glb> <skins_dir>/<Fish> <dir>/<Fish>_ShadesPatch.glb --only=Magma,CatchCrystal
+
+A patch pack (`--only`, 2026-10-16) holds only the named skins, so a retexture
+uploads (and puts through moderation) a handful of images instead of a fish's 27.
+It must be named <Fish>_ShadesPatch.glb: Studio names the imported model after its
+glTF scene, and organize_shades.luau replaces only the skins a <Fish>_ShadesPatch
+holds, where a <Fish>_Shades replaces the fish's whole folder (a partial pack under
+that name would delete every skin it doesn't hold, so it is refused).
 
 The GLB holds one tiny quad per skin, named for its shade, for the shades in the
 fish's own list only (shade_lines.py: its line plus the universal skins; anything else
@@ -30,9 +38,17 @@ import shade_lines
 from PIL import Image
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
+ONLY = None
+for a in [a for a in argv if a.startswith("--only=")]:
+    ONLY = [s for s in a.split("=", 1)[1].split(",") if s]
+argv = [a for a in argv if not a.startswith("--")]
 SRC = str(pathlib.Path(argv[0]).resolve())
 SKINS, OUT = pathlib.Path(argv[1]).resolve(), pathlib.Path(argv[2]).resolve()
 SIZE = int(argv[3]) if len(argv) > 3 else 1024
+if ONLY is not None and not OUT.stem.endswith("_ShadesPatch"):
+    raise SystemExit(f"[pack] --only makes a patch: name it {SKINS.name}_ShadesPatch.glb, not {OUT.name}")
+if ONLY is None and OUT.stem.endswith("_ShadesPatch"):
+    raise SystemExit("[pack] a _ShadesPatch pack needs --only=Shade,Shade (the skins it replaces)")
 PACKED = SKINS / "_packed"
 PACKED.mkdir(exist_ok=True)
 # NEVER pack a normal map (2026-10-13): Roblox terminated the owner's account over
@@ -108,6 +124,16 @@ if FISH in shade_lines.fishes():
         print(f"[pack] {FISH}: no skin for {', '.join(missing)} (screened out or not made); packing the rest")
     # (plus the Natural skin: the own look with white teeth, worn with no shade on)
     specs = {s: specs[s] for s in wanted + ["Natural"] if s in specs}
+if ONLY is not None:
+    # A patch: only the named skins (each must be on the fish's list and made)
+    allowed = set(shade_lines.shades(FISH)) | {"Natural"} if FISH in shade_lines.fishes() else set(specs)
+    bad = [s for s in ONLY if s not in allowed]
+    if bad:
+        raise SystemExit(f"[pack] {FISH} doesn't wear {', '.join(bad)} (lines.json)")
+    gone = [s for s in ONLY if s not in specs or not (SKINS / f"{s}.png").exists()]
+    if gone:
+        raise SystemExit(f"[pack] {FISH}: no skin made for {', '.join(gone)}")
+    specs = {s: specs[s] for s in ONLY}
 rm_images: dict[str, bpy.types.Image] = {}
 
 
@@ -177,7 +203,7 @@ if made == 0:
     raise SystemExit(f"no skins in {SKINS}")
 OUT.parent.mkdir(parents=True, exist_ok=True)
 # Studio names the imported model after the glTF scene; organize_shades.luau matches
-# models by "<Fish>_Shades"
+# models by "<Fish>_Shades" (the whole set) or "<Fish>_ShadesPatch" (only these)
 bpy.context.scene.name = OUT.stem
 bpy.ops.export_scene.gltf(
     filepath=str(OUT), export_format="GLB", export_image_format="JPEG", export_jpeg_quality=92
