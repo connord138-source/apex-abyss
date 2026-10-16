@@ -563,9 +563,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `tools/shades/make_sheens.py` → `assets/textures/sheen_*.png`): Prismatic,
     Diamond, Divine, Aurora, Exotic, Nebula and Void carry a tiling image projected
     from all six faces of the mesh as Textures that `Cosmetics.animate` slides along
-    the body (sized to the fish as it grows). Ids are 0 until the PC uploads the
-    four PNGs (nothing shows meanwhile); Nebula reuses the H&S galaxy image
-    (129645056585841), which the same account owns.
+    the body (sized to the fish as it grows). The four are uploaded; Nebula reuses
+    the H&S galaxy image (129645056585841), which the same account owns. Since
+    2026-10-16 every Rare+ skin has one (see "The 2026-10-16 batch").
   - **Blood Sense (owner, 2026-10-13: "it should highlight players through
     surfaces as a flashing red thermal to show where the other players and
     predators are"):** `AbilityController` routes the ability button (left click,
@@ -616,6 +616,54 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Bundle v8.2: sha256 feb731f3… (the four toothed fish's GLBs changed, 28 quads
     each; Nibbler and Puffer byte-identical to v8.1; 204 images screened, none
     flagged, highest 0.172).
+- **The 2026-10-16 batch (owner: the Wardrobe fish "facing the wrong direction",
+  "you only made 2-3 skins interactive. The one where its lava should have texture
+  that looks like lava gaps and crystal should have a crystal texture ... Still too
+  many flat models", "left click is dash and right click is just a weaker dash", "a
+  free verson of the deep pass ... and a visual showing the unlock tree/pass ...
+  its just locked", "Map needs a name of the location", Build mode "should set them
+  in a locked screen where they can edit the den and drag parts there", movement "a
+  tad easier"; all built):**
+  - **Wardrobe pose:** `FishPreview` turns the fish 118° (± a slow sway), head left
+    and toward the viewer like the roll cards (at −70° it faced right and away).
+  - **Bite is a snap, not a dash:** `HuntController` looks for a target first
+    (a player fish in reach, else `PredatorController.nearest`); only then does
+    `SwimController.lunge(true)` dart. Into open water it's the jaw snap alone.
+  - **Pass panel:** FREE PASS (everyone) and DEEP PASS cards with what each gives,
+    OPEN / LOCKED with a drawn padlock (the Deep card buys it), a track with a node
+    per tier, and every reward as a lit 3D photo (`CardPhoto`: the skin on your
+    fish, coral, shells, wraps, charm) or a badge (den, title, map, spin); the Deep
+    row is padlocked until bought. The free row was already every player's.
+  - **Map name:** the minimap's bar under it names where you are: YOUR DEN, THE
+    HUB, the biome, or OPEN WATER (`MapController` `placeName`).
+  - **Build mode editor view:** Build mode takes the screen (`Input.editing`: the
+    fish holds still, the cursor stays free; `CameraController.override` hands the
+    camera to `BuildController` `viewCFrame`). The camera orbits a focus on the
+    storey's deck: right-drag orbits, WASD/arrows pan (kept inside that storey's
+    rooms), wheel zooms 10–72, Space/C (PageUp/PageDown) change storey; zoomed out
+    it lowers toward the floor instead of pressing into the ceiling (each storey
+    has ~22 studs), and a ray from the focus keeps it out of rock. Click places;
+    press on a placed thing and drag it, let go to put it down (a quick click
+    picks it up for the next click; dropped somewhere refused, it goes back);
+    drag a thing straight out of the tray. Pad: left stick pans, right stick
+    orbits, RT places at the screen's middle, A changes storey. Phone: drag orbits,
+    pinch zooms, a tap places or picks up, FLOOR changes storey. The aim reaches 200.
+  - **Easier swimming** (`Config/Tuning` `swim`): accel 2.6 → 3.1, drag 1.7 → 2.3
+    (stops sooner), `cruiseTurn` 1.2 (tighter at speed) and `levelZone` 12°: a
+    camera tipped less than that swims level, past it the climb eases in (straight
+    up is still straight up), so looking about no longer drifts the fish.
+  - **Moving layers on every Rare+ skin** (`Config/Shades` `LAYERS`, `AURAS`): each
+    Rare and better skin (and the Golden catch skin) slides a layer that suits it,
+    and gets an aura where it had none. Five new coloured layers
+    (`tools/shades/make_sheens.py`, python3.11 + scipy): `sheenLava` (molten veins
+    under a crust: Magma), `sheenCaustic` (sunlit ripples: Tidepool, sea glass,
+    reefs, wrecks, coral, Scarred), `sheenFacets` (crystal glints: Crystal,
+    Glacier), `sheenCurrent` (streaks raking back: Chrome, Riptide, Undertow, Abyssal
+    Current, Mandarin, Ribbon, Wave, X-Ray, Abyss Ink) and `sheenBolt` (live arcs:
+    Thunder); the uploaded ones are reused (gold on gold skins, tinted sparkle on
+    glow and pearl skins, stars on space, prismatic on Prism). Their colour is set
+    everywhere and alpha says where they show, so the classifier sees a coloured
+    field, not bright lines on black. Ids 0 until the PC uploads the five PNGs.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -966,7 +1014,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the back wall, then an oval bed in the Hall's middle, Tripo corals or part-built
     staghorn/fan/brain/sponge/anemone growing one by one).
   - **Build mode** (`BuildController`, `DenService`): B in your own den or BUILD in
-    the den menu. You swim and aim with the camera; a ghost shows green or red with
+    the den menu. Since 2026-10-16 it's an editor view (the fish holds still, the
+    camera orbits the floor, the cursor is free: see "The 2026-10-16 batch"); before
+    that you swam and aimed with the camera. A ghost shows green or red with
     the reason; things go on decks, walls or ceilings (`kinds`) or on each other;
     aim at a placed thing to pick it up or X to put it away; R/F turn 15°, Q/E pick
     from the tray; pad RT/LT/LB/RB/D-pad/X/B, phone buttons. `Input.building` stops

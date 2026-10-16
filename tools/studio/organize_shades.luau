@@ -7,6 +7,8 @@
 -- where Cosmetics wears it on that fish, and removes the imported model. Safe to run
 -- again: a re-import replaces all of that fish's skins (the folder is cleared first, so
 -- a skin no longer in its pack doesn't linger). Then File → Save (Ctrl+S).
+-- A patch pack, <Fish>_ShadesPatch (assets/shades/patch/), replaces only the skins
+-- it holds and keeps the rest, so a retexture uploads a few images, not 27.
 -- Each skin keeps the maps it was packed with: roughness from its finish, metal only
 -- where the shade is metal (the rest carry none), and a glow mask for glowing shades.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +23,11 @@ end
 local models, skins = 0, 0
 for _, model in workspace:GetChildren() do
 	local fishName = model:IsA("Model") and string.match(model.Name, "^(.+)_Shades$")
+	local patch = false
+	if not fishName and model:IsA("Model") then
+		fishName = string.match(model.Name, "^(.+)_ShadesPatch$")
+		patch = fishName ~= nil
+	end
 	if not fishName then
 		continue
 	end
@@ -30,7 +37,9 @@ for _, model in workspace:GetChildren() do
 		folder.Name = fishName
 		folder.Parent = root
 	end
-	folder:ClearAllChildren()
+	if not patch then
+		folder:ClearAllChildren()
+	end
 	for _, part in model:GetDescendants() do
 		if not part:IsA("MeshPart") then
 			continue
