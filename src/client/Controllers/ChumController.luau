@@ -58,7 +58,8 @@ type Drawn = {
 	yaw: number,
 	crushed: { [BasePart]: number }, -- dressing hidden under a settled carcass (its old modifier)
 	crushAt: number,
-	rim: Highlight?, -- a deep floor's carcass: a faint outline through the haze
+	rim: Highlight?, -- a carcass's faint outline through the haze
+	plume: ParticleEmitter?, -- a whale's chum rising above it, seen over kelp and reef
 }
 
 local drawn: { [number]: Drawn } = {}
@@ -207,7 +208,9 @@ end
 
 -- On the deep floors a light can't reach through the haze, and a carcass was only a
 -- faint shape past ~50 studs (PC 2026-10-15 round 2): a faint cool outline, like the
--- eerie rim predators wear in the dark, hidden by rock in front of it
+-- eerie rim predators wear in the dark, hidden by rock in front of it. Every whale
+-- wears it since a Kelp Shallows one was hard to see from any distance too (PC
+-- 2026-10-16), and a plume of chum rises from it over the kelp (`plume`).
 local RIM = Color3.fromRGB(150, 205, 230)
 local RIM_RANGE = { 40, 200 } -- studs from the camera: none closer (it reads by its light), gone past
 local function rim(model: Model): Highlight
@@ -221,6 +224,41 @@ local function rim(model: Model): Highlight
 	highlight.Adornee = model
 	highlight.Parent = model
 	return highlight
+end
+
+-- A whale's plume: chum and murk drifting up off the carcass for 40-90 studs, so it
+-- shows over a kelp forest's canopy and the reef's heads from far off
+local PLUME = Color3.fromRGB(120, 48, 44)
+local function plume(parent: Instance): ParticleEmitter
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "Plume"
+	attachment.Position = Vector3.new(0, 8, 0)
+	attachment.Parent = parent
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = "Plume"
+	emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	emitter.Color = ColorSequence.new(PLUME, MURK)
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.15, 0.7),
+		NumberSequenceKeypoint.new(0.7, 0.82),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 6),
+		NumberSequenceKeypoint.new(1, 20),
+	})
+	emitter.Lifetime = NumberRange.new(9, 13)
+	emitter.Rate = 3
+	emitter.Speed = NumberRange.new(4, 7)
+	emitter.EmissionDirection = Enum.NormalId.Top
+	emitter.SpreadAngle = Vector2.new(14, 14)
+	emitter.Rotation = NumberRange.new(0, 360)
+	emitter.RotSpeed = NumberRange.new(-8, 8)
+	emitter.Drag = 0.15
+	emitter.LightInfluence = 0.55
+	emitter.Parent = attachment
+	return emitter
 end
 
 -- Small corals and boulders poking up through a settled carcass are hidden on this
@@ -337,8 +375,9 @@ local function add(payload: { [string]: any })
 		rim = nil,
 	}
 	local body = d.carcass
-	if body and cloud.floor < DEEP_FLOOR then
+	if body then
 		d.rim = rim(body)
+		d.plume = plume(murk)
 	end
 	drawn[cloud.id] = d
 	for key, backAt in payload.eaten or {} do
@@ -391,6 +430,10 @@ local function step()
 		local center = Chum.center(cloud, now)
 		local near = (center - camera).Magnitude < DRAW_RANGE
 		d.emitter.Enabled = near and now < cloud.ends - 2
+		local rising = d.plume
+		if rising then
+			rising.Enabled = near and now < cloud.ends - 4
+		end
 		if not near then
 			continue
 		end

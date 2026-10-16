@@ -304,15 +304,59 @@ local function buildDepthGauge()
 	depthText.TextXAlignment = Enum.TextXAlignment.Center
 end
 
+-- Whether a menu window (or the Build tray) is up
+local function panelUp(): boolean
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if playerGui == nil then
+		return false
+	end
+	local menus = playerGui:FindFirstChild("Menus")
+	local window = menus and menus:FindFirstChild("Window")
+	if window and window:IsA("GuiObject") and window.Visible then
+		return true
+	end
+	local build = playerGui:FindFirstChild("Build")
+	local tray = build and build:FindFirstChild("Tray")
+	return tray ~= nil and tray:IsA("GuiObject") and tray.Visible
+end
+
+-- Where the toasts go: above the Haul card, or on a phone with a panel up, a thin
+-- strip under the top bar (PC 2026-10-16: they drew over the open panel's middle)
+local toastsAtTop = false
+local function placeToasts()
+	local top = Ui.isTouch() and panelUp()
+	toastsAtTop = top
+	local layout = toastList:FindFirstChildOfClass("UIListLayout")
+	if top then
+		local screen = toastList:FindFirstAncestorOfClass("ScreenGui")
+		local scale = if screen then Ui.scaleOf(screen) else 1
+		toastList.AnchorPoint = Vector2.new(0.5, 0)
+		toastList.Position = UDim2.new(0.5, 0, 0, math.ceil((Ui.topInset() + 4) / scale))
+		if layout then
+			layout.VerticalAlignment = Enum.VerticalAlignment.Top
+		end
+	else
+		toastList.AnchorPoint = Vector2.new(0.5, 1)
+		toastList.Position = UDim2.new(0.5, 0, 1, -130)
+		if layout then
+			layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		end
+	end
+end
+
 local function toast(text: string, kind: string)
+	placeToasts()
+	local thin = toastsAtTop
 	local color = if kind == "good"
 		then Ui.color.safe
 		elseif kind == "bad" then Ui.color.danger
 		elseif kind == "rare" then Ui.color.haul
 		else Ui.color.text
-	local item = Ui.panel(toastList, "Toast", UDim2.fromOffset(0, 36), UDim2.new())
+	local height = if thin then 26 else 36
+	local item = Ui.panel(toastList, "Toast", UDim2.fromOffset(0, height), UDim2.new())
 	toastCount += 1
-	item.LayoutOrder = toastCount -- the newest sits lowest, nearest the Haul card
+	-- the newest sits nearest the Haul card (lowest), or at the top in the strip
+	item.LayoutOrder = if thin then -toastCount else toastCount
 	item.BackgroundTransparency = 1
 	-- The pill grows with its text (a long one once ran out of a fixed 360 px pill)
 	item.AutomaticSize = Enum.AutomaticSize.X
@@ -320,7 +364,15 @@ local function toast(text: string, kind: string)
 	padding.PaddingLeft = UDim.new(0, 18)
 	padding.PaddingRight = UDim.new(0, 18)
 	padding.Parent = item
-	local label = Ui.label(item, "Text", text, Ui.FONT_BOLD, 16, color, UDim2.fromOffset(0, 36))
+	local label = Ui.label(
+		item,
+		"Text",
+		text,
+		Ui.FONT_BOLD,
+		if thin then 13 else 16,
+		color,
+		UDim2.fromOffset(0, height)
+	)
 	label.AutomaticSize = Enum.AutomaticSize.X
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextTransparency = 1

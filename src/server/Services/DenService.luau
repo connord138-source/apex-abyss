@@ -238,6 +238,21 @@ end
 
 -- Things changed: rebuild just them, save, and tell the client
 local function placedChanged(player: Player, data: DataService.PlayerData, den: number)
+	-- Whatever was stacked on a thing that moved or went away comes down with it
+	-- (or back to the tray)
+	local fell = DenSpace.settle(data.den.level, data.den.placed)
+	if #fell > 0 then
+		for i = #data.den.placed, 1, -1 do
+			if table.find(fell, data.den.placed[i].uid) then
+				table.remove(data.den.placed, i)
+			end
+		end
+		Net.notify(
+			player,
+			`{#fell} thing{if #fell == 1 then "" else "s"} that stood on it went back to your tray`,
+			"info"
+		)
+	end
 	Guard.run("DenService.items", function()
 		DenBuilder.items(den, recordOf(data.den))
 	end)

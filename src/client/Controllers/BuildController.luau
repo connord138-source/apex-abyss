@@ -85,6 +85,10 @@ local yaw = 0
 local spot: Spot? = nil
 local aimedUid: number? = nil
 local turning = 0 -- -1, 0, 1 while a turn is held
+-- Turned by hand (R / F, LB / RB, TURN) since it was picked: snapping still backs it
+-- onto a wall but keeps that turn (PC 2026-10-16: next to a wall, snapping overrode
+-- R / F)
+local handTurned = false
 local nextTurn = 0
 local hiddenUid: number? = nil
 local snapOn = true
@@ -117,7 +121,33 @@ local controlsLabel: TextLabel
 local trayFrame: ScrollingFrame
 local touchRow: Frame
 local snapButton: TextButton? = nil
+local trayButton: TextButton? = nil
 local hintChip: TextLabel
+local touchHint: TextLabel
+-- A phone's editor (PC 2026-10-16: the panel sat in the middle third of the screen,
+-- the swim stick and BITE / DASH / ITEMS / HEAL stayed up, little floor was left to
+-- tap): a slim bar along the bottom whose tray folds away (it folds by itself once
+-- a thing is picked), the help line at the top, and the swimming HUD hidden.
+local trayFolded = false
+local HIDE_ON_TOUCH = {
+	"Hud",
+	"SwimStickRing",
+	"Heal",
+	"ItemWheel",
+	"Wallet",
+	"Offers",
+	"Map",
+	"Hints",
+	"Tides",
+	"Pvp",
+	"Biome",
+	"Catches",
+	"StallButton",
+	"WheelButtons",
+	"Tutorial",
+}
+local hiddenGuis: { ScreenGui } = {}
+local relayout: () -> () = function() end -- layoutTray, once it's defined
 
 local ghost: Model? = nil
 local ghostKey = ""
@@ -236,6 +266,11 @@ end
 
 local function select(new: Selection?)
 	selection = new
+	handTurned = false
+	if new and new.uid == nil and active and Input.isTouch() and not trayFolded then
+		trayFolded = true
+		task.defer(relayout)
+	end
 	if new == nil then
 		hide(nil)
 		clearGhost()
@@ -481,8 +516,8 @@ end
 
 -- Snapping a floor thing: x and z line up with the nearest neighbour's within
 -- ALIGN, then, with rock (or a pillar) within WALL_GAP of where its back would be,
--- it backs onto that wall facing out. Returns the new spot and turn, and whether
--- anything snapped.
+-- it backs onto that wall facing out (or, turned by hand, keeping its turn).
+-- Returns the new spot and turn, and whether anything snapped.
 local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number, boolean, Vector3?)
 	local x, z, r = at.X, at.Z, turn
 	local snapped = false
@@ -515,6 +550,10 @@ local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number
 	params.FilterDescendantsInstances = include
 	local origin = DenSpace.spot(frame, x, at.Y + math.min(1.5, item.size.Y / 2), z).Position
 	local depth = item.size.Z
+	-- Kept at its own turn, its reach toward a wall is its turned footprint's
+	local c, sn = math.abs(math.cos(math.rad(turn))), math.abs(math.sin(math.rad(turn)))
+	local halfX = (c * item.size.X + sn * item.size.Z) / 2
+	local halfZ = (sn * item.size.X + c * item.size.Z) / 2
 	local reach = WALL_GAP + math.max(item.size.X, item.size.Z) / 2 + 1
 	local bestGap, bestMove: Vector3?, bestTurn = WALL_GAP, nil, r
 	local away: Vector3? = nil
@@ -524,11 +563,12 @@ local function snapFloor(item: any, at: Vector3, turn: number): (Vector3, number
 		local hit = workspace:Raycast(origin, direction * reach, params)
 		if hit then
 			local distance = (hit.Position - origin).Magnitude
-			local gap = distance - depth / 2
-			if gap < bestGap and gap > -depth / 2 then
+			local half = if not handTurned then depth / 2 elseif way[1] ~= 0 then halfX else halfZ
+			local gap = distance - half
+			if gap < bestGap and gap > -half then
 				bestGap = gap
-				bestMove = Vector3.new(way[1], 0, way[2]) * (distance - depth / 2 - 0.15)
-				bestTurn = way[3]
+				bestMove = Vector3.new(way[1], 0, way[2]) * (distance - half - 0.15)
+				bestTurn = if handTurned then r else way[3]
 				away = Vector3.new(-way[1], 0, -way[2])
 			end
 		end
@@ -737,11 +777,20 @@ local function step()
 	-- A held turn
 	if turning ~= 0 and os.clock() >= nextTurn then
 		yaw = (yaw + turning * turnStep()) % 360
+		handTurned = true
 		nextTurn = os.clock() + TURN_REPEAT
 	end
 	local params = rayParams()
 	local ray = aimRay()
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * REACH, params)
+	-- Only the storey being viewed: through a shaft's mouth the aim reached the deck
+	-- below and placed there (PC 2026-10-16, phone)
+	if
+		hit
+		and DenSpace.storeyAt(DenSpace.toLocal(DenSpace.frame(ownIndex()), hit.Position).Y) ~= view.storey
+	then
+		hit = nil
+	end
 	lastFloor = if hit and hit.Normal.Y > 0.6
 		then DenSpace.toLocal(DenSpace.frame(ownIndex()), hit.Position)
 		else nil
@@ -1072,6 +1121,7 @@ local function bind()
 		local by = if input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.ButtonL1 then -1 else 1
 		if inputState == Enum.UserInputState.Begin then
 			yaw = (yaw + by * turnStep()) % 360
+			handTurned = true
 			turning = by
 			nextTurn = os.clock() + 0.35
 		elseif inputState == Enum.UserInputState.End and turning == by then
@@ -1144,9 +1194,64 @@ end
 -- and then shown with the phone's row, the row hung over the HAUL card)
 local function layoutTray()
 	local touch = Input.isTouch()
-	panel.Size = UDim2.fromOffset(if touch then 680 else 860, if touch then 172 else 146)
-	panel.Position = UDim2.new(0.5, 0, 1, if touch then -150 else -120)
 	touchRow.Visible = touch
+	controlsLabel.Visible = not touch
+	touchHint.Visible = touch and active
+	local tray = trayButton
+	if tray then
+		tray.Text = if trayFolded then "TRAY ▲" else "TRAY ▼"
+	end
+	if not touch then
+		panel.Size = UDim2.fromOffset(860, 146)
+		panel.Position = UDim2.new(0.5, 0, 1, -120)
+		trayFrame.Visible = true
+		return
+	end
+	-- Full width (in the gui's scaled pixels), along the bottom edge
+	local scale = Ui.scaleOf(gui)
+	local camera = workspace.CurrentCamera
+	local width = math.min(camera.ViewportSize.X / scale - 24, 980)
+	trayFrame.Visible = not trayFolded
+	panel.Size = UDim2.fromOffset(width, if trayFolded then 82 else 160)
+	panel.Position = UDim2.new(0.5, 0, 1, -6)
+	touchRow.Position = UDim2.new(0, 10, 0, if trayFolded then 34 else 112)
+	touchHint.Position = UDim2.new(0.5, 0, 0, math.ceil((Ui.topInset() + 8) / scale))
+end
+
+relayout = layoutTray
+
+-- Folds or opens a phone's tray
+local function foldTray(folded: boolean)
+	if trayFolded == folded then
+		return
+	end
+	trayFolded = folded
+	layoutTray()
+end
+
+-- Hides (or brings back) the swimming HUD while a phone edits
+local function hideSwimHud(hidden: boolean)
+	if not hidden then
+		for _, screen in hiddenGuis do
+			screen.Enabled = true
+		end
+		table.clear(hiddenGuis)
+		return
+	end
+	if not Input.isTouch() then
+		return
+	end
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if playerGui == nil then
+		return
+	end
+	for _, name in HIDE_ON_TOUCH do
+		local screen = playerGui:FindFirstChild(name)
+		if screen and screen:IsA("ScreenGui") and screen.Enabled then
+			screen.Enabled = false
+			table.insert(hiddenGuis, screen)
+		end
+	end
 end
 
 function BuildController.start()
@@ -1168,7 +1273,10 @@ function BuildController.start()
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 	UserInputService.MouseIconEnabled = true
 	controlsLabel.Text = controlsText()
+	touchHint.Text = controlsText()
+	trayFolded = false
 	layoutTray()
+	hideSwimHud(true)
 	panel.Visible = true
 	bind()
 	select(nil)
@@ -1191,6 +1299,8 @@ function BuildController.stop()
 	aimLight.Adornee = nil
 	aimedUid = nil
 	panel.Visible = false
+	touchHint.Visible = false
+	hideSwimHud(false)
 	unbind()
 end
 
@@ -1282,6 +1392,7 @@ local function buildGui()
 			style = "secondary",
 			run = function()
 				yaw = (yaw + 45) % 360
+				handTurned = true
 			end,
 		},
 		{ text = "SNAP ON", style = "secondary", run = toggleSnap },
@@ -1302,6 +1413,13 @@ local function buildGui()
 				select(nil)
 			end,
 		},
+		{
+			text = "TRAY ▼",
+			style = "secondary",
+			run = function()
+				foldTray(not trayFolded)
+			end,
+		},
 		{ text = "DONE", style = "gold", run = BuildController.stop },
 	}
 	local share = 1 / #buttons
@@ -1318,6 +1436,8 @@ local function buildGui()
 		button.Activated:Connect(spec.run)
 		if spec.text == "SNAP ON" then
 			snapButton = button
+		elseif spec.text == "TRAY ▼" then
+			trayButton = button
 		end
 	end
 	-- The chip that says B builds, while you're in your own den
@@ -1334,6 +1454,27 @@ local function buildGui()
 	hintChip.AnchorPoint = Vector2.new(0.5, 0)
 	hintChip.TextStrokeTransparency = 0.5
 	hintChip.Visible = false
+	-- A phone's help line, at the top while editing
+	touchHint = Ui.label(
+		gui,
+		"TouchHint",
+		"",
+		Ui.FONT_SEMI,
+		13,
+		Ui.color.text,
+		UDim2.fromOffset(720, 20),
+		UDim2.new(0.5, 0, 0, 44)
+	)
+	touchHint.AnchorPoint = Vector2.new(0.5, 0)
+	touchHint.TextXAlignment = Enum.TextXAlignment.Center
+	touchHint.TextStrokeTransparency = 0.45
+	touchHint.TextWrapped = true
+	touchHint.Visible = false
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		if active then
+			layoutTray()
+		end
+	end)
 end
 
 function BuildController.init()

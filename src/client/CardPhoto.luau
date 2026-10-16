@@ -429,6 +429,38 @@ local function charm(): Model
 	return model
 end
 
+-- Second Chance: a life ring (PC 2026-10-16: it wore the Lucky Charm's photo)
+local function lifeRing(): Model
+	local model = newSubject()
+	local SEGMENTS, RADIUS = 16, 1.05
+	local length = 2 * math.pi * RADIUS / SEGMENTS + 0.06
+	local center = CFrame.new(0, 1.4, 0) * CFrame.Angles(0, math.rad(20), 0)
+	for i = 0, SEGMENTS - 1 do
+		local a = (i + 0.5) / SEGMENTS * 2 * math.pi
+		local red = math.floor(i / 2) % 2 == 0
+		part(
+			model,
+			Enum.PartType.Cylinder,
+			Vector3.new(length, 0.44, 0.44),
+			center
+				* CFrame.new(RADIUS * math.cos(a), RADIUS * math.sin(a), 0)
+				* CFrame.Angles(0, 0, a + math.pi / 2),
+			if red then Color3.fromRGB(226, 64, 58) else Color3.fromRGB(240, 240, 236)
+		)
+	end
+	-- A fish's spark held in the middle
+	part(
+		model,
+		Enum.PartType.Ball,
+		Vector3.one * 0.55,
+		center,
+		Color3.fromRGB(70, 255, 200),
+		Enum.Material.Neon
+	)
+	model:SetAttribute("Pose", "still")
+	return model
+end
+
 -- The subject for an outcome, built once and kept as the master copy
 local function master(outcome: Outcome): Model?
 	local character = Players.LocalPlayer.Character
@@ -465,7 +497,7 @@ local function master(outcome: Outcome): Model?
 	elseif kind == "wraps" then
 		model = wraps()
 	elseif kind == "charm" then
-		model = charm()
+		model = if outcome.id == "secondChance" then lifeRing() else charm()
 	end
 	if model then
 		for _, d in model:GetDescendants() do

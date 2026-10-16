@@ -1288,14 +1288,16 @@ local function layer(
 	}
 end
 
+-- Dark or flat from the side on the PC's sheets (2026-10-16: WeekWreck, WeekWave,
+-- Abyssal Current, Ribbon, Chrome, Scarred; Golden muddy) carry their layer stronger.
 local LAYERS: { [string]: Sheen } = {
 	-- Uncommon (the Golden catch track)
-	CatchGolden = layer("sheenGold", 0.06, 1.2, 0.45),
+	CatchGolden = layer("sheenGold", 0.06, 1.2, 0.3),
 	-- Rare
-	CudaChrome = layer("sheenCurrent", 0.45, 1.0, 0.35, { color = C(190, 170, 255) }),
+	CudaChrome = layer("sheenCurrent", 0.45, 1.0, 0.18, { color = C(200, 186, 255) }),
 	ShkBoneplate = layer("sheenSparkle", 0.06, 1.2, 0.5, { color = C(220, 230, 240) }),
 	Lunar = layer("sheenSparkle", 0.05, 1.4, 0.45, { color = C(200, 215, 255), drift = 0.01 }),
-	ShkScarred = layer("sheenCaustic", 0.12, 1.1, 0.6),
+	ShkScarred = layer("sheenCaustic", 0.12, 1.1, 0.38),
 	PufUrchin = layer("sheenSparkle", 0.12, 0.9, 0.4, { color = C(90, 255, 220) }),
 	Glowspot = layer("sheenSparkle", 0.08, 0.8, 0.4, { color = C(80, 230, 255) }),
 	Tidepool = layer("sheenCaustic", 0.1, 1.0, 0.4, { drift = 0.02 }),
@@ -1303,19 +1305,19 @@ local LAYERS: { [string]: Sheen } = {
 	MorSerpent = layer("sheenGold", 0.08, 1.2, 0.35),
 	PassTideglass = layer("sheenCaustic", 0.08, 1.0, 0.45, { drift = 0.02 }),
 	CatchGlowing = layer("sheenSparkle", 0.1, 1.0, 0.4, { color = C(120, 255, 200) }),
-	MorRibbon = layer("sheenCurrent", 0.35, 0.9, 0.4),
+	MorRibbon = layer("sheenCurrent", 0.35, 0.9, 0.2),
 	AngGlassveins = layer("sheenCaustic", 0.06, 1.2, 0.5),
 	Lanternfish = layer("sheenSparkle", 0.15, 0.9, 0.4, { color = C(140, 220, 255) }),
 	-- Epic
 	CatchCrystal = layer("sheenFacets", 0.12, 0.9, 0.15, { drift = 0.03 }),
 	PassRiptide = layer("sheenCurrent", 0.5, 1.0, 0.25),
 	WeekSeaGlass = layer("sheenCaustic", 0.1, 1.0, 0.35, { drift = 0.02 }),
-	WeekWreck = layer("sheenCaustic", 0.08, 1.2, 0.55),
+	WeekWreck = layer("sheenCaustic", 0.08, 1.2, 0.32),
 	WeekReef = layer("sheenCaustic", 0.1, 1.0, 0.45, { drift = 0.02 }),
 	AngAbyssEye = layer("sheenSparkle", 0.05, 1.0, 0.4, { color = C(255, 190, 60) }),
 	CatchPrism = layer("sheenPrismatic", 0.3, 1.3, 0.35, { drift = 0.06 }),
-	WeekWave = layer("sheenCurrent", 0.3, 1.1, 0.35),
-	PassAbyssalCurrent = layer("sheenCurrent", 0.25, 1.2, 0.3, { color = C(120, 255, 200), drift = 0.03 }),
+	WeekWave = layer("sheenCurrent", 0.3, 1.1, 0.18),
+	PassAbyssalCurrent = layer("sheenCurrent", 0.25, 1.2, 0.14, { color = C(130, 255, 210), drift = 0.03 }),
 	Xray = layer("sheenCurrent", 0.6, 1.0, 0.5, { color = C(150, 255, 200) }),
 	-- (half see-through: the skin's own lava rivers carry the cracks; this is heat moving through)
 	Magma = layer("sheenLava", 0.06, 0.9, 0.45, { drift = 0.015 }),

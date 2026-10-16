@@ -1597,6 +1597,24 @@ function MenuController.openStore()
 						if passButton then
 							passButton.Activated:Connect(MenuController.openPass)
 						end
+						-- The LOG: here too, for the same reason (PC 2026-10-16: a controller
+						-- couldn't reach the Catch Log, bounties, the weekly race or the tides)
+						local _, logButton = row(
+							list,
+							next(),
+							"Log",
+							"Log",
+							"The Catch Log, today's bounties, the weekly race and the tide forecast",
+							nil,
+							"OPEN",
+							"secondary",
+							Ui.color.accent
+						)
+						if logButton then
+							logButton.Activated:Connect(function()
+								MenuController.openLog()
+							end)
+						end
 						-- Free perks
 						heading(list, next(), "FREE PERKS")
 						local premium = s.premium == true
@@ -2272,7 +2290,8 @@ local function passVisual(reward: Reward.Reward): (CardPhoto.Outcome?, string?, 
 	elseif reward.spins then
 		return nil, "SPIN", Ui.color.haul, nil
 	elseif reward.charms then
-		return { kind = "charm", id = "charm", name = "", tier = "Rare" }, nil, Ui.color.stroke, nil
+		local id = if reward.charms.SecondChance then "secondChance" else "charm"
+		return { kind = "charm", id = id, name = "", tier = "Rare" }, nil, Ui.color.stroke, nil
 	elseif reward.wraps then
 		return { kind = "wraps", id = "wraps", name = "", tier = "Uncommon" }, nil, Ui.color.stroke, nil
 	elseif reward.shells then
@@ -2321,6 +2340,8 @@ type PassCell = {
 	body: TextLabel,
 	foot: TextLabel,
 	lock: Frame?,
+	ready: boolean,
+	locked: boolean,
 }
 type PassColumn = {
 	number: TextLabel,
@@ -2615,7 +2636,7 @@ function MenuController.openPass()
 				end
 				lock = made
 			end
-			return {
+			local made: PassCell = {
 				frame = frame,
 				stroke = stroke,
 				frameColor = frameColor,
@@ -2625,7 +2646,30 @@ function MenuController.openPass()
 				body = body,
 				foot = foot,
 				lock = lock,
+				ready = false,
+				locked = false,
 			}
+			-- A tap (or A on a pad) claims a READY tile (with everything unlocked
+			-- before it: tiers are claimed in order), and on the locked Deep row buys
+			-- the pass. Tiles are selectable so a controller can walk the track
+			-- (PC 2026-10-16: a pad saw tiers 1-7 only).
+			local hit = Instance.new("TextButton")
+			hit.Name = "Select"
+			hit.Text = ""
+			hit.BackgroundTransparency = 1
+			hit.AutoButtonColor = false
+			hit.Size = UDim2.fromScale(1, 1)
+			hit.ZIndex = visual.ZIndex + 6
+			hit.Selectable = true
+			hit.Parent = frame
+			hit.Activated:Connect(function()
+				if made.ready then
+					ClientState.request("ClaimPass")
+				elseif made.locked and product and product.id ~= 0 then
+					Store.buyProduct(Pass.product)
+				end
+			end)
+			return made
 		end
 
 		-- A tile's look for its state
@@ -2666,6 +2710,8 @@ function MenuController.openPass()
 			if lock then
 				lock.Visible = locked
 			end
+			c.ready = ready
+			c.locked = locked
 		end
 
 		local columns: { PassColumn } = {}
@@ -2705,6 +2751,30 @@ function MenuController.openPass()
 		local scrolled = strip:GetPropertyChangedSignal("CanvasPosition"):Connect(attachVisible)
 		-- The canvas's screen size settles a frame after it's set
 		local resized = strip:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(attachVisible)
+		-- A controller walking the tiles: keep the selected tier in view
+		local followed = GuiService:GetPropertyChangedSignal("SelectedObject"):Connect(function()
+			local selected = GuiService.SelectedObject
+			if selected == nil or not selected:IsDescendantOf(strip) then
+				return
+			end
+			local tierFrame: Instance? = selected
+			while tierFrame and tierFrame.Parent ~= strip do
+				tierFrame = tierFrame.Parent
+			end
+			if tierFrame == nil or not tierFrame:IsA("GuiObject") then
+				return
+			end
+			local scale = canvasScale()
+			local x = tierFrame.Position.X.Offset * scale
+			local width = (COLUMN + GAP) * scale
+			local view = strip.AbsoluteSize.X
+			local at = strip.CanvasPosition.X
+			if x < at + width * 0.5 then
+				strip.CanvasPosition = Vector2.new(math.max(0, x - width), 0)
+			elseif x + width > at + view - width * 0.5 then
+				strip.CanvasPosition = Vector2.new(math.max(0, x + 2 * width - view), 0)
+			end
+		end)
 
 		local function build(
 			def: { tiers: { { free: Reward.Reward?, paid: Reward.Reward? } } },
@@ -2779,6 +2849,7 @@ function MenuController.openPass()
 				connection:Disconnect()
 				scrolled:Disconnect()
 				resized:Disconnect()
+				followed:Disconnect()
 			end,
 			render = function()
 				local pass = state().pass

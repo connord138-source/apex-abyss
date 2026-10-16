@@ -137,6 +137,28 @@ expect(not ok(DenSpace.resting(1, placed, v(6.5, top, 6))), "past the turned tab
 expect(not ok(DenSpace.resting(1, placed, v(4, 9, 6))), "floating over it")
 expect(not ok(DenSpace.resting(1, placed, v(4, top, 6), 1)), "not on the thing being moved")
 
+-- Settling: a stack whose base goes away comes down onto the deck, in order
+local deck1 = DenSpace.storey(1).deck
+local SX, SZ = 14, -14
+expect(ok(DenSpace.check(1, tableItem, "floor", v(SX, deck1, SZ))), "the settling spot is open deck")
+local stack = {
+	{ uid = 2, id = "DriftwoodTable", x = SX, y = deck1 + tableItem.size.Y, z = SZ, r = 90, s = "floor" },
+	{ uid = 3, id = "CoralLamp", x = SX, y = deck1 + 2 * tableItem.size.Y, z = SZ, r = 0, s = "floor" },
+}
+expect(#DenSpace.settle(1, stack) == 0, "a stack settles with nothing sent back")
+expect(math.abs(stack[1].y - deck1) < 1e-6, "the upper table falls to the deck")
+expect(math.abs(stack[2].y - (deck1 + tableItem.size.Y)) < 1e-6, "the lamp follows it onto its top")
+local still = {
+	{ uid = 1, id = "DriftwoodTable", x = SX, y = deck1, z = SZ, r = 90, s = "floor" },
+	{ uid = 3, id = "CoralLamp", x = SX, y = deck1 + tableItem.size.Y, z = SZ, r = 0, s = "floor" },
+}
+expect(#DenSpace.settle(1, still) == 0 and still[2].y == deck1 + tableItem.size.Y, "a supported thing stays")
+local overPool = {
+	{ uid = 4, id = "CoralLamp", x = 0, y = deck1 + 3, z = DenSpace.POOL_Z, r = 0, s = "floor" },
+}
+local back = DenSpace.settle(1, overPool)
+expect(#back == 1 and back[1] == 4, "one with nowhere to land goes back to the tray")
+
 -- Starter layouts: every set's layout fits an empty main room (level 2) and the
 -- Hall (level 3), and every piece in it is a floor piece of that set
 for setId, pieces in Dens.layouts do

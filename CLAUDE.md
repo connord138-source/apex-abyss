@@ -673,6 +673,39 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     They ship as `<Fish>_ShadesPatch.glb` (bundle `shade_patch_v9`, sha256
     db7d971c…, highest classifier 0.021), packed with `pack_shades.py --only`
     and filed by `organize_shades.luau` without clearing the fish's other skins.
+- **The 2026-10-16 report's decisions (owner: "Go with all of your recs"; built):**
+  - **Pad:** pass tiles are selectable (a transparent `Select` button on each), and
+    the strip follows the selected tier (`openPass` `followed`); the Shop has a Log
+    row (OPEN → `MenuController.openLog`) beside the Tide Pass row.
+  - **Pass tiles claim:** a tap (or A) on a READY tile sends `ClaimPass` (tiers are
+    claimed in order, so everything unlocked before it comes too); on the locked Deep
+    row it buys the pass. The Deep card's UNLOCKED stays (not OPEN).
+  - **Phone Build mode:** a slim full-width bar along the bottom
+    (`BuildController.layoutTray`), its tray folding away (TRAY ▼/▲; it folds by
+    itself when a thing is picked), the help line at the top (`touchHint`), and the
+    swimming HUD hidden while editing (`HIDE_ON_TOUCH` ScreenGuis: Hud, the stick
+    ring, Heal, ItemWheel, Wallet, Offers, Map, ...; put back on DONE). Every device
+    aims only at the storey being viewed (a tap down a shaft placed on the deck
+    below).
+  - **Turning beats snapping:** after R / F, LB / RB or TURN (`handTurned`, cleared
+    on a new pick), snapping still backs a piece onto a wall but keeps its turn,
+    measuring its turned footprint.
+  - **Stacks settle:** `DenSpace.settle` (run by `DenService` `placedChanged` on
+    every change) drops raised things with nothing under them onto the highest top
+    below (or the deck), lowest first, so a stack follows its base; one that can't
+    stand there goes back to the tray with a note. Tested in `dens_test.luau`.
+  - **Second Chance** has its own photo, a life ring (`CardPhoto` `lifeRing`,
+    outcome id `secondChance`).
+  - **Phone toasts:** with a menu window or the Build bar up, toasts go to a thin
+    strip under the top bar (`HudController` `placeToasts`).
+  - **Whale Fall visibility:** every carcass wears the `WhaleRim` (was deep floors
+    only) and sends up a plume of chum 40–90 studs (`ChumController` `plume`), so it
+    shows over the kelp and the reef.
+  - **Stronger layers** on the skins that read dark or flat (CatchGolden, CudaChrome,
+    ShkScarred, MorRibbon, WeekWreck, WeekWave, PassAbyssalCurrent: lower
+    `transparency` in `LAYERS`), plus the v10 retextures (below).
+  - Unchanged on purpose: a pad enters Build from the den menu (B means back), and
+    panning out of the door can't happen in a private den.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

@@ -323,6 +323,15 @@ export type Check = { ok: boolean, why: string? }
 
 export type Placed = { uid: number, id: string, x: number, y: number, z: number, r: number, s: string }
 
+-- Whether a point lies inside a placed floor thing's turned footprint
+local function underFootprint(other: Placed, item: DensConfig.Item, x: number, z: number): boolean
+	local turn = math.rad(other.r)
+	local dx, dz = x - other.x, z - other.z
+	local lx = dx * math.cos(turn) + dz * math.sin(turn)
+	local lz = dx * math.sin(turn) - dz * math.cos(turn)
+	return math.abs(lx) <= item.size.X / 2 + 0.4 and math.abs(lz) <= item.size.Z / 2 + 0.4
+end
+
 -- Whether a floor thing at `at` stands on the deck or on top of another placed
 -- floor thing (a lamp on a table, a table on a rug): raised off the deck, its pivot
 -- must be within 0.9 of something's top and inside that thing's turned footprint
@@ -346,15 +355,79 @@ function DenSpace.resting(level: number, placed: { Placed }, at: Vector3, except
 		end
 		-- Into the other thing's own frame (its turn is about y in the den's frame,
 		-- whose z runs the other way to a CFrame's)
-		local turn = math.rad(other.r)
-		local dx, dz = at.X - other.x, at.Z - other.z
-		local lx = dx * math.cos(turn) + dz * math.sin(turn)
-		local lz = dx * math.sin(turn) - dz * math.cos(turn)
-		if math.abs(lx) <= item.size.X / 2 + 0.4 and math.abs(lz) <= item.size.Z / 2 + 0.4 then
+		if underFootprint(other, item, at.X, at.Z) then
 			return { ok = true }
 		end
 	end
 	return { ok = false, why = "Put it on the floor, or on top of something" }
+end
+
+-- Raised things left with nothing under them come down (PC 2026-10-16: a Shell Pile
+-- hung 1 stud over the deck once the Kelp Bed it stood on was put away): each falls
+-- onto the highest top below it (another thing's, else the deck), lower ones first,
+-- so a stack follows its base down. One that can't stand where it lands goes back
+-- to the tray: its uid is in the list returned (the caller removes it). Changes
+-- `placed` in place.
+function DenSpace.settle(level: number, placed: { Placed }): { number }
+	local dropped: { number } = {}
+	local gone: { [number]: boolean } = {}
+	for _ = 1, 8 do
+		local moved = false
+		local order = table.clone(placed)
+		table.sort(order, function(a, b)
+			return a.y < b.y
+		end)
+		for _, p in order do
+			local item = Dens.itemsById[p.id]
+			if gone[p.uid] or p.s ~= "floor" or item == nil then
+				continue
+			end
+			local others = {}
+			for _, other in placed do
+				if not gone[other.uid] then
+					table.insert(others, other)
+				end
+			end
+			local at = Vector3.new(p.x, p.y, p.z)
+			if DenSpace.resting(level, others, at, p.uid).ok then
+				continue
+			end
+			-- The highest top under it, else its storey's deck
+			local storey = DenSpace.storeyAt(p.y)
+			local landing = if storey then DenSpace.storey(storey).deck else nil
+			for _, other in others do
+				local below = Dens.itemsById[other.id]
+				if other.uid == p.uid or other.s ~= "floor" or below == nil then
+					continue
+				end
+				local top = other.y + below.size.Y
+				if
+					top < p.y - 0.05
+					and (landing == nil or top > landing)
+					and underFootprint(other, below, p.x, p.z)
+				then
+					landing = top
+				end
+			end
+			local fits = landing ~= nil
+			if landing then
+				local down = Vector3.new(p.x, landing, p.z)
+				fits = DenSpace.check(level, item, "floor", down).ok
+					and DenSpace.resting(level, others, down, p.uid).ok
+			end
+			if fits and landing then
+				p.y = landing
+			else
+				gone[p.uid] = true
+				table.insert(dropped, p.uid)
+			end
+			moved = true
+		end
+		if not moved then
+			break
+		end
+	end
+	return dropped
 end
 
 -- Whether `item` may go at `at` (its pivot, in the den's frame) on `surface` in a
