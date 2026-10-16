@@ -202,13 +202,15 @@ function SwimController.struggle()
 	end
 end
 
--- Starts a bite lunge if the cooldown allows; returns whether it did.
-function SwimController.lunge(): boolean
+-- A bite if the cooldown allows (the jaw snaps); returns whether it did. It darts
+-- forward only with something to bite in reach (`dart`): a bite into open water is
+-- just the snap (owner, 2026-10-16: "right click is just a weaker dash").
+function SwimController.lunge(dart: boolean?): boolean
 	if root == nil or clock - lastBiteAt < swim.biteCooldown then
 		return false
 	end
 	lastBiteAt = clock
-	lungeUntil = clock + swim.lungeSeconds
+	lungeUntil = if dart then clock + swim.lungeSeconds else 0
 	SwimController.lunged:fire()
 	return true
 end

@@ -135,7 +135,10 @@ function FishPreview.new(parent: Instance, size: UDim2, position: UDim2, anchor:
 		if currentRoot == nil or currentBody == nil then
 			return
 		end
-		currentRoot.CFrame = CFrame.Angles(0, math.rad(-70) + math.sin(spin) * 0.6, 0) * pivot
+		-- The roll cards' hero pose: head to the left and toward us, swaying a little
+		-- (owner, 2026-10-16: at -70° the fish faced right and away, "facing the wrong
+		-- direction in the skin selector")
+		currentRoot.CFrame = CFrame.Angles(0, math.rad(118) + math.sin(spin) * 0.35, 0) * pivot
 		local stalk = joints.Stalk
 		if stalk then
 			stalk.Transform = CFrame.Angles(0, math.sin(clock * 5) * 0.35, 0)

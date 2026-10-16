@@ -21,6 +21,7 @@ local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
+local CardPhoto = require(script.Parent.Parent.CardPhoto)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
@@ -2183,12 +2184,140 @@ end
 -- The Tide Pass (owner, 2026-10-12; Config/Pass): the season's XP bar, then every
 -- tier as a column with its free reward over its Deep Pass reward, scrolled
 -- sideways; CLAIM ALL takes every unlocked reward, DEEP PASS buys this season's paid
--- row (a developer product).
+-- row (a developer product). Laid out as a track you can read at a glance (owner,
+-- 2026-10-16: "a free version ... that everyone gets, and a visual showing the
+-- unlock tree/pass so players can see what they get with the paid version, its just
+-- locked"): a FREE PASS row everyone has and a DEEP PASS row under it, each named by
+-- a card at its left; a progress line with a node per tier; every reward shown as a
+-- lit 3D photo (a skin on your own fish, coral, shells, wraps, a charm: the roll
+-- cards' subjects) or a badge (den piece, title, map, spin); the Deep row padlocked
+-- until it's bought, its rewards still in plain view.
 local passScrolled = false
+
+-- A padlock drawn from frames (no emoji icons): a ring for the shackle, a body over
+-- its lower half, a keyhole
+local function padlock(parent: Instance, size: number, color: Color3): Frame
+	local lock = Instance.new("Frame")
+	lock.Name = "Lock"
+	lock.BackgroundTransparency = 1
+	lock.Size = UDim2.fromOffset(size, size)
+	lock.Parent = parent
+	local shackle = Instance.new("Frame")
+	shackle.Name = "Shackle"
+	shackle.BackgroundTransparency = 1
+	shackle.AnchorPoint = Vector2.new(0.5, 0)
+	shackle.Position = UDim2.fromScale(0.5, 0)
+	shackle.Size = UDim2.fromScale(0.56, 0.66)
+	Ui.corner(shackle, UDim.new(0.5, 0))
+	Ui.stroke(shackle, color, 0, math.max(2, math.floor(size / 8)))
+	shackle.Parent = lock
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.BackgroundColor3 = color
+	body.BorderSizePixel = 0
+	body.AnchorPoint = Vector2.new(0.5, 1)
+	body.Position = UDim2.fromScale(0.5, 1)
+	body.Size = UDim2.fromScale(0.84, 0.58)
+	Ui.corner(body, UDim.new(0, math.max(2, math.floor(size / 7))))
+	body.Parent = lock
+	local hole = Instance.new("Frame")
+	hole.Name = "Keyhole"
+	hole.BackgroundColor3 = Ui.color.panelFoot
+	hole.BorderSizePixel = 0
+	hole.AnchorPoint = Vector2.new(0.5, 0.5)
+	hole.Position = UDim2.fromScale(0.5, 0.5)
+	hole.Size = UDim2.fromScale(0.18, 0.4)
+	Ui.corner(hole, UDim.new(0.5, 0))
+	hole.Parent = body
+	return lock
+end
+
+local function tierColor(id: string): Color3
+	local tier = Config.Tiers.byId[id]
+	return if tier then tier.color else Ui.color.accent
+end
+
+-- What a pass reward shows above its words: the roll cards' photo of its headline
+-- (a skin on your fish, a charm, Kelp Wraps, shells, coral), or a badge word for
+-- the things with no photo; and the colour it's framed in
+local function passVisual(reward: Reward.Reward): (CardPhoto.Outcome?, string?, Color3, string?)
+	if reward.skin then
+		local shade = Config.Shades.byId[reward.skin]
+		local tier = if shade then shade.tier else "Rare"
+		return { kind = "shade", id = reward.skin, name = "", tier = tier }, nil, tierColor(tier), "SKIN"
+	elseif reward.den then
+		return nil, "DEN", Ui.color.haul, "DEN"
+	elseif reward.title then
+		return nil, "TITLE", Ui.color.accent, "TITLE"
+	elseif reward.map then
+		return nil, "MAP", Color3.fromRGB(255, 170, 110), nil
+	elseif reward.spins then
+		return nil, "SPIN", Ui.color.haul, nil
+	elseif reward.charms then
+		return { kind = "charm", id = "charm", name = "", tier = "Rare" }, nil, Ui.color.stroke, nil
+	elseif reward.wraps then
+		return { kind = "wraps", id = "wraps", name = "", tier = "Uncommon" }, nil, Ui.color.stroke, nil
+	elseif reward.shells then
+		return { kind = "shells", id = "shells", name = "", tier = "Common" }, nil, Ui.color.stroke, nil
+	end
+	return { kind = "coral", id = "coral", name = "", tier = "Coral", amount = reward.coral or 25 },
+		nil,
+		Ui.color.stroke,
+		nil
+end
+
+-- "3 skins · 1 title · 3 den pieces" for a row of a season
+local function passHighlights(
+	season: { tiers: { { free: Reward.Reward?, paid: Reward.Reward? } } },
+	row: string
+): string
+	local skins, titles, dens = 0, 0, 0
+	for _, entry in season.tiers do
+		local reward = (entry :: any)[row] :: Reward.Reward?
+		if reward then
+			skins += if reward.skin then 1 else 0
+			titles += if reward.title then 1 else 0
+			dens += if reward.den then 1 else 0
+		end
+	end
+	local parts: { string } = {}
+	if skins > 0 then
+		table.insert(parts, `{skins} skin{if skins == 1 then "" else "s"}`)
+	end
+	if titles > 0 then
+		table.insert(parts, `{titles} title{if titles == 1 then "" else "s"}`)
+	end
+	if dens > 0 then
+		table.insert(parts, `{dens} den piece{if dens == 1 then "" else "s"}`)
+	end
+	return table.concat(parts, " · ")
+end
+
+type PassCell = {
+	frame: Frame,
+	stroke: UIStroke?,
+	frameColor: Color3,
+	visual: Frame,
+	photo: ViewportFrame?,
+	outcome: CardPhoto.Outcome?,
+	body: TextLabel,
+	foot: TextLabel,
+	lock: Frame?,
+}
+type PassColumn = {
+	number: TextLabel,
+	fill: Frame,
+	node: Frame,
+	free: PassCell?,
+	paid: PassCell?,
+	attached: boolean,
+}
+
 function MenuController.openPass()
 	local Pass = Config.Pass
 	local product = Config.Monetization.productsByKey[Pass.product]
-	open("Tide Pass", "", Vector2.new(920, 540), function(window)
+	local priceText = if product then Store.price(product.price) else ""
+	open("Tide Pass", "", Vector2.new(940, 560), function(window)
 		local content = window.content
 		local seasonLabel = Ui.label(
 			content,
@@ -2227,7 +2356,7 @@ function MenuController.openPass()
 		local deep = Ui.button(
 			content,
 			"Deep",
-			if product then `DEEP PASS · {Store.price(product.price)}` else "DEEP PASS",
+			if product then `DEEP PASS · {priceText}` else "DEEP PASS",
 			UDim2.fromOffset(140, 40),
 			UDim2.new(1, -140, 0, 2),
 			if product and product.id ~= 0 then "gold" else "disabled"
@@ -2236,41 +2365,142 @@ function MenuController.openPass()
 		deep.Activated:Connect(function()
 			Store.buyProduct(Pass.product)
 		end)
-		local rowFree = Ui.label(
+
+		local COLUMN, GAP, TILE = 104, 8, 158
+		local HEADER = 124 -- the row cards' width at the left
+		local TOP = 70 -- the strip's top in the window
+		local FREE_Y, PAID_Y = 26, 26 + TILE + 8
+
+		-- The row cards: what each row is, fixed at the left while the tiers scroll
+		local freeCard = Ui.panel(
 			content,
-			"RowFree",
-			"FREE",
+			"FreeCard",
+			UDim2.fromOffset(HEADER - 8, TILE),
+			UDim2.fromOffset(0, TOP + FREE_Y)
+		)
+		local freeTitle = Ui.label(
+			freeCard,
+			"Title",
+			"FREE PASS",
 			Ui.FONT_HEAVY,
+			16,
+			Ui.color.safe,
+			UDim2.new(1, -12, 0, 20),
+			UDim2.fromOffset(8, 10)
+		)
+		freeTitle.TextXAlignment = Enum.TextXAlignment.Left
+		local freeWho = Ui.label(
+			freeCard,
+			"Who",
+			"Everyone gets it, every season",
+			Ui.FONT_SEMI,
+			11,
+			Ui.color.text,
+			UDim2.new(1, -14, 0, 30),
+			UDim2.fromOffset(8, 32)
+		)
+		freeWho.TextWrapped = true
+		freeWho.TextXAlignment = Enum.TextXAlignment.Left
+		freeWho.TextYAlignment = Enum.TextYAlignment.Top
+		local freeHigh = Ui.label(
+			freeCard,
+			"Highlights",
+			"",
+			Ui.FONT_BOLD,
 			11,
 			Ui.color.muted,
-			UDim2.fromOffset(36, 16),
-			UDim2.fromOffset(0, 102)
+			UDim2.new(1, -14, 0, 44),
+			UDim2.fromOffset(8, 70)
 		)
-		rowFree.Rotation = -90
-		local rowDeep = Ui.label(
+		freeHigh.TextWrapped = true
+		freeHigh.TextXAlignment = Enum.TextXAlignment.Left
+		freeHigh.TextYAlignment = Enum.TextYAlignment.Top
+		local freeChip = Ui.chip(freeCard, "Open", "OPEN", Ui.color.safe, 20)
+		freeChip.Position = UDim2.new(0, 8, 1, -28)
+
+		local deepCard = Ui.panel(
 			content,
-			"RowDeep",
-			"DEEP",
-			Ui.FONT_HEAVY,
-			11,
-			Ui.color.haul,
-			UDim2.fromOffset(36, 16),
-			UDim2.fromOffset(0, 290)
+			"DeepCard",
+			UDim2.fromOffset(HEADER - 8, TILE),
+			UDim2.fromOffset(0, TOP + PAID_Y)
 		)
-		rowDeep.Rotation = -90
+		local deepStroke = deepCard:FindFirstChildOfClass("UIStroke")
+		if deepStroke then
+			deepStroke.Color = Ui.color.haul
+			deepStroke.Transparency = 0.25
+			deepStroke.Thickness = 2
+		end
+		local deepTitle = Ui.label(
+			deepCard,
+			"Title",
+			"DEEP PASS",
+			Ui.FONT_HEAVY,
+			16,
+			Ui.color.haul,
+			UDim2.new(1, -12, 0, 20),
+			UDim2.fromOffset(8, 10)
+		)
+		deepTitle.TextXAlignment = Enum.TextXAlignment.Left
+		local deepLock = padlock(deepCard, 26, Ui.color.haul)
+		deepLock.AnchorPoint = Vector2.new(1, 0)
+		deepLock.Position = UDim2.new(1, -8, 0, 8)
+		local deepWho = Ui.label(
+			deepCard,
+			"Who",
+			"",
+			Ui.FONT_SEMI,
+			11,
+			Ui.color.text,
+			UDim2.new(1, -14, 0, 30),
+			UDim2.fromOffset(8, 36)
+		)
+		deepWho.TextWrapped = true
+		deepWho.TextXAlignment = Enum.TextXAlignment.Left
+		deepWho.TextYAlignment = Enum.TextYAlignment.Top
+		local deepHigh = Ui.label(
+			deepCard,
+			"Highlights",
+			"",
+			Ui.FONT_BOLD,
+			11,
+			Ui.color.muted,
+			UDim2.new(1, -14, 0, 44),
+			UDim2.fromOffset(8, 70)
+		)
+		deepHigh.TextWrapped = true
+		deepHigh.TextXAlignment = Enum.TextXAlignment.Left
+		deepHigh.TextYAlignment = Enum.TextYAlignment.Top
+		local deepChip = Ui.chip(deepCard, "State", "LOCKED", Ui.color.haul, 20)
+		deepChip.Position = UDim2.new(0, 8, 1, -28)
+		-- The whole card buys it while it's locked
+		local deepBuy = Instance.new("TextButton")
+		deepBuy.Name = "Buy"
+		deepBuy.Text = ""
+		deepBuy.BackgroundTransparency = 1
+		deepBuy.Size = UDim2.fromScale(1, 1)
+		deepBuy.ZIndex = deepCard.ZIndex + 5
+		deepBuy.Selectable = false
+		deepBuy.Parent = deepCard
+		deepBuy.Activated:Connect(function()
+			local pass = state().pass
+			if typeof(pass) == "table" and pass.paid ~= true and product and product.id ~= 0 then
+				Store.buyProduct(Pass.product)
+			end
+		end)
+
 		local strip = Instance.new("ScrollingFrame")
 		strip.Name = "Tiers"
 		strip.BackgroundTransparency = 1
 		strip.BorderSizePixel = 0
-		strip.Position = UDim2.fromOffset(28, 70)
-		strip.Size = UDim2.new(1, -28, 1, -70)
+		strip.Position = UDim2.fromOffset(HEADER, TOP)
+		strip.Size = UDim2.new(1, -HEADER, 1, -TOP)
 		strip.ScrollingDirection = Enum.ScrollingDirection.X
 		strip.ScrollBarThickness = 6
 		strip.ScrollBarImageColor3 = Ui.color.stroke
 		strip.ElasticBehavior = Enum.ElasticBehavior.Never
 		strip.Selectable = false
 		strip.Parent = content
-		local COLUMN, GAP = 96, 8
+
 		-- What was claimed shows in the subtitle for a few seconds
 		local claimedText, claimedUntil = "", 0
 		local claimedRemote = (ReplicatedStorage:WaitForChild("Remotes") :: Instance):WaitForChild(
@@ -2283,27 +2513,51 @@ function MenuController.openPass()
 			Sfx.play("Bank", { volume = 0.6 })
 			MenuController.rerenderCurrent()
 		end)
-		local function tile(
+
+		-- One reward tile: a photo or badge, its words, its state at the foot, and
+		-- on the Deep row a padlock until the pass is bought
+		local function cell(
 			parent: Instance,
 			name: string,
 			y: number,
 			reward: Reward.Reward?,
-			claimed: boolean,
-			unlocked: boolean,
-			locked: boolean,
 			paidRow: boolean
-		)
-			local frame = Ui.panel(parent, name, UDim2.fromOffset(COLUMN, 165), UDim2.fromOffset(0, y))
-			frame.BackgroundTransparency = if claimed then 0.6 elseif locked then 0.35 else 0.12
+		): PassCell
+			local frame = Ui.panel(parent, name, UDim2.fromOffset(COLUMN, TILE), UDim2.fromOffset(0, y))
 			local stroke = frame:FindFirstChildOfClass("UIStroke")
-			if stroke then
-				if unlocked and not claimed and not locked then
-					stroke.Color = Ui.color.haul
-					stroke.Transparency = 0
-					stroke.Thickness = 2.5
-				elseif paidRow then
-					stroke.Color = Ui.color.haul
-					stroke.Transparency = 0.6
+			local visual = Instance.new("Frame")
+			visual.Name = "Visual"
+			visual.BackgroundColor3 = Ui.color.panelFoot
+			visual.BackgroundTransparency = 0.35
+			visual.BorderSizePixel = 0
+			visual.ClipsDescendants = true
+			visual.Position = UDim2.fromOffset(5, 5)
+			visual.Size = UDim2.new(1, -10, 0, 74)
+			Ui.corner(visual, UDim.new(0, 8))
+			visual.Parent = frame
+			local outcome: CardPhoto.Outcome? = nil
+			local frameColor = Ui.color.stroke
+			if reward then
+				local badge: string?, tag: string?
+				outcome, badge, frameColor, tag = passVisual(reward)
+				if badge then
+					local word = Ui.label(
+						visual,
+						"Badge",
+						badge,
+						Ui.FONT_HEAVY,
+						22,
+						frameColor,
+						UDim2.fromScale(1, 1),
+						UDim2.fromOffset(0, 0)
+					)
+					word.TextXAlignment = Enum.TextXAlignment.Center
+					word.TextStrokeTransparency = 0.6
+				end
+				if tag then
+					local chip = Ui.chip(visual, "Tag", tag, frameColor, 16)
+					chip.Position = UDim2.fromOffset(4, 4)
+					chip.ZIndex = visual.ZIndex + 3
 				end
 			end
 			local body = Ui.label(
@@ -2311,10 +2565,10 @@ function MenuController.openPass()
 				"Reward",
 				if reward then table.concat(Reward.lines(reward), "\n") else "—",
 				Ui.FONT_BOLD,
-				12,
-				if claimed or locked then Ui.color.muted else Ui.color.text,
-				UDim2.new(1, -8, 1, -40),
-				UDim2.fromOffset(4, 10)
+				11,
+				Ui.color.text,
+				UDim2.new(1, -8, 0, 52),
+				UDim2.fromOffset(4, 82)
 			)
 			body.TextXAlignment = Enum.TextXAlignment.Center
 			body.TextYAlignment = Enum.TextYAlignment.Center
@@ -2322,25 +2576,175 @@ function MenuController.openPass()
 			local foot = Ui.label(
 				frame,
 				"State",
-				if claimed
-					then "✓ CLAIMED"
-					elseif locked then "DEEP PASS"
-					elseif unlocked then "READY"
-					else "",
+				"",
 				Ui.FONT_HEAVY,
 				11,
-				if claimed then Ui.color.safe elseif locked then Ui.color.muted else Ui.color.haul,
+				Ui.color.muted,
 				UDim2.new(1, 0, 0, 16),
-				UDim2.new(0, 0, 1, -22)
+				UDim2.new(0, 0, 1, -20)
 			)
 			foot.TextXAlignment = Enum.TextXAlignment.Center
-			return frame
+			local lock: Frame? = nil
+			if paidRow then
+				local made = padlock(frame, 18, Ui.color.haul)
+				made.AnchorPoint = Vector2.new(1, 0)
+				made.Position = UDim2.new(1, -8, 0, 8)
+				made.ZIndex = visual.ZIndex + 4
+				for _, d in made:GetDescendants() do
+					if d:IsA("GuiObject") then
+						d.ZIndex = visual.ZIndex + 4
+					end
+				end
+				lock = made
+			end
+			return {
+				frame = frame,
+				stroke = stroke,
+				frameColor = frameColor,
+				visual = visual,
+				photo = nil,
+				outcome = outcome,
+				body = body,
+				foot = foot,
+				lock = lock,
+			}
 		end
+
+		-- A tile's look for its state
+		local function paint(c: PassCell?, claimed: boolean, ready: boolean, locked: boolean)
+			if c == nil then
+				return
+			end
+			c.frame.BackgroundTransparency = if claimed then 0.55 elseif locked then 0.3 else 0.1
+			local stroke = c.stroke
+			if stroke then
+				if ready then
+					stroke.Color = Ui.color.haul
+					stroke.Transparency = 0
+					stroke.Thickness = 2.5
+				else
+					stroke.Color = c.frameColor
+					stroke.Transparency = if claimed then 0.75 elseif locked then 0.5 else 0.2
+					stroke.Thickness = if c.frameColor ~= Ui.color.stroke then 2 else 1
+				end
+			end
+			c.body.TextColor3 = if claimed or locked then Ui.color.muted else Ui.color.text
+			c.foot.Text = if claimed
+				then "✓ CLAIMED"
+				elseif locked then "DEEP PASS"
+				elseif ready then "READY"
+				else ""
+			c.foot.TextColor3 = if claimed
+				then Ui.color.safe
+				elseif locked then Ui.color.haul
+				else Ui.color.haul
+			local photo = c.photo
+			if photo then
+				photo.ImageColor3 = if claimed or locked
+					then Color3.fromRGB(150, 160, 175)
+					else Color3.new(1, 1, 1)
+			end
+			local lock = c.lock
+			if lock then
+				lock.Visible = locked
+			end
+		end
+
+		local columns: { PassColumn } = {}
+		local builtFor = ""
+
+		-- Photos are made only for the columns in (or next to) view, as they scroll in
+		local function attachVisible()
+			local left = strip.CanvasPosition.X - (COLUMN + GAP)
+			local right = strip.CanvasPosition.X + strip.AbsoluteSize.X + (COLUMN + GAP)
+			for i, column in columns do
+				local x = (i - 1) * (COLUMN + GAP)
+				if column.attached or x + COLUMN < left or x > right then
+					continue
+				end
+				column.attached = true
+				for _, c in { column.free, column.paid } do
+					local outcome = c and c.outcome
+					if c and outcome then
+						c.photo = CardPhoto.new(c.visual, outcome, tierColor(outcome.tier))
+					end
+				end
+			end
+		end
+		local scrolled = strip:GetPropertyChangedSignal("CanvasPosition"):Connect(attachVisible)
+
+		local function build(
+			def: { tiers: { { free: Reward.Reward?, paid: Reward.Reward? } } },
+			tiers: number
+		)
+			for _, child in strip:GetChildren() do
+				if child:IsA("GuiObject") then
+					child:Destroy()
+				end
+			end
+			table.clear(columns)
+			strip.CanvasSize = UDim2.fromOffset(tiers * (COLUMN + GAP), 0)
+			for i = 1, tiers do
+				local entry = def.tiers[i]
+				local column = Instance.new("Frame")
+				column.Name = `Tier{i}`
+				column.BackgroundTransparency = 1
+				column.Position = UDim2.fromOffset((i - 1) * (COLUMN + GAP), 0)
+				column.Size = UDim2.fromOffset(COLUMN, PAID_Y + TILE)
+				column.Parent = strip
+				local number = Ui.label(
+					column,
+					"Number",
+					`TIER {i}`,
+					Ui.FONT_HEAVY,
+					12,
+					Ui.color.muted,
+					UDim2.new(1, 0, 0, 14),
+					UDim2.fromOffset(0, 0)
+				)
+				number.TextXAlignment = Enum.TextXAlignment.Center
+				-- The track: a line through every tier, filled up to where you are,
+				-- with a node at each tier
+				local track = Instance.new("Frame")
+				track.Name = "Track"
+				track.BackgroundColor3 = Ui.color.track
+				track.BorderSizePixel = 0
+				track.Position = UDim2.fromOffset(0, 17)
+				track.Size = UDim2.fromOffset(COLUMN + GAP, 4)
+				track.Parent = column
+				local trackFill = Instance.new("Frame")
+				trackFill.Name = "Fill"
+				trackFill.BackgroundColor3 = Ui.color.haul
+				trackFill.BorderSizePixel = 0
+				trackFill.Size = UDim2.fromScale(0, 1)
+				trackFill.Parent = track
+				local node = Instance.new("Frame")
+				node.Name = "Node"
+				node.AnchorPoint = Vector2.new(0.5, 0.5)
+				node.Position = UDim2.fromOffset(COLUMN / 2, 19)
+				node.Size = UDim2.fromOffset(10, 10)
+				node.BackgroundColor3 = Ui.color.track
+				node.BorderSizePixel = 0
+				Ui.corner(node, UDim.new(0.5, 0))
+				Ui.stroke(node, Ui.color.haul, 0.3, 1.5)
+				node.Parent = column
+				columns[i] = {
+					number = number,
+					fill = trackFill,
+					node = node,
+					free = cell(column, "Free", FREE_Y, entry and entry.free, false),
+					paid = cell(column, "Paid", PAID_Y, entry and entry.paid, true),
+					attached = false,
+				}
+			end
+		end
+
 		return {
 			window = window,
 			ticking = true,
 			cleanup = function()
 				connection:Disconnect()
+				scrolled:Disconnect()
 			end,
 			render = function()
 				local pass = state().pass
@@ -2354,6 +2758,7 @@ function MenuController.openPass()
 				local xp = pass.xp or 0
 				local into = xp - tier * per
 				local waiting = pass.waiting or 0
+				local paid = pass.paid == true
 				local left = (pass.endsAt or 0) - workspace:GetServerTimeNow()
 				seasonLabel.Text = `SEASON {pass.season or 1} · {string.upper(def.name)}`
 				window.subtitle.Text = if os.clock() < claimedUntil
@@ -2370,54 +2775,45 @@ function MenuController.openPass()
 					)} coral`
 				claimAll.Text = if waiting > 0 then `CLAIM ALL ({waiting})` else "CLAIM ALL"
 				Ui.setButtonStyle(claimAll, if waiting > 0 then "gold" else "disabled")
-				deep.Visible = pass.paid ~= true and product ~= nil and Store.listed(product.id)
-				rowDeep.Text = if pass.paid then "DEEP ✓" else "DEEP"
-				for _, child in strip:GetChildren() do
-					if child:IsA("GuiObject") then
-						child:Destroy()
-					end
+				deep.Visible = not paid and product ~= nil and Store.listed(product.id)
+				-- The row cards
+				freeHigh.Text = `{tiers} tiers · {passHighlights(def, "free")}`
+				deepHigh.Text = `Everything free, plus {passHighlights(def, "paid")} · ×{Pass.paidXp} XP`
+				deepLock.Visible = not paid
+				deepWho.Text = if paid
+					then "Yours this season: every reward on this row"
+					else `Unlock this row for {if priceText ~= "" then priceText else "Robux"}, this season`
+				deepChip.Text = if paid then "UNLOCKED" else "LOCKED"
+				deepChip.TextColor3 = if paid then Ui.color.safe else Ui.color.haul
+				-- The tiers: built once a season, repainted every tick
+				local key = `{pass.season or 1}:{tiers}`
+				if builtFor ~= key then
+					builtFor = key
+					build(def, tiers)
 				end
-				strip.CanvasSize = UDim2.fromOffset(tiers * (COLUMN + GAP), 0)
-				for i = 1, tiers do
-					local entry = def.tiers[i]
-					local column = Instance.new("Frame")
-					column.Name = `Tier{i}`
-					column.BackgroundTransparency = 1
-					column.Position = UDim2.fromOffset((i - 1) * (COLUMN + GAP), 0)
-					column.Size = UDim2.fromOffset(COLUMN, 358)
-					column.Parent = strip
-					local number = Ui.label(
-						column,
-						"Number",
-						`TIER {i}`,
-						Ui.FONT_HEAVY,
-						13,
-						if i == tier + 1
-							then Ui.color.haul
-							elseif i <= tier then Ui.color.text
-							else Ui.color.muted,
-						UDim2.new(1, 0, 0, 18),
-						UDim2.fromOffset(0, 0)
-					)
-					number.TextXAlignment = Enum.TextXAlignment.Center
+				for i, column in columns do
 					local unlocked = i <= tier
-					tile(column, "Free", 22, entry.free, i <= (pass.claimedFree or 0), unlocked, false, false)
-					tile(
-						column,
-						"Paid",
-						195,
-						entry.paid,
-						pass.paid == true and i <= (pass.claimedPaid or 0),
-						unlocked and pass.paid == true,
-						pass.paid ~= true,
-						true
+					local current = i == tier + 1
+					column.number.TextColor3 = if current
+						then Ui.color.haul
+						elseif unlocked then Ui.color.text
+						else Ui.color.muted
+					column.fill.Size = UDim2.fromScale(
+						if unlocked then 1 elseif current then math.clamp(into / per, 0, 1) * 0.5 else 0,
+						1
 					)
+					column.node.BackgroundColor3 = if unlocked then Ui.color.haul else Ui.color.track
+					local freeClaimed = i <= (pass.claimedFree or 0)
+					paint(column.free, freeClaimed, unlocked and not freeClaimed, false)
+					local paidClaimed = paid and i <= (pass.claimedPaid or 0)
+					paint(column.paid, paidClaimed, paid and unlocked and not paidClaimed, not paid)
 				end
 				-- Open on the tier being worked toward
 				if not passScrolled then
 					passScrolled = true
 					strip.CanvasPosition = Vector2.new(math.max(0, (tier - 1) * (COLUMN + GAP)), 0)
 				end
+				attachVisible()
 			end,
 		}
 	end)

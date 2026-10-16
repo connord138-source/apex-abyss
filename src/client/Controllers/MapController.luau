@@ -34,6 +34,8 @@ local miniHolder: Frame
 local full: MapDraw.Map? = nil
 local fullWindow: Ui.Window? = nil
 local whereLabel: TextLabel? = nil
+local placeLabel: TextLabel? = nil -- the minimap's name bar: where you are
+local NAME_BAR = 22 -- pixels under the minimap's chart for the name
 
 local MINI_SIZE = 190 -- pixels, PC and console
 local MINI_SIZE_PHONE = 112
@@ -251,6 +253,31 @@ function MapController.isOpen(): boolean
 	return fullWindow ~= nil
 end
 
+-- Where a point is, as a name: your den, the hub, a biome or open water
+-- (`long` adds the biome's levels and the depth, for the full map)
+local function placeName(position: Vector3, long: boolean): string
+	local biome = Biomes.at(position)
+	local depth = Config.World.surfaceY - position.Y
+	-- The hub first: under it is the kelp ring or no biome, so a den read OPEN WATER
+	-- (playtest 2026-10-12)
+	local denHere = Layout.denAt(position)
+	local s = ClientState.current
+	local own = if s and typeof(s.denIndex) == "number" then s.denIndex else 0
+	if denHere then
+		local name = if denHere == own then "YOUR DEN" else "A DEN"
+		return if long then `{name} · THE HUB · safe` else name
+	elseif Layout.inHub(position) then
+		return if long then "THE HUB · safe" else "THE HUB"
+	elseif biome then
+		return if long
+			then `{string.upper(biome.name)} · LV {biome.minLevel}–{biome.maxLevel} · {Format.distance(
+				depth
+			)} down`
+			else string.upper(biome.name)
+	end
+	return if long then `OPEN WATER · {Format.distance(depth)} down` else "OPEN WATER"
+end
+
 local function step()
 	if Input.locked then
 		return
@@ -265,28 +292,22 @@ local function step()
 	local heading = root.CFrame.LookVector
 	MapDraw.update(mini, root.Position, heading, true)
 	placeMarks(mini)
+	-- The place's name under the minimap (owner, 2026-10-16: "Map needs a name of
+	-- the location they are at displayed")
+	local nameBar = placeLabel
+	if nameBar then
+		local name = placeName(root.Position, false)
+		if nameBar.Text ~= name then
+			nameBar.Text = name
+		end
+	end
 	local chart = full
 	if chart then
 		MapDraw.update(chart, root.Position, heading, false)
 		placeMarks(chart)
 		local label = whereLabel
 		if label then
-			local biome = Biomes.at(root.Position)
-			local depth = Config.World.surfaceY - root.Position.Y
-			-- The hub first: under it is the kelp ring or no biome, so a den read
-			-- OPEN WATER (playtest 2026-10-12)
-			local denHere = Layout.denAt(root.Position)
-			local s = ClientState.current
-			local own = if s and typeof(s.denIndex) == "number" then s.denIndex else 0
-			label.Text = if denHere
-				then `{if denHere == own then "YOUR DEN" else "A DEN"} · THE HUB · safe`
-				elseif Layout.inHub(root.Position) then "THE HUB · safe"
-				elseif
-					biome
-				then `{string.upper(biome.name)} · LV {biome.minLevel}–{biome.maxLevel} · {Format.distance(
-					depth
-				)} down`
-				else `OPEN WATER · {Format.distance(depth)} down`
+			label.Text = placeName(root.Position, true)
 		end
 	end
 end
@@ -299,7 +320,7 @@ function MapController.start()
 	miniHolder = Ui.panel(
 		gui,
 		"Minimap",
-		UDim2.fromOffset(size + 12, size + 12),
+		UDim2.fromOffset(size + 12, size + 12 + NAME_BAR),
 		UDim2.new(1, -18, 1, -18),
 		Vector2.new(1, 1)
 	)
@@ -323,6 +344,21 @@ function MapController.start()
 	)
 	north.TextXAlignment = Enum.TextXAlignment.Center
 	north.ZIndex = 6
+	-- The name bar under the chart: where you are, and the key that opens the map
+	local name = Ui.label(
+		miniHolder,
+		"Place",
+		"",
+		Ui.FONT_HEAVY,
+		if touch then 11 else 13,
+		Ui.color.accent,
+		UDim2.new(1, if touch then -12 else -78, 0, NAME_BAR - 4),
+		UDim2.fromOffset(7, size + 9)
+	)
+	name.TextXAlignment = Enum.TextXAlignment.Left
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+	name.ZIndex = 6
+	placeLabel = name
 	if not touch then
 		local hint = Ui.label(
 			miniHolder,
@@ -331,8 +367,8 @@ function MapController.start()
 			Ui.FONT_BOLD,
 			11,
 			Ui.color.muted,
-			UDim2.new(1, -12, 0, 14),
-			UDim2.new(0, 0, 1, -19)
+			UDim2.fromOffset(64, NAME_BAR - 4),
+			UDim2.new(1, -70, 0, size + 9)
 		)
 		hint.TextXAlignment = Enum.TextXAlignment.Right
 		hint.ZIndex = 6

@@ -114,33 +114,43 @@ local function onBite()
 		SwimController.struggle()
 		return
 	end
-	if not SwimController.lunge() then
-		return
-	end
-	Sfx.play("Snap", { volume = 0.35, pitch = math.clamp(1.3 - SwimController.length() * 0.03, 0.6, 1.3) })
-	if selfSafe() then
-		return
-	end
+	-- What's in reach decides whether the bite darts at it: a lunge carries us
+	-- forward, so look a little ahead of the mouth. With nothing there it's only the
+	-- snap of the jaw, never a second, weaker dash (owner, 2026-10-16).
 	local length = SwimController.length()
-	-- The lunge carries us forward, so look a little ahead of the mouth
-	for _, entry in nearby(length * 0.6 + 2) do
-		if not HuntController.isSafe(entry.character) then
-			if Size.canSwallow(length, lengthOf(entry.character)) then
-				ClientState.request("EatPlayer", entry.player.UserId)
-			else
-				ClientState.request("Bite", entry.player.UserId)
+	local target: (() -> ())? = nil
+	if not selfSafe() then
+		for _, entry in nearby(length * 0.6 + 2) do
+			if not HuntController.isSafe(entry.character) then
+				local userId = entry.player.UserId
+				target = if Size.canSwallow(length, lengthOf(entry.character))
+					then function()
+						ClientState.request("EatPlayer", userId)
+					end
+					else function()
+						ClientState.request("Bite", userId)
+					end
+				break
 			end
-			return
+		end
+		-- No fish in reach: a predator or boss, maybe
+		local root = SwimController.root()
+		if target == nil and root then
+			local mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
+			local index = PredatorController.nearest(mouth, Size.reach(length) + length * 0.6 + 2)
+			if index then
+				target = function()
+					ClientState.request("BitePredator", index)
+				end
+			end
 		end
 	end
-	-- No fish in reach: a predator or boss, maybe
-	local root = SwimController.root()
-	if root then
-		local mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
-		local index = PredatorController.nearest(mouth, Size.reach(length) + length * 0.6 + 2)
-		if index then
-			ClientState.request("BitePredator", index)
-		end
+	if not SwimController.lunge(target ~= nil) then
+		return
+	end
+	Sfx.play("Snap", { volume = 0.35, pitch = math.clamp(1.3 - length * 0.03, 0.6, 1.3) })
+	if target then
+		target()
 	end
 end
 
