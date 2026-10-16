@@ -321,10 +321,20 @@ local function step(dt: number)
 	if throttle > -0.05 then
 		ahead = math.max(ahead, math.abs(steer) * swim.turnCruise)
 	end
-	local wish = camera.LookVector * -move.Z
+	-- Level swimming: a camera tipped within `levelZone` of level swims level, and
+	-- past it the climb or dive eases in, so straight up is still straight up
+	local look = camera.LookVector
+	local aimPitch = math.asin(math.clamp(look.Y, -1, 1))
+	local over = math.max(0, math.abs(aimPitch) - swim.levelZone)
+	local eased = math.sign(aimPitch) * over * (math.pi / 2) / (math.pi / 2 - swim.levelZone)
+	local flatLook = Vector3.new(look.X, 0, look.Z)
+	local forward = if flatLook.Magnitude > 1e-3
+		then flatLook.Unit * math.cos(eased) + Vector3.yAxis * math.sin(eased)
+		else look
+	local wish = forward * -move.Z
 		+ camera.RightVector * move.X
 		+ Vector3.yAxis * Input.vertical() * swim.verticalShare
-		+ camera.LookVector * ahead
+		+ forward * ahead
 	local intent = math.min(wish.Magnitude, 1)
 
 	-- The Dash: a burst that recharges (Deep Gills makes it recharge faster)
@@ -366,7 +376,7 @@ local function step(dt: number)
 		local want = limitPitch(wish.Unit)
 		local current = if speed > top * 0.12 then velocity.Unit else heading
 		-- From (nearly) still, a fish can pivot quickly; at speed it carves
-		local turnScale = if speed < top * 0.25 then 2.6 else (if boosting then 0.75 else 1)
+		local turnScale = if speed < top * 0.25 then 2.6 else (if boosting then 0.75 else swim.cruiseTurn)
 		local direction = rotateToward(current, want, Size.turnRate(length) * stats.turn * turnScale * dt)
 		local targetSpeed = top * intent * (if boosting then swim.boostMultiplier else 1)
 		local newSpeed = speed + (targetSpeed - speed) * Spring.alpha(swim.accel, dt)

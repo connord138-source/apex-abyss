@@ -30,10 +30,17 @@ return {
 	swim = {
 		baseSpeed = 15, -- studs/s for a 1-stud fish; scales with length^speedExponent
 		speedExponent = 0.42,
-		accel = 2.6, -- reaches top speed in about 1/accel seconds
+		-- Easier handling (owner, 2026-10-16: "some adjustments need to be made to make
+		-- movement a tad easier"): quicker to answer (accel 2.6 → 3.1), stops sooner
+		-- when you let go (drag 1.7 → 2.3), carves a little tighter at speed
+		-- (`cruiseTurn`), and a camera tipped only a little up or down swims level
+		-- (`levelZone`), so the fish no longer drifts up or down while you look about
+		accel = 3.1, -- reaches top speed in about 1/accel seconds
 		turnRate = 4.4, -- radians/s the heading can swing for a 1-stud fish
 		turnExponent = -0.32, -- big fish turn slower
-		drag = 1.7, -- per second, coasting with no input
+		drag = 2.3, -- per second, coasting with no input
+		cruiseTurn = 1.2, -- turn rate at speed, × the fish's own (it was 1)
+		levelZone = math.rad(12), -- aim pitches within this swim level; past it the climb eases in
 		verticalShare = 0.85, -- how much of top speed the up/down keys give
 		-- A stick pulled back (controller, phone): brake at this rate, then back up at
 		-- this share of top speed

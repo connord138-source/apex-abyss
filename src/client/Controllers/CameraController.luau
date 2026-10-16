@@ -119,6 +119,10 @@ local function sweep(
 	return free, normal
 end
 
+-- Set by a view that takes the screen over (Build mode's editor): called every
+-- frame with dt, it returns the camera's CFrame, or nil to give the fish camera back
+CameraController.override = nil :: ((number) -> CFrame?)?
+
 -- A short jolt (a bite landing, being bitten).
 function CameraController.kick(strength: number)
 	shake = math.max(shake, strength)
@@ -137,6 +141,19 @@ local function update(dt: number)
 	local camera = workspace.CurrentCamera
 	if camera.CameraType ~= Enum.CameraType.Scriptable then
 		camera.CameraType = Enum.CameraType.Scriptable
+	end
+	-- Another view has the screen (Build mode's editor): it places the camera and
+	-- minds the cursor itself
+	local override = CameraController.override
+	if override then
+		local cframe = override(dt)
+		if cframe then
+			camera.CFrame = cframe
+			camera.FieldOfView = tuning.fov
+			fadeFish(SwimController.character(), 0)
+			hasFocus = false
+			return
+		end
 	end
 	-- Mouse look: lock the cursor unless the player wants it (Alt, or a menu)
 	if Input.wantsMouseLock() then

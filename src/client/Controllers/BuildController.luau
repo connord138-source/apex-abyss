@@ -17,6 +17,23 @@
 --   Phone       aim: drag · PLACE, TURN, SNAP, LAY OUT, PUT AWAY, DROP, DONE and
 --               the tray's tiles
 --
+-- The editor view (owner, 2026-10-16: "when a player goes to build in their den it
+-- should set them in a locked screen where they can edit the den and drag parts
+-- there. Its too difficult to do as a fish"): Build mode takes the screen. The
+-- fish holds still (`Input.editing`), the camera leaves it and looks down on the
+-- den's floor from a three-quarter view (CameraController.override), and the
+-- cursor is free: point at the floor and click, or press on a placed thing and
+-- drag it where it should go and let go (a quick click picks it up instead, and
+-- the next click puts it down), or drag a thing straight out of the tray. The view:
+--
+--   PC          WASD / arrows pan · RIGHT-DRAG orbit · wheel zoom · SPACE / C the
+--               floor above / below
+--   Controller  left stick pans · right stick orbits · A the next floor
+--   Phone       drag orbits · pinch zooms · tap places or picks up · FLOOR
+--
+-- The view keeps to the floor of the storey it's on (the den's rooms there) and
+-- out of the rock (a ray from the floor to the camera).
+--
 -- Snapping (owner, 2026-10-14; on by default, G turns it off): turns go in 45°
 -- steps (15° off); a floor thing lines up with a neighbour's x or z when within
 -- 0.8 studs, and with rock close behind it, it backs onto the wall facing out; a
@@ -38,6 +55,7 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
+local CameraController = require(script.Parent.CameraController)
 local MapController = require(script.Parent.MapController)
 local MenuController = require(script.Parent.MenuController)
 local SwimController = require(script.Parent.SwimController)
@@ -46,7 +64,7 @@ local Dens = Config.Dens
 
 local BuildController = {}
 
-local REACH = 70 -- how far the aim reaches
+local REACH = 200 -- how far the aim reaches (the editor's camera sits back)
 local TURN = 15 -- degrees a tap of turn (snapping off)
 local SNAP_TURN = 45 -- with snapping on
 local ALIGN = 0.8 -- a floor thing lines up with a neighbour this close
@@ -72,6 +90,24 @@ local hiddenUid: number? = nil
 local snapOn = true
 local lastFloor: Vector3? = nil -- the last floor spot aimed at (den frame)
 local aimedSet: string? = nil -- the set of the placed thing aimed at
+
+-- The editor view: a focus on the den's floor (den frame) the camera orbits
+type View = { x: number, y: number, z: number, yaw: number, pitch: number, distance: number, storey: number }
+local view: View = { x = 0, y = 1, z = 0, yaw = 0, pitch = math.rad(52), distance = 30, storey = 1 }
+local VIEW_PITCH = { math.rad(18), math.rad(84) }
+local VIEW_ZOOM = { 10, 72 }
+local VIEW_PAN = 26 -- studs a second at the starting zoom
+local VIEW_FOCUS_UP = 2 -- the camera looks this far over the deck
+local orbiting = false -- the right mouse button held: dragging turns the view
+local orbitMoved = 0 -- pixels the mouse moved while orbiting (a click drops instead)
+local dragging = false -- a placed thing picked up with the left button held
+local trayDrag = false -- a thing pressed in the tray, to be let go on the floor
+local pressAt = Vector2.zero
+local pressClock = 0
+local tapAt: Vector2? = nil -- a phone's last tap: where it aims
+local pinchFrom: number? = nil
+local viewParams = RaycastParams.new()
+viewParams.FilterType = Enum.RaycastFilterType.Include
 
 local gui: ScreenGui
 local panel: Frame
@@ -216,10 +252,15 @@ end
 local function aimRay(): Ray
 	local camera = workspace.CurrentCamera
 	local point = camera.ViewportSize / 2
-	if
+	local tap = tapAt
+	if active and Input.isTouch() and tap then
+		-- A phone in the editor aims where it last tapped (inset like the mouse)
+		point = tap + GuiService:GetGuiInset()
+	elseif
 		UserInputService.MouseEnabled
 		and UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter
 		and not Input.isTouch()
+		and not (active and Input.isGamepad())
 	then
 		point = UserInputService:GetMouseLocation()
 	end
@@ -251,6 +292,160 @@ local function rayParams(): RaycastParams
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = include
 	return params
+end
+
+-- The floor of a storey at the den's level, as x and z limits in the den's frame
+local function storeyBox(storey: number): (number, number, number, number)
+	local level = denRecord().level or 1
+	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+	for _, room in DenSpace.rooms(level, storey) do
+		minX = math.min(minX, -room.x)
+		maxX = math.max(maxX, room.x)
+		minZ = math.min(minZ, room.z0, room.z1)
+		maxZ = math.max(maxZ, room.z0, room.z1)
+	end
+	if minX == math.huge then
+		return -10, 10, -10, 10
+	end
+	return minX, maxX, minZ, maxZ
+end
+
+local function clampView()
+	local minX, maxX, minZ, maxZ = storeyBox(view.storey)
+	view.x = math.clamp(view.x, minX, maxX)
+	view.z = math.clamp(view.z, minZ, maxZ)
+end
+
+-- Up or down a storey (-1 up, +1 down), keeping the view's spot as near as it can
+local function changeFloor(by: number)
+	local deepest = DenSpace.storeys(denRecord().level or 1)
+	local nextStorey = math.clamp(view.storey + by, 1, deepest)
+	if nextStorey == view.storey then
+		Sfx.play("TooBig", { volume = 0.25 })
+		return
+	end
+	view.storey = nextStorey
+	view.y = DenSpace.storey(nextStorey).deck
+	clampView()
+	Sfx.play("UiOpen", { volume = 0.35, pitch = if by < 0 then 1.15 else 0.9 })
+end
+
+-- The view starts over the floor the fish is on, looking the way the camera did
+local function startView()
+	local index = ownIndex()
+	local root = SwimController.root()
+	local frame = DenSpace.frame(index)
+	local here = if root then DenSpace.toLocal(frame, root.Position) else Vector3.zero
+	local best, bestGap = 1, math.huge
+	for n = 1, DenSpace.storeys(denRecord().level or 1) do
+		local gap = math.abs(here.Y - DenSpace.storey(n).deck)
+		if gap < bestGap then
+			best, bestGap = n, gap
+		end
+	end
+	view.storey = best
+	view.x, view.z = here.X, here.Z
+	view.y = DenSpace.storey(best).deck
+	clampView()
+	local look = workspace.CurrentCamera.CFrame.LookVector
+	view.yaw = math.atan2(-look.X, -look.Z)
+	view.pitch = math.rad(52)
+	view.distance = 30
+	viewParams.FilterDescendantsInstances = { workspace.Terrain }
+end
+
+-- The editor's camera, every frame (CameraController.override)
+local function viewCFrame(dt: number): CFrame?
+	local index = ownIndex()
+	if not active or index == 0 then
+		return nil
+	end
+	-- The cursor is free; held in place while the right button orbits
+	local behavior = if orbiting then Enum.MouseBehavior.LockCurrentPosition else Enum.MouseBehavior.Default
+	if UserInputService.MouseBehavior ~= behavior then
+		UserInputService.MouseBehavior = behavior
+	end
+	if not UserInputService.MouseIconEnabled then
+		UserInputService.MouseIconEnabled = true
+	end
+	-- Orbit: the right mouse button held, a phone's drag or the right stick
+	local look = Input.consumeLook(dt)
+	if orbiting then
+		local delta = UserInputService:GetMouseDelta()
+		orbitMoved += delta.Magnitude
+		look += delta * Config.Tuning.camera.mouseSensitivity
+	end
+	view.yaw -= look.X
+	-- Zoom: the wheel, or a phone's pinch (set in the pinch handler)
+	local notches = Input.consumeZoom()
+	if notches ~= 0 then
+		view.distance = math.clamp(view.distance * (1 - 0.12 * notches), VIEW_ZOOM[1], VIEW_ZOOM[2])
+	end
+	-- Under the storey's ceiling: zoomed out, the view lowers toward the floor's
+	-- far side instead of pressing up into the rock
+	local headroom = DenSpace.storey(view.storey).ceiling - view.y - VIEW_FOCUS_UP - 2
+	local steepest = VIEW_PITCH[2]
+	if view.distance * math.sin(steepest) > headroom then
+		steepest = math.max(VIEW_PITCH[1], math.asin(math.clamp(headroom / view.distance, 0, 1)))
+	end
+	view.pitch = math.clamp(view.pitch + look.Y, VIEW_PITCH[1], steepest)
+	-- Pan: WASD or the arrows, or the left stick, across the floor
+	local pan = Vector2.zero
+	if UserInputService:GetFocusedTextBox() == nil then
+		local function key(a: Enum.KeyCode, b: Enum.KeyCode): number
+			return if UserInputService:IsKeyDown(a) or UserInputService:IsKeyDown(b) then 1 else 0
+		end
+		pan += Vector2.new(
+			key(Enum.KeyCode.D, Enum.KeyCode.Right) - key(Enum.KeyCode.A, Enum.KeyCode.Left),
+			key(Enum.KeyCode.W, Enum.KeyCode.Up) - key(Enum.KeyCode.S, Enum.KeyCode.Down)
+		)
+	end
+	for _, input in UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) do
+		if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+			local stick = Vector2.new(input.Position.X, input.Position.Y)
+			if stick.Magnitude > 0.15 then
+				pan += stick
+			end
+		end
+	end
+	if pan.Magnitude > 1 then
+		pan = pan.Unit
+	end
+	local frame = DenSpace.frame(index)
+	if pan.Magnitude > 0 then
+		local forward = Vector3.new(-math.sin(view.yaw), 0, -math.cos(view.yaw))
+		local right = Vector3.new(math.cos(view.yaw), 0, -math.sin(view.yaw))
+		local delta = (forward * pan.Y + right * pan.X) * VIEW_PAN * (view.distance / 30) * dt
+		local here = DenSpace.spot(frame, view.x, view.y, view.z).Position
+		local moved = DenSpace.toLocal(frame, here + delta)
+		view.x, view.z = moved.X, moved.Z
+		clampView()
+	end
+	local focus = DenSpace.spot(frame, view.x, view.y + VIEW_FOCUS_UP, view.z).Position
+	local orient = CFrame.Angles(0, view.yaw, 0) * CFrame.Angles(-view.pitch, 0, 0)
+	local want = focus - orient.LookVector * view.distance
+	-- Out of the rock: the camera stops short of the den's ceiling and walls
+	local offset = want - focus
+	local hit = workspace:Raycast(focus, offset, viewParams)
+	local at = if hit then focus + offset.Unit * math.max(1.5, hit.Distance - 1.2) else want
+	return CFrame.lookAt(at, focus)
+end
+
+-- Whether a screen point is over the tray (its clicks are the tray's)
+local function overPanel(position: Vector3 | Vector2): boolean
+	local inset = GuiService:GetGuiInset()
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if playerGui == nil then
+		return false
+	end
+	for _, y in { position.Y, position.Y + inset.Y } do
+		for _, object in playerGui:GetGuiObjectsAtPosition(position.X, y) do
+			if object:IsDescendantOf(panel) then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 -- The placed thing a part belongs to (its uid)
@@ -758,7 +953,16 @@ local function tile(parent: Instance, id: string, order: number)
 	)
 	count.TextXAlignment = Enum.TextXAlignment.Left
 	button.Activated:Connect(function()
-		select({ id = id })
+		if not trayDrag then
+			select({ id = id })
+		end
+	end)
+	-- Pressed with the mouse, it can be dragged straight onto the floor
+	button.MouseButton1Down:Connect(function()
+		if not Input.isTouch() then
+			select({ id = id })
+			trayDrag = true
+		end
 	end)
 	button.Parent = parent
 end
@@ -790,11 +994,11 @@ end
 
 local function controlsText(): string
 	if Input.isTouch() then
-		return "Drag to aim · tap a thing in the tray, then PLACE · LAY OUT sets a whole set"
+		return "Tap the floor to place, a thing to pick it up · drag to turn the view, pinch to zoom · FLOOR changes storey"
 	elseif Input.isGamepad() then
-		return "RT place / pick up · LT drop · LB RB turn · D-pad: left/right pick, up snap, down lay out set · X put away · B done"
+		return "Left stick pan · right stick turn view · RT place / pick up · LT drop · LB RB turn · D-pad: pick, snap, lay out · A floor · X put away · B done"
 	end
-	return "LEFT CLICK place / pick up · RIGHT CLICK drop · R F turn · Q E pick · G snap · L lay out set · X put away · B done · Alt frees the cursor"
+	return "Click to place · drag things (from the tray too) · RIGHT-DRAG turn view · WASD pan · wheel zoom · SPACE / C floor · R F turn · G snap · L lay out · X put away · B done"
 end
 
 local function bind()
@@ -802,29 +1006,60 @@ local function bind()
 		if inputState ~= Enum.UserInputState.Begin then
 			return Enum.ContextActionResult.Sink
 		end
-		-- A click on the tray (cursor freed with Alt) is the tray's
+		-- A click on the tray is the tray's
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			local inset = GuiService:GetGuiInset()
-			local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-			for _, y in { input.Position.Y, input.Position.Y + inset.Y } do
-				for _, object in
-					if playerGui then playerGui:GetGuiObjectsAtPosition(input.Position.X, y) else {}
-				do
-					if object:IsDescendantOf(panel) then
-						return Enum.ContextActionResult.Pass
-					end
-				end
+			if overPanel(input.Position) then
+				return Enum.ContextActionResult.Pass
+			end
+			-- Pressed on a placed thing: it comes up with the pointer, and goes down
+			-- where the button is let go (a quick click leaves it picked up)
+			if selection == nil and aimedUid then
+				place()
+				dragging = selection ~= nil
+				pressAt = UserInputService:GetMouseLocation()
+				pressClock = os.clock()
+				return Enum.ContextActionResult.Sink
 			end
 		end
 		place()
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, Enum.UserInputType.MouseButton1, Enum.KeyCode.ButtonR2)
-	ContextActionService:BindActionAtPriority("ApexBuildDrop", function(_, inputState)
+	-- The right button: held and dragged, it turns the view; a click drops the
+	-- thing picked (let go in the InputEnded handler)
+	ContextActionService:BindActionAtPriority("ApexBuildDrop", function(_, inputState, input)
 		if inputState == Enum.UserInputState.Begin then
-			select(nil)
+			if input.UserInputType == Enum.UserInputType.MouseButton2 then
+				orbiting = true
+				orbitMoved = 0
+			else
+				select(nil)
+			end
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, Enum.UserInputType.MouseButton2, Enum.KeyCode.ButtonL2)
+	ContextActionService:BindActionAtPriority(
+		"ApexBuildFloor",
+		function(_, inputState, input)
+			if inputState == Enum.UserInputState.Begin then
+				local key = input.KeyCode
+				if key == Enum.KeyCode.ButtonA then
+					-- One button: down a storey, and back to the top from the deepest
+					local deepest = DenSpace.storeys(denRecord().level or 1)
+					changeFloor(if view.storey >= deepest then 1 - view.storey else 1)
+				else
+					changeFloor(if key == Enum.KeyCode.Space or key == Enum.KeyCode.PageUp then -1 else 1)
+				end
+			end
+			return Enum.ContextActionResult.Sink
+		end,
+		false,
+		PRIORITY,
+		Enum.KeyCode.Space,
+		Enum.KeyCode.C,
+		Enum.KeyCode.PageUp,
+		Enum.KeyCode.PageDown,
+		Enum.KeyCode.ButtonA
+	)
 	ContextActionService:BindActionAtPriority("ApexBuildTurn", function(_, inputState, input)
 		local by = if input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.ButtonL1 then -1 else 1
 		if inputState == Enum.UserInputState.Begin then
@@ -878,6 +1113,7 @@ local function unbind()
 		{
 			"ApexBuildPlace",
 			"ApexBuildDrop",
+			"ApexBuildFloor",
 			"ApexBuildTurn",
 			"ApexBuildPick",
 			"ApexBuildAway",
@@ -916,8 +1152,13 @@ function BuildController.start()
 	MenuController.close()
 	active = true
 	Input.building = true
+	Input.editing = true
 	MenuController.building = true
 	turning = 0
+	startView()
+	CameraController.override = viewCFrame
+	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	UserInputService.MouseIconEnabled = true
 	controlsLabel.Text = controlsText()
 	layoutTray()
 	panel.Visible = true
@@ -933,6 +1174,10 @@ function BuildController.stop()
 	end
 	active = false
 	Input.building = false
+	Input.editing = false
+	CameraController.override = nil
+	orbiting, dragging, trayDrag = false, false, false
+	tapAt, pinchFrom = nil, nil
 	MenuController.building = false
 	select(nil)
 	aimLight.Adornee = nil
@@ -1032,6 +1277,14 @@ local function buildGui()
 			end,
 		},
 		{ text = "SNAP ON", style = "secondary", run = toggleSnap },
+		{
+			text = "FLOOR",
+			style = "secondary",
+			run = function()
+				local deepest = DenSpace.storeys(denRecord().level or 1)
+				changeFloor(if view.storey >= deepest then 1 - view.storey else 1)
+			end,
+		},
 		{ text = "LAY OUT", style = "secondary", run = layOut },
 		{ text = "PUT AWAY", style = "secondary", run = putAway },
 		{
@@ -1118,6 +1371,72 @@ function BuildController.startController()
 		end
 	end)
 	RunService.RenderStepped:Connect(step)
+	-- Letting go of the mouse: a dragged thing goes down (or back), a right click
+	-- that didn't turn the view drops what's picked
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if not active then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton2 and orbiting then
+			orbiting = false
+			if orbitMoved < 6 then
+				select(nil)
+			end
+		elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+			local mouse = UserInputService:GetMouseLocation()
+			if trayDrag then
+				trayDrag = false
+				local s = selection
+				local at = spot
+				if s and s.uid == nil and at and not overPanel(mouse - GuiService:GetGuiInset()) then
+					if at.ok then
+						place()
+						select(nil)
+					else
+						Sfx.play("TooBig", { volume = 0.35 })
+					end
+				end
+			elseif dragging then
+				dragging = false
+				local moved = (mouse - pressAt).Magnitude > 6 or os.clock() - pressClock > 0.35
+				if moved then
+					local at = spot
+					if at and at.ok then
+						place()
+					else
+						-- Can't go there: it goes back where it was
+						select(nil)
+						Sfx.play("TooBig", { volume = 0.35 })
+						setStatus("It can't go there · put back", BAD, 2)
+					end
+				end
+			end
+		end
+	end)
+	-- A phone taps the floor to place, or a placed thing to pick it up, and pinches
+	-- to zoom
+	UserInputService.TouchTapInWorld:Connect(function(position: Vector2, processed: boolean)
+		if not active or processed then
+			return
+		end
+		tapAt = position
+		step()
+		place()
+	end)
+	UserInputService.TouchPinch:Connect(
+		function(_, scale: number, _, pinchState: Enum.UserInputState, processed)
+			if not active or processed then
+				return
+			end
+			if pinchState == Enum.UserInputState.Begin then
+				pinchFrom = view.distance
+			elseif pinchState == Enum.UserInputState.Change and pinchFrom and scale > 0 then
+				view.distance = math.clamp((pinchFrom :: number) / scale, VIEW_ZOOM[1], VIEW_ZOOM[2])
+			else
+				pinchFrom = nil
+			end
+		end
+	)
 	RunService.Heartbeat:Connect(function()
 		local show = not active
 			and not Input.locked

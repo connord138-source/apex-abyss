@@ -51,6 +51,9 @@ local Input = {
 	-- Set while Build mode is on: the mouse buttons and triggers place things
 	-- instead of biting and dashing (BuildController binds them)
 	building = false,
+	-- Set while Build mode's editor view has the screen: the fish holds still and
+	-- the cursor stays free (BuildController drives the camera)
+	editing = false,
 }
 
 local ALT_TAP = 0.35 -- seconds: an Alt let go sooner than this toggles the cursor
@@ -266,7 +269,7 @@ end
 -- WASD or the arrow keys. Length at most 1. (The owner likes PC as it is: A/D slide
 -- the fish sideways while the mouse aims.)
 function Input.moveVector(): Vector3
-	if Input.locked then
+	if Input.locked or Input.editing then
 		return Vector3.zero
 	end
 	local keys = Vector2.new(
@@ -283,7 +286,7 @@ end
 -- touch stick is a throttle and a rudder. Returns throttle (+1 full ahead, -1 back
 -- up) and steer (+1 turn right); the right stick or a screen drag aims up and down.
 function Input.drive(): (number, number)
-	if Input.locked then
+	if Input.locked or Input.editing then
 		return 0, 0
 	end
 	-- The left stick moves the selection while a menu button is selected
@@ -300,7 +303,7 @@ end
 
 -- Up/down: +1, 0 or -1.
 function Input.vertical(): number
-	if Input.locked then
+	if Input.locked or Input.editing then
 		return 0
 	end
 	local up = down("Space") or down("ButtonA")
@@ -312,6 +315,7 @@ end
 -- screen still has a mouse: only a touch-only device keeps a free pointer.)
 function Input.wantsMouseLock(): boolean
 	return UserInputService.MouseEnabled
+		and not Input.editing
 		and not Input.isTouch()
 		and not Input.cursorWanted
 		and not Input.cursorToggled
