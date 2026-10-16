@@ -166,6 +166,26 @@ show, so the classifier sees a coloured field; screen them with
 `screen_shades.py assets/textures/sheen_<name>.png` (exit 0, classifier on). The v9
 five (lava, caustic, facets, current, bolt) scored 0.000–0.002.
 
+## Toon materials (tools/textures, 2026-10-16)
+
+Every stock material the world uses is swapped game-wide for a flat, cel-shaded
+tile (owner: walls "too much like garrymod textures"):
+
+```
+python3.11 tools/textures/make_toon_materials.py [Name ...]       # assets/textures/toon_<Name>.png
+python3.11 tools/textures/preview_toon_materials.py <dir> [Name ...]  # lit renders + a contact sheet
+python3.11 tools/shades/screen_shades.py assets/textures/toon_*.png   # classifier on; must exit 0
+```
+
+The maps are grey (R = G = B, mean ~0.8) so the world's colours tint them;
+CrackedLava keeps its own cracks. Keep the sparse `flecks()` layer in any grey stone
+map: without it, large smooth grey areas with soft curved lines scored up to 0.42
+on the classifier. Upload the PNGs as Images (Asset Manager → Import), paste each id
+into `src/shared/Config/Materials.luau`, then run `tools/studio/make_toon_materials.luau`
+in Studio's Command Bar (edit mode) and save the place: it makes the `Toon<Name>`
+MaterialVariants (colour map only, never a normal map) and the base-material
+overrides. WorldService lifts the Terrain's colours to match while they're on.
+
 ## Checks
 
 - **Facing in code:** a rigged Model (bones) faces -Z and is never turned. A bare

@@ -1006,22 +1006,55 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   GDD §6 "Den bases"; v1 was 2026-10-07: "an upgradable base that gets bigger and
   deeper ... Other players can go in and check out your base but can't take or do
   anything ... trophies ... furniture ... Coral lamps"):**
-  - **Dug down:** the hub's rock is solid to y −80 (Cave now fills under the cavern
-    floor down to there; the dome's carve had left a hidden void under the plaza).
-    Five levels: Nook → Burrow 1,000 (the main room runs back) → Hall 12,000 (a shaft
-    to a vaulted hall at y −30) → Grotto 45,000 (wings, a deep back) → Sanctum
-    150,000 (a second shaft to y −66), holding 15/30/50/75/100 things (+25 Den
-    Expansion). `Config/Dens` `rooms` (bands across the den's axis, each 5 studs
-    inside the line to the next den), `storeys` (deck, floor, ceiling), `shafts`,
-    `gardenSpots`. `Shared/DenSpace` (both sides): decks as a 2-stud grid merged into
-    flagstone tiles, holes (pool, shafts, garden, pillars), `check` (may a thing go
-    there). `server/DenCarve` writes the Terrain ops: the house's zone back to stone,
-    the Nook (`Cave.denRoom`), the Burrow, barrel vaults with alcoves, floors under
-    the decks, shafts. `DenBuilder` carves only when the level changes, builds the
-    shell (decks in a floor style, curbs, pillars, orb lamps), keeps placed things in
-    step by uid, seats the trophy wall both ways, and the Coral Garden (a planter on
-    the back wall, then an oval bed in the Hall's middle, Tripo corals or part-built
-    staghorn/fan/brain/sponge/anemone growing one by one).
+  - **Private interiors (v3, owner, 2026-10-16: "Dens also still need to be
+    substantially bigger"; of three ways offered, "Private interiors"):** a den isn't
+    dug into the hub's ring any more (twelve 30° wedges capped its width). Each den is
+    its own block of rock on a 4×3 grid far outside the play area at the hub's height
+    (`Config/Dens` `interior`: x 5,200 + 640 a column, z −640 + 640 a row;
+    `Layout.denOrigin`), so it's lit like the hub and only streams to fish inside it.
+    On the plaza each doorway is a shallow round alcove (`Cave.denDoor`) with a bubble
+    portal 9 studs in (`Layout.doorFrame`, `WorldService` `portal`; the sign above it,
+    the `Owner` attribute on `Hub.Den<i>`); inside, the way out is a portal on the
+    Nook's front wall (`Layout.exitFrame`, sign TO THE HUB). Swimming within 8 studs of
+    a portal (`Layout.doorAt`/`exitAt`; a big fish's middle stops ~7 off the rock)
+    washes the screen with bubbles (`DenDoorController`) and sends `EnterDen(index)`
+    / `LeaveDen`: `DenService` checks the fish is there, `RequestStreamAroundAsync`,
+    then `Net.teleport` (to `Layout.spawnFrame`, over the Haul Pool, or
+    `Layout.hubExitFrame`, 16 in front of the doorway). Anyone may visit a den someone
+    lives in; an empty den's portal stays shut ("No one lives in this den yet"); when
+    the owner leaves, visitors are put back on the plaza (`evict`) and the block is
+    cleared (`DenCarve.clear`). Spawning streams the den in first (`FishService`).
+    You arrive over your pool, so swimming home banks the Haul. `Layout.denAt` tests
+    the grid (O(1)) and `Layout.inHub` counts den interiors, so they're safe, unpressured
+    and hub-graded (`OceanController`, `AmbienceController` and the depth gauge read a
+    den as the hub's floor height; `SwimController` skips the map's edge there); the map
+    shows a fish in a den at its doorway (`Layout.mapPosition`); the tutorial's trail
+    leads through the doorway, then to the pool, and "find the exit" in a den is its
+    portal. Old saves: lower-storey placements move down with their decks once, and
+    whatever no longer fits returns to the tray (`DenService` `relayout`,
+    `data.den.layout`, kept out of the save template so Reconcile can't skip it).
+  - **The levels:** Nook → Burrow 1,000 (a second great room runs back) → Hall
+    12,000 (a shaft to a vaulted hall below) → Grotto 45,000 (wings, a deep back) →
+    Sanctum 150,000 (a second shaft to the deepest storey), holding 20/40/70/110/160
+    things (+25 Den Expansion). Deck: 3,056 / 6,416 / 17,384 / 25,712 / 46,432 square
+    studs (a 60 × 60 Nook, 39 studs tall; ~4× v2). `Config/Dens` `rooms` (bands across
+    the den's axis), `storeys` (deck, floor, ceiling, `wall`: decks 1 / −54 / −114,
+    floors −4 / −60 / −120 on 4-stud voxel lines, ceilings 40 / −12 / −68), `shafts`
+    (Hall z −58 r 9, Sanctum z −90 r 10), `gardenSpots`, `pool` (z 12, r 8), `exit`.
+    Every room has upright walls `wall` high under a shallow arch: `DenCarve` cuts a
+    cylinder along the room whose chord at the walls' top is its width
+    (`DenSpace.archRadius`), puts back what it cut beside the walls and under the
+    floor (clipped to the block), cuts the room from the rock floor up to the walls'
+    top, bulges alcoves out of the walls, then the shafts (Air ops twice).
+    `DenSpace.vaultAt` is that ceiling's height. `Shared/DenSpace` (both sides): decks
+    as a 2-stud grid merged into flagstone tiles, holes (pool, shafts, garden,
+    pillars), `check` (may a thing go there). `DenBuilder` carves only when the level
+    changes, builds the shell (decks in a floor style, curbs, pillars, orb lamps every
+    20 studs down each storey, three across in rooms wider than 40), keeps placed
+    things in step by uid, seats the trophy wall both ways, the title over the way
+    out, and the Coral Garden (a planter on the back wall, then a bed in the Hall's
+    nave, Tripo corals or part-built staghorn/fan/brain/sponge/anemone growing one by
+    one).
   - **Build mode** (`BuildController`, `DenService`): B in your own den or BUILD in
     the den menu. Since 2026-10-16 it's an editor view (the fish holds still, the
     camera orbits the floor, the cursor is free: see "The 2026-10-16 batch"); before
@@ -1036,12 +1069,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `placed` once (`DenService.migrate`), old owned things become tray copies.
   - Six floor styles (Flagstone free → Glowing Obsidian 12,000), 16 things (new:
     Woven Kelp Rug, Jellyfish Lamp on the ceiling), seven glows.
-  - Checks from the cloud: `LUAU=<luau> bash tools/tests/run_dens.sh` (rooms inside
-    their wedge, tiles cover the decks once, holes, placement answers) and `LEVEL=5
-    LUAU=<luau> bash tools/preview/run_dens.sh <dir>` (the cavern plus all 12 dens
-    voxelized: no den reaches another, a tunnel, the sea or the shelf's hollow;
-    slice images). Run both after any change to `Config/Dens`, `DenCarve` or
-    `Cave`, and `check_exits.py` as before.
+  - Checks from the cloud: `LUAU=<luau> bash tools/tests/run_dens.sh` (rooms well
+    inside the block, rock between storeys on voxel lines, shafts open into a room
+    on both storeys, tiles cover the decks once, holes, placement answers) and
+    `LEVEL=5 LUAU=<luau> bash tools/preview/run_dens.sh <dir>` (one interior
+    voxelized in open water: enclosed with 6+ studs of rock, one cave joined by the
+    shafts, every room open over its deck, rock between storeys; slices). Run both
+    after any change to `Config/Dens`, `DenCarve` or `DenSpace`, and `check_exits.py`
+    after `Cave` (the doorways' alcoves).
   - **Rock floors and shafts (PC report 2026-10-13: both shafts solid, no
     flagstones on the main storey):** Roblox's Air fills take occupancy away rather
     than clearing it (one pass over fresh rock left 0.21), so every den Air op is
@@ -1049,7 +1084,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     than their opening (`radius`: Hall 7, Sanctum 8) and 6 into the vault below, and
     each storey's rock floor is 5–6 studs under its deck on a voxel line (Terrain drew
     the surface up to ~4.6 over its fill, through the flagstones); the decks are slabs
-    down to it. Storeys: deck 1 / −34 / −70, floor −4 / −40 / −76. The Haul Pool sits
+    down to it. Storeys (v2): deck 1 / −34 / −70, floor −4 / −40 / −76. The Haul Pool sits
     in a stone basin with a rim. A thing standing on another may hang over a hole's
     edge if deck is within 2 studs (`DenSpace.nearDeck`); raised off the deck it
     must stand on top of a placed floor thing, inside its turned footprint
@@ -1330,6 +1365,22 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 
 ## World and assets (2026-10-07)
 
+- **Toon materials** (owner, 2026-10-16: "Walls need to look more like schedule 1 or
+  how to fish graphics. Looks too much like garrymod textures or semi realistic for
+  our purposes"): every stock material the world uses (Rock, Slate, Basalt,
+  Sandstone, Sand, Mud, CrackedLava, Pebble, Marble, WoodPlanks, Wood) is swapped
+  game-wide, Terrain and parts alike, for a flat cel-shaded seamless tile
+  (`tools/textures/make_toon_materials.py` → `assets/textures/toon_<Name>.png`; big
+  plates, bands and planks, bold seams, a lit edge, sparse flecks). Grey (R = G = B,
+  mean ~0.8) so the world's own colours tint them; CrackedLava carries its own
+  glowing cracks. Large smooth grey areas with soft curved lines scored up to 0.42
+  on the classifier until the flecks layer went in: keep it in any new grey stone
+  map, and screen before uploading (highest now 0.098). `Config/Materials` holds each
+  image id (0 = stock), tiling and pattern; `tools/studio/make_toon_materials.luau`
+  makes the `Toon<Name>` MaterialVariants and base-material overrides in Studio and
+  the place is saved (a script can't set a MaterialVariant's maps); while one is on,
+  `Cave.paint` lifts that Terrain colour ×1.22 (`terrainLift`) and the lava's to
+  white. Parts come out a little darker. WorldService warns about a variant missing.
 - **Rocks are rounded, toon-style** (owner, 2026-10-11: "rocks are also still a bit
   too unnatural and jagged. Needs more of a toonish rounded off look"): every tilted
   block of rock is a pebble of capsules (`Cave.pebble`: cylinders with ball ends
