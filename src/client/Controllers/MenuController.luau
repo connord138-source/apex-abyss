@@ -1579,6 +1579,24 @@ function MenuController.openStore()
 						if podButton then
 							podButton.Activated:Connect(MenuController.openPod)
 						end
+						-- The Tide Pass: here too, so a controller can reach it (PASS is a HUD
+						-- button; PC 2026-10-16, PS1)
+						local pass = if typeof(s.pass) == "table" then s.pass else nil
+						local waiting = if pass and typeof(pass.waiting) == "number" then pass.waiting else 0
+						local _, passButton = row(
+							list,
+							next(),
+							"TidePass",
+							"Tide Pass",
+							"This season's free row and the Deep Pass: every reward and what's unlocked",
+							if waiting > 0 then `{waiting} to claim` else nil,
+							"OPEN",
+							if waiting > 0 then "gold" else "secondary",
+							Ui.color.accent
+						)
+						if passButton then
+							passButton.Activated:Connect(MenuController.openPass)
+						end
 						-- Free perks
 						heading(list, next(), "FREE PERKS")
 						local premium = s.premium == true
