@@ -703,7 +703,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     shows over the kelp and the reef.
   - **Stronger layers** on the skins that read dark or flat (CatchGolden, CudaChrome,
     ShkScarred, MorRibbon, WeekWreck, WeekWave, PassAbyssalCurrent: lower
-    `transparency` in `LAYERS`), plus the v10 retextures (below).
+    `transparency` in `LAYERS`), plus **skins v10** retextures in a patch pack
+    (`shade_patch_v10`, `assets/shades/patch10`, sha256 73929747…, 63 images,
+    highest classifier 0.090): CatchGolden warmer (hue 33–37°, metal 0.15, a faint
+    even glow map, so it reads gold, not olive, in the water), the three universal
+    Week/Pass skins and Ribbon, Chrome (gunmetal, lighter, metal 0.2: metal shows
+    the dark water, not its colour) and Scarred lifted. **Teeth:** the gums between
+    the teeth took Thunder's bolts and glow; `Fish.mouth_zone()` now clears glow
+    near the teeth on every skin of every toothed fish (`MOUTH_DARK`) and Thunder's
+    bolts fade out before the mouth. `make_shades.py` no longer writes normal maps;
+    `render_shades.py` `water=0.35` previews a skin in the game's haze.
   - Unchanged on purpose: a pad enters Build from the den menu (B means back), and
     panning out of the door can't happen in a private den.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,

@@ -1,6 +1,6 @@
 """Renders a fish wearing each of its shade skins, three-quarter view, for review.
 
-    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [normals] [zoom=2.5 focus=0.3 res=900x600] [Shade ...]
+    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [normals] [zoom=2.5 focus=0.3 res=900x600 water=0.35 strength=3] [Shade ...]
 
 Writes <out_dir>/<Fish>_<Shade>.png (the fish's own texture as <Fish>_Base.png), by
 default every shade in the fish's own list (shade_lines.py: its line, then the
@@ -9,7 +9,12 @@ below (the other flank and the belly) beside the first. contact_sheet.py lays th
 out. Each skin is shown the way it ships: its finish's roughness map (or its own),
 its metal map and its glow map, from skins.json. No normal map is wired in, since
 none ships (v8.1, pack_shades.py NORMALS = False); `normals` shows the relief maps
-make_shades.py still writes, as v8 had them.
+make_shades.py still writes, as v8 had them. `water=<haze>` grades the render the
+way the shallows do in game (OceanController's shelf tint, then the teal haze by
+that much, ~0.35 for a fish seen from 30 studs): a gold that reads olive there reads
+olive here (playtest 2026-10-16). `strength=<x>` is the glow map's emission strength
+(3 by default, which shows where a skin glows; ~0.65 matches the game's
+EmissiveStrength 1, where the glow map becomes a grayscale mask on the colour).
 """
 
 import json
@@ -35,6 +40,11 @@ OPTS = dict(a.split("=", 1) for a in rest if "=" in a)
 ZOOM = float(OPTS.get("zoom", 1.0))
 FOCUS = float(OPTS["focus"]) if "focus" in OPTS else None
 RES = tuple(int(x) for x in OPTS.get("res", "520x360").split("x"))
+WATER = float(OPTS.get("water", 0.0))
+STRENGTH = float(OPTS.get("strength", 3.0))
+# OceanController's shelf grade (tint) and the OceanAtmosphere haze colour
+WATER_TINT = np.array((222, 238, 246), np.float32) / 255
+WATER_HAZE = np.array((44, 126, 156), np.float32) / 255
 rest = [a for a in rest if a not in ("flip", "pair", "normals") and "=" not in a]
 NAME = pathlib.Path(SRC).stem
 OUT.mkdir(parents=True, exist_ok=True)
@@ -184,7 +194,17 @@ def wear(spec, folder, shade):
     if spec.get("emit"):
         emit_tex.image = bpy.data.images.load(str(folder / f"{shade}_emit.png"))
         tree.links.new(emit_tex.outputs["Color"], bsdf.inputs["Emission Color"])
-        bsdf.inputs["Emission Strength"].default_value = 3.0
+        bsdf.inputs["Emission Strength"].default_value = STRENGTH
+
+
+def in_water(path):
+    """The render as the shallows show it: graded, then hazed toward the water."""
+    if WATER <= 0:
+        return
+    rgb = np.asarray(Image.open(path).convert("RGB"), np.float32) / 255
+    rgb = rgb * WATER_TINT
+    rgb = rgb * (1 - WATER) + WATER_HAZE * WATER
+    Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).save(path)
 
 
 def shoot(label, image):
@@ -193,6 +213,7 @@ def shoot(label, image):
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
     if not PAIR:
+        in_water(path)
         return
     second = OUT / f"{NAME}_{label}.view2.png"
     aim(VIEWS[1])
@@ -205,6 +226,7 @@ def shoot(label, image):
     both.paste(b, (a.width, 0))
     both.save(path)
     second.unlink()
+    in_water(path)
 
 
 FOLDER = SKINS / NAME

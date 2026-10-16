@@ -71,6 +71,13 @@
       "clean": "no normal maps; every patch GLB cleared by screen_shades.py with the classifier, 31 rows, none flagged, highest 0.021",
       "contents": "<Fish>_ShadesPatch.glb for all six fish (2026-10-16, skins v9): only the retextured skins, filed by organize_shades.luau without clearing the fish's other skins. CatchCrystal (cut crystal shards) on every fish, and Magma (basalt plates split by lava rivers) on the MorayEel. Import after the full shade_skins packs, never in the same organize run."
     },
+    "shade_patch_v10": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/39bbb134-8e66-4032-99da-d44d78320551.zip",
+      "into": "assets/shades/patch10",
+      "sha256": "739297471e38acc37ea65d4a2abb7775de3f048d05925e7b692eff2066f9aab8",
+      "clean": "no normal maps (none in any material, none shaped like one); every patch GLB cleared by screen_shades.py with the classifier, 63 rows, none flagged, highest 0.090 (Angler PassAbyssalCurrent); the 51 skin PNGs screened too, highest 0.062",
+      "contents": "<Fish>_ShadesPatch.glb for all six fish (2026-10-16, skins v10, the PC's SK2 notes): only these skins, filed by organize_shades.luau without clearing the fish's other skins. On every fish: CatchGolden (an orange-leaning gold, lighter engraving, metal 0.15, and a new faint even glow map so it stays gold in the blue-green water instead of olive), WeekWave (a mid ultramarine sky and sea, not near-black), WeekWreck (a deep teal hull over a navy bottom, brighter rivets and number) and PassAbyssalCurrent (a lifted teal-green, a wider current, a second faint current, more motes). Cuda: Thunder (the arcs stop short of the mouth and nothing glows round the teeth: they had glowed along the gums between them) and CudaChrome (still gunmetal, lighter, two bright cool reflection bands, metal 0.2). MorayEel: MorRibbon (navy back, electric flank, a cyan lateral line, a wider yellow dorsal edge). ReefShark: ShkScarred (wider scars with navy rims and blue cores, more on the upper flank and front half). Images per GLB: Nibbler 9, Cuda 13, Puffer 9, MorayEel 11, ReefShark 10, Angler 11. Import after shade_skins and shade_patch_v9, one fish at a time, never in the same organize run."
+    },
     "furniture_glb": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/530c2fa1-0323-4260-9b50-5e3730712f0a.zip",
       "into": "assets/glb",

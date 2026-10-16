@@ -21,6 +21,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`; v2 colors made safe by `tools/props/safe_colors.py` and screened 2026-10-11) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `furniture_glb` | the 38 den furniture pieces of batch 1, `furniture/<Name>.glb` (GLB; cut off `assets/concepts/Furn*.jpg` by `tools/props/furniture_crops.py`, Tripo image_to_model; normal maps taken out by `tools/props/strip_normals.py`, colors made safe by `safe_colors.py`, all 76 images screened 2026-10-13; front faces +X) | `ReplicatedStorage.WorldProps.<Name>` |
 | `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
+| `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -87,10 +88,14 @@ python3.11 tools/shades/screen_shades.py assets/shades/glb/<Fish>_Shades.glb --b
 `make_shades.py` writes, per fish, `<Shade>.png` (color), `<Shade>_emit.png` (glow,
 for glowing shades), `<Shade>_metal.png` and `<Shade>_rough.png` (metal shades),
 `finish_<matte|satin|gloss|mirror>.png` (the roughness every other shade shares) and
-`skins.json` (which maps each shade has). Texels the bake never reached (atlas gaps)
+`skins.json` (which maps each shade has), and no normal map (`NORMALS = False` since
+v10: none ships, and the screen flags each one). Texels the bake never reached (atlas gaps)
 are filled from their neighbours with a skin-tone guard. Fins are found per fish by
 `blades()` (settings in `FISH`). `render_shades.py` shows them all wired up, in line
-order (`pair` adds a second view from the left and below);
+order (`pair` adds a second view from the left and below; no normal map, as they
+ship; `water=0.35` grades the render the way the shallows do, OceanController's tint
+then the teal haze, which is where a gold turns olive; `strength=0.65` shows a glow
+map at the game's EmissiveStrength 1 instead of the default 3);
 `pack_shades.py` turns them into glTF materials (green roughness, blue metal, the
 glow as the emissive texture, which Studio's importer turns into the
 SurfaceAppearance's glow mask). How bright a skin glows in game, and how it pulses,
@@ -135,7 +140,11 @@ and the teeth are the light bits inside the mouth's dark slot (lavender texels m
 views land on). Every skin then paints the teeth `BONE` (0.92, 0.92, 0.91; neutral on
 purpose: a warmer bone white reads as pale cream to `screen_shades.py` and got two Reef
 Shark skins flagged), shaded a
-little by their own paint, satin, with no glow or metal on them. Each toothed fish also
+little by their own paint, satin, with no glow or metal on them. Nothing glows within
+`MOUTH_DARK` of them either (0.006-0.016 body lengths in 3D, `Fish.mouth_zone`: the gums
+and the inside of the mouth between the teeth, which the teeth mask leaves to the skin;
+v10, after Thunder's arcs glowed along the 'Cuda's gums and read as lightning over its
+teeth), and Thunder's arcs stop short of the mouth. Each toothed fish also
 gets a **Natural** skin (its own texture, white teeth, the Angler's lure glowing), which
 `Cosmetics` wears when the fish has no shade (or a shade not imported yet, tinted).
 A moving sheen (a Texture, which can't be masked) skips the face a toothed fish's head
@@ -157,7 +166,14 @@ In Studio: File → Import 3D, one `assets/shades/glb/<Fish>_Shades.glb` at a ti
 the fish's folder, and a `_ShadesPatch` name without `--only`). `organize_shades.luau`
 files a patch's skins without clearing the rest. Import patches after the full packs,
 never in the same organize run. The v9 patch (`shade_patch_v9`) is CatchCrystal on
-every fish and Magma on the MorayEel.
+every fish and Magma on the MorayEel. The v10 patch (`shade_patch_v10`, packed to
+`assets/shades/patch10` so v9's files stay as they were) answers the PC's SK2 notes
+(docs/playtests/2026-10-16-pc.md): Golden is an orange-leaning gold with a faint even
+glow map (made for the default EmissiveStrength 1) so the water's blue-green no longer
+turns it olive; WeekWave, WeekWreck, Abyssal Current, Ribbon, Chrome and Scarred are
+lifted to read from the side; Thunder's arcs stop short of the 'Cuda's mouth. Before/after
+sheets, studio light and in water: `assets/shades/previews/v10_<Fish>_compare.jpg`
+(and `v10_Cuda_Thunder_mouth.jpg`). Import it after v9.
 
 **Sheens** (`tools/shades/make_sheens.py [name ...]`, python3.11 + scipy): tiling
 512² layers in `assets/textures/`, uploaded as Images and keyed in

@@ -64,6 +64,10 @@ SIZE = 1024
 # white. Any warmer and screen_shades.py counts it as pale cream (Cr - Cb >= 3): the
 # first try, (0.93, 0.92, 0.88), added 1% cream to two Reef Shark skins and was flagged
 BONE = (0.92, 0.92, 0.91)
+# No glow within this of the teeth (body lengths, in 3D: inner, outer), on any skin:
+# the gums and the inside of the mouth between the teeth (Fish.mouth_zone). The
+# 'Cuda's mouth slot lies 0.003-0.015 from its teeth, its lips beyond
+MOUTH_DARK = (0.006, 0.016)
 
 FISH = {
     "Nibbler": {"teeth": False, "keep_vivid": False, "blade": 0.045, "blade_top": 0.035},
@@ -305,6 +309,26 @@ class Fish:
         teeth = ndimage.binary_closing(teeth, iterations=1) & self.cov
         return np.clip(ndimage.gaussian_filter(teeth.astype(np.float32), 0.6) * 1.8, 0, 1)
 
+    def mouth_zone(self, inner, outer):
+        """How near each texel is to the teeth, in 3D on the body (1 within `inner`
+        body lengths of a tooth, 0 past `outer`; all 0 on a fish with no teeth). Only
+        the head's teeth count: a few tooth texels land on UV seams far down the body.
+        The gums and the inside of the mouth sit between the teeth there, which the
+        teeth mask leaves to the skin: Thunder's arcs glowed across them, and read as
+        lightning over the teeth ('Cuda, playtest 2026-10-16)."""
+        key = ("mouth_zone", inner, outer)
+        store = self.__dict__.setdefault("_cache", {})
+        if key not in store:
+            heads = (self.teeth > 0.5) & self.real & (self.y < 0.35)
+            if not heads.any():
+                store[key] = np.zeros(self.y.shape, np.float32)
+            else:
+                if "teeth_distance" not in store:
+                    d, _ = cKDTree(self.p[heads]).query(self.p.reshape(-1, 3), k=1)
+                    store["teeth_distance"] = d.reshape(self.y.shape).astype(np.float32)
+                store[key] = (smoothstep(outer, inner, store["teeth_distance"]) * self.cov).astype(np.float32)
+        return store[key]
+
     def _tooth_colour(self):
         """Bone white, shaded like the teeth's own paint (darker at the roots)."""
         bone = np.array(BONE, np.float32)
@@ -542,6 +566,11 @@ FINISHES = {"matte": 0.86, "satin": 0.56, "gloss": 0.3, "mirror": 0.14}
 
 
 NORMAL_Y_SIGN = 1.0  # glTF/OpenGL: green is up the image; flip to -1 if rivets look sunken in Studio
+# No relief normal maps are written (v10): none ships since v8.1 (pack_shades.py
+# NORMALS = False; the account was terminated over one, 2026-10-13), and
+# screen_shades.py flags every one it finds. `relief` and `height` are kept so they
+# could come back as colour shading; the colour maps never depended on them
+NORMALS = False
 DETAIL_FLOOR = 0.8  # the fish's painted creases (gill, fin rays, mouth) always show at least this much
 
 
@@ -581,7 +610,7 @@ def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail
     # `floor` lowers the creases' floor for one skin (thin pale lines on a dark body
     # read as skin to the classifier once the creases brightened them: Undertow)
     strength = max(detail, DETAIL_FLOOR if floor is None else floor)
-    normal = relief_normal(m, rgb, height, relief, fine) if relief > 0 else None
+    normal = relief_normal(m, rgb, height, relief, fine) if NORMALS and relief > 0 else None
     rgb = rgb * (1 + strength * fine)[..., None]
     rgb = np.clip(rgb, 0, 1)
     rgb = mix(rgb, m.color, m.keep)
@@ -589,7 +618,10 @@ def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail
     rgb = mix(rgb, m.tooth, m.teeth)
     rgb[~m.cov] = m.color[~m.cov]
     if emit is not None:
-        emit = np.clip(np.asarray(emit, np.float32), 0, 1) * (1 - np.maximum(m.keep, m.teeth))[..., None]
+        # Nothing glows on the teeth or right round them (the gums and the inside of
+        # the mouth between them), so no glow runs across the teeth (v10)
+        dim = np.maximum(np.maximum(m.keep, m.teeth), m.mouth_zone(*MOUTH_DARK))
+        emit = np.clip(np.asarray(emit, np.float32), 0, 1) * (1 - dim)[..., None]
     if m.lure is not None:
         lure = m.color * m.lure[..., None]
         emit = lure if emit is None else np.maximum(emit, lure)
@@ -1214,8 +1246,12 @@ def thunder(m):
     rgb = coat(m, (0.16, 0.19, 0.30), (0.26, 0.31, 0.46), (0.12, 0.15, 0.26))
     ridge = 1 - np.abs(fbm_at(body_coords(m), 6, 40) * 2 - 1)
     lo, hi = np.percentile(ridge[m.cov], [93.5, 97.5])  # forked lines, never blotches
-    bolt = smoothstep(lo, hi, ridge)
-    halo = glow_halo(bolt, 5)
+    # The arcs stop short of the mouth (playtest 2026-10-16: on the 'Cuda they ran
+    # along the gums between the teeth and read as lightning over them), like
+    # Riptide's stripes
+    calm = m.mouth_zone(0.02, 0.045)
+    bolt = smoothstep(lo, hi, ridge) * (1 - calm)
+    halo = glow_halo(bolt, 5) * (1 - calm)
     # Violet-blue bolts: near-white lines on black trip the moderation classifier
     rgb = mix(rgb, (0.38, 0.32, 1.0), halo * 0.7)
     rgb = mix(rgb, (0.72, 0.68, 1.0), bolt)
@@ -1945,9 +1981,18 @@ def cuda_chrome(m):  # Gunmetal chrome: dark mirror metal, blue-violet speed str
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
     e = m.nrm[..., 2] * 0.6 + np.clip(vn, -1, 1) * 0.4
-    sky = mix(board(m, (0.44, 0.47, 0.54)), (0.22, 0.25, 0.36), smoothstep(0.1, 0.95, e))
-    ground = mix(board(m, (0.13, 0.14, 0.16)), (0.33, 0.35, 0.39), smoothstep(-0.15, -0.9, e))
+    # Still gunmetal, lifted (playtest 2026-10-16: dark and flat from the side): the
+    # sky and ground reflections are mid-toned, and two bright cool bands (the sky
+    # just over the horizon line, a lower reflection under it) make it read as
+    # polished metal at a distance. Cool and a little blue-violet: neutral grey lines
+    # on grey scored high on the classifier (Battle-Scarred)
+    sky = mix(board(m, (0.62, 0.66, 0.76)), (0.32, 0.36, 0.48), smoothstep(0.1, 0.95, e))
+    ground = mix(board(m, (0.24, 0.25, 0.31)), (0.48, 0.51, 0.59), smoothstep(-0.15, -0.9, e))
     rgb = mix(ground, sky, crisp(m, e - 0.02))
+    band_hi = crisp(m, 0.035 - np.abs(e - 0.2))
+    band_lo = crisp(m, 0.04 - np.abs(e + 0.55))
+    rgb = mix(rgb, (0.78, 0.82, 0.96), band_hi * 0.9)
+    rgb = mix(rgb, (0.60, 0.64, 0.80), band_lo * 0.8)
     rgb = mix(rgb, (0.04, 0.05, 0.08), smoothstep(0.05, 0.0, np.abs(e)))
     streak_p = np.stack([m.ex * 0.05, u * 2.2, vn * 16], -1).astype(np.float32)
     n1 = value_noise(streak_p, 1.0, 105)
@@ -1959,8 +2004,10 @@ def cuda_chrome(m):  # Gunmetal chrome: dark mirror metal, blue-violet speed str
     rgb = mix(rgb, (0.12, 0.10, 0.34), smoothstep(0.26, 0.2, n1) * fade * 0.6)
     edge = hard(smoothstep(0.7, 0.78, tip))
     rgb = mix(rgb, (0.02, 0.02, 0.03), edge)
-    metal = 0.7 * (1 - edge) * (1 - 0.5 * streak)
-    return done(m, rgb, "mirror", metal=metal, rough=0.1 + 0.6 * edge + 0.15 * streak, detail=0.4)
+    # Little metal (0.7 before): metal shows the dark blue water, not its own colour,
+    # so the polish is painted in (the bands) and the metal only adds a sheen
+    metal = 0.2 * (1 - edge) * (1 - 0.5 * streak)
+    return done(m, rgb, "mirror", metal=metal, rough=0.14 + 0.6 * edge + 0.12 * streak, detail=0.4)
 
 
 def cuda_comet(m):  # A comet: a blazing cyan head, a tail of sparks pouring back
@@ -2222,13 +2269,20 @@ def mor_serpent(m):  # A sea serpent: emerald dragon scales, each edged in gold
 
 
 def mor_ribbon(m):  # Ribbon eel: electric cobalt, a yellow dorsal fin edge and jaw
+    m = smooth(m)  # the lateral line along the body, not stepped per slice
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
-    rgb = body_coat(m, (0.0, 0.10, 0.74), (0.06, 0.32, 1.0), soft=0.3)
-    rgb = mix(rgb, (0.02, 0.20, 0.96), smoothstep(0.5, 0.0, np.abs(vn)) * 0.5)
+    # More contrast down the flank (playtest 2026-10-16: "mostly plain blue" from the
+    # side): a deep navy-cobalt back, an electric blue flank, a bright blue belly, a
+    # crisp bright cyan lateral line in a navy groove, and a wider yellow dorsal edge
+    rgb = body_coat(m, (0.0, 0.07, 0.48), (0.16, 0.50, 1.0), soft=0.22)
+    rgb = mix(rgb, (0.03, 0.30, 1.0), smoothstep(0.45, 0.0, np.abs(vn + 0.05)) * 0.6)
+    lateral = crisp(m, 0.07 - np.abs(vn + 0.08)) * (1 - fins) * smoothstep(0.09, 0.14, u) * smoothstep(0.98, 0.9, u)
+    rgb = mix(rgb, (0.0, 0.08, 0.40), crisp(m, 0.14 - np.abs(vn + 0.08)) * (1 - fins) * smoothstep(0.09, 0.14, u) * 0.6)
+    rgb = mix(rgb, (0.22, 0.86, 1.0), lateral)
     jaw = hard(smoothstep(0.075, 0.065, u) + smoothstep(0.16, 0.14, u) * smoothstep(0.42, 0.36, m.up))
     rgb = mix(rgb, (1.0, 0.84, 0.0), jaw)
-    edge = hard(smoothstep(0.93, 0.96, vn) * fins)
+    edge = hard(smoothstep(0.86, 0.9, vn) * fins)
     rgb = mix(rgb, (1.0, 0.84, 0.0), edge)
     return done(m, rgb, "gloss", detail=0.6)
 
@@ -2383,8 +2437,12 @@ def shk_scarred(m):  # A veteran: healed rake scars, crescent bites with tooth g
     fins, tip = fin_parts(m)
     u, v, vn = height(m)
     hh, at = girth(m)
-    rgb = body_coat(m, (0.30, 0.35, 0.42), (0.58, 0.64, 0.73), soft=0.15)
-    rgb = mix(rgb, (0.30, 0.35, 0.42), fins * smoothstep(0.3, 0.6, m.up))
+    # Scars that read from the side (playtest 2026-10-16: grey-blue with faint scars):
+    # about 1.7x wider and longer, brighter cool cores in darker rims, on a slightly
+    # darker back, and more of them on the upper flank and the front half, which a
+    # side view shows most (the first ones kept their places)
+    rgb = body_coat(m, (0.27, 0.32, 0.40), (0.56, 0.62, 0.71), soft=0.15)
+    rgb = mix(rgb, (0.27, 0.32, 0.40), fins * smoothstep(0.3, 0.6, m.up))
     rng = np.random.default_rng(280)
     core = np.zeros_like(u)
     rim = np.zeros_like(u)
@@ -2399,23 +2457,47 @@ def shk_scarred(m):  # A veteran: healed rake scars, crescent bites with tooth g
         h = at(uc)
         vc = rng.uniform(-0.5, 0.7) * h
         ang = rng.uniform(-1.1, -0.4) if rng.random() < 0.6 else rng.uniform(0.4, 1.1)
-        half = rng.uniform(0.025, 0.045)
+        half = rng.uniform(0.035, 0.06)
         nx, ny = -np.sin(ang), np.cos(ang)
         for k in (-1, 0, 1):
-            off = k * 0.0075
+            off = k * 0.012
             a = (uc - half * np.cos(ang) + off * nx, vc - half * np.sin(ang) + off * ny)
             b = (uc + half * np.cos(ang) + off * nx, vc + half * np.sin(ang) + off * ny)
-            c_, r_ = scar(a, b, 0.0026)
+            c_, r_ = scar(a, b, 0.0045)
             core, rim = np.maximum(core, c_), np.maximum(rim, r_)
     for _ in range(9):  # single scars
         uc = rng.uniform(0.1, 0.86)
         h = at(uc)
         vc = rng.uniform(-0.8, 0.9) * h
         ang = rng.uniform(-1.3, 1.3)
-        half = rng.uniform(0.015, 0.04)
+        half = rng.uniform(0.025, 0.055)
         a = (uc - half * np.cos(ang), vc - half * np.sin(ang))
         b = (uc + half * np.cos(ang), vc + half * np.sin(ang))
-        c_, r_ = scar(a, b, 0.0028)
+        c_, r_ = scar(a, b, 0.0048)
+        core, rim = np.maximum(core, c_), np.maximum(rim, r_)
+    more = np.random.default_rng(282)
+    for _ in range(4):  # more rakes, higher up and further forward
+        uc = more.uniform(0.18, 0.6)
+        h = at(uc)
+        vc = more.uniform(0.15, 0.75) * h
+        ang = more.uniform(-1.1, -0.4) if more.random() < 0.5 else more.uniform(0.4, 1.1)
+        half = more.uniform(0.035, 0.055)
+        nx, ny = -np.sin(ang), np.cos(ang)
+        for k in (-1, 0, 1):
+            off = k * 0.012
+            a = (uc - half * np.cos(ang) + off * nx, vc - half * np.sin(ang) + off * ny)
+            b = (uc + half * np.cos(ang) + off * nx, vc + half * np.sin(ang) + off * ny)
+            c_, r_ = scar(a, b, 0.0045)
+            core, rim = np.maximum(core, c_), np.maximum(rim, r_)
+    for _ in range(6):  # more single scars there
+        uc = more.uniform(0.12, 0.6)
+        h = at(uc)
+        vc = more.uniform(0.0, 0.85) * h
+        ang = more.uniform(-1.3, 1.3)
+        half = more.uniform(0.025, 0.05)
+        a = (uc - half * np.cos(ang), vc - half * np.sin(ang))
+        b = (uc + half * np.cos(ang), vc + half * np.sin(ang))
+        c_, r_ = scar(a, b, 0.0048)
         core, rim = np.maximum(core, c_), np.maximum(rim, r_)
     gouge = np.zeros_like(u)
     for _ in range(4):  # crescent bites
@@ -2428,18 +2510,20 @@ def shk_scarred(m):  # A veteran: healed rake scars, crescent bites with tooth g
         r = np.hypot(du, dv)
         th = (np.arctan2(dv, du) - start) % (2 * np.pi)
         on_arc = smoothstep(2.6, 2.45, th)
-        core = np.maximum(core, smoothstep(0.003, 0.0018, np.abs(r - R)) * on_arc)
-        rim = np.maximum(rim, smoothstep(0.0062, 0.0046, np.abs(r - R)) * on_arc)
+        core = np.maximum(core, smoothstep(0.0052, 0.0032, np.abs(r - R)) * on_arc)
+        rim = np.maximum(rim, smoothstep(0.0105, 0.008, np.abs(r - R)) * on_arc)
         for k in np.linspace(0.12, 2.4, 10):
-            tu = uc + (R - 0.007) * np.cos(start + k)
-            tv = vc + (R - 0.007) * np.sin(start + k)
-            gouge = np.maximum(gouge, smoothstep(0.0034, 0.0022, np.hypot((u - tu) * 1.4, v - tv)))
+            tu = uc + (R - 0.011) * np.cos(start + k)
+            tv = vc + (R - 0.011) * np.sin(start + k)
+            gouge = np.maximum(gouge, smoothstep(0.0055, 0.0036, np.hypot((u - tu) * 1.4, v - tv)))
     body = 1 - fins * 0.8
     # Cool blue-grey scars: neutral grey lines with dark rims scored 0.55 on the
     # moderation classifier (screen, 2026-10-10)
-    rgb = mix(rgb, (0.16, 0.20, 0.27), rim * body)
-    rgb = mix(rgb, (0.64, 0.72, 0.86), core * body)
-    rgb = mix(rgb, (0.10, 0.13, 0.19), gouge * body)
+    # Navy rims and blue cores, not near-black and near-white: bold black-and-white
+    # rake stripes scored 0.61 (screen 2026-10-16)
+    rgb = mix(rgb, (0.14, 0.20, 0.36), rim * body)
+    rgb = mix(rgb, (0.56, 0.72, 0.96), core * body)
+    rgb = mix(rgb, (0.12, 0.17, 0.32), gouge * body)
     torn = hard(smoothstep(0.8, 0.88, tip) * smoothstep(0.5, 0.56, fbm(m, 30, 281)))
     rgb = mix(rgb, (0.08, 0.09, 0.10), torn)
     return done(m, rgb, "matte", detail=0.9, hush=own_dark_fins(m))
@@ -2733,12 +2817,19 @@ def ang_starfall(m):  # Starfall: constellations joined by glowing lines, fallin
 def catch_golden(m):  # Golden: polished gold with the fish's own pattern engraved darker
     L = own_lum(m)
     lines = own_lines(m)
-    # A warm, rich gold (playtest 2026-10-10: it read lime under the shallows' blue
-    # light): a few degrees toward orange (about 35-41 degrees, was 38-45; more and
-    # the Nibbler's reads as orange as its Percula), fully saturated, a little
-    # brighter. Golds with no blue in them, hard edges
-    gold = mix(board(m, (0.92, 0.535, 0.0)), (1.0, 0.69, 0.0), smoothstep(0.1, 0.85, L))
-    gold = mix(gold, (0.46, 0.20, 0.0), hard(smoothstep(0.35, 0.6, lines)) * 0.85)
+    # An orange-gold that stays gold in the water (playtest 2026-10-16: olive-brown on
+    # the Nibbler, 'Cuda, Puffer and Moray, tan on the Reef Shark). The shallows grade
+    # the picture toward blue-green and haze it teal, which adds green and blue to
+    # whatever a skin reflects: a gold at 38-45 degrees came out at 55-70 there, olive,
+    # and the darker it was lit the more the haze won. So a warmer, brighter gold at
+    # about 33-37 degrees (warm gold under a neutral light, as in the Wardrobe; at 30 it
+    # read orange) with a glow under it (below), which together read ~45-50, gold,
+    # through the water. No blue at all (a gold with blue under 20/255 is outside every
+    # skin-tone rule), hard edges
+    gold = mix(board(m, (0.98, 0.54, 0.0)), (1.0, 0.64, 0.03), smoothstep(0.1, 0.85, L))
+    # The engraving lighter and a little thinner: dark bands of it made the gold muddy
+    engraved = hard(smoothstep(0.4, 0.62, lines))
+    gold = mix(gold, (0.62, 0.25, 0.0), engraved * 0.75)
     # A fine brushed grain running nose to tail (on the smooth frame, so it doesn't
     # jump at every slice): brushed metal, and it breaks up the big smooth fields of
     # a plainly painted fish, which the moderation classifier read as skin once
@@ -2747,13 +2838,17 @@ def catch_golden(m):  # Golden: polished gold with the fish's own pattern engrav
     sm = smooth(m)
     gp = np.stack([sm.ex * 0.02, m.y * 3.0, sm.ez * 40], -1).astype(np.float32)
     grain = value_noise(gp, 1.0, 410) * 0.6 + value_noise(gp, 2.3, 411) * 0.4
-    gold = gold * (0.9 + 0.2 * grain)[..., None]
-    rgb = sheen(m, gold, 0.3, (1.0, 0.74, 0.06))
-    # An even metal map: one that traced the engraving was a grey line drawing, which
-    # the moderation classifier scored 0.5-0.98 (screen, 2026-10-10). Less metal than
-    # before (0.6): metal reflects the water's blue through the gold's own colour,
-    # which comes out green; more of the look is the gold itself now
-    return done(m, rgb, "satin", metal=np.full(m.y.shape, 0.35, np.float32), detail=0.4)
+    gold = gold * (0.92 + 0.16 * grain)[..., None]
+    rgb = sheen(m, gold, 0.24, (1.0, 0.8, 0.12))
+    # A faint, even self-glow over the gold (the eyes, teeth and mouth left out by
+    # done()), so it holds its colour where the water's light is blue: the importer
+    # turns this into a grayscale mask on the colour map, about a third of the gold at
+    # the game's default EmissiveStrength 1, less in the engraving
+    emit = gold * (0.55 * (1 - 0.4 * engraved))[..., None]
+    # An even metal map, and little of it (0.35 before): metal reflects the water's
+    # blue through the gold's own colour, which comes out green; one that traced the
+    # engraving was a grey line drawing the classifier scored 0.5-0.98 (2026-10-10)
+    return done(m, rgb, "satin", emit=emit, metal=np.full(m.y.shape, 0.15, np.float32), detail=0.4)
 
 
 def catch_glowing(m):  # Glowing: deep navy, the fish's own lines softly glowing cyan-green
@@ -2989,12 +3084,15 @@ def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on
     crest = -0.55 + 1.4 * s**2.2
     depth = crest - vn
     inside = depth > 0
-    sky = body_coat(m, (0.03, 0.07, 0.26), (0.05, 0.10, 0.32), soft=0.3)
+    # Mid-toned (playtest 2026-10-16: dark from the side, little showing beyond the
+    # crests): an ultramarine sky and sea, not near-black navy, so the print reads at a
+    # distance and the foam sits on a blue, not white on black
+    sky = body_coat(m, (0.07, 0.15, 0.48), (0.10, 0.21, 0.58), soft=0.3)
     far = 0.62 + 0.12 * np.sin(2 * np.pi * (u / 0.11))
-    sky = mix(sky, (0.10, 0.24, 0.58), smoothstep(far + 0.02, far - 0.02, vn) * 0.8)
-    sea = mix(board(m, (0.18, 0.40, 0.82)), (0.03, 0.12, 0.44), smoothstep(0.0, 0.9, depth))
+    sky = mix(sky, (0.18, 0.38, 0.80), smoothstep(far + 0.02, far - 0.02, vn) * 0.85)
+    sea = mix(board(m, (0.22, 0.50, 0.95)), (0.06, 0.22, 0.64), smoothstep(0.0, 0.9, depth))
     grain = smoothstep(0.1, 0.0, np.abs(((depth * 7) % 1.0) - 0.5) - 0.42) * smoothstep(0.1, 0.22, depth)
-    sea = mix(sea, (0.36, 0.58, 0.92), grain * 0.6)
+    sea = mix(sea, (0.44, 0.68, 1.0), grain * 0.65)
     rgb = np.where(inside[..., None], sea, sky)
     claws = 0.5 + 0.5 * np.cos(2 * np.pi * u / 0.016)
     foam_w = (0.06 + 0.4 * smoothstep(0.4, 1.0, s)) * (0.35 + 0.65 * claws**2)
@@ -3008,7 +3106,7 @@ def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on
     ang = np.arctan2(dv, du)
     lip = smoothstep(0.26, 0.17, np.abs(r / np.maximum(R, 1e-5) - 1)) * smoothstep(-0.7, -0.25, ang)
     hollow = smoothstep(0.86, 0.78, r / np.maximum(R, 1e-5)) * inside
-    rgb = mix(rgb, (0.02, 0.07, 0.30), hollow)
+    rgb = mix(rgb, (0.04, 0.13, 0.46), hollow)
     rgb = mix(rgb, foam_col, hard(lip))
     spray = smoothstep(0.0034, 0.002, nearest_dots(m, 900, 1600)) * (vn > crest) * (vn < crest + 0.4) * smoothstep(0.6, 0.9, s)
     rgb = mix(rgb, foam_col, spray)
@@ -3089,7 +3187,12 @@ def week_wreck(m):  # A shipwreck: riveted hull plates, rust streaks, barnacles,
     hh, at = girth(m)
     water = -0.3
     upper = vn > water
-    rgb = np.where(upper[..., None], board(m, (0.20, 0.28, 0.28)), board(m, (0.09, 0.11, 0.12)))
+    # Lighter paint (playtest 2026-10-16: dark from the side, little showing beyond
+    # the grid): a deep teal hull over a navy anti-fouling bottom below the waterline,
+    # so the two read apart at a distance. Saturated on purpose (screen 2026-10-16): a
+    # greyer verdigris (0.31, 0.48, 0.47) scored 0.83 on the Nibbler and a steel blue
+    # 0.52, and a red bottom 0.97 (big red fields on the belly's islands)
+    rgb = np.where(upper[..., None], board(m, (0.12, 0.38, 0.40)), board(m, (0.10, 0.17, 0.38)))
     plate_l, plate_h = 0.11, 0.5
     row = np.floor(vn / plate_h)
     col = (u + 0.5 * plate_l * (row % 2)) / plate_l
@@ -3112,11 +3215,12 @@ def week_wreck(m):  # A shipwreck: riveted hull plates, rust streaks, barnacles,
     bloom = smoothstep(0.005, 0.0025, rivet_d) * smoothstep(0.5, 0.58, fbm(m, 30, 422))
     rust = hard(np.clip(streak + bloom, 0, 1)) * upper
     rgb = mix(rgb, (0.05, 0.06, 0.06), seam)
-    rgb = mix(rgb, (0.80, 0.26, 0.0), rust)
-    rgb = mix(rgb, (0.52, 0.12, 0.0), rust * smoothstep(0.62, 0.7, value_noise(streak_p * 1.7, 1.0, 426)))
-    rgb = mix(rgb, (0.48, 0.52, 0.54), rivet)
-    rgb = mix(rgb, (0.30, 0.36, 0.36), smoothstep(0.05, 0.03, np.abs(vn - water)))
-    rgb = hull_number(m, rgb, "07", 0.42, 0.3)
+    rgb = mix(rgb, (0.86, 0.30, 0.0), rust)
+    rgb = mix(rgb, (0.56, 0.14, 0.0), rust * smoothstep(0.62, 0.7, value_noise(streak_p * 1.7, 1.0, 426)))
+    rgb = mix(rgb, (0.62, 0.68, 0.72), rivet)
+    # The waterline: a dark stripe between the verdigris and the red
+    rgb = mix(rgb, (0.06, 0.08, 0.10), hard(smoothstep(0.05, 0.03, np.abs(vn - water))))
+    rgb = hull_number(m, rgb, "07", 0.42, 0.3, (0.74, 0.80, 0.88))
     centres = scatter(m, 7, 423, weight=smoothstep(0.0, -0.4, vn - water))
     cd, _, _ = nearest(m, centres)
     pts = scatter(m, 140, 424, weight=np.exp(-((cd / 0.03) ** 2)))
@@ -3135,7 +3239,7 @@ SEGMENTS = {  # a seven-segment digit: (a top, b top right, c bottom right, d bo
 }
 
 
-def hull_number(m: Fish, rgb, text, u_mid, vn_mid):
+def hull_number(m: Fish, rgb, text, u_mid, vn_mid, paint_rgb=(0.58, 0.64, 0.72)):
     """Paints a stencilled number on both flanks, reading the right way round on each."""
     u, v, vn = height(m)
     hh, at = girth(m)
@@ -3162,7 +3266,7 @@ def hull_number(m: Fish, rgb, text, u_mid, vn_mid):
             d, _ = segment(lx, ly, a, b)
             paint = np.maximum(paint, smoothstep(h * 0.11, h * 0.08, d))
     chipped = paint * smoothstep(0.4, 0.46, fbm(m, 30, 425))
-    return mix(rgb, (0.58, 0.64, 0.72), hard(chipped))
+    return mix(rgb, paint_rgb, hard(chipped))
 
 
 def week_sea_glass(m):  # Sea glass: frosted pebbles of bottle green, cobalt and amber, dark grout
@@ -3252,20 +3356,25 @@ def pass_undertow(m):  # Undertow: ink violet, whirlpools of glowing teal spiral
 def pass_abyssal_current(m):  # Abyssal Current: the deep's black-green water, a drifting current, bioluminescent motes
     m = smooth(m)
     u, v, vn = height(m)
-    rgb = body_coat(m, (0.02, 0.07, 0.09), (0.05, 0.16, 0.18), soft=0.3)
-    rgb = mix(rgb, (0.02, 0.06, 0.08), m.fin * 0.6)
+    # Lifted out of near-black (playtest 2026-10-16: very dark, navy with faint specks
+    # from the side): a deep teal-green water, the current wider and brighter, more
+    # motes, a second faint current lower down. Still the deep: no pale fields
+    rgb = body_coat(m, (0.05, 0.21, 0.23), (0.10, 0.36, 0.36), soft=0.3)
+    rgb = mix(rgb, (0.04, 0.16, 0.19), m.fin * 0.6)
     drift = fbm(m, 4, 56)
-    band = smoothstep(0.25, 0.0, np.abs(vn + 0.1 + (drift - 0.5) * 0.6)) * (1 - m.fin)
-    rgb = mix(rgb, (0.04, 0.36, 0.34), band * 0.55)
-    motes = speckle(m, 160, 0.88, seed=57) * (1 - m.fin * 0.5) * m.cov
+    band = smoothstep(0.32, 0.0, np.abs(vn + 0.1 + (drift - 0.5) * 0.6)) * (1 - m.fin)
+    under = smoothstep(0.16, 0.0, np.abs(vn + 0.62 - (drift - 0.5) * 0.4)) * (1 - m.fin)
+    rgb = mix(rgb, (0.07, 0.64, 0.56), band * 0.75)
+    rgb = mix(rgb, (0.05, 0.50, 0.48), under * 0.55)
+    motes = speckle(m, 130, 0.865, seed=57) * (1 - m.fin * 0.5) * m.cov
     halo = glow_halo(motes, 4)
-    rgb = mix(rgb, (0.18, 0.80, 0.70), halo * 0.5)
-    rgb = mix(rgb, (0.70, 1.0, 0.90), motes)
-    rgb = sheen(m, rgb, 0.12, (0.5, 0.9, 0.85))
+    rgb = mix(rgb, (0.16, 0.78, 0.68), halo * 0.6)
+    rgb = mix(rgb, (0.62, 1.0, 0.88), motes)
+    rgb = sheen(m, rgb, 0.14, (0.5, 0.9, 0.85))
     emit = (
         motes[..., None] * C(0.55, 1.0, 0.85)
-        + (halo * 0.35)[..., None] * C(0.15, 0.75, 0.65)
-        + (band * 0.25)[..., None] * C(0.05, 0.5, 0.45)
+        + (halo * 0.4)[..., None] * C(0.15, 0.75, 0.65)
+        + (band * 0.35 + under * 0.2)[..., None] * C(0.05, 0.5, 0.45)
     )
     return done(m, rgb, "satin", emit=emit, detail=0.7)
 
