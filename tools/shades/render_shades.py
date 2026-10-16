@@ -1,13 +1,15 @@
 """Renders a fish wearing each of its shade skins, three-quarter view, for review.
 
-    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [zoom=2.5 focus=0.3 res=900x600] [Shade ...]
+    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [normals] [zoom=2.5 focus=0.3 res=900x600] [Shade ...]
 
 Writes <out_dir>/<Fish>_<Shade>.png (the fish's own texture as <Fish>_Base.png), by
 default every shade in the fish's own list (shade_lines.py: its line, then the
 universal skins). `pair` adds a second view from the fish's left side and a little
 below (the other flank and the belly) beside the first. contact_sheet.py lays them
 out. Each skin is shown the way it ships: its finish's roughness map (or its own),
-its metal map and its glow map, from skins.json.
+its metal map and its glow map, from skins.json. No normal map is wired in, since
+none ships (v8.1, pack_shades.py NORMALS = False); `normals` shows the relief maps
+make_shades.py still writes, as v8 had them.
 """
 
 import json
@@ -26,13 +28,14 @@ SRC, SKINS, OUT = argv[0], pathlib.Path(argv[1]).resolve(), pathlib.Path(argv[2]
 rest = argv[3:]
 FLIP = "flip" in rest
 PAIR = "pair" in rest
+NORMALS = "normals" in rest
 # Close-ups for review: zoom=<x> (2.5 frames about 40% of the fish) centred at
 # focus=<f> along it (0 the snout .. 1 the tail tip), res=<w>x<h>
 OPTS = dict(a.split("=", 1) for a in rest if "=" in a)
 ZOOM = float(OPTS.get("zoom", 1.0))
 FOCUS = float(OPTS["focus"]) if "focus" in OPTS else None
 RES = tuple(int(x) for x in OPTS.get("res", "520x360").split("x"))
-rest = [a for a in rest if a not in ("flip", "pair") and "=" not in a]
+rest = [a for a in rest if a not in ("flip", "pair", "normals") and "=" not in a]
 NAME = pathlib.Path(SRC).stem
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -104,6 +107,8 @@ normal_tex = map_node("normal")
 normal_map = tree.nodes.new("ShaderNodeNormalMap")
 normal_map.inputs["Strength"].default_value = 1.0
 own_normal_links = [link.from_socket for link in bsdf.inputs["Normal"].links]
+if not NORMALS:  # the fish's own normal map doesn't ship either (v8.1)
+    own_normal_links = []
 
 scene = bpy.context.scene
 scene.render.engine = "CYCLES"
@@ -163,7 +168,7 @@ def wear(spec, folder, shade):
     bsdf.inputs["Emission Strength"].default_value = 0.0
     if spec is None:
         return
-    if spec.get("normal") and (folder / f"{shade}_normal.png").exists():
+    if NORMALS and spec.get("normal") and (folder / f"{shade}_normal.png").exists():
         for link in list(bsdf.inputs["Normal"].links):
             tree.links.remove(link)
         normal_tex.image = grey(folder / f"{shade}_normal.png")
