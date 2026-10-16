@@ -336,13 +336,32 @@ end
 -- 2026-10-16 BD2.)
 local VIEW_INSET = 3
 
+-- Whether another of the storey's rooms carries on past `z` (where two rooms meet,
+-- the line between them is open floor, not a wall)
+local function carriesOn(rooms: { any }, room: any, z: number): boolean
+	for _, other in rooms do
+		if other ~= room then
+			local near, far = math.min(other.z0, other.z1), math.max(other.z0, other.z1)
+			if z >= near - 0.5 and z <= far + 0.5 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function clampView()
 	local level = denRecord().level or 1
+	local rooms = DenSpace.rooms(level, view.storey)
 	local bestX, bestZ, bestGap = view.x, view.z, math.huge
-	for _, room in DenSpace.rooms(level, view.storey) do
+	for _, room in rooms do
 		local half = math.max(room.x - VIEW_INSET, 0)
 		local near, far = math.min(room.z0, room.z1), math.max(room.z0, room.z1)
-		local z0, z1 = near + VIEW_INSET, far - VIEW_INSET
+		-- Inset from the end walls only: insetting both ends of every room left a
+		-- gap where two rooms meet that panning never crossed, so the view stopped
+		-- at the first room's end (PC 2026-10-16 round 2, D6)
+		local z0 = if carriesOn(rooms, room, near) then near else near + VIEW_INSET
+		local z1 = if carriesOn(rooms, room, far) then far else far - VIEW_INSET
 		if z0 > z1 then
 			z0, z1 = (near + far) / 2, (near + far) / 2
 		end
