@@ -6,12 +6,14 @@
 -- look). Things are placed freely in Build mode (BuildController): the client aims
 -- and asks, and this checks every request against the den's space (DenSpace) before
 -- it's saved. The trophy wall fills itself from the player's stats and trophies.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local DensConfig = require(ReplicatedStorage.Shared.Config.Dens)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Garden = require(ReplicatedStorage.Shared.Garden)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local DenBuilder = require(script.Parent.Parent.DenBuilder)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
@@ -93,7 +95,42 @@ local OLD_SLOTS: { [string]: { surface: string, at: Vector3 } } = {
 	X4 = { surface = "wall", at = Vector3.new(11.5, 8, 6) },
 }
 
+-- Placements made before the private interiors (owner, 2026-10-16): the main
+-- storey kept its height, but the lower storeys' decks went down from -34 and -70
+-- to -54 and -114. Each thing moves with its storey; anything that no longer fits
+-- the bigger rooms goes back to the tray (it's still owned).
+local OLD_DECKS = { 1, -34, -70 }
+local function relayout(den: DenRecord)
+	if (den.layout or 2) >= 3 then
+		return
+	end
+	den.layout = 3
+	for _, placement in den.placed do
+		local old = if placement.y >= -8 then 1 elseif placement.y >= -52 then 2 else 3
+		placement.y += DenSpace.storey(old).deck - OLD_DECKS[old]
+	end
+	for _ = 1, 3 do
+		local kept = {}
+		for _, placement in den.placed do
+			local item = Dens.itemsById[placement.id]
+			local at = Vector3.new(placement.x, placement.y, placement.z)
+			local fits = item ~= nil and DenSpace.check(den.level, item, placement.s, at).ok
+			if fits and placement.s == "floor" then
+				fits = DenSpace.resting(den.level, den.placed, at, placement.uid).ok
+			end
+			if fits then
+				table.insert(kept, placement)
+			end
+		end
+		if #kept == #den.placed then
+			break
+		end
+		den.placed = kept
+	end
+end
+
 local function migrate(den: DenRecord)
+	relayout(den)
 	for id, has in den.owned do
 		if Dens.itemsById[id] and has == true then
 			den.items[id] = math.max(den.items[id] or 0, 1)
@@ -471,6 +508,73 @@ function DenService.giveItems(player: Player, count: number)
 	DataService.markDirty(player)
 end
 
+-- The doorway portals (owner, 2026-10-16: every den is a private interior far
+-- outside the play area). A fish swimming into a den's portal on the plaza goes into
+-- that den (anyone may visit a den someone lives in, to look); one swimming into a
+-- den's way out comes back out in front of its doorway. The client asks as its fish
+-- swims in; the server checks it's really there, has the place stream in round the
+-- fish, then moves it.
+local travelling: { [Player]: boolean } = {}
+local function travel(player: Player, target: CFrame)
+	if travelling[player] then
+		return
+	end
+	travelling[player] = true
+	task.spawn(function()
+		pcall(function()
+			player:RequestStreamAroundAsync(target.Position, 3)
+		end)
+		local _, root = FishService.character(player)
+		if root and player.Parent then
+			Net.teleport(player, target)
+		end
+		travelling[player] = nil
+	end)
+end
+
+local function enterDen(player: Player, index: any)
+	if typeof(index) ~= "number" or index % 1 ~= 0 or index < 1 or index > Layout.DEN_COUNT then
+		return
+	end
+	local _, root = FishService.character(player)
+	if root == nil then
+		return
+	end
+	if (root.Position - Layout.doorFrame(index).Position).Magnitude > Layout.DOOR_RADIUS + 16 then
+		return
+	end
+	if FishService.ownerOf(index) == nil then
+		Net.notify(player, "No one lives in this den yet", "info")
+		return
+	end
+	travel(player, Layout.spawnFrame(index))
+end
+
+local function leaveDen(player: Player)
+	local _, root = FishService.character(player)
+	if root == nil then
+		return
+	end
+	local index = Layout.denAt(root.Position)
+	if index == nil then
+		return
+	end
+	if (root.Position - Layout.exitFrame(index).Position).Magnitude > Config.Dens.exit.radius + 16 then
+		return
+	end
+	travel(player, Layout.hubExitFrame(index))
+end
+
+-- Every fish inside den `index` goes back out to the plaza (its owner left)
+local function evict(index: number)
+	for _, player in Players:GetPlayers() do
+		local _, root = FishService.character(player)
+		if root and Layout.denAt(root.Position) == index then
+			travel(player, Layout.hubExitFrame(index))
+		end
+	end
+end
+
 function DenService.start()
 	DataService.loaded:connect(function(_player: Player, data: DataService.PlayerData)
 		migrate(data.den)
@@ -480,6 +584,7 @@ function DenService.start()
 	end)
 	FishService.denFreed:connect(function(index: number)
 		Guard.run("DenService.clear", function()
+			evict(index)
 			DenBuilder.clear(index, true)
 			WorldService.setDenLevel(index, nil)
 		end)
@@ -502,6 +607,8 @@ function DenService.start()
 	Net.onRequest("DenStore", store)
 	Net.onRequest("DenColor", color)
 	Net.onRequest("DenFloor", floor)
+	Net.onRequest("EnterDen", enterDen)
+	Net.onRequest("LeaveDen", leaveDen)
 	StateService.provide(function(player, data, state)
 		state.den = data.den
 		state.denIndex = FishService.denOf(player) or 0

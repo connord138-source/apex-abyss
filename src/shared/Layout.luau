@@ -1,7 +1,8 @@
 --!strict
--- Where things are in the hub: wall segments, dens, tunnels, Haul Pools and spawn
--- points. Shared so the server (building, banking, safe zone) and clients (HUD
--- hints) agree.
+-- Where things are in the hub and the dens: wall segments, den doorways, tunnels,
+-- the dens' interiors (each far outside the play area, Config/Dens `interior`),
+-- Haul Pools and spawn points. Shared so the server (building, banking, safe zone)
+-- and clients (HUD hints) agree.
 local Config = require(script.Parent.Config)
 
 local hub = Config.World.hub
@@ -40,28 +41,134 @@ local function outward(angle: number): Vector3
 	return Vector3.new(math.cos(angle), 0, math.sin(angle))
 end
 
--- A frame at the middle of den `index`'s floor-level room, facing out into the hub.
-function Layout.denFrame(index: number): CFrame
-	local angle = Layout.segmentAngle(denSegments[index])
-	local radial = outward(angle)
-	local middle = hub.center
-		+ radial * (hub.radius + hub.denDepth / 2)
-		+ Vector3.new(0, hub.denFloorY + hub.denHeight / 2, 0)
-	return CFrame.lookAt(middle, middle - radial)
+-- Den `index`'s doorway on the plaza (owner, 2026-10-16: private interiors): a
+-- round alcove in the cavern wall with a bubble portal at its back. The frame is the
+-- portal's middle, facing out into the hub.
+local DOOR_BACK = 9 -- the portal stands this far into the wall
+local DOOR_Y = 11 -- its middle over the den floor's height
+-- A portal takes a fish whose middle comes this close to it (a big fish's body meets
+-- the rock behind the portal with its middle ~7 studs off)
+local PORTAL_REACH = 8
+Layout.DOOR_RADIUS = 9
+function Layout.doorFrame(index: number): CFrame
+	local radial = outward(Layout.segmentAngle(denSegments[index]))
+	local at = hub.center + radial * (hub.radius + DOOR_BACK) + Vector3.new(0, hub.denFloorY + DOOR_Y, 0)
+	return CFrame.lookAt(at, at - radial)
 end
 
--- The Haul Pool's center (on the den floor, toward the back).
+-- Where a fish comes out into the hub from its den: in front of the doorway, facing
+-- the plaza
+function Layout.hubExitFrame(index: number): CFrame
+	return Layout.doorFrame(index) * CFrame.new(0, 0, -16)
+end
+
+-- The doorway portal a fish is passing through (its den's index), or nil
+function Layout.doorAt(position: Vector3): number?
+	local offset = position - hub.center
+	local flat = Vector2.new(offset.X, offset.Z).Magnitude
+	if flat < hub.radius - 6 or flat > hub.radius + DOOR_BACK + 10 then
+		return nil
+	end
+	local angle = math.atan2(offset.Z, offset.X)
+	for index, segment in denSegments do
+		local delta = (angle - Layout.segmentAngle(segment) + math.pi) % (2 * math.pi) - math.pi
+		if math.abs(delta) <= math.pi / hub.segments then
+			local p = Layout.doorFrame(index):PointToObjectSpace(position)
+			if p.Z >= -PORTAL_REACH and Vector2.new(p.X, p.Y).Magnitude <= Layout.DOOR_RADIUS + 2 then
+				return index
+			end
+			return nil
+		end
+	end
+	return nil
+end
+
+-- Den `index`'s interior (Config/Dens `interior`): its own block of rock far outside
+-- the play area at the hub's height. The frame sits on the main floor's middle; its
+-- front (LookVector) is the den's front wall, where the way out is.
+local Dens = Config.Dens
+local interior = Dens.interior
+function Layout.denOrigin(index: number): CFrame
+	local column = (index - 1) % interior.columns
+	local row = (index - 1) // interior.columns
+	return CFrame.new(
+		interior.x + column * interior.spacing,
+		hub.denFloorY,
+		interior.z + row * interior.spacing
+	)
+end
+
+-- A point in den `index`'s own frame (x across, y up, z toward the front wall)
+local function denPoint(index: number, x: number, y: number, z: number): CFrame
+	return Layout.denOrigin(index) * CFrame.new(x, y, -z)
+end
+
+-- The Haul Pool's center (on the Nook's floor, near the front)
 function Layout.poolPosition(index: number): Vector3
-	local angle = Layout.segmentAngle(denSegments[index])
-	return hub.center
-		+ outward(angle) * (hub.radius + hub.denDepth * 0.62)
-		+ Vector3.new(0, hub.denFloorY + 1, 0)
+	return denPoint(index, 0, 1, Dens.pool.z).Position
 end
 
--- Where a fish appears: in its den, facing the hub.
+-- Where a fish appears in a den (spawning, or coming in through the doorway): over
+-- the pool, facing into the den
 function Layout.spawnFrame(index: number): CFrame
-	local frame = Layout.denFrame(index)
-	return frame * CFrame.new(0, 0, -hub.denDepth * 0.1)
+	return denPoint(index, 0, 7, Dens.pool.z) * CFrame.Angles(0, math.pi, 0)
+end
+
+-- The way out: the portal on the main storey's front wall, facing into the den
+function Layout.exitFrame(index: number): CFrame
+	local storey = Dens.storeys[1]
+	return denPoint(index, 0, storey.deck + Dens.exit.y, Dens.maxFront - 0.6) * CFrame.Angles(0, math.pi, 0)
+end
+
+-- How far a den's block reaches round its frame (the rooms plus their walls)
+local HALF, FRONT, BACK, TOP, BOTTOM = 0, Dens.maxFront + 16, Dens.maxBack - 16, 0, 0
+for _, room in Dens.rooms do
+	HALF = math.max(HALF, room.x + 16)
+end
+TOP = Dens.storeys[1].ceiling + 16
+BOTTOM = Dens.storeys[#Dens.storeys].floor - 16
+Layout.DEN_EXTENT = { half = HALF, front = FRONT, back = BACK, top = TOP, bottom = BOTTOM }
+
+-- The den whose interior a position is inside (its index), or nil. The whole house
+-- counts, however far an upgrade dug it back and down.
+function Layout.denAt(position: Vector3): number?
+	local column = math.floor((position.X - interior.x) / interior.spacing + 0.5)
+	local row = math.floor((position.Z - interior.z) / interior.spacing + 0.5)
+	if column < 0 or column >= interior.columns or row < 0 then
+		return nil
+	end
+	local index = row * interior.columns + column + 1
+	if index > Layout.DEN_COUNT then
+		return nil
+	end
+	local origin = Layout.denOrigin(index).Position
+	local x, y, z = position.X - origin.X, position.Y - origin.Y, origin.Z - position.Z
+	if math.abs(x) > HALF or z > FRONT or z < BACK or y > TOP or y < BOTTOM then
+		return nil
+	end
+	return index
+end
+
+-- The way out a fish inside a den is passing through (its den's index), or nil
+function Layout.exitAt(position: Vector3): number?
+	local index = Layout.denAt(position)
+	if index == nil then
+		return nil
+	end
+	local p = Layout.exitFrame(index):PointToObjectSpace(position)
+	if p.Z >= -PORTAL_REACH and Vector2.new(p.X, p.Y).Magnitude <= Dens.exit.radius + 2 then
+		return index
+	end
+	return nil
+end
+
+-- Where a position shows on the map: a fish in a den shows at its doorway
+function Layout.mapPosition(position: Vector3): Vector3
+	local index = Layout.denAt(position)
+	if index then
+		return Layout.doorFrame(index).Position
+	end
+	return position
 end
 
 -- The vendor stalls stand round the plaza's beacon (Config/Shop `angle`).
@@ -94,51 +201,8 @@ function Layout.counterDistance(angleDegrees: number, point: Vector3): number
 	return (localPoint - closest).Magnitude
 end
 
--- A den's reach (Config/Dens): the main storey runs back from the cavern wall into
--- the Burrow, and the storeys below run from under the plaza's rim (`maxFront`) far
--- back under the sand (`maxBack`), down to the Sanctum's floor
-local Dens = Config.Dens
-local DEN_MIDDLE = hub.radius + hub.denDepth / 2
-local MAIN_REACH = DEN_MIDDLE - Dens.backWall[#Dens.backWall] + 12
-local LOW_FROM = DEN_MIDDLE - Dens.maxFront
-local LOW_TO = DEN_MIDDLE - Dens.maxBack + 6
-local LOW_TOP = hub.denFloorY - 6 -- below this, a den's lower storeys
-local DEN_BOTTOM = hub.denFloorY + Dens.storeys[#Dens.storeys].floor - 4
-local DEN_TOP = hub.denFloorY + hub.denHeight + 6
-local SEGMENT_HALF = math.pi / hub.segments
-
--- The den a position is inside (its index), or nil. The whole house counts, however
--- far an upgrade dug it back and down (playtest 2026-10-08: the back of a Burrow was
--- outside the safe zone).
-function Layout.denAt(position: Vector3): number?
-	local offset = position - hub.center
-	if offset.Y < DEN_BOTTOM or offset.Y > DEN_TOP then
-		return nil
-	end
-	local flat = Vector2.new(offset.X, offset.Z).Magnitude
-	if offset.Y < LOW_TOP then
-		if flat < LOW_FROM or flat > LOW_TO then
-			return nil
-		end
-	elseif flat < hub.radius or flat > MAIN_REACH then
-		return nil
-	end
-	-- The main storey is the den's own segment; below it there are no tunnels, and
-	-- a den's halls reach out to the line halfway to the next den (dens are two
-	-- segments apart)
-	local half = if offset.Y < LOW_TOP then SEGMENT_HALF * 2 else SEGMENT_HALF
-	local angle = math.atan2(offset.Z, offset.X)
-	for index, segment in denSegments do
-		local delta = (angle - Layout.segmentAngle(segment) + math.pi) % (2 * math.pi) - math.pi
-		if math.abs(delta) <= half then
-			return index
-		end
-	end
-	return nil
-end
-
--- Whether a position is inside the hub (the cavern, its dens or its tunnels), where
--- nobody can be eaten.
+-- Whether a position is inside the hub (the cavern, its doorways and tunnels) or a
+-- den's interior, where nobody can be eaten.
 function Layout.inHub(position: Vector3): boolean
 	local offset = position - hub.center
 	local flat = Vector2.new(offset.X, offset.Z).Magnitude

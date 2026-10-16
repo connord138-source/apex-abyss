@@ -99,9 +99,11 @@ function dumpLayout(Layout, hub)
 	end
 	local dens = {}
 	for den = 1, Layout.DEN_COUNT do
-		local frame = Layout.denFrame(den)
-		local lamp = frame.Position + Vector3.new(0, hub.denHeight / 2 - 3, 0)
-		table.insert(dens, string.format('{"pool":%s,"lamp":%s}', v(Layout.poolPosition(den)), v(lamp)))
+		-- (the dens are private interiors far away since 2026-10-16: the doorway's
+		-- portal stands in for the pool's glow)
+		local door = Layout.doorFrame(den).Position
+		local lamp = door + Vector3.new(0, 8, 0)
+		table.insert(dens, string.format('{"pool":%s,"lamp":%s}', v(door), v(lamp)))
 	end
 	local sconces = {}
 	for segment = 1, hub.segments do

@@ -74,6 +74,9 @@ export type PlayerData = {
 		-- retired: things by slot, before Build mode (DenService moves them into
 		-- `placed`, and things bought then, kept in `owned`, into `items`)
 		furniture: { [string]: string },
+		-- the den's shape the placements were made in (3: the private interiors of
+		-- 2026-10-16; older ones are moved over once by DenService)
+		layout: number?,
 	},
 	coral: number, -- the currency (vendors)
 	trophies: { [string]: number }, -- boss currencies (MegalodonTeeth, KrakenBeaks)
@@ -171,6 +174,8 @@ local TEMPLATE: PlayerData = {
 		placed = {},
 		nextUid = 1,
 		furniture = {},
+		-- (no `layout`: Reconcile would hand an old save the new one before
+		-- DenService moved its placements over; DenService sets it)
 	},
 	coral = 0,
 	trophies = {},

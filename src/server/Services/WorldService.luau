@@ -251,25 +251,120 @@ local function buildBounds(parent: Instance)
 	end
 end
 
--- One den's furniture; the room itself is carved from the Terrain (Cave.luau).
--- Its Haul Pool, a warm lamp and the sign over the round doorway.
-local function buildDen(parent: Instance, index: number, segment: number)
-	local angle = Layout.segmentAngle(segment)
-	local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
-	local function at(r: number, y: number): CFrame
-		local position = hub.center + radial * r + Vector3.new(0, y, 0)
-		return CFrame.lookAt(position, position + radial)
-	end
+-- A bubble portal (owner, 2026-10-16: private dens): a shimmering disc facing along
+-- `cframe`'s look, a glowing rim, rising bubbles and a light
+local function portal(parent: Instance, name: string, cframe: CFrame, radius: number, color: Color3): BasePart
+	local disc = Instance.new("Part")
+	disc.Name = name
+	disc.Anchored = true
+	disc.CanCollide = false
+	disc.CanQuery = false
+	disc.CanTouch = false
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Size = Vector3.new(0.4, radius * 2, radius * 2)
+	-- A cylinder's axis is its X: turn it onto the look
+	disc.CFrame = cframe * CFrame.Angles(0, math.rad(90), 0)
+	disc.Color = color
+	disc.Material = Enum.Material.ForceField
+	disc.Transparency = 0.05
+	disc.CastShadow = false
+	disc.Parent = parent
+	local rim = Instance.new("Part")
+	rim.Name = name .. "Rim"
+	rim.Anchored = true
+	rim.CanCollide = false
+	rim.CanQuery = false
+	rim.CanTouch = false
+	rim.Shape = Enum.PartType.Cylinder
+	rim.Size = Vector3.new(0.2, radius * 2 + 1.4, radius * 2 + 1.4)
+	rim.CFrame = disc.CFrame * CFrame.new(-0.25, 0, 0) -- just behind the disc
+	rim.Color = color:Lerp(Color3.new(1, 1, 1), 0.25)
+	rim.Material = Enum.Material.Neon
+	rim.Transparency = 0.35
+	rim.CastShadow = false
+	rim.Parent = parent
+	local glow = Instance.new("PointLight")
+	glow.Color = color
+	glow.Range = 24
+	glow.Brightness = 1.4
+	glow.Parent = disc
+	local bubbles = Instance.new("ParticleEmitter")
+	bubbles.Name = "Bubbles"
+	bubbles.Rate = 10
+	bubbles.Lifetime = NumberRange.new(1.5, 3)
+	bubbles.Speed = NumberRange.new(1, 3)
+	bubbles.SpreadAngle = Vector2.new(30, 30)
+	bubbles.Acceleration = Vector3.new(0, 4, 0)
+	bubbles.Size = NumberSequence.new(0.35, 0.1)
+	bubbles.Transparency = NumberSequence.new(0.3, 1)
+	bubbles.LightEmission = 0.6
+	bubbles.Color = ColorSequence.new(Color3.fromRGB(210, 250, 255))
+	bubbles.Parent = disc
+	return disc
+end
+
+-- A sign with one line of text on its front (the face along `cframe`'s look)
+local function signAt(parent: Instance, name: string, cframe: CFrame, width: number, text: string): TextLabel
+	local sign = block(parent, name, Vector3.new(width, 3.2, 0.6), cframe, ROCK_DARK)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0
+	gui.Parent = sign
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(200, 236, 245)
+	label.Text = text
+	label.Parent = gui
+	return label
+end
+
+local PORTAL = Color3.fromRGB(110, 225, 235)
+local denModels: { [number]: Model } = {}
+
+-- One den's parts (owner, 2026-10-16: every den is a private interior far outside
+-- the play area, Layout.denOrigin). On the plaza: the bubble portal at the back of
+-- its doorway, a warm lamp and the sign. Inside: its Haul Pool by the way in, and the
+-- portal back out on the front wall. The rooms are carved from the Terrain
+-- (DenCarve) and furnished by DenBuilder.
+local function buildDen(parent: Instance, index: number)
 	local den = Instance.new("Model")
 	den.Name = `Den{index}`
-	local top = hub.denFloorY + hub.denHeight
-	-- The Haul Pool: swim into it to bank
+	local door = Layout.doorFrame(index)
+	portal(den, "Portal", door, Layout.DOOR_RADIUS, PORTAL)
+	-- A warm lamp so a doorway reads as home
+	local anchor = Instance.new("Part")
+	anchor.Name = "Lamp"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.one
+	anchor.CFrame = door * CFrame.new(0, 8, -6)
+	anchor.Parent = den
+	local lamp = Instance.new("PointLight")
+	lamp.Color = Color3.fromRGB(255, 196, 140)
+	lamp.Range = 26
+	lamp.Brightness = 0.9
+	lamp.Parent = anchor
+	-- The sign over the doorway, facing the hub
+	local radial = -door.LookVector
+	local signPosition = Vector3.new(0, hub.denFloorY + 25.5, 0) + hub.center + radial * (hub.radius - 1.2)
+	denSigns[index] =
+		signAt(den, "Sign", CFrame.lookAt(signPosition, signPosition - radial), 16, `DEN {index}`)
+	-- The Haul Pool: swim into it to bank (you come in over it)
+	local poolRadius = Config.Dens.pool.radius
 	local pool = Instance.new("Part")
 	pool.Name = "HaulPool"
 	pool.Anchored = true
 	pool.CanCollide = false
 	pool.Shape = Enum.PartType.Cylinder
-	pool.Size = Vector3.new(1, hub.poolRadius * 2, hub.poolRadius * 2)
+	pool.Size = Vector3.new(1, poolRadius * 2, poolRadius * 2)
 	pool.CFrame = CFrame.new(Layout.poolPosition(index)) * CFrame.Angles(0, 0, math.rad(90))
 	pool.Color = POOL
 	pool.Material = Enum.Material.Neon
@@ -294,41 +389,12 @@ local function buildDen(parent: Instance, index: number, segment: number)
 	bubbles.LightEmission = 0.6
 	bubbles.Color = ColorSequence.new(Color3.fromRGB(210, 250, 255))
 	bubbles.Parent = pool
-	-- A warm lamp so a den reads as home, on an invisible anchor under the room's roof
-	local anchor = Instance.new("Part")
-	anchor.Name = "Lamp"
-	anchor.Anchored = true
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-	anchor.Transparency = 1
-	anchor.Size = Vector3.one
-	anchor.CFrame = at(hub.radius + hub.denDepth / 2, top - 4)
-	anchor.Parent = den
-	local lamp = Instance.new("PointLight")
-	lamp.Color = Color3.fromRGB(255, 196, 140)
-	lamp.Range = 26
-	lamp.Brightness = 0.9
-	lamp.Parent = anchor
-	-- The sign over the doorway, facing the hub
-	local sign =
-		block(den, "Sign", Vector3.new(16, 3.2, 0.6), at(hub.radius - 1.2, hub.denFloorY + 25.5), ROCK_DARK)
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Back -- the face toward the hub
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 40
-	gui.LightInfluence = 0
-	gui.Parent = sign
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(200, 236, 245)
-	label.Text = `DEN {index}`
-	label.Parent = gui
-	denSigns[index] = label
+	-- The way out, on the front wall, with its sign over it
+	local exit = Layout.exitFrame(index)
+	portal(den, "ExitPortal", exit, Config.Dens.exit.radius, PORTAL)
+	signAt(den, "ExitSign", exit * CFrame.new(0, Config.Dens.exit.radius + 3, 0.3), 14, "TO THE HUB")
 	den.Parent = parent
+	denModels[index] = den
 end
 
 -- The hub: the cavern is Terrain (Cave.luau: the seamount, the dome and oculus,
@@ -460,7 +526,7 @@ local function buildHub(parent: Instance)
 		local kind = Layout.segmentKind(segment)
 		if kind == "den" then
 			denIndex += 1
-			buildDen(hubFolder, denIndex, segment)
+			buildDen(hubFolder, denIndex)
 		elseif kind == "tunnel" then
 			table.insert(tunnelSegments, segment)
 		elseif kind == "wall" then
@@ -1532,10 +1598,15 @@ local function refreshSign(index: number)
 	end
 end
 
--- Shows who owns a den on its sign (nil = free).
+-- Shows who owns a den on its sign (nil = free), and tells clients (the doorway
+-- portal only lets fish into a den someone lives in)
 function WorldService.setDenOwner(index: number, name: string?)
 	denOwnerNames[index] = name
 	refreshSign(index)
+	local model = denModels[index]
+	if model then
+		model:SetAttribute("Owner", name)
+	end
 end
 
 -- The den's level name on its sign (nil = plain)

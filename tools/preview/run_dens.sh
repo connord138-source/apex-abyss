@@ -1,9 +1,11 @@
 #!/bin/bash
-# Dumps the hub cavern's Terrain fill ops plus every den carved to one level
-# (src/server/DenCarve.luau) with the luau CLI, then checks and draws them:
+# Dumps one den's Terrain fill ops carved to one level (src/server/DenCarve.luau;
+# since 2026-10-16 every den is its own block far outside the play area, and all
+# twelve are carved alike) with the luau CLI, then checks and draws them:
 #   LEVEL=5 LUAU=<luau> bash tools/preview/run_dens.sh <out_dir>
-# check_dens.py voxelizes the ops and fails if a den's rooms reach another den, a
-# tunnel or the sand outside, and writes a top-down slice of each storey.
+# check_dens.py voxelizes the ops in the den's own frame and fails if the rooms
+# open out of their block, aren't one cave joined by the shafts, or leave a room's
+# floor or a storey's rock wrong; it writes a slice of each storey and one along it.
 set -e
 cd "$(dirname "$0")"
 OUT=${1:-/tmp/dens_preview}
@@ -35,11 +37,18 @@ chunk=$(mktemp --suffix=.luau)
 	echo 'end)()'
 	echo 'local DenCarve = (function()'
 	grep -v '^--!strict' ../../src/server/DenCarve.luau \
-		| sed 's#require(ReplicatedStorage.Shared.Config)#Config#; s#require(ReplicatedStorage.Shared.DenSpace)#DenSpace#; s#require(script.Parent.Cave)#Cave#'
+		| sed 's#require(ReplicatedStorage.Shared.Config)#Config#; s#require(ReplicatedStorage.Shared.DenSpace)#DenSpace#; s#require(script.Parent.Cave)#Cave#; s#require(ReplicatedStorage.Shared.Layout)#Layout#'
 	echo 'end)()'
-	echo "local ops = Cave.ops()"
-	echo "for den = 1, Layout.DEN_COUNT do for _, op in DenCarve.ops(den, $LEVEL) do table.insert(ops, op) end end"
+	echo "local ops = DenCarve.ops(1, $LEVEL)"
 	echo 'dumpOps(ops)'
+	# den 1's frame, its block and its rooms, for the checker (den-local numbers; the
+	# lines that aren't ops start with a word)
+	echo 'local o = Layout.denOrigin(1).Position'
+	echo 'local e = Layout.DEN_EXTENT'
+	echo 'print(string.format("FRAME %f %f %f %f %f %f %f %f", o.X, o.Y, o.Z, e.half, e.front, e.back, e.top, e.bottom))'
+	echo 'for n, st in Dens.storeys do print(string.format("STOREY %d %f %f %f %f", n, st.deck, st.floor, st.ceiling, st.wall)) end'
+	echo "for _, r in Dens.rooms do if r.level <= $LEVEL then print(string.format(\"ROOM %s %d %d %f %f %f\", r.id, r.level, r.storey, r.x, r.z0, r.z1)) end end"
+	echo "for _, sh in Dens.shafts do if sh.level <= $LEVEL then print(string.format(\"SHAFT %s %d %d %f %f\", sh.id, sh.from, sh.to, sh.z, sh.radius)) end end"
 } > "$chunk"
 ${LUAU:-luau} "$chunk" > "$OUT/dens_ops.jsonl" || { rm "$chunk"; exit 1; }
 rm "$chunk"

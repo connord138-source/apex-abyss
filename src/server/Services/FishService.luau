@@ -43,6 +43,11 @@ function FishService.denOf(player: Player): number?
 	return dens[player]
 end
 
+-- Who lives in den `index` (nil: nobody, its doorway stays shut)
+function FishService.ownerOf(index: number): Player?
+	return denOwners[index]
+end
+
 function FishService.character(player: Player): (Model?, BasePart?)
 	local character = player.Character
 	if character == nil or character.Parent == nil then
@@ -117,10 +122,19 @@ function FishService.spawn(player: Player)
 	if data == nil or den == nil or player.Parent ~= Players then
 		return
 	end
+	-- Dens are far outside the play area (Layout.denOrigin): have the place stream in
+	-- round the fish before it appears there
+	local at = Layout.spawnFrame(den)
+	pcall(function()
+		player:RequestStreamAroundAsync(at.Position, 3)
+	end)
+	if player.Parent ~= Players or dens[player] ~= den then
+		return
+	end
 	FishService.despawn(player)
 	local species = Progress.species(data)
 	local length = Size.length(Progress.mass(data))
-	local character = makeCharacter(player, species, length, Layout.spawnFrame(den))
+	local character = makeCharacter(player, species, length, at)
 	player.Character = character
 	character.Parent = workspace
 	local root = character.PrimaryPart

@@ -15,6 +15,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local DensConfig = require(ReplicatedStorage.Shared.Config.Dens)
 local DenItems = require(ReplicatedStorage.Shared.DenItems)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Props = require(ReplicatedStorage.Shared.Props)
@@ -22,7 +23,6 @@ local Cave = require(script.Parent.Cave)
 local DenCarve = require(script.Parent.DenCarve)
 
 local Dens = Config.Dens
-local hub = Config.World.hub
 
 local DenBuilder = {}
 
@@ -306,8 +306,9 @@ local function buildShell(state: DenState, index: number, record: Record)
 			light(sconce, glow, 16, 0.9)
 		end
 	end
-	-- Orb lamps hanging down the middle of every storey below, one every 16 studs
-	for storey = 2, DenSpace.storeys(level) do
+	-- Orb lamps hanging from the arch down every storey, one every 20 studs down the
+	-- middle, and in rooms wider than 40 a row down each side as well
+	for storey = 1, DenSpace.storeys(level) do
 		local s = DenSpace.storey(storey)
 		local rooms = DenSpace.rooms(level, storey)
 		local front, back = -math.huge, math.huge
@@ -315,63 +316,52 @@ local function buildShell(state: DenState, index: number, record: Record)
 			front = math.max(front, room.z0)
 			back = math.min(back, room.z1)
 		end
-		local z = front - 8
+		local z = front - 10
 		while z > back + 4 do
-			local vault = 0
+			local widest: DensConfig.Room? = nil
 			for _, room in rooms do
-				if z <= room.z0 and z >= room.z1 then
-					vault = math.max(vault, DenSpace.vaultAt(room, 0))
+				if z <= room.z0 and z >= room.z1 and (widest == nil or room.x > widest.x) then
+					widest = room
 				end
 			end
-			if vault > 0 then
-				local top = s.deck + vault
-				part(
-					state.shell,
-					"Cord",
-					Vector3.new(0.15, 4, 0.15),
-					spot(0, top - 1.5, z),
-					STONE,
-					Enum.Material.Metal
-				)
-				local orb = part(
-					state.shell,
-					"Orb",
-					Vector3.one * 1.8,
-					spot(0, top - 4.2, z),
-					glow:Lerp(Color3.new(1, 1, 1), 0.5),
-					Enum.Material.Glass
-				)
-				orb.Shape = Enum.PartType.Ball
-				orb.Transparency = 0.2
-				local core = part(
-					state.shell,
-					"Core",
-					Vector3.one * 0.8,
-					spot(0, top - 4.2, z),
-					LAMP,
-					Enum.Material.Neon
-				)
-				core.Shape = Enum.PartType.Ball
-				light(core, LAMP, 34, 0.75)
+			if widest then
+				local across = { 0 }
+				if widest.x > 40 then
+					across = { -widest.x * 0.5, 0, widest.x * 0.5 }
+				end
+				for _, x in across do
+					local top = s.deck + DenSpace.vaultAt(widest, math.abs(x))
+					part(
+						state.shell,
+						"Cord",
+						Vector3.new(0.15, 4, 0.15),
+						spot(x, top - 1.5, z),
+						STONE,
+						Enum.Material.Metal
+					)
+					local orb = part(
+						state.shell,
+						"Orb",
+						Vector3.one * 2.2,
+						spot(x, top - 4.4, z),
+						glow:Lerp(Color3.new(1, 1, 1), 0.5),
+						Enum.Material.Glass
+					)
+					orb.Shape = Enum.PartType.Ball
+					orb.Transparency = 0.2
+					local core = part(
+						state.shell,
+						"Core",
+						Vector3.one,
+						spot(x, top - 4.4, z),
+						LAMP,
+						Enum.Material.Neon
+					)
+					core.Shape = Enum.PartType.Ball
+					light(core, LAMP, 40, if x == 0 then 0.8 else 0.6)
+				end
 			end
-			z -= 16
-		end
-	end
-	-- Two orb lamps down the Burrow
-	if level >= 2 then
-		for _, z in { -22, -33 } do
-			part(
-				state.shell,
-				"Cord",
-				Vector3.new(0.15, 3, 0.15),
-				spot(0, 21.5, z),
-				STONE,
-				Enum.Material.Metal
-			)
-			local core =
-				part(state.shell, "Core", Vector3.one * 1.1, spot(0, 19.5, z), LAMP, Enum.Material.Neon)
-			core.Shape = Enum.PartType.Ball
-			light(core, LAMP, 26, 0.7)
+			z -= 20
 		end
 	end
 end
@@ -592,13 +582,18 @@ local function trophyWall(state: DenState, index: number, record: Record, trophi
 	task.delay(0.5, function()
 		seatTrophies(frame, backZ, columns)
 	end)
-	-- The title over the door, inside
+	-- The title over the way out, inside
 	if trophies.title ~= "" then
 		local sign = part(
 			folder,
 			"Title",
 			Vector3.new(10, 1.6, 0.4),
-			DenSpace.spot(frame, 0, hub.denHeight - 3, 12),
+			DenSpace.spot(
+				frame,
+				0,
+				Dens.storeys[1].deck + Dens.exit.y + Dens.exit.radius + 8,
+				Dens.maxFront - 0.5
+			),
 			Color3.fromRGB(60, 66, 74),
 			Enum.Material.Slate
 		)
@@ -1028,7 +1023,8 @@ function DenBuilder.items(index: number, record: Record)
 	syncItems(stateOf(index), index, record)
 end
 
--- Takes a den's base down; with `refill` the rock goes back to a plain Nook
+-- Takes a den's base down; with `refill` its block of rock goes too (it's carved
+-- again for the den's next owner)
 function DenBuilder.clear(index: number, refill: boolean)
 	local state = states[index]
 	if state then
@@ -1036,7 +1032,7 @@ function DenBuilder.clear(index: number, refill: boolean)
 		states[index] = nil
 	end
 	if refill then
-		Cave.apply(workspace.Terrain, DenCarve.reset(index))
+		Cave.apply(workspace.Terrain, DenCarve.clear(index))
 	end
 end
 

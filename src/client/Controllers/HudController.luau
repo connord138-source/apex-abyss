@@ -827,6 +827,9 @@ local function step(dt: number)
 
 	-- Depth: studs below the surface
 	local y = if root then root.Position.Y else workspace.CurrentCamera.Focus.Position.Y
+	if root and Layout.denAt(root.Position) then
+		y = World.hub.denFloorY -- a den reads as deep as its doorway on the plaza
+	end
 	local below = World.surfaceY - y
 	depthText.Text = Format.depth(below)
 	local span = World.surfaceY - World.trench.floorY

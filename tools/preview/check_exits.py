@@ -96,7 +96,9 @@ def main():
     for n, segment in enumerate(dens, 1):
         angle = (segment - 1) * 2 * math.pi / SEGMENTS
         pts, where = [], []
-        for r in np.arange(HUB_RADIUS - 8, HUB_RADIUS + DEN_DEPTH / 2, 1.5):
+        # (since 2026-10-16 a doorway is a shallow alcove to its den's portal, 9 studs
+        # into the wall: Layout.doorFrame; the den itself is elsewhere)
+        for r in np.arange(HUB_RADIUS - 8, HUB_RADIUS + 8, 1.5):
             for y in (DEN_FLOOR + 5, DEN_FLOOR + 11, DEN_FLOOR + 17):
                 for side in (-5, 0, 5):
                     pts.append(radial(angle, r, y, side))

@@ -1,13 +1,19 @@
-"""Checks the dens' rock (owner, 2026-10-13: dens "larger and much more depth"):
-every den carved to one level (run_dens.sh dumps the cavern's and the dens' Terrain
-fill ops), voxelized on a 2-stud grid over the shelf's rock, then:
+"""Checks a den's rock (owner, 2026-10-16: every den is a private interior, its own
+block of rock far outside the play area; Layout.denOrigin, DenCarve). run_dens.sh
+dumps den 1's Terrain fill ops carved to one level, plus its frame, block, storeys,
+rooms and shafts; this voxelizes them on a 2-stud grid (open water all round, as
+in game) and fails when:
 
-  * below the main floor each den's storeys are one cave, inside its own wedge, at
-    least 4 studs of rock from any other den's and from the drum's hollow (y < -80);
-  * nothing below the main floor comes up to the sand outside the seamount;
-  * the Burrow keeps rock between it and the tunnels and the next dens.
+  * the rooms open out of their block (the cave's air reaches the open water), or
+    have less than 6 studs of rock to it anywhere;
+  * the rooms aren't one cave (every open storey joined by its shaft);
+  * a room isn't open over its deck (just above it, and up to its walls' top);
+  * there isn't rock between one storey's floor and the next one's ceiling, away
+    from the shafts.
 
-Writes slice_<storey>.png (top-down, air light) for a look. Exit code 1 on a breach.
+Writes storey_<n>.png (top-down just over each deck), along.png (a slice down the
+den's middle) and across.png (a slice across the biggest room, its arch) for a
+look. Exit code 1 on a breach.
 
     LEVEL=5 LUAU=<luau> bash tools/preview/run_dens.sh <dir>
 """
@@ -20,29 +26,62 @@ import numpy as np
 from scipy import ndimage
 
 CELL = 2.0
-SPAN = 240
-X0, Y0, Z0 = -SPAN, -118.0, -SPAN
-NX, NY, NZ = int(2 * SPAN / CELL), int(160 / CELL), int(2 * SPAN / CELL)
-DEN_FLOOR = 4
-HUB_RADIUS = 95
-SEGMENTS = 24
+MARGIN = 10.0
 
 
-def axes():
-    return (
-        X0 + CELL * (np.arange(NX) + 0.5),
-        Y0 + CELL * (np.arange(NY) + 0.5),
-        Z0 + CELL * (np.arange(NZ) + 0.5),
-    )
+def read(path):
+    ops, frame, storeys, rooms, shafts = [], None, {}, [], []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("{"):
+                ops.append(json.loads(line))
+                continue
+            word, *rest = line.split()
+            if word == "FRAME":
+                frame = [float(v) for v in rest]
+            elif word == "STOREY":
+                n, deck, floor, ceiling, wall = rest
+                storeys[int(n)] = dict(deck=float(deck), floor=float(floor), ceiling=float(ceiling), wall=float(wall))
+            elif word == "ROOM":
+                rid, level, storey, x, z0, z1 = rest
+                rooms.append(dict(id=rid, level=int(level), storey=int(storey), x=float(x), z0=float(z0), z1=float(z1)))
+            elif word == "SHAFT":
+                sid, a, b, z, r = rest
+                shafts.append(dict(id=sid, **{"from": int(a)}, to=int(b), z=float(z), radius=float(r)))
+    return ops, frame, storeys, rooms, shafts
 
 
-def fill(ops):
-    xs, ys, zs = axes()
-    grid = np.zeros((NX, NY, NZ), np.uint8)
-    # The shelf: rock and sand from the sand's top (0) down to the drum's hollow (-80)
-    grid[:, (ys < 0) & (ys > -80), :] = 1
-    for op in ops:
-        solid = 0 if op["material"] == "Air" else 1
+class Grid:
+    """World-space voxels over the den's block (+ a margin of open water)."""
+
+    def __init__(self, frame):
+        ox, oy, oz, half, front, back, top, bottom = frame
+        self.o = (ox, oy, oz)
+        self.block = (half, front, back, top, bottom)
+        # den-local z runs opposite world z (Layout: world z = origin z - local z)
+        self.x0, self.x1 = ox - half - MARGIN, ox + half + MARGIN
+        self.y0, self.y1 = oy + bottom - MARGIN, oy + top + MARGIN
+        self.z0, self.z1 = oz - front - MARGIN, oz - back + MARGIN
+        self.xs = np.arange(self.x0 + CELL / 2, self.x1, CELL)
+        self.ys = np.arange(self.y0 + CELL / 2, self.y1, CELL)
+        self.zs = np.arange(self.z0 + CELL / 2, self.z1, CELL)
+        self.solid = np.zeros((len(self.xs), len(self.ys), len(self.zs)), bool)
+
+    def index(self, x, y, z):
+        """Den-local point to a cell index."""
+        ox, oy, oz = self.o
+        wx, wy, wz = ox + x, oy + y, oz - z
+        return (
+            int((wx - self.x0) // CELL),
+            int((wy - self.y0) // CELL),
+            int((wz - self.z0) // CELL),
+        )
+
+    def apply(self, op):
+        solid = op["material"] != "Air"
         cx, cy, cz = op["center"]
         if op["kind"] == "ball":
             ext = op["radius"]
@@ -50,11 +89,12 @@ def fill(ops):
             ext = math.sqrt(sum(s * s for s in op["size"])) / 2
         else:
             ext = math.sqrt(op["radius"] ** 2 + (op["height"] / 2) ** 2)
+        xs, ys, zs = self.xs, self.ys, self.zs
         i0, i1 = np.searchsorted(xs, cx - ext), np.searchsorted(xs, cx + ext, side="right")
         j0, j1 = np.searchsorted(ys, cy - ext), np.searchsorted(ys, cy + ext, side="right")
         k0, k1 = np.searchsorted(zs, cz - ext), np.searchsorted(zs, cz + ext, side="right")
         if i0 >= i1 or j0 >= j1 or k0 >= k1:
-            continue
+            return
         X, Y, Z = np.meshgrid(xs[i0:i1], ys[j0:j1], zs[k0:k1], indexing="ij")
         dx, dy, dz = X - cx, Y - cy, Z - cz
         if op["kind"] == "ball":
@@ -69,130 +109,101 @@ def fill(ops):
                 mask = (np.abs(lr) <= sx / 2) & (np.abs(lu) <= sy / 2) & (np.abs(ll) <= sz / 2)
             else:
                 mask = (np.abs(lu) <= op["height"] / 2) & (lr * lr + ll * ll <= op["radius"] ** 2)
-        grid[i0:i1, j0:j1, k0:k1][mask] = solid
-    return grid
-
-
-def den_angles():
-    out = []
-    for segment in range(1, SEGMENTS + 1):
-        k = (segment - 1) % 6
-        if k % 2 == 1:
-            out.append((segment - 1) * 2 * math.pi / SEGMENTS)
-    return out
-
-
-def tunnel_angles():
-    return [(s - 1) * 2 * math.pi / SEGMENTS for s in range(1, SEGMENTS + 1) if (s - 1) % 6 == 0]
-
-
-def which_den(angle, dens):
-    # The rock between two dens is split at the line halfway between their axes,
-    # 15 degrees from each (dens are 30 apart; a tunnel's segment sits on the line)
-    for index, a in enumerate(dens):
-        delta = (angle - a + math.pi) % (2 * math.pi) - math.pi
-        if abs(delta) <= math.pi / 12:
-            return index
-    return -1
+        self.solid[i0:i1, j0:j1, k0:k1][mask] = solid
 
 
 def main():
-    path, out, level = sys.argv[1], sys.argv[2], sys.argv[3]
-    with open(path) as f:
-        ops = [json.loads(line) for line in f if line.strip()]
-    grid = fill(ops)
-    xs, ys, zs = axes()
-    X, Z = np.meshgrid(xs, zs, indexing="ij")
-    R = np.hypot(X, Z)
-    A = np.arctan2(Z, X)
-    dens = den_angles()
-    tunnels = tunnel_angles()
+    path, out, level = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    ops, frame, storeys, rooms, shafts = read(path)
+    grid = Grid(frame)
+    for op in ops:
+        grid.apply(op)
     problems = []
+    air = ~grid.solid
+    labels, count = ndimage.label(air)
+    # The open water: every label on the grid's edge
+    edge = set(np.unique(labels[0])) | set(np.unique(labels[-1])) | set(np.unique(labels[:, 0])) | set(
+        np.unique(labels[:, -1])
+    ) | set(np.unique(labels[:, :, 0])) | set(np.unique(labels[:, :, -1]))
+    edge.discard(0)
 
-    # Below the main floor: one cave per den, apart from each other and the hollow
-    low = ys < DEN_FLOOR - 10
-    hollow = ys < -80
-    air = grid == 0
-    sub = air[:, low, :].copy()
-    labels, count = ndimage.label(sub)
-    sizes = ndimage.sum(sub, labels, range(1, count + 1))
-    owner = {}
-    lowys = ys[low]
-    for lab in range(1, count + 1):
-        cells = np.argwhere(labels == lab)
-        if (lowys[cells[:, 1]] < -80).any():
-            if (lowys[cells[:, 1]] >= -80).any():
-                problems.append(f"a cave reaches down into the drum's hollow ({int(sizes[lab - 1])} cells)")
-            continue
-        angles = A[cells[:, 0], cells[:, 2]]
-        hit = {which_den(a, dens) for a in angles[:: max(1, len(angles) // 400)]}
-        if len(hit) > 1 or -1 in hit:
-            problems.append(f"a cave below the main floor spans dens {sorted(hit)} ({int(sizes[lab - 1])} cells)")
-        owner[lab] = next(iter(hit))
-    caves = [lab for lab in owner]
-    print(f"below the main floor: {len(caves)} caves (dens {sorted(owner.values())})")
-    # 4 studs apart: grow each den's cave by 1 cell and see whether it meets another
-    for lab in caves:
-        grown = ndimage.binary_dilation(labels == lab, iterations=1)
-        others = (labels > 0) & (labels != lab)
-        if (grown & others).any():
-            met = set(np.unique(labels[grown & others])) - {0}
-            problems.append(f"den {owner[lab] + 1}'s cave is within 4 studs of {sorted(int(m) for m in met)}")
+    def label_at(x, y, z):
+        i, j, k = grid.index(x, y, z)
+        return int(labels[i, j, k])
 
-    # Nothing below the main floor up at the sand outside the seamount
-    band = (ys > -7) & (ys < 0)
-    outside = R > 168
-    near = air[:, band, :] & outside[:, None, :]
-    if near.any():
-        problems.append(f"{int(near.sum())} air cells just under the sand outside the seamount")
+    open_storeys = sorted({r["storey"] for r in rooms})
+    nook = label_at(0, storeys[1]["deck"] + 4, -10)
+    if nook == 0:
+        problems.append("the Nook is solid rock just over its deck")
+    elif nook in edge:
+        problems.append("the den's rooms open out of its block into the open water")
+    else:
+        # 6 studs of rock to the open water everywhere
+        cave = labels == nook
+        water = np.isin(labels, list(edge))
+        grown = ndimage.binary_dilation(cave, iterations=3)
+        if (grown & water).any():
+            problems.append(f"{int((grown & water).sum())} cells of the cave are within 6 studs of the open water")
+    # One cave: a point over every open storey's deck in the same air
+    for n in open_storeys:
+        s = storeys[n]
+        room = max((r for r in rooms if r["storey"] == n), key=lambda r: r["x"])
+        lab = label_at(0, s["deck"] + 4, (room["z0"] + room["z1"]) / 2)
+        if lab != nook:
+            problems.append(f"storey {n} isn't joined to the Nook (label {lab} vs {nook})")
+    interior = [lab for lab in range(1, count + 1) if lab not in edge]
+    big = [lab for lab in interior if (labels == lab).sum() > 30]
+    if len(big) > 1:
+        problems.append(f"{len(big)} separate pockets of air in the block (should be one cave)")
+    # Every room open over its deck and up to its walls' top
+    for room in rooms:
+        s = storeys[room["storey"]]
+        closed = 0
+        total = 0
+        for x in np.arange(-room["x"] + 3, room["x"] - 2, 4):
+            for z in np.arange(room["z1"] + 3, room["z0"] - 2, 4):
+                for y in (s["deck"] + 3, s["deck"] + s["wall"] - 3):
+                    total += 1
+                    i, j, k = grid.index(x, y, z)
+                    if grid.solid[i, j, k]:
+                        closed += 1
+        if closed > total * 0.02:
+            problems.append(f"{room['id']}: {closed} of {total} samples over its deck are rock")
+    # Rock between storeys, away from the shafts
+    for n in open_storeys[1:]:
+        above, below = storeys[n - 1], storeys[n]
+        y = (above["floor"] + below["ceiling"]) / 2
+        holes = 0
+        for room in (r for r in rooms if r["storey"] == n):
+            for x in np.arange(-room["x"] + 4, room["x"] - 3, 6):
+                for z in np.arange(room["z1"] + 4, room["z0"] - 3, 6):
+                    if any(abs(z - sh["z"]) < sh["radius"] + 6 and abs(x) < sh["radius"] + 6 for sh in shafts):
+                        continue
+                    i, j, k = grid.index(x, y, z)
+                    if not grid.solid[i, j, k]:
+                        holes += 1
+        if holes:
+            problems.append(f"{holes} holes in the rock between storeys {n - 1} and {n}")
 
-    # The main storey: with the cavern and the Nooks taken away, each den's Burrow
-    # is its own pocket of air and each tunnel runs out to the sea; none may join, or
-    # come within 2 studs of another
-    main = (ys > DEN_FLOOR + 1) & (ys < 36)
-    # (behind the Nook's back, r 133: the Nooks of the dens beside a tunnel already
-    # stand a stud or two from its tube, as the cavern has always been carved)
-    ring = (R > 134) & (R < 200)
-    pocket = air[:, main, :] & ring[:, None, :]
-    mlabels, mcount = ndimage.label(pocket)
-    kinds = {}
-    for lab in range(1, mcount + 1):
-        cells = np.argwhere(mlabels == lab)
-        angles = A[cells[:, 0], cells[:, 2]]
-        radii = R[cells[:, 0], cells[:, 2]]
-        if len(cells) < 40:
-            continue
-        mid = float(np.arctan2(np.sin(angles).mean(), np.cos(angles).mean()))
-        if radii.max() > 185:
-            kinds[lab] = "the tunnels and the sea"
-        else:
-            kinds[lab] = f"den {which_den(mid, dens) + 1}"
-    for lab, kind in kinds.items():
-        if not kind.startswith("den"):
-            continue
-        grown = ndimage.binary_dilation(mlabels == lab, iterations=1)
-        met = set(np.unique(mlabels[grown & (mlabels > 0) & (mlabels != lab)])) - {0}
-        met = {kinds.get(int(m), "a pocket") for m in met}
-        if met:
-            problems.append(f"{kind}'s main storey is within 2 studs of {sorted(met)}")
-    pockets = sum(1 for k in kinds.values() if k.startswith("den"))
-    print(f"main storey: {pockets} Burrows on their own")
-    if int(level) >= 2 and pockets != len(dens):
-        problems.append(f"only {pockets} of {len(dens)} Burrows are sealed off (one opens to a tunnel or the sea)")
+    print(f"level {level}: {len(open_storeys)} storeys, {len(rooms)} rooms, {len(shafts)} shafts, {len(ops)} ops")
 
-    # Slices for a look
     try:
-        from PIL import Image, ImageDraw
+        from PIL import Image
 
-        for name, y in (("main", DEN_FLOOR + 3), ("hall", -27), ("sanctum", -59)):
-            j = int((y - Y0) / CELL)
-            img = np.where(grid[:, j, :] == 0, 235, 70).astype(np.uint8).T
-            im = Image.fromarray(img).convert("RGB").resize((NX * 3, NZ * 3), Image.NEAREST)
-            draw = ImageDraw.Draw(im)
-            for a in dens + tunnels:
-                c = (NX * 1.5, NZ * 1.5)
-                draw.line([c, (c[0] + math.cos(a) * 700, c[1] + math.sin(a) * 700)], fill=(255, 120, 60) if a in tunnels else (90, 170, 230), width=1)
-            im.save(f"{out}/slice_{name}.png")
+        def save(name, plane):
+            img = np.where(plane, 70, 235).astype(np.uint8)
+            Image.fromarray(img).convert("RGB").resize((img.shape[1] * 3, img.shape[0] * 3), Image.NEAREST).save(
+                f"{out}/{name}.png"
+            )
+
+        for n in open_storeys:
+            _, j, _ = grid.index(0, storeys[n]["deck"] + 4, 0)
+            save(f"storey_{n}", grid.solid[:, j, :].T)
+        i, _, _ = grid.index(0, 0, 0)
+        save("along", grid.solid[i, ::-1, :].T[:, ::-1].T)
+        widest = max(rooms, key=lambda r: r["x"])
+        _, _, k = grid.index(0, 0, (widest["z0"] + widest["z1"]) / 2)
+        save("across", grid.solid[:, ::-1, k].T)
     except ImportError:
         pass
 
@@ -200,7 +211,7 @@ def main():
         for p in problems:
             print("BREACH:", p)
         sys.exit(1)
-    print(f"dens at level {level}: OK")
+    print("dens: OK")
 
 
 if __name__ == "__main__":

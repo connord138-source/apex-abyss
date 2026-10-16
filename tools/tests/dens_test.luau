@@ -13,18 +13,39 @@ local function expect(ok: boolean, what: string)
 	end
 end
 
--- Rooms stay 5 studs inside the line to the next den (15° either side of the axis)
-local middle = Config.World.hub.radius + Config.World.hub.denDepth / 2
-local tan15 = math.tan(math.rad(15))
+-- Every den is its own block of rock (owner, 2026-10-16: private interiors): the
+-- rooms stay well inside it, storeys keep 8 studs of rock between them, and each
+-- shaft opens into a room on both of its storeys
+local Layout = require("./Layout")
+local extent = Layout.DEN_EXTENT
 for _, room in Dens.rooms do
-	local nearest = middle - room.z0 -- the hub end is the narrowest
-	local limit = nearest * tan15 - 5 / math.cos(math.rad(15))
-	expect(
-		room.x <= limit + 0.05,
-		`{room.id}: half-width {room.x} > {string.format("%.1f", limit)} at r {nearest}`
-	)
+	local s = Dens.storeys[room.storey]
+	expect(room.x + 12 <= extent.half, `{room.id}: half-width {room.x} too near the block's side`)
+	expect(room.z0 + 12 <= extent.front and room.z1 - 12 >= extent.back, `{room.id}: too near the block's ends`)
+	expect(s.ceiling + 12 <= extent.top and s.floor - 12 >= extent.bottom, `{room.id}: too near the block's top or bottom`)
 	expect(room.z0 % 2 == 0 and room.z1 % 2 == 0 and room.x % 1 == 0, `{room.id}: bounds on the 2-stud grid`)
 end
+for n = 2, #Dens.storeys do
+	local above, below = Dens.storeys[n - 1], Dens.storeys[n]
+	expect(above.floor - below.ceiling >= 8, `storey {n}: only {above.floor - below.ceiling} studs under storey {n - 1}`)
+	expect((4 + below.floor) % 4 == 0, `storey {n}: rock floor off the 4-stud voxel line`)
+end
+local function roomAt(level: number, storey: number, z: number, x: number): boolean
+	for _, room in DenSpace.rooms(level, storey) do
+		if math.abs(x) <= room.x and z <= room.z0 and z >= room.z1 then
+			return true
+		end
+	end
+	return false
+end
+for _, shaft in Dens.shafts do
+	expect(roomAt(shaft.level, shaft.from, shaft.z - shaft.radius - 2, 0), `{shaft.id}: no room above`)
+	expect(roomAt(shaft.level, shaft.from, shaft.z + shaft.radius + 2, 0), `{shaft.id}: no room above`)
+	expect(roomAt(shaft.level, shaft.to, shaft.z - shaft.radius - 2, 0), `{shaft.id}: no room below`)
+	expect(roomAt(shaft.level, shaft.to, shaft.z + shaft.radius + 2, 0), `{shaft.id}: no room below`)
+end
+expect(roomAt(1, 1, Dens.pool.z + Dens.pool.radius + 2, 0), "the pool sits in the Nook")
+expect(Dens.maxFront == Dens.roomsById.Nook.z0, "the way out is on the Nook's front wall")
 
 for level = 1, #Dens.levels do
 	local parts = {}
@@ -66,14 +87,14 @@ end
 -- Holes
 expect(not DenSpace.onDeck(1, 1, 0, DenSpace.POOL_Z), "the pool is cut out")
 expect(DenSpace.onDeck(1, 1, 9, 6), "the Nook floor beside the pool is deck")
-expect(not DenSpace.onDeck(3, 1, 0, -30), "the Hall shaft is cut out of the Burrow")
-expect(DenSpace.onDeck(2, 1, 0, -28), "the Burrow floor is deck before the Hall")
-expect(not DenSpace.onDeck(3, 2, 0, -12), "the garden bed is cut out of the Hall")
+expect(not DenSpace.onDeck(3, 1, 0, -58), "the Hall shaft is cut out of the Burrow")
+expect(DenSpace.onDeck(2, 1, 0, -58), "the Burrow floor is deck before the Hall")
+expect(not DenSpace.onDeck(3, 2, 0, 4), "the garden bed is cut out of the Hall")
 expect(
-	not DenSpace.onDeck(4, 2, 0, -62) == false,
+	not DenSpace.onDeck(4, 2, 0, -90) == false,
 	"the Grotto floor over the Sanctum shaft is deck before L5"
 )
-expect(not DenSpace.onDeck(5, 2, 0, -62), "the Sanctum shaft is cut out of the Grotto")
+expect(not DenSpace.onDeck(5, 2, 0, -90), "the Sanctum shaft is cut out of the Grotto")
 
 -- Placement
 local lamp = Dens.itemsById.CoralLamp
@@ -83,16 +104,16 @@ local v = Vector3.new
 local function ok(check: { ok: boolean, why: string? }): boolean
 	return check.ok
 end
-expect(ok(DenSpace.check(1, lamp, "floor", v(8, 1, 6))), "a lamp on the Nook floor")
-expect(not ok(DenSpace.check(1, lamp, "floor", v(0, 1, -30))), "no lamp in the Burrow before it's dug")
-expect(not ok(DenSpace.check(1, lamp, "wall", v(12, 8, 0))), "a lamp isn't a wall thing")
-expect(ok(DenSpace.check(1, lantern, "wall", v(12.5, 8, 0))), "a lantern on the Nook wall")
-expect(not ok(DenSpace.check(1, lantern, "wall", v(40, 8, 0))), "no lantern outside the den")
-expect(ok(DenSpace.check(3, lamp, "floor", v(10, -34, 10))), "a lamp on the Hall deck")
-expect(not ok(DenSpace.check(2, lamp, "floor", v(10, -34, 10))), "no Hall before level 3")
-expect(ok(DenSpace.check(5, jelly, "ceiling", v(0, -50, -60))), "a jelly lamp on the Sanctum's vault")
-expect(not ok(DenSpace.check(5, jelly, "ceiling", v(0, -68, -60))), "a ceiling lamp needs height")
-expect(ok(DenSpace.check(5, lamp, "floor", v(0, -68, -60))), "stacked on something on the Sanctum deck")
+expect(ok(DenSpace.check(1, lamp, "floor", v(16, 1, -6))), "a lamp on the Nook floor")
+expect(not ok(DenSpace.check(1, lamp, "floor", v(0, 1, -50))), "no lamp in the Burrow before it's dug")
+expect(not ok(DenSpace.check(1, lamp, "wall", v(30, 8, 0))), "a lamp isn't a wall thing")
+expect(ok(DenSpace.check(1, lantern, "wall", v(30.5, 8, 0))), "a lantern on the Nook wall")
+expect(not ok(DenSpace.check(1, lantern, "wall", v(44, 8, 0))), "no lantern outside the den")
+expect(ok(DenSpace.check(3, lamp, "floor", v(10, -54, 10))), "a lamp on the Hall deck")
+expect(not ok(DenSpace.check(2, lamp, "floor", v(10, -54, 10))), "no Hall before level 3")
+expect(ok(DenSpace.check(5, jelly, "ceiling", v(0, -70, -60))), "a jelly lamp on the Sanctum's vault")
+expect(not ok(DenSpace.check(5, jelly, "ceiling", v(0, -112, -60))), "a ceiling lamp needs height")
+expect(ok(DenSpace.check(5, lamp, "floor", v(0, -112, -60))), "stacked on something on the Sanctum deck")
 
 expect(not ok(DenSpace.check(1, lamp, "floor", v(0, 1, DenSpace.POOL_Z))), "nothing stands on the pool")
 expect(

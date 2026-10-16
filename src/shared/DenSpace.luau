@@ -4,13 +4,12 @@
 -- server to build), what's cut out of them (the Haul Pool, the shafts down, the Coral
 -- Garden, the pillars), and whether a thing may stand somewhere (Build mode checks it
 -- as you aim; the server checks it again). Positions are in the den's own frame: x
--- across, y up from the main floor, z toward the hub (negative = back).
+-- across, y up from the main floor, z toward the front wall (negative = back).
 local Config = require(script.Parent.Config)
 local DensConfig = require(script.Parent.Config.Dens)
 local Layout = require(script.Parent.Layout)
 
 local Dens = Config.Dens
-local hub = Config.World.hub
 
 local DenSpace = {}
 
@@ -22,16 +21,16 @@ export type Pillar = { x: number, z: number, room: string }
 type Hole = { round: boolean, x: number, z: number, rx: number, rz: number }
 
 -- The Haul Pool, in the den's frame (Layout.poolPosition)
-DenSpace.POOL_Z = -(hub.denDepth * 0.62 - hub.denDepth / 2)
-DenSpace.POOL_RADIUS = hub.poolRadius
+DenSpace.POOL_Z = Dens.pool.z
+DenSpace.POOL_RADIUS = Dens.pool.radius
 
--- The den's frame at floor level, facing the hub
+-- The den's frame at floor level (its interior, Layout.denOrigin), facing its front
+-- wall
 function DenSpace.frame(index: number): CFrame
-	local frame = Layout.denFrame(index)
-	return CFrame.new(Vector3.new(frame.Position.X, hub.denFloorY, frame.Position.Z)) * frame.Rotation
+	return Layout.denOrigin(index)
 end
 
--- A spot in the den: the frame looks at the hub and a CFrame's own +z points
+-- A spot in the den: the frame looks at the front wall and a CFrame's own +z points
 -- behind it, so z is flipped (playtest 2026-10-07: the trophy wall stood out in the
 -- plaza)
 function DenSpace.spot(frame: CFrame, x: number, y: number, z: number): CFrame
@@ -112,15 +111,22 @@ function DenSpace.pillars(level: number): { Pillar }
 	return list
 end
 
--- The vault's height over a storey's deck at `x` across a room (the barrel the
--- server carves: radius = the room's half-width, its top at the ceiling)
+-- The arch over a room (DenCarve): upright walls `wall` high, then a shallow
+-- barrel whose chord is the room's width and whose crown is the storey's ceiling.
+-- Its radius, from the room's half-width and the arch's rise.
+function DenSpace.archRadius(room: DensConfig.Room): number
+	local s = DenSpace.storey(room.storey)
+	local rise = s.ceiling - s.deck - s.wall
+	return (room.x * room.x + rise * rise) / (2 * rise)
+end
+
+-- The ceiling's height over a storey's deck at `x` across a room
 function DenSpace.vaultAt(room: DensConfig.Room, x: number): number
 	local s = DenSpace.storey(room.storey)
-	if room.storey == 1 then
-		return s.ceiling - s.deck
-	end
-	local center = s.ceiling - room.x
-	return center + math.sqrt(math.max(room.x * room.x - x * x, 0)) - s.deck
+	local rise = s.ceiling - s.deck - s.wall
+	local radius = DenSpace.archRadius(room)
+	local arc = math.sqrt(math.max(radius * radius - x * x, 0)) - (radius - rise)
+	return s.wall + math.max(arc, 0)
 end
 
 local function holes(level: number, storey: number): { Hole }

@@ -64,7 +64,7 @@ local Dens = Config.Dens
 
 local BuildController = {}
 
-local REACH = 200 -- how far the aim reaches (the editor's camera sits back)
+local REACH = 320 -- how far the aim reaches (the editor's camera sits back over a big den)
 local TURN = 15 -- degrees a tap of turn (snapping off)
 local SNAP_TURN = 45 -- with snapping on
 local ALIGN = 0.8 -- a floor thing lines up with a neighbour this close
@@ -93,9 +93,9 @@ local aimedSet: string? = nil -- the set of the placed thing aimed at
 
 -- The editor view: a focus on the den's floor (den frame) the camera orbits
 type View = { x: number, y: number, z: number, yaw: number, pitch: number, distance: number, storey: number }
-local view: View = { x = 0, y = 1, z = 0, yaw = 0, pitch = math.rad(52), distance = 30, storey = 1 }
+local view: View = { x = 0, y = 1, z = 0, yaw = 0, pitch = math.rad(52), distance = 45, storey = 1 }
 local VIEW_PITCH = { math.rad(18), math.rad(84) }
-local VIEW_ZOOM = { 10, 72 }
+local VIEW_ZOOM = { 10, 120 }
 local VIEW_PAN = 26 -- studs a second at the starting zoom
 local VIEW_FOCUS_UP = 2 -- the camera looks this far over the deck
 local orbiting = false -- the right mouse button held: dragging turns the view
@@ -350,7 +350,7 @@ local function startView()
 	local look = workspace.CurrentCamera.CFrame.LookVector
 	view.yaw = math.atan2(-look.X, -look.Z)
 	view.pitch = math.rad(52)
-	view.distance = 30
+	view.distance = 45
 	viewParams.FilterDescendantsInstances = { workspace.Terrain }
 end
 

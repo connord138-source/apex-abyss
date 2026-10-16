@@ -7,6 +7,7 @@ local Input = require(script.Input)
 local Store = require(script.Store)
 local BiomeController = require(script.Controllers.BiomeController)
 local BuildController = require(script.Controllers.BuildController)
+local DenDoorController = require(script.Controllers.DenDoorController)
 local CatchController = require(script.Controllers.CatchController)
 local CameraController = require(script.Controllers.CameraController)
 local FishAnimator = require(script.Controllers.FishAnimator)
@@ -56,6 +57,7 @@ Store.start() -- Robux prompts (passes, products)
 OfferController.start() -- DAILY and SHOP, the growth chip, Double Haul and Second Chance cards
 GardenController.start() -- the den's Coral Garden sign, payouts and welcome back
 BuildController.startController() -- Build mode in your own den: B / BUILD, the tray, the ghost
+DenDoorController.start() -- den doorways: the bubble portals into the private dens and back out
 task.spawn(Ads.start) -- rewarded ads: checks whether one can be shown
 BiomeController.start() -- biome names, suggested levels and under-level warnings
 TideController.start() -- the Tide Clock: the chip, the banner when it turns, the water's tint

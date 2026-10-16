@@ -148,44 +148,29 @@ local function nearOpening(angle: number, margin: number): boolean
 	return false
 end
 
--- A den's main room (the Nook): a lozenge of air with a flat floor and a round
--- doorway. DenCarve runs it again when a den is put back to a Nook.
-function Cave.denRoom(ops: { Op }, den: number)
-	local frame = Layout.denFrame(den)
-	local back = -frame.LookVector -- the frame faces the hub; the room runs outward
-	local middle = frame.Position
-	local roomY = DEN_FLOOR + hub.denHeight / 2
-	local mid = Vector3.new(middle.X, roomY, middle.Z)
-	ball(ops, AIR, mid, 14)
-	ball(ops, AIR, mid - back * 11, 12)
-	ball(ops, AIR, mid + back * 10 + Vector3.new(0, -1, 0), 11)
-	block(
-		ops,
-		AIR,
-		CFrame.lookAt(mid + Vector3.new(0, -8, 0), mid + Vector3.new(0, -8, 0) + back),
-		Vector3.new(24, 12, 30)
-	)
-	-- The doorway through the wall, a little above the floor
-	local door = mid - back * (hub.denDepth / 2) -- at hub.radius
-	cylinder(ops, AIR, Vector3.new(door.X, DEN_FLOOR + 11, door.Z), back, 22, 10)
-	block(
-		ops,
-		AIR,
-		CFrame.lookAt(Vector3.new(door.X, DEN_FLOOR + 5, door.Z), door + back),
-		Vector3.new(18, 10, 22)
-	)
+-- A den's doorway on the plaza (owner, 2026-10-16: the dens are private interiors
+-- now, Layout.denOrigin): a round alcove through the cavern wall with a flat sill
+-- at the den floor's height, ending in a flat back where the bubble portal stands
+-- (WorldService). The rest of the seamount stays solid.
+function Cave.denDoor(ops: { Op }, den: number)
+	local frame = Layout.doorFrame(den)
+	local back = -frame.LookVector -- the frame faces the hub; the alcove runs outward
+	local door = Vector3.new(frame.Position.X, 0, frame.Position.Z)
+	local front = door - back * 20 -- inside the cavern
+	local length = 21 -- to just behind the portal
+	local middle = front + back * (length / 2)
+	cylinder(ops, AIR, Vector3.new(middle.X, frame.Position.Y, middle.Z), back, length, 10.5)
+	local sill = Vector3.new(middle.X, DEN_FLOOR + 5, middle.Z)
+	block(ops, AIR, CFrame.lookAt(sill, sill + back), Vector3.new(18, 10, length))
 end
 
--- A den's floor, put back after the carving
+-- A doorway's sill, put back after the carving
 function Cave.denFloor(ops: { Op }, den: number)
-	local frame = Layout.denFrame(den)
-	local floorCenter = Vector3.new(frame.Position.X, DEN_FLOOR / 2 - 2, frame.Position.Z)
-	block(
-		ops,
-		SANDSTONE,
-		CFrame.lookAt(floorCenter, floorCenter + frame.LookVector),
-		Vector3.new(32, DEN_FLOOR + 4, 42)
-	)
+	local frame = Layout.doorFrame(den)
+	local back = -frame.LookVector
+	local middle = Vector3.new(frame.Position.X, 0, frame.Position.Z) - back * 5
+	local floorCenter = Vector3.new(middle.X, DEN_FLOOR / 2 - 2, middle.Z)
+	block(ops, SANDSTONE, CFrame.lookAt(floorCenter, floorCenter + back), Vector3.new(24, DEN_FLOOR + 4, 22))
 end
 
 -- The fill helpers, for DenCarve
@@ -282,10 +267,9 @@ function Cave.ops(): { Op }
 		end
 	end
 
-	-- 2. Warm stone where the den rooms will be, so their walls read as home
+	-- 2. Warm stone round the den doorways, so they read as home
 	for den = 1, Layout.DEN_COUNT do
-		local frame = Layout.denFrame(den)
-		ball(ops, SANDSTONE, frame.Position, 20)
+		ball(ops, SANDSTONE, Layout.doorFrame(den).Position, 16)
 	end
 	-- Darker stone round the tunnels
 	for segment = 1, hub.segments do
@@ -369,9 +353,9 @@ function Cave.ops(): { Op }
 		end
 	end
 
-	-- 5. The den rooms: a lozenge of air with a flat floor and a round doorway
+	-- 5. The den doorways: round alcoves ending at each den's portal
 	for den = 1, Layout.DEN_COUNT do
-		Cave.denRoom(ops, den)
+		Cave.denDoor(ops, den)
 	end
 
 	-- 6. The tunnels: round tubes out to the shallows, roughened

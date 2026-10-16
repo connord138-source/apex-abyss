@@ -26,8 +26,9 @@ local dread = 0
 
 -- How much of each bed belongs at the camera's position (0..1 each)
 local function targets(position: Vector3): { [string]: number }
-	local deepT =
-		math.clamp((World.seabedY - 40 - position.Y) / (World.seabedY - 40 - World.deep.floorY), 0, 1)
+	-- (a den's lower storeys are still the hub's cavern drips, not the deep)
+	local y = if Layout.denAt(position) then World.hub.denFloorY else position.Y
+	local deepT = math.clamp((World.seabedY - 40 - y) / (World.seabedY - 40 - World.deep.floorY), 0, 1)
 	local hubT = if Layout.inHub(position) then 1 else 0
 	local outside = 1 - hubT * 0.75
 	return {

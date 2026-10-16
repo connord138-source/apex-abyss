@@ -410,7 +410,8 @@ local function step(dt: number)
 	end
 	local flat = Vector3.new(position.X, 0, position.Z)
 	local edge = World.boundsRadius - length - 4
-	if flat.Magnitude > edge then
+	-- (the dens are private interiors far outside the map's edge: Layout.denOrigin)
+	if flat.Magnitude > edge and Layout.denAt(position) == nil then
 		local out = flat.Unit
 		local outward = velocity:Dot(out)
 		if outward > 0 then

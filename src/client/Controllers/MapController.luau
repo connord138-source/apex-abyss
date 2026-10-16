@@ -71,7 +71,7 @@ local function placeMarks(map: MapDraw.Map)
 	local s = ClientState.current
 	local denIndex = if s then s.denIndex else nil
 	if typeof(denIndex) == "number" and denIndex > 0 then
-		MapDraw.mark(map, "Den", Layout.poolPosition(denIndex), DEN, "◆", 13)
+		MapDraw.mark(map, "Den", Layout.doorFrame(denIndex).Position, DEN, "◆", 13)
 		keep.Den = true
 	end
 	local site = treasureSite()
@@ -122,11 +122,11 @@ local function placeMarks(map: MapDraw.Map)
 			local myPod = me:GetAttribute("Pod")
 			if workspace:GetAttribute("ApexUserId") == player.UserId then
 				-- The Apex shows to everyone, wherever it is (Config/Pvp `apex`)
-				MapDraw.mark(map, id, root.Position, APEX, "★", 18)
+				MapDraw.mark(map, id, Layout.mapPosition(root.Position), APEX, "★", 18)
 			elseif typeof(myPod) == "number" and myPod ~= 0 and player:GetAttribute("Pod") == myPod then
-				MapDraw.mark(map, id, root.Position, PODMATE, "•", 20)
+				MapDraw.mark(map, id, Layout.mapPosition(root.Position), PODMATE, "•", 20)
 			else
-				MapDraw.mark(map, id, root.Position, OTHER, "•", 16)
+				MapDraw.mark(map, id, Layout.mapPosition(root.Position), OTHER, "•", 16)
 			end
 			keep[id] = true
 		end
@@ -290,7 +290,9 @@ local function step()
 		return
 	end
 	local heading = root.CFrame.LookVector
-	MapDraw.update(mini, root.Position, heading, true)
+	-- In a den (far outside the map: Layout.denOrigin) you show at its doorway
+	local onMap = Layout.mapPosition(root.Position)
+	MapDraw.update(mini, onMap, heading, true)
 	placeMarks(mini)
 	-- The place's name under the minimap (owner, 2026-10-16: "Map needs a name of
 	-- the location they are at displayed")
@@ -303,7 +305,7 @@ local function step()
 	end
 	local chart = full
 	if chart then
-		MapDraw.update(chart, root.Position, heading, false)
+		MapDraw.update(chart, onMap, heading, false)
 		placeMarks(chart)
 		local label = whereLabel
 		if label then

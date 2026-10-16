@@ -212,7 +212,9 @@ end
 
 local function step(dt: number)
 	local position = workspace.CurrentCamera.CFrame.Position
-	local target = gradeAt(position.Y)
+	-- A den is graded like the hub whatever storey you're on (its interior sits
+	-- at the hub's height, far outside the map: Layout.denOrigin)
+	local target = gradeAt(if Layout.denAt(position) then Config.World.hub.denFloorY else position.Y)
 	-- Ease toward the target look, so crossing a depth never pops
 	local blended = if current then blendGrades(current, target, Spring.alpha(2.5, dt)) else target
 	current = blended

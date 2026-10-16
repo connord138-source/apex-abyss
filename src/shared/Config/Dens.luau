@@ -8,14 +8,24 @@
 -- v2 (owner, 2026-10-13: "The dens need to be larger and have much more depth so
 -- players can build in them and show them off. It's meant to be like the players
 -- house/base. We will have furniture, rugs, lamps, and tons of items"): a den is a
--- house dug down into the rock under the hub. The main room (the Nook, carved with
--- the cavern) runs back into the Burrow, and from the Hall on, shafts drop to two
--- big vaulted storeys below it: the Hall (and its Grotto wings), then the Sanctum,
--- the deepest. Every storey has a flat stone deck to build on, and things are
--- placed freely (Build mode) on decks, walls and ceilings, as many as the level
--- allows. Room numbers are in the den's frame: x across, y up from the main floor,
--- z toward the hub (negative = back into the rock); Shared/DenSpace turns them into
--- decks and placement rules, and the server carves them (DenCarve).
+-- house dug down into the rock. The main room (the Nook) runs back into the Burrow,
+-- and from the Hall on, shafts drop to two big vaulted storeys below it: the Hall
+-- (and its Grotto wings), then the Sanctum, the deepest. Every storey has a flat
+-- stone deck to build on, and things are placed freely (Build mode) on decks, walls
+-- and ceilings, as many as the level allows. Room numbers are in the den's frame:
+-- x across, y up from the main floor, z toward the front wall and its way out
+-- (negative = back into the rock); Shared/DenSpace turns them into decks and
+-- placement rules, and the server carves them (DenCarve).
+--
+-- v3, private interiors (owner, 2026-10-16: "Dens also still need to be
+-- substantially bigger"; of three ways, "Private interiors"): a den is no longer
+-- squeezed into the hub's ring of twelve. Each one is its own block of rock far
+-- outside the play area (`interior`: a grid at the hub's own height, so it's lit
+-- like the hub and only streams to fish inside it), reached through a bubble portal
+-- in its doorway on the plaza and left by the portal on its front wall. The rooms
+-- grew about four times: a 60 × 60 Nook 39 studs tall, to a Sanctum of ~50,000
+-- square studs over three storeys. Every room has upright walls `wall` studs high
+-- under a shallow arched ceiling (DenCarve, DenSpace.vaultAt).
 export type Level = {
 	level: number,
 	name: string,
@@ -24,8 +34,9 @@ export type Level = {
 	blurb: string,
 }
 
--- A storey: its deck's top, the carved floor under the deck, the ceiling (local y)
-export type Storey = { deck: number, floor: number, ceiling: number }
+-- A storey: its deck's top, the carved floor under the deck, the ceiling's crown
+-- (local y), and how high the upright walls stand over the deck before the arch
+export type Storey = { deck: number, floor: number, ceiling: number, wall: number }
 
 -- A room: a band of floor across the den's axis, `x` either side of it, from `z0`
 -- (the hub side) back to `z1`. Rooms on one storey join into one floor.
@@ -102,76 +113,76 @@ local levels: { Level } = {
 		level = 1,
 		name = "Nook",
 		cost = 0,
-		capacity = 15,
-		blurb = "A snug cave room: your pool, your garden and the trophy wall.",
+		capacity = 20,
+		blurb = "A big cave room of your own: your pool, your garden and the trophy wall.",
 	},
 	{
 		level = 2,
 		name = "Burrow",
 		cost = 1000,
-		capacity = 30,
-		blurb = "The room runs far back into the rock, with room for twice as much.",
+		capacity = 40,
+		blurb = "A second great room runs far back into the rock, with room for twice as much.",
 	},
 	{
 		level = 3,
 		name = "Hall",
 		cost = 12000,
-		capacity = 50,
+		capacity = 70,
 		blurb = "A shaft drops to a great vaulted hall below, and the Coral Garden moves to its middle.",
 	},
 	{
 		level = 4,
 		name = "Grotto",
 		cost = 45000,
-		capacity = 75,
+		capacity = 110,
 		blurb = "The hall opens into wide wings and a deep grotto at its back.",
 	},
 	{
 		level = 5,
 		name = "Sanctum",
 		cost = 150000,
-		capacity = 100,
+		capacity = 160,
 		blurb = "A second shaft to the Sanctum, the deepest and grandest storey of all.",
 	},
 }
 
--- Main floor y 0 is world y 4 (Config/World hub.denFloorY); the Hall's deck is at
--- world -30 and the Sanctum's at -66 (the hub's rock runs solid to -80). The rock
--- floor under each deck is 5–6 studs down, on a 4-stud voxel line: Terrain draws
--- its surface up to ~4.6 studs above where it's filled, and with 1–2 studs of room
--- it came up through the flagstones (playtest 2026-10-13: none showed on the main
--- storey; sandy wedges between them below). The decks are thick slabs down to it.
--- 8 studs of rock stay between one storey's floor and the next one's ceiling.
+-- Main floor y 0 is world y 4 (Config/World hub.denFloorY; the interiors sit at
+-- the hub's height). The rock floor under each deck is 5–6 studs down, on a 4-stud
+-- voxel line: Terrain draws its surface up to ~4.6 studs above where it's filled,
+-- and with 1–2 studs of room it came up through the flagstones (playtest
+-- 2026-10-13: none showed on the main storey; sandy wedges between them below).
+-- The decks are thick slabs down to it. 8 studs of rock stay between one storey's
+-- floor and the next one's ceiling.
 local storeys: { Storey } = {
-	{ deck = 1, floor = -4, ceiling = 24 },
-	{ deck = -34, floor = -40, ceiling = -12 },
-	{ deck = -70, floor = -76, ceiling = -48 },
+	{ deck = 1, floor = -4, ceiling = 40, wall = 22 },
+	{ deck = -54, floor = -60, ceiling = -12, wall = 24 },
+	{ deck = -114, floor = -120, ceiling = -68, wall = 26 },
 }
 
--- Each room keeps 5 studs of rock from the line between it and the next den
--- (x <= (112 - z) * tan 15° - 5), and the main storey stays clear of the tunnels
+-- Bounds on the 2-stud grid (x whole studs); the front wall (z0 of the front rooms)
+-- holds the way out on the main storey
 local rooms: { Room } = {
-	{ id = "Nook", level = 1, storey = 1, x = 12, z0 = 14, z1 = -16 },
-	{ id = "Burrow", level = 2, storey = 1, x = 11, z0 = -12, z1 = -38 },
-	{ id = "HallNave", level = 3, storey = 2, x = 18, z0 = 24, z1 = 0 },
-	{ id = "HallMid", level = 3, storey = 2, x = 22, z0 = 0, z1 = -24 },
-	{ id = "HallBack", level = 3, storey = 2, x = 26, z0 = -24, z1 = -48, pillars = 12 },
-	{ id = "GrottoWings", level = 4, storey = 2, x = 29, z0 = -16, z1 = -48 },
-	{ id = "GrottoDeep", level = 4, storey = 2, x = 33, z0 = -48, z1 = -74, pillars = 13 },
-	{ id = "SanctumFore", level = 5, storey = 3, x = 16, z0 = 28, z1 = 0 },
-	{ id = "SanctumNave", level = 5, storey = 3, x = 24, z0 = 0, z1 = -40, pillars = 10 },
-	{ id = "SanctumApse", level = 5, storey = 3, x = 34, z0 = -40, z1 = -84, pillars = 11 },
+	{ id = "Nook", level = 1, storey = 1, x = 30, z0 = 30, z1 = -30 },
+	{ id = "Burrow", level = 2, storey = 1, x = 28, z0 = -26, z1 = -90 },
+	{ id = "HallNave", level = 3, storey = 2, x = 32, z0 = 30, z1 = -20 },
+	{ id = "HallMid", level = 3, storey = 2, x = 40, z0 = -20, z1 = -70 },
+	{ id = "HallBack", level = 3, storey = 2, x = 46, z0 = -70, z1 = -120, pillars = 14 },
+	{ id = "GrottoWings", level = 4, storey = 2, x = 58, z0 = -30, z1 = -120 },
+	{ id = "GrottoDeep", level = 4, storey = 2, x = 62, z0 = -120, z1 = -170, pillars = 14 },
+	{ id = "SanctumFore", level = 5, storey = 3, x = 36, z0 = 30, z1 = -20 },
+	{ id = "SanctumNave", level = 5, storey = 3, x = 50, z0 = -20, z1 = -100, pillars = 16 },
+	{ id = "SanctumApse", level = 5, storey = 3, x = 66, z0 = -100, z1 = -180, pillars = 16 },
 }
 
 local shafts: { Shaft } = {
-	{ id = "HallShaft", level = 3, from = 1, to = 2, z = -29, radius = 7 },
-	{ id = "SanctumShaft", level = 5, from = 2, to = 3, z = -62, radius = 8 },
+	{ id = "HallShaft", level = 3, from = 1, to = 2, z = -58, radius = 9 },
+	{ id = "SanctumShaft", level = 5, from = 2, to = 3, z = -90, radius = 10 },
 }
 
 local gardenSpots: { GardenSpot } = {
-	{ level = 1, storey = 1, z = -13, shape = "trough", width = 16, depth = 4 },
-	{ level = 2, storey = 1, z = -35, shape = "trough", width = 16, depth = 4 },
-	{ level = 3, storey = 2, z = -12, shape = "bed", width = 15, depth = 11 },
+	{ level = 1, storey = 1, z = -26, shape = "trough", width = 24, depth = 5 },
+	{ level = 2, storey = 1, z = -86, shape = "trough", width = 24, depth = 5 },
+	{ level = 3, storey = 2, z = 4, shape = "bed", width = 22, depth = 16 },
 }
 
 local items: { Item } = {
@@ -1074,11 +1085,21 @@ return {
 	expansionCapacity = 25,
 	-- The main room's back wall at plaque height (local z), before and after the
 	-- Burrow carves it back (the trophy wall is seated on the real rock by raycast)
-	backWall = { -21, -42 },
-	-- The deepest the den reaches back, and down: the safe zone (Layout.denAt) and
-	-- the rock refilled when a den changes hands
-	maxBack = -90,
-	maxFront = 32,
+	backWall = { -30, -90 },
+	-- The furthest the rooms reach back and forward (local z): the den's block of
+	-- rock (DenCarve) and the safe zone (Layout.denAt)
+	maxBack = -180,
+	maxFront = 30,
+	-- The Haul Pool, near the front of the Nook: you come in over it, so swimming
+	-- home through your doorway banks your Haul (local z, and its radius)
+	pool = { z = 12, radius = 8 },
+	-- The way out: a bubble portal on the main storey's front wall (its middle's
+	-- height over the deck, and its radius)
+	exit = { y = 13, radius = 9 },
+	-- Where the interiors are: a grid of blocks at the hub's height, far outside the
+	-- play area (the map's rim is 1,500 out, the Horizon walls 2,900), `spacing`
+	-- apart, `columns` to a row
+	interior = { x = 5200, z = -640, spacing = 640, columns = 4 },
 	-- The hint to open the den menu shows within this of your own Haul Pool
 	hintReach = 16,
 	-- The Coral Garden (owner, 2026-10-09: "an afk aspect of the game to earn

@@ -156,6 +156,8 @@ local function showMarkers(kind: string?, s: { [string]: any })
 		-- (state.denIndex: `den` is the den's record since the den bases landed, so
 		-- the BANK HERE marker had stopped showing)
 		marker(Layout.poolPosition(s.denIndex) + Vector3.new(0, 4, 0), "BANK HERE")
+		-- (the den is through its doorway on the plaza: Layout.doorFrame)
+		marker(Layout.doorFrame(s.denIndex).Position + Vector3.new(0, 12, 0), "YOUR DEN")
 	end
 end
 
@@ -176,6 +178,11 @@ end
 table.insert(exits, hub.center + Vector3.new(0, hub.height + 6, 0))
 
 local function nearestExit(from: Vector3): Vector3?
+	-- In a den, the way out is its portal on the front wall
+	local den = Layout.denAt(from)
+	if den then
+		return Layout.exitFrame(den).Position
+	end
 	local best: Vector3? = nil
 	local bestDistance = math.huge
 	for _, exit in exits do
@@ -193,9 +200,14 @@ local function findTarget(kind: string?, from: Vector3, s: { [string]: any }): V
 	if kind == "exits" then
 		return nearestExit(from)
 	elseif kind == "den" then
-		return if typeof(s.denIndex) == "number" and s.denIndex > 0
-			then Layout.poolPosition(s.denIndex) + Vector3.new(0, 2, 0)
-			else nil
+		if typeof(s.denIndex) ~= "number" or s.denIndex <= 0 then
+			return nil
+		end
+		-- Through the doorway first, then to the pool inside
+		if Layout.denAt(from) == s.denIndex then
+			return Layout.poolPosition(s.denIndex) + Vector3.new(0, 2, 0)
+		end
+		return Layout.doorFrame(s.denIndex).Position
 	elseif kind == "food" then
 		local fish = SchoolController.nearestEdible(from, SwimController.length(), SEARCH_RANGE)
 		local food = ForageController.nearest(from, SEARCH_RANGE)
