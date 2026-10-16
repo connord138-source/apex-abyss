@@ -14,12 +14,12 @@ return {
 	sheenSparkle = 120522622169733, -- assets/textures/sheen_sparkle.png
 	sheenGold = 70886974600925, -- assets/textures/sheen_gold.png
 	sheenVeil = 91311902351808, -- assets/textures/sheen_veil.png
-	-- v9 (2026-10-16): coloured layers for the Rare+ skins; 0 until uploaded
-	sheenLava = 0, -- assets/textures/sheen_lava.png
-	sheenCaustic = 0, -- assets/textures/sheen_caustic.png
-	sheenFacets = 0, -- assets/textures/sheen_facets.png
-	sheenCurrent = 0, -- assets/textures/sheen_current.png
-	sheenBolt = 0, -- assets/textures/sheen_bolt.png
+	-- v9 (2026-10-16): coloured layers for the Rare+ skins
+	sheenLava = 77584183834097, -- assets/textures/sheen_lava.png
+	sheenCaustic = 70603076372832, -- assets/textures/sheen_caustic.png
+	sheenFacets = 102847350858119, -- assets/textures/sheen_facets.png
+	sheenCurrent = 75408604446814, -- assets/textures/sheen_current.png
+	sheenBolt = 136653557283341, -- assets/textures/sheen_bolt.png
 	stars = 129645056585841, -- hatch-and-snatch assets/textures/galaxy_sky.png
 	-- the sea chart behind the minimap and the full map (tools/map/make_chart.py;
 	-- src/client/MapDraw)
