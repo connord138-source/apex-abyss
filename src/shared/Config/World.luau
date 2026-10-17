@@ -35,6 +35,9 @@ return {
 		tunnelLength = 76,
 		oculusRadius = 28, -- the hole in the cavern roof (light comes down through it)
 		poolRadius = 7, -- each den's Haul Pool: swim into it to bank
+		-- The plaza's paving outside the raised centre (Plaza.luau): its top, a
+		-- little over the tunnels' floors (1) so they meet it flush
+		paving = 1.1,
 	},
 
 	-- The shelf: shallow sand from the hub out to `radius`, then the drop-off, a

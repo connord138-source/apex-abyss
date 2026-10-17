@@ -106,18 +106,16 @@ def swirl():
 
 
 def mist():
-    """A wispy cloud puff: a few soft lobes of billowing noise with a ragged, thinning
-    rim and streaky wisps, denser low in the middle, never a hard ball."""
+    """A wispy cloud puff: a soft, irregular round puff (its outline pushed in and out
+    by noise), thinning toward a ragged rim, with streaky wisps and billows inside."""
     x, y, r, th = grid()
-    warp = noise(x, y, 2.0, 13, octaves=3) - 0.5
-    lobes = 0.0
-    for cx, cy, rad in ((-0.22, -0.08, 0.5), (0.2, -0.12, 0.46), (0.02, 0.2, 0.44), (0.32, 0.22, 0.3), (-0.35, 0.22, 0.28)):
-        d = np.hypot(x - cx + 0.25 * warp, y - cy - 0.2 * warp) / rad
-        lobes = np.maximum(lobes, smoothstep(1.15, 0.0, d) ** 1.5)
-    n = noise(x + 0.4 * warp, y, 3.5, 11, octaves=5)
-    wisps = 1 - np.abs(noise(x * 0.8 + 0.6 * warp, y * 2.2, 3.0, 12, octaves=4) - 0.5) * 2  # ridged
-    alpha = lobes * (0.3 + 0.7 * smoothstep(0.25, 0.8, n)) * (0.7 + 0.3 * wisps)
-    alpha = blur(alpha, 4.0) * smoothstep(0.98, 0.8, r)
+    warp = noise(x, y, 2.2, 13, octaves=3) - 0.5
+    rim = r / 0.78 * (1 + 0.45 * warp) + 0.12 * (noise(x, y, 6.0, 14, octaves=3) - 0.5)
+    puff = smoothstep(1.0, 0.1, rim)
+    billow = noise(x + 0.5 * warp, y + 0.3 * warp, 3.0, 11, octaves=5)
+    wisps = 1 - np.abs(noise(x * 0.7 + 0.5 * warp, y * 2.4, 2.6, 12, octaves=4) - 0.5) * 2  # ridged, along x
+    alpha = puff * (0.35 + 0.65 * smoothstep(0.3, 0.72, billow)) * (0.7 + 0.3 * wisps)
+    alpha = blur(alpha, 3.0) * smoothstep(0.98, 0.82, r)
     save("mist", alpha * 0.9)
 
 
@@ -171,9 +169,9 @@ def flame():
         h = (y - base) / (top - base)
         hc = np.clip(h, 0, 1)
         sway = lean * hc**1.6 + 0.05 * np.sin(hc * 5.0 + seed_shift) * hc
-        half = width * (1 - hc) ** 0.75 * smoothstep(-0.25, 0.25, h) ** 0.5
+        half = width * (1 - hc) ** 0.75
         # A rounded base: below it the flame closes like a drop
-        half = np.where(h < 0, width * np.sqrt(np.clip(1 - (h / 0.22) ** 2, 0, 1)), half)
+        half = np.where(h < 0, width * np.sqrt(np.clip(1 - (h / 0.3) ** 2, 0, 1)), half)
         edge = half * (0.85 + 0.4 * (n - 0.5))
         dx = np.abs(x - cx - sway)
         some = half > 1e-3
@@ -181,8 +179,8 @@ def flame():
         core = np.where(some, smoothstep(edge * 0.6, 0.0, dx), 0) * smoothstep(0.7, 0.1, h)
         return body, core
 
-    b1, c1 = tongue(-0.04, -0.5, 0.92, 0.36, 0.22, 0.0)
-    b2, c2 = tongue(0.2, -0.45, 0.3, 0.16, -0.12, 2.0)
+    b1, c1 = tongue(-0.06, -0.55, 0.92, 0.5, 0.24, 0.0)
+    b2, c2 = tongue(0.26, -0.5, 0.35, 0.22, -0.14, 2.0)
     alpha = np.clip(np.maximum(b1, b2 * 0.8) * 0.78 + np.maximum(c1, c2 * 0.7) * 0.3, 0, 1)
     alpha = blur(alpha, 2.2) * smoothstep(0.99, 0.9, np.maximum(np.abs(x), np.abs(y)))
     save("flame", alpha, WARM)

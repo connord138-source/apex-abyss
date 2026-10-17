@@ -767,6 +767,13 @@ def padded(m: Fish, arr):
         if filled.all():
             break
     out[~filled] = arr[~filled]
+    # Round the eyes the gaps take the nearest baked texel (the eye's own colour), not
+    # a blur that reaches the skin beside them: a texture sampled across an eye's UV
+    # seam (mip levels at a distance) would draw a thin line of skin through the eye
+    eye_gap = cache(m, "eye_gap", lambda: ndimage.binary_dilation(m.eyes > 0.5, iterations=8) & ~m.real)
+    if eye_gap.any():
+        idx = cache(m, "nearest_real", lambda: ndimage.distance_transform_edt(~m.real, return_distances=False, return_indices=True))
+        out[eye_gap] = arr[idx[0], idx[1]][eye_gap]
     if arr.ndim == 3:
         skin, pale = skin_masks((np.clip(out, 0, 1) * 255).astype(np.uint8))
         risky = ndimage.binary_dilation((skin | pale) & ~m.real, iterations=2) & ~m.real
