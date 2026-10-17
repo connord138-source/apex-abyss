@@ -8,6 +8,8 @@
 -- back from it pull the camera in, snapping in and easing back out. Under a ceiling
 -- (or on the seabed) it slides along the rock instead of collapsing into the fish,
 -- and when it does end up close, your own fish fades so it doesn't fill the view.
+-- The fish swims by the player's aim (SwimController `aim`, set here), never by the
+-- view rock has bent or a shake has turned.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -179,7 +181,7 @@ local function update(dt: number)
 	-- turn rate so the camera and the fish swing round together
 	local _, steer = Input.drive()
 	if steer ~= 0 then
-		local turn = Size.turnRate(SwimController.length()) * SwimController.stats().turn
+		local turn = SwimController.turnRate()
 		yaw -= steer * math.clamp(turn * tuning.steerScale, tuning.steerMin, tuning.steerMax) * dt
 	end
 	pitch = math.clamp(pitch - look.Y, tuning.minPitch, tuning.maxPitch)
@@ -210,13 +212,19 @@ local function update(dt: number)
 	end
 	focus, focusVelocity = Spring.vector(focus, focusVelocity, target, tuning.focusSpring, dt)
 	local lag = focus - target
+	local limit = length * tuning.maxLag
+	local knee = limit * tuning.lagKnee
 	if lag.Magnitude > length * 6 + 30 then
 		-- A respawn or a teleport: cut straight there
 		focus, focusVelocity = target, Vector3.zero
-	elseif lag.Magnitude > length * tuning.maxLag then
+	elseif lag.Magnitude > knee then
 		-- At full speed the spring trailed far enough to shrink the fish to a dot
-		-- (playtest re-test, 2026-10-06); a little trail still reads as motion
-		focus = target + lag.Unit * length * tuning.maxLag
+		-- (playtest re-test, 2026-10-06); a little trail still reads as motion. Past
+		-- the knee the trail eases toward the limit instead of hitting it, so a Dash
+		-- or a stop doesn't jolt the fish across the screen
+		local over = lag.Magnitude - knee
+		local span = limit - knee
+		focus = target + lag.Unit * (knee + span * (1 - math.exp(-over / span)))
 	end
 	distance, distanceVelocity =
 		Spring.number(distance, distanceVelocity, wantDistance, tuning.distanceSpring, dt)
@@ -224,6 +232,7 @@ local function update(dt: number)
 	fov, fovVelocity = Spring.number(fov, fovVelocity, wantFov, 6, dt)
 
 	local rotation = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)
+	SwimController.aim = rotation
 	local back = -rotation.LookVector
 	-- Keep out of rock. Everything that moves is ignored: fish, prey and pickups.
 	local ignore: { Instance } = {}
@@ -279,16 +288,23 @@ local function update(dt: number)
 	local first, normal = sweep(eye, back, distance, nearBox, near)
 	-- 3. Stopped by a ceiling (looking down) or the seabed (looking up): rather than
 	-- collapse into the fish (it sat 0.7 studs off, re-test 2026-10-07), slide the
-	-- rest of the way along the rock and look back at the fish from there
+	-- rest of the way along the rock and look back at the fish from there. How far
+	-- it slides fades in with how flat the rock is (`slideFrom` → `slideFull` of the
+	-- normal's height): a den's arched vault turns from roof to wall, and an on/off
+	-- slide there threw the camera in and out as the fish moved under it
 	local bend = eye + back * first
 	local slide: Vector3? = nil
 	local second = 0
-	if normal and math.abs(normal.Y) > 0.6 and first < distance - 0.05 then
+	local flatness = if normal
+		then math.clamp((math.abs(normal.Y) - tuning.slideFrom) / (tuning.slideFull - tuning.slideFrom), 0, 1)
+		else 0
+	if normal and flatness > 0 and first < distance - 0.05 then
 		local along = back - normal * back:Dot(normal)
 		if along.Magnitude > 0.05 then
 			slide = along.Unit
 			bend += normal * 0.05
-			second = sweep(bend, along.Unit, distance - first, nearBox, near)
+			local free = sweep(bend, along.Unit, distance - first, nearBox, near)
+			second = free * flatness * flatness * (3 - 2 * flatness)
 		end
 	end
 	-- Snap in when blocked, ease back out (measured along the path, bend included)

@@ -38,10 +38,60 @@ return {
 		accel = 3.1, -- reaches top speed in about 1/accel seconds
 		turnRate = 4.4, -- radians/s the heading can swing for a 1-stud fish
 		turnExponent = -0.32, -- big fish turn slower
-		drag = 2.3, -- per second, coasting with no input
+		-- Easier navigating (owner, 2026-10-17: "Still a bit difficult to navigate the
+		-- fish"; SwimController, measured with tools/tests/run_swim.sh):
+		-- * Letting go glides, then settles: drag plus a steady brake (`stopBrake` ×
+		--   top speed a second) ends the slow creep that overshot a shell. From full
+		--   speed it stops in ~0.9 s (was 1.3–1.9 s) and coasts ~25% less.
+		drag = 2.0, -- per second, coasting with no input (was 2.3, with no brake)
+		stopBrake = 0.35,
+		-- * Turning comes from speed: still it pivots (`pivotTurn`), at speed it carves
+		--   (`cruiseTurn`), blended between `pivotBelow` and `carveAbove` of top speed
+		--   (it was a hard step at 25%, where the rate halved).
+		pivotTurn = 2.6,
 		cruiseTurn = 1.2, -- turn rate at speed, × the fish's own (it was 1)
-		levelZone = math.rad(12), -- aim pitches within this swim level; past it the climb eases in
-		verticalShare = 0.85, -- how much of top speed the up/down keys give
+		dashTurn = 0.75, -- mid-Dash
+		pivotBelow = 0.15,
+		carveAbove = 0.75,
+		-- * A hard turn sheds speed, the way a fish does: aiming more than `brakeFrom`
+		--   off the way it swims eases it toward `turnBrake` × top speed (at
+		--   `brakeTo`), shedding at `decel`, so a U-turn at speed pivots round tight
+		--   instead of swinging wide: it carries on 35–70% less past the turn and
+		--   comes round 10–45% sooner (with `bigTurn`; most for the biggest fish).
+		turnBrake = 0.35,
+		brakeFrom = math.rad(35),
+		brakeTo = math.rad(150),
+		decel = 6, -- shedding speed within top speed (a turn's brake, easing off a stick)
+		-- * The heading eases into a new aim over its last few degrees (×this a second)
+		--   instead of stopping dead at the turn's full rate
+		turnSettle = 25,
+		-- * Bodies past the size knee are drawn shorter than their raw length (Size),
+		--   but speed and turning followed the raw length, so a LV 100 fish carved 3.4
+		--   body lengths wide (LV 1–60: 1.7–2.4). Turning gains (raw ÷ drawn)^bigTurn:
+		--   ×1.46 at LV 100, ×1.06 at LV 60, nothing below the knee.
+		bigTurn = 0.3,
+		-- * Indoors (the hub's cavern and tunnels, the dens) top speed is at most this
+		--   (studs/s; a Dash still doubles it): a LV 100 fish (83) crossed its 60-stud
+		--   Nook in 0.7 s. A Nibbler under ~LV 60 (a 'Cuda under ~LV 45) never reaches
+		--   it, and outside nothing changes.
+		indoorSpeed = 48,
+		-- * Level swimming: an aim tipped within `levelZone` of level swims level, and
+		--   by `levelFull` the fish swims exactly where you look (the old ease took the
+		--   whole 12° zone off every aim: aiming 26.6° down at a shell dived at 15° and
+		--   swam 2.4 studs over it)
+		levelZone = math.rad(8),
+		levelFull = math.rad(30),
+		-- * Rock glides by: the fish feels ahead (a cast the collider's size) and eases
+		--   its speed into rock over its last `wallEase` seconds (never under
+		--   `wallContact` × top, so it still arrives); within `wallSkin` studs none of
+		--   it goes in, and what's left slides along, facing the way it slides. Pressed
+		--   head-on it slows enough to pivot away. (The physics stopped the fish, but
+		--   the swim still thought it was at full speed into the rock: it faced the
+		--   wall, slid at half speed and carved round slowly.)
+		wallEase = 0.12,
+		wallContact = 0.12,
+		wallSkin = 0.08,
+		verticalShare = 0.85, -- how much of top speed the up/down keys give (straight up or down, alone)
 		-- A stick pulled back (controller, phone): brake at this rate, then back up at
 		-- this share of top speed
 		brake = 5,
@@ -85,10 +135,26 @@ return {
 		boostFov = 80,
 		focusSpring = 11, -- how tightly the look-at point follows the fish (Hz-ish)
 		maxLag = 0.8, -- the look-at point trails the fish by at most this × its length
+		lagKnee = 0.5, -- ...easing toward it past this share of it (it hit the limit dead)
+		-- Against a roof or the seabed the camera slides along the rock, by how flat it
+		-- is: none under this much of the normal's height, all of it from `slideFull`
+		-- (it was all or nothing at 0.6: on a den's arched vault it popped in and out)
+		slideFrom = 0.45,
+		slideFull = 0.75,
 		distanceSpring = 4, -- how quickly the camera pulls back as you grow
 		mouseSensitivity = 0.0032, -- radians per pixel
 		touchSensitivity = 0.0055,
 		gamepadSpeed = 3.4, -- radians/s at full stick
+		-- Stick shaping (owner, 2026-10-17: "Still a bit difficult to navigate"; Input):
+		-- the right stick's tilt past its dead zone to `gamepadCurve`, so a light push
+		-- aims finely and full tilt is unchanged (half tilt 1.4 → 0.75 rad/s); the left
+		-- stick's (and phone stick's) steer ignores a sideways wobble under
+		-- `steerDeadZone` × the throttle and eases in to `steerCurve`, so pushing ahead
+		-- doesn't slowly turn the view; the phone stick gets a dead zone of its own
+		gamepadCurve = 1.7,
+		steerDeadZone = 0.12,
+		steerCurve = 1.25,
+		touchDeadZone = 0.1,
 		-- A stick's sideways push turns the aim: the fish's own turn rate × steerScale,
 		-- within these (radians/s), so the camera and the fish turn together
 		steerScale = 0.75,

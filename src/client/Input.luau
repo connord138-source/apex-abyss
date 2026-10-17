@@ -72,13 +72,15 @@ local function setHeld(key: Enum.KeyCode | Enum.UserInputType, down: boolean)
 	held[key.Name] = down
 end
 
--- A stick past its dead zone, rescaled so it still reaches 1 at full tilt.
-local function deadZone(position: Vector2): Vector2
+-- A stick past its dead zone, rescaled so it still reaches 1 at full tilt, its tilt
+-- raised to `curve` (1 = straight): a light push moves finely, full tilt is the same.
+local function deadZone(position: Vector2, curve: number?, dead: number?): Vector2
 	local magnitude = position.Magnitude
-	if magnitude < 0.15 then
+	local zone = dead or 0.15
+	if magnitude < zone then
 		return Vector2.zero
 	end
-	return position.Unit * math.min((magnitude - 0.15) / 0.85, 1)
+	return position.Unit * math.min((magnitude - zone) / (1 - zone), 1) ^ (curve or 1)
 end
 
 -- Keeps the cursor locked to the window's centre while the fish is being steered
@@ -118,7 +120,7 @@ local function pollSticks()
 		if state.KeyCode == Enum.KeyCode.Thumbstick1 then
 			stick1 = deadZone(Vector2.new(state.Position.X, -state.Position.Y))
 		elseif state.KeyCode == Enum.KeyCode.Thumbstick2 then
-			stick2 = deadZone(Vector2.new(state.Position.X, -state.Position.Y))
+			stick2 = deadZone(Vector2.new(state.Position.X, -state.Position.Y), cameraTuning.gamepadCurve)
 		end
 	end
 end
@@ -244,7 +246,7 @@ function Input.start()
 			stick1 = deadZone(Vector2.new(input.Position.X, -input.Position.Y))
 		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
 			stickPad = input.UserInputType
-			stick2 = deadZone(Vector2.new(input.Position.X, -input.Position.Y))
+			stick2 = deadZone(Vector2.new(input.Position.X, -input.Position.Y), cameraTuning.gamepadCurve)
 		end
 	end)
 	UserInputService.WindowFocusReleased:Connect(function()
@@ -285,6 +287,11 @@ end
 -- Stick swimming (owner, 2026-10-07: controller and phone): the left stick or the
 -- touch stick is a throttle and a rudder. Returns throttle (+1 full ahead, -1 back
 -- up) and steer (+1 turn right); the right stick or a screen drag aims up and down.
+-- The steer is shaped (owner, 2026-10-17: "Still a bit difficult to navigate"):
+-- pushing ahead, a sideways wobble under `steerDeadZone` (× the throttle, so a
+-- sideways-only push turns from the first nudge) doesn't turn the view, and past
+-- it the turn eases in to `steerCurve`. The phone stick gets a dead zone of its own
+-- (`touchDeadZone`; a resting thumb wobbles), the pad's comes from `deadZone`.
 function Input.drive(): (number, number)
 	if Input.locked or Input.editing then
 		return 0, 0
@@ -292,8 +299,12 @@ function Input.drive(): (number, number)
 	-- The left stick moves the selection while a menu button is selected
 	-- (stick1 is stored with y flipped, so pushing up is negative)
 	local stick = if GuiService.SelectedObject then Vector2.zero else stick1
-	local drive = stick + touchMove
-	return math.clamp(-drive.Y, -1, 1), math.clamp(drive.X, -1, 1)
+	local drive = stick + deadZone(touchMove, 1, cameraTuning.touchDeadZone)
+	local throttle = math.clamp(-drive.Y, -1, 1)
+	local x = math.clamp(drive.X, -1, 1)
+	local dead = cameraTuning.steerDeadZone * math.abs(throttle)
+	local steer = math.sign(x) * (math.max(math.abs(x) - dead, 0) / (1 - dead)) ^ cameraTuning.steerCurve
+	return throttle, steer
 end
 
 -- The HUD's touch thumbstick: x = right, y = back (screen down), length at most 1.

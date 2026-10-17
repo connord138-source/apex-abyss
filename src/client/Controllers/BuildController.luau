@@ -1190,6 +1190,35 @@ local function controlsText(): string
 	return "Click to place · drag things (from the tray too) · RIGHT-DRAG turn view · WASD pan · wheel zoom · SPACE / C floor · R F turn · G snap · L lay out · X put away · B done"
 end
 
+-- The skin effects round your own fish (Shared/SkinFx: mist, rings, halos) stop
+-- while it's hidden for editing, and start again after
+local stilled: { Instance } = {}
+local function stillEffects(still: boolean)
+	if not still then
+		for _, effect in stilled do
+			if effect.Parent then
+				(effect :: any).Enabled = true
+			end
+		end
+		table.clear(stilled)
+		return
+	end
+	local character = Players.LocalPlayer.Character
+	if character == nil then
+		return
+	end
+	for _, effect in character:GetDescendants() do
+		if
+			(effect:IsA("ParticleEmitter") or effect:IsA("Trail") or effect:IsA("Beam"))
+			and effect:GetAttribute("ShadeEffect")
+			and (effect :: any).Enabled
+		then
+			(effect :: any).Enabled = false
+			table.insert(stilled, effect)
+		end
+	end
+end
+
 -- Opens the den shop over Build mode (bought things land in the tray)
 local function openShop()
 	if not active or shopping then
@@ -1428,6 +1457,7 @@ function BuildController.start()
 	startView()
 	CameraController.override = viewCFrame
 	CameraController.hideFish = true
+	stillEffects(true)
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 	UserInputService.MouseIconEnabled = true
 	controlsLabel.Text = controlsText()
@@ -1453,6 +1483,7 @@ function BuildController.stop()
 	CameraController.override = nil
 	CameraController.overrideFov = nil
 	CameraController.hideFish = false
+	stillEffects(false)
 	orbiting, dragging, trayDrag = false, false, false
 	tapAt, pinchFrom = nil, nil
 	MenuController.building = false

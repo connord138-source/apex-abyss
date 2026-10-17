@@ -3,10 +3,16 @@
 -- owns its fish's physics), so there's never any input lag; the server only
 -- checks what it does.
 --
--- Feel: the fish has momentum (it accelerates and coasts), its heading can only
--- swing so fast (big fish turn slower), it banks into turns, and a boost starts
--- with a tail flick. Velocity drives a LinearVelocity and the heading an
--- AlignOrientation, so walls and rocks still collide naturally.
+-- Feel: the fish has momentum (it accelerates, glides and settles), its heading can
+-- only swing so fast (big fish turn slower; still it pivots, at speed it carves, and
+-- a hard turn sheds speed so it comes round tight), it banks into turns, and a boost
+-- starts with a tail flick. It steers by the player's aim (CameraController
+-- `aim`), not the view on screen, which bends round rock. Velocity drives a
+-- LinearVelocity and the heading an AlignOrientation; ahead of the physics the
+-- swim feels for rock and glides along it (`glide`), and whatever stopped the fish
+-- that the feel can't see is taken out of the swim too (`feedback`), so it always
+-- faces and turns the way it really moves (owner, 2026-10-17: "Still a bit
+-- difficult to navigate the fish"; Config/Tuning `swim`, tools/tests/run_swim.sh).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -32,6 +38,11 @@ local SwimController = {
 	boosting = false, -- mid-Dash
 	slipstream = false, -- in a podmate's slipstream (faster)
 	dashCharge = 1, -- 0..1; the Dash is ready at 1
+	-- The player's aim (the camera's yaw and pitch as the player set them, before rock
+	-- bends the view or a shake turns it), set by CameraController every frame. The
+	-- fish swims by this, so a camera sliding along a den's ceiling no longer tips
+	-- the swim down (nil until the camera runs: the camera's own CFrame then)
+	aim = nil :: CFrame?,
 	-- () — a bite lunge started (the animator snaps the jaw)
 	lunged = Signal.new(),
 	-- (character) — our fish spawned
@@ -49,6 +60,9 @@ local lastBiteAt = -math.huge
 local dashUntil = 0
 local dashStarted = false
 local clock = 0
+-- The velocity the constraint was last asked for (no idle bob): what the physics did
+-- with it says what stopped the fish (`feedback`)
+local lastCommand = Vector3.zero
 -- What's holding the fish and where it drags it: "creature" (a boss's grab) or
 -- "hook" (a fisherman's line, HookController)
 local holds: { [string]: Vector3? } = {}
@@ -60,6 +74,11 @@ local function heldAt(): Vector3?
 	return nil
 end
 
+local function smoothstep(t: number): number
+	t = math.clamp(t, 0, 1)
+	return t * t * (3 - 2 * t)
+end
+
 local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vector3
 	local dot = math.clamp(from:Dot(to), -1, 1)
 	local angle = math.acos(dot)
@@ -68,20 +87,37 @@ local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vecto
 	end
 	local axis = from:Cross(to)
 	if axis.Magnitude < 1e-5 then
-		-- Exactly opposite: turn about the up axis (or any axis when vertical)
-		axis = if math.abs(from.Y) < 0.99 then Vector3.yAxis else Vector3.xAxis
+		-- Exactly opposite: level, turn about the up axis; straight up to straight
+		-- down (Space, then C), pitch over through the way the fish faces
+		if math.abs(from.Y) < 0.99 then
+			axis = Vector3.yAxis
+		else
+			local flat = Vector3.new(heading.X, 0, heading.Z)
+			axis = from:Cross(if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis)
+		end
 	end
 	return CFrame.fromAxisAngle(axis.Unit, maxAngle):VectorToWorldSpace(from)
 end
 
+-- The pitch the fish swims at for an aim pitch: level within `levelZone`, exactly
+-- the aim from `levelFull`, eased smoothly between (the old ease kept the whole 12°
+-- zone off every aim, so a fish aimed at a shell below swam over it)
+local function swimPitch(aimPitch: number): number
+	return aimPitch * smoothstep((math.abs(aimPitch) - swim.levelZone) / (swim.levelFull - swim.levelZone))
+end
+
 -- Keeps a heading within the pitch limit, so the fish never flips over the top.
+-- Swimming nearly straight up or down (Space or C alone, a den shaft) it keeps the
+-- bearing it already faces: there a sliver of sideways drift (a glide off the rock,
+-- the shaft's pull onto its axis) would otherwise spin the fish round.
+local STEEP = 0.1 -- a direction's level share under this (past ~84°) is "straight"
 local function limitPitch(direction: Vector3): Vector3
 	local maxY = math.sin(swim.maxPitch)
 	if math.abs(direction.Y) <= maxY then
 		return direction
 	end
 	local flat = Vector3.new(direction.X, 0, direction.Z)
-	if flat.Magnitude < 1e-4 then
+	if flat.Magnitude < STEEP * direction.Magnitude then
 		flat = Vector3.new(heading.X, 0, heading.Z)
 		if flat.Magnitude < 1e-4 then
 			flat = Vector3.new(0, 0, -1)
@@ -119,6 +155,82 @@ local function shaftAxis(position: Vector3): Vector3?
 	return nil
 end
 
+-- Rock glides by (Config/Tuning `wallEase`, `wallContact`, `wallSkin`): casts the
+-- collider along the velocity (a touch smaller, so a ball resting on rock doesn't
+-- start inside it, which a cast ignores) and eases the speed into what it meets
+-- over the last `wallEase` seconds, none of it at contact; what's left slides
+-- along. Two passes, for a crease (a tunnel's floor and wall). Only what the fish
+-- really collides with counts (Terrain, rock, wrecks, hard coral; not kelp), never
+-- another fish (smaller ones are eaten by swimming into them) or anything drawn on
+-- this client.
+local glideParams = RaycastParams.new()
+glideParams.FilterType = Enum.RaycastFilterType.Exclude
+glideParams.RespectCanCollide = true -- CanCollide, not CanQuery: hard coral counts
+glideParams.IgnoreWater = true
+local glideIgnore: { Instance } = {}
+local GLIDE_SKIP = { "Prey", "Forage", "Shells" } -- drawn on this client
+
+local function glide(position: Vector3, velocity: Vector3, radius: number, top: number, dt: number): Vector3
+	table.clear(glideIgnore)
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(glideIgnore, player.Character)
+		end
+	end
+	for _, name in GLIDE_SKIP do
+		local folder = workspace:FindFirstChild(name)
+		if folder then
+			table.insert(glideIgnore, folder)
+		end
+	end
+	glideParams.FilterDescendantsInstances = glideIgnore
+	local probe = radius * 0.9
+	for _ = 1, 2 do
+		local speed = velocity.Magnitude
+		if speed < 0.05 then
+			break
+		end
+		local reach = radius * 0.1 + speed * (dt + swim.wallEase) + 0.25
+		local hit = workspace:Spherecast(position, probe, velocity.Unit * reach, glideParams)
+		if hit == nil then
+			break
+		end
+		local into = -velocity:Dot(hit.Normal)
+		if into <= 0 then
+			break
+		end
+		-- How far the collider itself is from touching, measured off the rock
+		local gap = hit.Distance * into / speed - radius * 0.1
+		local allowed = if gap <= swim.wallSkin
+			then 0
+			else math.max(gap / swim.wallEase, swim.wallContact * top)
+		if into <= allowed then
+			break
+		end
+		velocity += hit.Normal * (into - allowed)
+	end
+	return velocity
+end
+
+-- What the physics did with last frame's velocity: something the cast missed (rock
+-- the ball had already sunk into, which a cast ignores, or another fish) stopped
+-- part of it. That part comes out of the swim as well, so the fish faces the way it
+-- slides and, pressed against it, slows enough to pivot away. (A small miss is the
+-- physics' own slack, not a wall.)
+local function feedback(velocity: Vector3, actual: Vector3): Vector3
+	local asked = lastCommand.Magnitude
+	local lost = lastCommand - actual
+	if asked < 1 or lost.Magnitude < math.max(2, asked * 0.3) then
+		return velocity
+	end
+	local out = -lost.Unit
+	local into = -velocity:Dot(out)
+	if into > 0 then
+		velocity += out * into
+	end
+	return velocity
+end
+
 function SwimController.length(): number
 	if character then
 		local length = character:GetAttribute("Length")
@@ -134,6 +246,17 @@ function SwimController.stats(): { speed: number, turn: number }
 	local id = if character then character:GetAttribute("Species") else nil
 	local species = if typeof(id) == "string" then Config.Species.byId[id] else nil
 	return if species then species.stats else { speed = 1, turn = 1 }
+end
+
+-- How fast this fish's heading can swing (radians/s, before speed): the size curve
+-- and the species', plus `bigTurn` for a body drawn shorter than its raw length.
+-- Size.length eases the biggest bodies toward 17 studs while speed keeps the raw
+-- length, so a LV 100 fish carved 3.4 body lengths wide at speed (LV 1–60 carve
+-- 1.7–2.4); now ~2.4. CameraController steers a stick's turn by it too.
+function SwimController.turnRate(): number
+	local length = SwimController.length()
+	local eased = Size.raw(length) / math.max(length, 1e-3)
+	return Size.turnRate(length) * SwimController.stats().turn * eased ^ swim.bigTurn
 end
 
 function SwimController.root(): BasePart?
@@ -247,6 +370,7 @@ local function onCharacter(newCharacter: Model)
 	align = newAlign
 	heading = newRoot.CFrame.LookVector
 	SwimController.velocity = Vector3.zero
+	lastCommand = Vector3.zero
 	SwimController.dashCharge = 1
 	dashUntil = 0
 	roll, rollVelocity = 0, 0
@@ -296,6 +420,7 @@ local function step(dt: number)
 	local length = SwimController.length()
 	local upgrades = if ClientState.current then ClientState.current.upgrades else nil
 	local stats = SwimController.stats()
+	local turnRate = SwimController.turnRate()
 	local top = Size.topSpeed(length) * Perks.speed(upgrades) * stats.speed
 	-- A Kelp Wrap slows you while it heals (the PvP counterplay)
 	local healing = if character then character:GetAttribute("Healing") else nil
@@ -308,7 +433,14 @@ local function step(dt: number)
 	if SwimController.slipstream then
 		top *= Config.Pvp.pods.slipstream.speed
 	end
-	local camera = workspace.CurrentCamera.CFrame
+	-- Indoors (the hub's cavern, its tunnels and the dens) the biggest fish keep to
+	-- `indoorSpeed`: at 83 studs/s a LV 100 fish crossed its 60-stud Nook in 0.7 s
+	-- and coasted half of it after letting go. A Nibbler under ~LV 60 (a 'Cuda under
+	-- ~LV 45) never reaches it.
+	if Layout.inHub(currentRoot.Position) then
+		top = math.min(top, swim.indoorSpeed)
+	end
+	local aim = SwimController.aim or workspace.CurrentCamera.CFrame.Rotation
 
 	-- Where the player wants to go, relative to the camera: the keys as on PC, plus
 	-- a stick's throttle straight along the aim (its steering turns the camera). A
@@ -321,18 +453,16 @@ local function step(dt: number)
 	if throttle > -0.05 then
 		ahead = math.max(ahead, math.abs(steer) * swim.turnCruise)
 	end
-	-- Level swimming: a camera tipped within `levelZone` of level swims level, and
-	-- past it the climb or dive eases in, so straight up is still straight up
-	local look = camera.LookVector
-	local aimPitch = math.asin(math.clamp(look.Y, -1, 1))
-	local over = math.max(0, math.abs(aimPitch) - swim.levelZone)
-	local eased = math.sign(aimPitch) * over * (math.pi / 2) / (math.pi / 2 - swim.levelZone)
+	-- Level swimming: an aim tipped within `levelZone` of level swims level, and by
+	-- `levelFull` the fish swims where you look (straight up is straight up)
+	local look = aim.LookVector
+	local pitch = swimPitch(math.asin(math.clamp(look.Y, -1, 1)))
 	local flatLook = Vector3.new(look.X, 0, look.Z)
 	local forward = if flatLook.Magnitude > 1e-3
-		then flatLook.Unit * math.cos(eased) + Vector3.yAxis * math.sin(eased)
+		then flatLook.Unit * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)
 		else look
 	local wish = forward * -move.Z
-		+ camera.RightVector * move.X
+		+ aim.RightVector * move.X
 		+ Vector3.yAxis * Input.vertical() * swim.verticalShare
 		+ forward * ahead
 	local intent = math.min(wish.Magnitude, 1)
@@ -350,6 +480,9 @@ local function step(dt: number)
 
 	local velocity = SwimController.velocity
 	local held = heldAt()
+	if not held then
+		velocity = feedback(velocity, currentRoot.AssemblyLinearVelocity)
+	end
 	if held then
 		-- Dragged toward the beak: no swimming, just the pull
 		local pull = held - currentRoot.Position
@@ -359,11 +492,12 @@ local function step(dt: number)
 	elseif dashStarted then
 		-- The tail flick: jump straight to Dash speed, the way the player is steering
 		dashStarted = false
-		local direction = if intent > 0.05 then limitPitch(wish.Unit) else heading
-		velocity = direction * top * swim.boostMultiplier
+		local flick = if intent > 0.05 then wish.Unit else heading
+		velocity = flick * top * swim.boostMultiplier
 	end
 	local speed = velocity.Magnitude
 	local lunging = clock < lungeUntil
+	local direction: Vector3? = nil -- where the swim turned this frame
 	if held then
 		-- (the pull above stands)
 	elseif lunging then
@@ -373,18 +507,41 @@ local function step(dt: number)
 		local back = -heading * top * swim.reverseShare * -throttle
 		velocity = velocity:Lerp(back, Spring.alpha(swim.brake, dt))
 	elseif intent > 0.05 then
-		local want = limitPitch(wish.Unit)
+		-- (the velocity may point straight up or down, so Space or C alone rise or sink
+		-- without drifting ahead; only the heading keeps the pitch limit)
+		local want = wish.Unit
 		local current = if speed > top * 0.12 then velocity.Unit else heading
-		-- From (nearly) still, a fish can pivot quickly; at speed it carves
-		local turnScale = if speed < top * 0.25 then 2.6 else (if boosting then 0.75 else swim.cruiseTurn)
-		local direction = rotateToward(current, want, Size.turnRate(length) * stats.turn * turnScale * dt)
-		local targetSpeed = top * intent * (if boosting then swim.boostMultiplier else 1)
-		local newSpeed = speed + (targetSpeed - speed) * Spring.alpha(swim.accel, dt)
-		velocity = direction * newSpeed
+		local angle = math.acos(math.clamp(current:Dot(want), -1, 1))
+		-- Still it pivots, at speed it carves (blended by speed), and the last few
+		-- degrees ease in rather than stopping dead
+		local turnScale = if boosting
+			then swim.dashTurn
+			else swim.pivotTurn + (swim.cruiseTurn - swim.pivotTurn) * smoothstep(
+				(math.min(speed / top, 1) - swim.pivotBelow) / (swim.carveAbove - swim.pivotBelow)
+			)
+		local turnStep = math.min(turnRate * turnScale * dt, angle * Spring.alpha(swim.turnSettle, dt))
+		local turned = rotateToward(current, want, turnStep)
+		direction = turned
+		-- A hard turn sheds speed, so the fish comes round tight instead of swinging
+		-- wide (not mid-Dash)
+		local brake = if boosting
+			then 1
+			else 1 - (1 - swim.turnBrake) * smoothstep(
+				(angle - swim.brakeFrom) / (swim.brakeTo - swim.brakeFrom)
+			)
+		local targetSpeed = top * intent * brake * (if boosting then swim.boostMultiplier else 1)
+		-- Shedding speed within top speed is quicker (`decel`); a Dash's or a lunge's
+		-- extra fades as it always did
+		local rate = if targetSpeed < speed and speed <= top then swim.decel else swim.accel
+		local newSpeed = speed + (targetSpeed - speed) * Spring.alpha(rate, dt)
+		velocity = turned * newSpeed
 	elseif boosting then
 		velocity = heading * math.max(speed, top * swim.boostMultiplier * 0.8)
 	else
-		velocity *= math.exp(-swim.drag * dt)
+		-- Let go: it glides, then settles (drag plus a steady brake, so there's no
+		-- slow creep at the end to overshoot a shell by)
+		local newSpeed = speed * math.exp(-swim.drag * dt) - swim.stopBrake * top * dt
+		velocity = if newSpeed > 0 and speed > 1e-4 then velocity.Unit * newSpeed else Vector3.zero
 	end
 
 	-- Den shafts lift: under or in a shaft and swimming mostly up or down, the fish
@@ -400,6 +557,11 @@ local function step(dt: number)
 				else Vector3.zero
 			velocity = Vector3.new(0, math.sign(wish.Y) * velocity.Magnitude, 0) + pull
 		end
+	end
+
+	-- Rock glides by
+	if not held then
+		velocity = glide(currentRoot.Position, velocity, currentRoot.Size.X * 0.5, top, dt)
 	end
 
 	-- The surface is the ceiling, and the map has edges
@@ -428,6 +590,7 @@ local function step(dt: number)
 		end
 	end
 	SwimController.velocity = velocity
+	lastCommand = velocity
 
 	-- Hover with a gentle bob when idle
 	local applied = velocity
@@ -441,15 +604,18 @@ local function step(dt: number)
 	-- slowly when idle
 	local previous = heading
 	if reversing then
-		local aim = Vector3.new(camera.LookVector.X, heading.Y, camera.LookVector.Z)
-		if aim.Magnitude > 1e-3 then
-			heading = rotateToward(heading, limitPitch(aim.Unit), Size.turnRate(length) * stats.turn * dt)
+		local facing = Vector3.new(look.X, heading.Y, look.Z)
+		if facing.Magnitude > 1e-3 then
+			heading = rotateToward(heading, limitPitch(facing.Unit), turnRate * dt)
 		end
 	elseif
 		velocity.Magnitude > top * 0.08
 		and (intent > 0.05 or boosting or lunging or velocity:Dot(heading) > 0)
 	then
 		heading = limitPitch(velocity.Unit)
+	elseif direction then
+		-- Slow, or held against rock: it still pivots toward the aim on the spot
+		heading = limitPitch(direction)
 	else
 		local level = Vector3.new(heading.X, heading.Y * (1 - Spring.alpha(1.5, dt)), heading.Z)
 		if level.Magnitude > 1e-3 then
@@ -495,6 +661,7 @@ function SwimController.start()
 			currentRoot.CFrame = cframe
 			currentRoot.AssemblyLinearVelocity = Vector3.zero
 			SwimController.velocity = Vector3.zero
+			lastCommand = Vector3.zero
 			heading = cframe.LookVector
 		end
 	end)
