@@ -38,6 +38,7 @@ local WheelService = require(Services.WheelService)
 local PlaytimeService = require(Services.PlaytimeService)
 local PassService = require(Services.PassService)
 local AchievementService = require(Services.AchievementService)
+local AbilityService = require(Services.AbilityService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -76,6 +77,7 @@ WheelService.start() -- the Treasure Wheel: spins, the line, prizes, free spins
 PlaytimeService.start() -- playtime gifts: a ladder of gifts for minutes played today, Premium's daily spin
 PassService.start() -- the Tide Pass: season XP from play, the free and Deep Pass rows
 AchievementService.start() -- achievements: each opens a den furniture set
+AbilityService.start() -- signature abilities the server owns: Puff Up, Burrow, Lantern Flash
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 

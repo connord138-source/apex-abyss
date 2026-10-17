@@ -38,6 +38,8 @@ local SwimController = {
 	boosting = false, -- mid-Dash
 	slipstream = false, -- in a podmate's slipstream (faster)
 	dashCharge = 1, -- 0..1; the Dash is ready at 1
+	-- Held still (a Moray's Burrow, AbilityController): no swimming until it's let go
+	pinned = false,
 	-- The player's aim (the camera's yaw and pitch as the player set them, before rock
 	-- bends the view or a shake turns it), set by CameraController every frame. The
 	-- fish swims by this, so a camera sliding along a den's ceiling no longer tips
@@ -59,6 +61,7 @@ local lungeUntil = 0
 local lastBiteAt = -math.huge
 local dashUntil = 0
 local dashStarted = false
+local dashTurn = swim.dashTurn -- turning while the burst runs (a Torpedo barely turns)
 local clock = 0
 -- The velocity the constraint was last asked for (no idle bob): what the physics did
 -- with it says what stopped the fish (`feedback`)
@@ -272,16 +275,21 @@ function SwimController.heading(): Vector3
 end
 
 -- Starts a Dash if it has recharged; returns whether it did.
-function SwimController.dash(): boolean
+-- The Dash. A 'Cuda's Torpedo is the same burst held longer, barely turning
+-- (`seconds`, `turn` × the Dash's turning); it has its own cooldown (`free`).
+function SwimController.dash(seconds: number?, turn: number?, free: boolean?): boolean
 	if next(holds) ~= nil then
 		SwimController.struggle()
 		return false
 	end
-	if root == nil or SwimController.dashCharge < 1 then
+	if root == nil or (not free and SwimController.dashCharge < 1) then
 		return false
 	end
-	SwimController.dashCharge = 0
-	dashUntil = clock + swim.dashSeconds
+	if not free then
+		SwimController.dashCharge = 0
+	end
+	dashUntil = clock + (seconds or swim.dashSeconds)
+	dashTurn = swim.dashTurn * (turn or 1)
 	dashStarted = true
 	local length = SwimController.length()
 	Sfx.play("Dash", { volume = 0.55, pitch = math.clamp(1.25 - length * 0.02, 0.7, 1.2) })
@@ -427,6 +435,11 @@ local function step(dt: number)
 	if typeof(healing) == "number" and healing > Timing.clock() then
 		top *= Config.Tuning.heal.wrapSlow
 	end
+	-- A puffed-up Pufferfish swims slowly (Config/Abilities PuffUp)
+	local puffed = if character then character:GetAttribute("Puffed") else nil
+	if typeof(puffed) == "number" and puffed > Timing.clock() then
+		top *= Config.Abilities.byId.PuffUp.slow or 0.45
+	end
 	-- A podmate's slipstream: close behind one swimming the same way is faster
 	-- (Config/Pvp `pods.slipstream`)
 	SwimController.slipstream = slipstreamOf(currentRoot)
@@ -466,6 +479,11 @@ local function step(dt: number)
 		+ Vector3.yAxis * Input.vertical() * swim.verticalShare
 		+ forward * ahead
 	local intent = math.min(wish.Magnitude, 1)
+	-- Burrowed: held where it is (AbilityController brings it out on a move)
+	if SwimController.pinned then
+		wish = Vector3.zero
+		intent = 0
+	end
 
 	-- The Dash: a burst that recharges (Deep Gills makes it recharge faster)
 	local boosting = clock < dashUntil
@@ -476,7 +494,7 @@ local function step(dt: number)
 	SwimController.boosting = boosting
 	-- A stick pulled back with nothing else held: brake, then back up, still facing
 	-- the way it was (a fish that spun round to face the camera looked wrong)
-	local reversing = throttle < -0.05 and intent <= 0.05 and not boosting
+	local reversing = throttle < -0.05 and intent <= 0.05 and not boosting and not SwimController.pinned
 
 	local velocity = SwimController.velocity
 	local held = heldAt()
@@ -515,7 +533,7 @@ local function step(dt: number)
 		-- Still it pivots, at speed it carves (blended by speed), and the last few
 		-- degrees ease in rather than stopping dead
 		local turnScale = if boosting
-			then swim.dashTurn
+			then dashTurn
 			else swim.pivotTurn + (swim.cruiseTurn - swim.pivotTurn) * smoothstep(
 				(math.min(speed / top, 1) - swim.pivotBelow) / (swim.carveAbove - swim.pivotBelow)
 			)

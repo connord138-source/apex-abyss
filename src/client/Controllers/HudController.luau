@@ -739,6 +739,15 @@ local function buildTouchButtons()
 	dash.Activated:Connect(function()
 		Input.ability:fire()
 	end)
+	-- (TORPEDO and BURROW have to fit the round button)
+	dash.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 18
+	fit.Parent = dash
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 6)
+	padding.PaddingRight = UDim.new(0, 6)
+	padding.Parent = dash
 	abilityButton = dash
 end
 
@@ -902,24 +911,27 @@ local function step(dt: number)
 		safeChip.Visible = false
 	end
 
-	-- The ability (the Dash, or the Reef Shark's Blood Sense): its bar refills while
-	-- it recharges, then fades out when ready; a running Blood Sense shows red
+	-- The fish's signature ability (AbilityController): its bar refills while it
+	-- recharges, then fades out when ready; a running one (Blood Sense red, a Torpedo
+	-- or Puff Up gold) runs down
 	local bar = AbilityController.charge()
+	local running = AbilityController.running()
 	local sensing = AbilityController.senseLeft() > 0
-	boostAlpha += ((if bar < 0.999 or SwimController.boosting or sensing then 1 else 0) - boostAlpha) * Spring.alpha(
+	boostAlpha += ((if bar < 0.999 or SwimController.boosting or running then 1 else 0) - boostAlpha) * Spring.alpha(
 		6,
 		dt
 	)
-	boostFill.Size = UDim2.fromScale(if sensing then AbilityController.senseLeft() / 7 else bar, 1)
+	boostFill.Size = UDim2.fromScale(running or bar, 1)
 	boostTrack.BackgroundTransparency = 1 - 0.85 * boostAlpha
 	boostFill.BackgroundTransparency = 1 - boostAlpha
 	boostFill.BackgroundColor3 = if sensing
 		then Ui.color.danger
+		elseif running then Ui.color.haul
 		elseif bar < 0.999 then Ui.color.muted
 		else Ui.color.accent
 	local button = abilityButton
 	if button then
-		local label = if AbilityController.name() == "BloodSense" then "SENSE" else "DASH"
+		local label = AbilityController.label()
 		if button.Text ~= label then
 			button.Text = label
 		end

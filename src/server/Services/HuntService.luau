@@ -382,6 +382,13 @@ local function onEatPlayer(player: Player, userId: any)
 	if targetLength == nil or not Size.canSwallow(length * 1.03, targetLength) then
 		return
 	end
+	-- A puffed-up Pufferfish can't be swallowed (Config/Abilities PuffUp)
+	local targetCharacter = FishService.character(target)
+	local puffed = if targetCharacter then targetCharacter:GetAttribute("Puffed") else nil
+	if typeof(puffed) == "number" and puffed > now then
+		Net.notify(player, "Too spiky to swallow!", "bad")
+		return
+	end
 	local distance = (targetRoot.Position - mouthOf(root, length)).Magnitude
 	if distance > Size.reach(length) + targetLength * 0.4 + slack(length) + slack(targetLength) then
 		return
@@ -449,6 +456,25 @@ local function onBite(player: Player, userId: any)
 	local jaw = Perks.bite(if attackerData then attackerData.upgrades else nil)
 	local species = if attackerData then Progress.species(attackerData).stats.bite else 1
 	local damage = hunt.biteDamage * ratio * (1 + schooling.bonus * school) * jaw * species
+	-- Signature abilities (Config/Abilities): a Moray's bite out of a burrow is an
+	-- ambush, and a puffed-up Pufferfish takes less and spikes the biter
+	local abilities = Config.Abilities.byId
+	local attacker = FishService.character(player)
+	local strike = if attacker then attacker:GetAttribute("BurrowStrike") else nil
+	if
+		attacker
+		and (attacker:GetAttribute("Burrowed") == true or (typeof(strike) == "number" and strike > now))
+	then
+		damage *= abilities.Burrow.strikeBonus or 1.6
+		attacker:SetAttribute("BurrowStrike", nil)
+		Net.notify(player, "AMBUSH!", "good")
+	end
+	local victim = FishService.character(target)
+	local puffed = if victim then victim:GetAttribute("Puffed") else nil
+	if typeof(puffed) == "number" and puffed > now then
+		damage *= abilities.PuffUp.damageTaken or 0.5
+		HuntService.damage(player, abilities.PuffUp.recoil or 0.1, "spines")
+	end
 	targetSession.health -= damage
 	targetSession.lastHitAt = now
 	Net.hit(player, target, damage)

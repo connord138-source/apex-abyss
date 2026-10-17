@@ -35,6 +35,7 @@ export type Species = {
 	collider: number, -- collider thickness (the eel slips through gaps)
 	camera: number?, -- camera distance × this (thin fish sit closer so they read)
 	abilities: { string }, -- ability options (picked in its tree; the Nibbler has one)
+	signature: string, -- the ability on its button (Config/Abilities)
 	unlock: Unlock,
 }
 
@@ -52,6 +53,7 @@ local list: { Species } = {
 		stats = { speed = 1, turn = 1, health = 1, bite = 1 },
 		collider = 1,
 		abilities = { "Dash" },
+		signature = "Dash",
 		unlock = { kind = "start" },
 	},
 	{
@@ -70,6 +72,7 @@ local list: { Species } = {
 		collider = 0.85,
 		camera = 0.8,
 		abilities = { "Torpedo", "RazorBite", "SilverFlash" },
+		signature = "Torpedo",
 		unlock = { kind = "dna", biome = "KelpShallows", dna = 40, coral = 1500, level = 15 },
 	},
 	{
@@ -85,6 +88,7 @@ local list: { Species } = {
 		stats = { speed = 0.8, turn = 1.05, health = 1.6, bite = 0.85 },
 		collider = 1.25,
 		abilities = { "PuffUp", "SpikeBurst", "ToxicCloud" },
+		signature = "PuffUp",
 		unlock = { kind = "dna", biome = "CoralReef", dna = 100, coral = 2500 },
 	},
 	{
@@ -101,6 +105,7 @@ local list: { Species } = {
 		collider = 0.55,
 		camera = 0.8,
 		abilities = { "Strike", "Burrow", "Shock" },
+		signature = "Burrow",
 		unlock = { kind = "dna", biome = "ShipwreckGraveyard", dna = 120, coral = 6000 },
 	},
 	{
@@ -116,6 +121,7 @@ local list: { Species } = {
 		stats = { speed = 1.1, turn = 0.9, health = 1.15, bite = 1.35 },
 		collider = 1,
 		abilities = { "Frenzy", "BloodSense", "Ram" },
+		signature = "BloodSense",
 		unlock = { kind = "dna", biome = "OpenBlue", dna = 150, coral = 15000 },
 	},
 	{
@@ -131,6 +137,7 @@ local list: { Species } = {
 		stats = { speed = 0.85, turn = 0.9, health = 1.25, bite = 1.25 },
 		collider = 1.1,
 		abilities = { "Lure", "LanternFlash", "DeepSight" },
+		signature = "LanternFlash",
 		unlock = { kind = "dna", biome = "AbyssalTrench", dna = 200, coral = 40000 },
 	},
 }

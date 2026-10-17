@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Timing = require(ReplicatedStorage.Shared.Timing)
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
 local FishPlans = require(ReplicatedStorage.Shared.FishPlans)
 local Size = require(ReplicatedStorage.Shared.Size)
@@ -37,6 +38,8 @@ type FishState = {
 	heading: Vector3,
 	dressKey: string, -- the Shade/Parts/Variant attributes last dressed from
 	dressLength: number, -- the length the shade's effects were sized for
+	puff: number, -- a Pufferfish's Puff Up: the body drawn this much bigger, eased
+	puffVelocity: number,
 }
 
 local FishAnimator = {}
@@ -109,6 +112,8 @@ local function stateOf(character: Model): FishState?
 		heading = root.CFrame.LookVector,
 		dressKey = "",
 		dressLength = start,
+		puff = 1,
+		puffVelocity = 0,
 	}
 	states[character] = state
 	character.Destroying:Connect(function()
@@ -176,9 +181,16 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 	if typeof(target) == "number" then
 		state.length, state.lengthVelocity = Spring.number(state.length, state.lengthVelocity, target, 7, dt)
 	end
-	if math.abs(state.length - state.applied) > state.length * 0.002 then
-		state.applied = state.length
-		FishBuilder.applyScale(state.body, state.length)
+	-- Puffed up (Config/Abilities PuffUp): swells with a bounce, shrinks when it ends
+	local puffed = character:GetAttribute("Puffed")
+	local wantPuff = if typeof(puffed) == "number" and puffed > Timing.clock()
+		then Config.Abilities.byId.PuffUp.scale or 1.45
+		else 1
+	state.puff, state.puffVelocity = Spring.number(state.puff, state.puffVelocity, wantPuff, 14, dt)
+	local drawn = state.length * state.puff
+	if math.abs(drawn - state.applied) > drawn * 0.002 then
+		state.applied = drawn
+		FishBuilder.applyScale(state.body, drawn)
 	end
 
 	local velocity = if isLocal then SwimController.velocity else state.root.AssemblyLinearVelocity

@@ -116,6 +116,8 @@ local function step()
 		tag.status.TextStrokeTransparency = if apex then 0.15 else 0.7
 		tag.gui.Size = UDim2.fromOffset(if apex then 300 else 200, if apex then 50 else 44)
 		tag.gui.MaxDistance = if apex then 900 else 220
+		-- A Moray hiding in a burrow shows no name (Config/Abilities Burrow)
+		tag.gui.Enabled = character:GetAttribute("Burrowed") ~= true
 	end
 end
 

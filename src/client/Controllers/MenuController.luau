@@ -1793,12 +1793,14 @@ function MenuController.openIndex(startTab: string?)
 									Config.Biomes.byId[rule.biome or ""] or { name = "?" }
 								).name} DNA and {Ui.number(rule.coral or 0)} coral (FISH menu).`
 							local stats = species.stats
+							local signature = Config.Abilities.byId[species.signature]
+								or { name = "Dash", blurb = "a short burst." }
 							local status, color = owned((s.unlocked or {})[species.id] == true)
 							infoRow(
 								list,
 								next(),
 								`{species.name} · {species.role}`,
-								`{species.blurb} {how} Speed ×{stats.speed}, turn ×{stats.turn}, health ×{stats.health}, bite ×{stats.bite}.`,
+								`{species.blurb} {how} Ability: {signature.name}, {signature.blurb} Speed ×{stats.speed}, turn ×{stats.turn}, health ×{stats.health}, bite ×{stats.bite}.`,
 								species.fin,
 								status,
 								color
