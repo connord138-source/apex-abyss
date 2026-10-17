@@ -1,11 +1,17 @@
 --!strict
 -- Starfish and shrimp: tiny filler food on the seabed. Spots are placed once at
--- server start (a ray down finds the sand or rock under each), the food is shared
--- by everyone, and an eaten one comes back after its respawn time. Clients draw it
--- and eat it instantly (ForageController); the server checks each eat.
+-- server start on open floor (Shared/Ground `open`: never in or under a rock, coral,
+-- wreck, ruin or overhang a fish can't get to), the food is shared by everyone, and
+-- an eaten one comes back after its respawn time. Clients draw it and eat it
+-- instantly (ForageController); the server checks each eat.
+--
+-- Once the world is built this also lifts the prey schools over the real ground
+-- (Shared/Schools `settle`) and publishes the lifts for clients (`SchoolLifts`).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Ground = require(ReplicatedStorage.Shared.Ground)
+local Schools = require(ReplicatedStorage.Shared.Schools)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -25,46 +31,57 @@ type Spot = { position: Vector3, kind: string }
 local spots: { Spot } = {}
 local eatenUntil: { [number]: number } = {}
 
--- Whether a fish can get to food at `position`: nothing solid round it (a rock or
--- coral it would sit inside or under; playtest 2026-10-10: a shrimp at a boulder's
--- foot was behind an invisible wall). The world is built before this runs.
-local blockers = OverlapParams.new()
-blockers.FilterType = Enum.RaycastFilterType.Exclude
-blockers.FilterDescendantsInstances = { workspace.Terrain }
-blockers.RespectCanCollide = true
-local function reachable(position: Vector3): boolean
-	return #workspace:GetPartBoundsInRadius(position + Vector3.new(0, 1.5, 0), 2.5, blockers) == 0
-end
+-- Open floor a small fish can get to (Shared/Ground `open`): a ball this wide comes
+-- down onto it from above, no part's box comes within OPEN_ROOM of the water over
+-- it (playtest 2026-10-10: a shrimp at a boulder's foot was behind an invisible
+-- wall), and the floor is gentle (OPEN_UP, not up the side of a rock). The world is
+-- built before this runs.
+local OPEN_RADIUS = 1.25
+local OPEN_ROOM = 2.5
+local OPEN_UP = 0.6
 
 local function placeSpots()
 	local rng = Random.new(World.seed + 20)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { workspace.Terrain } -- the floor itself, never a kelp blade
+	local closed, short = 0, 0
 	for _, def in Forage.list do
 		for _, band in def.bands do
 			local placed, tries = 0, 0
-			while placed < band.count and tries < band.count * 6 do
+			while placed < band.count and tries < band.count * 8 do
 				tries += 1
 				local angle = rng:NextNumber(0, 2 * math.pi)
 				-- Even over the band's area, not bunched at its inner edge
 				local distance = math.sqrt(rng:NextNumber(band.from ^ 2, band.to ^ 2))
 				local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 				if not Seafloor.inTrench(x, z, 10) then
-					local from = Vector3.new(x, World.surfaceY - 10, z)
-					local hit = workspace:Raycast(from, Vector3.new(0, -(World.surfaceY + 40), 0), params)
-					-- Only on the floor or gentle tops, not up the side of a rock
-					if hit and hit.Normal.Y > 0.6 then
-						local position = hit.Position + hit.Normal * 0.35
-						if reachable(position) then
-							table.insert(spots, { position = position, kind = def.id })
-							placed += 1
-						end
+					local floor, normal = Ground.open(x, z, OPEN_RADIUS, OPEN_UP, OPEN_ROOM)
+					if floor and normal then
+						table.insert(spots, { position = floor + normal * 0.35, kind = def.id })
+						placed += 1
+					else
+						closed += 1
 					end
 				end
 			end
+			short += band.count - placed
 		end
 	end
+	print(
+		`[ForageService] {#spots} food spots on open floor ({closed} tries refused as closed in, {short} short)`
+	)
+end
+
+-- Lifts the prey schools over the rocks, reefs and wrecks along their loops (the
+-- dressing is built by now) and tells clients
+local function settleSchools()
+	local started = os.clock()
+	local lifts = Schools.settle(Ground.y)
+	workspace:SetAttribute("SchoolLifts", lifts)
+	local lifted = if lifts == "" then 0 else #string.split(lifts, ";")
+	print(
+		`[ForageService] {lifted} of {#Schools.list} prey schools lifted over the ground ({math.floor(
+			(os.clock() - started) * 1000
+		)} ms)`
+	)
 end
 
 local function onEat(player: Player, batch: any)
@@ -116,6 +133,7 @@ local function onEat(player: Player, batch: any)
 end
 
 function ForageService.start()
+	settleSchools()
 	placeSpots()
 	Net.onRequest("EatForage", onEat)
 	Net.onGetForage(function(): { [string]: any }

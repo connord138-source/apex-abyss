@@ -21,13 +21,22 @@ local extent = Layout.DEN_EXTENT
 for _, room in Dens.rooms do
 	local s = Dens.storeys[room.storey]
 	expect(room.x + 12 <= extent.half, `{room.id}: half-width {room.x} too near the block's side`)
-	expect(room.z0 + 12 <= extent.front and room.z1 - 12 >= extent.back, `{room.id}: too near the block's ends`)
-	expect(s.ceiling + 12 <= extent.top and s.floor - 12 >= extent.bottom, `{room.id}: too near the block's top or bottom`)
+	expect(
+		room.z0 + 12 <= extent.front and room.z1 - 12 >= extent.back,
+		`{room.id}: too near the block's ends`
+	)
+	expect(
+		s.ceiling + 12 <= extent.top and s.floor - 12 >= extent.bottom,
+		`{room.id}: too near the block's top or bottom`
+	)
 	expect(room.z0 % 2 == 0 and room.z1 % 2 == 0 and room.x % 1 == 0, `{room.id}: bounds on the 2-stud grid`)
 end
 for n = 2, #Dens.storeys do
 	local above, below = Dens.storeys[n - 1], Dens.storeys[n]
-	expect(above.floor - below.ceiling >= 8, `storey {n}: only {above.floor - below.ceiling} studs under storey {n - 1}`)
+	expect(
+		above.floor - below.ceiling >= 8,
+		`storey {n}: only {above.floor - below.ceiling} studs under storey {n - 1}`
+	)
 	expect((4 + below.floor) % 4 == 0, `storey {n}: rock floor off the 4-stud voxel line`)
 end
 local function roomAt(level: number, storey: number, z: number, x: number): boolean
@@ -171,13 +180,23 @@ do
 		"carried straight across, it keeps its spot on the table"
 	)
 	local tx, _, tz, tr = DenSpace.carry(onTop, base, { x = SX, y = deck1, z = SZ, r = 180 })
-	expect(math.abs(tx - (SX - 1)) < 1e-6 and math.abs(tz - SZ) < 1e-6 and tr == 210, "turned 180°, it swings round")
+	expect(
+		math.abs(tx - (SX - 1)) < 1e-6 and math.abs(tz - SZ) < 1e-6 and tr == 210,
+		"turned 180°, it swings round"
+	)
 	local fx, _, fz = DenSpace.carry(onTop, base, { x = SX, y = deck1, z = SZ, r = 90 })
-	local _, _, _, back = DenSpace.carry({ uid = 11, id = "CoralLamp", x = fx, y = onTop.y, z = fz, r = 120, s = "floor" }, { x = SX, y = deck1, z = SZ, r = 90 }, base)
+	local _, _, _, back = DenSpace.carry(
+		{ uid = 11, id = "CoralLamp", x = fx, y = onTop.y, z = fz, r = 120, s = "floor" },
+		{ x = SX, y = deck1, z = SZ, r = 90 },
+		base
+	)
 	expect(back == 30, "turning back undoes the turn")
 	local stillOn = { uid = 11, id = "CoralLamp", x = fx, y = onTop.y, z = fz, r = 120, s = "floor" }
 	local turnedBase = { uid = 10, id = "DriftwoodTable", x = SX, y = deck1, z = SZ, r = 90, s = "floor" }
-	expect(ok(DenSpace.resting(1, { turnedBase }, v(stillOn.x, stillOn.y, stillOn.z))), "a carried thing still rests on the turned base")
+	expect(
+		ok(DenSpace.resting(1, { turnedBase }, v(stillOn.x, stillOn.y, stillOn.z))),
+		"a carried thing still rests on the turned base"
+	)
 end
 local back = DenSpace.settle(1, overPool)
 expect(#back == 1 and back[1] == 4, "one with nowhere to land goes back to the tray")

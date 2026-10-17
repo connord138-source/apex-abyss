@@ -104,5 +104,18 @@ return {
 	biteRatioMin = 0.08,
 	biteRatioMax = 1.2,
 	loseRange = 1.7, -- × aggroRange: a target this far away is dropped
+	-- The strike (owner, 2026-10-17: "Predator fish have horrible aim and are barely a
+	-- threat; even sitting still they can't hit me"): a hunter opens its jaw (the
+	-- tell) a little way out and glides in, timed to hold its mouth just off the fish
+	-- as the tell ends, then snaps. It had come in at a sprint, opened its jaw already
+	-- on top of the fish and slid ~15 studs past before the snap, so a fish that sat
+	-- still was missed 85-100% of the time (tools/tests/run_predators.sh).
+	strike = {
+		hold = 0.5, -- × biteReach, plus half the fish's length: where the open jaw waits
+		closing = 0.5, -- the tell starts this × speed × telegraph further out than that
+		follow = 0.55, -- × speed: the fastest it closes during the tell (a dash outruns it)
+		brake = 3, -- × speed per second: how hard it can pull up during the tell
+		facing = 0.4, -- the fish must be in front of it (cosine of the angle) for a tell
+	},
 	interpolationDelay = 0.15, -- clients draw this far behind the stream
 }

@@ -190,7 +190,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - DNA unlocks at the Old Hermit
     - the tutorial steps, with the **'Cuda** (a barracuda) as the tutorial's reward. It
       replaced the playable Squid (owner, 2026-10-06), and the Giant Squid stays a boss
-      only.
+      only. **Since 2026-10-17 the 'Cuda is earned** (owner: "should take a bit longer
+      to get cuda than just finishing the tutorial ... Nobody would ever play as the
+      nibbler"): Nibbler LV 15, 40 Kelp Shallows DNA and 1,500 coral (`Config/Species`
+      `unlock.level`); the tutorial pays 50 shells and 500 coral.
     - looks-only rolled parts; power comes from the species trees
     - species-specific exotic variants
     - the per-biome food chain
@@ -356,8 +359,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `Workspace.World`, easing it out and in (`glintBlocked`, `glintVis`). `HuntService` takes a fish's rarity as it's
     eaten (`CatchService.take`) and fires `Events.caught`.
   - **Catch Log and catch tracks:** every prey × rarity with first-catch rewards, row
-    rewards and the Master Angler title; per fish, 10 Golden / 10 Glowing / 5 Crystal
-    / 3 Prism catches unlock that rarity's skin for it (`data.catchLog`, `logRows`,
+    rewards and the Master Angler title; per fish, 100 Golden (owner, 2026-10-17; was
+    10) / 10 Glowing / 5 Crystal / 3 Prism catches unlock that rarity's skin for it (`data.catchLog`, `logRows`,
     `catchTracks`).
   - **Tide Clock** (`Config/Tides`, `Shared/Tides`, `TideService`, `TideController`):
     20-minute tides on Unix time, the same on every server, never one twice in a row:
@@ -475,15 +478,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     blue ◆ before the name (`NametagController`). GET PREMIUM sits beside CLAIM GIFT
     for non-members and in the Shop's Free Perks row; never a wall.
   - **The Tide Pass** (`Config/Pass`, `PassService`, `MenuController.openPass`,
-    PASS button, `data.pass`): 4-week seasons on `Tides.week` from 2026-10-12, 30
-    tiers × 2,000 XP; XP from `Events.banked/caught/bounty/bossKill/treasure/passXp`
+    PASS button, `data.pass`): 4-week seasons on `Tides.week` from 2026-10-12, 40
+    tiers × 1,500 XP (30 × 2,000 until 2026-10-17); XP from `Events.banked/caught/bounty/bossKill/treasure/passXp`
     (new signals `bounty`, `bossKill`, `passXp`); free row + the **Deep Pass**
     developer product (399 R$, id 3718493448, `shop = false`, bought from the
     panel; `data.pass.paid`, per season, ×1.2 XP); CLAIM ALL claims everything
-    unlocked; Overtide 500 coral per 2,000 XP past tier 30; a season turning claims
+    unlocked; Overtide 500 coral per tier's XP past the last; a season turning claims
     what was unlocked and resets. Season 1 "Riptide" skins: PassTideglass (Rare,
-    free 20), PassRiptide (Epic, paid 1), PassUndertow (Epic, paid 15),
-    PassAbyssalCurrent (Epic, paid 30), `pass = 1` in `Config/Shades` (never
+    free 26), PassRiptide (Epic, paid 1), PassUndertow (Epic, paid 20),
+    PassAbyssalCurrent (Epic, paid 40), `pass = 1` in `Config/Shades` (never
     rolled; recipes `pass_*` in make_shades.py; the universal list in lines.json).
     Pass rewards stay ≤ Epic. **The Deep Pass icon** (`marketing/deep_pass_512.png`,
     `_alt` the shark alone; owner, 2026-10-14, of generated key art: "nothing to do
@@ -652,7 +655,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (stops sooner), `cruiseTurn` 1.2 (tighter at speed) and `levelZone` 12°: a
     camera tipped less than that swims level, past it the climb eases in (straight
     up is still straight up), so looking about no longer drifts the fish.
-  - **Moving layers on every Rare+ skin** (`Config/Shades` `LAYERS`, `AURAS`): each
+  - **Moving layers on every Rare+ skin** (off since 2026-10-17: they read as a
+    pattern pasted on; effects replaced them, see "The 2026-10-17 owner batch")
+    (`Config/Shades` `LAYERS`, `AURAS`): each
     Rare and better skin (and the Golden catch skin) slides a layer that suits it,
     and gets an aura where it had none. Five new coloured layers
     (`tools/shades/make_sheens.py`, python3.11 + scipy): `sheenLava` (molten veins
@@ -1666,8 +1671,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `Events`: signals that services fire and the tutorial listens to.
     - `SpeciesService`: switch species in the safe zone with no Haul aboard (respawns
       you in your den); unlock with home-biome DNA plus coral.
-    - `TutorialService`: five steps. Finishing gives the 'Cuda, 50 shells and 500
-      coral, and opens species select.
+    - `TutorialService`: five steps. Finishing gives 50 shells and 500 coral and opens
+      species select (the 'Cuda is earned since 2026-10-17).
   - DNA drops: big prey always, small prey 25%, forage 4%, credited to the biome you
     ate in.
   - Client:

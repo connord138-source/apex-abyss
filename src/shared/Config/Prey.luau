@@ -185,4 +185,17 @@ end
 return {
 	list = list,
 	byId = byId,
+	-- Swallowing (owner, 2026-10-17: "needs to be a bigger eat radius for eating
+	-- smaller fish too. I've swam inches from one and if you don't directly hit the
+	-- fish it doesn't eat it"): a fish small enough to swallow whole is eaten within
+	-- the eater's reach (Size.reach, 0.42 × its length) × `scale`, plus `bonus` studs,
+	-- plus the fish's own radius, of the mouth (it was the bare reach plus the radius);
+	-- inside `pull` × that it's drawn toward the mouth, up to `pullShare` of the way
+	-- at the lips, so it goes in from about 1.17 × that (Schools.eatReach, EAT_PULLED)
+	eat = {
+		scale = 1.15,
+		bonus = 0.35,
+		pull = 1.8,
+		pullShare = 0.4,
+	},
 }

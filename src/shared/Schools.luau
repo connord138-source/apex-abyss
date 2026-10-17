@@ -7,6 +7,16 @@
 --
 -- Each school loops round its own center on a tilted figure-eight, and each fish
 -- keeps an offset inside the school with a little wobble, so they read as a school.
+--
+-- A school's loop is laid out over the nominal floor (Shared/Seafloor), but rocks,
+-- coral heads, wrecks, ruins, arches and the reef's ridges rise above it, and fish
+-- swam through them (owner, 2026-10-17: "Ensure that no shells or shrimp or fish
+-- spawn in or under items that the player cannot access"). Once the world is built
+-- the server lifts each school over the real ground along its loop (`settle`, with
+-- Shared/Ground: the top of the Terrain and the solid dressing in each column, so
+-- never under an overhang), easing up and over in ramps, and publishes the lifts
+-- (the Workspace attribute `SchoolLifts`); clients `load` the same numbers, so every
+-- machine still agrees where each fish is.
 local Config = require(script.Parent.Config)
 local Seafloor = require(script.Parent.Seafloor)
 local Size = require(script.Parent.Size)
@@ -51,6 +61,9 @@ type Zone = {
 
 local list: { School } = {}
 local fish: { Fish } = {}
+-- Each school's lift over the real ground at evenly spaced points round its loop
+-- (studs; nil = none), from `settle` on the server or `load` on a client
+local lifts: { [number]: { number } } = {}
 
 -- Every fish its own size (owner, 2026-10-10: the Catch Log tracks "their biggest
 -- eat of each species"): most within ±18% of the species, 1 in 25 a trophy up to
@@ -153,10 +166,19 @@ do
 	end
 end
 
+-- The furthest a drawn-in fish is eaten from (the pull brings it the rest of the
+-- way), × the swallow reach (Schools.eatReach): the server's check allows for it
+local function pulledReach(): number
+	local eat = Prey.eat
+	local a, b = eat.pullShare / eat.pull, 1 - eat.pullShare
+	return (-b + math.sqrt(b * b + 4 * a)) / (2 * a)
+end
+
 local Schools = {
 	list = list,
 	fish = fish,
 	COUNT = #fish,
+	EAT_PULLED = pulledReach(),
 }
 
 -- Whether fish `index` is out: a tide school only while its tide is up
@@ -165,10 +187,8 @@ function Schools.out(index: number, tideId: string): boolean
 	return tide == nil or tide == tideId
 end
 
--- The school's frame at time t: its position on the loop, facing along it.
-function Schools.schoolFrame(index: number, t: number): CFrame
-	local school = list[index]
-	local a = school.phase + school.angularSpeed * t
+-- A school's place on its loop at loop angle `a`, before any lift, and its velocity
+local function loopAt(school: School, a: number): (Vector3, Vector3)
 	local r = school.radius
 	local position = school.center
 		+ Vector3.new(
@@ -182,7 +202,175 @@ function Schools.schoolFrame(index: number, t: number): CFrame
 		math.cos(2 * a + school.phase) * 2 * school.height * w,
 		math.cos(a) * r * school.ellipse * w
 	)
+	return position, velocity
+end
+
+-- How far school `index` is lifted at loop angle `a` (between its samples)
+local function liftAt(index: number, a: number): number
+	local samples = lifts[index]
+	if samples == nil then
+		return 0
+	end
+	local count = #samples
+	local u = ((a / (2 * math.pi)) % 1) * count
+	local i = math.floor(u)
+	local low = samples[i % count + 1]
+	local high = samples[(i + 1) % count + 1]
+	return low + (high - low) * (u - i)
+end
+
+-- The school's frame at time t: its position on the loop, facing along it. (A lift
+-- raises it without turning it: the fish rise and fall gently over the rocks.)
+function Schools.schoolFrame(index: number, t: number): CFrame
+	local school = list[index]
+	local a = school.phase + school.angularSpeed * t
+	local position, velocity = loopAt(school, a)
+	position += Vector3.new(0, liftAt(index, a), 0)
 	return CFrame.lookAt(position, position + velocity)
+end
+
+-- Lifting the schools over the real ground. Each fish keeps CLEAR_STUDS plus
+-- CLEAR_LENGTHS of its own length (its wobble and half its body) over the tallest
+-- ground within a cell of where it swims; the loop is checked every FINE_STEP studs
+-- and the lift stored every LIFT_STEP; a lift rises and falls at most SLOPE studs
+-- per stud along the loop.
+local CELL = 4 -- Shared/Ground's cell
+local CLEAR_STUDS = 1.5
+local CLEAR_LENGTHS = 0.6
+local FINE_STEP = 2
+local LIFT_STEP = 6
+local SLOPE = 0.8
+
+-- Works out every school's lift over `groundY` (Shared/Ground.y on the server, once
+-- the world's dressing is built), applies it here and returns it as the string
+-- clients `load`.
+function Schools.settle(groundY: (number, number) -> number): string
+	-- The tallest ground in the 3 × 3 cells round a point (a rock's edge can fall
+	-- between two cells' sample columns)
+	local tallestCache: { [number]: number } = {}
+	local function tallest(x: number, z: number): number
+		local cx, cz = math.floor(x / CELL), math.floor(z / CELL)
+		local key = (cx + 2000) * 4096 + (cz + 2000)
+		local known = tallestCache[key]
+		if known then
+			return known
+		end
+		local top = -math.huge
+		for dx = -1, 1 do
+			for dz = -1, 1 do
+				top = math.max(top, groundY((cx + dx + 0.5) * CELL, (cz + dz + 0.5) * CELL))
+			end
+		end
+		tallestCache[key] = top
+		return top
+	end
+	local ceiling = World.surfaceY - 8
+	local parts: { string } = {}
+	table.clear(lifts)
+	for index, school in list do
+		-- The loop's length, roughly (an ellipse)
+		local around = math.pi * school.radius * (1 + school.ellipse)
+		local fine = math.clamp(math.ceil(around / FINE_STEP), 48, 720)
+		local count = math.clamp(math.ceil(around / LIFT_STEP), 16, 160)
+		local need = table.create(fine, 0)
+		local highest = -math.huge
+		for k = 0, fine - 1 do
+			local a = k / fine * 2 * math.pi
+			local position, velocity = loopAt(school, a)
+			local frame = CFrame.lookAt(position, position + velocity)
+			local flat = Vector3.new(velocity.X, 0, velocity.Z)
+			local along = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.xAxis
+			local most = 0
+			for i = school.first, school.first + school.count - 1 do
+				local f = fish[i]
+				local at = frame:PointToWorldSpace(f.offset)
+				highest = math.max(highest, at.Y + f.length)
+				local ground = tallest(at.X, at.Z)
+				-- (a long fish's nose and tail, and its wobble along the loop)
+				if f.length > CELL * 0.5 then
+					local reach = along * f.length * 0.6
+					ground = math.max(ground, tallest(at.X + reach.X, at.Z + reach.Z))
+					ground = math.max(ground, tallest(at.X - reach.X, at.Z - reach.Z))
+				end
+				most = math.max(most, ground + CLEAR_STUDS + f.length * CLEAR_LENGTHS - at.Y)
+			end
+			need[k + 1] = most
+		end
+		if highest == -math.huge then
+			continue
+		end
+		-- Each stored lift covers the most any checked point needs from the stored point
+		-- before it to the one after, so the lift between two of them (a straight line)
+		-- never dips under what's needed
+		local samples = table.create(count, 0)
+		local any = false
+		for k = 0, fine - 1 do
+			if need[k + 1] > 0 then
+				local u = k / fine * count
+				local low = math.floor(u)
+				for j = low - 1, low + 2 do
+					local slot = j % count + 1
+					if math.abs(j - u) <= 1 then
+						samples[slot] = math.max(samples[slot], need[k + 1])
+						any = true
+					end
+				end
+			end
+		end
+		if not any then
+			continue
+		end
+		-- Ramps up and over, never a jump; and never through the surface
+		local spacing = around / count
+		for _ = 1, 2 do
+			for k = 0, 2 * count - 1 do
+				local here, before = k % count + 1, (k - 1) % count + 1
+				samples[here] = math.max(samples[here], samples[before] - SLOPE * spacing)
+			end
+			for k = 2 * count - 1, 0, -1 do
+				local here, after = k % count + 1, (k + 1) % count + 1
+				samples[here] = math.max(samples[here], samples[after] - SLOPE * spacing)
+			end
+		end
+		local cap = math.max(ceiling - highest, 0)
+		local values: { string } = {}
+		for k = 1, count do
+			table.insert(values, tostring(math.ceil(math.min(samples[k], cap))))
+		end
+		table.insert(parts, `{index}:{table.concat(values, ",")}`)
+	end
+	local encoded = table.concat(parts, ";")
+	Schools.load(encoded)
+	return encoded
+end
+
+-- Takes the lifts the server worked out (`settle`'s string; "" or nil = none)
+function Schools.load(encoded: string?)
+	table.clear(lifts)
+	if encoded == nil or encoded == "" then
+		return
+	end
+	for entry in string.gmatch(encoded, "[^;]+") do
+		local head, body = string.match(entry, "^(%d+):(.*)$")
+		local index = tonumber(head)
+		if index and body and list[index] then
+			local samples: { number } = {}
+			for value in string.gmatch(body, "[^,]+") do
+				table.insert(samples, tonumber(value) or 0)
+			end
+			if #samples > 0 then
+				lifts[index] = samples
+			end
+		end
+	end
+end
+
+-- How close to the mouth a fish that can be swallowed whole is eaten (studs, mouth to
+-- its middle), and from how far it's drawn toward the mouth first (Config/Prey `eat`)
+function Schools.eatReach(eaterLength: number, preyRadius: number): (number, number)
+	local eat = Prey.eat
+	local reach = Size.reach(eaterLength) * eat.scale + eat.bonus + preyRadius
+	return reach, reach * eat.pull
 end
 
 -- One fish's frame, given its school's frame at the same t.

@@ -260,7 +260,9 @@ local function groundAround(predator: Predator, position: Vector3, velocity: Vec
 end
 
 -- The height above the ground a creature likes to keep: its roaming band's floor
--- while it roams, closer down while it hunts (prey sits on the sand)
+-- while it roams, right down on it while it hunts (prey sits on the sand: held 2
+-- studs higher, a Barracuda's mouth stayed ~4 studs over a fish resting on the
+-- floor, out of its strike range, and it circled overhead; owner, 2026-10-17)
 local function preferredGap(predator: Predator): number
 	local def = predator.def
 	local hard = def.length * BODY_HALF + BELLY_GAP
@@ -268,7 +270,7 @@ local function preferredGap(predator: Predator): number
 		not predator.custom
 		and (predator.mode == "hunt" or predator.mode == "windup" or predator.mode == "recover")
 	then
-		return hard + 2
+		return hard
 	end
 	return math.max(def.depth[1] * 0.6, 5) + def.length * BODY_HALF
 end
@@ -306,11 +308,17 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		local angle = math.acos(math.clamp(predator.heading:Dot(wantDirection), -1, 1))
 		local turn = math.min(rate * dt, angle * (1 - math.exp(-dt * 5)))
 		predator.heading = rotateToward(predator.heading, wantDirection, turn)
-		-- Swims along its heading: slows in a hard turn, speeds up briskly, eases off
+		-- Swims along its heading: slows in a hard turn, speeds up briskly, eases off.
+		-- With its jaw open for a strike it flares its fins and pulls up short instead
+		-- (it had slid ~15 studs past a fish that sat still and missed it)
 		local goal = wantSpeed * (1 - 0.35 * math.clamp(angle / math.pi, 0, 1))
-		local change = if goal > speedNow then def.speed * 1.6 else def.speed * 0.9
+		local striking = predator.mode == "windup"
+		local change = if goal > speedNow
+			then def.speed * 1.6
+			else def.speed * (if striking then Predators.strike.brake else 0.9)
 		local speed = speedNow + math.clamp(goal - speedNow, -change * dt, change * dt)
-		predator.velocity = predator.velocity:Lerp(predator.heading * speed, 1 - math.exp(-dt * 6))
+		predator.velocity =
+			predator.velocity:Lerp(predator.heading * speed, 1 - math.exp(-dt * (if striking then 12 else 6)))
 	end
 	local position = predator.position + predator.velocity * dt
 	-- Never out past the map's wall (the squid chased a fish 4,700 studs out,
@@ -381,6 +389,18 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 	predator.position = Vector3.new(position.X, y, position.Z)
 end
 
+-- How close (studs from its mouth to the fish's middle) a predator holds its open
+-- jaw while it telegraphs a bite
+local function holdGap(def: Def, fishLength: number): number
+	return def.biteReach * Predators.strike.hold + fishLength * 0.5
+end
+
+-- How far its snap reaches when the tell ends: its bite reach, the fish's half-length
+-- and the room the server's view of a moving fish needs (it trails its owner's)
+local function strikeReach(def: Def, fishLength: number): number
+	return def.biteReach * 1.6 + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.15
+end
+
 local function simulate(predator: Predator, dt: number, now: number)
 	local def = predator.def
 	if predator.mode == "dead" then
@@ -444,21 +464,42 @@ local function simulate(predator: Predator, dt: number, now: number)
 			predator.mode = "roam"
 			desired = predator.velocity
 		else
+			-- The strike (owner, 2026-10-17: "Predator fish have horrible aim and are
+			-- barely a threat; even sitting still they can't hit me"): it closes in,
+			-- opens its jaw a few lengths out (the tell) and glides in to hold it just
+			-- off the fish, timed to arrive as the tell ends, then snaps. A fish that
+			-- stays put or dawdles is bitten; one that dashes off during the tell
+			-- outruns the glide (`follow`) and the snap's reach.
+			local strike = Predators.strike
+			local mouth = mouthOf(predator)
+			local gap = (root.Position - mouth).Magnitude
+			local hold = holdGap(def, fishLength)
 			-- Lead the target by the time it takes to close the gap, and keep the aim off
 			-- the ground (a fish on the sand is struck from just above it)
-			local gap = (root.Position - mouthOf(predator)).Magnitude
-			local lead = math.clamp(gap / math.max(speed, 1), 0, 1.2)
+			local lead = if predator.mode == "windup"
+				then math.clamp(predator.modeUntil - now, 0, 0.5)
+				else math.clamp(gap / math.max(speed, 1), 0, 1.2)
 			local aim = root.Position + root.AssemblyLinearVelocity * lead
 			local aimFloor = Ground.y(aim.X, aim.Z) + def.length * BODY_HALF + BELLY_GAP
 			aim = Vector3.new(aim.X, math.max(aim.Y, aimFloor), aim.Z)
-			local toTarget = aim - mouthOf(predator)
+			local toTarget = aim - mouth
+			local direction = if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading
 			if predator.mode == "hunt" then
-				-- Stalks in at a cruise, then sprints the last stretch
+				-- Stalks in at a cruise, then sprints the last stretch; close in with the
+				-- fish off to one side it slows to turn tight (at full speed it circled it)
+				local engage = hold + speed * def.telegraph * strike.closing
 				local burst = 0.75 + 0.45 * (1 - math.clamp((gap - 10) / 35, 0, 1))
-				desired = (if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading)
-					* speed
-					* burst
-				if (root.Position - mouthOf(predator)).Magnitude <= def.biteReach + fishLength * 0.5 then
+				local facing = predator.heading:Dot(direction)
+				local tight = 1
+				if gap < engage * 2.5 then
+					tight = 0.35 + 0.65 * math.clamp((facing - 0.2) / 0.7, 0, 1)
+				end
+				desired = direction * speed * burst * tight
+				if
+					gap <= engage
+					and facing >= strike.facing
+					and Ground.sees(mouth, root.Position, fishLength * 0.3)
+				then
 					predator.mode = "windup"
 					predator.modeUntil = now + def.telegraph
 					Net.predatorEvent("windup", predator.index, {
@@ -467,17 +508,18 @@ local function simulate(predator: Predator, dt: number, now: number)
 					})
 				end
 			elseif predator.mode == "windup" then
-				-- Jaw open: slow, still turning toward the fish
-				desired = (if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading)
-					* def.speed
-					* 0.35
+				-- Jaw open: glides in to hold its mouth just off the fish as the tell ends,
+				-- still turning toward it, never faster than `follow`
+				local left = math.max(predator.modeUntil - now, dt)
+				local pace = math.clamp((gap - hold) / left, 1, def.speed * strike.follow)
+				desired = direction * pace
 				if now >= predator.modeUntil then
-					local reach = def.biteReach * 1.6 + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.15
-					local hit = (root.Position - mouthOf(predator)).Magnitude <= reach
+					-- (nor through rock: a fish under an arch or in a reef's tunnel is safe)
+					local hit = gap <= strikeReach(def, fishLength)
+						and Ground.sees(mouth, root.Position, fishLength * 0.3)
 					if hit then
 						HuntService.damage(predator.target :: Player, def.biteFraction, def.name)
 					end
-					local mouth = mouthOf(predator)
 					Net.predatorEvent(
 						"bite",
 						predator.index,

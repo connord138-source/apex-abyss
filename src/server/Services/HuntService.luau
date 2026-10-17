@@ -244,7 +244,7 @@ local function onEatPrey(player: Player, batch: any)
 	end
 	local now = Timing.clock()
 	local mouth = mouthOf(root, length)
-	local allowance = Size.reach(length) + slack(length)
+	local allowance = slack(length)
 	local tide = Tides.at(Timing.unix())
 	local gained = 0
 	local count = 0
@@ -267,7 +267,9 @@ local function onEatPrey(player: Player, batch: any)
 		if not Size.canSwallow(length * 1.03, fish.length) then
 			continue
 		end
-		if (Schools.position(index, at) - mouth).Magnitude > allowance + fish.radius then
+		-- The client's swallow reach and its suction pull (Schools.eatReach, EAT_PULLED)
+		local reach = Schools.eatReach(length, fish.radius) * Schools.EAT_PULLED
+		if (Schools.position(index, at) - mouth).Magnitude > reach + allowance then
 			continue
 		end
 		local prey = Config.Prey.byId[fish.prey]

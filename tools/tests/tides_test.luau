@@ -41,7 +41,10 @@ local now = start + 5000
 for _, slot in Tides.forecast(now, 6) do
 	check(Tides.at(slot.startsAt + 1).id == slot.tide, "forecast disagrees")
 end
-check(Tides.nextPrism(start) == start + 3 * 3600, `next Prism from Monday 00:00: {Tides.nextPrism(start) - start}`)
+check(
+	Tides.nextPrism(start) == start + 3 * 3600,
+	`next Prism from Monday 00:00: {Tides.nextPrism(start) - start}`
+)
 -- Weeks
 check(Tides.weekStart(Tides.week(start)) == start, "week start")
 check(Tides.week(start - 1) == Tides.week(start) - 1, "Sunday is the week before")
@@ -81,7 +84,9 @@ for _, rarity in Config.Catch.rarities do
 	local got = (tally[rarity.id] or 0) / n
 	check(want == 0 and got == 0 or math.abs(got - want) / want < 0.05, `{rarity.id}: {got} vs {want}`)
 end
-print(`tides: {counts.Calm} calm, {counts.Golden} golden, {counts.Blood} blood, {counts.Sardine} sardine, {counts.Biolum} biolum, {counts.Prism} prism a week`)
+print(
+	`tides: {counts.Calm} calm, {counts.Golden} golden, {counts.Blood} blood, {counts.Sardine} sardine, {counts.Biolum} biolum, {counts.Prism} prism a week`
+)
 if failures == 0 then
 	print("tides_test: OK")
 else

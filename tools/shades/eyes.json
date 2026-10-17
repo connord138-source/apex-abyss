@@ -13,6 +13,45 @@
     195,
     24
    ]
+  ],
+  "eye": [
+   [
+    0.6,
+    0.82,
+    0.75
+   ],
+   [
+    0.66,
+    0.88,
+    0.79
+   ],
+   [
+    0.55,
+    0.74,
+    0.7
+   ]
+  ],
+  "skin": [
+   [
+    0.12,
+    0.22,
+    0.34
+   ],
+   [
+    0.17,
+    0.29,
+    0.42
+   ],
+   [
+    0.31,
+    0.32,
+    0.47
+   ],
+   [
+    0.06,
+    0.16,
+    0.28
+   ]
   ]
  },
  "Cuda": {
@@ -28,6 +67,45 @@
     224,
     220,
     32
+   ]
+  ],
+  "eye": [
+   [
+    0.06,
+    0.06,
+    0.06
+   ],
+   [
+    0.13,
+    0.13,
+    0.12
+   ],
+   [
+    0.29,
+    0.29,
+    0.28
+   ],
+   [
+    0.92,
+    0.92,
+    0.91
+   ]
+  ],
+  "skin": [
+   [
+    0.55,
+    0.59,
+    0.64
+   ],
+   [
+    0.4,
+    0.48,
+    0.55
+   ],
+   [
+    0.78,
+    0.8,
+    0.83
    ]
   ]
  },
@@ -45,6 +123,45 @@
     237,
     16
    ]
+  ],
+  "eye": [
+   [
+    0.04,
+    0.04,
+    0.04
+   ],
+   [
+    0.48,
+    0.46,
+    0.53
+   ],
+   [
+    0.5,
+    0.5,
+    0.5
+   ],
+   [
+    0.54,
+    0.54,
+    0.56
+   ]
+  ],
+  "skin": [
+   [
+    0.39,
+    0.41,
+    0.11
+   ],
+   [
+    0.28,
+    0.31,
+    0.02
+   ],
+   [
+    0.33,
+    0.36,
+    0.05
+   ]
   ]
  },
  "Nibbler": {
@@ -60,6 +177,45 @@
     288,
     243,
     70
+   ]
+  ],
+  "eye": [
+   [
+    0.28,
+    0.2,
+    0.23
+   ],
+   [
+    0.54,
+    0.51,
+    0.55
+   ],
+   [
+    0.74,
+    0.77,
+    0.81
+   ],
+   [
+    0.88,
+    0.89,
+    0.92
+   ]
+  ],
+  "skin": [
+   [
+    0.83,
+    0.41,
+    0.21
+   ],
+   [
+    0.79,
+    0.73,
+    0.55
+   ],
+   [
+    0.8,
+    0.66,
+    0.23
    ]
   ]
  },
@@ -77,6 +233,50 @@
     200,
     26
    ]
+  ],
+  "eye": [
+   [
+    0.19,
+    0.15,
+    0.18
+   ],
+   [
+    0.25,
+    0.12,
+    0.15
+   ],
+   [
+    0.38,
+    0.22,
+    0.18
+   ],
+   [
+    0.7,
+    0.68,
+    0.72
+   ],
+   [
+    0.79,
+    0.78,
+    0.77
+   ]
+  ],
+  "skin": [
+   [
+    0.5,
+    0.36,
+    0.26
+   ],
+   [
+    0.7,
+    0.55,
+    0.43
+   ],
+   [
+    0.6,
+    0.45,
+    0.34
+   ]
   ]
  },
  "ReefShark": {
@@ -93,7 +293,36 @@
     245,
     13
    ]
+  ],
+  "eye": [
+   [
+    0.07,
+    0.07,
+    0.08
+   ],
+   [
+    0.13,
+    0.13,
+    0.14
+   ],
+   [
+    0.76,
+    0.78,
+    0.8
+   ],
+   [
+    0.88,
+    0.9,
+    0.91
+   ]
+  ],
+  "skin": [
+   [
+    0.42,
+    0.45,
+    0.48
+   ]
   ]
  },
- "_note": "Hand-checked 2026-10-08 on find_eyes.py's debug sheet: each pick covers the whole eye (Nibbler's googly white, the Angler's glowing iris)."
+ "_note": "Hand-checked 2026-10-08 on find_eyes.py's debug sheet: each pick covers the whole eye (Nibbler's googly white, the Angler's glowing iris). `eye` and `skin` (2026-10-17, skins v12): the eye's own painted colours and the skin colours round it, sampled from the fish's texture; make_shades.py Fish._eyes keeps every texel nearer an eye colour than a skin colour, in whole pieces lying mostly inside the eye's sphere (`core` of its radius, default 0.92; `share` of the piece, default 0.6), out to `reach` (default 1.35), and unmixes the edge. Check with render_eyes.py."
 }

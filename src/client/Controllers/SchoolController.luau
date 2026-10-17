@@ -713,12 +713,26 @@ local function step(dt: number)
 						visual.tail.Size = visual.tailSize * grow
 					end
 				end
-				-- Eat it if it's in reach and small enough
-				local inReach = fadeOut == nil
-					and mouth ~= nil
-					and not inHub
-					and (frame.Position - (mouth :: Vector3)).Magnitude <= reach + fish.radius
-				if inReach and not Size.canSwallow(length, fish.length) then
+				-- Eat it if it's in reach and small enough: a fish we can swallow is drawn
+				-- toward the mouth as we pass close (suction), and goes in a little way out
+				-- (owner, 2026-10-17: "I've swam inches from one and if you don't directly
+				-- hit the fish it doesn't eat it")
+				local open = fadeOut == nil and mouth ~= nil and not inHub
+				local gap = if mouth then (frame.Position - mouth).Magnitude else math.huge
+				local swallow = Size.canSwallow(length, fish.length)
+				local inReach = false
+				if open and swallow then
+					local eatReach, pullRange = Schools.eatReach(length, fish.radius)
+					if gap < pullRange then
+						local share = (1 - gap / pullRange) * Config.Prey.eat.pullShare
+						frame = CFrame.new(frame.Position:Lerp(mouth :: Vector3, share)) * frame.Rotation
+						gap = (frame.Position - (mouth :: Vector3)).Magnitude
+					end
+					inReach = gap <= eatReach
+				elseif open then
+					inReach = gap <= reach + fish.radius
+				end
+				if inReach and not swallow then
 					if now - lastTooBig > 1 then
 						lastTooBig = now
 						SchoolController.tooBig:fire(fish.prey)
@@ -882,6 +896,14 @@ end
 
 function SchoolController.start()
 	build()
+	-- The schools' lifts over the rocks and reefs, as the server worked them out
+	-- (Schools.settle), so we draw every fish where the server checks it
+	local function loadLifts()
+		local lifts = workspace:GetAttribute("SchoolLifts")
+		Schools.load(if typeof(lifts) == "string" then lifts else nil)
+	end
+	loadLifts()
+	workspace:GetAttributeChangedSignal("SchoolLifts"):Connect(loadLifts)
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local preyEaten = remotes:WaitForChild("PreyEaten") :: RemoteEvent
 	preyEaten.OnClientEvent:Connect(onPreyEaten)

@@ -1,13 +1,15 @@
 --!strict
--- Shells lying around the sea. The spots are placed once at server start (a ray
--- down from above finds the seabed or rock under each one), and every player has
--- their own copy of each: a shell you pick up comes back for you after a while,
--- whatever anyone else does. Clients draw them and pick them up instantly
--- (ShellController); the server checks the fish is really there.
+-- Shells lying around the sea. The spots are placed once at server start on open
+-- floor (Shared/Ground `open`: the seabed itself, never in or under a rock, coral,
+-- wreck, ruin or overhang a fish can't get to), and every player has their own copy
+-- of each: a shell you pick up comes back for you after a while, whatever anyone
+-- else does. Clients draw them and pick them up instantly (ShellController); the
+-- server checks the fish is really there.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Size = require(ReplicatedStorage.Shared.Size)
@@ -28,44 +30,55 @@ type Spot = { position: Vector3, golden: boolean }
 local spots: { Spot } = {}
 local collected: { [Player]: { [number]: number } } = {} -- spot → clock it's back
 
+-- Open floor a small fish can get to (Shared/Ground `open`): the Terrain itself (a
+-- shell on a kelp blade or a rock's placeholder part floated above the floor, owner
+-- 2026-10-08), a ball this wide comes down onto it from above, no part's box comes
+-- within OPEN_ROOM of the water over it, and it's no steeper than OPEN_UP
+local OPEN_RADIUS = 1.25
+local OPEN_ROOM = 2.5
+local OPEN_UP = 0.5
+
 local function placeSpots()
 	local rng = Random.new(World.seed + 10)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	-- Only the Terrain: a shell on a kelp blade or a rock's placeholder part floated
-	-- above the floor (owner, 2026-10-08)
-	params.FilterDescendantsInstances = { workspace.Terrain }
 	local trench = World.trench
-	local function inTrench(x: number, z: number): boolean
-		return Seafloor.inTrench(x, z, 12)
-	end
+	local closed = 0
 	local function drop(x: number, z: number, golden: boolean): boolean
-		local from = Vector3.new(x, World.surfaceY - 10, z)
-		local hit = workspace:Raycast(from, Vector3.new(0, -(World.surfaceY - trench.floorY + 20), 0), params)
-		if hit == nil then
+		local floor, normal = Ground.open(x, z, OPEN_RADIUS, OPEN_UP, OPEN_ROOM)
+		if floor == nil or normal == nil then
+			closed += 1
 			return false
 		end
-		table.insert(spots, { position = hit.Position + hit.Normal * 0.7, golden = golden })
+		table.insert(spots, { position = floor + normal * 0.7, golden = golden })
 		return true
 	end
 	local placed, tries = 0, 0
-	while placed < Shells.spots and tries < Shells.spots * 6 do
+	while placed < Shells.spots and tries < Shells.spots * 8 do
 		tries += 1
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local distance = rng:NextNumber(World.shallows.inner, World.shallows.outer)
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
-		if not inTrench(x, z) and drop(x, z, false) then
+		if not Seafloor.inTrench(x, z, 12) and drop(x, z, false) then
 			placed += 1
 		end
 	end
+	local golden = 0
 	for _ = 1, Shells.goldenSpots do
-		-- Down in the canyon, near its floor line
-		local r = rng:NextNumber(trench.radii[1] + 40, trench.radii[2] - 40)
-		local _, width = Seafloor.trenchAxis(r)
-		local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
-		local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-halfBottom * 0.7, halfBottom * 0.7))
-		drop(x, z, true)
+		-- Down in the canyon, near its floor line (a few tries: a ledge or a pillar
+		-- can stand over a spot)
+		for _ = 1, 8 do
+			local r = rng:NextNumber(trench.radii[1] + 40, trench.radii[2] - 40)
+			local _, width = Seafloor.trenchAxis(r)
+			local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
+			local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-halfBottom * 0.7, halfBottom * 0.7))
+			if drop(x, z, true) then
+				golden += 1
+				break
+			end
+		end
 	end
+	print(
+		`[ShellService] {placed} of {Shells.spots} shells and {golden} of {Shells.goldenSpots} golden on open floor ({closed} tries refused as closed in)`
+	)
 end
 
 local function collect(player: Player, index: any)

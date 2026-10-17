@@ -79,6 +79,10 @@ FISH = {
 }
 
 
+# Each fish's eye palette (eyes.json `eye`, `skin`; Fish._eyes)
+EYE_SPECS = {k: v for k, v in json.loads((HERE / "eyes.json").read_text()).items() if isinstance(v, dict)}
+
+
 def C(*rgb):
     return np.array(rgb, np.float32)
 
@@ -212,7 +216,6 @@ class Fish:
         keep = np.zeros((SIZE, SIZE), np.float32)
         self.eyes = self._eyes(picks)
         self.lure = None
-        keep = np.maximum(keep, self.eyes)
         head = self.cov & (self.y < 0.32)
         if rules.get("teeth"):
             sat, val = self.hsv[..., 1], self.hsv[..., 2]
@@ -230,7 +233,9 @@ class Fish:
             lure = (hue > 0.09) & (hue < 0.21) & (sat > 0.25) & (val > 0.55)  # the yellow bulb
             keep = np.maximum(keep, np.maximum(smoothstep(0.42, 0.6, vivid), lure.astype(np.float32)) * self.cov)
             self.lure = np.clip(ndimage.gaussian_filter((lure & self.cov).astype(np.float32), 0.8), 0, 1)
-        return np.clip(ndimage.gaussian_filter(keep, 0.8), 0, 1)
+        # The eyes keep their own unmixed edge (no blur: a blurred edge kept a ring
+        # of the old skin colour round them)
+        return np.maximum(np.clip(ndimage.gaussian_filter(keep, 0.8), 0, 1), self.eyes)
 
     def _teeth(self, spec):
         """The teeth (owner, 2026-10-14: "All fish should always have bone white
@@ -340,18 +345,38 @@ class Fish:
         return np.clip(bone * shade[..., None], 0, 1)
 
     def _eyes(self, picks):
-        """Eyes marked on the side renders (eyes.json): the texels under each pick,
-        grown to a sphere on the body so the sides the camera missed are covered."""
-        mask = np.zeros((SIZE, SIZE), bool)
+        """The whole painted eye (sclera with its shaded side, iris, pupil and
+        highlight), soft-edged 0..1, with its own colour for done() in self.kept.
+
+        Owner, 2026-10-17: "Every single skin on nibbler glitches into the eye". Up
+        to v11 the eye was the pale or dark texels inside a sphere round each pick,
+        and only the pieces holding a pupil were kept (v8, to drop the cream band
+        behind the Nibbler's eye). But an eye's sclera spans several UV islands, and
+        the islands with no pupil on them were dropped: the skin bit a stair-stepped
+        chunk out of the sclera on every skin. The Puffer's iris and the Moray's
+        ring fell out of the colour test as well.
+
+        Now each fish has its own eye and skin palette in eyes.json (the eye's
+        painted colours, and the skin colours round it, the Nibbler's cream band
+        among them). A texel is eye when its colour is nearer an eye colour than a
+        skin colour; every piece of eye that lies mostly inside the eye's sphere
+        (`core`) is kept whole, wherever the atlas cut it; small holes are filled;
+        and the edge is unmixed from the texture's own anti-aliasing (each edge
+        texel's colour as a blend of the eye's colour and the skin's beside it), so
+        it is as round and clean as the painted eye, and none of the old skin
+        colour is kept as a fringe."""
+        spec = EYE_SPECS.get(self.name, {})
+        size = SIZE
         faces = self.faces
         yy, xx = np.mgrid[0 : faces.shape[1], 0 : faces.shape[2]]
+        dist = np.full((size, size), np.inf, np.float32)  # in each eye's own radius
         for view, px, py, radius in picks:
             face = faces[view]
             sel = ((xx - px) ** 2 + (yy - py) ** 2 <= radius * radius) & (face[..., 5] > 0.5)
             u, v = face[..., 3][sel], face[..., 4][sel]
-            tx = np.clip((u % 1.0) * SIZE, 0, SIZE - 1).astype(int)
-            ty = np.clip((1 - v % 1.0) * SIZE, 0, SIZE - 1).astype(int)
-            hit = np.zeros((SIZE, SIZE), bool)
+            tx = np.clip((u % 1.0) * size, 0, size - 1).astype(int)
+            ty = np.clip((1 - v % 1.0) * size, 0, size - 1).astype(int)
+            hit = np.zeros((size, size), bool)
             hit[ty, tx] = True
             hit = ndimage.binary_closing(hit, iterations=3) & self.cov
             if not hit.any():
@@ -359,27 +384,72 @@ class Fish:
             pts = self.pos[hit]
             centre = np.median(pts, 0)
             r3 = float(np.percentile(np.linalg.norm(pts - centre, axis=-1), 90))
-            sphere = (np.linalg.norm(self.pos - centre, axis=-1) < r3 * 0.92) & self.cov
-            mask |= hit | sphere
-        # Only the painted eye inside that sphere: the pale sclera and the dark pupil,
-        # not the colored skin round it
-        sat, val = self.hsv[..., 1], self.hsv[..., 2]
-        pupil = val < 0.3
-        eye = ((sat < 0.32) & (val > 0.5)) | pupil
-        if FISH.get(self.name, {}).get("keep_vivid"):
-            eye |= sat * val > 0.42
-        mask &= eye
-        mask = ndimage.binary_opening(mask, iterations=1)
-        # Only the pieces joined to a pupil: the Nibbler's cream band runs right behind
-        # its eye, and the piece of it inside the sphere showed on every skin as a
-        # yellow crescent (owner, 2026-10-12)
-        labels, n = ndimage.label(mask)
+            dist = np.minimum(dist, np.linalg.norm(self.pos - centre, axis=-1) / max(r3, 1e-6))
+        self.eye_dist = dist
+        self.kept = self.color.copy()
+        if not np.isfinite(dist).any():
+            return np.zeros((size, size), np.float32)
+        eye_pal = np.array(spec.get("eye", [[0.1, 0.1, 0.1], [0.85, 0.87, 0.9]]), np.float32)
+        skin_pal = np.array(spec.get("skin", []), np.float32).reshape(-1, 3)
+        core = float(spec.get("core", 1.0))
+        reach = float(spec.get("reach", 2.0))
+        near = self.real & (dist < reach * 1.2)
+        c = self.color
+
+        def nearest(pal):
+            d = np.full((size, size), np.inf, np.float32)
+            idx = np.zeros((size, size), np.int32)
+            for k, col in enumerate(pal):
+                dk = np.linalg.norm(c - col, axis=-1)
+                better = dk < d
+                d = np.where(better, dk, d)
+                idx = np.where(better, k, idx)
+            return d, idx
+
+        d_eye, _ = nearest(eye_pal)
+        d_skin, _ = nearest(skin_pal) if len(skin_pal) else (np.full((size, size), np.inf, np.float32), None)
+        tol = float(spec.get("tol", 0.22))  # an eye texel is at least this near an eye colour
+        cand = near & (d_eye < d_skin) & (d_eye < tol)
+        # The pieces of eye, whole: kept when most of a piece lies inside the sphere
+        # (pieces of the same colour elsewhere, a pale belly or a white band, reach
+        # far out of it)
+        labels, n = ndimage.label(cand, structure=np.ones((3, 3)))
+        eye = np.zeros((size, size), bool)
         if n:
-            with_pupil = np.unique(labels[mask & pupil])
-            with_pupil = with_pupil[with_pupil > 0]
-            if len(with_pupil):
-                mask = np.isin(labels, with_pupil)
-        return ndimage.binary_closing(mask, iterations=2).astype(np.float32)
+            idx = np.arange(1, n + 1)
+            sizes = ndimage.sum(cand, labels, idx)
+            inside = ndimage.sum(cand & (dist < core), labels, idx)
+            good = idx[(inside >= np.maximum(sizes * float(spec.get("share", 0.5)), 3))]
+            eye = np.isin(labels, good) & (dist < reach)
+        # Holes in the eye (a highlight, a pupil's rim the palette missed), if small
+        holes = ndimage.binary_fill_holes(eye) & ~eye
+        hl, hn = ndimage.label(holes)
+        if hn:
+            hs = ndimage.sum(holes, hl, np.arange(1, hn + 1))
+            eye |= np.isin(hl, np.flatnonzero(hs < float(spec.get("hole", 400))) + 1)
+        eye = ndimage.binary_opening(eye, iterations=1) | (eye & (dist < core * 0.5))
+        if not eye.any():
+            return np.zeros((size, size), np.float32)
+        # The edge: unmix each texel near the outline between the eye's colour inside
+        # it and the skin's colour outside it
+        inner = ndimage.binary_erosion(eye, iterations=1)
+        inner |= eye & ~ndimage.binary_dilation(inner, iterations=3)  # thin pieces
+        outer = ~ndimage.binary_dilation(eye, iterations=2) & self.real
+        band = ~inner & ndimage.binary_dilation(eye, iterations=2) & self.cov
+        _, (iy, ix) = ndimage.distance_transform_edt(~inner, return_indices=True)
+        _, (oy, ox) = ndimage.distance_transform_edt(~outer, return_indices=True)
+        e_col = c[iy, ix]
+        s_col = c[oy, ox]
+        es = e_col - s_col
+        den = (es * es).sum(-1)
+        a = ((c - s_col) * es).sum(-1) / np.maximum(den, 1e-6)
+        a = np.where(den > 0.006, np.clip(a, 0, 1), eye.astype(np.float32))
+        # Only out to the eye's reach (a skin colour beside it is never eye)
+        a = a * (dist < reach * 1.15)
+        alpha = np.where(inner, 1.0, np.where(band, a, 0.0)).astype(np.float32)
+        alpha *= self.cov
+        self.kept = np.where(band[..., None], e_col, c)
+        return alpha
 
 
 # ---------------------------------------------------------------------------
@@ -613,7 +683,7 @@ def done(m: Fish, rgb, finish="satin", emit=None, metal=None, rough=None, detail
     normal = relief_normal(m, rgb, height, relief, fine) if NORMALS and relief > 0 else None
     rgb = rgb * (1 + strength * fine)[..., None]
     rgb = np.clip(rgb, 0, 1)
-    rgb = mix(rgb, m.color, m.keep)
+    rgb = mix(rgb, m.kept, m.keep)
     # Teeth are always bone white, whatever the skin (owner, 2026-10-14)
     rgb = mix(rgb, m.tooth, m.teeth)
     rgb[~m.cov] = m.color[~m.cov]
