@@ -22,6 +22,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `furniture_glb` | the 38 den furniture pieces of batch 1, `furniture/<Name>.glb` (GLB; cut off `assets/concepts/Furn*.jpg` by `tools/props/furniture_crops.py`, Tripo image_to_model; normal maps taken out by `tools/props/strip_normals.py`, colors made safe by `safe_colors.py`, all 76 images screened 2026-10-13; front faces +X) | `ReplicatedStorage.WorldProps.<Name>` |
 | `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
 | `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
+| `shade_patch_v11` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch11`: WeekWave and WeekWreck on every fish, lighter for the water, each with a faint even glow map (2026-10-17, K1 of the round-2 report; 6 images a GLB) | the same folders; import after v10 |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -173,7 +174,18 @@ glow map (made for the default EmissiveStrength 1) so the water's blue-green no 
 turns it olive; WeekWave, WeekWreck, Abyssal Current, Ribbon, Chrome and Scarred are
 lifted to read from the side; Thunder's arcs stop short of the 'Cuda's mouth. Before/after
 sheets, studio light and in water: `assets/shades/previews/v10_<Fish>_compare.jpg`
-(and `v10_Cuda_Thunder_mouth.jpg`). Import it after v9.
+(and `v10_Cuda_Thunder_mouth.jpg`). Import it after v9. The v11 patch
+(`shade_patch_v11`, in `assets/shades/patch11`) answers K1 of the round-2 report
+(docs/playtests/2026-10-16-pc-2.md: WeekWave and WeekWreck still read dark in the
+water): WeekWave is a light-to-mid cerulean sky over a mid turquoise sea with brighter
+crests, WeekWreck a lighter, purer teal hull over a lighter cobalt bottom, and both get
+a faint even glow map (half the colour, less on the lines), as Golden did. Measured as
+the mean luminance of the fish in the `water=0.35 strength=0.65` render, they went from
+0.28-0.32 (Wave) and 0.25-0.27 (Wreck) to 0.42-0.45 and 0.39-0.41, beside v10's Golden
+at 0.41-0.44. The classifier is touchy about light teal: a hull of (0.23, 0.71, 0.61)
+scored 0.19 on the Nibbler once JPEG-packed, (0.12, 0.71, 0.62) 0.04, so score the
+packed image of a light field (the screen does) before settling on it. Sheets:
+`assets/shades/previews/v11_<Fish>_compare.jpg`. Import it after v10.
 
 **Sheens** (`tools/shades/make_sheens.py [name ...]`, python3.11 + scipy): tiling
 512² layers in `assets/textures/`, uploaded as Images and keyed in
