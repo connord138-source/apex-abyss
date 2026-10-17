@@ -58,6 +58,7 @@ local fadeCharacter: Model? = nil
 local fadeParts: { BasePart } = {}
 local fadeAdded: RBXScriptConnection? = nil
 local fadeShown = 0
+local fadeHid: { [BasePart]: boolean } = {} -- parts this fade hid all the way (Build mode)
 
 local function fadeFish(character: Model?, amount: number)
 	if character ~= fadeCharacter then
@@ -67,6 +68,7 @@ local function fadeFish(character: Model?, amount: number)
 		end
 		fadeCharacter = character
 		table.clear(fadeParts)
+		table.clear(fadeHid)
 		fadeShown = -1
 		if character then
 			for _, item in character:GetDescendants() do
@@ -88,9 +90,12 @@ local function fadeFish(character: Model?, amount: number)
 	end
 	fadeShown = amount
 	for _, part in fadeParts do
-		-- 1 means Cosmetics hid it (a variant replaced it); leave those alone
-		if part.LocalTransparencyModifier < 0.999 then
+		-- 1 means Cosmetics hid it (a variant replaced it); leave those alone, but not
+		-- the ones this fade hid itself (Build mode hides your fish at 1, and after
+		-- DONE it stayed invisible: PC 2026-10-17, BC1)
+		if part.LocalTransparencyModifier < 0.999 or fadeHid[part] then
 			part.LocalTransparencyModifier = amount
+			fadeHid[part] = if amount >= 0.999 then true else nil
 		end
 	end
 end
