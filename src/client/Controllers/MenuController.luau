@@ -1265,8 +1265,8 @@ function MenuController.openSpecies()
 					Ui.FONT,
 					14,
 					Ui.color.muted,
-					UDim2.new(1, -200, 0, 40),
-					UDim2.new(0, 0, 1, -44)
+					UDim2.new(1, -200, 0, 58),
+					UDim2.new(0, 0, 1, -60)
 				)
 				noteLabel.TextWrapped = true
 				noteLabel.TextYAlignment = Enum.TextYAlignment.Top
