@@ -7,7 +7,10 @@
 -- script can't set a MaterialVariant's maps.
 local MaterialService = game:GetService("MaterialService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Materials = require(ReplicatedStorage.Shared.Config.Materials)
+-- A clone, so a second run sees the config Rojo synced since: the Command Bar keeps
+-- its first require of a module for the session (PC 2026-10-17, step 2: the re-run
+-- for Limestone printed 11 materials, not 12)
+local Materials = require(ReplicatedStorage.Shared.Config.Materials:Clone())
 
 local made, skipped = 0, 0
 for key, toon in Materials.toon do
