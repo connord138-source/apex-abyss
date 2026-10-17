@@ -17,7 +17,8 @@ local Cave = require(script.Parent.Cave)
 
 local DenCarve = {}
 
-local SANDSTONE = Enum.Material.Sandstone
+-- The dens' own rock (Limestone wears Rock's toon plates in the dens' tan; Cave.COLORS)
+local DEN_ROCK = Enum.Material.Limestone
 local AIR = Enum.Material.Air
 
 -- How much wider than its opening a shaft is cut (Config/Dens Shaft)
@@ -72,7 +73,7 @@ function DenCarve.ops(index: number, level: number): { Cave.Op }
 	end
 
 	-- 1. The den's whole block back to warm stone
-	span(SANDSTONE, -extent.half, extent.half, extent.bottom, extent.top, extent.front, extent.back, false)
+	span(DEN_ROCK, -extent.half, extent.half, extent.bottom, extent.top, extent.front, extent.back, false)
 
 	-- 2. Each open storey, top down (an arch's cylinder reaches far below its own
 	-- floor; the rock it cut is put back before the next storey is carved)
@@ -99,9 +100,9 @@ function DenCarve.ops(index: number, level: number): { Cave.Op }
 		for _, room in rooms do
 			local radius = DenSpace.archRadius(room)
 			local bottom = s.ceiling - 2 * radius - 2
-			span(SANDSTONE, room.x, radius + 2, bottom, wallTop, room.z0, room.z1, true)
-			span(SANDSTONE, -radius - 2, -room.x, bottom, wallTop, room.z0, room.z1, true)
-			span(SANDSTONE, -radius - 2, radius + 2, bottom, s.floor, room.z0, room.z1, true)
+			span(DEN_ROCK, room.x, radius + 2, bottom, wallTop, room.z0, room.z1, true)
+			span(DEN_ROCK, -radius - 2, -room.x, bottom, wallTop, room.z0, room.z1, true)
+			span(DEN_ROCK, -radius - 2, radius + 2, bottom, s.floor, room.z0, room.z1, true)
 		end
 		-- c. The rooms, from the rock floor (a voxel or more under the deck: Config/Dens
 		-- storeys) up to where the arch meets the walls

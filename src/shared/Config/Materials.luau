@@ -52,5 +52,15 @@ return {
 			pattern = "Regular",
 		},
 		Wood = { base = Enum.Material.Wood, id = 117559280684803, studsPerTile = 8, pattern = "Regular" },
+		-- The dens' rock: Rock's plates (the same image) in the dens' own tan.
+		-- Sandstone's long bands read as wood grain on a den's walls (PC 2026-10-16
+		-- round 2, T1), and a Terrain colour is per material, so the dens take a
+		-- material nothing else in the world uses
+		Limestone = {
+			base = Enum.Material.Limestone,
+			id = 89603876982877,
+			studsPerTile = 12,
+			pattern = "Organic",
+		},
 	} :: { [string]: Toon },
 }

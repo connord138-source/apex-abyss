@@ -304,34 +304,79 @@ local function buildDepthGauge()
 	depthText.TextXAlignment = Enum.TextXAlignment.Center
 end
 
--- Whether a menu window (or the Build tray) is up
-local function panelUp(): boolean
+-- The open menu window, if any
+local function openWindow(): GuiObject?
 	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-	if playerGui == nil then
-		return false
-	end
-	local menus = playerGui:FindFirstChild("Menus")
+	local menus = playerGui and playerGui:FindFirstChild("Menus")
 	local window = menus and menus:FindFirstChild("Window")
 	if window and window:IsA("GuiObject") and window.Visible then
-		return true
+		return window
 	end
-	local build = playerGui:FindFirstChild("Build")
+	return nil
+end
+
+-- Whether the Build bar is up
+local function buildUp(): boolean
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local build = playerGui and playerGui:FindFirstChild("Build")
 	local tray = build and build:FindFirstChild("Tray")
 	return tray ~= nil and tray:IsA("GuiObject") and tray.Visible
 end
 
--- Where the toasts go: above the Haul card, or on a phone with a panel up, a thin
--- strip under the top bar (PC 2026-10-16: they drew over the open panel's middle)
+-- On a phone with a menu window up, a message shows on the window's own subtitle
+-- line for a few seconds, over the subtitle (PC 2026-10-16 round 2, S1: the strip
+-- under the top bar lay over the window's first row). False when there's no window.
+local noteCount = 0
+local function noteInWindow(text: string, color: Color3): boolean
+	local window = openWindow()
+	local subtitle = window and window:FindFirstChild("Subtitle")
+	if window == nil or subtitle == nil or not subtitle:IsA("TextLabel") then
+		return false
+	end
+	local note = window:FindFirstChild("Note") :: TextLabel?
+	if note == nil then
+		local made = Instance.new("TextLabel")
+		made.Name = "Note"
+		made.BorderSizePixel = 0
+		made.FontFace = Ui.FONT_BOLD
+		made.TextSize = subtitle.TextSize
+		made.TextXAlignment = Enum.TextXAlignment.Left
+		made.TextTruncate = Enum.TextTruncate.AtEnd
+		made.Parent = window
+		note = made
+	end
+	local shown = note :: TextLabel
+	shown.Position = subtitle.Position
+	shown.Size = subtitle.Size
+	shown.ZIndex = subtitle.ZIndex + 1
+	shown.BackgroundColor3 = window.BackgroundColor3
+	shown.BackgroundTransparency = 0
+	shown.TextColor3 = color
+	shown.TextTransparency = 0
+	shown.Text = text
+	shown.Visible = true
+	noteCount += 1
+	local mine = noteCount
+	task.delay(3, function()
+		if noteCount == mine and shown.Parent then
+			shown.Visible = false
+		end
+	end)
+	return true
+end
+
+-- Where the toasts go: above the Haul card, or on a phone in Build mode, a thin
+-- strip under the help line at the top (PC 2026-10-16: they drew over the panel)
 local toastsAtTop = false
 local function placeToasts()
-	local top = Ui.isTouch() and panelUp()
+	local top = Ui.isTouch() and buildUp()
 	toastsAtTop = top
 	local layout = toastList:FindFirstChildOfClass("UIListLayout")
 	if top then
 		local screen = toastList:FindFirstAncestorOfClass("ScreenGui")
 		local scale = if screen then Ui.scaleOf(screen) else 1
 		toastList.AnchorPoint = Vector2.new(0.5, 0)
-		toastList.Position = UDim2.new(0.5, 0, 0, math.ceil((Ui.topInset() + 4) / scale))
+		toastList.Position = UDim2.new(0.5, 0, 0, math.ceil((Ui.topInset() + 34) / scale))
 		if layout then
 			layout.VerticalAlignment = Enum.VerticalAlignment.Top
 		end
@@ -345,13 +390,16 @@ local function placeToasts()
 end
 
 local function toast(text: string, kind: string)
-	placeToasts()
-	local thin = toastsAtTop
 	local color = if kind == "good"
 		then Ui.color.safe
 		elseif kind == "bad" then Ui.color.danger
 		elseif kind == "rare" then Ui.color.haul
 		else Ui.color.text
+	if Ui.isTouch() and noteInWindow(text, color) then
+		return
+	end
+	placeToasts()
+	local thin = toastsAtTop
 	local height = if thin then 26 else 36
 	local item = Ui.panel(toastList, "Toast", UDim2.fromOffset(0, height), UDim2.new())
 	toastCount += 1
@@ -879,8 +927,11 @@ local function step(dt: number)
 
 	-- Depth: studs below the surface
 	local y = if root then root.Position.Y else workspace.CurrentCamera.Focus.Position.Y
-	if root and Layout.denAt(root.Position) then
-		y = World.hub.denFloorY -- a den reads as deep as its doorway on the plaza
+	local den = if root then Layout.denAt(root.Position) else nil
+	if den then
+		-- A den reads as deep as a fish in front of its doorway on the plaza (it read
+		-- the hub floor's depth, 10 ft deeper: PC 2026-10-16 round 2, D8)
+		y = Layout.hubExitFrame(den).Position.Y
 	end
 	local below = World.surfaceY - y
 	depthText.Text = Format.depth(below)

@@ -432,7 +432,41 @@ local function move(player: Player, uid: any, surface: any, x: any, y: any, z: a
 	if not check.ok then
 		return fail(player, check.why or "That doesn't go there")
 	end
+	-- What's stacked on it comes along, turned with it (PC 2026-10-16 round 2, B4);
+	-- a carried thing that can't stand at its new spot goes back to the tray
+	local from = { x = placement.x, y = placement.y, z = placement.z, r = placement.r }
+	local to = { x = at.X, y = at.Y, z = at.Z, r = turn }
+	local stack: { DenSpace.Placed } = {}
+	if face == "floor" and placement.s == "floor" then
+		stack = DenSpace.stackOn(data.den.placed, placement.uid)
+	end
 	placement.x, placement.y, placement.z, placement.r, placement.s = at.X, at.Y, at.Z, turn, face
+	local dropped = 0
+	for _, carried in stack do
+		carried.x, carried.y, carried.z, carried.r = DenSpace.carry(carried, from, to)
+		local carriedItem = Dens.itemsById[carried.id]
+		local fits = carriedItem ~= nil
+			and DenSpace.check(
+				data.den.level,
+				carriedItem,
+				"floor",
+				Vector3.new(carried.x, carried.y, carried.z)
+			).ok
+		if not fits then
+			local i = find(data.den, carried.uid)
+			if i then
+				table.remove(data.den.placed, i)
+				dropped += 1
+			end
+		end
+	end
+	if dropped > 0 then
+		Net.notify(
+			player,
+			`{dropped} thing{if dropped == 1 then "" else "s"} stacked on it didn't fit there · back in your tray`,
+			"info"
+		)
+	end
 	placedChanged(player, data, den)
 end
 
@@ -510,6 +544,32 @@ function DenService.setLevel(player: Player, level: number)
 	end
 	DataService.markDirty(player)
 	DenService.refresh(player)
+end
+
+-- Admin (PC 2026-10-16 round 2, D7: Studio had no old saves to load): turns this
+-- den's record back into one saved before the private interiors (every placed thing
+-- at its storey's old height, no layout mark), then loads it the way an old save
+-- loads (relayout). Returns a line for the admin panel.
+function DenService.simulateOldSave(player: Player): string
+	local data = DataService.get(player)
+	if data == nil then
+		return "No data"
+	end
+	local den = data.den
+	local before = #den.placed
+	local lower = 0
+	for _, placement in den.placed do
+		local storey = DenSpace.storeyAt(placement.y) or 1
+		if storey > 1 then
+			lower += 1
+		end
+		placement.y += OLD_DECKS[storey] - DenSpace.storey(storey).deck
+	end
+	den.layout = nil
+	relayout(den)
+	DataService.markDirty(player)
+	DenService.refresh(player)
+	return `Old save loaded: {before} placed ({lower} on the lower storeys) → {#den.placed} on their decks, {before - #den.placed} back to the tray`
 end
 
 function DenService.giveItems(player: Player, count: number)

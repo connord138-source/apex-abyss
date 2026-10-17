@@ -362,6 +362,60 @@ function DenSpace.resting(level: number, placed: { Placed }, at: Vector3, except
 	return { ok = false, why = "Put it on the floor, or on top of something" }
 end
 
+-- Everything stacked on placed thing `uid`, and on those in turn: floor things whose
+-- pivot sits on its top, inside its turned footprint. Moving a base carries these
+-- with it (PC 2026-10-16 round 2, B4).
+function DenSpace.stackOn(placed: { Placed }, uid: number): { Placed }
+	local found: { Placed } = {}
+	local seen: { [number]: boolean } = { [uid] = true }
+	local queue: { Placed } = {}
+	for _, p in placed do
+		if p.uid == uid then
+			table.insert(queue, p)
+		end
+	end
+	while #queue > 0 do
+		local base = table.remove(queue, 1) :: Placed
+		local item = Dens.itemsById[base.id]
+		if item == nil or base.s ~= "floor" then
+			continue
+		end
+		local top = base.y + item.size.Y
+		for _, p in placed do
+			if
+				not seen[p.uid]
+				and p.s == "floor"
+				and math.abs(p.y - top) <= 0.9
+				and underFootprint(base, item, p.x, p.z)
+			then
+				seen[p.uid] = true
+				table.insert(found, p)
+				table.insert(queue, p)
+			end
+		end
+	end
+	return found
+end
+
+-- Where a thing stacked on a base goes when the base moves from (x0, z0, turn r0) to
+-- (x1, y1 - y0 higher, z1, turn r1): the same spot on the base, turned with it.
+-- The den's turn maps (dx, dz) to the base's own frame by a matrix that is its own
+-- inverse (see underFootprint), so out of the old frame and into the new is the
+-- same map twice.
+function DenSpace.carry(
+	p: Placed,
+	from: { x: number, y: number, z: number, r: number },
+	to: { x: number, y: number, z: number, r: number }
+): (number, number, number, number)
+	local t0, t1 = math.rad(from.r), math.rad(to.r)
+	local dx, dz = p.x - from.x, p.z - from.z
+	local lx = dx * math.cos(t0) + dz * math.sin(t0)
+	local lz = dx * math.sin(t0) - dz * math.cos(t0)
+	local nx = lx * math.cos(t1) + lz * math.sin(t1)
+	local nz = lx * math.sin(t1) - lz * math.cos(t1)
+	return to.x + nx, p.y + (to.y - from.y), to.z + nz, (p.r + to.r - from.r) % 360
+end
+
 -- Raised things left with nothing under them come down (PC 2026-10-16: a Shell Pile
 -- hung 1 stud over the deck once the Kelp Bed it stood on was put away): each falls
 -- onto the highest top below it (another thing's, else the deck), lower ones first,

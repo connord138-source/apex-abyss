@@ -13,6 +13,7 @@ local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
 local FishPlans = require(ReplicatedStorage.Shared.FishPlans)
 local Size = require(ReplicatedStorage.Shared.Size)
 local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
+local SkinLoader = require(script.Parent.Parent.SkinLoader)
 local Spring = require(script.Parent.Parent.Spring)
 local SwimController = require(script.Parent.SwimController)
 
@@ -144,7 +145,14 @@ end
 -- and re-sizes the shade's glow and glints when the fish has grown a lot.
 local function dress(character: Model, state: FishState)
 	local shade = character:GetAttribute("Shade")
-	local key = `{shade}|{character:GetAttribute("Parts")}|{character:GetAttribute("Variant")}`
+	-- A skin still downloading is put on once it has arrived (SkinLoader)
+	local skin = if state.body:GetAttribute("Mesh")
+		then Cosmetics.skinOf(state.body, if typeof(shade) == "string" and shade ~= "" then shade else nil)
+		else nil
+	local waiting = skin ~= nil and not SkinLoader.ready(skin)
+	local key = `{shade}|{character:GetAttribute("Parts")}|{character:GetAttribute("Variant")}|{if waiting
+		then "w"
+		else ""}`
 	local grown = math.abs(state.length - state.dressLength) > state.dressLength * 0.25
 	if key == state.dressKey and not grown then
 		return
@@ -155,7 +163,7 @@ local function dress(character: Model, state: FishState)
 	end
 	state.dressKey = key
 	state.dressLength = state.length
-	Cosmetics.apply(state.body, look, Cosmetics.dressOf(character), state.length)
+	Cosmetics.apply(state.body, look, Cosmetics.dressOf(character), state.length, SkinLoader.ready)
 	state.applied = -1 -- re-scale everything, new parts included
 end
 

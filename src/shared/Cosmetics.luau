@@ -1145,7 +1145,20 @@ local function holdOwn(part: BasePart, hold: boolean)
 	end
 end
 
-local function paintMesh(body: Model, shadeId: string?, length: number)
+-- The skin a mesh body wears for a shade (its Natural skin with none), or nil
+function Cosmetics.skinOf(body: Model, shadeId: string?): Instance?
+	local shade = if shadeId then Config.Shades.byId[shadeId] else nil
+	if shade and shade.spectral == true then
+		return nil
+	end
+	local plan = body:GetAttribute("MeshPlan")
+	local planName = if typeof(plan) == "string" then plan else nil
+	return (if shade then skinFor(planName, shade.id) else nil) or skinFor(planName, "Natural")
+end
+
+-- `skinReady` (the client's SkinLoader): a skin whose textures haven't all arrived
+-- isn't worn yet, so the fish shows the stand-in, never untextured white
+local function paintMesh(body: Model, shadeId: string?, length: number, skinReady: ((Instance) -> boolean)?)
 	local mesh = body:FindFirstChild("Mesh")
 	if mesh == nil then
 		return
@@ -1155,8 +1168,14 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 	local plan = body:GetAttribute("MeshPlan")
 	local planName = if typeof(plan) == "string" then plan else nil
 	local skin = if shade and not spectral then skinFor(planName, shade.id) else nil
+	if skin and skinReady and not skinReady(skin) then
+		skin = nil
+	end
 	-- No shade (or a shade not imported yet): the fish's own look, white teeth and all
 	local natural = if skin == nil and not spectral then skinFor(planName, "Natural") else nil
+	if natural and skinReady and not skinReady(natural) then
+		natural = nil
+	end
 	-- A fish with teeth (it has a Natural skin) keeps the moving sheen off its mouth
 	local toothed = skinFor(planName, "Natural") ~= nil
 	local forward = body:GetPivot().LookVector
@@ -1248,11 +1267,17 @@ local function paintMesh(body: Model, shadeId: string?, length: number)
 	aura(core, shade, length)
 end
 
-function Cosmetics.apply(body: Model, look: FishBuilder.Look, dress: Dress, length: number)
+function Cosmetics.apply(
+	body: Model,
+	look: FishBuilder.Look,
+	dress: Dress,
+	length: number,
+	skinReady: ((Instance) -> boolean)?
+)
 	local mesh = body:FindFirstChild("Mesh")
 	if body:GetAttribute("Mesh") and mesh and mesh:IsA("Model") then
 		stripMesh(body, mesh)
-		paintMesh(body, dress.shade, length)
+		paintMesh(body, dress.shade, length, skinReady)
 		local anchors, dims, partScale = meshAnchors(body)
 		local bones = meshBones(mesh)
 		local variant = if dress.variant then VARIANTS[dress.variant] else nil

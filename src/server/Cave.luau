@@ -36,7 +36,11 @@ Cave.COLORS = {
 	[Enum.Material.Slate] = Color3.fromRGB(70, 92, 104),
 	[Enum.Material.Sandstone] = Color3.fromRGB(150, 138, 118),
 	[Enum.Material.Sand] = Color3.fromRGB(206, 194, 156),
-	[Enum.Material.Basalt] = Color3.fromRGB(62, 74, 84),
+	-- Lifted so the Vents' floor shows its tile instead of reading near black (PC
+	-- 2026-10-16 round 2, T1)
+	[Enum.Material.Basalt] = Color3.fromRGB(88, 98, 110),
+	-- The dens' walls (DenCarve): the tan the dens always had, on Rock's plates
+	[Enum.Material.Limestone] = Color3.fromRGB(150, 138, 118),
 }
 
 local ROCK = Enum.Material.Rock

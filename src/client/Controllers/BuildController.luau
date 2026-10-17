@@ -89,6 +89,9 @@ local turning = 0 -- -1, 0, 1 while a turn is held
 -- onto a wall but keeps that turn (PC 2026-10-16: next to a wall, snapping overrode
 -- R / F)
 local handTurned = false
+local underUid: number? = nil -- the placed thing under the aim (through a picked one)
+local pickedAt = 0 -- when a placed thing was last picked up
+local STEP_DOWN = 0.6 -- seconds: a second click this soon on a stack steps down
 local nextTurn = 0
 local hiddenUid: number? = nil
 local snapOn = true
@@ -100,6 +103,13 @@ type View = { x: number, y: number, z: number, yaw: number, pitch: number, dista
 local view: View = { x = 0, y = 1, z = 0, yaw = 0, pitch = math.rad(52), distance = 45, storey = 1 }
 local VIEW_PITCH = { math.rad(18), math.rad(84) }
 local VIEW_ZOOM = { 10, 120 }
+-- Zoomed out, the view climbs toward the vault and looks down: the lowest pitch
+-- rises to VIEW_TOPDOWN by full zoom, and once the camera is up against the vault
+-- the rest of the zoom widens the lens, up to VIEW_FOV_MAX (PC 2026-10-16 round 2,
+-- D6: zooming out sank the camera toward the floor and never showed a whole room)
+local VIEW_TOPDOWN = math.rad(58)
+local VIEW_FOV_MAX = 96
+local VIEW_START = 60 -- the starting zoom
 local VIEW_PAN = 26 -- studs a second at the starting zoom
 local VIEW_FOCUS_UP = 2 -- the camera looks this far over the deck
 local orbiting = false -- the right mouse button held: dragging turns the view
@@ -130,7 +140,10 @@ local touchHint: TextLabel
 -- tap): a slim bar along the bottom whose tray folds away (it folds by itself once
 -- a thing is picked), the help line at the top, and the swimming HUD hidden.
 local trayFolded = false
-local HIDE_ON_TOUCH = {
+-- Hidden while editing on every device (PC 2026-10-16 round 2: on PC the HUD's top
+-- chips covered the view, and a click under a chip or the minimap was swallowed and
+-- placed nothing)
+local HIDE_WHILE_BUILDING = {
 	"Hud",
 	"SwimStickRing",
 	"Heal",
@@ -198,11 +211,28 @@ local function inTray(id: string): number
 end
 
 -- The things in the tray, in the catalog's order
+-- A tile stays where it is for the rest of the Build session once shown, greyed at
+-- ×0, so the tiles after it don't shift (PC 2026-10-16 round 2, B4: a remembered
+-- tile position picked the wrong thing once one ran out)
+local shownThisSession: { [string]: boolean } = {}
+
 local function trayIds(): { string }
 	local list: { string } = {}
 	for _, item in Dens.items do
-		if inTray(item.id) > 0 then
+		if inTray(item.id) > 0 or shownThisSession[item.id] then
+			shownThisSession[item.id] = true
 			table.insert(list, item.id)
+		end
+	end
+	return list
+end
+
+-- The tray's things that are left to place
+local function pickableIds(): { string }
+	local list: { string } = {}
+	for _, id in trayIds() do
+		if inTray(id) > 0 then
+			table.insert(list, id)
 		end
 	end
 	return list
@@ -410,11 +440,20 @@ local function startView()
 	view.storey = best
 	view.x, view.z = here.X, here.Z
 	view.y = DenSpace.storey(best).deck
+	-- The middle of the room the fish is in, not over the pool where it waits (PC
+	-- 2026-10-16 round 2, D6: a LV 100 fish filled the view)
+	for _, room in DenSpace.rooms(denRecord().level or 1, best) do
+		local near, far = math.min(room.z0, room.z1), math.max(room.z0, room.z1)
+		if math.abs(here.X) <= room.x + 2 and here.Z >= near - 2 and here.Z <= far + 2 then
+			view.x, view.z = 0, (near + far) / 2
+			break
+		end
+	end
 	clampView()
 	local look = workspace.CurrentCamera.CFrame.LookVector
 	view.yaw = math.atan2(-look.X, -look.Z)
-	view.pitch = math.rad(52)
-	view.distance = 45
+	view.pitch = math.rad(55)
+	view.distance = VIEW_START
 	viewParams.FilterDescendantsInstances = { workspace.Terrain }
 end
 
@@ -445,14 +484,16 @@ local function viewCFrame(dt: number): CFrame?
 	if notches ~= 0 then
 		view.distance = math.clamp(view.distance * (1 - 0.12 * notches), VIEW_ZOOM[1], VIEW_ZOOM[2])
 	end
-	-- Under the storey's ceiling: zoomed out, the view lowers toward the floor's
-	-- far side instead of pressing up into the rock
-	local headroom = DenSpace.storey(view.storey).ceiling - view.y - VIEW_FOCUS_UP - 2
-	local steepest = VIEW_PITCH[2]
-	if view.distance * math.sin(steepest) > headroom then
-		steepest = math.max(VIEW_PITCH[1], math.asin(math.clamp(headroom / view.distance, 0, 1)))
-	end
-	view.pitch = math.clamp(view.pitch + look.Y, VIEW_PITCH[1], steepest)
+	-- Zoomed out it climbs and looks down: the lowest pitch rises with the zoom
+	local zoomed = math.clamp((view.distance - VIEW_START) / (VIEW_ZOOM[2] - VIEW_START), 0, 1)
+	local lowest = VIEW_PITCH[1] + (VIEW_TOPDOWN - VIEW_PITCH[1]) * zoomed
+	view.pitch = math.clamp(view.pitch + look.Y, lowest, VIEW_PITCH[2])
+	-- Under the vault: the camera stops just under it along its own line of sight,
+	-- and the zoom left over widens the lens instead
+	local headroom = math.max(DenSpace.storey(view.storey).ceiling - view.y - VIEW_FOCUS_UP - 3, 4)
+	local reach = math.min(view.distance, headroom / math.max(math.sin(view.pitch), 0.05))
+	local base = Config.Tuning.camera.fov
+	CameraController.overrideFov = math.clamp(base + (view.distance / reach - 1) * 22, base, VIEW_FOV_MAX)
 	-- Pan: WASD or the arrows, or the left stick, across the floor
 	local pan = Vector2.zero
 	if UserInputService:GetFocusedTextBox() == nil then
@@ -487,7 +528,7 @@ local function viewCFrame(dt: number): CFrame?
 	end
 	local focus = DenSpace.spot(frame, view.x, view.y + VIEW_FOCUS_UP, view.z).Position
 	local orient = CFrame.Angles(0, view.yaw, 0) * CFrame.Angles(-view.pitch, 0, 0)
-	local want = focus - orient.LookVector * view.distance
+	local want = focus - orient.LookVector * reach
 	-- Out of the rock: the camera stops short of the den's ceiling and walls
 	local offset = want - focus
 	local hit = workspace:Raycast(focus, offset, viewParams)
@@ -816,11 +857,16 @@ local function step()
 		then DenSpace.toLocal(DenSpace.frame(ownIndex()), hit.Position)
 		else nil
 	local s = selection
+	if s ~= nil then
+		-- What the aim rests on under the picked thing (hidden from the ray)
+		underUid = uidOf(if hit then hit.Instance else nil)
+	end
 	if s == nil then
 		-- Nothing picked: aim at a placed thing to pick it up
 		spot = nil
 		local uid, model = uidOf(if hit then hit.Instance else nil)
 		aimedUid = uid
+		underUid = uid
 		aimLight.Adornee = model
 		local aimedItem = if model then Dens.itemsById[model.Name] else nil
 		aimedSet = if aimedItem and aimedItem.set and Dens.layouts[aimedItem.set] then aimedItem.set else nil
@@ -870,28 +916,70 @@ local function step()
 	end
 end
 
+-- Every placement gets an answer: the server either changes the den or says why
+-- not, and if neither has happened a second later the bar says so (PC 2026-10-16
+-- round 2, D6: two clicks with a green ghost placed nothing and said nothing)
+local function placedSignature(): string
+	local parts = {}
+	for _, p in denRecord().placed or {} do
+		table.insert(parts, `{p.uid}:{p.x}:{p.y}:{p.z}:{p.r}`)
+	end
+	return table.concat(parts, ",")
+end
+
+local function expectAnswer(what: string)
+	local before = placedSignature()
+	task.delay(1.2, function()
+		if active and placedSignature() == before then
+			setStatus(`{what} didn't go down · try again`, BAD, 2.5)
+		end
+	end)
+end
+
+local function pickUp(uid: number): boolean
+	for _, placement in denRecord().placed or {} do
+		if placement.uid == uid then
+			yaw = placement.r or 0
+			select({ id = placement.id, uid = uid })
+			pickedAt = os.clock()
+			Sfx.play("UiOpen", { volume = 0.4, pitch = 1.2 })
+			return true
+		end
+	end
+	return false
+end
+
 local function place()
 	local s = selection
 	if s == nil then
 		-- Pick up what's aimed at
 		local uid = aimedUid
 		if uid then
-			for _, placement in denRecord().placed or {} do
-				if placement.uid == uid then
-					yaw = placement.r or 0
-					select({ id = placement.id, uid = uid })
-					Sfx.play("UiOpen", { volume = 0.4, pitch = 1.2 })
-					return
-				end
-			end
+			pickUp(uid)
 		end
 		return
+	end
+	-- A second click (tap, RT) straight after picking up a stacked thing steps down
+	-- to the thing it stands on: the aim passes through the picked one to it (PC
+	-- 2026-10-16 round 2, B4: a piece with something on it couldn't be aimed at)
+	local under = underUid
+	if s.uid and under and under ~= s.uid and os.clock() - pickedAt < STEP_DOWN then
+		for _, p in DenSpace.stackOn(denRecord().placed or {}, under) do
+			if p.uid == s.uid then
+				select(nil)
+				pickUp(under)
+				setStatus("Picked the one underneath · its stack comes with it", PICK, 2)
+				return
+			end
+		end
 	end
 	local at = spot
 	if at == nil or not at.ok then
 		Sfx.play("TooBig", { volume = 0.35 })
 		return
 	end
+	local item = Dens.itemsById[s.id]
+	expectAnswer(if item then item.name else "It")
 	if s.uid then
 		ClientState.request("DenMove", s.uid, at.surface, at.at.X, at.at.Y, at.at.Z, at.turn)
 		select(nil)
@@ -969,7 +1057,7 @@ local function toggleSnap()
 end
 
 local function cycle(by: number)
-	local ids = trayIds()
+	local ids = pickableIds()
 	if #ids == 0 then
 		return
 	end
@@ -984,6 +1072,7 @@ local function tile(parent: Instance, id: string, order: number)
 	local picked = selection ~= nil
 		and (selection :: Selection).id == id
 		and (selection :: Selection).uid == nil
+	local empty = inTray(id) <= 0
 	local button = Instance.new("TextButton")
 	button.Name = id
 	button.LayoutOrder = order
@@ -991,7 +1080,7 @@ local function tile(parent: Instance, id: string, order: number)
 	button.AutoButtonColor = false
 	button.Size = UDim2.fromOffset(112, 64)
 	button.BackgroundColor3 = if picked then Color3.fromRGB(30, 70, 90) else Ui.color.track
-	button.BackgroundTransparency = if picked then 0.05 else 0.3
+	button.BackgroundTransparency = if picked then 0.05 elseif empty then 0.7 else 0.3
 	button.BorderSizePixel = 0
 	Ui.corner(button, UDim.new(0, 10))
 	Ui.stroke(
@@ -1013,7 +1102,7 @@ local function tile(parent: Instance, id: string, order: number)
 		item.name,
 		Ui.FONT_BOLD,
 		13,
-		Ui.color.text,
+		if empty then Ui.color.muted else Ui.color.text,
 		UDim2.new(1, -26, 0, 30),
 		UDim2.fromOffset(22, 3)
 	)
@@ -1032,13 +1121,13 @@ local function tile(parent: Instance, id: string, order: number)
 	count.TextXAlignment = Enum.TextXAlignment.Left
 	button.Activated:Connect(function()
 		buttonClock = os.clock()
-		if not trayDrag then
+		if not trayDrag and not empty then
 			select({ id = id })
 		end
 	end)
 	-- Pressed with the mouse, it can be dragged straight onto the floor
 	button.MouseButton1Down:Connect(function()
-		if not Input.isTouch() then
+		if not Input.isTouch() and not empty then
 			select({ id = id })
 			trayDrag = true
 		end
@@ -1251,7 +1340,7 @@ local function foldTray(folded: boolean)
 	layoutTray()
 end
 
--- Hides (or brings back) the swimming HUD while a phone edits
+-- Hides (or brings back) the swimming HUD while editing
 local function hideSwimHud(hidden: boolean)
 	if not hidden then
 		for _, screen in hiddenGuis do
@@ -1260,14 +1349,11 @@ local function hideSwimHud(hidden: boolean)
 		table.clear(hiddenGuis)
 		return
 	end
-	if not Input.isTouch() then
-		return
-	end
 	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 	if playerGui == nil then
 		return
 	end
-	for _, name in HIDE_ON_TOUCH do
+	for _, name in HIDE_WHILE_BUILDING do
 		local screen = playerGui:FindFirstChild(name)
 		if screen and screen:IsA("ScreenGui") and screen.Enabled then
 			screen.Enabled = false
@@ -1292,11 +1378,13 @@ function BuildController.start()
 	turning = 0
 	startView()
 	CameraController.override = viewCFrame
+	CameraController.hideFish = true
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 	UserInputService.MouseIconEnabled = true
 	controlsLabel.Text = controlsText()
 	touchHint.Text = controlsText()
 	trayFolded = false
+	table.clear(shownThisSession)
 	layoutTray()
 	hideSwimHud(true)
 	panel.Visible = true
@@ -1314,6 +1402,8 @@ function BuildController.stop()
 	Input.building = false
 	Input.editing = false
 	CameraController.override = nil
+	CameraController.overrideFov = nil
+	CameraController.hideFish = false
 	orbiting, dragging, trayDrag = false, false, false
 	tapAt, pinchFrom = nil, nil
 	MenuController.building = false

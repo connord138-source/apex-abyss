@@ -9,6 +9,7 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -114,8 +115,36 @@ local function open(title: string, subtitle: string, size: Vector2, build: (Ui.W
 	selectFirst(window)
 end
 
--- Rebuilds a list's rows, keeping the scroll position and the selected button.
+-- Whether a press is under way (a pad's A or the mouse's left button held down):
+-- rebuilding the rows then swaps the button out from under it, and the press is lost
+-- (PC 2026-10-16 round 2, P2: the first A on the Shop's Log row did nothing; the
+-- Shop redraws every second)
+local function pressing(): boolean
+	return UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonA)
+		or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
+end
+
+local deferred: { [ScrollingFrame]: boolean } = {}
+
+-- Rebuilds a list's rows, keeping the scroll position and the selected button. Held
+-- off while a press is under way, then done once it's let go.
 local function rerender(list: ScrollingFrame, build: () -> ())
+	if pressing() then
+		if not deferred[list] then
+			deferred[list] = true
+			task.spawn(function()
+				while pressing() and list.Parent do
+					task.wait(0.05)
+				end
+				task.wait(0.05)
+				deferred[list] = nil
+				if list.Parent then
+					rerender(list, build)
+				end
+			end)
+		end
+		return
+	end
 	local scroll = list.CanvasPosition
 	local selected = GuiService.SelectedObject
 	local selectedName = if selected and selected:IsDescendantOf(list) then selected:GetFullName() else nil
@@ -3537,13 +3566,14 @@ local function updateHint(root: BasePart?)
 			end
 		end
 	end
-	-- The Treasure Wheel's button nearer than the counter: E is the wheel's
-	-- (TreasureWheelController shows its hint by the same rule)
+	-- Within the Treasure Wheel's reach, E is the wheel's unless you're right at a
+	-- counter (Config/Wheel `stallClose`; TreasureWheelController uses the same rule)
 	local wheelState = ReplicatedStorage:FindFirstChild("WheelState")
 	local button = if wheelState then wheelState:GetAttribute("ButtonPosition") else nil
 	if best and root and typeof(button) == "Vector3" then
 		local distance = (root.Position - button).Magnitude
-		if distance <= Config.Wheel.reach and distance < bestDistance then
+		local atCounter = bestDistance <= Config.Wheel.stallClose and bestDistance < distance
+		if distance <= Config.Wheel.reach and not atCounter then
 			best = nil
 		end
 	end

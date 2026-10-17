@@ -698,16 +698,17 @@ local function updateHint()
 	local at = state:GetAttribute("ButtonPosition")
 	local root = SwimController.root()
 	local distance = if typeof(at) == "Vector3" and root then (root.Position - at).Magnitude else math.huge
-	-- A stall's counter nearer than the button keeps E for its shop (MenuController
-	-- drops its hint the same way when the button is nearer)
+	-- Within reach, E is the wheel's unless a stall's counter is right there and
+	-- nearer (Config/Wheel `stallClose`; MenuController drops its hint by the same rule)
 	local stall = math.huge
 	if root then
 		for _, vendor in Config.Shop.vendors do
 			stall = math.min(stall, Layout.counterDistance(vendor.angle, root.Position))
 		end
 	end
+	local atCounter = stall <= Wheel.stallClose and stall < distance
 	local near = distance <= Wheel.reach
-		and distance < stall
+		and not atCounter
 		and not MenuController.isOpen()
 		and not StartController.isUp()
 	nearButton = near == true

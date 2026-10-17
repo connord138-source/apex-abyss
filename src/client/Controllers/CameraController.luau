@@ -122,6 +122,10 @@ end
 -- Set by a view that takes the screen over (Build mode's editor): called every
 -- frame with dt, it returns the camera's CFrame, or nil to give the fish camera back
 CameraController.override = nil :: ((number) -> CFrame?)?
+-- While an override has the screen: its lens, and whether your own fish is hidden
+-- (Build mode: a LV 100 fish filled the editor's view, PC 2026-10-16 round 2)
+CameraController.overrideFov = nil :: number?
+CameraController.hideFish = false
 
 -- A short jolt (a bite landing, being bitten).
 function CameraController.kick(strength: number)
@@ -149,8 +153,8 @@ local function update(dt: number)
 		local cframe = override(dt)
 		if cframe then
 			camera.CFrame = cframe
-			camera.FieldOfView = tuning.fov
-			fadeFish(SwimController.character(), 0)
+			camera.FieldOfView = CameraController.overrideFov or tuning.fov
+			fadeFish(SwimController.character(), if CameraController.hideFish then 1 else 0)
 			hasFocus = false
 			return
 		end

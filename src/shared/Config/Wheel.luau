@@ -110,6 +110,10 @@ return {
 	maxFree = 3, -- free spins stop coming once this many wait
 	startSpins = 1, -- a new player's first spin
 	reach = 16, -- studs from the big red button to spin
+	-- Within reach, E / Y is the wheel's unless a stall's counter is this close and
+	-- nearer than the button (PC 2026-10-16 round 2: 10 studs from the button, the
+	-- Tidecharm Trader's counter was nearer and took E)
+	stallClose = 6,
 	jackpotCoral = 2500, -- the jackpot when the fish has every Rare+ skin already
 	bountyChest = 1, -- spins in the Bounty Chest
 	weekly = 2, -- spins for the Catch of the Week

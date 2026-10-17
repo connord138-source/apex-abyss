@@ -1035,7 +1035,8 @@ local floors: { FloorStyle } = {
 		name = "Pearl Marble",
 		price = 4000,
 		material = Enum.Material.Marble,
-		colors = { Color3.fromRGB(226, 228, 234), Color3.fromRGB(206, 210, 220) },
+		-- Toned down: pale enough to glare under the orb lamps (PC 2026-10-16 round 2)
+		colors = { Color3.fromRGB(204, 206, 212), Color3.fromRGB(188, 192, 200) },
 		blurb = "Polished pearl-white marble",
 	},
 	{
@@ -1043,7 +1044,9 @@ local floors: { FloorStyle } = {
 		name = "Reef Mosaic",
 		price = 6000,
 		material = Enum.Material.Pebble,
-		colors = { Color3.fromRGB(64, 156, 168), Color3.fromRGB(226, 128, 70) },
+		-- Closer in tone and less saturated: the bright orange-and-teal patchwork was
+		-- loud (PC 2026-10-16 round 2)
+		colors = { Color3.fromRGB(76, 140, 148), Color3.fromRGB(176, 128, 106) },
 		blurb = "Teal and coral pebble mosaic",
 	},
 	{

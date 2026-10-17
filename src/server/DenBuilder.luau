@@ -307,7 +307,10 @@ local function buildShell(state: DenState, index: number, record: Record)
 		end
 	end
 	-- Orb lamps hanging from the arch down every storey, one every 20 studs down the
-	-- middle, and in rooms wider than 40 a row down each side as well
+	-- middle, and in rooms wider than 40 a row down each side as well. Each cord
+	-- stops short of the arch, then reaches up to the real rock by a ray once the
+	-- Terrain answers (it poked out through the den's roof: PC 2026-10-16 round 2)
+	local cords: { Part } = {}
 	for storey = 1, DenSpace.storeys(level) do
 		local s = DenSpace.storey(storey)
 		local rooms = DenSpace.rooms(level, storey)
@@ -331,13 +334,16 @@ local function buildShell(state: DenState, index: number, record: Record)
 				end
 				for _, x in across do
 					local top = s.deck + DenSpace.vaultAt(widest, math.abs(x))
-					part(
-						state.shell,
-						"Cord",
-						Vector3.new(0.15, 4, 0.15),
-						spot(x, top - 1.5, z),
-						STONE,
-						Enum.Material.Metal
+					table.insert(
+						cords,
+						part(
+							state.shell,
+							"Cord",
+							Vector3.new(0.15, 2.3, 0.15),
+							spot(x, top - 2.15, z),
+							STONE,
+							Enum.Material.Metal
+						)
 					)
 					local orb = part(
 						state.shell,
@@ -364,6 +370,23 @@ local function buildShell(state: DenState, index: number, record: Record)
 			z -= 20
 		end
 	end
+	task.delay(0.5, function()
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { workspace.Terrain }
+		for _, cord in cords do
+			if cord.Parent == nil then
+				continue
+			end
+			local low = cord.Position - Vector3.new(0, cord.Size.Y / 2, 0)
+			local hit = workspace:Raycast(low, Vector3.new(0, 12, 0), params)
+			if hit then
+				local length = math.max(hit.Position.Y + 0.3 - low.Y, 0.5)
+				cord.Size = Vector3.new(0.15, length, 0.15)
+				cord.CFrame = CFrame.new(low + Vector3.new(0, length / 2, 0))
+			end
+		end
+	end)
 end
 
 -- The placed things, kept in step with the record by id

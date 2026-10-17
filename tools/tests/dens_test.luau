@@ -156,6 +156,29 @@ expect(#DenSpace.settle(1, still) == 0 and still[2].y == deck1 + tableItem.size.
 local overPool = {
 	{ uid = 4, id = "CoralLamp", x = 0, y = deck1 + 3, z = DenSpace.POOL_Z, r = 0, s = "floor" },
 }
+-- Carrying a stack: what stands on a base moves and turns with it
+do
+	local base = { uid = 10, id = "DriftwoodTable", x = SX, y = deck1, z = SZ, r = 0, s = "floor" }
+	local onTop =
+		{ uid = 11, id = "CoralLamp", x = SX + 1, y = deck1 + tableItem.size.Y, z = SZ, r = 30, s = "floor" }
+	local loose = { uid = 12, id = "CoralLamp", x = SX + 8, y = deck1, z = SZ, r = 0, s = "floor" }
+	local all = { base, onTop, loose }
+	local stack = DenSpace.stackOn(all, 10)
+	expect(#stack == 1 and stack[1].uid == 11, "the lamp on the table is its stack, the loose one isn't")
+	local x, y, z, r = DenSpace.carry(onTop, base, { x = SX - 4, y = deck1, z = SZ + 2, r = 0 })
+	expect(
+		math.abs(x - (SX - 3)) < 1e-6 and math.abs(z - (SZ + 2)) < 1e-6 and y == onTop.y and r == 30,
+		"carried straight across, it keeps its spot on the table"
+	)
+	local tx, _, tz, tr = DenSpace.carry(onTop, base, { x = SX, y = deck1, z = SZ, r = 180 })
+	expect(math.abs(tx - (SX - 1)) < 1e-6 and math.abs(tz - SZ) < 1e-6 and tr == 210, "turned 180°, it swings round")
+	local fx, _, fz = DenSpace.carry(onTop, base, { x = SX, y = deck1, z = SZ, r = 90 })
+	local _, _, _, back = DenSpace.carry({ uid = 11, id = "CoralLamp", x = fx, y = onTop.y, z = fz, r = 120, s = "floor" }, { x = SX, y = deck1, z = SZ, r = 90 }, base)
+	expect(back == 30, "turning back undoes the turn")
+	local stillOn = { uid = 11, id = "CoralLamp", x = fx, y = onTop.y, z = fz, r = 120, s = "floor" }
+	local turnedBase = { uid = 10, id = "DriftwoodTable", x = SX, y = deck1, z = SZ, r = 90, s = "floor" }
+	expect(ok(DenSpace.resting(1, { turnedBase }, v(stillOn.x, stillOn.y, stillOn.z))), "a carried thing still rests on the turned base")
+end
 local back = DenSpace.settle(1, overPool)
 expect(#back == 1 and back[1] == 4, "one with nowhere to land goes back to the tray")
 

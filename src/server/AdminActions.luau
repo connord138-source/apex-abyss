@@ -491,6 +491,15 @@ local function denLevel(_admin: Player, targets: { Player }, level: any): string
 	return `Den set to a {Config.Dens.levels[n].name} for {#targets} player(s) (things that no longer fit went to the tray)`
 end
 
+-- Den: a save from before the private interiors, loaded (tests DenService relayout)
+local function denOldSave(_admin: Player, targets: { Player }): string
+	local lines: { string } = {}
+	for _, player in targets do
+		table.insert(lines, `{player.Name}: {DenService.simulateOldSave(player)}`)
+	end
+	return table.concat(lines, " | ")
+end
+
 -- Redeem codes: forget which were used, so they can be tested again
 local function codesReset(_admin: Player, targets: { Player }): string
 	local count = each(targets, function(_player, data)
@@ -722,6 +731,7 @@ AdminActions.byName = {
 	gardenPreview = gardenPreview :: Handler,
 	denLevel = denLevel :: Handler,
 	denItems = denItems :: Handler,
+	denOldSave = denOldSave :: Handler,
 	achievementsAll = achievementsAll :: Handler,
 	achievementsReset = achievementsReset :: Handler,
 	codesReset = codesReset :: Handler,

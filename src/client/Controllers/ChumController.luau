@@ -226,9 +226,13 @@ local function rim(model: Model): Highlight
 	return highlight
 end
 
--- A whale's plume: chum and murk drifting up off the carcass for 40-90 studs, so it
--- shows over a kelp forest's canopy and the reef's heads from far off
-local PLUME = Color3.fromRGB(120, 48, 44)
+-- A whale's plume: a column of pale silt and chum rising off the carcass to ~150
+-- studs, so it shows over a kelp forest's canopy and the reef's heads from far off.
+-- (PC 2026-10-16 round 2, W1: 3 faint dark-red puffs a second were lost in the blue
+-- haze at 60 studs.) Pale and faintly self-lit, since dark particles vanish into the
+-- haze; dense and wide so it reads as a column, not a few puffs.
+local PLUME_LIGHT = Color3.fromRGB(214, 206, 182)
+local PLUME_DARK = Color3.fromRGB(150, 112, 104)
 local function plume(parent: Instance): ParticleEmitter
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "Plume"
@@ -237,26 +241,32 @@ local function plume(parent: Instance): ParticleEmitter
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Name = "Plume"
 	emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	emitter.Color = ColorSequence.new(PLUME, MURK)
+	emitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PLUME_DARK),
+		ColorSequenceKeypoint.new(0.3, PLUME_LIGHT),
+		ColorSequenceKeypoint.new(1, PLUME_LIGHT),
+	})
 	emitter.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.15, 0.7),
-		NumberSequenceKeypoint.new(0.7, 0.82),
+		NumberSequenceKeypoint.new(0.08, 0.38),
+		NumberSequenceKeypoint.new(0.75, 0.55),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 6),
-		NumberSequenceKeypoint.new(1, 20),
+		NumberSequenceKeypoint.new(0, 12),
+		NumberSequenceKeypoint.new(1, 46),
 	})
-	emitter.Lifetime = NumberRange.new(9, 13)
-	emitter.Rate = 3
-	emitter.Speed = NumberRange.new(4, 7)
+	emitter.Lifetime = NumberRange.new(13, 17)
+	emitter.Rate = 9
+	emitter.Speed = NumberRange.new(9, 13)
 	emitter.EmissionDirection = Enum.NormalId.Top
-	emitter.SpreadAngle = Vector2.new(14, 14)
+	emitter.SpreadAngle = Vector2.new(9, 9)
 	emitter.Rotation = NumberRange.new(0, 360)
-	emitter.RotSpeed = NumberRange.new(-8, 8)
-	emitter.Drag = 0.15
-	emitter.LightInfluence = 0.55
+	emitter.RotSpeed = NumberRange.new(-6, 6)
+	emitter.Drag = 0.08
+	emitter.LightEmission = 0.35
+	emitter.LightInfluence = 0.4
+	emitter.Brightness = 1.6
 	emitter.Parent = attachment
 	return emitter
 end

@@ -1,0 +1,132 @@
+--!strict
+-- Skins wait for their textures (PC 2026-10-16 round 2, K1): when Roblox's image
+-- server failed (`HttpError: ServerProtocolError` after ~58 s), a newly worn skin drew
+-- the fish untextured white until it was worn again. FishAnimator asks `ready` before
+-- it puts a skin on: until every one of the skin's textures has downloaded, the fish
+-- keeps a stand-in (its own texture tinted toward the shade, Cosmetics' look for a
+-- skin not imported yet), and a texture whose download failed is fetched again, a
+-- little later each time. After GIVE_UP seconds the skin goes on anyway (a texture
+-- can report Failure and still draw: right after an import, "Asset type does not
+-- match requested type", PC 2026-10-16 round 2), and the fetches carry on: once they
+-- all arrive, `state` changes again so the animator puts the skin on afresh.
+local ContentProvider = game:GetService("ContentProvider")
+
+local SkinLoader = {}
+
+local MAPS = {
+	"ColorMapContent",
+	"NormalMapContent",
+	"RoughnessMapContent",
+	"MetalnessMapContent",
+	"EmissiveMaskContent",
+}
+local RETRY_MOST = 30 -- seconds between tries at most
+local TRIES_MOST = 8
+local GIVE_UP = 12 -- seconds a skin waits before it goes on anyway
+
+local texturesOf: { [Instance]: { string } } = {} -- skins live in ReplicatedStorage, so strong keys
+local loaded: { [string]: boolean } = {}
+local fetching: { [string]: boolean } = {}
+local tries: { [string]: number } = {}
+local retryAt: { [string]: number } = {}
+local firstAsked: { [Instance]: number } = {}
+
+local function contentUri(skin: Instance, property: string): string?
+	local ok, content = pcall(function()
+		return (skin :: any)[property]
+	end)
+	if ok and typeof(content) == "Content" then
+		local uri = (content :: any).Uri
+		if typeof(uri) == "string" and uri ~= "" then
+			return uri
+		end
+	end
+	return nil
+end
+
+local function textures(skin: Instance): { string }
+	local cached = texturesOf[skin]
+	if cached then
+		return cached
+	end
+	local ids: { string } = {}
+	for _, property in MAPS do
+		local uri = contentUri(skin, property)
+		if uri and not table.find(ids, uri) then
+			table.insert(ids, uri)
+		end
+	end
+	texturesOf[skin] = ids
+	return ids
+end
+
+local function status(uri: string): Enum.AssetFetchStatus?
+	local ok, result = pcall(function()
+		return ContentProvider:GetAssetFetchStatus(uri)
+	end)
+	return if ok then result else nil
+end
+
+local function fetch(uri: string)
+	fetching[uri] = true
+	local n = (tries[uri] or 0) + 1
+	tries[uri] = n
+	retryAt[uri] = os.clock() + math.min(2 ^ n, RETRY_MOST)
+	task.spawn(function()
+		pcall(function()
+			ContentProvider:PreloadAsync({ uri })
+		end)
+		fetching[uri] = false
+	end)
+end
+
+-- Whether every texture of `skin` has arrived (starting or retrying the downloads
+-- that haven't). Anything that isn't a SurfaceAppearance is loaded.
+local function allLoaded(skin: Instance): boolean
+	if not skin:IsA("SurfaceAppearance") then
+		return true
+	end
+	local all = true
+	for _, uri in textures(skin) do
+		if loaded[uri] then
+			continue
+		end
+		local state = status(uri)
+		if state == Enum.AssetFetchStatus.Success or state == nil then
+			loaded[uri] = true
+			continue
+		end
+		all = false
+		if
+			state ~= Enum.AssetFetchStatus.Loading
+			and not fetching[uri]
+			and (tries[uri] or 0) < TRIES_MOST
+			and os.clock() >= (retryAt[uri] or 0)
+		then
+			fetch(uri)
+		end
+	end
+	return all
+end
+
+-- "loaded" (every texture is here), "waiting" (not yet: show the stand-in) or
+-- "trying" (waited GIVE_UP: worn anyway while the fetches carry on)
+function SkinLoader.state(skin: Instance): string
+	if allLoaded(skin) then
+		firstAsked[skin] = nil
+		return "loaded"
+	end
+	local since = firstAsked[skin]
+	if since == nil then
+		since = os.clock()
+		firstAsked[skin] = since
+	end
+	return if os.clock() - since < GIVE_UP then "waiting" else "trying"
+end
+
+-- Whether to put `skin` on now (Cosmetics' skinReady)
+function SkinLoader.ready(skin: Instance): boolean
+	return SkinLoader.state(skin) ~= "waiting"
+end
+
+return SkinLoader
