@@ -225,10 +225,13 @@ Sheets: `assets/shades/previews/v12_<Fish>_compare.jpg` (before | after, in the 
 **FX particle textures** (`tools/shades/make_fx.py`, python3.11 + scipy):
 `assets/textures/fx_{swirl,mist,bubble,star,flame,spark}.png`, 512² RGBA, for the skins'
 in-game particles (the swirls over Undertow, mist, bubbles, glints, flames, sparks). Like
-the sheens, one light tint fills every pixel (pale cyan-white; the flame a saturated warm
-yellow) and alpha alone draws the shape; the spark is a streak along the image's vertical
-(for VelocityParallel). Screen them with `screen_shades.py assets/textures/fx_*.png`
-(classifier on, exit 0) before uploading them as Images.
+the sheens, one tint fills every pixel (a light cyan; the flame a saturated warm yellow
+with toon-hard edges) and alpha alone draws the shape; the spark is a streak along the
+image's vertical (for VelocityParallel). Screen them with `screen_shades.py
+assets/textures/fx_*.png` (classifier on, exit 0) before uploading them as Images, and a
+copy composited over black and over white too: on white a paler cyan-white star scored
+0.23 and a soft yellow flame edge read as cream (v12: all six at most 0.13 composited,
+0.003 as files).
 
 **Sheens** (`tools/shades/make_sheens.py [name ...]`, python3.11 + scipy): tiling
 512² layers in `assets/textures/`, uploaded as Images and keyed in

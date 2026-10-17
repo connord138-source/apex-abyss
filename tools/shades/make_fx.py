@@ -10,9 +10,12 @@ src/shared/Config/Textures.luau (id 0 falls back to a built-in texture until the
 
 The sheen rule (docs/ASSETS.md "Sheens"): the colour is one light tint set on every
 pixel and the alpha alone says where the particle shows, so a moderation classifier
-sees an even coloured field, never bright lines on black. The tint is pale cyan-white
-(cool, outside every skin-tone rule) and the flame's a saturated warm yellow (no blend
-toward white, which reads as peach); ParticleEmitter.Color tints them in game.
+sees an even coloured field, never bright lines on black. The tint is a light cyan
+(cool, outside every skin-tone rule) and the flame's a saturated warm yellow with
+toon-hard edges; ParticleEmitter.Color tints them in game. They were also screened
+composited over black and over white (how else a moderation pass might look at a
+transparent image): a paler cyan-white star scored 0.23 on white, and a soft yellow
+flame fading into white read as cream, hence the light cyan and the hard flame.
 Edges are soft and every shape fades to nothing well inside the square, so no
 particle shows its corners. The spark is a streak along the image's vertical, which
 ParticleEmitter.Orientation VelocityParallel lines up with the particle's motion.

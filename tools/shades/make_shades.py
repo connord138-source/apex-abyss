@@ -2039,9 +2039,12 @@ def nib_maroon(m):  # Maroon clownfish: deep wine body, three thin golden bands
     fins, tip = fin_parts(m)
     gold = hard(smoothstep(0.022, 0.028, depth)) * band
     # A deep garnet wine: the browner maroons scored 0.15-0.6 on the moderation
-    # classifier with the pale eyes on them (screen, 2026-10-10); this one 0.08
-    rgb = body_coat(m, (0.28, 0.0, 0.08), (0.48, 0.0, 0.12), soft=0.35)
-    rgb = mix(rgb, (0.32, 0.0, 0.09), fins)
+    # classifier with the pale eyes on them (screen, 2026-10-10); this one 0.08.
+    # v12: with the whole eye kept, the sclera's own UV islands sit pale on the wine
+    # in the atlas, and the old wine (0.28, 0.0, 0.08) scored 0.31 once JPEG-packed;
+    # a brighter garnet scores 0.09
+    rgb = body_coat(m, (0.36, 0.0, 0.10), (0.60, 0.02, 0.14), soft=0.35)
+    rgb = mix(rgb, (0.40, 0.0, 0.10), fins)
     rgb = mix(rgb, (1.0, 0.76, 0.0), gold)
     hush = smoothstep(0.01, 0.0, outside) + smoothstep(0.01, 0.0, depth) * band
     return done(m, rgb, "satin", detail=0.7, hush=np.clip(hush, 0, 1))
@@ -3463,14 +3466,17 @@ def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck
     hh, at = girth(sm)
     rng = np.random.default_rng(2501)
     # The hide: slate-green, darker on the back, mottled and pitted
-    rgb = body_coat(sm, (0.13, 0.34, 0.32), (0.27, 0.53, 0.47), soft=0.35)
+    # Lighter than a real slate so it reads in the water (v11: the weekly skins read
+    # dark there), with little red in it (a light teal with more red scored 0.19 on
+    # the Nibbler's atlas once JPEG-packed, v11)
+    rgb = body_coat(sm, (0.12, 0.45, 0.41), (0.22, 0.63, 0.55), soft=0.35)
     mottle = fbm(m, 7, 2502)
     rgb = rgb * (0.82 + 0.3 * mottle)[..., None]
-    rgb = mix(rgb, (0.08, 0.26, 0.25), smoothstep(0.62, 0.72, fbm(m, 16, 2503)) * 0.45)
+    rgb = mix(rgb, (0.08, 0.32, 0.30), smoothstep(0.62, 0.72, fbm(m, 16, 2503)) * 0.45)
     pits = speckle(m, 300, 0.86, seed=2504)
-    rgb = mix(rgb, (0.06, 0.20, 0.20), pits * 0.5)
+    rgb = mix(rgb, (0.06, 0.24, 0.24), pits * 0.5)
     # Fins: a darker weathered slate, ragged paler tips (worn)
-    fin_rgb = mix(board(m, (0.10, 0.32, 0.30)), (0.18, 0.46, 0.42), smoothstep(0.55, 0.95, reach))
+    fin_rgb = mix(board(m, (0.10, 0.40, 0.37)), (0.18, 0.54, 0.48), smoothstep(0.55, 0.95, reach))
     ragged = smoothstep(0.84, 0.9, reach + 0.12 * (fbm(m, 40, 2505) - 0.5))
     fin_rgb = mix(fin_rgb, (0.34, 0.60, 0.56), ragged)
     rgb = mix(rgb, fin_rgb, on_fin)
@@ -3518,7 +3524,7 @@ def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck
     rgb = mix(rgb, (0.18, 0.32, 0.06), rib * kelp)
     # A faint, even self-glow (v11): less in the openings, the seams and the pits
     dark = np.maximum(opening * shell, pits * 0.5)
-    emit = rgb * (0.42 * (1 - 0.8 * dark))[..., None]
+    emit = rgb * (0.5 * (1 - 0.8 * dark))[..., None]
     return done(m, rgb, "matte", emit=emit, detail=0.6)
 
 
