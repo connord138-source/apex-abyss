@@ -3076,7 +3076,7 @@ def catch_prism(m):  # Prism: brushed silver with a soft cool rainbow film, its 
     return done(m, rgb, "satin", emit=emit, metal=np.full(m.y.shape, 0.3, np.float32), detail=0.4)
 
 
-def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on ultramarine
+def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on cerulean
     u, v, vn = height(m)
     hh, _ = girth(m)
     period = 0.26
@@ -3084,20 +3084,35 @@ def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on
     crest = -0.55 + 1.4 * s**2.2
     depth = crest - vn
     inside = depth > 0
-    # Mid-toned (playtest 2026-10-16: dark from the side, little showing beyond the
-    # crests): an ultramarine sky and sea, not near-black navy, so the print reads at a
-    # distance and the foam sits on a blue, not white on black
-    sky = body_coat(m, (0.07, 0.15, 0.48), (0.10, 0.21, 0.58), soft=0.3)
+    # v11 (playtest 2026-10-16 round 2: v10's ultramarine still read dark blue on every
+    # fish in the water): a light cerulean sky over a mid turquoise sea, the crests
+    # brighter, and a faint even glow under it (below) so the water's tint can't drag
+    # it dark. The print's contrast comes from hue and a mid-blue key line round each
+    # wave, not from navy. All of it in the blue family: no warm pale anywhere
+    sky = body_coat(m, (0.22, 0.52, 0.84), (0.34, 0.64, 0.90), soft=0.3)
     far = 0.62 + 0.12 * np.sin(2 * np.pi * (u / 0.11))
-    sky = mix(sky, (0.18, 0.38, 0.80), smoothstep(far + 0.02, far - 0.02, vn) * 0.85)
-    sea = mix(board(m, (0.22, 0.50, 0.95)), (0.06, 0.22, 0.64), smoothstep(0.0, 0.9, depth))
+    sky = mix(sky, (0.50, 0.79, 0.95), smoothstep(far + 0.02, far - 0.02, vn) * 0.85)
+    # A printed sky, not a flat field (on a long fish it covers most of the flank): the
+    # woodblock's grain running along the body, a second, paler block of colour low
+    # down, and the horizon drawn as a crisp mid-blue line
+    gp = np.stack([u * 2.0, vn * 26.0, m.ex * 0.2], -1).astype(np.float32)
+    sky = sky * (0.95 + 0.1 * value_noise(gp, 1.0, 1601))[..., None]
+    low = 0.05 + 0.1 * np.sin(2 * np.pi * (u / 0.17) + 1.3)
+    sky = mix(sky, (0.62, 0.87, 0.98), hard(smoothstep(low + 0.02, low - 0.02, vn)) * 0.6)
+    horizon = smoothstep(0.035, 0.018, np.abs(vn - far))
+    sky = mix(sky, (0.16, 0.46, 0.80), hard(horizon) * 0.8)
+    sea = mix(board(m, (0.10, 0.60, 0.82)), (0.04, 0.38, 0.68), smoothstep(0.0, 0.9, depth))
     grain = smoothstep(0.1, 0.0, np.abs(((depth * 7) % 1.0) - 0.5) - 0.42) * smoothstep(0.1, 0.22, depth)
-    sea = mix(sea, (0.44, 0.68, 1.0), grain * 0.65)
+    sea = mix(sea, (0.46, 0.86, 0.98), grain * 0.6)
     rgb = np.where(inside[..., None], sea, sky)
+    # The key line: the wave's edge against the sky, a mid blue (the print's outline)
+    key = smoothstep(0.05, 0.03, np.abs(depth)) * (s > 0.08)
     claws = 0.5 + 0.5 * np.cos(2 * np.pi * u / 0.016)
     foam_w = (0.06 + 0.4 * smoothstep(0.4, 1.0, s)) * (0.35 + 0.65 * claws**2)
     foam = inside & (depth < foam_w) & (s > 0.35)
-    foam_col = C(0.84, 0.90, 0.98)
+    foam_col = C(0.93, 0.98, 1.0)
+    key = key * (1 - foam)
+    rgb = mix(rgb, (0.08, 0.33, 0.62), hard(key))
     rgb = np.where(foam[..., None], foam_col, rgb)
     du = (s - 0.9) * period
     dv = (vn - 0.36) * hh
@@ -3106,11 +3121,15 @@ def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on
     ang = np.arctan2(dv, du)
     lip = smoothstep(0.26, 0.17, np.abs(r / np.maximum(R, 1e-5) - 1)) * smoothstep(-0.7, -0.25, ang)
     hollow = smoothstep(0.86, 0.78, r / np.maximum(R, 1e-5)) * inside
-    rgb = mix(rgb, (0.04, 0.13, 0.46), hollow)
+    rgb = mix(rgb, (0.06, 0.34, 0.64), hollow)
     rgb = mix(rgb, foam_col, hard(lip))
     spray = smoothstep(0.0034, 0.002, nearest_dots(m, 900, 1600)) * (vn > crest) * (vn < crest + 0.4) * smoothstep(0.6, 0.9, s)
     rgb = mix(rgb, foam_col, spray)
-    return done(m, rgb, "satin", detail=0.5)
+    # A faint, even self-glow (as CatchGolden v10): half the colour, less on the key
+    # line and the curl's hollow, none on the eyes, teeth or mouth (done()). Made for
+    # the game's default EmissiveStrength 1 (WeekWave sets no `emissive`)
+    emit = rgb * (0.5 * (1 - 0.6 * np.maximum(np.maximum(hard(key), hollow), (1 - inside) * hard(horizon))))[..., None]
+    return done(m, rgb, "satin", emit=emit, detail=0.5)
 
 
 def nearest_dots(m: Fish, seed, count=900):
@@ -3187,19 +3206,21 @@ def week_wreck(m):  # A shipwreck: riveted hull plates, rust streaks, barnacles,
     hh, at = girth(m)
     water = -0.3
     upper = vn > water
-    # Lighter paint (playtest 2026-10-16: dark from the side, little showing beyond
-    # the grid): a deep teal hull over a navy anti-fouling bottom below the waterline,
-    # so the two read apart at a distance. Saturated on purpose (screen 2026-10-16): a
-    # greyer verdigris (0.31, 0.48, 0.47) scored 0.83 on the Nibbler and a steel blue
-    # 0.52, and a red bottom 0.97 (big red fields on the belly's islands)
-    rgb = np.where(upper[..., None], board(m, (0.12, 0.38, 0.40)), board(m, (0.10, 0.17, 0.38)))
+    # v11 (playtest 2026-10-16 round 2: v10 still read dark teal with a red grid in the
+    # water): a lighter teal-green hull over a lighter cobalt anti-fouling bottom, the
+    # seams a darker shade of their plate instead of black, the rivets, rust and number
+    # brighter, and a faint even glow (below). Still saturated on purpose (screen
+    # 2026-10-16): a greyer verdigris (0.31, 0.48, 0.47) scored 0.83 on the Nibbler and
+    # a steel blue 0.52, and a red bottom 0.97 (big red fields on the belly's islands)
+    hull = np.where(upper[..., None], board(m, (0.23, 0.71, 0.61)), board(m, (0.27, 0.50, 0.87)))
     plate_l, plate_h = 0.11, 0.5
     row = np.floor(vn / plate_h)
     col = (u + 0.5 * plate_l * (row % 2)) / plate_l
     rng = np.random.default_rng(420)
-    tone = 0.88 + 0.2 * rng.random(4096)
+    tone = 0.92 + 0.16 * rng.random(4096)
     key = (np.floor(col).astype(int) * 31 + row.astype(int) * 7) % 4096
-    rgb = rgb * tone[key][..., None]
+    hull = hull * tone[key][..., None]
+    rgb = hull.copy()
     fu, fv = col - np.floor(col), vn / plate_h - row
     seam_u = np.minimum(fu, 1 - fu) * plate_l
     seam_v = np.minimum(fv, 1 - fv) * plate_h * hh
@@ -3214,23 +3235,36 @@ def week_wreck(m):  # A shipwreck: riveted hull plates, rust streaks, barnacles,
     streak = smoothstep(0.5, 0.62, value_noise(streak_p, 1.0, 421)) * lane_on * smoothstep(0.75, 0.05, below_top)
     bloom = smoothstep(0.005, 0.0025, rivet_d) * smoothstep(0.5, 0.58, fbm(m, 30, 422))
     rust = hard(np.clip(streak + bloom, 0, 1)) * upper
-    rgb = mix(rgb, (0.05, 0.06, 0.06), seam)
-    rgb = mix(rgb, (0.86, 0.30, 0.0), rust)
-    rgb = mix(rgb, (0.56, 0.14, 0.0), rust * smoothstep(0.62, 0.7, value_noise(streak_p * 1.7, 1.0, 426)))
-    rgb = mix(rgb, (0.62, 0.68, 0.72), rivet)
-    # The waterline: a dark stripe between the verdigris and the red
-    rgb = mix(rgb, (0.06, 0.08, 0.10), hard(smoothstep(0.05, 0.03, np.abs(vn - water))))
-    rgb = hull_number(m, rgb, "07", 0.42, 0.3, (0.74, 0.80, 0.88))
+    rgb = mix(rgb, hull * 0.55, seam)
+    # Rust a bright orange with no blue at all (outside every skin-tone rule), its
+    # darker heart a burnt orange, never a red field
+    rgb = mix(rgb, (0.98, 0.48, 0.02), rust)
+    rgb = mix(rgb, (0.72, 0.26, 0.0), rust * smoothstep(0.62, 0.7, value_noise(streak_p * 1.7, 1.0, 426)))
+    # Rivets a bright cool silver with a soft lighter halo round each, so they read as
+    # studs on the plate rather than pale dots on a dark line
+    rivet_halo = smoothstep(0.0034, 0.0016, rivet_d) * (1 - rivet)
+    rgb = mix(rgb, (0.50, 0.80, 0.80), rivet_halo * 0.35 * upper)
+    rgb = mix(rgb, (0.80, 0.88, 0.92), rivet)
+    # The waterline: a deep blue stripe between the teal and the cobalt
+    line = hard(smoothstep(0.05, 0.03, np.abs(vn - water)))
+    rgb = mix(rgb, (0.05, 0.14, 0.30), line)
+    rgb, number = hull_number(m, rgb, "07", 0.42, 0.3, (0.88, 0.95, 0.98), edge=(0.05, 0.26, 0.28), chip=0.3)
     centres = scatter(m, 7, 423, weight=smoothstep(0.0, -0.4, vn - water))
     cd, _, _ = nearest(m, centres)
     pts = scatter(m, 140, 424, weight=np.exp(-((cd / 0.03) ** 2)))
     d1, _, i = nearest(m, pts)
     R = (0.0035 + 0.003 * rng.random(len(pts)))[i]
     shell = smoothstep(R * 1.05, R * 0.9, d1)
-    rgb = mix(rgb, (0.58, 0.64, 0.74), shell)
-    rgb = mix(rgb, (0.76, 0.82, 0.92), smoothstep(R * 0.3, R * 0.15, np.abs(d1 - R * 0.72)) * shell)
-    rgb = mix(rgb, (0.10, 0.12, 0.16), smoothstep(R * 0.4, R * 0.3, d1))
-    return done(m, rgb, "matte", detail=0.6)
+    rgb = mix(rgb, (0.68, 0.78, 0.86), shell)
+    rgb = mix(rgb, (0.86, 0.93, 0.98), smoothstep(R * 0.3, R * 0.15, np.abs(d1 - R * 0.72)) * shell)
+    rgb = mix(rgb, (0.08, 0.20, 0.30), smoothstep(R * 0.4, R * 0.3, d1))
+    # A faint, even self-glow (as CatchGolden v10): half the plate's colour, little on
+    # the seams and the waterline, the rust and number a little less than the plates,
+    # none on the eyes, teeth or mouth (done()). For the game's default
+    # EmissiveStrength 1 (WeekWreck sets no `emissive`)
+    lines = np.maximum(np.maximum(seam, line), smoothstep(R * 0.4, R * 0.3, d1) * shell)
+    emit = rgb * (0.5 * (1 - 0.8 * lines) * (1 - 0.3 * np.maximum(rust, number)))[..., None]
+    return done(m, rgb, "matte", emit=emit, detail=0.6)
 
 
 SEGMENTS = {  # a seven-segment digit: (a top, b top right, c bottom right, d bottom, e bottom left, f top left, g middle)
@@ -3239,8 +3273,11 @@ SEGMENTS = {  # a seven-segment digit: (a top, b top right, c bottom right, d bo
 }
 
 
-def hull_number(m: Fish, rgb, text, u_mid, vn_mid, paint_rgb=(0.58, 0.64, 0.72)):
-    """Paints a stencilled number on both flanks, reading the right way round on each."""
+def hull_number(m: Fish, rgb, text, u_mid, vn_mid, paint_rgb=(0.58, 0.64, 0.72), edge=None, chip=0.4):
+    """Paints a stencilled number on both flanks, reading the right way round on each.
+    With `edge` (a colour) it also draws a dark rim round the strokes so the number
+    reads on a light hull, and returns (rgb, paint mask); `chip` is how much of the
+    stencil has flaked off (the fbm cut: lower keeps more)."""
     u, v, vn = height(m)
     hh, at = girth(m)
     h = 0.55 * at(u_mid)
@@ -3248,6 +3285,7 @@ def hull_number(m: Fish, rgb, text, u_mid, vn_mid, paint_rgb=(0.58, 0.64, 0.72))
     x = (u - u_mid) * side(m)
     y = v - vn_mid * at(u_mid)
     paint = np.zeros_like(u)
+    rim = np.zeros_like(u)
     gap = w * 1.45
     for k, ch in enumerate(text):
         cx = (k - (len(text) - 1) / 2) * gap
@@ -3265,8 +3303,13 @@ def hull_number(m: Fish, rgb, text, u_mid, vn_mid, paint_rgb=(0.58, 0.64, 0.72))
             a, b = bars[seg_]
             d, _ = segment(lx, ly, a, b)
             paint = np.maximum(paint, smoothstep(h * 0.11, h * 0.08, d))
-    chipped = paint * smoothstep(0.4, 0.46, fbm(m, 30, 425))
-    return mix(rgb, paint_rgb, hard(chipped))
+            if edge is not None:
+                rim = np.maximum(rim, smoothstep(h * 0.17, h * 0.13, d))
+    chipped = hard(paint * smoothstep(chip, chip + 0.06, fbm(m, 30, 425)))
+    if edge is None:
+        return mix(rgb, paint_rgb, chipped)
+    rgb = mix(rgb, edge, hard(rim) * (1 - chipped))
+    return mix(rgb, paint_rgb, chipped), chipped
 
 
 def week_sea_glass(m):  # Sea glass: frosted pebbles of bottle green, cobalt and amber, dark grout
