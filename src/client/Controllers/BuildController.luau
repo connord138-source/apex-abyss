@@ -56,6 +56,7 @@ local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
 local CameraController = require(script.Parent.CameraController)
+local HudController = require(script.Parent.HudController)
 local MapController = require(script.Parent.MapController)
 local MenuController = require(script.Parent.MenuController)
 local SwimController = require(script.Parent.SwimController)
@@ -1615,6 +1616,14 @@ end
 
 function BuildController.startController()
 	BuildController.init()
+	-- Messages while building show on the bar's status line for a few seconds
+	HudController.buildNote = function(text: string, color: Color3): boolean
+		if not active then
+			return false
+		end
+		setStatus(text, color, 3.5)
+		return true
+	end
 	MenuController.startBuild = BuildController.start
 	ContextActionService:BindAction("ApexBuild", function(_, inputState)
 		if inputState ~= Enum.UserInputState.Begin or Input.locked or MenuController.isOpen() then

@@ -98,14 +98,16 @@ local GRADES: { Grade } = {
 	{
 		y = World.deep.ventsFloorY,
 		-- Thinner than the floor above it, so the chimneys' glow reads across a basin
-		-- (playtest 2026-10-08: a chimney 45 studs off was only a silhouette)
+		-- (playtest 2026-10-08: a chimney 45 studs off was only a silhouette); a little
+		-- lighter and warmer since the basins' floors read near black from 50 studs
+		-- (PC 2026-10-17, T3)
 		color = Color3.fromRGB(10, 48, 92),
 		decay = Color3.fromRGB(4, 22, 52),
 		density = 0.84,
-		tint = Color3.fromRGB(176, 196, 228),
-		brightness = -0.04,
-		saturation = -0.08,
-		exposure = -0.5,
+		tint = Color3.fromRGB(198, 200, 222),
+		brightness = 0,
+		saturation = -0.06,
+		exposure = -0.32,
 		sight = 180,
 	},
 	{

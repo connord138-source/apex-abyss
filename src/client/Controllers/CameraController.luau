@@ -58,7 +58,7 @@ local fadeCharacter: Model? = nil
 local fadeParts: { BasePart } = {}
 local fadeAdded: RBXScriptConnection? = nil
 local fadeShown = 0
-local fadeHid: { [BasePart]: boolean } = {} -- parts this fade hid all the way (Build mode)
+local fadeHid: { [BasePart]: boolean? } = {} -- parts this fade hid all the way (Build mode)
 
 local function fadeFish(character: Model?, amount: number)
 	if character ~= fadeCharacter then

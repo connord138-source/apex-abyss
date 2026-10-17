@@ -389,12 +389,20 @@ local function placeToasts()
 	end
 end
 
+-- Build mode's own status line takes messages while it's up, on every device (set
+-- by BuildController; PC 2026-10-17: a gift notice drew over the Build bar)
+HudController.buildNote = nil :: ((string, Color3) -> boolean)?
+
 local function toast(text: string, kind: string)
 	local color = if kind == "good"
 		then Ui.color.safe
 		elseif kind == "bad" then Ui.color.danger
 		elseif kind == "rare" then Ui.color.haul
 		else Ui.color.text
+	local note = HudController.buildNote
+	if note and note(text, color) then
+		return
+	end
 	if Ui.isTouch() and noteInWindow(text, color) then
 		return
 	end

@@ -758,6 +758,28 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     relayout an old save gets.
   - **Skins v11:** WeekWave and WeekWreck retextured lighter with a faint glow map on
     every fish (patch pack, see docs/ASSETS.md).
+- **The 2026-10-17 report's decisions (owner: "Go with all of your recs, roll it into
+  one"; built):**
+  - **Whale plume, murky not glowing** (`ChumController` `plume`; PC: "a bright,
+    smooth white column ... smoke or a beam of light"): sandy to olive-grey silt
+    (`LightEmission` 0.08, `LightInfluence` 0.75), a wispy core with a slow sideways
+    drift, plus a second emitter of small dark chum flecks; still ~150 studs tall.
+  - **The Vents' floor has its own light** (`WorldService` `ventFissures`): six
+    jagged Neon lava cracks per basin seated by raycast, each with a warm PointLight
+    (range 30) pooled round it, and the Vents grade is lighter and warmer (exposure
+    −0.32, tint (198, 200, 222)); lifting the basalt colour alone didn't reach the
+    eye at 50 studs.
+  - **Admin "Skins: pretend my worn skin's download fails (18 s)"**
+    (`SkinFailTest` player attribute → `SkinLoader.claimTest`): the local fish's
+    worn skin shows the stand-in, logs `[SkinLoader] test:` retries, goes on at 12 s
+    and is put on afresh at 18 s.
+  - **Messages in Build mode** go to the bar's status line on every device
+    (`HudController.buildNote`, set by BuildController); the boss countdown shrinks to
+    a thin strip at the top while editing.
+  - **No den lamp in a shaft's mouth** (DenBuilder skips spots within the shaft's
+    radius + 4 on the storey it opens into).
+  - Left as is: the Puffer's WeekWave crests read a little pink (they passed the
+    screen).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

@@ -1231,6 +1231,79 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	bubbleColumn(holder, 1.4)
 end
 
+-- Glowing fissures across the Vents' basin floors: short jagged cracks of lava,
+-- each with a warm light pooled round it, so the floor (and its toon tile) reads
+-- in the dark instead of only the chimneys' throats (PC 2026-10-17, T3: the basalt
+-- floor read near black from 50 studs, however light its colour)
+local FISSURE = Color3.fromRGB(255, 108, 34)
+local function ventFissures(parent: Instance, rng: Random)
+	for _, basin in Seafloor.ventBasins() do
+		for _ = 1, 6 do
+			local angle = rng:NextNumber(0, 2 * math.pi)
+			local r = basin.radius * math.sqrt(rng:NextNumber(0.05, 0.75))
+			local x, z = basin.x + math.cos(angle) * r, basin.z + math.sin(angle) * r
+			local start = groundAt(x, z)
+			if start == nil or start.Y > World.deep.floorY - 40 then
+				continue
+			end
+			local crack = Instance.new("Model")
+			crack.Name = "Fissure"
+			local heading = rng:NextNumber(0, 2 * math.pi)
+			local at = Vector3.new(start.X, 0, start.Z)
+			local middle = start
+			local segments = rng:NextInteger(4, 7)
+			for i = 1, segments do
+				heading += rng:NextNumber(-0.6, 0.6)
+				local length = rng:NextNumber(5, 10)
+				local step = Vector3.new(math.cos(heading), 0, math.sin(heading)) * length
+				local mid = at + step / 2
+				local ground = groundAt(mid.X, mid.Z)
+				if ground == nil then
+					break
+				end
+				local piece = Instance.new("Part")
+				piece.Name = "Crack"
+				piece.Anchored = true
+				piece.CanCollide = false
+				piece.CanQuery = false
+				piece.CanTouch = false
+				piece.CastShadow = false
+				piece.Material = Enum.Material.Neon
+				piece.Color = FISSURE
+				piece.Size = Vector3.new(rng:NextNumber(0.5, 1.1), 0.3, length + 0.6)
+				piece.CFrame =
+					CFrame.lookAt(ground + Vector3.new(0, 0.05, 0), ground + step + Vector3.new(0, 0.05, 0))
+				piece.Parent = crack
+				if i == math.ceil(segments / 2) then
+					middle = ground
+				end
+				at += step
+			end
+			if #crack:GetChildren() == 0 then
+				crack:Destroy()
+				continue
+			end
+			local glow = Instance.new("Part")
+			glow.Name = "FissureLight"
+			glow.Anchored = true
+			glow.CanCollide = false
+			glow.CanQuery = false
+			glow.CanTouch = false
+			glow.Transparency = 1
+			glow.Size = Vector3.one
+			glow.CFrame = CFrame.new(middle + Vector3.new(0, 3, 0))
+			glow.Parent = crack
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 130, 60)
+			light.Brightness = 1.4
+			light.Range = 30
+			light.Shadows = false
+			light.Parent = glow
+			crack.Parent = parent
+		end
+	end
+end
+
 -- The biomes' dressing, placed on the Terrain by raycast: dense kelp, rocks and
 -- arches in the Kelp Shallows; wrecks in the Graveyard; coral gardens and reef rocks
 -- in the Coral Reef; ruins to the east; glowing, smoking chimneys at the Vents;
@@ -1348,6 +1421,7 @@ local function buildBiomes(parent: Instance)
 	for _, chimney in features.chimneys do
 		ventSmoke(vents, chimney)
 	end
+	ventFissures(vents, Random.new(World.seed + 41))
 	for _ = 1, 90 do
 		local ground = spotIn(rng, "HydrothermalVents", 16)
 		if ground then

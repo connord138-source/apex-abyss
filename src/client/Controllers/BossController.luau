@@ -24,6 +24,7 @@ local OceanController = require(script.Parent.OceanController)
 local PredatorController = require(script.Parent.PredatorController)
 local RollController = require(script.Parent.RollController)
 local SwimController = require(script.Parent.SwimController)
+local Input = require(script.Parent.Parent.Input)
 
 local Bosses = Config.Bosses
 
@@ -312,6 +313,16 @@ local function step(dt: number)
 	if state.state == "warning" and typeof(state.at) == "number" then
 		local left = state.at - now
 		countdown.Visible = left > -1
+		-- Building: a thin strip at the very top instead of a panel over the view
+		-- (PC 2026-10-17: the warning covered the top of the Build view)
+		local thin = Input.editing
+		local size = if thin then UDim2.fromOffset(330, 20) else UDim2.fromOffset(360, 34)
+		if countdown.Size ~= size then
+			countdown.Size = size
+			countdown.Position = if thin then UDim2.new(0.5, 0, 0, 4) else UDim2.new(0.5, 0, 0, 52)
+			countdown.BackgroundTransparency = if thin then 0.45 else Ui.PANEL_TRANSPARENCY
+			countdownLabel.TextSize = if thin then 12 else 14
+		end
 		local name = if typeof(state.name) == "string" then string.upper(state.name) else "THE BOSS"
 		countdownLabel.Text = if left > 0
 			then `THE {name} RISES IN {clockText(left)} · {haunt(state.id)}`

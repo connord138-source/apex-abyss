@@ -333,6 +333,17 @@ local function buildShell(state: DenState, index: number, record: Record)
 					across = { -widest.x * 0.5, 0, widest.x * 0.5 }
 				end
 				for _, x in across do
+					-- None in a shaft's mouth: there's no rock above it to hang from
+					-- (PC 2026-10-17, D3b: the Hall's middle lamp hung in the shaft)
+					local inMouth = false
+					for _, shaft in DenSpace.shafts(level) do
+						if shaft.to == storey and (x * x + (z - shaft.z) ^ 2) < (shaft.radius + 4) ^ 2 then
+							inMouth = true
+						end
+					end
+					if inMouth then
+						continue
+					end
 					local top = s.deck + DenSpace.vaultAt(widest, math.abs(x))
 					table.insert(
 						cords,

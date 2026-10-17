@@ -59,7 +59,7 @@ type Drawn = {
 	crushed: { [BasePart]: number }, -- dressing hidden under a settled carcass (its old modifier)
 	crushAt: number,
 	rim: Highlight?, -- a carcass's faint outline through the haze
-	plume: ParticleEmitter?, -- a whale's chum rising above it, seen over kelp and reef
+	plume: { ParticleEmitter }?, -- a whale's silt and chum rising above it, seen over kelp and reef
 }
 
 local drawn: { [number]: Drawn } = {}
@@ -226,49 +226,76 @@ local function rim(model: Model): Highlight
 	return highlight
 end
 
--- A whale's plume: a column of pale silt and chum rising off the carcass to ~150
--- studs, so it shows over a kelp forest's canopy and the reef's heads from far off.
--- (PC 2026-10-16 round 2, W1: 3 faint dark-red puffs a second were lost in the blue
--- haze at 60 studs.) Pale and faintly self-lit, since dark particles vanish into the
--- haze; dense and wide so it reads as a column, not a few puffs.
-local PLUME_LIGHT = Color3.fromRGB(214, 206, 182)
-local PLUME_DARK = Color3.fromRGB(150, 112, 104)
-local function plume(parent: Instance): ParticleEmitter
+-- A whale's plume: a column of silt and chum rising off the carcass to ~150 studs,
+-- so it shows over a kelp forest's canopy and the reef's heads from far off (PC
+-- 2026-10-16 round 2, W1: 3 faint dark-red puffs were lost in the haze). Murky,
+-- not glowing (PC 2026-10-17: a bright, smooth white column read as smoke or a
+-- beam of light): sandy, olive-grey silt with a thin, wispy core, barely self-lit,
+-- and a second stream of small dark flecks (bits of chum) rising through it.
+local SILT_LOW = Color3.fromRGB(132, 116, 92)
+local SILT_HIGH = Color3.fromRGB(160, 162, 140)
+local FLECK = Color3.fromRGB(96, 52, 46)
+local function plume(parent: Instance): { ParticleEmitter }
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "Plume"
 	attachment.Position = Vector3.new(0, 8, 0)
 	attachment.Parent = parent
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = "Plume"
-	emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, PLUME_DARK),
-		ColorSequenceKeypoint.new(0.3, PLUME_LIGHT),
-		ColorSequenceKeypoint.new(1, PLUME_LIGHT),
+	local silt = Instance.new("ParticleEmitter")
+	silt.Name = "Plume"
+	silt.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	silt.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, SILT_LOW),
+		ColorSequenceKeypoint.new(1, SILT_HIGH),
 	})
-	emitter.Transparency = NumberSequence.new({
+	silt.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.08, 0.38),
-		NumberSequenceKeypoint.new(0.75, 0.55),
+		NumberSequenceKeypoint.new(0.1, 0.55),
+		NumberSequenceKeypoint.new(0.6, 0.66),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 12),
-		NumberSequenceKeypoint.new(1, 46),
+	silt.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 7),
+		NumberSequenceKeypoint.new(0.4, 22),
+		NumberSequenceKeypoint.new(1, 40),
 	})
-	emitter.Lifetime = NumberRange.new(13, 17)
-	emitter.Rate = 9
-	emitter.Speed = NumberRange.new(9, 13)
-	emitter.EmissionDirection = Enum.NormalId.Top
-	emitter.SpreadAngle = Vector2.new(9, 9)
-	emitter.Rotation = NumberRange.new(0, 360)
-	emitter.RotSpeed = NumberRange.new(-6, 6)
-	emitter.Drag = 0.08
-	emitter.LightEmission = 0.35
-	emitter.LightInfluence = 0.4
-	emitter.Brightness = 1.6
-	emitter.Parent = attachment
-	return emitter
+	silt.Lifetime = NumberRange.new(13, 17)
+	silt.Rate = 8
+	silt.Speed = NumberRange.new(8, 12)
+	silt.EmissionDirection = Enum.NormalId.Top
+	silt.SpreadAngle = Vector2.new(16, 16)
+	silt.Rotation = NumberRange.new(0, 360)
+	silt.RotSpeed = NumberRange.new(-14, 14)
+	silt.Drag = 0.1
+	-- A slow sideways drift so the column wavers instead of standing like a beam
+	silt.Acceleration = Vector3.new(0.6, 0, 0.35)
+	silt.LightEmission = 0.08
+	silt.LightInfluence = 0.75
+	silt.Brightness = 1.15
+	silt.Parent = attachment
+	local flecks = Instance.new("ParticleEmitter")
+	flecks.Name = "Flecks"
+	flecks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	flecks.Color = ColorSequence.new(FLECK, SILT_LOW)
+	flecks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.1, 0.15),
+		NumberSequenceKeypoint.new(0.8, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	flecks.Size = NumberSequence.new(0.5, 1.3)
+	flecks.Lifetime = NumberRange.new(8, 12)
+	flecks.Rate = 22
+	flecks.Speed = NumberRange.new(5, 10)
+	flecks.EmissionDirection = Enum.NormalId.Top
+	flecks.SpreadAngle = Vector2.new(22, 22)
+	flecks.Rotation = NumberRange.new(0, 360)
+	flecks.RotSpeed = NumberRange.new(-90, 90)
+	flecks.Drag = 0.2
+	flecks.Acceleration = Vector3.new(0.6, -0.4, 0.35)
+	flecks.LightEmission = 0
+	flecks.LightInfluence = 1
+	flecks.Parent = attachment
+	return { silt, flecks }
 end
 
 -- Small corals and boulders poking up through a settled carcass are hidden on this
@@ -442,7 +469,9 @@ local function step()
 		d.emitter.Enabled = near and now < cloud.ends - 2
 		local rising = d.plume
 		if rising then
-			rising.Enabled = near and now < cloud.ends - 4
+			for _, emitter in rising do
+				emitter.Enabled = near and now < cloud.ends - 4
+			end
 		end
 		if not near then
 			continue
