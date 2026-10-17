@@ -715,6 +715,49 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `render_shades.py` `water=0.35` previews a skin in the game's haze.
   - Unchanged on purpose: a pad enters Build from the den menu (B means back), and
     panning out of the door can't happen in a private den.
+- **The 2026-10-16 round-2 report's decisions (owner: "Go with all of your recs, roll
+  it into one"; built):**
+  - **Whale plume** (`ChumController` `plume`): dense (9/s), big (12→46), pale silt,
+    faintly self-lit (`LightEmission` 0.35, `Brightness` 1.6), rising ~150 studs;
+    dark particles were lost in the haze.
+  - **Build camera:** your own fish is hidden while editing
+    (`CameraController.hideFish`), the view starts in the middle of the fish's room
+    at zoom 60, and zooming out raises the lowest pitch toward `VIEW_TOPDOWN` 58° and
+    keeps the camera under the vault along its line of sight; the zoom left over
+    widens the lens up to `VIEW_FOV_MAX` 96 (`CameraController.overrideFov`).
+  - **The HUD is hidden in Build mode on every device** (`HIDE_WHILE_BUILDING`): on
+    PC its chips covered the view and swallowed clicks. A placement with no answer
+    within 1.2 s says "<thing> didn't go down · try again" (`expectAnswer`).
+  - **Den walls:** the dens' rock is Limestone (`DenCarve` `DEN_ROCK`), a material
+    nothing else uses, wearing Rock's toon plates (the same image id,
+    `Config/Materials` `Limestone`) in the dens' tan (`Cave.COLORS`); Sandstone's
+    bands read as wood grain. Run `make_toon_materials.luau` again after a sync that
+    adds a toon entry. Mosaic and Marble floors are toned down; Basalt is lifted to
+    (88, 98, 110) so the Vents' floor shows its tile.
+  - **Skins wait for their textures** (`src/client/SkinLoader.luau`):
+    FishAnimator's dress key carries `SkinLoader.state` (loaded / waiting / trying);
+    while waiting the fish shows the stand-in (`Cosmetics.apply`'s `skinReady`), a
+    failed texture is fetched again (backoff up to 30 s, 8 tries), after 12 s the
+    skin goes on anyway, and once everything loads it's put on afresh.
+  - **Depth in a den** reads a fish in front of its doorway (`Layout.hubExitFrame`).
+  - **Stacks:** moving a base carries everything on it, turned with it
+    (`DenSpace.stackOn`, `DenSpace.carry`, `DenService` move; a carried thing that
+    can't stand goes to the tray); a second click within 0.6 s on a just-picked
+    stacked piece picks the one under it (`STEP_DOWN`); a tray tile stays in place,
+    greyed at ×0, for the rest of the Build session (`shownThisSession`).
+  - **Phone messages** with a menu window up show on the window's subtitle line for
+    3 s (`HudController` `noteInWindow`); in Build mode on a phone, under the help
+    line.
+  - **Treasure Wheel E:** within its reach E is the wheel's unless a counter is
+    within `Config/Wheel` `stallClose` 6 studs and nearer.
+  - **Menu rows don't rebuild under a held press** (`MenuController` `rerender`
+    waits for a pad A or the left mouse button to be let go).
+  - **Lamp cords** end at the real rock (a ray up, half a second after building).
+  - **Admin "Den: simulate an old save"** (`DenService.simulateOldSave`): puts the
+    den's things at their storeys' old heights, clears the layout mark and runs the
+    relayout an old save gets.
+  - **Skins v11:** WeekWave and WeekWreck retextured lighter with a faint glow map on
+    every fish (patch pack, see docs/ASSETS.md).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -1420,7 +1463,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   map, and screen before uploading (highest now 0.098). `Config/Materials` holds each
   image id (0 = stock), tiling and pattern; `tools/studio/make_toon_materials.luau`
   makes the `Toon<Name>` MaterialVariants and base-material overrides in Studio and
-  the place is saved (a script can't set a MaterialVariant's maps); while one is on,
+  the place is saved (a script can't set a MaterialVariant's maps; the dens' rock is
+  a twelfth, Limestone, reusing Rock's image, since 2026-10-17); while one is on,
   `Cave.paint` lifts that Terrain colour ×1.22 (`terrainLift`) and the lava's to
   white. Parts come out a little darker. WorldService warns about a variant missing.
 - **Rocks are rounded, toon-style** (owner, 2026-10-11: "rocks are also still a bit
