@@ -37,4 +37,5 @@ return {
 	Chum = require(script.Chum),
 	Pvp = require(script.Pvp),
 	Hooks = require(script.Hooks),
+	Trails = require(script.Trails),
 }

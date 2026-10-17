@@ -48,7 +48,12 @@ export type Shade = {
 	lampBoost: number?, -- its light is this much brighter in the dark (a colour that reads weak there)
 	sparkle: Color3?, -- glints drifting off it
 	cycle: boolean?, -- the colors cycle through the rainbow (Prismatic)
-	sheen: Sheen?, -- a layer that moves across the skin (the top skins)
+	sheen: Sheen?, -- a layer that moves across the skin (none since 2026-10-17, below)
+	-- Effects (Shared/SkinFx): ribbons, rings, halos, rays, arcs and particle presets
+	-- (Shared/Fx), in `fxColor` and `fxColor2` (else the glow and the belly)
+	fx: { string }?,
+	fxColor: Color3?,
+	fxColor2: Color3?,
 	-- Living shades (owner, 2026-10-08: "much much more variance and depth"): how
 	-- bright the skin's glow map burns (SurfaceAppearance.EmissiveStrength), how the
 	-- glow moves, and what drifts off the fish. Cosmetics reads them.
@@ -375,7 +380,6 @@ local list: { Shade } = {
 	{
 		id = "Diamond",
 		name = "Diamond",
-		sheen = { texture = "sheenSparkle", speed = 0.1, tile = 0.9, transparency = 0.3, drift = 0.03 },
 		tier = "Epic",
 		chance = 250,
 		refund = 2000,
@@ -434,7 +438,6 @@ local list: { Shade } = {
 	{
 		id = "Divine",
 		name = "Divine",
-		sheen = { texture = "sheenGold", speed = 0.07, tile = 1.1, transparency = 0.3, drift = -0.02 },
 		tier = "Legendary",
 		chance = 500,
 		refund = 4000,
@@ -450,7 +453,6 @@ local list: { Shade } = {
 	{
 		id = "Aurora",
 		name = "Aurora",
-		sheen = { texture = "sheenVeil", speed = 0.16, tile = 1.4, transparency = 0.45, drift = 0.05 },
 		tier = "Legendary",
 		chance = 650,
 		refund = 4500,
@@ -485,7 +487,6 @@ local list: { Shade } = {
 	{
 		id = "Exotic",
 		name = "Exotic",
-		sheen = { texture = "sheenSparkle", speed = 0.2, tile = 1.0, transparency = 0.45, drift = 0.04 },
 		tier = "Mythic",
 		chance = 900,
 		refund = 7000,
@@ -500,7 +501,6 @@ local list: { Shade } = {
 	{
 		id = "Prismatic",
 		name = "Prismatic",
-		sheen = { texture = "sheenPrismatic", speed = 0.35, tile = 1.3, transparency = 0.32, drift = 0.08 },
 		tier = "Mythic",
 		chance = 1500,
 		refund = 12000,
@@ -519,7 +519,6 @@ local list: { Shade } = {
 	{
 		id = "Nebula",
 		name = "Nebula",
-		sheen = { texture = "stars", speed = 0.04, tile = 1.6, transparency = 0.35, drift = 0.015 },
 		tier = "Mythic",
 		chance = 1800,
 		refund = 14000,
@@ -536,14 +535,6 @@ local list: { Shade } = {
 	{
 		id = "Void",
 		name = "Void",
-		sheen = {
-			texture = "sheenVeil",
-			speed = -0.1,
-			tile = 1.2,
-			transparency = 0.55,
-			color = Color3.fromRGB(170, 90, 255),
-			drift = -0.03,
-		},
 		tier = "Mythic",
 		chance = 2200,
 		refund = 16000,
@@ -564,18 +555,18 @@ local list: { Shade } = {
 		tier = "Trophy",
 		chance = 0,
 		refund = 0,
-		back = Color3.fromRGB(176, 255, 196),
-		belly = Color3.fromRGB(226, 255, 232),
-		fin = Color3.fromRGB(140, 240, 170),
-		material = Enum.Material.ForceField, -- a shimmering, see-through haunt
-		transparency = 0.3,
+		-- Spectral green with mist rolling off it, never see-through (owner, 2026-10-17:
+		-- "doesnt need to literally be invisible"; it was ForceField at 0.3)
+		back = Color3.fromRGB(150, 255, 190),
+		belly = Color3.fromRGB(200, 255, 220),
+		fin = Color3.fromRGB(110, 235, 160),
 		spectral = true, -- the whole fish, not just its edges (owner, 2026-10-08: "a similar to ghost from sea of thieves glow")
-		glow = Color3.fromRGB(150, 255, 180),
+		glow = Color3.fromRGB(90, 255, 160),
 		-- Pale green on the teal floor read below Nebula, though it's a trophy (playtest 2026-10-09)
 		lampBoost = 1.25,
 		sparkle = Color3.fromRGB(200, 255, 210),
 		boss = "Megalodon",
-		blurb = "Pale green and see-through, lit from within like the drowned. Won from the Megalodon.",
+		blurb = "Spectral green, lit from within like the drowned, a cold mist rolling off it. Won from the Megalodon.",
 	},
 	{
 		id = "AbyssInk",
@@ -997,7 +988,7 @@ local list: { Shade } = {
 		C(245, 170, 0),
 		C(255, 205, 70),
 		C(200, 123, 0),
-		"Warm brushed gold, its own pattern engraved. 10 Golden catches as this fish.",
+		"Warm brushed gold, its own pattern engraved. 100 Golden catches as this fish.",
 		-- Less mirror than it was: reflecting the blue water, gold read lime (playtest
 		-- 2026-10-10; the skin's metal map went from 0.6 to 0.35)
 		{ material = Enum.Material.Metal, reflectance = 0.2, sparkle = C(255, 226, 150), aura = "glints" }
@@ -1058,13 +1049,15 @@ local list: { Shade } = {
 	),
 	earned(
 		"WeekWreck",
-		"Shipwreck",
+		-- A fish that lives on a wreck, not a ship (owner, 2026-10-17: "what the hell
+		-- is a shipwreck skin doing"; it was "Shipwreck", hull plates and rust)
+		"Barnacled",
 		"Epic",
 		{ week = 3 },
-		C(80, 70, 66),
-		C(200, 90, 40),
-		C(60, 56, 54),
-		"Riveted hull plates, rust and barnacles. Week 3's catch."
+		C(70, 92, 84),
+		C(150, 90, 170),
+		C(56, 74, 66),
+		"Weathered slate-green, crusted with barnacles and purple coralline. Week 3's catch."
 	),
 	earned(
 		"WeekSeaGlass",
@@ -1262,80 +1255,51 @@ for _, shade in list do
 	end
 end
 
--- Moving layers on every Rare and better skin (owner, 2026-10-16: "you only made 2-3
--- skins interactive ... A lot of the other ones should be moving textures or have
--- elements that make theme desireable. Still too many flat models"): each gets a
--- layer that suits it (lava seeping through Magma's cracks, light glinting off
--- crystal and ice, sunlit ripples over sea glass and reefs, a current raking back,
--- live arcs on Thunder, gold glints on gold, stars on space), and an aura where it
--- had none. The textures are in Config/Textures (sheenLava, sheenCaustic,
--- sheenFacets, sheenCurrent and sheenBolt are coloured, so they keep no tint; the
--- white sparkle is tinted to each skin).
-local function layer(
-	texture: string,
-	speed: number,
-	tile: number,
-	transparency: number,
-	extra: { color: Color3?, drift: number? }?
-): Sheen
-	return {
-		texture = texture,
-		speed = speed,
-		tile = tile,
-		transparency = transparency,
-		color = extra and extra.color,
-		drift = extra and extra.drift,
-	}
-end
-
--- Dark or flat from the side on the PC's sheets (2026-10-16: WeekWreck, WeekWave,
--- Abyssal Current, Ribbon, Chrome, Scarred; Golden muddy) carry their layer stronger.
-local LAYERS: { [string]: Sheen } = {
-	-- Uncommon (the Golden catch track)
-	CatchGolden = layer("sheenGold", 0.06, 1.2, 0.3),
-	-- Rare
-	CudaChrome = layer("sheenCurrent", 0.45, 1.0, 0.18, { color = C(200, 186, 255) }),
-	ShkBoneplate = layer("sheenSparkle", 0.06, 1.2, 0.5, { color = C(220, 230, 240) }),
-	Lunar = layer("sheenSparkle", 0.05, 1.4, 0.45, { color = C(200, 215, 255), drift = 0.01 }),
-	ShkScarred = layer("sheenCaustic", 0.12, 1.1, 0.38),
-	PufUrchin = layer("sheenSparkle", 0.12, 0.9, 0.4, { color = C(90, 255, 220) }),
-	Glowspot = layer("sheenSparkle", 0.08, 0.8, 0.4, { color = C(80, 230, 255) }),
-	Tidepool = layer("sheenCaustic", 0.1, 1.0, 0.4, { drift = 0.02 }),
-	Mandarin = layer("sheenCurrent", 0.2, 1.1, 0.45),
-	MorSerpent = layer("sheenGold", 0.08, 1.2, 0.35),
-	PassTideglass = layer("sheenCaustic", 0.08, 1.0, 0.45, { drift = 0.02 }),
-	CatchGlowing = layer("sheenSparkle", 0.1, 1.0, 0.4, { color = C(120, 255, 200) }),
-	MorRibbon = layer("sheenCurrent", 0.35, 0.9, 0.2),
-	AngGlassveins = layer("sheenCaustic", 0.06, 1.2, 0.5),
-	Lanternfish = layer("sheenSparkle", 0.15, 0.9, 0.4, { color = C(140, 220, 255) }),
-	-- Epic
-	CatchCrystal = layer("sheenFacets", 0.12, 0.9, 0.15, { drift = 0.03 }),
-	PassRiptide = layer("sheenCurrent", 0.5, 1.0, 0.25),
-	WeekSeaGlass = layer("sheenCaustic", 0.1, 1.0, 0.35, { drift = 0.02 }),
-	WeekWreck = layer("sheenCaustic", 0.08, 1.2, 0.32),
-	WeekReef = layer("sheenCaustic", 0.1, 1.0, 0.45, { drift = 0.02 }),
-	AngAbyssEye = layer("sheenSparkle", 0.05, 1.0, 0.4, { color = C(255, 190, 60) }),
-	CatchPrism = layer("sheenPrismatic", 0.3, 1.3, 0.35, { drift = 0.06 }),
-	WeekWave = layer("sheenCurrent", 0.3, 1.1, 0.18),
-	PassAbyssalCurrent = layer("sheenCurrent", 0.25, 1.2, 0.14, { color = C(130, 255, 210), drift = 0.03 }),
-	Xray = layer("sheenCurrent", 0.6, 1.0, 0.5, { color = C(150, 255, 200) }),
-	-- (half see-through: the skin's own lava rivers carry the cracks; this is heat moving through)
-	Magma = layer("sheenLava", 0.06, 0.9, 0.45, { drift = 0.015 }),
-	Glacier = layer("sheenFacets", 0.07, 1.0, 0.25, { drift = 0.02 }),
-	PassUndertow = layer("sheenCurrent", 0.35, 1.0, 0.3, { color = C(120, 255, 230), drift = 0.1 }),
-	PufCoralBloom = layer("sheenCaustic", 0.1, 1.0, 0.4, { drift = 0.02 }),
+-- No moving layers (owner, 2026-10-17: "When I say the skin needs movement or glow I
+-- mean the skin needs EFFECTS. not just a ripple effect running over the design";
+-- "too many of them are obviously just mesh slapped onto the fish"): the tiling
+-- textures projected over the body from six sides (2026-10-12 to 10-16) read as a
+-- pattern pasted on, so none is worn. Cosmetics keeps the `sheen` mechanism.
+--
+-- Effects instead (Shared/SkinFx) on the Tide Pass skins, every Legendary and
+-- Mythic, the boss trophies, the treasure skins and the Epics people chase. Each
+-- list is a set the skin wears; the colours default to the skin's glow and belly.
+type FxSet = { fx: { string }, color: Color3?, color2: Color3? }
+local FX: { [string]: FxSet } = {
+	-- Tide Pass
+	PassTideglass = {
+		fx = { "rim", "crystal", "bubbles" },
+		color = C(150, 240, 255),
+		color2 = C(210, 250, 255),
+	},
+	PassRiptide = { fx = { "foam", "bubbles" }, color = C(120, 210, 255), color2 = C(230, 250, 255) },
+	PassUndertow = { fx = { "swirls", "vortex" }, color = C(110, 255, 225), color2 = C(150, 110, 255) },
+	PassAbyssalCurrent = { fx = { "currents", "motes" }, color = C(120, 255, 210), color2 = C(110, 70, 220) },
 	-- Legendary
-	Thunder = layer("sheenBolt", 0.9, 0.8, 0.05),
-	DrownedPearl = layer("sheenSparkle", 0.07, 1.1, 0.35, { color = C(225, 210, 255) }),
-	MorJade = layer("sheenGold", 0.1, 1.0, 0.3),
-	PufSunburst = layer("sheenGold", 0.15, 0.9, 0.25),
-	AngLanternKing = layer("sheenGold", 0.1, 1.0, 0.3, { drift = 0.02 }),
+	Divine = { fx = { "halo", "rays", "motes" }, color = C(255, 214, 110), color2 = C(255, 244, 200) },
+	Aurora = { fx = { "aurora", "motes" }, color = C(90, 255, 170), color2 = C(70, 210, 255) },
+	Thunder = { fx = { "arcs", "sparks" }, color = C(130, 190, 255), color2 = C(220, 235, 255) },
+	PufSunburst = { fx = { "sunburst", "gold" }, color = C(255, 196, 70), color2 = C(255, 236, 150) },
+	MorJade = { fx = { "swirls", "mist" }, color = C(80, 230, 150), color2 = C(170, 255, 200) },
+	AngLanternKing = { fx = { "crown", "embers" }, color = C(255, 200, 80), color2 = C(255, 150, 40) },
+	DrownedPearl = { fx = { "pearls", "bubbles" }, color = C(225, 220, 255), color2 = C(190, 230, 255) },
 	-- Mythic
-	CudaComet = layer("stars", 0.25, 1.4, 0.3, { drift = 0.02 }),
-	SunkenGold = layer("sheenGold", 0.08, 1.1, 0.25),
-	AngStarfall = layer("stars", 0.06, 1.5, 0.3, { drift = 0.015 }),
-	-- Trophy
-	AbyssInk = layer("sheenCurrent", 0.15, 1.2, 0.4, { color = C(150, 110, 255), drift = 0.05 }),
+	Prismatic = { fx = { "rainbowRim", "rainbow", "stardust" }, color = C(255, 255, 255) },
+	Nebula = { fx = { "nebula", "stardust" }, color = C(170, 110, 255), color2 = C(80, 200, 255) },
+	Void = { fx = { "ring", "vortex", "ink" }, color = C(160, 80, 255), color2 = C(20, 10, 40) },
+	Exotic = { fx = { "tropical", "bubbles" }, color = C(80, 230, 200) },
+	CudaComet = { fx = { "comet", "stardust" }, color = C(150, 220, 255), color2 = C(255, 255, 255) },
+	AngStarfall = { fx = { "starfall", "stardust" }, color = C(200, 220, 255), color2 = C(255, 240, 200) },
+	SunkenGold = { fx = { "gold", "crystal" }, color = C(255, 205, 80), color2 = C(255, 240, 170) },
+	-- Trophies
+	Ghost = { fx = { "mist", "wisps" }, color = C(120, 255, 175), color2 = C(200, 255, 225) },
+	AbyssInk = { fx = { "ink", "vortex" }, color = C(140, 100, 255), color2 = C(30, 18, 60) },
+	-- Epics people chase
+	Magma = { fx = { "embers", "drips" }, color = C(255, 150, 40), color2 = C(255, 70, 20) },
+	Diamond = { fx = { "crystal", "glints" }, color = C(220, 240, 255), color2 = C(170, 220, 255) },
+	CatchCrystal = { fx = { "crystal", "frost" }, color = C(190, 235, 255), color2 = C(150, 200, 255) },
+	CatchPrism = { fx = { "rainbow", "stardust" }, color = C(255, 255, 255) },
+	Glacier = { fx = { "frost", "crystal" }, color = C(190, 230, 255), color2 = C(230, 245, 255) },
 }
 local AURAS: { [string]: Aura } = {
 	CudaChrome = "glints",
@@ -1354,17 +1318,19 @@ local AURAS: { [string]: Aura } = {
 	Xray = "motes",
 	PufCoralBloom = "bubbles",
 }
-for id, sheen in LAYERS do
-	local shade = byId[id]
-	assert(shade, `Config/Shades LAYERS: no shade {id}`)
-	assert(shade.sheen == nil, `Config/Shades LAYERS: {id} already has a sheen`)
-	shade.sheen = sheen
-end
 for id, aura in AURAS do
 	local shade = byId[id]
 	assert(shade, `Config/Shades AURAS: no shade {id}`)
 	assert(shade.aura == nil, `Config/Shades AURAS: {id} already has an aura`)
 	shade.aura = aura :: any -- (luau-lsp reads the map's values as plain strings)
+end
+for id, set in FX do
+	local shade = byId[id]
+	assert(shade, `Config/Shades FX: no shade {id}`)
+	shade.aura = nil -- (its effects take the aura's place)
+	shade.fx = set.fx
+	shade.fxColor = set.color
+	shade.fxColor2 = set.color2
 end
 
 -- Whether a fish of `speciesId` can have a skin: one of its own line, or one every

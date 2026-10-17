@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(script.Parent.Config)
 local ShadesConfig = require(script.Parent.Config.Shades)
 local FishBuilder = require(script.Parent.FishBuilder)
+local SkinFx = require(script.Parent.SkinFx)
 
 type PartSpec = FishBuilder.PartSpec
 
@@ -772,42 +773,24 @@ end
 -- shimmering, a Highlight fills it with pale light and rims it, wisps drift off it,
 -- and Cosmetics.animate breathes it. `holder` is where the Highlight lives (the body,
 -- or a mesh body's Mesh model so the mesh cleanup finds it).
-local function haunt(holder: Instance, core: BasePart, shade: ShadesConfig.Shade, length: number)
+local function haunt(holder: Instance, shade: ShadesConfig.Shade)
 	local old = holder:FindFirstChild("ShadeHaunt")
 	if old then
 		old:Destroy()
 	end
+	-- Spectral green, never see-through (owner, 2026-10-17: "The ghost skin doesnt need
+	-- to literally be invisible, it should be spectral green with some mist coming off
+	-- of it"): a green fill over the fish's own look, a bright rim, and the mist and
+	-- wisps of its `fx`
 	local halo = Instance.new("Highlight")
 	halo.Name = "ShadeHaunt"
 	halo.FillColor = shade.glow or shade.back
-	halo.FillTransparency = 0.55
+	halo.FillTransparency = 0.5
 	halo.OutlineColor = shade.belly
-	halo.OutlineTransparency = 0.15
+	halo.OutlineTransparency = 0.1
 	halo.DepthMode = Enum.HighlightDepthMode.Occluded
 	halo:SetAttribute("ShadeEffect", true)
 	halo.Parent = holder
-	local wisps = Instance.new("ParticleEmitter")
-	wisps.Name = "ShadeWisps"
-	wisps.Rate = 9
-	wisps.Lifetime = NumberRange.new(1.4, 2.6)
-	wisps.Speed = NumberRange.new(length * 0.05, length * 0.2)
-	wisps.SpreadAngle = Vector2.new(180, 180)
-	wisps.Acceleration = Vector3.new(0, length * 0.08, 0)
-	wisps.Drag = 1.5
-	wisps.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.25, length * 0.16),
-		NumberSequenceKeypoint.new(1, length * 0.05),
-	})
-	wisps.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.2, 0.55),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	wisps.LightEmission = 1
-	wisps.Color = ColorSequence.new(shade.belly, shade.glow or shade.back)
-	wisps:SetAttribute("ShadeEffect", true)
-	wisps.Parent = core
 end
 
 -- Living shades: each dressed body's worn skins and glow light, so animate drives
@@ -817,6 +800,7 @@ type Live = {
 	light: PointLight?,
 	phase: number,
 	sheens: { Texture }, -- the moving layer's six faces per part (Config/Shades `sheen`)
+	fx: SkinFx.Live?, -- the skin's effects (Config/Shades `fx`)
 }
 
 -- The faces a moving layer is projected from (a MeshPart takes a Texture as a
@@ -1085,13 +1069,14 @@ local function paint(body: Model, look: FishBuilder.Look, shadeId: string?, leng
 		return
 	end
 	if shade.spectral then
-		haunt(body, core, shade, length)
+		haunt(body, shade)
 	end
 	live[body] = {
 		skins = {},
 		light = glowLight(core, shade, length),
 		phase = math.random() * 20,
 		sheens = {},
+		fx = SkinFx.build(body, body, core, shade, length),
 	}
 	aura(core, shade, length)
 end
@@ -1172,7 +1157,7 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 		skin = nil
 	end
 	-- No shade (or a shade not imported yet): the fish's own look, white teeth and all
-	local natural = if skin == nil and not spectral then skinFor(planName, "Natural") else nil
+	local natural = if skin == nil then skinFor(planName, "Natural") else nil
 	if natural and skinReady and not skinReady(natural) then
 		natural = nil
 	end
@@ -1206,10 +1191,27 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 			end
 		end
 		if spectral then
-			holdOwn(part, true)
+			-- The fish's own look under the haunt's green (its Natural skin when it has one)
+			local own = natural
+			if own and own:IsA("SurfaceAppearance") then
+				holdOwn(part, true)
+				local clone = own:Clone()
+				clone.Name = "ShadeSkin"
+				clone.Color = (shade :: ShadesConfig.Shade).back
+				clone.Parent = part
+			else
+				holdOwn(part, false)
+				if typeof(ownTexture) == "string" then
+					part.TextureID = ownTexture
+				end
+				local appearance = part:FindFirstChildOfClass("SurfaceAppearance")
+				if appearance then
+					(appearance :: any).Color = (shade :: ShadesConfig.Shade).back
+				end
+			end
 			part.Color = (shade :: ShadesConfig.Shade).back
-			part.Material = Enum.Material.ForceField
-			part.Transparency = (shade :: ShadesConfig.Shade).transparency or 0.3
+			part.Material = Enum.Material.Plastic
+			part.Transparency = 0
 		elseif skin then
 			holdOwn(part, true)
 			if skin:IsA("SurfaceAppearance") then
@@ -1256,13 +1258,14 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 		return
 	end
 	if spectral then
-		haunt(mesh, core, shade, length)
+		haunt(mesh, shade)
 	end
 	live[body] = {
 		skins = worn,
 		light = glowLight(core, shade, length),
 		phase = math.random() * 20,
 		sheens = sheens,
+		fx = SkinFx.build(body, mesh, core, shade, length),
 	}
 	aura(core, shade, length)
 end
@@ -1323,6 +1326,9 @@ function Cosmetics.animate(body: Model, shadeId: string?, t: number)
 		return
 	end
 	local state = live[body]
+	if state and state.fx then
+		SkinFx.step(state.fx, body, t + state.phase)
+	end
 	local sheen = shade.sheen
 	if state and sheen and #state.sheens > 0 then
 		-- The moving layer: slides along the body (U on the side faces) and drifts
@@ -1371,19 +1377,12 @@ function Cosmetics.animate(body: Model, shadeId: string?, t: number)
 		end
 	end
 	if shade.spectral then
-		-- The haunt breathes: the fill and the body's veil swell and fade slowly
+		-- The haunt breathes: its green swells and fades slowly
 		local pulse = 0.5 + 0.5 * math.sin(t * 1.7)
 		local halo = body:FindFirstChild("ShadeHaunt", true)
 		if halo and halo:IsA("Highlight") then
-			halo.FillTransparency = 0.45 + 0.2 * pulse
-			halo.OutlineTransparency = 0.05 + 0.25 * pulse
-		end
-		local veil = (shade.transparency or 0.3) + 0.12 * pulse
-		for _, descendant in body:GetDescendants() do
-			if descendant:IsA("BasePart") and descendant.Material == Enum.Material.ForceField then
-				local base = descendant:GetAttribute("T0")
-				descendant.Transparency = math.max(if typeof(base) == "number" then base else 0, veil)
-			end
+			halo.FillTransparency = 0.36 + 0.22 * pulse
+			halo.OutlineTransparency = 0.02 + 0.2 * pulse
 		end
 		return
 	end

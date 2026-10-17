@@ -92,6 +92,8 @@ function EconomyService.start()
 		state.parts = data.parts
 		state.variants = data.variants
 		state.equipped = data.equipped
+		state.trails = data.trails
+		state.trail = data.trail
 		state.trophies = data.trophies
 		state.titles = data.titles
 		state.title = data.title

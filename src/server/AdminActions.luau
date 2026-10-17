@@ -218,8 +218,11 @@ local function allShades(_admin: Player, targets: { Player }): string
 		for _, variant in Config.Exotics.variants do
 			data.variants[variant.id] = true
 		end
+		for _, trail in Config.Trails.list do
+			data.trails[trail.id] = true
+		end
 	end)
-	return `Every shade, part and variant for {names(targets)}`
+	return `Every shade, part, variant and boost trail for {names(targets)}`
 end
 
 local function giveMap(_admin: Player, targets: { Player }, tier: any): string

@@ -1,8 +1,10 @@
 --!strict
 -- The playable species (owner-approved roster, 2026-10-06). Each levels up on its
 -- own (its own banked mass), has its own stats and abilities, and is unlocked its
--- own way: the Nibbler from the start, the 'Cuda by finishing the tutorial, the
--- rest with their home biome's DNA plus coral. Stats are multipliers on the shared
+-- own way: the Nibbler from the start, the rest with their home biome's DNA plus
+-- coral (the 'Cuda also wants a grown Nibbler; it came free with the tutorial until
+-- the owner, 2026-10-17: "should take a bit longer to get cuda than just finishing
+-- the tutorial ... Nobody would ever play as the nibbler if thats the case"). Stats are multipliers on the shared
 -- size math (1 = the Nibbler, the all-rounder).
 export type Stats = {
 	speed: number, -- top speed
@@ -16,6 +18,7 @@ export type Unlock = {
 	biome: string?, -- dna: whose DNA (Config/Biomes id)
 	dna: number?,
 	coral: number?,
+	level: number?, -- the Nibbler must have reached this level first
 }
 
 export type Species = {
@@ -67,7 +70,7 @@ local list: { Species } = {
 		collider = 0.85,
 		camera = 0.8,
 		abilities = { "Torpedo", "RazorBite", "SilverFlash" },
-		unlock = { kind = "tutorial" },
+		unlock = { kind = "dna", biome = "KelpShallows", dna = 40, coral = 1500, level = 15 },
 	},
 	{
 		id = "Pufferfish",

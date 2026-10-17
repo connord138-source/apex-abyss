@@ -596,8 +596,10 @@ local function travel(player: Player, target: CFrame)
 	end
 	travelling[player] = true
 	task.spawn(function()
+		-- (3 s wasn't enough: leaving a den, the hub took ~20 s to arrive, owner
+		-- 2026-10-17; the client keeps its loading wash up until the place is there)
 		pcall(function()
-			player:RequestStreamAroundAsync(target.Position, 3)
+			player:RequestStreamAroundAsync(target.Position, 10)
 		end)
 		local _, root = FishService.character(player)
 		if root and player.Parent then
@@ -638,6 +640,45 @@ local function leaveDen(player: Player)
 		return
 	end
 	travel(player, Layout.hubExitFrame(index))
+end
+
+-- A fish near a portal (within 40 studs) has the far side streamed in ahead of it,
+-- so swimming through finds it there: the hub from a den's way out, a lived-in den
+-- from its doorway on the plaza
+local prestreamed: { [Player]: number } = {}
+local function prestream(player: Player)
+	local _, root = FishService.character(player)
+	if root == nil then
+		return
+	end
+	local position = root.Position
+	local target: CFrame? = nil
+	local index = Layout.denAt(position)
+	if index then
+		if (position - Layout.exitFrame(index).Position).Magnitude <= 40 then
+			target = Layout.hubExitFrame(index)
+		end
+	else
+		for door = 1, Layout.DEN_COUNT do
+			if
+				FishService.ownerOf(door) ~= nil
+				and (position - Layout.doorFrame(door).Position).Magnitude <= 40
+			then
+				target = Layout.spawnFrame(door)
+				break
+			end
+		end
+	end
+	if target == nil or os.clock() - (prestreamed[player] or 0) < 8 then
+		return
+	end
+	prestreamed[player] = os.clock()
+	local at = (target :: CFrame).Position
+	task.spawn(function()
+		pcall(function()
+			player:RequestStreamAroundAsync(at, 10)
+		end)
+	end)
 end
 
 -- Every fish inside den `index` goes back out to the plaza (its owner left)
@@ -684,6 +725,10 @@ function DenService.start()
 	Net.onRequest("DenFloor", floor)
 	Net.onRequest("EnterDen", enterDen)
 	Net.onRequest("LeaveDen", leaveDen)
+	Net.onRequest("Prestream", prestream)
+	Players.PlayerRemoving:Connect(function(player)
+		prestreamed[player] = nil
+	end)
 	StateService.provide(function(player, data, state)
 		state.den = data.den
 		state.denIndex = FishService.denOf(player) or 0

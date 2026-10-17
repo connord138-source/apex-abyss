@@ -134,6 +134,12 @@ local trayFrame: ScrollingFrame
 local touchRow: Frame
 local snapButton: TextButton? = nil
 local trayButton: TextButton? = nil
+local shopButton: TextButton? = nil
+-- The den shop is open over Build mode (owner, 2026-10-17: "I don't see a shop at all
+-- where you buy den items"): the bar steps aside and the view holds still until it closes
+local shopping = false
+local bind: () -> ()
+local unbind: () -> ()
 local hintChip: TextLabel
 local touchHint: TextLabel
 -- A phone's editor (PC 2026-10-16: the panel sat in the middle third of the screen,
@@ -474,7 +480,10 @@ local function viewCFrame(dt: number): CFrame?
 	end
 	-- Orbit: the right mouse button held, a phone's drag or the right stick
 	local look = Input.consumeLook(dt)
-	if orbiting then
+	if shopping then
+		look = Vector2.zero
+	end
+	if orbiting and not shopping then
 		local delta = UserInputService:GetMouseDelta()
 		orbitMoved += delta.Magnitude
 		look += delta * Config.Tuning.camera.mouseSensitivity
@@ -482,7 +491,7 @@ local function viewCFrame(dt: number): CFrame?
 	view.yaw -= look.X
 	-- Zoom: the wheel, or a phone's pinch (set in the pinch handler)
 	local notches = Input.consumeZoom()
-	if notches ~= 0 then
+	if notches ~= 0 and not shopping then
 		view.distance = math.clamp(view.distance * (1 - 0.12 * notches), VIEW_ZOOM[1], VIEW_ZOOM[2])
 	end
 	-- Zoomed out it climbs and looks down: the lowest pitch rises with the zoom
@@ -497,7 +506,7 @@ local function viewCFrame(dt: number): CFrame?
 	CameraController.overrideFov = math.clamp(base + (view.distance / reach - 1) * 22, base, VIEW_FOV_MAX)
 	-- Pan: WASD or the arrows, or the left stick, across the floor
 	local pan = Vector2.zero
-	if UserInputService:GetFocusedTextBox() == nil then
+	if UserInputService:GetFocusedTextBox() == nil and not shopping then
 		local function key(a: Enum.KeyCode, b: Enum.KeyCode): number
 			return if UserInputService:IsKeyDown(a) or UserInputService:IsKeyDown(b) then 1 else 0
 		end
@@ -507,7 +516,7 @@ local function viewCFrame(dt: number): CFrame?
 		)
 	end
 	for _, input in UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) do
-		if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+		if input.KeyCode == Enum.KeyCode.Thumbstick1 and not shopping then
 			local stick = Vector2.new(input.Position.X, input.Position.Y)
 			if stick.Magnitude > 0.15 then
 				pan += stick
@@ -838,6 +847,16 @@ local function step()
 		BuildController.stop()
 		return
 	end
+	-- The den shop open over Build mode: nothing is aimed until it closes
+	if shopping then
+		if MenuController.isOpen() then
+			return
+		end
+		shopping = false
+		panel.Visible = true
+		bind()
+		BuildController.refresh()
+	end
 	-- A held turn
 	if turning ~= 0 and os.clock() >= nextTurn then
 		yaw = (yaw + turning * turnStep()) % 360
@@ -885,7 +904,7 @@ local function step()
 			setStatus(
 				if #trayIds() > 0
 					then "Pick a thing from the tray, or aim at one you've placed"
-					else "Your tray is empty · buy things in the den menu (E at your pool)"
+					else `Your tray is empty · {if Input.isGamepad() then "Y · SHOP" else "SHOP"} buys things for it`
 			)
 		end
 		return
@@ -1166,12 +1185,27 @@ local function controlsText(): string
 	if Input.isTouch() then
 		return "Tap the floor to place, a thing to pick it up · drag to turn the view, pinch to zoom · FLOOR changes storey"
 	elseif Input.isGamepad() then
-		return "Left stick pan · right stick turn view · RT place / pick up · LT drop · LB RB turn · D-pad: pick, snap, lay out · A floor · X put away · B done"
+		return "Left stick pan · right stick turn view · RT place / pick up · LT drop · LB RB turn · D-pad: pick, snap, lay out · A floor · X put away · Y shop · B done"
 	end
 	return "Click to place · drag things (from the tray too) · RIGHT-DRAG turn view · WASD pan · wheel zoom · SPACE / C floor · R F turn · G snap · L lay out · X put away · B done"
 end
 
-local function bind()
+-- Opens the den shop over Build mode (bought things land in the tray)
+local function openShop()
+	if not active or shopping then
+		return
+	end
+	select(nil)
+	unbind()
+	shopping = true
+	orbiting, dragging, trayDrag = false, false, false
+	aimLight.Adornee = nil
+	aimedUid = nil
+	panel.Visible = false
+	MenuController.openDenShop()
+end
+
+function bind()
 	ContextActionService:BindActionAtPriority("ApexBuildPlace", function(_, inputState, input: InputObject)
 		if inputState ~= Enum.UserInputState.Begin then
 			return Enum.ContextActionResult.Sink
@@ -1274,12 +1308,18 @@ local function bind()
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, Enum.KeyCode.L, Enum.KeyCode.DPadDown)
 	-- The stall menu and the HUD's D-pad menus wait till you're done
+	ContextActionService:BindActionAtPriority("ApexBuildShop", function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			openShop()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, PRIORITY, Enum.KeyCode.ButtonY)
 	ContextActionService:BindActionAtPriority("ApexBuildQuiet", function()
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, Enum.KeyCode.ButtonY)
 end
 
-local function unbind()
+function unbind()
 	for _, name in
 		{
 			"ApexBuildPlace",
@@ -1292,6 +1332,7 @@ local function unbind()
 			"ApexBuildSnap",
 			"ApexBuildLayout",
 			"ApexBuildQuiet",
+			"ApexBuildShop",
 		}
 	do
 		ContextActionService:UnbindAction(name)
@@ -1314,6 +1355,12 @@ local function layoutTray()
 	if tray then
 		tray.Text = if trayFolded then "TRAY ▲" else "TRAY ▼"
 	end
+	local shop = shopButton
+	if shop then
+		shop.Visible = not touch
+		shop.Text = if Input.isGamepad() then "Y · SHOP" else "SHOP"
+	end
+	statusLabel.Size = if touch then UDim2.new(0.62, -14, 0, 18) else UDim2.new(0.62, -122, 0, 18)
 	if not touch then
 		panel.Size = UDim2.fromOffset(860, 146)
 		panel.Position = UDim2.new(0.5, 0, 1, -120)
@@ -1409,6 +1456,10 @@ function BuildController.stop()
 	orbiting, dragging, trayDrag = false, false, false
 	tapAt, pinchFrom = nil, nil
 	MenuController.building = false
+	if shopping then
+		shopping = false
+		MenuController.close()
+	end
 	select(nil)
 	aimLight.Adornee = nil
 	aimedUid = nil
@@ -1461,6 +1512,15 @@ local function buildGui()
 	)
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Right
 	statusLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	-- The den shop, at the bar's top-right corner (a phone has it in its row)
+	local shop = Ui.button(panel, "Shop", "SHOP", UDim2.fromOffset(96, 24), UDim2.new(1, -106, 0, 6), "gold")
+	shop.TextSize = 13
+	shop.Selectable = false
+	shop.Activated:Connect(function()
+		buttonClock = os.clock()
+		openShop()
+	end)
+	shopButton = shop
 	trayFrame = Instance.new("ScrollingFrame")
 	trayFrame.Name = "Things"
 	trayFrame.BackgroundTransparency = 1
@@ -1520,6 +1580,7 @@ local function buildGui()
 		},
 		{ text = "LAY OUT", style = "secondary", run = layOut },
 		{ text = "PUT AWAY", style = "secondary", run = putAway },
+		{ text = "SHOP", style = "gold", run = openShop },
 		{
 			text = "DROP",
 			style = "secondary",

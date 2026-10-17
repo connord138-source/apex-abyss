@@ -45,7 +45,7 @@ local rarities: { Rarity } = {
 		dna = 2,
 		points = 1,
 		skin = "CatchGolden",
-		track = 10,
+		track = 100, -- owner, 2026-10-17: 100 Golden catches for the Golden skin (was 10)
 		color = Color3.fromRGB(255, 196, 60),
 		announce = { spawn = false, catch = false },
 	},

@@ -12,6 +12,7 @@ export type Reward = {
 	skin: string?, -- a Config/Shades id, for the fish you're swimming as
 	title: string?, -- a title (worn at once if none is)
 	den: string?, -- a Config/Dens item, owned for free
+	trail: string?, -- a Config/Trails boost trail (worn at once if none is)
 	xp: number?, -- Tide Pass XP
 	big: boolean?, -- the one a ladder builds to (drawn larger)
 }

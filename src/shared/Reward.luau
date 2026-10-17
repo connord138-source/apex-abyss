@@ -38,6 +38,10 @@ function Reward.lines(reward: Reward, bonus: number?): { string }
 	if reward.title then
 		table.insert(parts, `"{string.upper(reward.title)}" TITLE`)
 	end
+	if reward.trail then
+		local trail = Config.Trails.byId[reward.trail]
+		table.insert(parts, `{string.upper(if trail then trail.name else reward.trail)} TRAIL`)
+	end
 	if reward.den then
 		local item = Config.Dens.itemsById[reward.den]
 		table.insert(parts, string.upper(if item then item.name else reward.den))

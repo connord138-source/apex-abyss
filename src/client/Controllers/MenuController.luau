@@ -17,6 +17,7 @@ local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Catch = require(ReplicatedStorage.Shared.Catch)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local Fx = require(ReplicatedStorage.Shared.Fx)
 local Reward = require(ReplicatedStorage.Shared.Reward)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
 local Tides = require(ReplicatedStorage.Shared.Tides)
@@ -521,121 +522,10 @@ local function denRecord(): any
 	return s.den or { level = 1, glow = "Teal", floor = "Flagstone", owned = {}, items = {}, placed = {} }
 end
 
-local function denRows(list: ScrollingFrame)
-	local s = state()
-	local den = denRecord()
+-- The den shop's rows: things (into the Build tray), the furniture sets, floors and
+-- glows. Part of the den menu, and on its own as Build mode's SHOP
+local function denShopRows(list: ScrollingFrame, next: () -> number, s: any, den: any)
 	local Dens = Config.Dens
-	local order = 0
-	local function next(): number
-		order += 1
-		return order
-	end
-	local placed = if typeof(den.placed) == "table" then #den.placed else 0
-	local capacity = if typeof(s.denCapacity) == "number" then s.denCapacity else 15
-	-- Build mode
-	local _, build = row(
-		list,
-		next(),
-		"Build",
-		"Build your den",
-		"Place, move and turn your things on any floor, wall or ceiling",
-		`{placed} / {capacity} placed`,
-		"BUILD",
-		"gold",
-		Ui.color.haul
-	)
-	if build then
-		build.Activated:Connect(function()
-			local start = MenuController.startBuild
-			MenuController.close()
-			if start then
-				start()
-			end
-		end)
-	end
-	-- The upgrade
-	local level = Dens.levels[den.level] or Dens.levels[1]
-	local upgrade = Dens.levels[den.level + 1]
-	if upgrade then
-		local _, button = row(
-			list,
-			next(),
-			"Upgrade",
-			`Upgrade to a {upgrade.name}`,
-			upgrade.blurb,
-			`holds {upgrade.capacity}`,
-			coralText(upgrade.cost),
-			priceStyle(upgrade.cost),
-			Ui.color.haul
-		)
-		if button then
-			button.Activated:Connect(function()
-				ClientState.request("DenUpgrade")
-			end)
-		end
-	else
-		row(list, next(), "Upgrade", `A {level.name}`, level.blurb, "Fully dug", nil, nil, Ui.color.haul)
-	end
-	-- The Coral Garden: what it grows here, and the Deep Garden pass
-	local passes = s.passes or {}
-	local garden = s.garden
-	if typeof(garden) == "table" then
-		local nextRates = if upgrade
-			then Garden.rates(
-				upgrade.level,
-				passes.DeepGarden == true,
-				if state().premium == true then Config.Monetization.tuning.premium.gardenHours else 0
-			)
-			else nil
-		local blurb = `{Ui.number(garden.coralPerHour)} coral and {Ui.number(garden.shellsPerHour)} shells an hour, `
-			.. `holds {garden.hours} h · ×{garden.rest} while you rest here`
-		if nextRates and upgrade then
-			blurb ..= ` · a {upgrade.name} grows {Ui.number(nextRates.coralPerHour)}/h`
-		end
-		local deepPass = Config.Monetization.passesByKey.DeepGarden
-		local canBuy = not passes.DeepGarden and deepPass and Store.listed(deepPass.id)
-		local frame, button = row(
-			list,
-			next(),
-			"Garden",
-			"Coral Garden",
-			blurb,
-			`{Ui.number(garden.coral)} / {Ui.number(garden.capCoral)} grown`,
-			if canBuy and deepPass then `DEEP GARDEN · {Store.price(deepPass.price)}` else nil,
-			"gold",
-			Color3.fromRGB(255, 120, 140)
-		)
-		local blurbLabel = frame:FindFirstChild("Blurb") :: TextLabel?
-		if blurbLabel then
-			blurbLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		end
-		if button then
-			button.TextSize = 13
-			button.Activated:Connect(function()
-				Store.buyPass("DeepGarden")
-			end)
-		end
-	end
-	-- The Den Expansion pass: more things at any level
-	local expansion = Config.Monetization.passesByKey.DenExpansion
-	if not passes.DenExpansion and expansion and Store.listed(expansion.id) then
-		local _, button = row(
-			list,
-			next(),
-			"Expansion",
-			"Den Expansion",
-			`Place {Dens.expansionCapacity} more things in your den, at any level`,
-			nil,
-			Store.price(expansion.price),
-			"gold",
-			Ui.color.haul
-		)
-		if button then
-			button.Activated:Connect(function()
-				Store.buyPass("DenExpansion")
-			end)
-		end
-	end
 	-- Things: bought into the Build tray (the furniture sets come after)
 	denSection(list, next(), "Things · they go into your Build tray")
 	local items = if typeof(den.items) == "table" then den.items else {}
@@ -772,6 +662,129 @@ local function denRows(list: ScrollingFrame)
 	end
 end
 
+-- `shopOnly`: the den shop opened from Build mode (things, sets, floors and glows)
+local function denRows(list: ScrollingFrame, shopOnly: boolean?)
+	local s = state()
+	local den = denRecord()
+	local Dens = Config.Dens
+	local order = 0
+	local function next(): number
+		order += 1
+		return order
+	end
+	local placed = if typeof(den.placed) == "table" then #den.placed else 0
+	local capacity = if typeof(s.denCapacity) == "number" then s.denCapacity else 15
+	local level = Dens.levels[den.level] or Dens.levels[1]
+	local upgrade = Dens.levels[den.level + 1]
+	local passes = s.passes or {}
+	if shopOnly then
+		denShopRows(list, next, s, den)
+		return
+	end
+	-- Build mode
+	local _, build = row(
+		list,
+		next(),
+		"Build",
+		"Build your den",
+		"Place, move and turn your things on any floor, wall or ceiling",
+		`{placed} / {capacity} placed`,
+		"BUILD",
+		"gold",
+		Ui.color.haul
+	)
+	if build then
+		build.Activated:Connect(function()
+			local start = MenuController.startBuild
+			MenuController.close()
+			if start then
+				start()
+			end
+		end)
+	end
+	-- The upgrade
+	if upgrade then
+		local _, button = row(
+			list,
+			next(),
+			"Upgrade",
+			`Upgrade to a {upgrade.name}`,
+			upgrade.blurb,
+			`holds {upgrade.capacity}`,
+			coralText(upgrade.cost),
+			priceStyle(upgrade.cost),
+			Ui.color.haul
+		)
+		if button then
+			button.Activated:Connect(function()
+				ClientState.request("DenUpgrade")
+			end)
+		end
+	else
+		row(list, next(), "Upgrade", `A {level.name}`, level.blurb, "Fully dug", nil, nil, Ui.color.haul)
+	end
+	-- The Coral Garden: what it grows here, and the Deep Garden pass
+	local garden = s.garden
+	if typeof(garden) == "table" then
+		local nextRates = if upgrade
+			then Garden.rates(
+				upgrade.level,
+				passes.DeepGarden == true,
+				if state().premium == true then Config.Monetization.tuning.premium.gardenHours else 0
+			)
+			else nil
+		local blurb = `{Ui.number(garden.coralPerHour)} coral and {Ui.number(garden.shellsPerHour)} shells an hour, `
+			.. `holds {garden.hours} h · ×{garden.rest} while you rest here`
+		if nextRates and upgrade then
+			blurb ..= ` · a {upgrade.name} grows {Ui.number(nextRates.coralPerHour)}/h`
+		end
+		local deepPass = Config.Monetization.passesByKey.DeepGarden
+		local canBuy = not passes.DeepGarden and deepPass and Store.listed(deepPass.id)
+		local frame, button = row(
+			list,
+			next(),
+			"Garden",
+			"Coral Garden",
+			blurb,
+			`{Ui.number(garden.coral)} / {Ui.number(garden.capCoral)} grown`,
+			if canBuy and deepPass then `DEEP GARDEN · {Store.price(deepPass.price)}` else nil,
+			"gold",
+			Color3.fromRGB(255, 120, 140)
+		)
+		local blurbLabel = frame:FindFirstChild("Blurb") :: TextLabel?
+		if blurbLabel then
+			blurbLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		end
+		if button then
+			button.TextSize = 13
+			button.Activated:Connect(function()
+				Store.buyPass("DeepGarden")
+			end)
+		end
+	end
+	-- The Den Expansion pass: more things at any level
+	local expansion = Config.Monetization.passesByKey.DenExpansion
+	if not passes.DenExpansion and expansion and Store.listed(expansion.id) then
+		local _, button = row(
+			list,
+			next(),
+			"Expansion",
+			"Den Expansion",
+			`Place {Dens.expansionCapacity} more things in your den, at any level`,
+			nil,
+			Store.price(expansion.price),
+			"gold",
+			Ui.color.haul
+		)
+		if button then
+			button.Activated:Connect(function()
+				Store.buyPass("DenExpansion")
+			end)
+		end
+	end
+	denShopRows(list, next, s, den)
+end
+
 local function denSubtitle(): string
 	local s = state()
 	local den = denRecord()
@@ -784,7 +797,7 @@ local function denSubtitle(): string
 end
 
 function MenuController.openDen(anchor: Vector3?)
-	open("YOUR DEN", denSubtitle(), Vector2.new(720, 520), function(window)
+	open("YOUR DEN · BUILD AND SHOP", denSubtitle(), Vector2.new(720, 520), function(window)
 		local list = Ui.list(window.content)
 		return {
 			window = window,
@@ -800,6 +813,27 @@ function MenuController.openDen(anchor: Vector3?)
 	currentShop = "__den"
 end
 
+-- The den shop on its own (Build mode's SHOP, owner 2026-10-17): what you buy goes
+-- into the Build tray
+function MenuController.openDenShop()
+	local function subtitle(): string
+		return `Bought things go into your Build tray   ·   {Ui.number(coral())} coral`
+	end
+	open("DEN SHOP", subtitle(), Vector2.new(720, 520), function(window)
+		local list = Ui.list(window.content)
+		return {
+			window = window,
+			render = function()
+				window.subtitle.Text = subtitle()
+				rerender(list, function()
+					denRows(list, true)
+				end)
+			end,
+		}
+	end)
+	currentShop = "__denshop"
+end
+
 -- Re-draws the open menu (a pick inside it changed)
 function MenuController.rerenderCurrent()
 	if current then
@@ -807,7 +841,22 @@ function MenuController.rerenderCurrent()
 	end
 end
 
-local TABS = { "Shades", "Parts", "Variants" }
+local TABS = { "Shades", "Parts", "Variants", "Trails" }
+
+-- Where a boost trail is earned this season ("Tide Pass free row, tier 6"), or nil
+local function trailSource(id: string): string?
+	local pass = state().pass
+	local season = if typeof(pass) == "table" and typeof(pass.season) == "number" then pass.season else 1
+	local def = Config.Pass.seasons[(season - 1) % #Config.Pass.seasons + 1]
+	for i, entry in def.tiers do
+		if entry.free and entry.free.trail == id then
+			return `Tide Pass free row, tier {i}`
+		elseif entry.paid and entry.paid.trail == id then
+			return `Deep Pass row, tier {i}`
+		end
+	end
+	return nil
+end
 
 local function equippedDress(): Cosmetics.Dress
 	local equipped = state().equipped or {}
@@ -908,6 +957,26 @@ local function wardrobeRows(list: ScrollingFrame, tab: string)
 				how
 			)
 		end
+	elseif tab == "Trails" then
+		-- Boost trails: every fish's, worn one at a time (Config/Trails)
+		local owned = s.trails or {}
+		for _, trail in Config.Trails.list do
+			local has = owned[trail.id] == true
+			local where = trailSource(trail.id)
+			add(
+				"trail",
+				trail.id,
+				trail.name,
+				trail.tier,
+				0,
+				has,
+				s.trail == trail.id,
+				if has then "every fish" else nil,
+				trail.color,
+				nil,
+				if where then `{where} · {trail.blurb}` else `a later Tide Pass season · {trail.blurb}`
+			)
+		end
 	elseif tab == "Parts" then
 		for _, part in Config.Exotics.parts do
 			local has = (s.parts or {})[part.id] == true
@@ -954,7 +1023,7 @@ end
 function MenuController.openWardrobe()
 	open(
 		"Wardrobe",
-		"Shades, body parts and exotic variants you've found",
+		"Shades, body parts, exotic variants and boost trails you've found",
 		Vector2.new(880, 500),
 		function(window)
 			local previewFrame =
@@ -980,8 +1049,8 @@ function MenuController.openWardrobe()
 					right,
 					name,
 					string.upper(name),
-					UDim2.fromOffset(150, 38),
-					UDim2.fromOffset((i - 1) * 160, 0),
+					UDim2.fromOffset(130, 38),
+					UDim2.fromOffset((i - 1) * 138, 0),
 					"secondary"
 				)
 				tabs[name] = button
@@ -1175,9 +1244,12 @@ function MenuController.openSpecies()
 					local have = (s.dna or {})[rule.biome] or 0
 					local need = rule.dna or 0
 					local price = rule.coral or 0
-					note =
-						`Unlock with {need} {biome.name} DNA (you have {have}) and {Ui.number(price)} coral. DNA drops from fish in the {biome.name}.`
-					if have >= need and coral() >= price then
+					local starter = (s.speciesLevels or {})[Config.Species.STARTER] or 1
+					local grown = rule.level == nil or starter >= rule.level
+					note = `{if rule.level
+						then `Grow your Nibbler to LV {rule.level} (it's LV {starter}), then unlock with `
+						else "Unlock with "}{need} {biome.name} DNA (you have {have}) and {Ui.number(price)} coral. DNA drops from fish in the {biome.name}.`
+					if grown and have >= need and coral() >= price then
 						action, style = "UNLOCK", "gold"
 						onPress = function()
 							ClientState.request("UnlockSpecies", chosen)
@@ -1381,6 +1453,381 @@ function MenuController.openSatchel()
 				end)
 			end,
 		}
+	end)
+end
+
+-- The Index (owner, 2026-10-17: "Need more info for players such as an index or
+-- something to show them how they are to get all of the harder skins, parts, what
+-- the parts do, etc. Needs more direction for players starting out"): a GUIDE of
+-- what to do next and how the game works, then every skin of this fish and every
+-- skin any fish can have, the parts, the variants, the fish and the boost trails,
+-- each with how it's got and whether it's yours. ROLL ODDS opens the odds panel.
+local INDEX_TABS = { "Guide", "Skins", "Parts", "Variants", "Fish", "Trails" }
+
+-- A row whose text runs to more lines (the Index): the title, then `text` wrapped
+local function infoRow(
+	list: ScrollingFrame,
+	order: number,
+	title: string,
+	text: string,
+	accent: Color3?,
+	status: string?,
+	statusColor: Color3?
+)
+	local frame = row(list, order, `Info{order}`, title, text, status, nil, nil, accent)
+	local lines = math.clamp(math.ceil(#text / 92), 1, 3)
+	frame.Size = UDim2.new(1, -8, 0, 44 + lines * 17)
+	local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
+	if blurb then
+		blurb.TextWrapped = true
+		blurb.TextYAlignment = Enum.TextYAlignment.Top
+		blurb.Size = UDim2.new(1, -200, 0, lines * 17 + 2)
+	end
+	local label = frame:FindFirstChild("Status") :: TextLabel?
+	if label then
+		label.Position = UDim2.new(1, -150, 0, 12)
+		if statusColor then
+			label.TextColor3 = statusColor
+		end
+	end
+end
+
+-- Where a reward (a skin or a boost trail) sits on this season's Tide Pass
+local function passSource(field: string, id: string): string?
+	local pass = state().pass
+	local season = if typeof(pass) == "table" and typeof(pass.season) == "number" then pass.season else 1
+	local def = Config.Pass.seasons[(season - 1) % #Config.Pass.seasons + 1]
+	for i, entry in def.tiers do
+		if entry.free and (entry.free :: any)[field] == id then
+			return `Tide Pass free row, tier {i}`
+		elseif entry.paid and (entry.paid :: any)[field] == id then
+			return `Deep Pass row, tier {i}`
+		end
+	end
+	return nil
+end
+
+-- How a skin is got, for the fish you swim as
+local function shadeHow(shade: any, s: any): string
+	if shade.pass then
+		return `{passSource("skin", shade.id) or "A Tide Pass season"} · works on every fish`
+	elseif shade.catch then
+		local rarity = Config.Catch.byId[shade.catch]
+		local count = ((s.catchTracks or {})[s.species or ""] or {})[rarity.id] or 0
+		return `Catch {rarity.track} {rarity.name} fish as this fish ({math.min(count, rarity.track)} / {rarity.track} so far) · the LOG's catch track`
+	elseif shade.week then
+		return "The Catch of the Week's skin: catch that week's fish (the LOG) while it runs"
+	elseif shade.boss then
+		local boss = if shade.boss == "GiantSquid" then "Giant Squid" else shade.boss
+		local price = ""
+		for _, item in Config.Shop.trophies do
+			if item.shade == shade.id then
+				price = ` or {item.price} {item.currencyName} at the Trophy Hunter`
+			end
+		end
+		return `Beat the {boss} world boss: a 1 in 15 drop{price}`
+	elseif shade.treasure then
+		return "Dug up from a Captain's treasure chest (rare)"
+	elseif shade.price then
+		return `The Shade Dyer sells it for {Ui.number(shade.price)} coral, or roll it · {RollOdds.oneIn(
+			1 / shade.chance
+		)}`
+	end
+	return `Roll it (50 shells a roll) · about {RollOdds.oneIn(1 / shade.chance)}`
+end
+
+-- What to do next, from where you are (the Guide's first rows)
+local function nextGoals(s: any): { { title: string, text: string } }
+	local goals: { { title: string, text: string } } = {}
+	local tutorial = s.tutorial
+	if typeof(tutorial) == "table" and not tutorial.done then
+		table.insert(goals, {
+			title = "Finish the tutorial",
+			text = `Step {tutorial.step or 1} of {#Config.Tutorial.steps}: follow the card at the top left and the trail of lights.`,
+		})
+	end
+	local levels = s.speciesLevels or {}
+	local nibbler = levels[Config.Species.STARTER] or 1
+	local unlocked = s.unlocked or {}
+	local cuda = Config.Species.byId.Cuda
+	if not unlocked.Cuda and cuda.unlock.biome then
+		local have = (s.dna or {})[cuda.unlock.biome] or 0
+		table.insert(goals, {
+			title = `Unlock the {cuda.name}`,
+			text = `Grow your Nibbler to LV {cuda.unlock.level or 1} (it's LV {nibbler}), collect {cuda.unlock.dna or 0} Kelp Shallows DNA ({have} so far) and have {Ui.number(
+				cuda.unlock.coral or 0
+			)} coral, then unlock it in FISH.`,
+		})
+	end
+	local level = s.level or nibbler
+	for _, biome in Config.Biomes.list do
+		if biome.live and biome.minLevel > level then
+			table.insert(goals, {
+				title = `Next biome: {biome.name}`,
+				text = `Suggested from LV {biome.minLevel} (you're LV {level}). Eat, bank, repeat: bigger fish give more.`,
+			})
+			break
+		end
+	end
+	local ready = s.rollsReady or 0
+	if ready > 0 then
+		table.insert(goals, {
+			title = `{ready} roll{if ready == 1 then "" else "s"} ready`,
+			text = "Press ROLL (R) for a new skin, part or variant for the fish you swim as.",
+		})
+	end
+	local den = s.den
+	local denLevel = if typeof(den) == "table" and typeof(den.level) == "number" then den.level else 1
+	local nextDen = Config.Dens.levels[denLevel + 1]
+	if nextDen then
+		table.insert(goals, {
+			title = `Dig your den into a {nextDen.name}`,
+			text = `{Ui.number(nextDen.cost)} coral in the den menu (E in your den). It holds {nextDen.capacity} things.`,
+		})
+	end
+	return goals
+end
+
+local GUIDE: { { title: string, text: string } } = {
+	{
+		title = "Eat and grow",
+		text = "Swim into anything under about two thirds your size to swallow it. BITE (right click, RB) fish your own size, predators and bosses. A fish that's too big to eat will chase you: swim away.",
+	},
+	{
+		title = "Bank your Haul",
+		text = "Everything you eat on a dive is your Haul, and it grows you live. Swim home into your den's pool to bank it as growth for good. Get eaten first and it bursts into chum.",
+	},
+	{
+		title = "Biomes and depth",
+		text = "Kelp Shallows LV 1+, Shipwreck Graveyard 10+, Coral Reef 25+, Open Blue 35+, Sunken Ruins 50+, Hydrothermal Vents 65+, Abyssal Trench 80+. Too deep too soon and the pressure crushes you.",
+	},
+	{
+		title = "Shells and rolls",
+		text = "Every 50 shells is a roll: a skin, a body part or a variant for the fish you swim as. Skins you have never roll again for that fish. ROLL ODDS shows every chance.",
+	},
+	{
+		title = "Fish",
+		text = "Each fish levels up on its own. Unlock new fish in FISH with their home biome's DNA (it drops from fish there) and coral.",
+	},
+	{
+		title = "Your den",
+		text = "Your den is your house. Press E in it for the den menu and shop, B to build. Its Coral Garden grows coral and shells while you're away.",
+	},
+	{
+		title = "Healing",
+		text = "Health never comes back on its own. Kelp Wraps (H) heal 40%, and eating prey heals a little.",
+	},
+	{
+		title = "Rare catches and tides",
+		text = "Golden, Glowing, Crystal and Prism fish pay big and fill each fish's catch track (the LOG). The Tide Clock changes the sea every 20 minutes.",
+	},
+	{
+		title = "World bosses",
+		text = "The Megalodon and the Giant Squid rise about every 30 minutes. Fight together for trophies, exclusive skins and a huge Haul.",
+	},
+	{
+		title = "Treasure maps",
+		text = "Maps drop from prey, shells and big banks. Follow one (MAPS) and dig at the X: coral, shells and sometimes a rare skin.",
+	},
+	{
+		title = "The Tide Pass",
+		text = "Playing earns pass tiers: skins that work on every fish, boost trails, coral and more. The Deep Pass opens a second row.",
+	},
+}
+
+function MenuController.openIndex(startTab: string?)
+	open("Index", "How to get everything, and what to do next", Vector2.new(920, 560), function(window)
+		local tab = startTab or "Guide"
+		local tabs: { [string]: TextButton } = {}
+		local holder = Instance.new("Frame")
+		holder.BackgroundTransparency = 1
+		holder.Position = UDim2.fromOffset(0, 50)
+		holder.Size = UDim2.new(1, 0, 1, -50)
+		holder.Parent = window.content
+		local list = Ui.list(holder, 6)
+		local menu: Menu
+		for i, name in INDEX_TABS do
+			local button = Ui.button(
+				window.content,
+				name,
+				string.upper(name),
+				UDim2.fromOffset(110, 38),
+				UDim2.fromOffset((i - 1) * 116, 0),
+				"secondary"
+			)
+			tabs[name] = button
+			button.Activated:Connect(function()
+				tab = name
+				list.CanvasPosition = Vector2.zero
+				menu.render()
+			end)
+		end
+		local odds = Ui.button(
+			window.content,
+			"Odds",
+			"ROLL ODDS",
+			UDim2.fromOffset(130, 38),
+			UDim2.new(1, -130, 0, 0),
+			"gold"
+		)
+		odds.Activated:Connect(MenuController.openOdds)
+		local function owned(has: boolean): (string, Color3)
+			return if has then "YOURS" else "NOT YET", if has then Ui.color.safe else Ui.color.muted
+		end
+		menu = {
+			window = window,
+			render = function()
+				for name, button in tabs do
+					Ui.setButtonStyle(button, if name == tab then "primary" else "secondary")
+				end
+				rerender(list, function()
+					local s = state()
+					local order = 0
+					local function next(): number
+						order += 1
+						return order
+					end
+					if tab == "Guide" then
+						denSection(list, next(), "Next for you")
+						for _, goal in nextGoals(s) do
+							infoRow(list, next(), goal.title, goal.text, Ui.color.haul)
+						end
+						denSection(list, next(), "How it works")
+						for _, entry in GUIDE do
+							infoRow(list, next(), entry.title, entry.text, Ui.color.accent)
+						end
+					elseif tab == "Skins" then
+						local species = Config.Species.byId[s.species or ""] or Config.Species.byId.Nibbler
+						local shades = s.shades or {}
+						denSection(list, next(), `{species.name} skins · this fish's own line`)
+						local line: { any } = Config.Shades.lines[species.id] or {}
+						for _, shade in line do
+							local tier = Tiers.byId[shade.tier]
+							local status, color = owned(shades[shade.id] == true)
+							local fx = if shade.fx then ` · effects: {table.concat(shade.fx, ", ")}` else ""
+							infoRow(
+								list,
+								next(),
+								`{shade.name} · {tier.name}`,
+								shadeHow(shade, s) .. fx,
+								tier.color,
+								status,
+								color
+							)
+						end
+						denSection(
+							list,
+							next(),
+							"Skins every fish can have · unlocked per fish (Tide Pass skins for all at once)"
+						)
+						for _, shade in Config.Shades.list do
+							if shade.species == nil and (shade.week == nil or shades[shade.id]) then
+								local tier = Tiers.byId[shade.tier]
+								local status, color = owned(shades[shade.id] == true)
+								local fx = if shade.fx
+									then ` · effects: {table.concat(shade.fx, ", ")}`
+									else ""
+								infoRow(
+									list,
+									next(),
+									`{shade.name} · {tier.name}`,
+									shadeHow(shade, s) .. fx,
+									tier.color,
+									status,
+									color
+								)
+							end
+						end
+					elseif tab == "Parts" then
+						denSection(
+							list,
+							next(),
+							"Body parts · one per slot, from rolls, on any fish · looks only, no stats"
+						)
+						for _, part in Config.Exotics.parts do
+							local status, color = owned((s.parts or {})[part.id] == true)
+							local extra = if part.id == "AnglerLure"
+								then " Lights up dark water like an Anglerfish's lure."
+								else ""
+							infoRow(
+								list,
+								next(),
+								`{part.name} · {part.slot}`,
+								`{part.blurb}{extra} Roll it · about {RollOdds.oneIn(1 / part.chance)}. Duplicates turn into {Ui.number(
+									part.refund
+								)} coral.`,
+								Tiers.byId.Abyssal.color,
+								status,
+								color
+							)
+						end
+					elseif tab == "Variants" then
+						denSection(
+							list,
+							next(),
+							"Exotic variants · each reshapes one fish, from rolls as that fish"
+						)
+						for _, variant in Config.Exotics.variants do
+							local fish = Config.Species.byId[variant.species]
+							local status, color = owned((s.variants or {})[variant.id] == true)
+							infoRow(
+								list,
+								next(),
+								`{variant.name} · {if fish then fish.name else variant.species} only`,
+								`{variant.blurb} Roll it as {if fish then fish.name else "that fish"} · about {RollOdds.oneIn(
+									1 / variant.chance
+								)}.`,
+								Tiers.byId.Abyssal.color,
+								status,
+								color
+							)
+						end
+					elseif tab == "Fish" then
+						denSection(list, next(), "The fish · each levels up on its own")
+						for _, species in Config.Species.list do
+							local rule = species.unlock
+							local how = if rule.kind == "start"
+								then "Everyone starts as one."
+								elseif rule.kind == "tutorial" then "Finish the tutorial."
+								else `{if rule.level then `Nibbler LV {rule.level}, then ` else ""}{rule.dna or 0} {(
+									Config.Biomes.byId[rule.biome or ""] or { name = "?" }
+								).name} DNA and {Ui.number(rule.coral or 0)} coral (FISH menu).`
+							local stats = species.stats
+							local status, color = owned((s.unlocked or {})[species.id] == true)
+							infoRow(
+								list,
+								next(),
+								`{species.name} · {species.role}`,
+								`{species.blurb} {how} Speed ×{stats.speed}, turn ×{stats.turn}, health ×{stats.health}, bite ×{stats.bite}.`,
+								species.fin,
+								status,
+								color
+							)
+						end
+					else
+						denSection(
+							list,
+							next(),
+							"Boost trails · every fish's, worn in the Wardrobe's TRAILS · they stream off you when you dash"
+						)
+						for _, trail in Config.Trails.list do
+							local tier = Tiers.byId[trail.tier]
+							local status, color = owned((s.trails or {})[trail.id] == true)
+							infoRow(
+								list,
+								next(),
+								`{trail.name} · {tier.name}`,
+								`{trail.blurb} {passSource("trail", trail.id) or "A later Tide Pass season"}.`,
+								trail.color,
+								status,
+								color
+							)
+						end
+					end
+				end)
+			end,
+		}
+		return menu
 	end)
 end
 
@@ -2310,6 +2757,9 @@ local function passVisual(reward: Reward.Reward): (CardPhoto.Outcome?, string?, 
 		local shade = Config.Shades.byId[reward.skin]
 		local tier = if shade then shade.tier else "Rare"
 		return { kind = "shade", id = reward.skin, name = "", tier = tier }, nil, tierColor(tier), "SKIN"
+	elseif reward.trail then
+		local trail = Config.Trails.byId[reward.trail]
+		return nil, "TRAIL", if trail then trail.color else Ui.color.accent, "TRAIL"
 	elseif reward.den then
 		return nil, "DEN", Ui.color.haul, "DEN"
 	elseif reward.title then
@@ -2337,18 +2787,22 @@ local function passHighlights(
 	season: { tiers: { { free: Reward.Reward?, paid: Reward.Reward? } } },
 	row: string
 ): string
-	local skins, titles, dens = 0, 0, 0
+	local skins, titles, dens, trails = 0, 0, 0, 0
 	for _, entry in season.tiers do
 		local reward = (entry :: any)[row] :: Reward.Reward?
 		if reward then
 			skins += if reward.skin then 1 else 0
 			titles += if reward.title then 1 else 0
 			dens += if reward.den then 1 else 0
+			trails += if reward.trail then 1 else 0
 		end
 	end
 	local parts: { string } = {}
 	if skins > 0 then
-		table.insert(parts, `{skins} skin{if skins == 1 then "" else "s"}`)
+		table.insert(parts, `{skins} skin{if skins == 1 then "" else "s"} for every fish`)
+	end
+	if trails > 0 then
+		table.insert(parts, `{trails} boost trail{if trails == 1 then "" else "s"}`)
 	end
 	if titles > 0 then
 		table.insert(parts, `{titles} title{if titles == 1 then "" else "s"}`)
@@ -2608,6 +3062,32 @@ function MenuController.openPass()
 			if reward then
 				local badge: string?, tag: string?
 				outcome, badge, frameColor, tag = passVisual(reward)
+				if reward.trail then
+					-- A streak in the trail's colours behind the word
+					local trail = Config.Trails.byId[reward.trail]
+					local streak = Instance.new("Frame")
+					streak.Name = "Streak"
+					streak.AnchorPoint = Vector2.new(0.5, 0.5)
+					streak.Position = UDim2.fromScale(0.5, 0.5)
+					streak.Size = UDim2.new(1, -16, 0, 22)
+					streak.BackgroundColor3 = Color3.new(1, 1, 1)
+					streak.BorderSizePixel = 0
+					Ui.corner(streak, UDim.new(1, 0))
+					local gradient = Instance.new("UIGradient")
+					gradient.Color = if trail and trail.style == "rainbow"
+						then Fx.rainbow(0.7)
+						else ColorSequence.new(
+							if trail then trail.color2 else Ui.color.accent,
+							if trail then trail.color else Ui.color.accent
+						)
+					gradient.Transparency = NumberSequence.new({
+						NumberSequenceKeypoint.new(0, 1),
+						NumberSequenceKeypoint.new(0.6, 0.35),
+						NumberSequenceKeypoint.new(1, 0.1),
+					})
+					gradient.Parent = streak
+					streak.Parent = visual
+				end
 				if badge then
 					local word = Ui.label(
 						visual,
@@ -2897,7 +3377,7 @@ function MenuController.openPass()
 				seasonLabel.Text = `SEASON {pass.season or 1} · {string.upper(def.name)}`
 				window.subtitle.Text = if os.clock() < claimedUntil
 					then claimedText
-					else `{def.blurb} · ends in {Format.duration(left)}`
+					else `{def.blurb} · pass skins work on every fish · ends in {Format.duration(left)}`
 				window.subtitle.TextColor3 = if os.clock() < claimedUntil
 					then Ui.color.haul
 					else Ui.color.muted
@@ -2915,8 +3395,8 @@ function MenuController.openPass()
 				deepHigh.Text = `Everything free, plus {passHighlights(def, "paid")} · ×{Pass.paidXp} XP`
 				deepLock.Visible = not paid
 				deepWho.Text = if paid
-					then "Yours this season: every reward on this row"
-					else `Unlock this row for {if priceText ~= "" then priceText else "Robux"}, this season`
+					then "Yours this season: every skin works on all your fish"
+					else `Unlock for {if priceText ~= "" then priceText else "Robux"} · skins work on all your fish`
 				deepChip.Text = if paid then "UNLOCKED" else "LOCKED"
 				deepChip.TextColor3 = if paid then Ui.color.safe else Ui.color.haul
 				-- The tiers: built once a season, repainted every tick
@@ -3577,7 +4057,8 @@ local function updateHint(root: BasePart?)
 			best = nil
 		end
 	end
-	-- Your own den's pool: the den menu
+	-- Your own den: E (Y, the phone's button) opens the den menu anywhere inside it
+	-- (owner, 2026-10-17: "E does nothing in my den"); the chip shows at the pool
 	local denIndex = state().denIndex
 	local denSpot: Vector3? = nil
 	if best == nil and root and typeof(denIndex) == "number" and denIndex > 0 then
@@ -3585,6 +4066,8 @@ local function updateHint(root: BasePart?)
 		if (root.Position - pool).Magnitude <= Config.Dens.hintReach then
 			best = "__den"
 			denSpot = pool
+		elseif Layout.denAt(root.Position) == denIndex then
+			best = "__den"
 		end
 	end
 	if MenuController.building then
@@ -3593,16 +4076,20 @@ local function updateHint(root: BasePart?)
 	nearVendor = best
 	local show = best ~= nil and current == nil
 	local touch = Input.isTouch()
-	hintGui.Enabled = show and not touch
+	-- (away from the pool the den's E works without a chip)
+	hintGui.Enabled = show and not touch and (best ~= "__den" or denSpot ~= nil)
 	shopButton.Visible = show and touch and not MenuController.stallButtonHidden
 	if show and best then
 		local label = if best == "__den"
-			then (if touch or Input.isGamepad() then "YOUR DEN" else "YOUR DEN   ·   B  BUILD")
+			then (if touch or Input.isGamepad() then "DEN & SHOP" else "DEN & SHOP  ·  B  BUILD")
 			else `SHOP · {Shop.vendorsById[best].name}`
 		if touch then
 			shopButton.Text = label
 		else
-			hintSpot.WorldPosition = denSpot or counters[best]
+			local at = denSpot or counters[best]
+			if at then
+				hintSpot.WorldPosition = at
+			end
 			hintKey.Text = if Input.isGamepad() then "Y" else "E"
 			hintText.Text = label
 		end
@@ -3612,7 +4099,7 @@ end
 -- Whether the hint at your den's pool is up (it already says B · BUILD, so Build
 -- mode's own hint stands aside: a screenshot of 2026-10-14 showed both)
 function MenuController.denHintShown(): boolean
-	return nearVendor == "__den" and current == nil
+	return nearVendor == "__den" and current == nil and hintGui.Enabled
 end
 
 function MenuController.start()

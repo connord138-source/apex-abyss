@@ -307,11 +307,11 @@ local function celebrate()
 	)
 	title.TextXAlignment = Enum.TextXAlignment.Center
 	title.TextStrokeTransparency = 0.5
-	local species = Config.Species.byId[Tutorial.reward.unlock]
+	local cuda = Config.Species.byId.Cuda
 	local sub = Ui.label(
 		holder,
 		"Sub",
-		`The {species.name} is yours · open FISH to swim as it · your first roll is ready`,
+		`Your first roll is ready · INDEX shows what's next · Nibbler LV {cuda.unlock.level or 15} unlocks the {cuda.name}`,
 		Ui.FONT_BOLD,
 		20,
 		Ui.color.text,

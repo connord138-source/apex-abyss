@@ -1,5 +1,5 @@
 --!strict
--- The wallet (Coral and Shells, top left), the Roll / Odds / Wardrobe buttons,
+-- The wallet (Coral and Shells, top left), the Roll / Index / Wardrobe buttons,
 -- and the roll reveal: a case-opening reel that slows onto what the server
 -- rolled. The rarer the result, the longer the reel creeps and the bigger the
 -- landing (a flash and light rays in the tier's color from Rare up). Cosmetics land
@@ -854,10 +854,14 @@ local function buildWallet()
 	rollButton.TextSize = 15
 	rollScale = rollButton:FindFirstChildOfClass("UIScale") :: UIScale
 	rollButton.Activated:Connect(RollController.roll)
-	local odds = Ui.button(row, "Odds", "ODDS", UDim2.fromOffset(70, 34), UDim2.new(), "secondary")
+	-- INDEX: what to do next and how everything is got (its ROLL ODDS opens the
+	-- odds; owner, 2026-10-17: "Need more info for players such as an index")
+	local odds = Ui.button(row, "Index", "INDEX", UDim2.fromOffset(80, 34), UDim2.new(), "secondary")
 	odds.LayoutOrder = 2
 	odds.TextSize = 14
-	odds.Activated:Connect(MenuController.openOdds)
+	odds.Activated:Connect(function()
+		MenuController.openIndex()
+	end)
 	local wardrobe =
 		Ui.button(row, "Wardrobe", "WARDROBE", UDim2.fromOffset(110, 34), UDim2.new(), "secondary")
 	wardrobe.LayoutOrder = 3
@@ -958,7 +962,7 @@ function RollController.start()
 		elseif key == Enum.KeyCode.DPadLeft then
 			MenuController.openWardrobe()
 		elseif key == Enum.KeyCode.DPadRight then
-			MenuController.openOdds()
+			MenuController.openIndex()
 		elseif key == Enum.KeyCode.DPadDown and rollButton.Visible then
 			RollController.roll()
 		end

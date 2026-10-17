@@ -56,7 +56,8 @@ end
 
 -- Pays a reward bundle out, `bonus` × its coral and shells, and names what was got
 -- ("300 coral", "a treasure map"). A skin goes to the fish the player swims as (the
--- per-fish rule); a title is worn at once when none is; a den piece goes into the Build tray.
+-- per-fish rule), but a Tide Pass skin to every fish; a title or a boost trail is worn
+-- at once when none is; a den piece goes into the Build tray.
 function RewardsService.grant(
 	player: Player,
 	data: PlayerData,
@@ -65,7 +66,17 @@ function RewardsService.grant(
 ): { string }
 	local scale = bonus or 1
 	local got: { string } = {}
-	if reward.skin then
+	if reward.skin and Config.Shades.byId[reward.skin] and Config.Shades.byId[reward.skin].pass then
+		-- A Tide Pass skin is every fish's, the ones you'll unlock later too (owner,
+		-- 2026-10-17: the Deep Pass "needs to let players know that the skins earned
+		-- work on all fish")
+		local name = Config.Shades.byId[reward.skin].name
+		local new = false
+		for _, species in Config.Species.list do
+			new = Progress.grantShade(data, reward.skin, species.id) or new
+		end
+		table.insert(got, if new then `the {name} skin (every fish)` else `the {name} skin (already yours)`)
+	elseif reward.skin then
 		local shade = Config.Shades.byId[reward.skin]
 		local name = if shade then shade.name else reward.skin
 		if Progress.grantShade(data, reward.skin) then
@@ -84,6 +95,23 @@ function RewardsService.grant(
 			end
 		end
 		table.insert(got, `the "{reward.title}" title`)
+	end
+	if reward.trail then
+		local trail = Config.Trails.byId[reward.trail]
+		local name = if trail then trail.name else reward.trail
+		if data.trails[reward.trail] then
+			table.insert(got, `the {name} boost trail (already yours)`)
+		else
+			data.trails[reward.trail] = true
+			if data.trail == "" then
+				data.trail = reward.trail
+				local character = player.Character
+				if character then
+					character:SetAttribute("Trail", reward.trail)
+				end
+			end
+			table.insert(got, `the {name} boost trail (every fish, the Wardrobe's TRAILS)`)
+		end
 	end
 	if reward.den then
 		-- One more copy in the Build tray (den v2: things are counted, not flagged)

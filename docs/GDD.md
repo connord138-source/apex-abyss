@@ -1137,7 +1137,7 @@ owner picked all four ("All four please!").
     biggest, each row the species' biggest. A new record on a rare or trophy-sized
     fish (≥1.9× the species' mass) says NEW BIGGEST.
 - **Catch tracks (owner: "10 total unlocks a skin", per fish, per rarity):** rare
-  catches count on the fish you're swimming as; 10 Golden, 10 Glowing, 5 Crystal and 3
+  catches count on the fish you're swimming as; 100 Golden, 10 Glowing, 5 Crystal and 3
   Prism catches unlock that rarity's skin for that fish. Those skins are never rolled.
   - **Earned skins stop at Epic** (owner, 2026-10-10: "we still don't want the most
     elite skins obtained that way that'll be rng and bosses/treasure chests"): Golden

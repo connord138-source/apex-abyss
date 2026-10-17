@@ -1,7 +1,7 @@
 --!strict
 -- The first-session tutorial (Config/Tutorial): one step at a time, each counting
--- one kind of event. Finishing it unlocks the 'Cuda and species select, and pays
--- enough shells for a first roll. The client shows the current step and points the
+-- one kind of event. Finishing it opens species select and pays enough shells for a
+-- first roll (the 'Cuda is earned after, Config/Species). The client shows the current step and points the
 -- way (TutorialController).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -22,13 +22,16 @@ local function finish(player: Player, data: DataService.PlayerData)
 	local tutorial = data.tutorial
 	tutorial.done = true
 	local reward = Tutorial.reward
-	data.unlocked[reward.unlock] = true
 	EconomyService.addShells(player, reward.shells)
 	EconomyService.addCoral(player, reward.coral)
 	DataService.markDirty(player)
 	DataService.save(player)
-	local species = Config.Species.byId[reward.unlock]
-	Net.notify(player, `Tutorial complete! The {species.name} is yours, and so is your first roll`, "rare")
+	local cuda = Config.Species.byId.Cuda.unlock
+	Net.notify(
+		player,
+		`Tutorial complete! Your first roll is ready. INDEX shows what's next; Nibbler LV {cuda.level} unlocks the 'Cuda`,
+		"rare"
+	)
 end
 
 -- Finishes the tutorial now, with its reward (Admin: testers skip straight to

@@ -6,10 +6,18 @@
 -- asks the server to move the fish (DenService checks it's really at the portal,
 -- streams the place in round it and moves it); the wash clears once it's there. A
 -- den nobody lives in keeps its portal shut.
+--
+-- Loading (owner, 2026-10-17: leaving a den, "it takes about 20 seconds for the safe
+-- zone to load and you see everything else and through the floor in the meantime. If
+-- we need to add a loading screen that is fine"): near a portal the far side is
+-- streamed in ahead (`Prestream`), and after the move the wash stays up, as a
+-- loading screen with a tip, holding the fish still, until the place round the fish
+-- has really arrived (rock under it and round it, the doorway's model) or LOAD_MOST.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
@@ -24,13 +32,51 @@ local WASH = Color3.fromRGB(8, 44, 64)
 local FADE_IN = 0.22
 local FADE_OUT = 0.45
 local WAIT_MOST = 2.5 -- seconds to wait for the move before clearing anyway
+local LOAD_MOST = 25 -- seconds to wait for the place to stream in before clearing anyway
+local SETTLE = 0.4 -- the place must be there this long (Terrain meshes after it arrives)
+local PRESTREAM_REACH = 36 -- studs from a portal at which the far side is asked for
 local COOLDOWN = 1.2 -- after a move, before another portal takes the fish
 
 local busy = false
 local coolUntil = 0
 local arrived = false
 local shutNoteAt = 0
+local prestreamAt = 0
 local wash: Frame
+local loading: TextLabel
+local tipLabel: TextLabel
+
+-- Whether the place round the fish has streamed in: rock under it and round it,
+-- and (for the plaza) the doorway it came out of
+local function arrivedAt(door: number?): boolean
+	local character = Players.LocalPlayer.Character
+	local root = SwimController.root()
+	if character == nil or root == nil then
+		return false
+	end
+	if door then
+		local world = workspace:FindFirstChild("World")
+		local hub = world and world:FindFirstChild("Hub")
+		if hub == nil or hub:FindFirstChild(`Den{door}`) == nil then
+			return false
+		end
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	local origin = root.Position
+	if workspace:Raycast(origin, Vector3.new(0, -90, 0), params) == nil then
+		return false
+	end
+	local walls = 0
+	for i = 0, 7 do
+		local angle = i / 8 * 2 * math.pi
+		if workspace:Raycast(origin, Vector3.new(math.cos(angle), 0, math.sin(angle)) * 170, params) then
+			walls += 1
+		end
+	end
+	return walls >= 2
+end
 
 -- Whether someone lives in den `index` (the doorway's model carries its owner's
 -- name; if it hasn't streamed in, let the server decide)
@@ -71,8 +117,16 @@ end
 local function go(request: string, index: number?)
 	busy = true
 	arrived = false
+	-- Leaving: the doorway on the plaza we'll come out at
+	local root = SwimController.root()
+	local door = if request == "LeaveDen" and root then Layout.denAt(root.Position) else nil
 	Sfx.play("Bubbles", { volume = 0.6, pitch = 1.1 })
 	wash.Visible = true
+	loading.Text = if request == "LeaveDen" then "SWIMMING OUT TO THE HUB" else "SWIMMING INTO THE DEN"
+	local tips = Config.Tutorial.tips
+	tipLabel.Text = tips[math.random(1, #tips)]
+	loading.TextTransparency = 1
+	tipLabel.TextTransparency = 1
 	bubbles()
 	Ui.tween(wash, FADE_IN, { BackgroundTransparency = 0 })
 	task.delay(FADE_IN, function()
@@ -81,6 +135,34 @@ local function go(request: string, index: number?)
 		while not arrived and os.clock() - started < WAIT_MOST do
 			task.wait()
 		end
+		-- The place must be there (held still meanwhile); the words show if it takes a while
+		local wasLocked = Input.locked
+		Input.locked = true
+		local since: number? = nil
+		local shown = false
+		started = os.clock()
+		while os.clock() - started < LOAD_MOST do
+			if arrivedAt(door) then
+				since = since or os.clock()
+				if os.clock() - (since :: number) >= SETTLE then
+					break
+				end
+			else
+				since = nil
+			end
+			if not shown and os.clock() - started > 0.6 then
+				shown = true
+				Ui.tween(loading, 0.3, { TextTransparency = 0 })
+				Ui.tween(tipLabel, 0.3, { TextTransparency = 0.15 })
+			end
+			if shown and math.random() < 0.02 then
+				bubbles()
+			end
+			task.wait(0.05)
+		end
+		Input.locked = wasLocked
+		Ui.tween(loading, 0.2, { TextTransparency = 1 })
+		Ui.tween(tipLabel, 0.2, { TextTransparency = 1 })
 		-- A frame for the camera to cut to the new place under the wash
 		task.wait(0.1)
 		Sfx.play("Bubble", { volume = 0.5, pitch = 0.8 })
@@ -105,6 +187,25 @@ local function step()
 		return
 	end
 	local position = root.Position
+	-- Near a portal: have the far side streamed in before we swim through
+	if os.clock() > prestreamAt then
+		local den = Layout.denAt(position)
+		local near = if den
+			then (position - Layout.exitFrame(den).Position).Magnitude <= PRESTREAM_REACH
+			else false
+		if not near and den == nil then
+			for i = 1, Layout.DEN_COUNT do
+				if (position - Layout.doorFrame(i).Position).Magnitude <= PRESTREAM_REACH and lived(i) then
+					near = true
+					break
+				end
+			end
+		end
+		if near then
+			prestreamAt = os.clock() + 8
+			ClientState.request("Prestream")
+		end
+	end
 	local door = Layout.doorAt(position)
 	if door then
 		if lived(door) then
@@ -131,6 +232,33 @@ function DenDoorController.start()
 	wash.Size = UDim2.fromScale(1, 1)
 	wash.Visible = false
 	wash.Parent = gui
+	loading = Ui.label(
+		wash,
+		"Loading",
+		"",
+		Ui.FONT_HEAVY,
+		26,
+		Ui.color.text,
+		UDim2.new(1, -40, 0, 34),
+		UDim2.new(0.5, 0, 0.5, -30)
+	)
+	loading.AnchorPoint = Vector2.new(0.5, 0.5)
+	loading.TextXAlignment = Enum.TextXAlignment.Center
+	loading.TextTransparency = 1
+	tipLabel = Ui.label(
+		wash,
+		"Tip",
+		"",
+		Ui.FONT_SEMI,
+		17,
+		Ui.color.muted,
+		UDim2.new(0.8, 0, 0, 48),
+		UDim2.new(0.5, 0, 0.5, 16)
+	)
+	tipLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	tipLabel.TextXAlignment = Enum.TextXAlignment.Center
+	tipLabel.TextWrapped = true
+	tipLabel.TextTransparency = 1
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local teleport = remotes:WaitForChild("Teleport") :: RemoteEvent
 	teleport.OnClientEvent:Connect(function()

@@ -3,11 +3,12 @@
 -- levels up separately; the starter first, then the others are unlocked). Switching
 -- happens in the safe zone with no Haul aboard, and respawns you in your den as the
 -- new fish at that species' own size. Unlocking costs the species' home-biome DNA
--- plus coral; the 'Cuda comes from finishing the tutorial (TutorialService).
+-- plus coral (the 'Cuda also wants a grown Nibbler).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Size = require(ReplicatedStorage.Shared.Size)
 local Events = require(script.Parent.Parent.Events)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
@@ -60,6 +61,10 @@ local function unlock(player: Player, id: any)
 		return
 	end
 	local need, coral = rule.dna or 0, rule.coral or 0
+	local level = Size.level(Progress.mass(data, Species.STARTER))
+	if rule.level and level < rule.level then
+		return Net.notify(player, `Grow your Nibbler to LV {rule.level} first (it's LV {level})`, "bad")
+	end
 	local have = data.dna[rule.biome] or 0
 	if have < need then
 		local biome = Config.Biomes.byId[rule.biome]

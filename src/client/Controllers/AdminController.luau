@@ -282,7 +282,7 @@ local function build()
 		table.insert(species, { label = def.name, value = def.id })
 	end
 	pickRow("Unlock species", species, "unlockSpecies", "UNLOCK")
-	actionRow("Every shade, part and variant", "allShades", "GIVE ALL")
+	actionRow("Every shade, part, variant and boost trail", "allShades", "GIVE ALL")
 	local charms: { { label: string, value: any } } = {}
 	for _, def in Config.Shop.charms do
 		table.insert(charms, { label = def.name, value = def.id })

@@ -35,6 +35,7 @@ local AdminController = require(script.Controllers.AdminController)
 local AmbienceController = require(script.Controllers.AmbienceController)
 local MusicController = require(script.Controllers.MusicController)
 local BubbleController = require(script.Controllers.BubbleController)
+local TrailController = require(script.Controllers.TrailController)
 local KelpController = require(script.Controllers.KelpController)
 local RollController = require(script.Controllers.RollController)
 local SchoolController = require(script.Controllers.SchoolController)
@@ -79,6 +80,7 @@ AdminController.start() -- the owner's admin panel (shows only for admins)
 AmbienceController.start() -- the water's sound: shallow, deep and cavern beds by depth
 MusicController.start() -- the music for where you are (Config/Music)
 BubbleController.start() -- bubbles off every fish's mouth as it swims
+TrailController.start() -- boost trails off every fish's tail (Config/Trails)
 KelpController.start() -- kelp near the camera sways in the current
 PlanktonController.start() -- glowing plankton in the deepest water, wakes through it
 HuntController.start()

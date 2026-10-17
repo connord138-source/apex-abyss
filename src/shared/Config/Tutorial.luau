@@ -92,6 +92,23 @@ local steps: { Step } = {
 
 return {
 	steps = steps,
-	-- For finishing: the 'Cuda, enough shells for a first roll, and some coral
-	reward = { unlock = "Cuda", shells = 50, coral = 500 },
+	-- For finishing: enough shells for a first roll and some coral (the 'Cuda is
+	-- earned now, Config/Species)
+	reward = { shells = 50, coral = 500 },
+	-- Tips on the loading wash between the hub and a den (DenDoorController), one at
+	-- a time (owner, 2026-10-17: "Needs more direction for players starting out")
+	tips = {
+		"Swim into anything under about two thirds your size to swallow it. BITE fish your own size.",
+		"Your Haul only counts once it's banked in your den's pool. Get eaten first and it's gone.",
+		"Every 50 shells is a roll for a new skin. Golden shells in the Trench are worth 5.",
+		"Bigger fish are worth far more. Grow, then push into the deeper biomes.",
+		"The INDEX (on the HUD) shows how to get every skin, part, variant and trail.",
+		"Your Nibbler at LV 15 plus Kelp Shallows DNA unlocks the 'Cuda in the FISH menu.",
+		"Golden, Glowing and Crystal fish are rare catches: 100 Golden catches unlock the Golden skin.",
+		"Kelp Wraps heal you (H). Health never comes back on its own.",
+		"Too deep too soon and the pressure crushes you. Each band of depth needs a higher level.",
+		"Small fish can school up: bite a big one together and your mass counts as one.",
+		"Your den's Coral Garden grows coral and shells while you're away.",
+		"The Tide Pass gives skins for every fish, boost trails and more just for playing.",
+	} :: { string },
 }

@@ -88,6 +88,8 @@ export type PlayerData = {
 	variants: { [string]: boolean }, -- owned exotic variants
 	-- What's worn ("" = nothing); parts by slot
 	equipped: { shade: string, variant: string, parts: { [string]: string } },
+	trails: { [string]: boolean }, -- boost trails owned (Config/Trails; every fish's)
+	trail: string, -- the boost trail worn ("" = none)
 	upgrades: { [string]: number }, -- level per upgrade (Config/Shop)
 	charms: { [string]: number }, -- stocked charms held (Lucky, SecondChance)
 	boosts: { [string]: number }, -- timed charms: Unix time each runs out
@@ -186,6 +188,8 @@ local TEMPLATE: PlayerData = {
 	parts = {},
 	variants = {},
 	equipped = { shade = "", variant = "", parts = {} },
+	trails = {},
+	trail = "",
 	upgrades = {},
 	charms = {},
 	boosts = {},

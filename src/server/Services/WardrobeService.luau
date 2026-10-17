@@ -1,7 +1,7 @@
 --!strict
--- Wearing shades, body parts and exotic variants. The choice is saved, and put on
--- the fish as attributes (Shade, Parts, Variant) that every client dresses it
--- from (Shared/Cosmetics).
+-- Wearing shades, body parts, exotic variants and boost trails. The choice is saved,
+-- and put on the fish as attributes (Shade, Parts, Variant, Trail) that every client
+-- dresses it from (Shared/Cosmetics, TrailController).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -33,9 +33,11 @@ local function dress(player: Player)
 	character:SetAttribute("Variant", if variant and variant.species == current then variant.id else "")
 	character:SetAttribute("Parts", Cosmetics.partsText(data.equipped.parts))
 	character:SetAttribute("Title", data.title)
-	-- A light for the dark deeps: the Anglerfish's lure, or a Deep Lantern charm
+	character:SetAttribute("Trail", data.trail)
+	-- A light for the dark deeps: the Anglerfish's lure (or the Angler Lure part on
+	-- any fish), or a Deep Lantern charm
 	local species = Progress.species(data)
-	local lamp = if species.id == "Anglerfish"
+	local lamp = if species.id == "Anglerfish" or data.equipped.parts.Head == "AnglerLure"
 		then "lure"
 		elseif Perks.active(data.boosts, "DeepLantern", Timing.now()) then "lantern"
 		else ""
@@ -64,6 +66,11 @@ function WardrobeService.equip(player: Player, kind: string, id: string, slot: s
 			return
 		end
 		equipped.variant = id
+	elseif kind == "trail" then
+		if id ~= "" and not data.trails[id] then
+			return
+		end
+		data.trail = id
 	elseif kind == "part" then
 		if id == "" then
 			if typeof(slot) == "string" and table.find(Config.Exotics.SLOTS, slot) then

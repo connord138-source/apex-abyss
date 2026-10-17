@@ -83,6 +83,7 @@ local REQUESTS: { [string]: number } = {
 	DenFloor = 0.25, -- (floorId) the decks' stone
 	EnterDen = 0.5, -- (index) swam into that den's doorway portal on the plaza
 	LeaveDen = 0.5, -- () swam into the way out on your den's front wall
+	Prestream = 4, -- () near a portal: stream the far side in ahead of the swim through
 	ClaimDaily = 1, -- () today's daily streak reward
 	ClaimGift = 0.5, -- () the next playtime gift that's ready (Config/Playtime)
 	ClaimPass = 0.5, -- () every Tide Pass reward unlocked and not yet claimed (Config/Pass)
