@@ -536,18 +536,19 @@ local function viewCFrame(dt: number): CFrame?
 	return CFrame.lookAt(at, focus)
 end
 
--- Whether a screen point is over the tray (its clicks are the tray's)
+-- Whether a point is over the tray (its clicks are the tray's). `position` counts
+-- from below the top bar, as GetGuiObjectsAtPosition does (an input's Position, a
+-- tap, the mouse less the inset). It also tried the point the inset lower, which
+-- made a strip as tall as the top bar above the tray swallow clicks: a green ghost
+-- there placed nothing and said nothing (PC 2026-10-17, BC2).
 local function overPanel(position: Vector3 | Vector2): boolean
-	local inset = GuiService:GetGuiInset()
 	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 	if playerGui == nil then
 		return false
 	end
-	for _, y in { position.Y, position.Y + inset.Y } do
-		for _, object in playerGui:GetGuiObjectsAtPosition(position.X, y) do
-			if object:IsDescendantOf(panel) then
-				return true
-			end
+	for _, object in playerGui:GetGuiObjectsAtPosition(position.X, position.Y) do
+		if object:IsDescendantOf(panel) then
+			return true
 		end
 	end
 	return false
