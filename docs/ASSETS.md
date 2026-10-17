@@ -23,7 +23,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
 | `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
 | `shade_patch_v11` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch11`: WeekWave and WeekWreck on every fish, lighter for the water, each with a faint even glow map (2026-10-17, K1 of the round-2 report; 6 images a GLB) | the same folders; import after v10 |
-| `shade_patch_v12` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch12`: every skin on the Nibbler, Puffer, MorayEel and Angler (the whole eye kept, skins v12), Bumblebee and Lilac redesigned on the Nibbler, and WeekWreck ("Barnacled"), WeekWave, PassUndertow and PassRiptide redesigned on every fish (2026-10-17; IMAGES_TBD images) | the same folders; import after v11 |
+| `shade_patch_v12` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch12`: every skin on the Nibbler, Puffer, MorayEel and Angler (the whole eye kept, skins v12), Bumblebee and Lilac redesigned on the Nibbler, and WeekWreck ("Barnacled"), WeekWave, PassUndertow and PassRiptide redesigned on every fish (2026-10-17; 228 images: Nibbler 48, Puffer 46, MorayEel 49, Angler 63, Cuda 11, ReefShark 11) | the same folders; import after v11 |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -216,7 +216,12 @@ mesh slapped onto the fish"):
   (breaking-wave crest bands with pale-blue foam), PassUndertow (bold teal whirlpools,
   drawn round a point on the skin with `surface_polar` so they stay round on a round
   fish) and PassRiptide (one glowing rip current with streamlines). lines.json has each
-  one's look.
+  one's look. Barnacles keep clear of the eyes and their openings are diamond slits:
+  round dark holes beside the Moray's small eye read as more eyes. Barnacled is kept
+  light for the water like v11 (mean luminance in the `water=0.35` preview about 0.39).
+- **NibMaroon is a brighter garnet** (0.36, 0, 0.10) over (0.60, 0.02, 0.14): with the
+  whole eye kept, the sclera's own UV islands sit pale on the wine in the atlas, and the
+  old wine scored 0.31 on the classifier once JPEG-packed (0.13 now).
 
 What the patch holds and its screen are in tools/assets_manifest.json `shade_patch_v12`.
 Sheets: `assets/shades/previews/v12_<Fish>_compare.jpg` (before | after, in the water) and

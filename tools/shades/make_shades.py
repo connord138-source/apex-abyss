@@ -370,6 +370,7 @@ class Fish:
         faces = self.faces
         yy, xx = np.mgrid[0 : faces.shape[1], 0 : faces.shape[2]]
         dist = np.full((size, size), np.inf, np.float32)  # in each eye's own radius
+        clear = np.full((size, size), np.inf, np.float32)  # body lengths out from an eye
         for view, px, py, radius in picks:
             face = faces[view]
             sel = ((xx - px) ** 2 + (yy - py) ** 2 <= radius * radius) & (face[..., 5] > 0.5)
@@ -384,8 +385,11 @@ class Fish:
             pts = self.pos[hit]
             centre = np.median(pts, 0)
             r3 = float(np.percentile(np.linalg.norm(pts - centre, axis=-1), 90))
-            dist = np.minimum(dist, np.linalg.norm(self.pos - centre, axis=-1) / max(r3, 1e-6))
+            far = np.linalg.norm(self.pos - centre, axis=-1)
+            dist = np.minimum(dist, far / max(r3, 1e-6))
+            clear = np.minimum(clear, (far - r3) / max(self.length, 1e-6))
         self.eye_dist = dist
+        self.eye_clear = clear
         self.kept = self.color.copy()
         if not np.isfinite(dist).any():
             return np.zeros((size, size), np.float32)
@@ -3379,9 +3383,9 @@ def barnacle_field(m: Fish, pts, radii, light=(0.35, 0.94)):
     """Barnacles at `pts` (texel positions) of `radii` (body lengths): (shell 0..1, a
     colour layer, the openings 0..1). Each is a low cone seen from outside: six
     plates with dark seams, the side toward the light lit and the far side shaded, a
-    bright rim round a dark opening with its paler beak plates inside, and a soft
-    shadow on the skin round its foot. Nearest-first, so a cluster packs like real
-    barnacles do."""
+    bright rim round the top, a dark diamond slit in it (the shut beak plates, a paler
+    seam between them, each barnacle turned its own way), and a soft shadow on the
+    skin round its foot. Nearest-first, so a cluster packs like real barnacles do."""
     d1, d2, i = nearest(m, pts)
     a, b = offsets(m, pts, i)
     R = radii[i]
@@ -3398,9 +3402,17 @@ def barnacle_field(m: Fish, pts, radii, light=(0.35, 0.94)):
     col = mix(col, (0.36, 0.42, 0.45), seam * 0.6)
     rim = smoothstep(0.1, 0.0, np.abs(rr - 0.46)) * (0.55 + 0.45 * np.clip(facing * 0.5 + 0.6, 0, 1))
     col = mix(col, (0.80, 0.88, 0.92), rim * 0.8)
-    opening = crisp(m, 0.38 - rr, texels=1.2)
-    beak = smoothstep(0.05, 0.0, np.abs(a * np.cos(0.7) - b * np.sin(0.7)) / np.maximum(R, 1e-5) - 0.03) * smoothstep(0.32, 0.2, rr)
-    inner = mix(board(m, (0.06, 0.12, 0.14)), (0.30, 0.38, 0.40), beak * 0.8)
+    # The opening: a diamond slit (the shut beak plates), each barnacle turned its own
+    # way, with the seam between its plates a paler line: never a round dark hole,
+    # which next to a fish's eye read as more eyes
+    turn = (i * 2.399).astype(np.float32) % np.pi
+    ca, sa = np.cos(turn), np.sin(turn)
+    ra = (a * ca + b * sa) / np.maximum(R, 1e-5)
+    rb = (-a * sa + b * ca) / np.maximum(R, 1e-5)
+    slit = np.abs(ra) / 0.4 + np.abs(rb) / 0.17
+    opening = crisp(m, 1.0 - slit, texels=1.2)
+    beak = smoothstep(0.05, 0.015, np.abs(rb)) * (slit < 1.0)
+    inner = mix(board(m, (0.10, 0.20, 0.22)), (0.42, 0.52, 0.54), beak * 0.85)
     col = mix(col, inner, opening)
     foot = smoothstep(1.45, 1.0, rr) * (1 - shell)
     return shell, col, opening, foot
@@ -3452,7 +3464,8 @@ def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck
     """Owner, 2026-10-17: "what the hell is a shipwreck skin doing" on a fish. Now a fish
     that lives on a wreck, not the wreck: a weathered slate-green hide, countershaded,
     mottled and pitted, with clusters of barnacles (cones with lit rims and dark
-    openings) crusted along the back and over the head, crusts of violet coralline
+    slit openings) crusted along the back and over the head, kept clear of the eyes
+    (round dark holes beside an eye read as more eyes), crusts of violet coralline
     algae on the flanks, and a few streaks of kelp trailing back from the clusters.
     Fins weathered darker with ragged paler tips. The palette stays saturated (screen
     2026-10-16: a greyer verdigris scored 0.83 on the Nibbler), the pale parts are the
@@ -3469,14 +3482,14 @@ def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck
     # Lighter than a real slate so it reads in the water (v11: the weekly skins read
     # dark there), with little red in it (a light teal with more red scored 0.19 on
     # the Nibbler's atlas once JPEG-packed, v11)
-    rgb = body_coat(sm, (0.12, 0.45, 0.41), (0.22, 0.63, 0.55), soft=0.35)
+    rgb = body_coat(sm, (0.13, 0.52, 0.47), (0.24, 0.70, 0.61), soft=0.35)
     mottle = fbm(m, 7, 2502)
     rgb = rgb * (0.82 + 0.3 * mottle)[..., None]
-    rgb = mix(rgb, (0.08, 0.32, 0.30), smoothstep(0.62, 0.72, fbm(m, 16, 2503)) * 0.45)
+    rgb = mix(rgb, (0.09, 0.38, 0.35), smoothstep(0.62, 0.72, fbm(m, 16, 2503)) * 0.4)
     pits = speckle(m, 300, 0.86, seed=2504)
     rgb = mix(rgb, (0.06, 0.24, 0.24), pits * 0.5)
     # Fins: a darker weathered slate, ragged paler tips (worn)
-    fin_rgb = mix(board(m, (0.10, 0.40, 0.37)), (0.18, 0.54, 0.48), smoothstep(0.55, 0.95, reach))
+    fin_rgb = mix(board(m, (0.11, 0.46, 0.42)), (0.19, 0.60, 0.53), smoothstep(0.55, 0.95, reach))
     ragged = smoothstep(0.84, 0.9, reach + 0.12 * (fbm(m, 40, 2505) - 0.5))
     fin_rgb = mix(fin_rgb, (0.34, 0.60, 0.56), ragged)
     rgb = mix(rgb, fin_rgb, on_fin)
@@ -3487,13 +3500,14 @@ def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck
     crust = crisp(m, crust_f - 0.745, texels=1.4) * body
     margin = crisp(m, crust_f - 0.737, texels=1.4) * (1 - crust) * body
     knobs = smoothstep(0.55, 0.75, value_noise(m.p, 150, 2507))
-    crust_col = mix(board(m, (0.42, 0.26, 0.62)), (0.60, 0.44, 0.80), knobs * 0.8)
+    crust_col = mix(board(m, (0.48, 0.32, 0.70)), (0.64, 0.50, 0.86), knobs * 0.8)
     rgb = mix(rgb, (0.24, 0.12, 0.40), margin)
     rgb = mix(rgb, crust_col, crust)
     # Barnacle clusters along the back and over the head
     on_back = smoothstep(0.58, 0.8, sm.up) * body
     on_head = smoothstep(0.32, 0.18, u) * smoothstep(0.35, 0.6, sm.up) * body
     weight = np.clip(on_back + on_head, 0, 1) * smoothstep(0.03, 0.08, u) * smoothstep(0.92, 0.82, u)
+    weight = weight * smoothstep(0.03, 0.06, m.eye_clear)  # none crowding an eye
     centres = scatter(m, 9, 2508, weight=weight)
     cd, _, _ = nearest(m, centres)
     near_centre = np.exp(-((cd / 0.05) ** 2)) * weight
@@ -3524,7 +3538,7 @@ def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck
     rgb = mix(rgb, (0.18, 0.32, 0.06), rib * kelp)
     # A faint, even self-glow (v11): less in the openings, the seams and the pits
     dark = np.maximum(opening * shell, pits * 0.5)
-    emit = rgb * (0.5 * (1 - 0.8 * dark))[..., None]
+    emit = rgb * (0.55 * (1 - 0.8 * dark))[..., None]
     return done(m, rgb, "matte", emit=emit, detail=0.6)
 
 

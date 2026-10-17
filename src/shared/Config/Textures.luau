@@ -21,6 +21,14 @@ return {
 	sheenCurrent = 75408604446814, -- assets/textures/sheen_current.png
 	sheenBolt = 136653557283341, -- assets/textures/sheen_bolt.png
 	stars = 129645056585841, -- hatch-and-snatch assets/textures/galaxy_sky.png
+	-- fx*: particle images for the skin effects and boost trails (Shared/Fx;
+	-- tools/shades/make_fx.py); 0 = Roblox's own particle images
+	fxSwirl = 0, -- assets/textures/fx_swirl.png
+	fxMist = 0, -- assets/textures/fx_mist.png
+	fxBubble = 0, -- assets/textures/fx_bubble.png
+	fxStar = 0, -- assets/textures/fx_star.png
+	fxFlame = 0, -- assets/textures/fx_flame.png
+	fxSpark = 0, -- assets/textures/fx_spark.png
 	-- the sea chart behind the minimap and the full map (tools/map/make_chart.py;
 	-- src/client/MapDraw)
 	mapChart = 117869098488158, -- assets/textures/map_chart.png

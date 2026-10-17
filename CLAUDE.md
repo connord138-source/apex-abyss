@@ -785,6 +785,180 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     radius + 4 on the storey it opens into).
   - Left as is: the Puffer's WeekWave crests read a little pink (they passed the
     screen).
+- **The 2026-10-17 owner batch (owner: two messages of den, UI, skin and control
+  notes, then "Read both messges and make recs and changes"; built):**
+  - **Skin effects, not layers** (owner: "When I say the skin needs movement or glow
+    I mean the skin needs EFFECTS. not just a ripple effect running over the design",
+    "too many of them are obviously just mesh slapped onto the fish"): the six-face
+    projected layers are off (the `sheen` mechanism stays in Cosmetics, unused).
+    `Config/Shades` `FX` gives 25 skins an effect set built by `Shared/SkinFx` from
+    `Shared/Fx` presets: every Tide Pass skin (Undertow's swirls spiral head to tail),
+    every Legendary and Mythic (Divine's halo and rays, Aurora's curtains, Thunder's
+    crawling arcs, Sunburst's turning rays, Void's accretion ring and vortex, Comet's
+    tail, Prismatic's rainbow rim and ribbon, ...), Ghost, Abyss Ink, the treasure
+    skins and the chased Epics (Magma, Diamond, Crystal, Prism, Glacier). An effect set
+    replaces the skin's aura. Ribbons sway on their own so they draw on a still fish;
+    nothing draws in a ViewportFrame. Particle images come from `Config/Textures`
+    `fx*` once uploaded (`assets/textures/fx_*.png`), Roblox's own until then.
+  - **Ghost is spectral green** (owner: "doesnt need to literally be invisible, it
+    should be spectral green with some mist coming off of it"): the fish's own look
+    under a breathing green Highlight fill and a bright rim, mist and wisps; no
+    ForceField, no see-through.
+  - **Boost trails** (owner: "boost effects, such as bubbles, rainbow, glitter, fire,
+    etc as an earnable customization"): `Config/Trails` (Bubble Stream, Glitter, Ink
+    Cloud, Fire Wake, Frost Wake, Rainbow Wake, Storm Wake, Stardust), every fish's,
+    worn one at a time (`data.trails`, `data.trail`, the character's `Trail`
+    attribute, the Wardrobe's TRAILS tab, `Equip` kind "trail"); `TrailController`
+    sheds them off the tail from 60% of top speed, full on a dash. Earned on the Tide
+    Pass (`trail` rewards), never sold. Admin "Every shade, part, variant and boost
+    trail".
+  - **Tide Pass 40 tiers** (owner: "extend the pass to 40-50 and add some in with some
+    other smaller items like maps and more coral"): 40 × 1,500 XP (the same 60,000 a
+    season), eight trails (free 6/18/32, paid 4/11/16/27/36), a Tattered map, more
+    coral. **Pass skins are every fish's** (owner: the Deep Pass "needs to let
+    players know that the skins earned work on all fish"): `RewardsService.grant`
+    unlocks a `pass` skin for every species; the cards, subtitle and Index say so.
+  - **INDEX** (owner: "an index or something to show them how they are to get all of
+    the harder skins, parts, what the parts do"; "more direction for players starting
+    out"): the HUD's ODDS became INDEX (D-pad right); `MenuController.openIndex`:
+    GUIDE (Next for you: tutorial step, the 'Cuda's gate, the next biome, rolls ready,
+    the den's next dig; How it works), SKINS (this fish's line, then every fish's,
+    each with how it's got, progress and its effects), PARTS (looks only; the Angler
+    Lure part now lights dark water like the lure), VARIANTS, FISH (unlock rules,
+    stats), TRAILS, and ROLL ODDS.
+  - **Den shop** (owner: "I dont see a shop at all where you buy den items"; "E does
+    nothing in my den"): E / Y opens the den menu anywhere in your own den (the chip
+    shows at the pool: DEN & SHOP · B BUILD); Build mode has SHOP (top-right of the
+    bar, Y on a pad, in the phone row) opening `MenuController.openDenShop` over the
+    editor (the bar steps aside and the view holds still until it closes).
+  - **Den travel loading** (owner: leaving a den "it takes about 20 seconds for the
+    safe zone to load and you see everything else and through the floor ... a loading
+    screen is fine"): within 36 studs of a portal the client asks `Prestream` and the
+    server streams the far side in (`RequestStreamAroundAsync`, 10 s); after a move
+    the wash stays up, holding the fish still, as a loading screen (SWIMMING OUT TO
+    THE HUB and a tip from `Config/Tutorial` `tips`) until rock is under and round the
+    fish and the doorway's model is there, held 0.4 s, at most 25 s.
+  - **'Cuda earned, Golden 100** (see the species and catch-track notes above).
+  - **Barnacled** (owner: "what the hell is a shipwreck skin doing"): WeekWreck's name
+    and look; the id stays.
+  - **Easier navigating** (owner: "Still need some better control function I think.
+    Still a bit difficult to navigate the fish"; `Config/Tuning` `swim`/`camera`,
+    `tools/tests/run_swim.sh` simulates the step and must be kept in step with it):
+    the swim steers by `SwimController.aim` (CameraController sets it before any roof
+    slide or shake); a wall glide (the collider cast ahead: speed into rock eases off
+    by `wallEase`, the rest slides along, facing along the wall) plus `feedback` (what
+    the physics didn't deliver comes off the swim); turning blends `pivotTurn` 2.6 →
+    `cruiseTurn` 1.2 between 15% and 75% of top speed (`dashTurn` 0.75), eases in
+    (`turnSettle`), brakes through hard turns (`turnBrake` 0.35 × top by 150°), and
+    fish past the size knee turn by their drawn length (`bigTurn` 0.3); letting go
+    stops in ~0.9 s (`drag` 2.0 + `stopBrake` 0.35); the level zone ramps 8° → 30°;
+    Space / C go straight up and down; **`indoorSpeed` 48** caps top speed in the hub,
+    tunnels and dens (a Dash still doubles it); pad look `gamepadCurve` 1.7, steer dead
+    zone, phone `touchDeadZone` 0.1; the roof slide fades in (`slideFrom`/`slideFull`).
+  - **Open floor only** (owner: "ensure that no shells or shrimp or fish spawn in or
+    under items that the player cannot access"): `Ground.open(x, z, radius, minUp,
+    room)` keeps a spot only where the surface ray's first hit is the Terrain, a
+    1.25-stud ball can come straight down onto it and nothing solid is round it;
+    ShellService, ForageService and TreasureService dig sites use it (each logs a
+    count at start). Prey schools are lifted over the real ground along their loops
+    once the world is built (`Ground.y`, ramps, never under an overhang), published
+    as the Workspace attribute `SchoolLifts` so the server's checks and the clients'
+    drawing agree (`tools/tests/run_schools.sh`). Relies on WorldService finishing
+    its dressing before ShellService and ForageService start.
+  - **Predators land their bites** (owner: "horrible aim ... even sitting still they
+    cant hit me"): the tell starts ~15 (Barracuda) / 18 (Reef Shark) studs out, it
+    brakes and glides in during the tell (≤ 0.55× speed) so the jaw ends just off
+    the fish, it turns tight close in, hunts right down to the floor, and can't tell
+    or bite through rock (`Ground.sees`: arches and reef tunnels hide you).
+    `Config/Predators` `strike`; `tools/tests/run_predators.sh`: a still or slow fish
+    ~100% (was 0–21%), a Dash during the tell escapes.
+  - **Bigger swallow reach** (owner: "if you dont directly hit the fish it doesnt
+    eat it"): 1.15× the old reach + 0.35 + the prey's radius, with a suction pull
+    (`Config/Prey` `eat`; HuntService allows the same): a 2-stud fish eats a Minnow
+    from 1.86 studs (was 1.12), a 12-stud fish a Snapper from 8.1 (was 5.85).
+  - **Signature abilities** (owner: "each different fish should have their own
+    limitations/advantages ... You decide how that plays"): `Config/Species`
+    `signature` is the ability on each fish's button (`Config/Abilities` holds the
+    numbers; the other listed options wait for the upgrade trees): Nibbler Dash (the
+    quickest recharge), 'Cuda **Torpedo** (1.4 s straight sprint at Dash speed,
+    turning ×0.2, 7 s; outruns anything in a line, can't dodge), Pufferfish **Puff
+    Up** (4 s: drawn ×1.45, can't be swallowed, bites do half and cost the biter 10%
+    of their health, a predator takes recoil and flinches; swims at 45%; 16 s),
+    Moray **Burrow** (against rock, wreck or seabed within 0.9 of its length: it
+    hides until it moves 4 studs, presses again or 30 s pass; predators ignore it,
+    other players see it faded with no name tag; its next bite within 1.5 s is an
+    AMBUSH ×1.6; 8 s after), Reef Shark Blood Sense, Anglerfish **Lantern Flash**
+    (predators within 48 studs stunned 2.5 s, nearby players' screens whited out by
+    how much they face it; 18 s). `AbilityService` (requests `UseAbility`,
+    `EndAbility`) sets the character attributes `Puffed`, `Burrowed`,
+    `BurrowStrike`, `FlashAt`; HuntService, PredatorService and the clients read them
+    (`AbilityController`, FishAnimator's puff scale, NametagController). The Torpedo
+    stays within SpeedService's Dash allowance.
+  - **Predator styles** (owner: "shark should be able to catch fish with speed but
+    each different fish should have their own limitations/advantages";
+    `Config/Predators` `style`): the **Barracuda** (`ambush`) lurks low by cover,
+    stalks at 14, and within 32 studs bursts at ~49 studs/s for 1.6 s (a tell
+    started in the burst keeps the speed); it barely turns in a burst, is winded 3 s
+    after (slow, no tell, no bite) and leaves a fish alone 25 s after 2 failed bursts.
+    The **Reef Shark** (`tracker`) cruises at 46 (was 24), keeps a chase to 240 studs
+    and notices a fish under half health from twice as far; it turns wide, brakes
+    weakly in its tell and won't follow into kelp. Both bite only a fish in front of
+    the jaws (a sideways juke beats both), start the tell from their real braking
+    distance and swim out to come round at a fish inside their turning circle;
+    clients show BURSTING AT YOU · JUKE SIDEWAYS and STUNNED. Sim
+    (`run_predators.sh`): a still or slow fish is bitten nearly every time, the
+    'Cuda outruns both at its level, a juke at the warning escapes, a loop must
+    come as the shark closes. Hooks: `Burrowed` fish aren't prey (bosses still
+    hunt them), `PredatorService.stun(position, radius, seconds)`, a bite on a
+    `Puffed` fish does `puffDamage` 0.5 and the predator takes `puffRecoil` 0.12 and
+    flinches `puffFlinch` 2.5 s; `PredatorService.biteScale(player)` halves boss
+    damage on a puffed fish.
+  - **The hub, dialled up** (owner: den names "look rough", "more of an entrance ...
+    not just a hole with light coming out", the starter zone's ground "rough", the
+    wheel and stalls "fuzzy, cheap" after the toon rock): the fuzz was the toon
+    MaterialVariants, which override a base material game-wide on parts too (8–16
+    stud tiles show as one blurry plate on a small part): the wheel's Marble and
+    Slate, the stalls' Wood, the signs' Slate, Foil and Metal grain. **Rule: small
+    built pieces use SmoothPlastic (and Neon accents), never an overridden
+    material.** New modules: `src/server/Decor.luau` (part helpers and palette),
+    `DenDoor.luau` (doorway fronts: a rounded stone arch on jamb stones, brass
+    lanterns lit when someone lives there, a stepped threshold, coral and kelp at the
+    feet, the portal a dark pane in a brass collar with a ForceField shimmer and a
+    rising bubble curtain; a lacquered nameplate "NAME'S" over the level in gold,
+    single-line scaled labels with non-breaking spaces so a 22-character name fits;
+    EMPTY DEN / VACANT on a slate plaque; the in-den way out TO THE HUB in the same
+    style) and `Plaza.luau` (flagstone rings, a two-tier dais and compass rose under
+    the beacon, a brass-inlaid curb, paths to every door and tunnel, seven planter
+    beds with decor starfish fixed to the curb, lamp posts, brass wall lanterns,
+    EXIT boards per tunnel naming that way's biomes and levels, and part-built stalls:
+    counter, striped awning in the vendor's colour, sign, lanterns, shelves and
+    goods; the MarketStall import is no longer used). The wheel is SmoothPlastic
+    colour blocking with Neon bulbs, a scallop crest, pearl finials and a chest on
+    its stage; every name TreasureWheelController reads is unchanged. `Config/World`
+    `hub.paving` 1.1; Cave's sand drifts are gone and its wall bulges sit higher.
+    About +1,950 parts in the hub (anchored, CanTouch off, decor CanQuery off).
+    Previews: `bash tools/preview/run_hub.sh` (the cavern voxelized plus the parts,
+    lights, particles and SurfaceGui text in Cycles); `check_doors.luau` checks every
+    doorway and exit clears a LV 100 fish.
+  - **Skins v12** (patch pack `shade_patch_v12`, `assets/shades/patch12`, sha256
+    d94abb99…, 228 images, no normal maps, highest classifier 0.172): **whole eyes**
+    (owner: "Every single skin on nibbler glitches into the eye"): an eye's sclera
+    sits on several UV islands and `_eyes` dropped the ones with no pupil, painting
+    them with the skin; now `eyes.json` holds each fish's hand-sampled `eye` and
+    `skin` palettes, a texel nearer an eye colour is eye, each piece mostly inside the
+    eye sphere is kept whole with its holes filled, the edge is unmixed from the
+    texture's anti-aliasing and atlas gaps are padded (`tools/shades/render_eyes.py`
+    renders eye close-ups). Every skin of the Nibbler, Puffer, Moray and Angler
+    re-shipped. Redesigns that follow the body (`fin_reach`, `surface_polar`):
+    Bumblebee (a bumblebee goby's wrapping velvet-black bands), Lilac (lilac to violet,
+    fine iridescent scales, no spots), **Barnacled** (WeekWreck: slate-green hide,
+    barnacle clusters kept clear of the eyes, violet coralline, kelp fronds), WeekWave
+    (S-shaped crest bands with scalloped foam), PassUndertow (bold teal whirlpools on
+    violet), PassRiptide (one glowing rip current head to tail); NibMaroon is a
+    brighter garnet (the wine scored 0.31). Flagged as still reading pasted-on:
+    PassTideglass, Prismatic, Divine. The six `fx_*.png` particle images are made
+    (one tint, alpha draws the shape; ≤ 0.13 over black and white): ids go in
+    `Config/Textures` `fx*`.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -977,7 +1151,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   by raycast. Preview from the cloud: `LUAU=<luau> bash tools/preview/run_world.sh
   <dir>` (aerial, north, south, east). Prey `zones` (band, sector, schools, depth) and
   predator `angles` put fish where a biome wants them; depths are heights above the
-  local floor. Shells, forage and treasure sites raycast the Terrain only (a shell on
+  local floor. Shells, forage and treasure sites land only on open floor (`Ground.open`
+  since 2026-10-17; they once raycast the Terrain only, and a shell on
   a kelp blade "floated above the sea floor", owner 2026-10-08).
 - **Fish facing and swim (owner, 2026-10-07: "swimming backwards", "more fluid and
   natural like a fish, not the entire body swaying"):** the static GLB prey meshes

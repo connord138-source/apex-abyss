@@ -227,10 +227,10 @@ local list: { Shade } = {
 		"Lilac",
 		"Lilac",
 		100,
-		Color3.fromRGB(163, 133, 224),
-		Color3.fromRGB(235, 242, 255),
-		Color3.fromRGB(117, 77, 204),
-		"Glossy lilac with pale bubbles rising along it."
+		Color3.fromRGB(190, 150, 235),
+		Color3.fromRGB(150, 110, 225),
+		Color3.fromRGB(90, 40, 165),
+		"Lilac deepening to violet along the back, fine iridescent scales and violet-edged fins."
 	),
 	common(
 		"Moss",
@@ -1035,7 +1035,7 @@ local list: { Shade } = {
 		C(20, 40, 120),
 		C(200, 220, 245),
 		C(30, 60, 150),
-		"A woodblock great wave rolling down its flanks. Week 1's catch."
+		"Breaking-wave crests sweeping down its flanks, edged in pale-blue foam. Week 1's catch."
 	),
 	earned(
 		"WeekReef",
@@ -1054,9 +1054,9 @@ local list: { Shade } = {
 		"Barnacled",
 		"Epic",
 		{ week = 3 },
-		C(70, 92, 84),
-		C(150, 90, 170),
-		C(56, 74, 66),
+		C(40, 130, 115),
+		C(130, 90, 190),
+		C(28, 96, 86),
 		"Weathered slate-green, crusted with barnacles and purple coralline. Week 3's catch."
 	),
 	earned(
@@ -1079,7 +1079,7 @@ local list: { Shade } = {
 		C(20, 102, 107),
 		C(87, 168, 163),
 		C(26, 87, 102),
-		"Frosted sea glass in teal, pale ripple lines and a pearl film. Season 1's free row, tier 20.",
+		"Frosted sea glass in teal, pale ripple lines and a pearl film. Season 1's free row, tier 26.",
 		{ material = Enum.Material.Glass, reflectance = 0.15 }
 	),
 	earned(
@@ -1090,7 +1090,7 @@ local list: { Shade } = {
 		C(8, 26, 77),
 		C(26, 77, 143),
 		C(10, 31, 87),
-		"Deep ocean blue, foam streaks raking back, a glowing current along the flank. The Deep Pass's first reward.",
+		"Deep ocean blue with one glowing rip current flowing head to tail. The Deep Pass's first reward.",
 		{ emissive = 0.9, pulse = "wave", aura = "bubbles", light = C(40, 190, 255) }
 	),
 	earned(
@@ -1098,10 +1098,10 @@ local list: { Shade } = {
 		"Undertow",
 		"Epic",
 		{ pass = 1 },
-		C(20, 10, 46),
-		C(41, 26, 87),
-		C(15, 10, 41),
-		"Ink violet with whirlpools of glowing teal spiralling down the flanks. Season 1's Deep Pass, tier 15.",
+		C(80, 52, 150),
+		C(31, 194, 184),
+		C(56, 31, 117),
+		"Bold teal whirlpools turning on a violet flank. Season 1's Deep Pass, tier 20.",
 		{ emissive = 1.1, pulse = "scan", aura = "motes", light = C(60, 200, 190) }
 	),
 	earned(
@@ -1112,7 +1112,7 @@ local list: { Shade } = {
 		C(5, 18, 23),
 		C(13, 41, 46),
 		C(5, 15, 20),
-		"The deep's black-green water with a drifting current and bioluminescent motes. Season 1's Deep Pass, tier 30.",
+		"The deep's black-green water with a drifting current and bioluminescent motes. Season 1's Deep Pass, tier 40.",
 		{ emissive = 1.2, pulse = "twinkle", aura = "motes", light = C(90, 230, 200) }
 	),
 }
@@ -1273,7 +1273,11 @@ local FX: { [string]: FxSet } = {
 		color2 = C(210, 250, 255),
 	},
 	PassRiptide = { fx = { "foam", "bubbles" }, color = C(120, 210, 255), color2 = C(230, 250, 255) },
-	PassUndertow = { fx = { "swirls", "vortex" }, color = C(110, 255, 225), color2 = C(150, 110, 255) },
+	PassUndertow = {
+		fx = { "swirls", "whirls", "vortex" },
+		color = C(110, 255, 225),
+		color2 = C(150, 110, 255),
+	},
 	PassAbyssalCurrent = { fx = { "currents", "motes" }, color = C(120, 255, 210), color2 = C(110, 70, 220) },
 	-- Legendary
 	Divine = { fx = { "halo", "rays", "motes" }, color = C(255, 214, 110), color2 = C(255, 244, 200) },

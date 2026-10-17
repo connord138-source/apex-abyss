@@ -62,6 +62,7 @@ export type Preset =
 	| "flame"
 	| "sparks"
 	| "pearls"
+	| "whirls"
 
 -- One emitter of a preset, parented to `parent` (a part: it emits from the part's
 -- box; an attachment: from a point). `rate` scales its usual rate.
@@ -268,6 +269,18 @@ function Fx.emitter(
 		e.Speed = NumberRange.new(L * 0.8, L * 1.6)
 		e.Drag = 6
 		e.Size = keys({ 0, L * 0.04, 1, 0 })
+	elseif preset == "whirls" then
+		-- Whirlpools turning on the body (Undertow): held to it, spinning
+		e.Texture = texture("fxSwirl", BUILT_IN.sparkle)
+		base = 3
+		e.LockedToPart = true
+		e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		e.Lifetime = NumberRange.new(1.6, 2.4)
+		e.Speed = NumberRange.new(0, 0)
+		e.Rotation = NumberRange.new(0, 360)
+		e.RotSpeed = NumberRange.new(-260, -180)
+		e.Size = keys({ 0, L * 0.12, 0.5, L * 0.26, 1, L * 0.3 })
+		e.Transparency = keys({ 0, 1, 0.25, 0.35, 0.75, 0.45, 1, 1 })
 	elseif preset == "pearls" then
 		-- Round glossy pearls rising slowly
 		e.Texture = texture("fxBubble", BUILT_IN.sparkle)
