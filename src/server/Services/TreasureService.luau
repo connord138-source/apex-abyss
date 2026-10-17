@@ -12,6 +12,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Pressure = require(ReplicatedStorage.Shared.Pressure)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
@@ -75,12 +76,11 @@ end
 
 -- A dig site for a tier: on the seabed, in the tier's distance band, not in the
 -- trench, and above `deepest` (the holder's crush depth, Config/Pvp `pressure`: a map
--- must never send a fish where the pressure kills it). Falls back to the sand level
--- if the raycast finds nothing.
+-- must never send a fish where the pressure kills it). Only open floor a fish can
+-- reach (Shared/Ground.open: nothing over it or round it; owner, 2026-10-17: nothing
+-- "in or under items that the player cannot access"). Falls back to the sand level
+-- if nothing is found.
 local function pickSite(tier: MapTier, deepest: number?): Vector3
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { workspace.Terrain } -- the floor itself: the chest sits in the sand
 	for _ = 1, 40 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local distance = rng:NextNumber(tier.minDistance, tier.maxDistance)
@@ -88,18 +88,9 @@ local function pickSite(tier: MapTier, deepest: number?): Vector3
 		if Seafloor.inTrench(x, z, 16) then
 			continue
 		end
-		local hit = workspace:Raycast(
-			Vector3.new(x, World.surfaceY - 10, z),
-			Vector3.new(0, -(World.surfaceY + 40), 0),
-			params
-		)
-		if
-			hit
-			and hit.Normal.Y > 0.7
-			and hit.Position.Y < 40
-			and hit.Position.Y > (deepest or -math.huge) + 4
-		then
-			return hit.Position
+		local floor = Ground.open(x, z, 2.5, 0.7, 4)
+		if floor and floor.Y < 40 and floor.Y > (deepest or -math.huge) + 4 then
+			return floor
 		end
 	end
 	-- No luck: a spot on the shelf's sand, inside its edge, which is above every

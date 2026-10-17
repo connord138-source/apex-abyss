@@ -31,8 +31,8 @@ type Spot = { position: Vector3, kind: string }
 local spots: { Spot } = {}
 local eatenUntil: { [number]: number } = {}
 
--- Open floor a small fish can get to (Shared/Ground `open`): a ball this wide comes
--- down onto it from above, no part's box comes within OPEN_ROOM of the water over
+-- Open floor a small fish can get to (Shared/Ground `open`): a ball of OPEN_RADIUS
+-- comes down onto it from above, no part's box comes within OPEN_ROOM of the water over
 -- it (playtest 2026-10-10: a shrimp at a boulder's foot was behind an invisible
 -- wall), and the floor is gentle (OPEN_UP, not up the side of a rock). The world is
 -- built before this runs.
@@ -77,11 +77,8 @@ local function settleSchools()
 	local lifts = Schools.settle(Ground.y)
 	workspace:SetAttribute("SchoolLifts", lifts)
 	local lifted = if lifts == "" then 0 else #string.split(lifts, ";")
-	print(
-		`[ForageService] {lifted} of {#Schools.list} prey schools lifted over the ground ({math.floor(
-			(os.clock() - started) * 1000
-		)} ms)`
-	)
+	local ms = math.floor((os.clock() - started) * 1000)
+	print(`[ForageService] {lifted} of {#Schools.list} prey schools lifted over the ground ({ms} ms)`)
 end
 
 local function onEat(player: Player, batch: any)

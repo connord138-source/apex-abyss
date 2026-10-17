@@ -32,8 +32,8 @@ local collected: { [Player]: { [number]: number } } = {} -- spot → clock it's 
 
 -- Open floor a small fish can get to (Shared/Ground `open`): the Terrain itself (a
 -- shell on a kelp blade or a rock's placeholder part floated above the floor, owner
--- 2026-10-08), a ball this wide comes down onto it from above, no part's box comes
--- within OPEN_ROOM of the water over it, and it's no steeper than OPEN_UP
+-- 2026-10-08), a ball of OPEN_RADIUS comes down onto it from above, no part's box
+-- comes within OPEN_ROOM of the water over it, and it's no steeper than OPEN_UP
 local OPEN_RADIUS = 1.25
 local OPEN_ROOM = 2.5
 local OPEN_UP = 0.5

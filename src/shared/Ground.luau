@@ -94,7 +94,7 @@ end
 --     (not a rock, a coral head, a wreck, a ruin, an arch or a lantern: everything
 --     that collides counts, not just the biomes' dressing), and it's no steeper than
 --     `minUp` (the normal's height);
---   * a ball `radius` studs across comes straight down onto it (nothing overhangs
+--   * a ball of `radius` studs comes straight down onto it (nothing overhangs
 --     it and it isn't at the bottom of a crack too narrow for a fish);
 --   * no solid part's box comes within `room` studs of the water just over it.
 -- Returns the floor point and its normal, or nil.
