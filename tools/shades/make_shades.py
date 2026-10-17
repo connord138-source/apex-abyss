@@ -3099,7 +3099,7 @@ def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on
     sky = sky * (0.95 + 0.1 * value_noise(gp, 1.0, 1601))[..., None]
     low = 0.05 + 0.1 * np.sin(2 * np.pi * (u / 0.17) + 1.3)
     sky = mix(sky, (0.62, 0.87, 0.98), hard(smoothstep(low + 0.02, low - 0.02, vn)) * 0.6)
-    horizon = smoothstep(0.035, 0.018, np.abs(vn - far))
+    horizon = smoothstep(0.07, 0.045, np.abs(vn - far))
     sky = mix(sky, (0.16, 0.46, 0.80), hard(horizon) * 0.8)
     sea = mix(board(m, (0.10, 0.60, 0.82)), (0.04, 0.38, 0.68), smoothstep(0.0, 0.9, depth))
     grain = smoothstep(0.1, 0.0, np.abs(((depth * 7) % 1.0) - 0.5) - 0.42) * smoothstep(0.1, 0.22, depth)
@@ -3211,8 +3211,11 @@ def week_wreck(m):  # A shipwreck: riveted hull plates, rust streaks, barnacles,
     # seams a darker shade of their plate instead of black, the rivets, rust and number
     # brighter, and a faint even glow (below). Still saturated on purpose (screen
     # 2026-10-16): a greyer verdigris (0.31, 0.48, 0.47) scored 0.83 on the Nibbler and
-    # a steel blue 0.52, and a red bottom 0.97 (big red fields on the belly's islands)
-    hull = np.where(upper[..., None], board(m, (0.23, 0.71, 0.61)), board(m, (0.27, 0.50, 0.87)))
+    # a steel blue 0.52, and a red bottom 0.97 (big red fields on the belly's islands).
+    # v11's screen: a light teal with more red in it, (0.23, 0.71, 0.61), scored 0.19
+    # on the Nibbler once JPEG-packed and (0.22, 0.70, 0.50) 0.20; this purer teal
+    # 0.04, and 0.01 or less on the other fish
+    hull = np.where(upper[..., None], board(m, (0.12, 0.71, 0.62)), board(m, (0.30, 0.56, 0.91)))
     plate_l, plate_h = 0.11, 0.5
     row = np.floor(vn / plate_h)
     col = (u + 0.5 * plate_l * (row % 2)) / plate_l
