@@ -579,7 +579,7 @@ function dumpParts(root)
 				if child.ClassName == "SpecialMesh" and child.MeshType then
 					local mt = child.MeshType.Name
 					if mt == "Sphere" then
-						shape = "Ball"
+						shape = "Ellipsoid" -- a sphere mesh fills the part's box
 					elseif mt == "Cylinder" then
 						shape = "Cylinder"
 					elseif mt == "Wedge" then

@@ -319,9 +319,11 @@ function Cave.ops(): { Op }
 			ball(ops, AIR, at(angle, wallR + r * 0.35, y), r)
 		end
 	end
+	-- Bulges on the walls between the openings, up off the floor: the plaza's
+	-- planter beds and their kelp stand against the wall's foot (Plaza.luau)
 	for _ = 1, 12 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
-		local y = rng:NextNumber(8, 40)
+		local y = rng:NextNumber(24, 46)
 		if not nearOpening(angle, math.rad(10)) then
 			ball(ops, ROCK, at(angle, hub.radius + 2, y), rng:NextNumber(6, 10))
 		end
@@ -416,13 +418,9 @@ function Cave.ops(): { Op }
 			)
 		end
 	end
-	-- Sand drifts at the foot of the walls, away from the doorways
-	for _ = 1, 20 do
-		local angle = rng:NextNumber(0, 2 * math.pi)
-		if not nearOpening(angle, math.rad(9)) then
-			ball(ops, SAND, at(angle, rng:NextNumber(62, 84), -5), rng:NextNumber(7, 10))
-		end
-	end
+	-- (The floor stays flat under the plaza's paving, Plaza.luau: the sand drifts
+	-- that were banked round it poked up through the flagstones, owner 2026-10-17:
+	-- "Ground still looks a bit rough in the starter zone")
 	return ops
 end
 

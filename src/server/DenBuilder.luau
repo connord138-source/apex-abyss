@@ -616,35 +616,65 @@ local function trophyWall(state: DenState, index: number, record: Record, trophi
 	task.delay(0.5, function()
 		seatTrophies(frame, backZ, columns)
 	end)
-	-- The title over the way out, inside
+	-- The title over the way out, inside: a lacquered board in a brass frame over
+	-- the TO THE HUB plaque (DenDoor.exit), in the same style as the doorways'
+	-- nameplates (SmoothPlastic: a toon material's tile blurred a small sign)
 	if trophies.title ~= "" then
+		local at = DenSpace.spot(
+			frame,
+			0,
+			Dens.storeys[1].deck + Dens.exit.y + Dens.exit.radius + 8,
+			Dens.maxFront - 0.5
+		)
+		local width, height = 12, 2.4
 		local sign = part(
 			folder,
 			"Title",
-			Vector3.new(10, 1.6, 0.4),
-			DenSpace.spot(
-				frame,
-				0,
-				Dens.storeys[1].deck + Dens.exit.y + Dens.exit.radius + 8,
-				Dens.maxFront - 0.5
-			),
-			Color3.fromRGB(60, 66, 74),
-			Enum.Material.Slate
+			Vector3.new(width, height, 0.5),
+			at,
+			Color3.fromRGB(20, 88, 102),
+			Enum.Material.SmoothPlastic
 		)
+		local brass = Color3.fromRGB(214, 160, 70)
+		for _, y in { -1, 1 } do
+			part(
+				folder,
+				"TitleTrim",
+				Vector3.new(width + 0.4, 0.4, 0.35),
+				at * CFrame.new(0, y * height / 2, 0.2),
+				brass,
+				Enum.Material.SmoothPlastic
+			)
+		end
+		for _, x in { -1, 1 } do
+			part(
+				folder,
+				"TitleTrim",
+				Vector3.new(0.4, height + 0.4, 0.35),
+				at * CFrame.new(x * width / 2, 0, 0.2),
+				brass,
+				Enum.Material.SmoothPlastic
+			)
+		end
 		local gui = Instance.new("SurfaceGui")
 		gui.Face = Enum.NormalId.Back
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 40
+		gui.PixelsPerStud = 60
 		gui.LightInfluence = 0
 		gui.Parent = sign
 		local label = Instance.new("TextLabel")
 		label.BackgroundTransparency = 1
-		label.Size = UDim2.fromScale(1, 1)
-		label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
+		label.Position = UDim2.fromScale(0.04, 0.1)
+		label.Size = UDim2.fromScale(0.92, 0.8)
+		label.Font = Enum.Font.FredokaOne
 		label.TextScaled = true
 		label.TextColor3 = glow
 		label.Text = string.upper(trophies.title)
 		label.Parent = gui
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(8, 34, 42)
+		stroke.Thickness = 3
+		stroke.Parent = label
 	end
 end
 

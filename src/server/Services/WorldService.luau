@@ -14,6 +14,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Cave = require(script.Parent.Parent.Cave)
+local Decor = require(script.Parent.Parent.Decor)
+local DenDoor = require(script.Parent.Parent.DenDoor)
+local Plaza = require(script.Parent.Parent.Plaza)
 local Props = require(ReplicatedStorage.Shared.Props)
 local TreasureWheel = require(script.Parent.Parent.TreasureWheel)
 local Shelf = require(script.Parent.Parent.Shelf)
@@ -28,7 +31,6 @@ local WorldService = {
 }
 
 local root: Folder
-local denSigns: { [number]: TextLabel } = {}
 local vendorPositions: { [string]: Vector3 } = {}
 
 local ROCK = Color3.fromRGB(92, 98, 104)
@@ -251,112 +253,18 @@ local function buildBounds(parent: Instance)
 	end
 end
 
--- A bubble portal (owner, 2026-10-16: private dens): a shimmering disc facing along
--- `cframe`'s look, a glowing rim, rising bubbles and a light
-local function portal(parent: Instance, name: string, cframe: CFrame, radius: number, color: Color3): BasePart
-	local disc = Instance.new("Part")
-	disc.Name = name
-	disc.Anchored = true
-	disc.CanCollide = false
-	disc.CanQuery = false
-	disc.CanTouch = false
-	disc.Shape = Enum.PartType.Cylinder
-	disc.Size = Vector3.new(0.4, radius * 2, radius * 2)
-	-- A cylinder's axis is its X: turn it onto the look
-	disc.CFrame = cframe * CFrame.Angles(0, math.rad(90), 0)
-	disc.Color = color
-	disc.Material = Enum.Material.ForceField
-	disc.Transparency = 0.05
-	disc.CastShadow = false
-	disc.Parent = parent
-	local rim = Instance.new("Part")
-	rim.Name = name .. "Rim"
-	rim.Anchored = true
-	rim.CanCollide = false
-	rim.CanQuery = false
-	rim.CanTouch = false
-	rim.Shape = Enum.PartType.Cylinder
-	rim.Size = Vector3.new(0.2, radius * 2 + 1.4, radius * 2 + 1.4)
-	rim.CFrame = disc.CFrame * CFrame.new(-0.25, 0, 0) -- just behind the disc
-	rim.Color = color:Lerp(Color3.new(1, 1, 1), 0.25)
-	rim.Material = Enum.Material.Neon
-	rim.Transparency = 0.35
-	rim.CastShadow = false
-	rim.Parent = parent
-	local glow = Instance.new("PointLight")
-	glow.Color = color
-	glow.Range = 24
-	glow.Brightness = 1.4
-	glow.Parent = disc
-	local bubbles = Instance.new("ParticleEmitter")
-	bubbles.Name = "Bubbles"
-	bubbles.Rate = 10
-	bubbles.Lifetime = NumberRange.new(1.5, 3)
-	bubbles.Speed = NumberRange.new(1, 3)
-	bubbles.SpreadAngle = Vector2.new(30, 30)
-	bubbles.Acceleration = Vector3.new(0, 4, 0)
-	bubbles.Size = NumberSequence.new(0.35, 0.1)
-	bubbles.Transparency = NumberSequence.new(0.3, 1)
-	bubbles.LightEmission = 0.6
-	bubbles.Color = ColorSequence.new(Color3.fromRGB(210, 250, 255))
-	bubbles.Parent = disc
-	return disc
-end
-
--- A sign with one line of text on its front (the face along `cframe`'s look)
-local function signAt(parent: Instance, name: string, cframe: CFrame, width: number, text: string): TextLabel
-	local sign = block(parent, name, Vector3.new(width, 3.2, 0.6), cframe, ROCK_DARK)
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 40
-	gui.LightInfluence = 0
-	gui.Parent = sign
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(200, 236, 245)
-	label.Text = text
-	label.Parent = gui
-	return label
-end
-
-local PORTAL = Color3.fromRGB(110, 225, 235)
 local denModels: { [number]: Model } = {}
 
 -- One den's parts (owner, 2026-10-16: every den is a private interior far outside
--- the play area, Layout.denOrigin). On the plaza: the bubble portal at the back of
--- its doorway, a warm lamp and the sign. Inside: its Haul Pool by the way in, and the
--- portal back out on the front wall. The rooms are carved from the Terrain
--- (DenCarve) and furnished by DenBuilder.
+-- the play area, Layout.denOrigin). On the plaza: its front door (DenDoor.front:
+-- the stone arch, the nameplate, lanterns, steps and the bubble-curtain portal at
+-- the doorway's back). Inside: its Haul Pool by the way in, and the way out on the
+-- front wall (DenDoor.exit). The rooms are carved from the Terrain (DenCarve) and
+-- furnished by DenBuilder.
 local function buildDen(parent: Instance, index: number)
 	local den = Instance.new("Model")
 	den.Name = `Den{index}`
-	local door = Layout.doorFrame(index)
-	portal(den, "Portal", door, Layout.DOOR_RADIUS, PORTAL)
-	-- A warm lamp so a doorway reads as home
-	local anchor = Instance.new("Part")
-	anchor.Name = "Lamp"
-	anchor.Anchored = true
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-	anchor.Transparency = 1
-	anchor.Size = Vector3.one
-	anchor.CFrame = door * CFrame.new(0, 8, -6)
-	anchor.Parent = den
-	local lamp = Instance.new("PointLight")
-	lamp.Color = Color3.fromRGB(255, 196, 140)
-	lamp.Range = 26
-	lamp.Brightness = 0.9
-	lamp.Parent = anchor
-	-- The sign over the doorway, facing the hub
-	local radial = -door.LookVector
-	local signPosition = Vector3.new(0, hub.denFloorY + 25.5, 0) + hub.center + radial * (hub.radius - 1.2)
-	denSigns[index] =
-		signAt(den, "Sign", CFrame.lookAt(signPosition, signPosition - radial), 16, `DEN {index}`)
+	DenDoor.front(den, index)
 	-- The Haul Pool: swim into it to bank (you come in over it)
 	local poolRadius = Config.Dens.pool.radius
 	local pool = Instance.new("Part")
@@ -389,22 +297,22 @@ local function buildDen(parent: Instance, index: number)
 	bubbles.LightEmission = 0.6
 	bubbles.Color = ColorSequence.new(Color3.fromRGB(210, 250, 255))
 	bubbles.Parent = pool
-	-- The way out, on the front wall, with its sign over it
-	local exit = Layout.exitFrame(index)
-	portal(den, "ExitPortal", exit, Config.Dens.exit.radius, PORTAL)
-	signAt(den, "ExitSign", exit * CFrame.new(0, Config.Dens.exit.radius + 3, 0.3), 14, "TO THE HUB")
+	-- The way out, on the front wall, under its TO THE HUB plaque
+	DenDoor.exit(den, index)
 	den.Parent = parent
 	denModels[index] = den
 end
 
 -- The hub: the cavern is Terrain (Cave.luau: the seamount, the dome and oculus,
--- the den rooms and tunnels); parts add what terrain can't (pools, lamps, signs,
--- sconces, the plaza, the beacon, light shafts).
+-- the doorways and tunnels); parts add what terrain can't: the dens' doors, the
+-- plaza (Plaza.luau: paving, dais and beacon, gardens, lamps, stalls), the exit
+-- boards and lanterns, light shafts.
 -- The way out, built into the rock (owner, 2026-10-08: the EXIT chips were "a
--- flashing blue box that says EXIT in black on every exit"): a carved lintel over
--- each tunnel mouth with EXIT cut into it, a teal lantern either side, and lanterns
--- round the oculus. The tutorial breathes the `ExitLight` lanterns brighter when it
--- asks the player to find the way out; nothing floats and nothing flashes.
+-- flashing blue box that says EXIT in black on every exit"): a board over each
+-- tunnel mouth saying EXIT, the way it goes and the biomes out there (Plaza), a teal
+-- lantern either side of it, and lanterns round the oculus. The tutorial breathes
+-- the `ExitLight` lanterns brighter when it asks the player to find the way out;
+-- nothing floats and nothing flashes.
 local EXIT_GLOW = Color3.fromRGB(110, 220, 235)
 
 local function exitLantern(parent: Instance, position: Vector3)
@@ -458,55 +366,35 @@ local function wallAt(radial: Vector3, right: Vector3, center: Vector3, spread: 
 	return nearest
 end
 
--- A tunnel mouth's dressing: a slate lintel with EXIT on it on the rock above the
--- opening, and a teal lantern on the rock either side of it. Built once the Terrain
--- answers raycasts.
+-- A tunnel mouth's dressing: the board over the opening and a teal lantern at
+-- either end of it, on the board's own brackets (owner, 2026-10-17: they had stood
+-- at the mouth's sides, which is where the dens' doorways beside it open, so they
+-- hung inside those doorways). Built once the Terrain answers raycasts.
 local TUNNEL_RADIUS = hub.tunnelHeight / 2 - 2 -- Cave.luau's tube
 local function exitDressing(parent: Instance, segment: number)
 	local angle = Layout.segmentAngle(segment)
 	local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
 	local right = radial:Cross(Vector3.yAxis).Unit
-	local function at(r: number, y: number, side: number): CFrame
-		local position = hub.center + radial * r + right * side + Vector3.new(0, y, 0)
-		return CFrame.lookAt(position, position + radial)
-	end
 	-- Just above the tube's top (it's centered TUNNEL_RADIUS + 1 up)
-	local lintelY = TUNNEL_RADIUS * 2 + 1 + 4
-	local face = wallAt(radial, right, Vector3.new(0, lintelY, 0), 11) or (hub.radius - 1)
-	local lintel = block(
-		parent,
-		"ExitLintel",
-		Vector3.new(26, 4, 3),
-		at(face - 1.7, lintelY, 0),
-		ROCK_DARK,
-		Enum.Material.Slate
-	)
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Back -- toward the plaza (the frame looks out along the tunnel)
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 30
-	gui.LightInfluence = 0.6
-	gui.Brightness = 1.3
-	gui.Parent = lintel
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.SemiBold)
-	label.TextScaled = true
-	label.TextColor3 = EXIT_GLOW
-	label.TextTransparency = 0.2
-	label.Text = "E X I T"
-	label.Parent = gui
-	-- The lanterns flank the opening on its own rock, not in the dens' doorways
-	-- beside it (they were 13 degrees out, in the next den's door)
-	local lanternY = TUNNEL_RADIUS + 1
+	local boardY = TUNNEL_RADIUS * 2 + 1 + 4.6
+	local face = wallAt(radial, right, Vector3.new(0, boardY, 0), 11) or (hub.radius - 1)
+	local board = Plaza.tunnelBoard(parent, angle, face, boardY)
 	for side = -1, 1, 2 do
-		local offset = side * (TUNNEL_RADIUS + 3)
-		local sideRight = right * offset
-		local rockAt = wallAt(radial, right, Vector3.new(0, lanternY, 0) + sideRight, 0)
-		-- (a ray off the mouth's edge can run on down the tube: then the wall's radius)
-		local r = if rockAt then math.min(rockAt, hub.radius + 4) else hub.radius
-		exitLantern(parent, at(r - 1.6, lanternY, offset).Position)
+		local glass = Decor.lantern(
+			parent,
+			board * CFrame.new(side * 13.6, -0.6, -1.2),
+			-side,
+			true,
+			26,
+			EXIT_GLOW
+		).glass
+		glass.Name = "ExitLantern"
+		glass.Transparency = 0.3
+		local light = glass:FindFirstChildOfClass("PointLight")
+		if light then
+			light.Brightness = 0.7
+		end
+		CollectionService:AddTag(glass, "ExitLight")
 	end
 end
 
@@ -517,61 +405,16 @@ local function buildHub(parent: Instance)
 	Cave.apply(workspace.Terrain, Cave.ops())
 	local denIndex = 0
 	for segment = 1, hub.segments do
-		local angle = Layout.segmentAngle(segment)
-		local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
-		local function at(r: number, y: number): CFrame
-			local position = hub.center + radial * r + Vector3.new(0, y, 0)
-			return CFrame.lookAt(position, position + radial)
-		end
 		local kind = Layout.segmentKind(segment)
 		if kind == "den" then
 			denIndex += 1
 			buildDen(hubFolder, denIndex)
 		elseif kind == "tunnel" then
 			table.insert(tunnelSegments, segment)
-		elseif kind == "wall" then
-			-- A sconce between openings, just proud of the rock
-			local sconce =
-				block(hubFolder, "Sconce", Vector3.new(2, 2, 1), at(hub.radius - 1.5, 18), ROCK_DARK)
-			sconce.Material = Enum.Material.Neon
-			sconce.Color = Color3.fromRGB(255, 190, 120)
-			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(255, 190, 120)
-			light.Range = 30
-			light.Brightness = 0.8
-			light.Parent = sconce
 		end
 	end
-
-	-- The plaza: a raised ring floor and a crystal beacon in the middle (the
-	-- Evolution Shrine's placeholder)
-	local plaza = Instance.new("Part")
-	plaza.Name = "Plaza"
-	plaza.Anchored = true
-	plaza.Shape = Enum.PartType.Cylinder
-	plaza.Size = Vector3.new(2, 90, 90)
-	plaza.CFrame = CFrame.new(hub.center + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	plaza.Color = Color3.fromRGB(120, 126, 132)
-	plaza.Material = Enum.Material.Slate
-	plaza.Parent = hubFolder
-	local crystal = block(
-		hubFolder,
-		"Beacon",
-		Vector3.new(6, 26, 6),
-		CFrame.new(hub.center + Vector3.new(0, 16, 0)) * CFrame.Angles(0, math.rad(45), math.rad(12)),
-		Color3.fromRGB(110, 230, 255),
-		Enum.Material.Neon
-	)
-	crystal.Transparency = 0.15
-	Props.dress(crystal, "CrystalCluster", {
-		cframe = CFrame.new(hub.center + Vector3.new(0, 11, 0)),
-		size = Vector3.new(18, 22, 18),
-	})
-	local glow = Instance.new("PointLight")
-	glow.Color = Color3.fromRGB(110, 230, 255)
-	glow.Range = 60
-	glow.Brightness = 1.2
-	glow.Parent = crystal
+	-- The plaza: paving, the dais and beacon, gardens, lamps and wall lanterns
+	Plaza.build(hubFolder)
 
 	-- Lanterns round the oculus: the way out through the roof
 	for i = 0, 3 do
@@ -601,167 +444,12 @@ local function buildHub(parent: Instance)
 	end
 end
 
-local WOOD = Color3.fromRGB(132, 96, 66)
-local LANTERN = Color3.fromRGB(255, 196, 120)
--- The stall and keeper models face the GLB's +X, and Roblox's importer turns a GLB
--- half round (the prey GLBs, nose on -Z, came in facing +Z), so they arrive facing
--- -X. A quarter turn puts their fronts on -Z, the way a CFrame looks.
-local GLB_FRONT = CFrame.Angles(0, -math.pi / 2, 0)
--- A keeper stands beside its counter (on the right as you face the stall), turned
--- part way toward the plaza in front of the counter
-local KEEPER_SIDE = 10.5
-local KEEPER_TURN = math.rad(-25)
-
--- A shopkeeper: its model (WorldProps.Keeper<VendorId>, from the approved Vendors
--- concept) stands on the plaza beside the counter at full height, facing the plaza
--- (owner, 2026-10-11: "still just spheres w eyeballs"; behind the counter only its
--- head would show). Until it's imported, a ball with eyes sits behind the counter.
-local function keeper(parent: Instance, at: CFrame, stand: CFrame, color: Color3, vendorId: string)
-	local body = Instance.new("Part")
-	body.Name = "Keeper"
-	body.Anchored = true
-	body.CanCollide = false
-	body.Shape = Enum.PartType.Ball
-	body.Size = Vector3.one * 4
-	body.CFrame = at
-	body.Color = color
-	body.Material = Enum.Material.SmoothPlastic
-	body.Parent = parent
-	local dressed = Props.dress(body, `Keeper{vendorId}`, {
-		cframe = stand * GLB_FRONT,
-		size = Vector3.new(8, 7.5, 7.5), -- turned: X runs front to back, Z side to side
-		solid = true,
-	})
-	if dressed then
-		body.Transparency = 1
-		return
-	end
-	for side = -1, 1, 2 do
-		local eye = Instance.new("Part")
-		eye.Name = "Eye"
-		eye.Anchored = true
-		eye.CanCollide = false
-		eye.Shape = Enum.PartType.Ball
-		eye.Size = Vector3.one * 1.1
-		eye.CFrame = at * CFrame.new(side * 0.8, 0.6, -1.55)
-		eye.Color = Color3.new(1, 1, 1)
-		eye.Material = Enum.Material.SmoothPlastic
-		eye.Parent = parent
-		local pupil = eye:Clone()
-		pupil.Name = "Pupil"
-		pupil.Size = Vector3.one * 0.55
-		pupil.CFrame = at * CFrame.new(side * 0.8, 0.6, -2.02)
-		pupil.Color = Color3.fromRGB(20, 22, 28)
-		pupil.Parent = parent
-	end
-end
-
--- The four vendor stalls round the plaza (Config/Shop). The client shows its own
--- "E · Shop" hint near a counter (MenuController): a ProximityPrompt never showed
--- for the custom fish character (playtest 2026-10-06).
+-- The vendor stalls round the plaza (Plaza.vendors builds them, part-built: the
+-- imported market stall's texture read fuzzy up close, owner 2026-10-17)
 local function buildVendors(parent: Instance)
-	local market = folder("Vendors", parent)
-	local plazaTop = Layout.PLAZA_TOP
+	Plaza.vendors(parent)
 	for _, vendor in Config.Shop.vendors do
-		local angle = math.rad(vendor.angle)
-		local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
-		local function at(r: number, y: number): CFrame
-			local position = hub.center + radial * r + Vector3.new(0, y, 0)
-			-- Facing the beacon
-			return CFrame.lookAt(position, position - radial)
-		end
-		local stall = Instance.new("Model")
-		stall.Name = vendor.id
-		local counter = block(
-			stall,
-			"Counter",
-			Layout.COUNTER_SIZE,
-			at(Layout.COUNTER_RADIUS, plazaTop + Layout.COUNTER_SIZE.Y / 2),
-			WOOD,
-			Enum.Material.Wood
-		)
-		for side = -1, 1, 2 do
-			block(
-				stall,
-				"Post",
-				Vector3.new(0.8, 10, 0.8),
-				at(36, plazaTop + 5) * CFrame.new(side * 6, 0, 0),
-				WOOD,
-				Enum.Material.Wood
-			)
-			local lantern = Instance.new("Part")
-			lantern.Name = "Lantern"
-			lantern.Anchored = true
-			lantern.CanCollide = false
-			lantern.Shape = Enum.PartType.Ball
-			lantern.Size = Vector3.one * 1.1
-			lantern.CFrame = at(31.2, plazaTop + 8.6) * CFrame.new(side * 6.4, 0, 0)
-			lantern.Color = LANTERN
-			lantern.Material = Enum.Material.Neon
-			lantern.Parent = stall
-			Props.dress(lantern, "Lantern", {
-				cframe = lantern.CFrame.Rotation + lantern.Position,
-				size = Vector3.new(1.6, 2.4, 1.6),
-				keepVisible = true,
-			})
-			local light = Instance.new("PointLight")
-			light.Color = LANTERN
-			light.Range = 14
-			light.Brightness = 0.9
-			light.Parent = lantern
-		end
-		local awning = block(
-			stall,
-			"Awning",
-			Vector3.new(14, 0.6, 8),
-			at(33.5, plazaTop + 10) * CFrame.Angles(math.rad(-12), 0, 0),
-			vendor.color,
-			Enum.Material.Fabric
-		)
-		awning.CastShadow = true
-		local sign =
-			block(stall, "Sign", Vector3.new(11, 2, 0.4), at(29.6, plazaTop + 8.8), WOOD, Enum.Material.Wood)
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front -- toward the beacon
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 40
-		gui.LightInfluence = 0
-		gui.Parent = sign
-		local label = Instance.new("TextLabel")
-		label.BackgroundTransparency = 1
-		label.Size = UDim2.fromScale(1, 1)
-		label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-		label.TextScaled = true
-		label.TextColor3 = Color3.fromRGB(255, 240, 214)
-		label.Text = string.upper(vendor.name)
-		label.Parent = gui
-		keeper(
-			stall,
-			at(36.2, plazaTop + 4.2),
-			at(32, plazaTop + 3.75) * CFrame.new(-KEEPER_SIDE, 0, 0) * CFrame.Angles(0, KEEPER_TURN, 0),
-			vendor.color:Lerp(Color3.new(1, 1, 1), 0.25),
-			vendor.id
-		)
-		-- The imported stall stands where the counter is, facing the beacon; the
-		-- block posts and awning go when it's in (the sign and keeper stay)
-		local stallModel = Props.dress(counter, "MarketStall", {
-			cframe = at(33.5, plazaTop + 5.5) * GLB_FRONT,
-			size = Vector3.new(9, 11, 15), -- turned: X runs front to back, Z side to side
-			tint = vendor.color:Lerp(Color3.new(1, 1, 1), 0.6),
-		})
-		if stallModel then
-			for _, child in stall:GetChildren() do
-				if child.Name == "Post" or child.Name == "Awning" then
-					child:Destroy()
-				elseif child.Name == "Lantern" and child:IsA("BasePart") then
-					child.Transparency = 1
-				end
-			end
-		end
-
-		counter:SetAttribute("Vendor", vendor.id)
 		vendorPositions[vendor.id] = Layout.counterPosition(vendor.angle)
-		stall.Parent = market
 	end
 end
 
@@ -770,6 +458,7 @@ function WorldService.vendorPosition(id: string): Vector3?
 	return vendorPositions[id]
 end
 
+local WOOD = Color3.fromRGB(132, 96, 66)
 local WRECK_WOOD = Color3.fromRGB(70, 52, 38)
 local WRECK_WOOD_LIGHT = Color3.fromRGB(110, 86, 60)
 local STONE_PALE = Color3.fromRGB(176, 166, 140)
@@ -1659,17 +1348,7 @@ local denOwnerNames: { [number]: string? } = {}
 local denLevelNames: { [number]: string? } = {}
 
 local function refreshSign(index: number)
-	local label = denSigns[index]
-	if not label then
-		return
-	end
-	local owner = denOwnerNames[index]
-	local level = denLevelNames[index]
-	if owner then
-		label.Text = `{string.upper(owner)}'S {if level then string.upper(level) else "DEN"}`
-	else
-		label.Text = `DEN {index}`
-	end
+	DenDoor.setSign(index, denOwnerNames[index], denLevelNames[index])
 end
 
 -- Shows who owns a den on its sign (nil = free), and tells clients (the doorway
@@ -1715,9 +1394,8 @@ local function buildWheel(parent: Instance)
 			end
 		end
 	end
-	if top == -math.huge then
-		top = hub.center.Y + Layout.PLAZA_TOP
-	end
+	-- (it stands on the plaza's paving, which covers the cave floor round it)
+	top = math.max(top, hub.center.Y + Plaza.WHEEL_GROUND)
 	local hours = Wheel.freeEvery / 3600
 	WorldService.wheel = TreasureWheel.build(
 		parent,

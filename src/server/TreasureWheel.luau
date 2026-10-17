@@ -6,7 +6,11 @@
 -- ticks against, a lacquered frame and an arch sign ringed with marquee bulbs between
 -- two pillars, a big red button on a podium, and two boards (the prizes' odds, and
 -- where spins come from). Recoloured for the sea: deep teal lacquer, brass and
--- sea-stone, on a footing that reaches down to the cave floor. There are no
+-- sea-stone, on a footing that reaches down to the cave floor. Every piece is
+-- SmoothPlastic with colour blocking, light-gold bevels and Neon bulbs (owner,
+-- 2026-10-17: it read "fuzzy, cheap" once the toon materials re-skinned Marble and
+-- Slate game-wide, and Foil's crinkle map read as noise): a scallop-shell crest, a
+-- treasure chest and a heap of coins and pearls on the stage. There are no
 -- ProximityPrompts (they never worked for the fish characters): WheelService checks
 -- the distance to the button, and TreasureWheelController shows the hint.
 --
@@ -27,6 +31,7 @@ TreasureWheel.RADIUS = 9 -- the slices' radius
 TreasureWheel.HEIGHT = 14 -- the wheel's center above the ground
 TreasureWheel.PEGS = 24
 TreasureWheel.CLEAR_RADIUS = 26 -- keep scenery this far from the wheel (stage and boards)
+TreasureWheel.STAGE_RADIUS = 17.8 -- the footing under the stage
 
 export type Segment = WheelConfig.Segment
 -- A line on a board: what (left), how much (right), and the slice's color swatch
@@ -68,6 +73,9 @@ local GOLD_LIGHT = Color3.fromRGB(255, 224, 140)
 local CRIMSON = Color3.fromRGB(16, 98, 112)
 local CRIMSON_DARK = Color3.fromRGB(8, 56, 68)
 local MARBLE = Color3.fromRGB(176, 196, 196)
+local MARBLE_LIGHT = Color3.fromRGB(204, 222, 220)
+local GOLD_DARK = Color3.fromRGB(196, 136, 40)
+local PEARL = Color3.fromRGB(238, 244, 252)
 local BACKING = Color3.fromRGB(10, 24, 40)
 local BULB = Color3.fromRGB(255, 214, 150)
 local TEXT_STROKE = Color3.fromRGB(4, 28, 36)
@@ -264,7 +272,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.4, HUB_R * 2, HUB_R * 2),
 		CFrame = facing(base * CFrame.new(0, 0, -0.3)),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 		CanCollide = false,
 	})
@@ -281,7 +289,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 		Name = "HubDome",
 		Size = Vector3.new(2.5, 2.5, 1.4),
 		CFrame = base * CFrame.new(0, 0, -0.8),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 		CanCollide = false,
 	})
@@ -347,7 +355,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 			Name = "Divider",
 			Size = Vector3.new(0.24, R - HUB_R, 0.2),
 			CFrame = radial(base, center + slice / 2, (R + HUB_R) / 2, -0.22),
-			Material = Enum.Material.Foil,
+			Material = Enum.Material.SmoothPlastic,
 			Color = GOLD_LIGHT,
 			CanCollide = false,
 			CanQuery = false,
@@ -380,12 +388,12 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 	-- Rim and pegs (the pegs at slice edges have bigger, lit heads)
 	local rimProps: { [string]: any } = table.clone(loose)
 	rimProps.Name = "Rim"
-	rimProps.Material = Enum.Material.Foil
+	rimProps.Material = Enum.Material.SmoothPlastic
 	rimProps.Color = GOLD
 	ring(disc, base, R + 0.35, 0.9, -0.05, 36, rimProps)
 	local collarProps: { [string]: any } = table.clone(loose)
 	collarProps.Name = "Collar"
-	collarProps.Material = Enum.Material.Foil
+	collarProps.Material = Enum.Material.SmoothPlastic
 	collarProps.Color = GOLD
 	collarProps.CastShadow = false
 	ring(disc, base, COLLAR_R, 0.3, -0.18, 28, collarProps)
@@ -398,7 +406,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(1, 0.32, 0.32),
 			CFrame = facing(radial(base, theta, PEG_RADIUS, -0.65)),
-			Material = Enum.Material.Metal,
+			Material = Enum.Material.SmoothPlastic,
 			Color = Color3.fromRGB(225, 225, 235),
 			CanCollide = false,
 			CanQuery = false,
@@ -411,7 +419,7 @@ local function buildDisc(parent: Instance, base: CFrame, segments: { Segment }):
 			Shape = Enum.PartType.Ball,
 			Size = Vector3.new(head, head, head),
 			CFrame = radial(base, theta, PEG_RADIUS, -1.2),
-			Material = if edge then Enum.Material.Neon else Enum.Material.Foil,
+			Material = if edge then Enum.Material.Neon else Enum.Material.SmoothPlastic,
 			Color = if edge then BULB else GOLD,
 			CanCollide = false,
 			CanQuery = false,
@@ -448,7 +456,7 @@ local function buildFlapper(parent: Instance, base: CFrame): Model
 	end
 	local outline: { [string]: any } = table.clone(loose)
 	outline.Name = "FlapperTrim"
-	outline.Material = Enum.Material.Foil
+	outline.Material = Enum.Material.SmoothPlastic
 	outline.Color = GOLD
 	triangle(
 		flapper,
@@ -475,7 +483,7 @@ local function buildFlapper(parent: Instance, base: CFrame): Model
 	cap.Shape = Enum.PartType.Cylinder
 	cap.Size = Vector3.new(0.6, 0.9, 0.9)
 	cap.CFrame = facing(base * CFrame.new(FLAPPER_PIVOT.X, FLAPPER_PIVOT.Y, -1.15))
-	cap.Material = Enum.Material.Foil
+	cap.Material = Enum.Material.SmoothPlastic
 	cap.Color = GOLD_LIGHT
 	part(flapper, cap)
 	flapper:SetAttribute("PivotCFrame", base * CFrame.new(FLAPPER_PIVOT))
@@ -505,7 +513,7 @@ local function board(parent: Instance, origin: CFrame, title: string, rows: { Bo
 			Name = "Post",
 			Size = Vector3.new(0.5, 10.8, 0.5),
 			CFrame = origin * CFrame.new(x, 5.4, 0.3),
-			Material = Enum.Material.Foil,
+			Material = Enum.Material.SmoothPlastic,
 			Color = GOLD,
 		})
 	end
@@ -513,7 +521,7 @@ local function board(parent: Instance, origin: CFrame, title: string, rows: { Bo
 		Name = "Plate",
 		Size = Vector3.new(9, 8.2, 0.25),
 		CFrame = origin * CFrame.new(0, 6.3, 0.3),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 	})
 	local panel = part(folder, {
@@ -527,7 +535,7 @@ local function board(parent: Instance, origin: CFrame, title: string, rows: { Bo
 		Name = "Cap",
 		Size = Vector3.new(9.3, 0.45, 1),
 		CFrame = origin * CFrame.new(0, 10.6, 0.2),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 	})
 	-- 80 canvas pixels a stud
@@ -648,9 +656,9 @@ function TreasureWheel.build(
 	part(model, {
 		Name = "Footing",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(8, 35.6, 35.6),
-		CFrame = upright(floor * CFrame.new(0, -4, 0)),
-		Material = Enum.Material.Slate,
+		Size = Vector3.new(8, TreasureWheel.STAGE_RADIUS * 2, TreasureWheel.STAGE_RADIUS * 2),
+		CFrame = upright(floor * CFrame.new(0, -4.05, 0)), -- its top just under the paving
+		Material = Enum.Material.SmoothPlastic,
 		Color = Color3.fromRGB(70, 84, 92),
 	})
 	-- Stage: two sea-stone steps with brass edges, and a carpet to the button
@@ -663,7 +671,7 @@ function TreasureWheel.build(
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(STAGE_TOP / 2, diameter, diameter),
 			CFrame = upright(floor * CFrame.new(0, bottom + STAGE_TOP / 4, 0)),
-			Material = Enum.Material.Marble,
+			Material = Enum.Material.SmoothPlastic,
 			Color = MARBLE,
 		})
 		part(model, {
@@ -671,9 +679,30 @@ function TreasureWheel.build(
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(0.2, diameter + 0.3, diameter + 0.3),
 			CFrame = upright(floor * CFrame.new(0, top - 0.12, 0)),
-			Material = Enum.Material.Foil,
+			Material = Enum.Material.SmoothPlastic,
 			Color = GOLD,
 			CanCollide = false,
+		})
+		-- A lighter bevel inside the brass edge, so the step reads cut, not flat
+		part(model, {
+			Name = "StageBevel",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.06, diameter - 0.5, diameter - 0.5),
+			CFrame = upright(floor * CFrame.new(0, top + 0.01, 0)),
+			Material = Enum.Material.SmoothPlastic,
+			Color = MARBLE_LIGHT,
+			CanCollide = false,
+			CastShadow = false,
+		})
+		part(model, {
+			Name = "Stage",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.07, diameter - 2.2, diameter - 2.2),
+			CFrame = upright(floor * CFrame.new(0, top + 0.015, 0)),
+			Material = Enum.Material.SmoothPlastic,
+			Color = MARBLE,
+			CanCollide = false,
+			CastShadow = false,
 		})
 		-- Carpet across this step's front, from the podium out
 		local inner = if index == 2 then 10.8 else 29 / 2 + 0.1
@@ -682,10 +711,21 @@ function TreasureWheel.build(
 			Name = "Carpet",
 			Size = Vector3.new(5, 0.08, outer - inner),
 			CFrame = floor * CFrame.new(0, top + 0.04, -(inner + outer) / 2),
-			Material = Enum.Material.Fabric,
+			Material = Enum.Material.SmoothPlastic,
 			Color = Color3.fromRGB(10, 70, 82),
 			CanCollide = false,
 		})
+		for _, x in { -2.2, 2.2 } do
+			part(model, {
+				Name = "CarpetEdge",
+				Size = Vector3.new(0.3, 0.1, outer - inner),
+				CFrame = floor * CFrame.new(x, top + 0.05, -(inner + outer) / 2),
+				Material = Enum.Material.SmoothPlastic,
+				Color = GOLD,
+				CanCollide = false,
+				CastShadow = false,
+			})
+		end
 	end
 
 	-- Back post and axle
@@ -701,7 +741,7 @@ function TreasureWheel.build(
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(2.2, 1.2, 1.2),
 		CFrame = facing(base * CFrame.new(0, 0, 1.5)),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 		CanCollide = false,
 	})
@@ -717,7 +757,7 @@ function TreasureWheel.build(
 	ring(model, base, FRAME_R, 1.3, 0.15, 36, lacquer)
 	ring(model, base, FRAME_R + 0.75, 0.35, 0, 36, {
 		Name = "FrameTrim",
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 		CanCollide = false,
 		CastShadow = false,
@@ -733,7 +773,7 @@ function TreasureWheel.build(
 		Name = "FlapperMount", -- the client's tick sounds and confetti come from here
 		Size = Vector3.new(1.8, 1.4, 1),
 		CFrame = base * CFrame.new(0, FRAME_R + 0.2, -0.9),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 		CanCollide = false,
 	})
@@ -756,7 +796,7 @@ function TreasureWheel.build(
 			Name = "PillarFoot",
 			Size = Vector3.new(3, 1.6, 3),
 			CFrame = base * CFrame.new(x, bottom + 0.8, 0.3),
-			Material = Enum.Material.Marble,
+			Material = Enum.Material.SmoothPlastic,
 			Color = MARBLE,
 		})
 		for _, y in { bottom + 1.7, -6, 2, 10, top - 0.4 } do
@@ -765,7 +805,7 @@ function TreasureWheel.build(
 				Shape = Enum.PartType.Cylinder,
 				Size = Vector3.new(0.3, 2.15, 2.15),
 				CFrame = upright(base * CFrame.new(x, y, 0.3)),
-				Material = Enum.Material.Foil,
+				Material = Enum.Material.SmoothPlastic,
 				Color = GOLD,
 				CanCollide = false,
 			})
@@ -774,7 +814,7 @@ function TreasureWheel.build(
 			Name = "PillarCap",
 			Size = Vector3.new(2.8, 0.9, 2.8),
 			CFrame = base * CFrame.new(x, top + 0.45, 0.3),
-			Material = Enum.Material.Foil,
+			Material = Enum.Material.SmoothPlastic,
 			Color = GOLD,
 		})
 		part(model, {
@@ -782,8 +822,16 @@ function TreasureWheel.build(
 			Shape = Enum.PartType.Ball,
 			Size = Vector3.new(1.8, 1.8, 1.8),
 			CFrame = base * CFrame.new(x, top + 1.8, 0.3),
-			Material = Enum.Material.Foil,
-			Color = GOLD,
+			Material = Enum.Material.SmoothPlastic,
+			Color = PEARL,
+		})
+		part(model, {
+			Name = "FinialCup",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.5, 1.6, 1.6),
+			CFrame = upright(base * CFrame.new(x, top + 1.05, 0.3)),
+			Material = Enum.Material.SmoothPlastic,
+			Color = GOLD_DARK,
 		})
 		bulb(bulbs, base * CFrame.new(x, top + 3, 0.3), 0.6, "Finial", 1)
 		for i = 0, 8 do
@@ -794,7 +842,7 @@ function TreasureWheel.build(
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(PILLAR_X - FRAME_R - 0.2, 0.7, 0.7),
 			CFrame = base * CFrame.new(side * (FRAME_R + PILLAR_X) / 2, 0, 0.2),
-			Material = Enum.Material.Foil,
+			Material = Enum.Material.SmoothPlastic,
 			Color = GOLD,
 			CanCollide = false,
 		})
@@ -803,7 +851,7 @@ function TreasureWheel.build(
 			Shape = Enum.PartType.Ball,
 			Size = Vector3.new(1.1, 1.1, 1.1),
 			CFrame = base * CFrame.new(side * (FRAME_R + 0.6), 0, 0.15),
-			Material = Enum.Material.Foil,
+			Material = Enum.Material.SmoothPlastic,
 			Color = GOLD,
 			CanCollide = false,
 		})
@@ -822,38 +870,41 @@ function TreasureWheel.build(
 		Name = "SignPlate",
 		Size = Vector3.new(signWidth + 1, 5.4, 0.5),
 		CFrame = base * CFrame.new(0, SIGN_Y, 0.1),
-		Material = Enum.Material.Foil,
-		Color = GOLD,
-	})
-	part(model, {
-		Name = "CrestTrim",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.4, 8.8, 8.8),
-		CFrame = facing(base * CFrame.new(0, SIGN_Y + 2.2, 0.45)),
-		Material = Enum.Material.Foil,
-		Color = GOLD,
-	})
-	local crest = part(model, {
-		Name = "Crest",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.6, 8, 8),
-		CFrame = facing(base * CFrame.new(0, SIGN_Y + 2.2, 0.2)),
 		Material = Enum.Material.SmoothPlastic,
-		Color = CRIMSON_DARK,
+		Color = GOLD,
 	})
-	-- A cylinder's flat end is its Right face, which the turn above points at the front
-	text(surface(crest, Enum.NormalId.Right, Vector2.new(400, 400)), 2, {
-		Position = UDim2.fromScale(0.27, 0.04),
-		Size = UDim2.fromScale(0.46, 0.4),
-		Font = Enum.Font.LuckiestGuy,
-		Text = "★",
-		TextColor3 = GOLD_LIGHT,
+	-- The crest: a gold scallop shell rising behind the sign, ribs fanning from a
+	-- hinge hidden behind it
+	local hinge = base * CFrame.new(0, SIGN_Y + 1.5, 0.25)
+	local ribs = 7
+	for j = 0, ribs - 1 do
+		local phi = (j / (ribs - 1) - 0.5) * math.rad(150)
+		local rib = part(model, {
+			Name = "Crest",
+			Size = Vector3.new(1.55, 4.6, 0.75),
+			CFrame = hinge * CFrame.Angles(0, 0, phi) * CFrame.new(0, 2.3, 0),
+			Material = Enum.Material.SmoothPlastic,
+			Color = if j % 2 == 0 then GOLD else GOLD_LIGHT,
+		})
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = rib
+	end
+	local shellPearl = part(model, {
+		Name = "CrestPearl",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(1.3, 1.3, 1.3),
+		CFrame = hinge * CFrame.new(0, 3.4, -0.55),
+		Material = Enum.Material.SmoothPlastic,
+		Color = PEARL,
+		CanCollide = false,
 	})
+	shellPearl.CastShadow = false
 	for i = 0, 8 do
 		local theta = (i / 8 - 0.5) * math.pi * 0.9
 		bulb(
 			bulbs,
-			base * CFrame.new(-math.sin(theta) * 4.4, SIGN_Y + 2.2 + math.cos(theta) * 4.4, -0.1),
+			base * CFrame.new(-math.sin(theta) * 5.3, SIGN_Y + 1.5 + math.cos(theta) * 5.3, -0.1),
 			0.42,
 			"Crest",
 			i + 1
@@ -926,14 +977,14 @@ function TreasureWheel.build(
 		Name = "PodiumFoot",
 		Size = Vector3.new(2.7, 0.3, 2.7),
 		CFrame = floor * CFrame.new(0, STAGE_TOP + 0.15, podiumZ),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 	})
 	part(model, {
 		Name = "PodiumCap",
 		Size = Vector3.new(2.7, 0.35, 2.7),
 		CFrame = floor * CFrame.new(0, STAGE_TOP + 3.175, podiumZ),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD,
 	})
 	part(model, {
@@ -941,7 +992,7 @@ function TreasureWheel.build(
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.3, 2, 2),
 		CFrame = upright(floor * CFrame.new(0, STAGE_TOP + 3.5, podiumZ)),
-		Material = Enum.Material.Foil,
+		Material = Enum.Material.SmoothPlastic,
 		Color = GOLD_LIGHT,
 	})
 	local button = part(model, {
@@ -957,6 +1008,106 @@ function TreasureWheel.build(
 	buttonGlow.Range = 6
 	buttonGlow.Brightness = 1
 	buttonGlow.Parent = button
+
+	-- Treasure on the upper step: a chest with coins spilling out on the left, a
+	-- heap of coins and pearls on the right
+	local chest = floor * CFrame.new(-8.6, STAGE_TOP, -5.4) * CFrame.Angles(0, math.rad(-18), 0)
+	part(model, {
+		Name = "Chest",
+		Size = Vector3.new(3, 1.7, 2),
+		CFrame = chest * CFrame.new(0, 0.85, 0),
+		Material = Enum.Material.SmoothPlastic,
+		Color = Color3.fromRGB(122, 74, 44),
+	})
+	part(model, {
+		Name = "ChestLid",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(3, 2, 2),
+		CFrame = chest * CFrame.new(0, 1.7, 0),
+		Material = Enum.Material.SmoothPlastic,
+		Color = Color3.fromRGB(140, 86, 52),
+		CanCollide = false,
+	})
+	for _, x in { -1.05, 1.05 } do
+		part(model, {
+			Name = "ChestBand",
+			Size = Vector3.new(0.3, 1.75, 2.06),
+			CFrame = chest * CFrame.new(x, 0.85, 0),
+			Material = Enum.Material.SmoothPlastic,
+			Color = GOLD,
+			CanCollide = false,
+		})
+		part(model, {
+			Name = "ChestBand",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.3, 2.08, 2.08),
+			CFrame = chest * CFrame.new(x, 1.7, 0),
+			Material = Enum.Material.SmoothPlastic,
+			Color = GOLD,
+			CanCollide = false,
+		})
+	end
+	part(model, {
+		Name = "ChestLock",
+		Size = Vector3.new(0.6, 0.7, 0.2),
+		CFrame = chest * CFrame.new(0, 1.55, -1.05),
+		Material = Enum.Material.SmoothPlastic,
+		Color = GOLD_LIGHT,
+		CanCollide = false,
+	})
+	local coins: { { at: CFrame, r: number } } = {
+		{ at = chest * CFrame.new(-0.4, 0.06, -1.7), r = 0.42 },
+		{ at = chest * CFrame.new(0.5, 0.06, -2.2), r = 0.4 },
+		{ at = chest * CFrame.new(1.4, 0.06, -1.5), r = 0.38 },
+	}
+	local heap = floor * CFrame.new(8.6, STAGE_TOP, -5.4)
+	for k, r in { 1.7, 1.2, 0.7 } do
+		part(model, {
+			Name = "CoinHeap",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.45, r * 2, r * 2),
+			CFrame = upright(heap * CFrame.new((k - 2) * 0.15, 0.22 + (k - 1) * 0.4, 0)),
+			Material = Enum.Material.SmoothPlastic,
+			Color = if k % 2 == 0 then GOLD_LIGHT else GOLD,
+			CanCollide = false,
+		})
+	end
+	table.insert(coins, { at = heap * CFrame.new(-2.0, 0.06, -0.6), r = 0.4 })
+	table.insert(coins, { at = heap * CFrame.new(1.8, 0.06, -1.2), r = 0.42 })
+	for _, coin in coins do
+		part(model, {
+			Name = "Coin",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.12, coin.r * 2, coin.r * 2),
+			CFrame = upright(coin.at),
+			Material = Enum.Material.SmoothPlastic,
+			Color = GOLD_LIGHT,
+			CanCollide = false,
+			CastShadow = false,
+		})
+	end
+	for k, spot in { Vector3.new(-1.1, 0.5, -1.1), Vector3.new(1.3, 0.45, 0.6), Vector3.new(0.1, 1.45, 0.2) } do
+		part(model, {
+			Name = "Pearl",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * (if k == 3 then 0.9 else 0.75),
+			CFrame = heap * CFrame.new(spot),
+			Material = Enum.Material.SmoothPlastic,
+			Color = PEARL,
+			CanCollide = false,
+			CastShadow = false,
+		})
+	end
+	part(model, {
+		Name = "Ruby",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 0.7,
+		CFrame = heap * CFrame.new(-0.7, 1.05, 0.9),
+		Material = Enum.Material.SmoothPlastic,
+		Color = Color3.fromRGB(226, 40, 70),
+		CanCollide = false,
+		CastShadow = false,
+	})
 
 	-- Boards either side: the odds (slices are drawn equal) and where spins come from
 	local total = 0

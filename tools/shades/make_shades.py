@@ -928,12 +928,39 @@ def ember(m):  # Flames licking up from the belly over a charcoal back
     return done(m, rgb, "satin", emit=tips[..., None] * C(1.0, 0.55, 0.05))
 
 
-def lilac(m):
-    rgb = coat(m, (0.52, 0.36, 0.86), (0.66, 0.56, 0.94), (0.40, 0.24, 0.78))
-    dots = spots(m, 160, 0.02, seed=19, vary=0.25)
-    rgb = mix(rgb, (0.84, 0.86, 1.0), dots * 0.9)
-    rgb = mix(rgb, (0.28, 0.16, 0.60), m.fin * stripes(m, 40, 0.5, seed=20) * 0.5)
-    return done(m, rgb, "gloss")
+def lilac(m):  # Lilac (v12): lilac darkening to violet on the back, fine iridescent scales, violet-edged fins
+    """A designed lavender morph (owner, 2026-10-17: the old Lilac "reads as purple with
+    random white spots"): a pale lilac belly through a lilac flank to deep violet
+    along the back, every scale drawn round the body with a fine violet rim and a
+    soft iridescent film that shifts from blue to violet with the surface, a smooth
+    unscaled face, and lilac fins with crisp violet margins. Mid-toned: the palest
+    lilac is still well blue of any pink."""
+    base = m.base if isinstance(m, Smooth) else m
+    sm = smooth(base)
+    fins, tip = fin_parts(base)
+    u, v, vn = height(sm)
+    t = sm.up
+    rgb = mix(board(base, (0.78, 0.68, 0.95)), (0.68, 0.50, 0.90), smoothstep(0.15, 0.5, t))
+    rgb = mix(rgb, (0.40, 0.18, 0.66), smoothstep(0.55, 0.95, t))
+    # Scales: laid round the body in its own girth, a thin darker rim on each, the
+    # exposed middle a touch lighter (a little volume), none on the face or fins
+    d = round_scales(sm, 0.042)
+    on = smoothstep(0.17, 0.26, u) * (1 - hard(fins))
+    rim = smoothstep(0.075, 0.035, np.abs(d - 0.5)) * on
+    rgb = rgb * (1 + 0.09 * smoothstep(0.5, 0.1, d) * on)[..., None]
+    rgb = mix(rgb, (0.44, 0.26, 0.74), rim * 0.45)
+    # The iridescent film: blue-violet to violet with the surface's facing, stronger
+    # on the scales than the face
+    rgb = pearl(sm, rgb, 0.16 + 0.1 * on, 0.08, 0.71)
+    # Fins: lilac with the fish's own rays drawn in violet, deepening outward to a
+    # crisp violet margin along each fin's free edge (fin_reach)
+    reach = fin_reach(base)
+    on = hard(fins)
+    fin_rgb = mix(board(base, (0.74, 0.58, 0.93)), (0.56, 0.36, 0.86), smoothstep(0.25, 0.8, reach))
+    fin_rgb = mix(fin_rgb, (0.44, 0.24, 0.76), smoothstep(0.25, 0.8, own_lines(base)) * 0.6)
+    rgb = mix(rgb, fin_rgb, on)
+    rgb = mix(rgb, (0.30, 0.10, 0.58), crisp(base, reach - 0.8, texels=1.5) * on)
+    return done(m, rgb, "gloss", detail=0.7)
 
 
 def moss(m):  # Lichen patches with bright rims, algae hanging from the back
@@ -967,12 +994,38 @@ def tiger(m):
     return done(m, rgb, "satin")
 
 
-def bumblebee(m):
-    rgb = coat(m, (1.0, 0.80, 0.0), (1.0, 0.86, 0.12), INKY)
-    b = bands(m, (0.32, 0.52, 0.72), 0.06, wobble=0.03, seed=24)
-    rgb = mix(rgb, INKY, body_only(m, b))
-    rgb = rgb * (0.9 + 0.2 * speckle(m, 260, 0.6, seed=124))[..., None]  # fuzz
-    return done(m, rgb, "matte")
+def bumblebee(m):  # Bumblebee goby (v12): bold black and warm-yellow bands wrapping the body, velvet in the black
+    """A real bumblebee goby on the Nibbler (owner, 2026-10-17: the old Bumblebee "reads
+    as blotchy yellow/black"): its own three painted bands, widened along the body so
+    they wrap it exactly as its bands do, turned to broad velvet-black bands with a
+    faint fuzz, crisp-edged against a warm yellow (no orange, no cream) that's a
+    little deeper on the back; yellow fins edged in black, the black running onto
+    each fin's root."""
+    base = m.base if isinstance(m, Smooth) else m
+    _, which, outside, _, _ = nib_bands(base)
+    sm = smooth(base)
+    fins, tip = fin_parts(base)
+    u, v, vn = height(sm)
+    yellow = body_coat(sm, (0.95, 0.70, 0.0), (1.0, 0.84, 0.10), soft=0.35)
+    grain = value_noise(base.p, 260, 2401)  # a fine grain: no big smooth warm field
+    yellow = yellow * (0.96 + 0.07 * grain)[..., None]
+    widen = np.choose(which - 1, [0.016, 0.026, 0.02]).astype(np.float32)
+    black = crisp(base, widen - outside, texels=1.6)
+    # Velvet: a dark charcoal with fine fibres a little lighter, densest at the
+    # band's edges where the light rakes across it
+    fibre = smoothstep(0.58, 0.82, value_noise(base.p * np.array([1.0, 0.35, 1.0], np.float32), 520, 2402))
+    rim = smoothstep(widen * 0.55, widen, outside) * black
+    velvet = mix(board(base, (0.055, 0.055, 0.065)), (0.17, 0.17, 0.19), np.clip(fibre * 0.45 + rim * 0.3, 0, 1))
+    body = mix(yellow, velvet, black)
+    # Fins: amber-yellow with the fish's own rays drawn darker, deepening toward a
+    # crisp black margin along each fin's free edge (fin_reach)
+    reach = fin_reach(base)
+    on = hard(fins)
+    fin_yellow = mix(board(base, (0.98, 0.74, 0.04)), (0.92, 0.60, 0.0), smoothstep(0.3, 0.8, reach))
+    fin_yellow = mix(fin_yellow, (0.62, 0.40, 0.0), smoothstep(0.25, 0.8, own_lines(base)) * on * 0.7)
+    rgb = mix(body, fin_yellow, on)
+    rgb = mix(rgb, (0.06, 0.06, 0.07), crisp(base, reach - 0.82, texels=1.5) * on)
+    return done(m, rgb, "matte", detail=0.8)
 
 
 def tetra(m):
@@ -1653,6 +1706,42 @@ def blades(m: Fish):
         return mask, reach_.reshape(m.y.shape), label.reshape(m.y.shape)
 
     return cache(m, "blades", make)
+
+
+def fin_reach(m: Fish):
+    """How far out along its fin each fin texel is, 0 at the root .. 1 at the free
+    edge, smooth (v12): blades()'s reach measures to the nearest body texel, and on a
+    chunky fin (the Nibbler's dorsal) the body test leaves holes, so the reach wanders
+    across the fin in patches and a margin drawn on it came out as blotches. Here it
+    is the distance from the body's core (the smooth frame's cross-section ellipse),
+    spread over each fin's own range; the tail fin also counts its length behind its
+    root, so its trailing edge is the edge. 0 off the fins."""
+    if isinstance(m, Smooth):
+        m = m.base
+
+    def make():
+        sm = smooth(m)
+        _, _, label = blades(m)
+        radial = np.sqrt(sm.r2)
+        out = np.zeros(m.y.shape, np.float32)
+        for k in np.unique(label):
+            if k < 0:
+                continue
+            sel = (label == k) & m.real
+            if sel.sum() < 50:
+                continue
+            lo, hi = np.percentile(radial[sel], [3, 97])
+            r_n = np.clip((radial - lo) / max(hi - lo, 1e-4), 0, 1)
+            ys = m.y[sel]
+            if np.median(ys) > 0.8:  # the tail fin
+                y0 = np.percentile(ys, 3)
+                r_n = np.maximum(r_n, np.clip((m.y - y0) / max(np.percentile(ys, 99) - y0, 1e-4), 0, 1))
+            out = np.where(label == k, r_n, out)
+        on = (label >= 0).astype(np.float32)
+        out = ndimage.gaussian_filter(out * on, 1.5) / np.maximum(ndimage.gaussian_filter(on, 1.5), 1e-3)
+        return (out * on).astype(np.float32)
+
+    return cache(m, "fin_reach", make)
 
 
 def flank(m: Fish):
@@ -3153,59 +3242,59 @@ def catch_prism(m):  # Prism: brushed silver with a soft cool rainbow film, its 
     return done(m, rgb, "satin", emit=emit, metal=np.full(m.y.shape, 0.3, np.float32), detail=0.4)
 
 
-def week_wave(m):  # The Great Wave: a woodblock print of curling foam crests on cerulean
-    u, v, vn = height(m)
-    hh, _ = girth(m)
-    period = 0.26
-    s = (u / period + 0.2) % 1.0
-    crest = -0.55 + 1.4 * s**2.2
-    depth = crest - vn
-    inside = depth > 0
-    # v11 (playtest 2026-10-16 round 2: v10's ultramarine still read dark blue on every
-    # fish in the water): a light cerulean sky over a mid turquoise sea, the crests
-    # brighter, and a faint even glow under it (below) so the water's tint can't drag
-    # it dark. The print's contrast comes from hue and a mid-blue key line round each
-    # wave, not from navy. All of it in the blue family: no warm pale anywhere
-    sky = body_coat(m, (0.22, 0.52, 0.84), (0.34, 0.64, 0.90), soft=0.3)
-    far = 0.62 + 0.12 * np.sin(2 * np.pi * (u / 0.11))
-    sky = mix(sky, (0.50, 0.79, 0.95), smoothstep(far + 0.02, far - 0.02, vn) * 0.85)
-    # A printed sky, not a flat field (on a long fish it covers most of the flank): the
-    # woodblock's grain running along the body, a second, paler block of colour low
-    # down, and the horizon drawn as a crisp mid-blue line
-    gp = np.stack([u * 2.0, vn * 26.0, m.ex * 0.2], -1).astype(np.float32)
-    sky = sky * (0.95 + 0.1 * value_noise(gp, 1.0, 1601))[..., None]
-    low = 0.05 + 0.1 * np.sin(2 * np.pi * (u / 0.17) + 1.3)
-    sky = mix(sky, (0.62, 0.87, 0.98), hard(smoothstep(low + 0.02, low - 0.02, vn)) * 0.6)
-    horizon = smoothstep(0.07, 0.045, np.abs(vn - far))
-    sky = mix(sky, (0.16, 0.46, 0.80), hard(horizon) * 0.8)
-    sea = mix(board(m, (0.10, 0.60, 0.82)), (0.04, 0.38, 0.68), smoothstep(0.0, 0.9, depth))
-    grain = smoothstep(0.1, 0.0, np.abs(((depth * 7) % 1.0) - 0.5) - 0.42) * smoothstep(0.1, 0.22, depth)
-    sea = mix(sea, (0.46, 0.86, 0.98), grain * 0.6)
-    rgb = np.where(inside[..., None], sea, sky)
-    # The key line: the wave's edge against the sky, a mid blue (the print's outline)
-    key = smoothstep(0.05, 0.03, np.abs(depth)) * (s > 0.08)
-    claws = 0.5 + 0.5 * np.cos(2 * np.pi * u / 0.016)
-    foam_w = (0.06 + 0.4 * smoothstep(0.4, 1.0, s)) * (0.35 + 0.65 * claws**2)
-    foam = inside & (depth < foam_w) & (s > 0.35)
-    foam_col = C(0.93, 0.98, 1.0)
-    key = key * (1 - foam)
-    rgb = mix(rgb, (0.08, 0.33, 0.62), hard(key))
-    rgb = np.where(foam[..., None], foam_col, rgb)
-    du = (s - 0.9) * period
-    dv = (vn - 0.36) * hh
-    r = np.hypot(du, dv)
-    R = 0.4 * hh
-    ang = np.arctan2(dv, du)
-    lip = smoothstep(0.26, 0.17, np.abs(r / np.maximum(R, 1e-5) - 1)) * smoothstep(-0.7, -0.25, ang)
-    hollow = smoothstep(0.86, 0.78, r / np.maximum(R, 1e-5)) * inside
-    rgb = mix(rgb, (0.06, 0.34, 0.64), hollow)
-    rgb = mix(rgb, foam_col, hard(lip))
-    spray = smoothstep(0.0034, 0.002, nearest_dots(m, 900, 1600)) * (vn > crest) * (vn < crest + 0.4) * smoothstep(0.6, 0.9, s)
-    rgb = mix(rgb, foam_col, spray)
-    # A faint, even self-glow (as CatchGolden v10): half the colour, less on the key
-    # line and the curl's hollow, none on the eyes, teeth or mouth (done()). Made for
-    # the game's default EmissiveStrength 1 (WeekWave sets no `emissive`)
-    emit = rgb * (0.5 * (1 - 0.6 * np.maximum(np.maximum(hard(key), hollow), (1 - inside) * hard(horizon))))[..., None]
+def week_wave(m):  # The Great Wave (v12): breaking-wave crests sweeping tail-ward, pale-blue foam
+    """Owner, 2026-10-17: the patterns "look like mesh slapped onto the fish". Now the
+    whole fish is the sea: wave after wave wrapping it from belly to back and leaning
+    back as they rise, each a gradient from a deep trough up a sunlit face to a
+    breaking crest, its leading edge a scalloped band of pale-blue foam (never
+    white-on-dark lines) with spray thrown ahead and a shadowed hollow under it.
+    Countershaded (deeper on the back), lighter as in v11, the fins a deep sea blue
+    rimmed in foam, and a faint even glow so the water can't drag it dark."""
+    sm = smooth(m)
+    fins, _ = fin_parts(m)
+    reach = fin_reach(m)
+    on_fin = hard(fins)
+    u, v, vn = height(sm)
+    hh, at = girth(sm)
+    # How many waves: about one per 0.21 of the length, fewer on a short round fish
+    period = 0.21
+    lean = 0.07  # the crest at the back sits this far behind it at the belly
+    bend = lean * vn + 0.025 * np.sin(np.clip(vn, -1.2, 1.2) * np.pi * 0.5) * vn
+    wob = 0.012 * np.sin(vn * 5.0 + u * 9.0)
+    phase = (u - bend - wob) / period
+    t = phase - np.floor(phase)  # 0 just behind a crest's face .. 1 at the next crest
+    which = np.floor(phase)
+    # The sea: deep in the trough, rising lighter up the wave's back to the crest
+    trough, face, light = C(0.06, 0.40, 0.70), C(0.14, 0.58, 0.84), C(0.36, 0.78, 0.94)
+    ramp = smoothstep(0.0, 0.85, t)
+    sea = mix(board(m, trough), face, smoothstep(0.0, 0.45, t))
+    sea = mix(sea, light, smoothstep(0.45, 0.9, t))
+    sea = sea * (1.06 - 0.16 * smoothstep(0.3, 1.0, sm.up))[..., None]  # countershaded
+    # Long streaks in the water running up each wave's back
+    streak = smoothstep(0.62, 0.8, value_noise(np.stack([u * 3.0, vn * 1.2, which * 3.1], -1).astype(np.float32), 9.0, 2601))
+    sea = mix(sea, (0.46, 0.84, 0.97), streak * ramp * 0.35)
+    # The foam: a scalloped band on the crest's leading edge, thickest at the top of
+    # the wave where it breaks, pale blue
+    claws = 0.5 + 0.5 * np.cos(2 * np.pi * vn / 0.22 + which * 1.7)
+    foam_w = (0.07 + 0.08 * smoothstep(-0.4, 0.9, vn)) * (0.55 + 0.45 * claws)
+    foam_f = t - (1 - foam_w)
+    foam = crisp(m, foam_f, texels=1.4)
+    foam_line = crisp(m, foam_f + 0.025, texels=1.4) * (1 - foam)  # its shadow just behind
+    hollow = smoothstep(0.08, 0.0, t) * smoothstep(-0.2, 0.6, vn)  # under the crest that just passed
+    spray = smoothstep(0.0034, 0.0018, nearest_dots(m, 2602, 1100)) * smoothstep(0.0, 0.06, t) * smoothstep(0.16, 0.06, t) * smoothstep(0.0, 0.6, vn)
+    foam_col = C(0.80, 0.93, 1.0)
+    rgb = mix(sea, (0.05, 0.30, 0.58), hollow * 0.6)
+    rgb = mix(rgb, (0.22, 0.56, 0.84), foam_line)
+    rgb = mix(rgb, foam_col, foam)
+    rgb = mix(rgb, foam_col, spray * (1 - foam))
+    # Fins: a deep sea blue, lighter outward, a crisp foam rim on the free edge
+    fin_rgb = mix(board(m, (0.08, 0.40, 0.72)), (0.24, 0.64, 0.90), smoothstep(0.2, 0.85, reach))
+    fin_rgb = mix(fin_rgb, (0.05, 0.30, 0.60), smoothstep(0.25, 0.8, own_lines(m)) * on_fin * 0.5)
+    rgb = mix(rgb, fin_rgb, on_fin)
+    rim = crisp(m, reach - 0.86, texels=1.5) * on_fin
+    rgb = mix(rgb, foam_col, rim)
+    # A faint, even self-glow (v11), less in the hollows and the foam's shadow
+    emit = rgb * (0.48 * (1 - 0.6 * np.maximum(hollow * (1 - on_fin), foam_line)))[..., None]
     return done(m, rgb, "satin", emit=emit, detail=0.5)
 
 
@@ -3278,72 +3367,154 @@ def week_reef(m):  # A living reef: brain coral, sea fans and tiny fish over tur
     return done(m, rgb, "satin", detail=0.5)
 
 
-def week_wreck(m):  # A shipwreck: riveted hull plates, rust streaks, barnacles, a hull number
-    u, v, vn = height(m)
-    hh, at = girth(m)
-    water = -0.3
-    upper = vn > water
-    # v11 (playtest 2026-10-16 round 2: v10 still read dark teal with a red grid in the
-    # water): a lighter teal-green hull over a lighter cobalt anti-fouling bottom, the
-    # seams a darker shade of their plate instead of black, the rivets, rust and number
-    # brighter, and a faint even glow (below). Still saturated on purpose (screen
-    # 2026-10-16): a greyer verdigris (0.31, 0.48, 0.47) scored 0.83 on the Nibbler and
-    # a steel blue 0.52, and a red bottom 0.97 (big red fields on the belly's islands).
-    # v11's screen: a light teal with more red in it, (0.23, 0.71, 0.61), scored 0.19
-    # on the Nibbler once JPEG-packed and (0.22, 0.70, 0.50) 0.20; this purer teal
-    # 0.04, and 0.01 or less on the other fish
-    hull = np.where(upper[..., None], board(m, (0.12, 0.71, 0.62)), board(m, (0.30, 0.56, 0.91)))
-    plate_l, plate_h = 0.11, 0.5
-    row = np.floor(vn / plate_h)
-    col = (u + 0.5 * plate_l * (row % 2)) / plate_l
-    rng = np.random.default_rng(420)
-    tone = 0.92 + 0.16 * rng.random(4096)
-    key = (np.floor(col).astype(int) * 31 + row.astype(int) * 7) % 4096
-    hull = hull * tone[key][..., None]
-    rgb = hull.copy()
-    fu, fv = col - np.floor(col), vn / plate_h - row
-    seam_u = np.minimum(fu, 1 - fu) * plate_l
-    seam_v = np.minimum(fv, 1 - fv) * plate_h * hh
-    seam = smoothstep(0.0022, 0.0012, np.minimum(seam_u, seam_v))
-    along = ((u / 0.008) % 1.0 - 0.5) * 0.008
-    rivet_d = np.hypot(along, np.abs(seam_v - 0.0045))
-    rivet = smoothstep(0.002, 0.0013, rivet_d)
-    lane = np.floor(u / 0.012)
-    lane_on = (np.sin(lane * 12.9898 + 4.1) * 43758.5453) % 1.0 < 0.35
-    streak_p = np.stack([m.ex * 0.1, u * 85, vn * 0.5], -1).astype(np.float32)
-    below_top = 1 - fv
-    streak = smoothstep(0.5, 0.62, value_noise(streak_p, 1.0, 421)) * lane_on * smoothstep(0.75, 0.05, below_top)
-    bloom = smoothstep(0.005, 0.0025, rivet_d) * smoothstep(0.5, 0.58, fbm(m, 30, 422))
-    rust = hard(np.clip(streak + bloom, 0, 1)) * upper
-    rgb = mix(rgb, hull * 0.55, seam)
-    # Rust a bright orange with no blue at all (outside every skin-tone rule), its
-    # darker heart a burnt orange, never a red field
-    rgb = mix(rgb, (0.98, 0.48, 0.02), rust)
-    rgb = mix(rgb, (0.72, 0.26, 0.0), rust * smoothstep(0.62, 0.7, value_noise(streak_p * 1.7, 1.0, 426)))
-    # Rivets a bright cool silver with a soft lighter halo round each, so they read as
-    # studs on the plate rather than pale dots on a dark line
-    rivet_halo = smoothstep(0.0034, 0.0016, rivet_d) * (1 - rivet)
-    rgb = mix(rgb, (0.50, 0.80, 0.80), rivet_halo * 0.35 * upper)
-    rgb = mix(rgb, (0.80, 0.88, 0.92), rivet)
-    # The waterline: a deep blue stripe between the teal and the cobalt
-    line = hard(smoothstep(0.05, 0.03, np.abs(vn - water)))
-    rgb = mix(rgb, (0.05, 0.14, 0.30), line)
-    rgb, number = hull_number(m, rgb, "07", 0.42, 0.3, (0.88, 0.95, 0.98), edge=(0.05, 0.26, 0.28), chip=0.3)
-    centres = scatter(m, 7, 423, weight=smoothstep(0.0, -0.4, vn - water))
+
+def barnacle_field(m: Fish, pts, radii, light=(0.35, 0.94)):
+    """Barnacles at `pts` (texel positions) of `radii` (body lengths): (shell 0..1, a
+    colour layer, the openings 0..1). Each is a low cone seen from outside: six
+    plates with dark seams, the side toward the light lit and the far side shaded, a
+    bright rim round a dark opening with its paler beak plates inside, and a soft
+    shadow on the skin round its foot. Nearest-first, so a cluster packs like real
+    barnacles do."""
+    d1, d2, i = nearest(m, pts)
+    a, b = offsets(m, pts, i)
+    R = radii[i]
+    rr = d1 / np.maximum(R, 1e-5)
+    ang = np.arctan2(b, a)
+    lx, ly = light
+    facing = (np.cos(ang) * lx + np.sin(ang) * ly)  # -1 away from the light .. 1 toward it
+    shell = crisp(m, 1.0 - rr, texels=1.3)
+    plates = (ang / (2 * np.pi) * 6 + (i % 7) * 0.13) % 1.0
+    seam = smoothstep(0.06, 0.0, np.abs(plates - 0.5) - 0.42) * smoothstep(0.42, 0.55, rr)
+    cone = 0.78 + 0.32 * facing * smoothstep(0.35, 1.0, rr)
+    base_col = mix(board(m, (0.50, 0.58, 0.62)), (0.64, 0.72, 0.76), smoothstep(0.9, 0.5, rr))
+    col = base_col * cone[..., None]
+    col = mix(col, (0.36, 0.42, 0.45), seam * 0.6)
+    rim = smoothstep(0.1, 0.0, np.abs(rr - 0.46)) * (0.55 + 0.45 * np.clip(facing * 0.5 + 0.6, 0, 1))
+    col = mix(col, (0.80, 0.88, 0.92), rim * 0.8)
+    opening = crisp(m, 0.38 - rr, texels=1.2)
+    beak = smoothstep(0.05, 0.0, np.abs(a * np.cos(0.7) - b * np.sin(0.7)) / np.maximum(R, 1e-5) - 0.03) * smoothstep(0.32, 0.2, rr)
+    inner = mix(board(m, (0.06, 0.12, 0.14)), (0.30, 0.38, 0.40), beak * 0.8)
+    col = mix(col, inner, opening)
+    foot = smoothstep(1.45, 1.0, rr) * (1 - shell)
+    return shell, col, opening, foot
+
+
+def surface_polar(m: Fish, u, v, cu, cv):
+    """Polar coordinates on the skin round the flank point (cu along the body, cv up
+    from the mid-line), one point on each side: (distance in body lengths, angle,
+    which side's point). The distance is straight through 3D from the point and the
+    angle is in the skin's tangent plane there (forward toward the tail, up), so a
+    circle drawn with them stays round on a round fish (the Puffer, the Angler)
+    where print coordinates stretch it toward the back and belly. Each texel takes
+    its own side's point."""
+    sd = side(m)
+    out_r = np.full(u.shape, 10.0, np.float32)  # far from both points
+    out_t = np.zeros(u.shape, np.float32)
+    for s_ in (1.0, -1.0):
+        # On the outer skin facing out that way (the meshes hold stray inner faces:
+        # the Angler's right flank picked one facing in)
+        sel = m.real & (sd == s_) & (m.fin < 0.3) & (m.nrm[..., 0] * s_ > 0.35)
+        cost = np.where(sel, (u - cu) ** 2 + (v - cv) ** 2, np.inf)
+        k = np.unravel_index(np.argmin(cost), cost.shape)
+        P, N = m.p[k], m.nrm[k]
+        fwd = np.array([0, 1, 0], np.float32) - N * N[1]
+        fwd /= max(float(np.linalg.norm(fwd)), 1e-6)
+        up = np.cross(N, fwd) * s_
+        o = m.p - P
+        here = (sd == s_) & ((m.nrm * N).sum(-1) > -0.2)
+        out_r = np.where(here, np.linalg.norm(o, axis=-1), out_r)
+        out_t = np.where(here, np.arctan2((o * up).sum(-1), (o * fwd).sum(-1)), out_t)
+    return out_r, out_t
+
+
+def whirl(r, th, radius, arms=3, turns=4.6, width=0.42):
+    """A whirlpool from polar coordinates (r, th) round its centre: `arms` bold arms of
+    a log spiral winding about a turn and a half into the middle (`turns`: radians of
+    turn per e-fold of radius), each `width` of the gap between arms wide at the rim
+    and thinning toward the middle. Returns (the arms' signed distance in arm-gaps,
+    positive inside an arm; the distance from the centre over `radius`; the arm's
+    leading side 0..1)."""
+    rn = r / radius
+    s = (th * arms + turns * arms * np.log(np.maximum(rn, 1e-3))) / (2 * np.pi)
+    f = s - np.round(s)  # -0.5 .. 0.5 across the gap, 0 on an arm's spine
+    w = width * (0.3 + 0.7 * smoothstep(0.08, 0.95, rn)) * 0.5
+    return w - np.abs(f), rn, smoothstep(-w * 0.2, w, f)
+
+
+def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck-dweller crusted with barnacles
+    """Owner, 2026-10-17: "what the hell is a shipwreck skin doing" on a fish. Now a fish
+    that lives on a wreck, not the wreck: a weathered slate-green hide, countershaded,
+    mottled and pitted, with clusters of barnacles (cones with lit rims and dark
+    openings) crusted along the back and over the head, crusts of violet coralline
+    algae on the flanks, and a few streaks of kelp trailing back from the clusters.
+    Fins weathered darker with ragged paler tips. The palette stays saturated (screen
+    2026-10-16: a greyer verdigris scored 0.83 on the Nibbler), the pale parts are the
+    barnacles' cool grey rims, and a faint even glow keeps it from going dark in the
+    water (v11)."""
+    sm = smooth(m)
+    fins, _ = fin_parts(m)
+    reach = fin_reach(m)
+    on_fin = hard(fins)
+    u, v, vn = height(sm)
+    hh, at = girth(sm)
+    rng = np.random.default_rng(2501)
+    # The hide: slate-green, darker on the back, mottled and pitted
+    rgb = body_coat(sm, (0.13, 0.34, 0.32), (0.27, 0.53, 0.47), soft=0.35)
+    mottle = fbm(m, 7, 2502)
+    rgb = rgb * (0.82 + 0.3 * mottle)[..., None]
+    rgb = mix(rgb, (0.08, 0.26, 0.25), smoothstep(0.62, 0.72, fbm(m, 16, 2503)) * 0.45)
+    pits = speckle(m, 300, 0.86, seed=2504)
+    rgb = mix(rgb, (0.06, 0.20, 0.20), pits * 0.5)
+    # Fins: a darker weathered slate, ragged paler tips (worn)
+    fin_rgb = mix(board(m, (0.10, 0.32, 0.30)), (0.18, 0.46, 0.42), smoothstep(0.55, 0.95, reach))
+    ragged = smoothstep(0.84, 0.9, reach + 0.12 * (fbm(m, 40, 2505) - 0.5))
+    fin_rgb = mix(fin_rgb, (0.34, 0.60, 0.56), ragged)
+    rgb = mix(rgb, fin_rgb, on_fin)
+    body = (1 - on_fin) * m.real
+    # Coralline algae: violet crusts on the flanks with knobbly lighter growth and a
+    # darker margin (a cool violet, never pink)
+    crust_f = fbm(m, 11, 2506, octaves=2) + 0.18 * smoothstep(0.62, 0.3, sm.up) - 0.2 * smoothstep(0.22, 0.0, u)
+    crust = crisp(m, crust_f - 0.72, texels=1.4) * body
+    margin = crisp(m, crust_f - 0.712, texels=1.4) * (1 - crust) * body
+    knobs = smoothstep(0.55, 0.75, value_noise(m.p, 150, 2507))
+    crust_col = mix(board(m, (0.42, 0.26, 0.62)), (0.60, 0.44, 0.80), knobs * 0.8)
+    rgb = mix(rgb, (0.24, 0.12, 0.40), margin)
+    rgb = mix(rgb, crust_col, crust)
+    # Barnacle clusters along the back and over the head
+    on_back = smoothstep(0.58, 0.8, sm.up) * body
+    on_head = smoothstep(0.32, 0.18, u) * smoothstep(0.35, 0.6, sm.up) * body
+    weight = np.clip(on_back + on_head, 0, 1) * smoothstep(0.03, 0.08, u) * smoothstep(0.92, 0.82, u)
+    centres = scatter(m, 9, 2508, weight=weight)
     cd, _, _ = nearest(m, centres)
-    pts = scatter(m, 140, 424, weight=np.exp(-((cd / 0.03) ** 2)))
-    d1, _, i = nearest(m, pts)
-    R = (0.0035 + 0.003 * rng.random(len(pts)))[i]
-    shell = smoothstep(R * 1.05, R * 0.9, d1)
-    rgb = mix(rgb, (0.68, 0.78, 0.86), shell)
-    rgb = mix(rgb, (0.86, 0.93, 0.98), smoothstep(R * 0.3, R * 0.15, np.abs(d1 - R * 0.72)) * shell)
-    rgb = mix(rgb, (0.08, 0.20, 0.30), smoothstep(R * 0.4, R * 0.3, d1))
-    # A faint, even self-glow (as CatchGolden v10): half the plate's colour, little on
-    # the seams and the waterline, the rust and number a little less than the plates,
-    # none on the eyes, teeth or mouth (done()). For the game's default
-    # EmissiveStrength 1 (WeekWreck sets no `emissive`)
-    lines = np.maximum(np.maximum(seam, line), smoothstep(R * 0.4, R * 0.3, d1) * shell)
-    emit = rgb * (0.5 * (1 - 0.8 * lines) * (1 - 0.3 * np.maximum(rust, number)))[..., None]
+    near_centre = np.exp(-((cd / 0.05) ** 2)) * weight
+    pts = scatter(m, 110, 2509, weight=near_centre + 0.01 * weight)
+    size = np.clip(at_points(m, pts, hh) * 0.2, 0.007, 0.019)
+    radii = (size * (0.6 + 0.6 * rng.random(len(pts)))).astype(np.float32)
+    shell, shell_col, opening, foot = barnacle_field(m, pts, radii)
+    shell = shell * body
+    rgb = rgb * (1 - 0.35 * foot * body)[..., None]
+    rgb = mix(rgb, shell_col, shell)
+    # Kelp: a few fronds trailing back from the clusters, wavy ribbons with a darker
+    # midrib, wider near their holdfast
+    kelp = np.zeros(u.shape, np.float32)
+    rib = np.zeros(u.shape, np.float32)
+    cu, cv = at_points(m, centres, u), at_points(m, centres, v)
+    for k in range(min(4, len(centres))):
+        u0, v0 = float(cu[k]), float(cv[k])
+        length = 0.2 + 0.12 * rng.random()
+        t = np.clip((u - u0) / length, 0, 1)
+        wave = 0.3 * at(u0) * np.sin(t * 2.2 * np.pi + k) * t
+        dv = np.abs(v - (v0 - 0.3 * at(u0) * t + wave))
+        width = (0.022 * (1 - 0.6 * t) * smoothstep(0.0, 0.08, t) + 0.003) * min(1.0, at(u0) / 0.1)
+        span = (u > u0) & (u < u0 + length)
+        kelp = np.maximum(kelp, crisp(m, width - dv, texels=1.3) * span)
+        rib = np.maximum(rib, crisp(m, width * 0.2 - dv, texels=1.0) * span)
+    kelp = kelp * body * (1 - shell)
+    rgb = mix(rgb, (0.30, 0.50, 0.10), kelp)
+    rgb = mix(rgb, (0.18, 0.32, 0.06), rib * kelp)
+    # A faint, even self-glow (v11): less in the openings, the seams and the pits
+    dark = np.maximum(opening * shell, pits * 0.5)
+    emit = rgb * (0.42 * (1 - 0.8 * dark))[..., None]
     return done(m, rgb, "matte", emit=emit, detail=0.6)
 
 
@@ -3451,29 +3622,78 @@ def pass_riptide(m):  # Riptide: deep ocean blue, foam streaks raking back, a gl
     return done(m, rgb, "satin", emit=emit, detail=0.7)
 
 
-def pass_undertow(m):  # Undertow: ink violet, whirlpools of glowing teal spiralling down the flanks
-    m = smooth(m)
-    u, v, vn = height(m)
-    _, half = girth(m)
-    # Mid-toned violet, teal spirals (not near-white) under a wide soft halo: thin
-    # pale lines on a dark body trip the skin screen (0.21-0.24 on three fish)
-    rgb = body_coat(m, (0.13, 0.08, 0.28), (0.22, 0.15, 0.44), soft=0.3)
-    rgb = mix(rgb, (0.10, 0.07, 0.24), m.fin * 0.7)
-    rng = np.random.default_rng(55)
-    swirl = np.zeros(u.shape, np.float32)
-    for k in range(5):
-        cu = 0.12 + 0.76 * (k + rng.random() * 0.8) / 5
-        cv = (rng.random() - 0.5) * 0.7 * half(cu)
-        radius = max(0.45 * half(cu), 0.02)
-        flip = 1.0 if k % 2 == 0 else -1.0
-        swirl = np.maximum(swirl, spiral(u, v, (cu, cv), radius, turns_rate=5.0, width=0.0036, flip=flip))
-    swirl = swirl * (1 - m.fin) * m.cov
-    halo = glow_halo(swirl > 0.3, 9)
-    rgb = mix(rgb, (0.12, 0.60, 0.62), halo * 0.6)
-    rgb = mix(rgb, (0.16, 0.84, 0.76), swirl)
-    emit = swirl[..., None] * C(0.20, 0.85, 0.78) + (halo * 0.45)[..., None] * C(0.10, 0.60, 0.58)
-    # v8: the brighter creases (DETAIL_FLOOR) put it back at 0.22 on the Nibbler
-    return done(m, rgb, "gloss", emit=emit, detail=0.5, floor=0.5)
+def pass_undertow(m):  # Undertow (v12): bold teal whirlpools over mid-toned violet
+    """Owner, 2026-10-17: "Undertow should have the swirls moving not just a bunch of
+    random lines on it." A few bold, clean whirlpools instead of v8's five thin spiral
+    lines: one large on each flank, centred where the body is deepest, smaller ones on
+    the cheek behind the eye, the tail fin and the dorsal fin (a long fish gets a
+    second, smaller one along its flank). Each is three thick teal arms winding into a
+    deep violet eye, their leading edges lighter, under a soft teal halo, on a
+    mid-toned violet body (no near-white lines on a dark one: the skin screen read
+    those as skin, 0.21-0.24). The game turns swirl particles over the whirlpools
+    (Config/Shades), so they read as moving water."""
+    sm = smooth(m)
+    fins, _ = fin_parts(m)
+    reach = fin_reach(m)
+    on_fin = hard(fins)
+    u, v, vn = height(sm)
+    hh, at = girth(sm)
+    flip = side(m)
+    rgb = body_coat(sm, (0.26, 0.15, 0.52), (0.40, 0.28, 0.66), soft=0.32)
+    fin_rgb = mix(board(m, (0.22, 0.12, 0.46)), (0.30, 0.20, 0.58), smoothstep(0.3, 0.9, reach))
+    rgb = mix(rgb, fin_rgb, on_fin)
+    # Where the whirlpools go: the deepest place along the middle of the flank (a
+    # second along a long fish), the cheek, the tail fin and the dorsal fin's middles.
+    # On the body they're drawn round a point on the skin (surface_polar, so a big one
+    # stays round on a round fish); on a fin, flat in its own plane
+    grid_u = np.linspace(0.32, 0.66, 35)
+    peak = max(at(x) for x in grid_u)
+    deep = float(grid_u[np.argmax([at(x) - 1.5 * peak * abs(x - 0.51) for x in grid_u])])
+    big_r = float(np.clip(0.72 * at(deep), 0.035, 0.19))
+    body = on_fin < 0.5
+    spots = [(deep, 0.0, big_r, 3, 1.0, body, True)]
+    if big_r < 0.12:  # a long, thin fish: a second, smaller one behind the first
+        u2 = min(deep + 2.2 * big_r + 0.05, 0.78)
+        spots.append((u2, 0.0, float(np.clip(0.72 * at(u2), 0.03, 0.18)), 3, -1.0, body, True))
+    eye = m.eyes > 0.5
+    if eye.any():
+        eu = float(np.median(u[eye]))
+        cu = min(eu + 0.1 + 0.35 * at(eu + 0.1), deep - big_r * 1.05)
+        spots.append((cu, -0.35 * at(cu), float(np.clip(0.4 * at(cu), 0.02, 0.1)), 2, -1.0, body, True))
+    tail = (on_fin > 0.5) & (u > 0.8) & m.real
+    if tail.sum() > 200:
+        tu, tv = float(np.median(u[tail])), float(np.median(v[tail]))
+        tr = 0.32 * (np.percentile(v[tail], 95) - np.percentile(v[tail], 5))
+        spots.append((tu, tv, float(np.clip(tr, 0.02, 0.09)), 2, -1.0, ~body, False))
+    dorsal = (on_fin > 0.5) & (u > 0.25) & (u < 0.78) & (vn > 0.85) & m.real
+    if dorsal.sum() > 200:
+        du_, dv_ = float(np.median(u[dorsal])), float(np.median(v[dorsal]))
+        dr = 0.34 * min(np.percentile(u[dorsal], 95) - np.percentile(u[dorsal], 5), 2 * (np.percentile(v[dorsal], 95) - np.percentile(v[dorsal], 5)))
+        spots.append((du_, dv_, float(np.clip(dr, 0.02, 0.08)), 2, 1.0, ~body, False))
+    arms_m = np.zeros(u.shape, np.float32)
+    lead_m = np.zeros(u.shape, np.float32)
+    eye_m = np.zeros(u.shape, np.float32)
+    for cu, cv, radius, arms, turn, where, on_body in spots:
+        if on_body:
+            r, th = surface_polar(sm, u, v, cu, cv)
+        else:  # a fin: flat in its own plane
+            r, th = np.hypot(u - cu, v - cv), np.arctan2(v - cv, u - cu)
+        field, rn, lead = whirl(r, th * flip * turn, radius, arms=arms)
+        inside = smoothstep(1.0, 0.82, rn) * where
+        arm = crisp(m, field, texels=1.4) * inside * smoothstep(0.1, 0.2, rn)
+        arms_m = np.maximum(arms_m, arm)
+        lead_m = np.maximum(lead_m, arm * lead * smoothstep(0.25, 0.6, rn))
+        eye_m = np.maximum(eye_m, smoothstep(0.22, 0.1, rn) * where)
+    arms_m *= m.cov
+    halo = glow_halo(arms_m > 0.5, 7) * (1 - arms_m)
+    rgb = mix(rgb, (0.12, 0.05, 0.28), eye_m * 0.8)  # the deep eye of each whirlpool
+    rgb = mix(rgb, (0.20, 0.52, 0.62), halo * 0.55)
+    rgb = mix(rgb, (0.12, 0.74, 0.72), arms_m)
+    rgb = mix(rgb, (0.36, 0.88, 0.84), lead_m * 0.7)
+    # Teal fin tips, soft
+    rgb = mix(rgb, (0.14, 0.56, 0.62), smoothstep(0.8, 0.98, reach) * on_fin * 0.6)
+    emit = arms_m[..., None] * C(0.14, 0.78, 0.74) + (halo * 0.4)[..., None] * C(0.10, 0.52, 0.56) + (lead_m * 0.3)[..., None] * C(0.3, 0.9, 0.85)
+    return done(m, rgb, "gloss", emit=emit, detail=0.6, floor=0.5)
 
 
 def pass_abyssal_current(m):  # Abyssal Current: the deep's black-green water, a drifting current, bioluminescent motes

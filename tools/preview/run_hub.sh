@@ -37,11 +37,12 @@ chunk=$(mktemp --suffix=.luau)
 	module Shop $src/shared/Config/Shop.luau
 	module Wheel $src/shared/Config/Wheel.luau
 	module Materials $src/shared/Config/Materials.luau
-	echo 'local Config = { World = World, Dens = Dens, Shop = Shop, Wheel = Wheel, Materials = Materials }'
+	module Biomes $src/shared/Config/Biomes.luau
+	echo 'local Config = { World = World, Dens = Dens, Shop = Shop, Wheel = Wheel, Materials = Materials, Biomes = Biomes }'
 	module Layout $src/shared/Layout.luau
 	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Props = PropsStub } } }'
 	module Cave $src/server/Cave.luau
-	for m in DenDoor Plaza; do
+	for m in Decor DenDoor Plaza; do
 		[ -f $src/server/$m.luau ] && module $m $src/server/$m.luau
 	done
 	module TreasureWheel $src/server/TreasureWheel.luau

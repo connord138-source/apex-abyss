@@ -213,13 +213,14 @@ def part_material(color, mat_name, transparency, reflectance):
         links.new(color_socket, bsdf.inputs["Emission Color"])
         bsdf.inputs["Emission Strength"].default_value = 3.5
     elif mat_name == "ForceField":
+        # an animated shimmer in game: faint, additive, mostly see-through
         links.new(color_socket, bsdf.inputs["Emission Color"])
-        bsdf.inputs["Emission Strength"].default_value = 0.6
+        bsdf.inputs["Emission Strength"].default_value = 0.8 * (1 - transparency)
     else:
         add_ambient(nodes, links, bsdf, color_socket)
     alpha = 1 - transparency
     if mat_name == "ForceField":
-        alpha = min(alpha, 0.28)
+        alpha = alpha * 0.5
     if alpha < 1:
         bsdf.inputs["Alpha"].default_value = alpha
         try:
@@ -304,7 +305,7 @@ def add_part(f, meshes):
     elif shape == "Cylinder":
         d = min(size.y, size.z)
         size = mathutils.Vector((size.x, d, d))
-    mesh = meshes.get(shape, meshes["Block"])
+    mesh = meshes["Ball"] if shape == "Ellipsoid" else meshes.get(shape, meshes["Block"])
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     place(obj, pos, rot, (size.x / 2, size.y / 2, size.z / 2))
@@ -327,7 +328,7 @@ def add_light(f):
 def make_lights():
     for i, (pos, color, rng, brightness) in enumerate(LIGHTS[:160]):
         ld = bpy.data.lights.new(f"PL{i}", "POINT")
-        ld.energy = brightness * rng * rng * 3.2
+        ld.energy = brightness * rng * rng * 1.6
         ld.color = color
         ld.shadow_soft_size = 0.6
         ld.use_shadow = False
@@ -683,6 +684,9 @@ def parse_u(f):
     }
 
 
+EXTRA_VIEWS = {}
+
+
 def load_parts(meshes):
     gui, items = None, []
     path = os.path.join(DIR, "hub_parts.txt")
@@ -706,6 +710,8 @@ def load_parts(meshes):
             gui = {"pos": pos, "rot": rot, "size": vec(f[6]), "canvas": (w, h), "light": float(f[8]), "face": f[9]}
         elif tag == "U":
             items.append(parse_u(f))
+        elif tag == "V":  # a camera the builder asks for: V|name|position|target|fov
+            EXTRA_VIEWS[f[1]] = (tuple(vec(f[2])), tuple(vec(f[3])), float(f[4]))
     if gui is not None:
         add_gui(gui, items)
 
@@ -748,8 +754,11 @@ def views():
     v["doors"] = (polar(30, 20, 14), polar(30, 95, 20), 76)
     # The Shade Dyer's stall (315 deg) and the Tidecharm Trader (225) and the wheel (240)
     v["stall"] = (polar(318, 12, 8), polar(315, 34, 5), 70)
-    v["stall2"] = (polar(210, 10, 9), polar(225, 34, 5), 70)
-    v["wheel"] = (polar(240, 30, 12), polar(240, 62, 13), 70)
+    v["stall2"] = (polar(150, 14, 9), polar(135, 34, 5), 70)
+    v["stall3"] = (polar(62, 13, 8), polar(45, 34, 5), 70)
+    v["wheel"] = (polar(262, 30, 16), polar(240, 62, 14), 70)
+    # Den 1's nameplate from the beacon's side of the plaza (readability)
+    v["doorfar"] = (polar(285, 32, 12), polar(15, 95, 27), 50)
     v["top"] = ((0, 260, 0.01), (0, 0, 0), 46)
     return v
 
@@ -842,7 +851,8 @@ def main():
     make_lights()
     depth = depth_material()
     chosen = views()
-    names = VIEWS or [n for n in chosen if n not in ("plaza2", "door2", "stall2")]
+    chosen.update(EXTRA_VIEWS)
+    names = VIEWS or (list(EXTRA_VIEWS) if EXTRA_VIEWS else [n for n in chosen if n not in ("plaza2", "door2", "stall2", "stall3", "doorfar")])
     for name in names:
         position, target, fov = chosen[name]
         cam = camera(name, position, target, fov)
