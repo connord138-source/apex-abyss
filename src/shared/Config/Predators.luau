@@ -8,6 +8,43 @@
 --
 -- Damage to players is a share of the victim's max health: nothing one-shots (owner,
 -- 2026-10-07).
+-- How a hunter hunts (owner, 2026-10-17: "shark should be able to catch fish with
+-- speed but each different fish should have their own limitations/advantages").
+-- Every number is optional except `kind`, `chase`, `turnAtSpeed` and `tellFollow`;
+-- PredatorService reads only the ones its kind uses.
+--   ambush:  lurks slow and low by rocks and kelp, stalks a fish, then bursts at it
+--            from close; out of breath after a burst (no tell, no bite) and turning
+--            wide while it bursts. A juke or outlasting the burst escapes it, and it
+--            gives a fish up after a few failed bursts.
+--   tracker: a sustained fast chase that runs most fish in its water down, a long
+--            leash and a nose for blood; but wide turns (a tight loop or doubling
+--            back makes it overshoot and swing round), too big for kelp, and a Dash
+--            during its tell still escapes.
+--   plain:   the old all-rounder (a predator with no style)
+export type Style = {
+	kind: string, -- "ambush" | "tracker" | "plain"
+	chase: number, -- × speed while it closes in (an ambusher's stalk)
+	turnAtSpeed: number, -- × turn rate it keeps at full speed (1.25 when still)
+	tellFollow: number, -- × speed: the fastest it keeps up during its tell
+	slowsToTurn: number?, -- × chase it slows to when the fish is off its nose up close
+	roam: number?, -- × speed roaming (default Predators.roamSpeed)
+	recover: number?, -- × speed peeling off after a strike (default 0.8)
+	-- Ambush
+	lurk: { number }?, -- height over the ground it lurks at (min, max)
+	trigger: number?, -- studs from its mouth: a fish this close sets off a burst
+	burst: number?, -- × speed in a burst (it keeps it through a tell begun in one)
+	burstSeconds: number?,
+	burstTurn: number?, -- × turn rate in a burst (wide)
+	winded: number?, -- seconds out of breath after a burst: slow, no tell, no bite
+	giveUp: number?, -- failed bursts on one fish before it gives that fish up
+	forget: number?, -- seconds it leaves a fish it gave up on alone
+	-- Tracker
+	leash: number?, -- × aggroRange: how far it keeps a chase going (default loseRange)
+	blood: number?, -- × aggroRange on a fish under `bloodBelow` of its health
+	bloodBelow: number?,
+	kelpShy: boolean?, -- too big for a kelp forest: a fish in one is out of its reach
+}
+
 export type PredatorDef = {
 	id: string,
 	name: string,
@@ -31,6 +68,7 @@ export type PredatorDef = {
 	loot: { haulKg: number, dna: number, coral: number },
 	back: Color3, -- part-body colors while the model is missing
 	belly: Color3,
+	style: Style?, -- how it hunts (nil = plain; bosses have none)
 }
 
 local list: { PredatorDef } = {
@@ -43,6 +81,24 @@ local list: { PredatorDef } = {
 		speed = 26,
 		turnRate = 2.2,
 		aggroRange = 60,
+		-- The ambush sprinter: ~49 studs/s for 1.6 s from close, then winded 3 s
+		style = {
+			kind = "ambush",
+			chase = 0.55,
+			turnAtSpeed = 0.8,
+			tellFollow = 1.9,
+			slowsToTurn = 0.35,
+			roam = 0.3,
+			recover = 0.6,
+			lurk = { 4, 16 },
+			trigger = 32,
+			burst = 1.9,
+			burstSeconds = 1.6,
+			burstTurn = 0.3,
+			winded = 3,
+			giveUp = 2,
+			forget = 25,
+		},
 		biteReach = 3,
 		biteFraction = 0.2,
 		biteCooldown = 2.2,
@@ -62,9 +118,25 @@ local list: { PredatorDef } = {
 		model = "ReefShark",
 		length = 14,
 		health = 320,
-		speed = 24,
+		-- The relentless tracker: 46 studs/s sustained runs down a Nibbler to ~LV 55 in
+		-- a straight line and a 'Cuda only under ~LV 40 (it was 24: nothing in its
+		-- water was slower than it, owner 2026-10-17)
+		speed = 46,
 		turnRate = 1.6,
 		aggroRange = 80,
+		style = {
+			kind = "tracker",
+			chase = 1,
+			turnAtSpeed = 0.5,
+			tellFollow = 0.95,
+			slowsToTurn = 0.9,
+			roam = 0.3,
+			recover = 0.5,
+			leash = 3,
+			blood = 2,
+			bloodBelow = 0.5,
+			kelpShy = true,
+		},
 		biteReach = 4,
 		biteFraction = 0.3,
 		biteCooldown = 2.8,
@@ -117,5 +189,11 @@ return {
 		brake = 3, -- × speed per second: how hard it can pull up during the tell
 		facing = 0.4, -- the fish must be in front of it (cosine of the angle) for a tell
 	},
+	-- A puffed fish (the Pufferfish's Puff Up: character attribute `Puffed`) takes
+	-- `puffDamage` of a bite, and a plain predator that bites one takes `puffRecoil`
+	-- of its own max health and flinches (stunned) for `puffFlinch` seconds
+	puffDamage = 0.5,
+	puffRecoil = 0.12,
+	puffFlinch = 2.5,
 	interpolationDelay = 0.15, -- clients draw this far behind the stream
 }

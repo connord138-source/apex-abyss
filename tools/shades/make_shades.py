@@ -3287,6 +3287,29 @@ def week_wave(m):  # The Great Wave (v12): breaking-wave crests sweeping tail-wa
     rgb = mix(rgb, (0.22, 0.56, 0.84), foam_line)
     rgb = mix(rgb, foam_col, foam)
     rgb = mix(rgb, foam_col, spray * (1 - foam))
+    # The break: on the upper flank each crest curls over forward and down into a
+    # hook of foam, a spiral that winds in from the crest over the top and round the
+    # front, thinning as it goes, with a shaded hollow inside it and foam claws
+    # reaching ahead off its front
+    n = np.round(phase)
+    du = (phase - n) * period
+    R = np.minimum(0.3 * period, 0.38 * np.maximum(hh, 1e-3))
+    dv = (vn - 0.36) * hh
+    cr = np.hypot(du - 0.1 * R, dv)
+    ang = np.arctan2(dv, du - 0.1 * R)  # 0 ahead (tail-ward), pi/2 up
+    phi = (np.pi - ang) % (2 * np.pi)  # 0 behind, pi/2 over the top, pi ahead, 3pi/2 under
+    wind = np.clip(phi / (1.55 * np.pi), 0, 1)
+    r_s = R * (0.95 - 0.5 * wind)
+    w_s = R * (0.2 - 0.13 * wind)
+    lip = crisp(m, w_s - np.abs(cr - r_s), texels=1.3) * (phi < 1.55 * np.pi)
+    tube = crisp(m, r_s - w_s - cr, texels=1.3) * smoothstep(0.4 * np.pi, 0.8 * np.pi, phi) * (phi < 1.7 * np.pi)
+    finger = 0.5 + 0.5 * np.cos((phi - 0.6 * np.pi) * 10.0)
+    claws = crisp(m, r_s + w_s + R * 0.28 * finger - cr, texels=1.3) * (cr > r_s) * smoothstep(0.55 * np.pi, 0.75 * np.pi, phi) * smoothstep(1.25 * np.pi, 1.05 * np.pi, phi)
+    curl = np.clip(np.maximum(lip, claws), 0, 1) * (1 - on_fin)
+    tube = tube * (1 - on_fin)
+    rgb = mix(rgb, (0.08, 0.36, 0.66), tube * 0.75)
+    rgb = mix(rgb, foam_col, curl)
+    hollow = np.maximum(hollow, tube)
     # Fins: a deep sea blue, lighter outward, a crisp foam rim on the free edge
     fin_rgb = mix(board(m, (0.08, 0.40, 0.72)), (0.24, 0.64, 0.90), smoothstep(0.2, 0.85, reach))
     fin_rgb = mix(fin_rgb, (0.05, 0.30, 0.60), smoothstep(0.25, 0.8, own_lines(m)) * on_fin * 0.5)

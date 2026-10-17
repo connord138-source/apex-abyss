@@ -35,7 +35,7 @@ local swim = Config.Tuning.swim
 
 export type Def = PredatorsConfig.PredatorDef
 
-export type Mode = "roam" | "hunt" | "windup" | "recover" | "dead"
+export type Mode = "roam" | "hunt" | "windup" | "recover" | "stunned" | "dead"
 
 export type Predator = {
 	index: number,
@@ -62,6 +62,12 @@ export type Predator = {
 	meter: number,
 	-- Which way it peels off after a strike (+1 right, -1 left), for a looping pass
 	peel: number,
+	-- An ambusher's burst runs until this clock (0 = none); stunned until this clock
+	burstUntil: number,
+	stunUntil: number,
+	-- An ambusher's failed bursts on each fish, and the fish it has given up on (until)
+	fails: { [Player]: number },
+	ignore: { [Player]: number },
 }
 
 local PredatorService = {
@@ -86,7 +92,121 @@ local function hunters(predator: Predator): (number, number)
 	return if boost then boost.speed else 1, if boost then boost.aggro else 1
 end
 
+-- How it hunts (Config/Predators `style`; a predator with none is the plain hunter)
+local PLAIN: PredatorsConfig.Style = {
+	kind = "plain",
+	chase = 1,
+	turnAtSpeed = 0.8,
+	tellFollow = 0.55,
+	slowsToTurn = 0.35,
+}
+local function styleOf(def: Def): PredatorsConfig.Style
+	return def.style or PLAIN
+end
+
+-- Kelp forests (World.Biomes.Kelp): where each stalk stands, by cell, for a hunter
+-- too big to follow a fish into one (`kelpShy`). Read once the kelp is built.
+type KelpStalk = { x: number, z: number, bottom: number, top: number }
+local KELP_CELL = 16
+local KELP_NEAR = 12 -- studs: two stalks this close round a fish and it's in the forest
+local kelpCells: { [number]: { KelpStalk } }? = nil
+local kelpTriedAt = -math.huge
+local function kelpKey(cx: number, cz: number): number
+	return (cx + 1000) * 4096 + (cz + 1000)
+end
+local function kelpIndex(): { [number]: { KelpStalk } }?
+	local known = kelpCells
+	if known then
+		return known
+	end
+	if os.clock() - kelpTriedAt < 10 then
+		return nil
+	end
+	kelpTriedAt = os.clock()
+	local world = workspace:FindFirstChild("World")
+	local biomes = if world then world:FindFirstChild("Biomes") else nil
+	local kelp = if biomes then biomes:FindFirstChild("Kelp") else nil
+	if kelp == nil then
+		return nil
+	end
+	local cells: { [number]: { KelpStalk } } = {}
+	for _, plant in kelp:GetChildren() do
+		local stalk = plant:FindFirstChild("Stalk")
+		if stalk and stalk:IsA("BasePart") then
+			local at, height = stalk.Position, stalk.Size.Y
+			local key = kelpKey(math.floor(at.X / KELP_CELL), math.floor(at.Z / KELP_CELL))
+			local list = cells[key] or {}
+			cells[key] = list
+			table.insert(list, { x = at.X, z = at.Z, bottom = at.Y - height / 2, top = at.Y + height / 2 })
+		end
+	end
+	kelpCells = cells
+	return cells
+end
+local function inKelp(position: Vector3): boolean
+	local cells = kelpIndex()
+	if cells == nil then
+		return false
+	end
+	local cx, cz = math.floor(position.X / KELP_CELL), math.floor(position.Z / KELP_CELL)
+	local near = 0
+	for dx = -1, 1 do
+		for dz = -1, 1 do
+			for _, stalk in cells[kelpKey(cx + dx, cz + dz)] or {} do
+				local ex, ez = stalk.x - position.X, stalk.z - position.Z
+				if
+					ex * ex + ez * ez <= KELP_NEAR * KELP_NEAR
+					and position.Y >= stalk.bottom - 2
+					and position.Y <= stalk.top
+				then
+					near += 1
+					if near >= 2 then
+						return true
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- How far rock or kelp stands round a spot (an ambusher lurks by it)
+local function coverAt(x: number, z: number): number
+	local floor = Seafloor.y(x, z)
+	local raised = 0
+	for _, offset in { Vector3.new(10, 0, 0), Vector3.new(-10, 0, 0), Vector3.new(0, 0, 10), Vector3.new(0, 0, -10) } do
+		raised = math.max(raised, Ground.y(x + offset.X, z + offset.Z) - floor)
+	end
+	if inKelp(Vector3.new(x, floor + 4, z)) then
+		raised += 10
+	end
+	return raised
+end
+
 local function randomWaypoint(def: Def): Vector3
+	local style = styleOf(def)
+	local lurk = style.lurk
+	if lurk then
+		-- An ambusher lurks low by a rock, a coral head or the kelp: the best cover of a
+		-- few spots in its water
+		local best: Vector3? = nil
+		local bestCover = -1
+		for _ = 1, 6 do
+			local angle = rng:NextNumber(0, 2 * math.pi)
+			local distance = rng:NextNumber(def.band[1], def.band[2])
+			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
+			if not Seafloor.inTrench(x, z, 30) then
+				local cover = coverAt(x, z)
+				if cover > bestCover then
+					local ground = math.max(Seafloor.y(x, z), Ground.y(x, z))
+					best, bestCover = Vector3.new(x, ground + rng:NextNumber(lurk[1], lurk[2]), z), cover
+				end
+			end
+		end
+		if best then
+			return best
+		end
+	end
 	for _ = 1, 20 do
 		local angle = rng:NextNumber(0, 2 * math.pi)
 		local sector = def.angles
@@ -120,6 +240,10 @@ local function spawn(predator: Predator, at: Vector3?)
 	predator.hitBy = {}
 	predator.meter = 0
 	predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
+	predator.burstUntil = 0
+	predator.stunUntil = 0
+	predator.fails = {}
+	predator.ignore = {}
 	Net.predatorEvent("spawned", predator.index, {
 		id = predator.def.id,
 		x = predator.position.X,
@@ -173,6 +297,54 @@ local function inRange(def: Def, position: Vector3): boolean
 	return span == 0 or (angle - sector[1]) % 360 <= span
 end
 
+-- Whether a fish's health is under `below` of its max (a tracker smells blood)
+local function bleeding(character: Model, below: number): boolean
+	local health, most = character:GetAttribute("Health"), character:GetAttribute("MaxHealth")
+	return typeof(health) == "number" and typeof(most) == "number" and most > 0 and health < most * below
+end
+
+-- How far it notices a fish: its aggro range, keener on a Blood Tide, further on a
+-- bleeding fish for a tracker
+local function senseRange(predator: Predator, character: Model): number
+	local def = predator.def
+	local style = styleOf(def)
+	local _, keen = hunters(predator)
+	local range = def.aggroRange * keen
+	local blood = style.blood
+	if blood and bleeding(character, style.bloodBelow or 0.5) then
+		range *= blood
+	end
+	return range
+end
+
+-- Whether a plain predator may go after this fish at all: not one burrowed in the
+-- sand (character attribute `Burrowed`), not one it gave up on, and not one in a kelp
+-- forest it's too big for (bosses skip these)
+local function inReach(predator: Predator, player: Player, character: Model, root: BasePart, now: number): boolean
+	if predator.custom then
+		return true
+	end
+	if character:GetAttribute("Burrowed") == true or (predator.ignore[player] or 0) > now then
+		return false
+	end
+	return not (styleOf(predator.def).kelpShy and inKelp(root.Position))
+end
+
+-- Whether it keeps chasing the fish it has: alive, out of the hub, in reach and
+-- within its leash
+local function keepsHunting(predator: Predator, player: Player, now: number): boolean
+	local session = HuntService.sessions()[player]
+	local character, root = FishService.character(player)
+	if session == nil or character == nil or root == nil or not session.alive or session.inHub then
+		return false
+	end
+	if nearHub(root.Position, 0) or not inReach(predator, player, character, root, now) then
+		return false
+	end
+	local leash = styleOf(predator.def).leash or Predators.loseRange
+	return (root.Position - predator.position).Magnitude <= senseRange(predator, character) * leash
+end
+
 -- The fish worth hunting: alive, not safe, in range, big enough (or it bit us).
 local function pickTarget(predator: Predator, now: number): Player?
 	local def = predator.def
@@ -186,11 +358,13 @@ local function pickTarget(predator: Predator, now: number): Player?
 		if record.safeUntil > now or nearHub(root.Position, 0) then
 			continue
 		end
+		if not inReach(predator, player, character, root, now) then
+			continue
+		end
 		local distance = (root.Position - predator.position).Magnitude
 		local hit = predator.hitBy[player]
 		local provoked = hit ~= nil and now - hit.at < 8
-		local _, keen = hunters(predator)
-		local range = def.aggroRange * keen
+		local range = senseRange(predator, character)
 		if distance > (if provoked then range * Predators.loseRange else range) then
 			continue
 		end
@@ -272,6 +446,10 @@ local function preferredGap(predator: Predator): number
 	then
 		return hard
 	end
+	local lurk = styleOf(def).lurk
+	if lurk and not predator.custom then
+		return math.max(lurk[1], hard)
+	end
 	return math.max(def.depth[1] * 0.6, 5) + def.length * BODY_HALF
 end
 
@@ -302,9 +480,16 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		local wantSpeed = desired.Magnitude
 		local wantDirection = if wantSpeed > 1e-3 then desired / wantSpeed else predator.heading
 		local speedNow = predator.velocity.Magnitude
-		-- Turns slower the faster it goes, and eases in as it lines up (no snap)
-		local rate = (turnRate or def.turnRate)
-			* (1.25 - 0.45 * math.clamp(speedNow / math.max(def.speed, 1), 0, 1))
+		-- Turns slower the faster it goes (each style keeps its own share at full
+		-- speed: a tracker turns wide, an ambusher wider still in a burst), and eases in
+		-- as it lines up (no snap)
+		local style = styleOf(def)
+		local bursting = predator.burstUntil > Timing.clock()
+		local fullSpeed = math.clamp(speedNow / math.max(def.speed, 1), 0, 1)
+		local keep = if bursting
+			then style.burstTurn or 1
+			else 1.25 + (style.turnAtSpeed - 1.25) * fullSpeed
+		local rate = (turnRate or def.turnRate) * keep
 		local angle = math.acos(math.clamp(predator.heading:Dot(wantDirection), -1, 1))
 		local turn = math.min(rate * dt, angle * (1 - math.exp(-dt * 5)))
 		predator.heading = rotateToward(predator.heading, wantDirection, turn)
@@ -314,7 +499,7 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		local goal = wantSpeed * (1 - 0.35 * math.clamp(angle / math.pi, 0, 1))
 		local striking = predator.mode == "windup"
 		local change = if goal > speedNow
-			then def.speed * 1.6
+			then def.speed * (if bursting then 6 else 1.6)
 			else def.speed * (if striking then Predators.strike.brake else 0.9)
 		local speed = speedNow + math.clamp(goal - speedNow, -change * dt, change * dt)
 		predator.velocity =
