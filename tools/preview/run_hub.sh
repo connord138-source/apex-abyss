@@ -5,7 +5,8 @@
 # (Plaza.luau) and the Treasure Wheel (TreasureWheel.luau), signs' text included.
 #   bash tools/preview/run_hub.sh <out_dir> [builder.luau]
 # The builder is a luau script run after the modules load (default hub_build.luau:
-# what WorldService builds, with a few dens owned). VIEWS=plaza,door,... picks the
+# what WorldService builds, with a few dens owned). CAVE=<file> renders another
+# Cave.luau (an older one, for a before/after). VIEWS=plaza,door,... picks the
 # cameras (render_hub.py lists them). Needs `luau` (LUAU=...) and Blender's Python
 # with numpy, scikit-image and Pillow (BPY=..., default python3.11). Cycles on the
 # CPU: a view takes a minute or two.
@@ -41,7 +42,7 @@ chunk=$(mktemp --suffix=.luau)
 	echo 'local Config = { World = World, Dens = Dens, Shop = Shop, Wheel = Wheel, Materials = Materials, Biomes = Biomes }'
 	module Layout $src/shared/Layout.luau
 	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Props = PropsStub } } }'
-	module Cave $src/server/Cave.luau
+	module Cave ${CAVE:-$src/server/Cave.luau}
 	for m in Decor DenDoor Plaza; do
 		[ -f $src/server/$m.luau ] && module $m $src/server/$m.luau
 	done
@@ -62,7 +63,7 @@ chunk=$(mktemp --suffix=.luau)
 	echo 'local Config = { World = World, Dens = Dens }'
 	module Layout $src/shared/Layout.luau
 	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout } } }'
-	module Cave $src/server/Cave.luau
+	module Cave ${CAVE:-$src/server/Cave.luau}
 	echo 'dumpOps(Cave.ops())'
 } > "$chunk"
 $LUAU "$chunk" > "$OUT/cave_ops.jsonl"

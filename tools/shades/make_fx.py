@@ -29,7 +29,7 @@ from PIL import Image
 HERE = pathlib.Path(__file__).resolve().parent
 OUT = HERE.parent.parent / "assets" / "textures"
 SIZE = 512
-PALE = (0.86, 0.97, 1.0)  # pale cyan-white
+PALE = (0.62, 0.90, 1.0)  # a light cyan (a paler tint scored up to 0.23 composited on white)
 WARM = (1.0, 0.82, 0.22)  # the flame: a saturated warm yellow
 
 
@@ -181,8 +181,13 @@ def flame():
 
     b1, c1 = tongue(-0.06, -0.55, 0.92, 0.5, 0.24, 0.0)
     b2, c2 = tongue(0.26, -0.5, 0.35, 0.22, -0.14, 2.0)
-    alpha = np.clip(np.maximum(b1, b2 * 0.8) * 0.78 + np.maximum(c1, c2 * 0.7) * 0.3, 0, 1)
-    alpha = blur(alpha, 2.2) * smoothstep(0.99, 0.9, np.maximum(np.abs(x), np.abs(y)))
+    soft = np.clip(np.maximum(b1, b2 * 0.8) * 0.78 + np.maximum(c1, c2 * 0.7) * 0.3, 0, 1)
+    # Toon-hard edges (two flat steps, a body and a brighter core, each edge a couple
+    # of pixels wide): a soft yellow fade composited on white reads as cream to the
+    # skin screen, a hard one leaves only a hairline
+    soft = blur(soft, 2.0)
+    alpha = 0.72 * smoothstep(0.3, 0.36, soft) + 0.26 * smoothstep(0.62, 0.68, soft)
+    alpha = alpha * smoothstep(0.99, 0.9, np.maximum(np.abs(x), np.abs(y)))
     save("flame", alpha, WARM)
 
 

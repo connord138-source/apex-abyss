@@ -23,6 +23,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
 | `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
 | `shade_patch_v11` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch11`: WeekWave and WeekWreck on every fish, lighter for the water, each with a faint even glow map (2026-10-17, K1 of the round-2 report; 6 images a GLB) | the same folders; import after v10 |
+| `shade_patch_v12` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch12`: every skin on the Nibbler, Puffer, MorayEel and Angler (the whole eye kept, skins v12), Bumblebee and Lilac redesigned on the Nibbler, and WeekWreck ("Barnacled"), WeekWave, PassUndertow and PassRiptide redesigned on every fish (2026-10-17; IMAGES_TBD images) | the same folders; import after v11 |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -186,6 +187,48 @@ at 0.41-0.44. The classifier is touchy about light teal: a hull of (0.23, 0.71, 
 scored 0.19 on the Nibbler once JPEG-packed, (0.12, 0.71, 0.62) 0.04, so score the
 packed image of a light field (the screen does) before settling on it. Sheets:
 `assets/shades/previews/v11_<Fish>_compare.jpg`. Import it after v10.
+
+**Skins v12** (`shade_patch_v12`, in `assets/shades/patch12`; owner, 2026-10-17: "Every
+single skin on nibbler glitches into the eye", and "too many of them are obviously just
+mesh slapped onto the fish"):
+
+- **The whole eye, on every skin.** Up to v11 an eye was the pale or dark texels inside a
+  sphere round each pick, and only the pieces holding a pupil were kept (v8, against the
+  Nibbler's cream crescent). An eye's sclera spans several UV islands, so the islands
+  with no pupil on them were painted with the skin: a stair-stepped chunk bitten out of
+  the Nibbler's sclera on every skin, part of the Puffer's iris, the Moray's grey ring
+  and the Angler's teal socket. Now eyes.json holds each fish's eye palette (`eye`: the
+  eye's painted colours; `skin`: the skin round it, the Nibbler's cream band among them);
+  `Fish._eyes` keeps every texel nearer an eye colour than a skin colour, in whole pieces
+  lying mostly inside the eye's sphere, fills small holes, unmixes the edge from the
+  texture's own anti-aliasing (no fringe of the old skin colour; `Fish.kept` is the eye's
+  own colour there) and keeps it unblurred; the atlas gaps round an eye are padded from
+  the nearest eye texel, so no seam line crosses it at a distance. Check with
+  `python3.11 tools/shades/render_eyes.py -- assets/tripo/species/<Fish>.glb assets/shades/skins <dir> [Shade ...]`
+  (each eye side-on and the face from the front three-quarter). The Cuda's and Reef
+  Shark's eyes were whole already (only a faint grey crescent moved), so they were not
+  re-shipped for it.
+- **Redesigns** drawn on the body's form (smooth frame, countershading, fins as fins:
+  `fin_reach` measures out from the body's core, so a fin margin is a clean line where
+  blades()'s reach left blotches): Bumblebee (Nibbler, a bumblebee goby), Lilac (Nibbler,
+  a lavender morph with iridescent scales), WeekWreck as "Barnacled" (a weathered
+  slate-green wreck-dweller with barnacle clusters, coralline crusts and kelp), WeekWave
+  (breaking-wave crest bands with pale-blue foam), PassUndertow (bold teal whirlpools,
+  drawn round a point on the skin with `surface_polar` so they stay round on a round
+  fish) and PassRiptide (one glowing rip current with streamlines). lines.json has each
+  one's look.
+
+What the patch holds and its screen are in tools/assets_manifest.json `shade_patch_v12`.
+Sheets: `assets/shades/previews/v12_<Fish>_compare.jpg` (before | after, in the water) and
+`v12_<Fish>_eyes.jpg` (eye close-ups before | after). Import it after v11.
+
+**FX particle textures** (`tools/shades/make_fx.py`, python3.11 + scipy):
+`assets/textures/fx_{swirl,mist,bubble,star,flame,spark}.png`, 512² RGBA, for the skins'
+in-game particles (the swirls over Undertow, mist, bubbles, glints, flames, sparks). Like
+the sheens, one light tint fills every pixel (pale cyan-white; the flame a saturated warm
+yellow) and alpha alone draws the shape; the spark is a streak along the image's vertical
+(for VelocityParallel). Screen them with `screen_shades.py assets/textures/fx_*.png`
+(classifier on, exit 0) before uploading them as Images.
 
 **Sheens** (`tools/shades/make_sheens.py [name ...]`, python3.11 + scipy): tiling
 512² layers in `assets/textures/`, uploaded as Images and keyed in

@@ -3244,10 +3244,11 @@ def catch_prism(m):  # Prism: brushed silver with a soft cool rainbow film, its 
 
 def week_wave(m):  # The Great Wave (v12): breaking-wave crests sweeping tail-ward, pale-blue foam
     """Owner, 2026-10-17: the patterns "look like mesh slapped onto the fish". Now the
-    whole fish is the sea: wave after wave wrapping it from belly to back and leaning
-    back as they rise, each a gradient from a deep trough up a sunlit face to a
-    breaking crest, its leading edge a scalloped band of pale-blue foam (never
-    white-on-dark lines) with spray thrown ahead and a shadowed hollow under it.
+    whole fish is the sea: wave after wave wrapping it from belly to back, each crest
+    an S that pitches forward at the top like a breaking lip, each wave a gradient
+    from a deep trough up a sunlit face to the crest, its leading edge a scalloped
+    band of pale-blue foam (never white-on-dark lines), thickest where it breaks,
+    with spray thrown ahead and a shadowed hollow under it.
     Countershaded (deeper on the back), lighter as in v11, the fins a deep sea blue
     rimmed in foam, and a faint even glow so the water can't drag it dark."""
     sm = smooth(m)
@@ -3258,14 +3259,16 @@ def week_wave(m):  # The Great Wave (v12): breaking-wave crests sweeping tail-wa
     hh, at = girth(sm)
     # How many waves: about one per 0.21 of the length, fewer on a short round fish
     period = 0.21
-    lean = 0.07  # the crest at the back sits this far behind it at the belly
-    bend = lean * vn + 0.025 * np.sin(np.clip(vn, -1.2, 1.2) * np.pi * 0.5) * vn
+    # Each crest an S: upright low on the flank, its top pitching forward (tail-ward)
+    # over the face like a breaking wave's lip
+    vc = np.clip(vn, -1.2, 1.2)
+    bend = 0.025 * vc + 0.075 * smoothstep(0.1, 1.0, vc) ** 2 - 0.02 * smoothstep(-0.2, -1.0, vc)
     wob = 0.012 * np.sin(vn * 5.0 + u * 9.0)
     phase = (u - bend - wob) / period
     t = phase - np.floor(phase)  # 0 just behind a crest's face .. 1 at the next crest
     which = np.floor(phase)
     # The sea: deep in the trough, rising lighter up the wave's back to the crest
-    trough, face, light = C(0.06, 0.40, 0.70), C(0.14, 0.58, 0.84), C(0.36, 0.78, 0.94)
+    trough, face, light = C(0.05, 0.36, 0.68), C(0.14, 0.58, 0.86), C(0.40, 0.81, 0.96)
     ramp = smoothstep(0.0, 0.85, t)
     sea = mix(board(m, trough), face, smoothstep(0.0, 0.45, t))
     sea = mix(sea, light, smoothstep(0.45, 0.9, t))
@@ -3276,10 +3279,11 @@ def week_wave(m):  # The Great Wave (v12): breaking-wave crests sweeping tail-wa
     # The foam: a scalloped band on the crest's leading edge, thickest at the top of
     # the wave where it breaks, pale blue
     claws = 0.5 + 0.5 * np.cos(2 * np.pi * vn / 0.22 + which * 1.7)
-    foam_w = (0.07 + 0.08 * smoothstep(-0.4, 0.9, vn)) * (0.55 + 0.45 * claws)
+    foam_w = (0.06 + 0.13 * smoothstep(-0.3, 1.0, vn)) * (0.55 + 0.45 * claws)
     foam_f = t - (1 - foam_w)
-    foam = crisp(m, foam_f, texels=1.4)
-    foam_line = crisp(m, foam_f + 0.025, texels=1.4) * (1 - foam)  # its shadow just behind
+    calm = smoothstep(0.07, 0.15, u)  # calm water over the face (no foam round the eyes)
+    foam = crisp(m, foam_f, texels=1.4) * calm
+    foam_line = crisp(m, foam_f + 0.025, texels=1.4) * (1 - foam) * calm  # its shadow just behind
     hollow = smoothstep(0.08, 0.0, t) * smoothstep(-0.2, 0.6, vn)  # under the crest that just passed
     spray = smoothstep(0.0034, 0.0018, nearest_dots(m, 2602, 1100)) * smoothstep(0.0, 0.06, t) * smoothstep(0.16, 0.06, t) * smoothstep(0.0, 0.6, vn)
     foam_col = C(0.80, 0.93, 1.0)
@@ -3287,29 +3291,6 @@ def week_wave(m):  # The Great Wave (v12): breaking-wave crests sweeping tail-wa
     rgb = mix(rgb, (0.22, 0.56, 0.84), foam_line)
     rgb = mix(rgb, foam_col, foam)
     rgb = mix(rgb, foam_col, spray * (1 - foam))
-    # The break: on the upper flank each crest curls over forward and down into a
-    # hook of foam, a spiral that winds in from the crest over the top and round the
-    # front, thinning as it goes, with a shaded hollow inside it and foam claws
-    # reaching ahead off its front
-    n = np.round(phase)
-    du = (phase - n) * period
-    R = np.minimum(0.3 * period, 0.38 * np.maximum(hh, 1e-3))
-    dv = (vn - 0.36) * hh
-    cr = np.hypot(du - 0.1 * R, dv)
-    ang = np.arctan2(dv, du - 0.1 * R)  # 0 ahead (tail-ward), pi/2 up
-    phi = (np.pi - ang) % (2 * np.pi)  # 0 behind, pi/2 over the top, pi ahead, 3pi/2 under
-    wind = np.clip(phi / (1.55 * np.pi), 0, 1)
-    r_s = R * (0.95 - 0.5 * wind)
-    w_s = R * (0.2 - 0.13 * wind)
-    lip = crisp(m, w_s - np.abs(cr - r_s), texels=1.3) * (phi < 1.55 * np.pi)
-    tube = crisp(m, r_s - w_s - cr, texels=1.3) * smoothstep(0.4 * np.pi, 0.8 * np.pi, phi) * (phi < 1.7 * np.pi)
-    finger = 0.5 + 0.5 * np.cos((phi - 0.6 * np.pi) * 10.0)
-    claws = crisp(m, r_s + w_s + R * 0.28 * finger - cr, texels=1.3) * (cr > r_s) * smoothstep(0.55 * np.pi, 0.75 * np.pi, phi) * smoothstep(1.25 * np.pi, 1.05 * np.pi, phi)
-    curl = np.clip(np.maximum(lip, claws), 0, 1) * (1 - on_fin)
-    tube = tube * (1 - on_fin)
-    rgb = mix(rgb, (0.08, 0.36, 0.66), tube * 0.75)
-    rgb = mix(rgb, foam_col, curl)
-    hollow = np.maximum(hollow, tube)
     # Fins: a deep sea blue, lighter outward, a crisp foam rim on the free edge
     fin_rgb = mix(board(m, (0.08, 0.40, 0.72)), (0.24, 0.64, 0.90), smoothstep(0.2, 0.85, reach))
     fin_rgb = mix(fin_rgb, (0.05, 0.30, 0.60), smoothstep(0.25, 0.8, own_lines(m)) * on_fin * 0.5)
@@ -3497,8 +3478,8 @@ def week_wreck(m):  # Barnacled (v12; the id stays WeekWreck): a weathered wreck
     # Coralline algae: violet crusts on the flanks with knobbly lighter growth and a
     # darker margin (a cool violet, never pink)
     crust_f = fbm(m, 11, 2506, octaves=2) + 0.18 * smoothstep(0.62, 0.3, sm.up) - 0.2 * smoothstep(0.22, 0.0, u)
-    crust = crisp(m, crust_f - 0.72, texels=1.4) * body
-    margin = crisp(m, crust_f - 0.712, texels=1.4) * (1 - crust) * body
+    crust = crisp(m, crust_f - 0.745, texels=1.4) * body
+    margin = crisp(m, crust_f - 0.737, texels=1.4) * (1 - crust) * body
     knobs = smoothstep(0.55, 0.75, value_noise(m.p, 150, 2507))
     crust_col = mix(board(m, (0.42, 0.26, 0.62)), (0.60, 0.44, 0.80), knobs * 0.8)
     rgb = mix(rgb, (0.24, 0.12, 0.40), margin)
@@ -3626,23 +3607,63 @@ def pass_tideglass(m):  # Tideglass: frosted sea glass in teal, pale ripple line
     return done(m, rgb, "gloss", detail=0.6)
 
 
-def pass_riptide(m):  # Riptide: deep ocean blue, foam streaks raking back, a glowing current line
-    m = smooth(m)
-    u, v, vn = height(m)
-    rgb = body_coat(m, (0.03, 0.10, 0.30), (0.10, 0.30, 0.56), soft=0.28)
-    rgb = mix(rgb, (0.04, 0.12, 0.34), m.fin * 0.7)
-    # Foam streaks: thin slanted stripes torn by noise, cyan-white (never pure white
-    # lines on a dark body: the skin screen reads those as skin)
-    tear = fbm(m, 7, 53)
-    streak = stripes(m, 22, width=0.14, wobble=0.35, slant=0.5, seed=54) * smoothstep(0.42, 0.6, tear)
-    rgb = mix(rgb, (0.58, 0.86, 0.96), streak * 0.85)
-    # The current: a soft band along the mid-flank, flowing, that glows
-    band = smoothstep(0.30, 0.0, np.abs(vn - 0.12)) * (1 - m.fin)
-    flow = 0.5 + 0.5 * np.sin(2 * np.pi * (u * 9 - vn * 0.8))
-    current = band * (0.35 + 0.65 * smoothstep(0.55, 0.95, flow))
-    rgb = mix(rgb, (0.20, 0.72, 0.96), current * 0.6)
-    emit = (current * 0.7)[..., None] * C(0.15, 0.75, 1.0)
-    return done(m, rgb, "satin", emit=emit, detail=0.7)
+def pass_riptide(m):  # Riptide (v12): a glowing rip current flowing head to tail over deep ocean blue
+    """Owner, 2026-10-17, of the pass skins: "random lines" read as "mesh slapped onto
+    the fish". v8's Riptide was short foam streaks scattered over navy. Now one
+    designed current: a broad band of glowing cyan water that rises from under the
+    gills and flows along the flank to the tail in a long S, narrowing as it goes,
+    with a few clean streamlines running inside it and tapered speed lines raking back
+    above and below it, over a countershaded deep ocean blue. The fins are deep blue
+    with cyan tips. Pale lines sit only on the mid-cyan band, never on the dark body
+    (the skin screen reads thin pale lines on a dark body as skin)."""
+    sm = smooth(m)
+    fins, _ = fin_parts(m)
+    reach = fin_reach(m)
+    on_fin = hard(fins)
+    body = 1 - on_fin
+    u, v, vn = height(sm)
+    hh, at = girth(sm)
+    rgb = body_coat(sm, (0.03, 0.13, 0.38), (0.10, 0.30, 0.60), soft=0.3)
+    # The current's path: from low behind the head, an S along the flank to the tail
+    s_ = np.clip((u - 0.12) / 0.86, 0, 1)
+    path = -0.35 + 0.42 * s_ + 0.24 * np.sin(2 * np.pi * (s_ * 1.1 + 0.08))
+    half = 0.36 * (1 - 0.55 * s_) * smoothstep(0.08, 0.2, u)
+    off = (vn - path) / np.maximum(half, 1e-3)  # -1 .. 1 across the band
+    band = crisp(sm, 1.0 - np.abs(off), texels=1.5) * body
+    core = smoothstep(1.0, 0.0, np.abs(off))
+    water = mix(board(m, (0.06, 0.48, 0.80)), (0.22, 0.80, 0.96), core)
+    rgb = mix(rgb, water, band)
+    # Streamlines inside it, parallel to its edges, flowing tail-ward
+    lines = np.zeros(u.shape, np.float32)
+    for k, at_ in enumerate((-0.55, -0.1, 0.4)):
+        d = np.abs(off - at_ - 0.06 * np.sin(2 * np.pi * (u * 4.0 + k * 0.3)))
+        gap = 0.5 + 0.5 * np.sin(2 * np.pi * (u * 3.2 - k * 0.37))
+        lines = np.maximum(lines, crisp(sm, 0.07 - d, texels=1.2) * smoothstep(0.25, 0.55, gap))
+    lines = lines * band
+    rgb = mix(rgb, (0.62, 0.94, 1.0), lines * 0.85)
+    # Speed lines: a few long tapered dashes raking back above and below the band
+    rng = np.random.default_rng(2701)
+    dash = np.zeros(u.shape, np.float32)
+    for k in range(7):
+        side_ = 1.0 if k % 2 == 0 else -1.0
+        gap = 1.25 + 0.35 * rng.random()
+        u0 = 0.2 + 0.62 * rng.random()
+        length = 0.1 + 0.08 * rng.random()
+        t = np.clip((u - u0) / length, 0, 1)
+        within = (u > u0) & (u < u0 + length)
+        lane = path + side_ * half * gap
+        d = np.abs(vn - lane) * hh
+        width = 0.006 * np.clip(np.sin(np.pi * t), 0, 1) ** 0.6 * min(1.0, at(u0) / 0.1) + 1e-5
+        dash = np.maximum(dash, crisp(sm, width - d, texels=1.2) * within)
+    dash = dash * body * (1 - band)
+    halo = glow_halo(dash > 0.5, 3) * (1 - dash) * body * (1 - band)
+    rgb = mix(rgb, (0.10, 0.40, 0.72), halo * 0.6)
+    rgb = mix(rgb, (0.40, 0.80, 0.98), dash)
+    # Fins: deep blue, cyan toward the tips
+    fin_rgb = mix(board(m, (0.04, 0.16, 0.44)), (0.12, 0.56, 0.86), smoothstep(0.55, 0.98, reach))
+    rgb = mix(rgb, fin_rgb, on_fin)
+    emit = (band * (0.25 + 0.5 * core))[..., None] * C(0.10, 0.60, 0.95) + lines[..., None] * C(0.3, 0.8, 1.0) * 0.6 + (dash * 0.5)[..., None] * C(0.2, 0.6, 0.95)
+    return done(m, rgb, "satin", emit=emit, detail=0.6)
 
 
 def pass_undertow(m):  # Undertow (v12): bold teal whirlpools over mid-toned violet

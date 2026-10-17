@@ -74,7 +74,8 @@ def main():
                 eye = best_eye(faces[view])
                 if eye:
                     found.append([view, *eye])
-            picks[name] = {"picks": found}
+            # Keep the hand-set eye and skin palettes (make_shades Fish._eyes, v12)
+            picks[name] = {**picks.get(name, {}), "picks": found}
             print(name, found)
         tiles = []
         for view in SIDES:
