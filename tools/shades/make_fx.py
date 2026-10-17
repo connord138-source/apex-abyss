@@ -113,11 +113,11 @@ def mist():
     lobes = 0.0
     for cx, cy, rad in ((-0.22, -0.08, 0.5), (0.2, -0.12, 0.46), (0.02, 0.2, 0.44), (0.32, 0.22, 0.3), (-0.35, 0.22, 0.28)):
         d = np.hypot(x - cx + 0.25 * warp, y - cy - 0.2 * warp) / rad
-        lobes = np.maximum(lobes, smoothstep(1.0, 0.2, d))
+        lobes = np.maximum(lobes, smoothstep(1.15, 0.0, d) ** 1.5)
     n = noise(x + 0.4 * warp, y, 3.5, 11, octaves=5)
     wisps = 1 - np.abs(noise(x * 0.8 + 0.6 * warp, y * 2.2, 3.0, 12, octaves=4) - 0.5) * 2  # ridged
-    alpha = lobes * (0.35 + 0.65 * smoothstep(0.3, 0.75, n)) * (0.75 + 0.25 * wisps)
-    alpha = blur(alpha, 2.5) * smoothstep(0.98, 0.8, r)
+    alpha = lobes * (0.3 + 0.7 * smoothstep(0.25, 0.8, n)) * (0.7 + 0.3 * wisps)
+    alpha = blur(alpha, 4.0) * smoothstep(0.98, 0.8, r)
     save("mist", alpha * 0.9)
 
 
@@ -176,8 +176,9 @@ def flame():
         half = np.where(h < 0, width * np.sqrt(np.clip(1 - (h / 0.22) ** 2, 0, 1)), half)
         edge = half * (0.85 + 0.4 * (n - 0.5))
         dx = np.abs(x - cx - sway)
-        body = smoothstep(edge, edge * 0.35, dx) * smoothstep(1.05, 0.75, h + 0.25 * (n - 0.5))
-        core = smoothstep(edge * 0.6, 0.0, dx) * smoothstep(0.7, 0.1, h)
+        some = half > 1e-3
+        body = np.where(some, smoothstep(edge, edge * 0.35, dx), 0) * smoothstep(1.05, 0.75, h + 0.25 * (n - 0.5))
+        core = np.where(some, smoothstep(edge * 0.6, 0.0, dx), 0) * smoothstep(0.7, 0.1, h)
         return body, core
 
     b1, c1 = tongue(-0.04, -0.5, 0.92, 0.36, 0.22, 0.0)
