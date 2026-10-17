@@ -241,6 +241,13 @@ rbx.Enum = setmetatable({}, {
 	end,
 })
 
+-- An empty Workspace: no World folder (no kelp, no dressing)
+rbx.workspace = {
+	FindFirstChild = function()
+		return nil
+	end,
+}
+
 rbx.heartbeat = nil :: ((number) -> ())?
 rbx.game = {
 	GetService = function(_, name: string)

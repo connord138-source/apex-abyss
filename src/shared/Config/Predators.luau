@@ -26,6 +26,9 @@ export type Style = {
 	chase: number, -- × speed while it closes in (an ambusher's stalk)
 	turnAtSpeed: number, -- × turn rate it keeps at full speed (1.25 when still)
 	tellFollow: number, -- × speed: the fastest it keeps up during its tell
+	tellBrake: number?, -- × speed per second it can slow by during its tell (default strike.brake)
+	tellFacing: number?, -- how squarely (cosine) it must face the fish to start a tell (default strike.facing)
+	snap: number?, -- × biteReach its snap reaches past its mouth when the tell ends (default 1.6)
 	slowsToTurn: number?, -- × chase it slows to when the fish is off its nose up close
 	roam: number?, -- × speed roaming (default Predators.roamSpeed)
 	recover: number?, -- × speed peeling off after a strike (default 0.8)
@@ -127,9 +130,12 @@ local list: { PredatorDef } = {
 		style = {
 			kind = "tracker",
 			chase = 1,
-			turnAtSpeed = 0.5,
+			turnAtSpeed = 0.45,
 			tellFollow = 0.95,
-			slowsToTurn = 0.9,
+			tellBrake = 0.5, -- heavy: it can't pull up short (a loop past it overshoots)
+			tellFacing = 0.9, -- so it lines up before it commits
+			snap = 1.2,
+			slowsToTurn = 0.35,
 			roam = 0.3,
 			recover = 0.5,
 			leash = 3,
@@ -185,13 +191,13 @@ return {
 	strike = {
 		hold = 0.5, -- × biteReach, plus half the fish's length: where the open jaw waits
 		closing = 0.5, -- the tell starts this × speed × telegraph further out than that
-		follow = 0.55, -- × speed: the fastest it closes during the tell (a dash outruns it)
-		brake = 3, -- × speed per second: how hard it can pull up during the tell
+		brake = 3, -- × speed per second: how hard it can pull up during the tell (a style's `tellBrake`)
 		facing = 0.4, -- the fish must be in front of it (cosine of the angle) for a tell
+		cone = 0.45, -- ...and still in front of its jaws (cosine) when it snaps
 	},
-	-- A puffed fish (the Pufferfish's Puff Up: character attribute `Puffed`) takes
-	-- `puffDamage` of a bite, and a plain predator that bites one takes `puffRecoil`
-	-- of its own max health and flinches (stunned) for `puffFlinch` seconds
+	-- A puffed fish (the Pufferfish's Puff Up: character attribute `Puffed`, the clock
+	-- it deflates at) takes `puffDamage` of a bite, and a plain predator that bites one
+	-- takes `puffRecoil` of its own max health and flinches (stunned) `puffFlinch` s
 	puffDamage = 0.5,
 	puffRecoil = 0.12,
 	puffFlinch = 2.5,

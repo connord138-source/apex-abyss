@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Simulates the AI predators' hunt and strike (src/server/Services/PredatorService)
-# in the plain luau CLI against fake services (sim_services.luau) and prints how
-# often a telegraphed bite lands on a still, a slow and a dashing fish.
+# in the plain luau CLI against fake services (sim_services.luau): each hunting
+# style (Config/Predators `style`) against still, cruising, fleeing, juking,
+# looping, dashing, hidden, burrowed and puffed fish of several levels and
+# species, plus PredatorService.stun. Prints the table and fails on a broken rule.
 #   LUAU=/path/to/luau bash tools/tests/run_predators.sh [PredatorService.luau]
-# The optional argument runs another copy of the service (to compare before/after).
+# The optional argument runs another copy of the service; SRC=<an older src/> runs
+# an older checkout's Config and shared code too, and BEFORE=1 only prints the table
+# (an older service has no stun, burrow or puff to check).
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-src="$here/../../src"
+src="${SRC:-$here/../../src}"
 service="${1:-$src/server/Services/PredatorService.luau}"
 tmp="$(mktemp -d)"
 [[ -n "${KEEP:-}" ]] || trap 'rm -rf "$tmp"' EXIT
@@ -17,7 +21,8 @@ done
 cp "$src/shared/Size.luau" "$src/shared/Seafloor.luau" "$tmp/"
 cp "$service" "$tmp/PredatorService.luau"
 cp "$here/sim_rbx.luau" "$here/sim_services.luau" "$here/predator_sim.luau" "$tmp/"
-header='local __rbx = require("./sim_rbx"); local Vector3, CFrame, Random, Color3, Enum, game = __rbx.Vector3, __rbx.CFrame, __rbx.Random, __rbx.Color3, __rbx.Enum, __rbx.game'
+if [[ -n "${BEFORE:-}" ]]; then echo 'return { before = true }' > "$tmp/sim_mode.luau"; else echo 'return { before = false }' > "$tmp/sim_mode.luau"; fi
+header='local __rbx = require("./sim_rbx"); local Vector3, CFrame, Random, Color3, Enum, game, workspace = __rbx.Vector3, __rbx.CFrame, __rbx.Random, __rbx.Color3, __rbx.Enum, __rbx.game, __rbx.workspace'
 for f in "$tmp"/Config/*.luau; do
 	sed -i "1a ${header//.\/sim_rbx/..\/sim_rbx}" "$f"
 done

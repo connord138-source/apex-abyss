@@ -327,7 +327,7 @@ local function strike(
 			continue
 		end
 		attack.hit[fish.player] = true
-		HuntService.damage(fish.player, fraction, boss.def.name)
+		HuntService.damage(fish.player, fraction * PredatorService.biteScale(fish.player), boss.def.name)
 		local shove = push(fish)
 		if shove then
 			Net.shove(fish.player, shove)
@@ -358,7 +358,13 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 					local reach = shark.bite.reach * 1.6 + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.15
 					hit = (root.Position - mouth).Magnitude <= reach
 					if hit then
-						HuntService.damage(attack.target :: Player, shark.bite.fraction, def.name)
+						-- (a puffed-up Pufferfish takes half: Config/Abilities PuffUp)
+						local victim = attack.target :: Player
+						HuntService.damage(
+							victim,
+							shark.bite.fraction * PredatorService.biteScale(victim),
+							def.name
+						)
 					end
 				end
 				Net.predatorEvent("bite", index, { hit = hit, x = mouth.X, y = mouth.Y, z = mouth.Z })
@@ -663,7 +669,12 @@ local function runSquid(boss: Boss, attack: Attack, now: number, root: BasePart?
 					local reach = squid.slam.reach * 1.5 + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.15
 					hit = (root.Position - beak).Magnitude <= reach
 					if hit then
-						HuntService.damage(attack.target :: Player, squid.slam.fraction, def.name)
+						local victim = attack.target :: Player
+						HuntService.damage(
+							victim,
+							squid.slam.fraction * PredatorService.biteScale(victim),
+							def.name
+						)
 					end
 				end
 				Net.predatorEvent("bite", index, { hit = hit, x = beak.X, y = beak.Y, z = beak.Z })

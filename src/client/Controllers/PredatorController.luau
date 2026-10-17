@@ -964,6 +964,10 @@ local function step(dt: number)
 		if visual.staggerUntil > now then
 			visual.status.Text = "STAGGERED · BITE IT"
 			visual.status.TextColor3 = Ui.color.haul
+		elseif visual.mode == "stunned" then
+			-- (a Lantern Flash or a puffed fish's spines: it drifts, harmless for now)
+			visual.status.Text = "STUNNED"
+			visual.status.TextColor3 = Ui.color.haul
 		elseif visual.target == me then
 			visual.status.Text = if visual.markedUntil > now then "MARKED YOU FOR DEATH" else "HUNTING YOU"
 			visual.status.TextColor3 = Ui.color.danger
@@ -1129,6 +1133,22 @@ local function onEvent(kind: any, index: any, payload: any)
 		if payload.target == me then
 			warn(`{string.upper(def.name)} · INCOMING`, seconds + 0.3)
 			Sfx.play("Warning", { volume = 0.6 })
+		end
+	elseif kind == "lost" or kind == "stunned" then
+		-- Its tell is called off (the fish burrowed or slipped away; a flash or spines
+		-- stunned it): no bite comes
+		visual.windupUntil = 0
+		if kind == "stunned" then
+			bubbles(visual.position, def.length * 0.3)
+			if visual.target == me then
+				warn(`{string.upper(def.name)} · STUNNED`, 1.5)
+			end
+		end
+	elseif kind == "burst" then
+		-- An ambusher bursts from cover: a swirl of bubbles off its tail
+		bubbles(visual.position - visual.heading * def.length * 0.4, def.length * 0.35)
+		if payload.target == me then
+			warn(`{string.upper(def.name)} · BURSTING AT YOU · JUKE SIDEWAYS`, 1.6)
 		end
 	elseif kind == "bite" then
 		visual.windupUntil = 0
