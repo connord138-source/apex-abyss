@@ -758,7 +758,7 @@ def views():
     v["stall3"] = (polar(62, 13, 8), polar(45, 34, 5), 70)
     v["wheel"] = (polar(262, 30, 16), polar(240, 62, 14), 70)
     # Den 1's nameplate from the beacon's side of the plaza (readability)
-    v["doorfar"] = (polar(285, 32, 12), polar(15, 95, 27), 50)
+    v["doorfar"] = (polar(330, 24, 12), polar(15, 95, 27), 50)
     v["top"] = ((0, 260, 0.01), (0, 0, 0), 46)
     return v
 
