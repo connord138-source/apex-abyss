@@ -1,0 +1,12 @@
+{
+ "jobs": [
+  {
+   "name": "PreySheetB",
+   "group": "prey_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/prey_concepts/RefPreyB.jpg",
+   "prompt": "Using the attached sheets only as a STYLE reference (chunky stylized low-poly 3D game models with visible flat facets, bold clean colors, soft even light, small simple eyes with a dark pupil and a white glint like the prey on the left sheet, never googly eyes; a touch more realistic than a toy), draw EIGHT new prey fish laid out like the left sheet: two rows of FOUR fish side by side, on a plain flat soft teal background, each alone with clear gaps, whole body in a three-quarter side view facing left. Top row: 1) BUTTERFLYFISH: a small flat disc-shaped reef fish, bright yellow, a black band through the eye, a dark eyespot near the tail, a pointed snout; 2) TRIGGERFISH: a stout diamond-shaped fish, dark navy with big white spots on its belly, a yellow net pattern on its back, a small orange beak mouth; 3) SWORDFISH: a big powerful fish with a long flat sword bill, purple-blue back, silver belly, tall curved dorsal fin, deep crescent tail; 4) OCEAN SUNFISH: a huge round flat silver-grey fish, one tall fin on top and one below, a short scalloped back edge instead of a tail. Bottom row: 5) COELACANTH: a heavy ancient lobe-finned fish, steel blue with white blotches, thick fleshy limb-like fins, a three-lobed tail; 6) VENT EELPOUT: a tadpole-shaped eelpout, big blunt head, a tapering eel tail with one soft fin, charcoal with glowing ember-orange speckles; 7) GULPER EEL: a black deep-sea eel with a huge loose pouch mouth far bigger than its head, a tiny eye, a thin whip tail; 8) OARFISH: a very long flat silver ribbon fish with faint blue streaks, in a gentle S curve to fit its space, a bright red fin along its whole back, a crest of long thin red rays on its small toothless head. No text, labels, numbers, watermark, ground or shadows."
+  }
+ ]
+}

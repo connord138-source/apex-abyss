@@ -1,0 +1,20 @@
+{
+ "jobs": [
+  {
+   "name": "DenPropsA",
+   "group": "den_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/den_concepts/RefDenA.jpg",
+   "prompt": "Using the attached sheet only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy), draw EXACTLY six different furniture pieces for a fish's undersea home, each drawn once, in a grid of three across and two down with wide empty space so nothing touches, each whole in a three-quarter view from slightly above, on a plain flat muted teal background. Copy the style only. Rich detail, solid chunky shapes, size and use clear at a glance. No characters, fish, people, text, letters, numbers or watermark. Top row: (1) a long sturdy dining table: a thick driftwood slab top on two chunky crossed driftwood trestle legs, a blue mussel-shell bowl of pearls and a sea-glass jar candle on it; (2) a cosy bed: a low oval frame woven from thick kelp ropes over driftwood, a plump moss-green mattress, two plump teal pillows, a kelp blanket folded back; (3) a pedestal: a tall carved grey stone column on a square plinth, an open blue-violet clam shell on top cradling one big glowing pearl. Bottom row: (4) a bubble fountain: a low ring of stacked rounded mossy stones round a bronze vent grate, big clear bubbles rising from it; (5) a three-seat sofa: a chunky driftwood frame, plump deep teal cushions of stitched kelp cloth, round orange sea-sponge bolsters at the ends, orange scallop shells capping the armrests; (6) a tall bookcase of curved dark ship's hull planks with a brass porthole in each side, its four shelves full of chunky red, navy and green books with plain spines, glass bottles, a ship in a bottle and shells. Palette: grey-brown driftwood, kelp greens, teal, blue-violet, orange, dark wood, brass, amber glow. No pale pink, peach or beige."
+  },
+  {
+   "name": "DenPropsB",
+   "group": "den_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/den_concepts/RefDenB.jpg",
+   "prompt": "Using the attached sheet only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft warm light, a touch more realistic than a toy), draw EXACTLY six different furniture pieces for a fish's undersea home, each drawn once, in a grid of three across and two down with wide empty space so nothing touches, each whole in a three-quarter view from slightly above, on a plain flat muted teal background. Copy the style only. Rich detail, solid chunky shapes, size and use clear at a glance. No characters, fish, people, text, letters, numbers or watermark. One continuous plain background, no panels, tiles or borders. Top row: (1) a ceiling lamp: three glowing golden-amber frosted-glass jellyfish with short frilly arms on thin chains of different lengths from one round brass ceiling plate; (2) a small wall lantern: a dark iron cage of chunky frosted sea-glass in teal, cobalt and sea green glowing softly, hung from a curled iron bracket on a wooden wall plate; (3) a floor lamp: a branching orange coral trunk on a round rock base under a wide deep orange fan-coral shade glowing warm. Bottom row: (4) a tall wall banner: teal cloth with a swallowtail end, gold trim and a gold emblem of a fish leaping a wave, on a driftwood pole hung by rope; (5) a gramophone: a dark wood cabinet with brass corners, a record on the turntable, its big horn a spiral conch shell, white with orange-brown bands, deep orange inside; (6) a framed sea chart for the wall: islands, a dotted path, a red X and a compass star with no letters, in a thick carved driftwood frame with rope wrapped corners. Palette: brass, dark iron, dark wood, teal, cobalt, sea green, orange, gold, amber glow. No pale pink, peach or beige."
+  }
+ ]
+}
