@@ -959,6 +959,40 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     PassTideglass, Prismatic, Divine. The six `fx_*.png` particle images are made
     (one tint, alpha draws the shape; ≤ 0.13 over black and white): ids go in
     `Config/Textures` `fx*`.
+- **The 2026-10-17 round-2 report's fixes (PC report `2026-10-17-pc-2.md`: the fx ids
+  are in, a2d4d1c; built on `claude/world`):**
+  - **SK4:** the admin skin-fail test had never been committed; it is now
+    (`SkinLoader.claimTest`, above). FishAnimator's dress key carries the skin's
+    whole `SkinLoader.state`, so a skin worn anyway is put on afresh once it loads.
+  - **Whale plume that carries** (`ChumController`): three stacked stretches of
+    murky silt (sources 4 / 92 / 168 studs, darker and bigger higher up, glow
+    0.06 / 0.03 / 0) to ~250 studs, meandering; built while the camera is within
+    900 studs; fades 17 s after the whale. A boxless **WHALE FALL marker** (flukes
+    glyph, distance in ft, AlwaysOnTop) over a settled whale from 90 to 620 studs
+    (`Config/Chum` `whale.marker`), dimmed behind rock, hidden under menus, in Build
+    mode, on the start screen and in the hub. The old silt rose only ~90 studs
+    (Drag 0.1) and pale silt was lost against pale haze.
+  - **A lit Vents floor** (`WorldService` `ventFissures`): 4–6 branching fissure
+    systems a basin (tapered Neon cores over deep-red rims), one range-60 light
+    each (brightness 2.2), embers and a low warm heat haze; `VENTS_GRADE` in
+    OceanController by biome (exposure −0.15, red-brown haze, density 0.76), so the
+    Trench at the same depth is unchanged.
+  - **Effects that read in a still:** bigger, denser, brighter crystal, glints,
+    gold, embers, drips, tropical, bubbles, starfall, stardust; lit ink; Aurora's
+    curtains; Prismatic's saturated rainbow outline plus `shimmer`. Lantern King's
+    crown has its own seat on the Angler's head (its box top is the lure stalk's
+    arch); the gold on its back is the skin's painted spines. Ribbons shorten above
+    top speed (Undertow's swirls zig-zagged on a dash). **SkinFx frames off the
+    fish's root:** the body Model has no PrimaryPart, so its pivot never turned.
+  - **Boost trails twice as present:** particles 1.3–2.2× a skin's, ribbons 1.4×
+    wider, 20% → 120% rate from the threshold to a dash; Fire Wake blended
+    yellow → orange-red (additive orange read grey-blue over blue water when thin);
+    Storm draws two lightning arcs; Ink Cloud glows violet-indigo.
+  - **Phone text:** the Index names this device's buttons (`byDevice`); the Coral
+    Garden row and the Tide Pass subtitle are shorter on phones; the stall button
+    keeps TextScaled with non-breaking spaces (turning TextWrapped off turns
+    TextScaled off, HB1). Leaving a den, the wash waits for the doorway's lantern
+    lights and settles 0.6 s.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

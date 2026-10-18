@@ -1611,9 +1611,11 @@ local function guide(): { { title: string, text: string } }
 	return {
 		{
 			title = "Eat and grow",
-			text = `Swim into anything under about two thirds your size to swallow it. BITE ({string.lower(
-				Input.biteKey()
-			)}) fish your own size, predators and bosses. A fish that's too big to eat will chase you: swim away.`,
+			text = `Swim into anything under about two thirds your size to swallow it. {byDevice(
+				"BITE (right click)",
+				"BITE (RB)",
+				"Tap BITE on"
+			)} fish your own size, predators and bosses. A fish that's too big to eat will chase you: swim away.`,
 		},
 		{
 			title = "Bank your Haul",
