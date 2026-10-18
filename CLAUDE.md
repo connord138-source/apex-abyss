@@ -1076,8 +1076,26 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     **Ambient life** (`AmbientLifeController`, `Config/Ambient`, client-only, seeded
     per 96-stud cell on the shared clock): jellyfish, rays, crabs, turtles, reef-fish
     clouds round coral, far whales and mantas in the Open Blue; all fade near a boss.
-    **New prey concepts** (8: Garibaldi, Wreck Cod, Parrotfish, Yellowfin Tuna,
-    Mahi-mahi, Lionfish, Ghost Shrimp, Lanternfish; `assets/tripo/prey_concepts/`)
+    **Prey batch 2** (owner approved the concepts 2026-10-18; `prey2_fbx`, sha256
+    cc9d695c…, rigged FBX with colour maps only, highest classifier 0.025): Garibaldi
+    (Kelp 0.4 kg), WreckCod (1.5), Parrotfish (Reef 4), YellowfinTuna (Open Blue 35,
+    fast tight schools), MahiMahi (22), Lionfish (Ruins 10), GhostShrimp (Vents and
+    low in the kelp, 0.2, swarms), Lanternfish (Trench 0.5). They took schools over
+    from Minnow, Sardine and Wrasse, so the sea stays ~4,100 fish (446 schools); every
+    biome has 5+ species a fish of its level can eat. `Config/Prey` entries carry
+    `biome` (the Catch Log's), and `venom` makes the **Lionfish sting** when swallowed
+    (`HuntService`: 6% of max health, less for a fish 2.5× its length, never below
+    5% health, never in the hub or under spawn protection, toast STUNG · venomous
+    spines). Zones can set `vents = true` (`Schools.build`). `SchoolController`
+    `GLOWS` gives Lanternfish spots and Ghost Shrimp tips as Neon parts plus 3 faint
+    lights near the camera; `SHAPES` are the part-built looks until imported. Tuna
+    and Mahi-mahi drop shells (`Config/Shells` `preyDrops`). A prey model sheet is
+    made from the concept crop over the style strip (`tools/props/prey_refs.py`).
+    **Prey sheet B and den prop boards A/B** (`tools/tripo_jobs_prey_concepts2.json`,
+    `tripo_jobs_den_concepts.json`; Butterflyfish, Triggerfish, Swordfish, Ocean
+    Sunfish, Coelacanth, Vent Eelpout, Gulper Eel, Oarfish; Driftwood Table, Kelp
+    Bed, Pearl Pedestal, Bubble Column, Sponge Sofa, Shipwreck Bookshelf, Jellyfish
+    Lamp, Sea Glass Lantern, Coral Lamp, Banner, Conch Gramophone, Treasure Chart)
     wait for the owner's approval before 3D.
   - **Tutorial: the full loop, nine steps** (`Config/Tutorial`, `TutorialService`
     rewritten, `tutorial.v`): leave the hub, eat 10, 5 shells, fill the Haul
