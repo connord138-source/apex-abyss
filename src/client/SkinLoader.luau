@@ -9,6 +9,10 @@
 -- can report Failure and still draw: right after an import, "Asset type does not
 -- match requested type", PC 2026-10-16 round 2), and the fetches carry on: once they
 -- all arrive, `state` changes again so the animator puts the skin on afresh.
+-- `claimTest` (the admin's "Skins: pretend my worn skin's download fails") plays
+-- that out on purpose: the skin counts as failing for TEST_SECONDS, logging each
+-- pretend retry as `[SkinLoader] test:`, so it shows the stand-in, goes on at
+-- GIVE_UP and is put on afresh when the pretence ends.
 local ContentProvider = game:GetService("ContentProvider")
 
 local SkinLoader = {}
@@ -23,6 +27,7 @@ local MAPS = {
 local RETRY_MOST = 30 -- seconds between tries at most
 local TRIES_MOST = 8
 local GIVE_UP = 12 -- seconds a skin waits before it goes on anyway
+local TEST_SECONDS = 18 -- how long `claimTest` pretends a skin's download fails
 
 local texturesOf: { [Instance]: { string } } = {} -- skins live in ReplicatedStorage, so strong keys
 local loaded: { [string]: boolean } = {}
@@ -30,6 +35,8 @@ local fetching: { [string]: boolean } = {}
 local tries: { [string]: number } = {}
 local retryAt: { [string]: number } = {}
 local firstAsked: { [Instance]: number } = {}
+type Pretend = { untilAt: number, tries: number, retryAt: number }
+local pretending: { [Instance]: Pretend } = {}
 
 local function contentUri(skin: Instance, property: string): string?
 	local ok, content = pcall(function()
@@ -83,6 +90,28 @@ end
 -- Whether every texture of `skin` has arrived (starting or retrying the downloads
 -- that haven't). Anything that isn't a SurfaceAppearance is loaded.
 local function allLoaded(skin: Instance): boolean
+	local pretend = pretending[skin]
+	if pretend then
+		local now = os.clock()
+		if now < pretend.untilAt then
+			if now >= pretend.retryAt then
+				pretend.tries += 1
+				local wait = math.min(2 ^ pretend.tries, RETRY_MOST)
+				pretend.retryAt = now + wait
+				print(
+					`[SkinLoader] test: {skin.Parent and skin.Parent.Name or "?"}.{skin.Name} try {pretend.tries} failed (pretend), {string.format(
+						"%.0f",
+						now - (pretend.untilAt - TEST_SECONDS)
+					)} s in, next try in {wait} s`
+				)
+			end
+			return false
+		end
+		pretending[skin] = nil
+		print(
+			`[SkinLoader] test: {skin.Parent and skin.Parent.Name or "?"}.{skin.Name} arrived, put on afresh`
+		)
+	end
 	if not skin:IsA("SurfaceAppearance") then
 		return true
 	end
@@ -122,6 +151,16 @@ function SkinLoader.state(skin: Instance): string
 		firstAsked[skin] = since
 	end
 	return if os.clock() - since < GIVE_UP then "waiting" else "trying"
+end
+
+-- Admin test: `skin` pretends its download fails for TEST_SECONDS from now
+function SkinLoader.claimTest(skin: Instance)
+	local now = os.clock()
+	pretending[skin] = { untilAt = now + TEST_SECONDS, tries = 0, retryAt = now }
+	firstAsked[skin] = now
+	print(
+		`[SkinLoader] test: {skin.Parent and skin.Parent.Name or "?"}.{skin.Name} pretends to fail for {TEST_SECONDS} s (the stand-in, worn anyway at {GIVE_UP} s)`
+	)
 end
 
 -- Whether to put `skin` on now (Cosmetics' skinReady)

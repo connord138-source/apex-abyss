@@ -33,7 +33,7 @@ local FADE_IN = 0.22
 local FADE_OUT = 0.45
 local WAIT_MOST = 2.5 -- seconds to wait for the move before clearing anyway
 local LOAD_MOST = 25 -- seconds to wait for the place to stream in before clearing anyway
-local SETTLE = 0.4 -- the place must be there this long (Terrain meshes after it arrives)
+local SETTLE = 0.6 -- the place must be there this long (Terrain meshes after it arrives)
 local PRESTREAM_REACH = 36 -- studs from a portal at which the far side is asked for
 local COOLDOWN = 1.2 -- after a move, before another portal takes the fish
 
@@ -57,7 +57,13 @@ local function arrivedAt(door: number?): boolean
 	if door then
 		local world = workspace:FindFirstChild("World")
 		local hub = world and world:FindFirstChild("Hub")
-		if hub == nil or hub:FindFirstChild(`Den{door}`) == nil then
+		local doorway = hub and hub:FindFirstChild(`Den{door}`)
+		if doorway == nil then
+			return false
+		end
+		-- and its lanterns' lights: the doorway and the rock round it showed dim blue
+		-- for ~0.5–1 s after the wash cleared while they streamed in (PC 2026-10-17, LD1)
+		if doorway:GetAttribute("Owner") ~= nil and doorway:FindFirstChildWhichIsA("Light", true) == nil then
 			return false
 		end
 	end

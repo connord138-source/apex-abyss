@@ -503,6 +503,16 @@ local function denOldSave(_admin: Player, targets: { Player }): string
 	return table.concat(lines, " | ")
 end
 
+-- Skins: the target's own client pretends its worn skin's download fails for 18 s
+-- (SkinLoader.claimTest): the stand-in, `[SkinLoader] test:` retries in the Output,
+-- the skin worn anyway at 12 s and put on afresh at 18 s
+local function skinFailTest(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		player:SetAttribute("SkinFailTest", Timing.clock())
+	end
+	return `{names(targets)}: the worn skin pretends to fail for 18 s (watch the Output)`
+end
+
 -- Redeem codes: forget which were used, so they can be tested again
 local function codesReset(_admin: Player, targets: { Player }): string
 	local count = each(targets, function(_player, data)
@@ -735,6 +745,7 @@ AdminActions.byName = {
 	denLevel = denLevel :: Handler,
 	denItems = denItems :: Handler,
 	denOldSave = denOldSave :: Handler,
+	skinFailTest = skinFailTest :: Handler,
 	achievementsAll = achievementsAll :: Handler,
 	achievementsReset = achievementsReset :: Handler,
 	codesReset = codesReset :: Handler,

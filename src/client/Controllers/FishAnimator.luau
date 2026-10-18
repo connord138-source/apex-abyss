@@ -146,6 +146,8 @@ local function setTransform(state: FishState, name: string, cframe: CFrame)
 	end
 end
 
+local skinTestSeen: any = nil -- the SkinFailTest stamp last acted on
+
 -- Puts on the fish's shade, parts and variant when they change (Shared/Cosmetics),
 -- and re-sizes the shade's glow and glints when the fish has grown a lot.
 local function dress(character: Model, state: FishState)
@@ -154,9 +156,18 @@ local function dress(character: Model, state: FishState)
 	local skin = if state.body:GetAttribute("Mesh")
 		then Cosmetics.skinOf(state.body, if typeof(shade) == "string" and shade ~= "" then shade else nil)
 		else nil
-	local waiting = skin ~= nil and not SkinLoader.ready(skin)
-	local key = `{shade}|{character:GetAttribute("Parts")}|{character:GetAttribute("Variant")}|{if waiting
-		then "w"
+	-- The admin's skin-loading test, on your own fish
+	if skin and character == Players.LocalPlayer.Character then
+		local test = Players.LocalPlayer:GetAttribute("SkinFailTest")
+		if test ~= nil and test ~= skinTestSeen then
+			skinTestSeen = test
+			SkinLoader.claimTest(skin)
+		end
+	end
+	-- Its state is in the key, so it's put on when it stops waiting and put on
+	-- afresh when a skin worn anyway has all its textures at last
+	local key = `{shade}|{character:GetAttribute("Parts")}|{character:GetAttribute("Variant")}|{if skin
+		then SkinLoader.state(skin)
 		else ""}`
 	local grown = math.abs(state.length - state.dressLength) > state.dressLength * 0.25
 	if key == state.dressKey and not grown then

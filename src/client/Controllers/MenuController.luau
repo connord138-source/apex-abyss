@@ -733,9 +733,13 @@ local function denRows(list: ScrollingFrame, shopOnly: boolean?)
 				if state().premium == true then Config.Monetization.tuning.premium.gardenHours else 0
 			)
 			else nil
-		local blurb = `{Ui.number(garden.coralPerHour)} coral and {Ui.number(garden.shellsPerHour)} shells an hour, `
-			.. `holds {garden.hours} h · ×{garden.rest} while you rest here`
-		if nextRates and upgrade then
+		-- (shorter on a phone, where the long line was cut off at the right)
+		local touch = Input.isTouch()
+		local blurb = if touch
+			then `{Ui.number(garden.coralPerHour)} coral, {Ui.number(garden.shellsPerHour)} shells /h · {garden.hours} h · ×{garden.rest} resting here`
+			else `{Ui.number(garden.coralPerHour)} coral and {Ui.number(garden.shellsPerHour)} shells an hour, `
+				.. `holds {garden.hours} h · ×{garden.rest} while you rest here`
+		if nextRates and upgrade and not touch then
 			blurb ..= ` · a {upgrade.name} grows {Ui.number(nextRates.coralPerHour)}/h`
 		end
 		local deepPass = Config.Monetization.passesByKey.DeepGarden
@@ -1546,6 +1550,11 @@ local function shadeHow(shade: any, s: any): string
 end
 
 -- What to do next, from where you are (the Guide's first rows)
+-- A key name for this device: keyboard, pad or touch
+local function byDevice(keyboard: string, pad: string, touch: string): string
+	return if Input.isTouch() then touch elseif Input.isGamepad() then pad else keyboard
+end
+
 local function nextGoals(s: any): { { title: string, text: string } }
 	local goals: { { title: string, text: string } } = {}
 	local tutorial = s.tutorial
@@ -1582,7 +1591,7 @@ local function nextGoals(s: any): { { title: string, text: string } }
 	if ready > 0 then
 		table.insert(goals, {
 			title = `{ready} roll{if ready == 1 then "" else "s"} ready`,
-			text = "Press ROLL (R) for a new skin, part or variant for the fish you swim as.",
+			text = `Press {byDevice("ROLL (R)", "ROLL (D-pad down)", "ROLL")} for a new skin, part or variant for the fish you swim as.`,
 		})
 	end
 	local den = s.den
@@ -1591,58 +1600,67 @@ local function nextGoals(s: any): { { title: string, text: string } }
 	if nextDen then
 		table.insert(goals, {
 			title = `Dig your den into a {nextDen.name}`,
-			text = `{Ui.number(nextDen.cost)} coral in the den menu (E in your den). It holds {nextDen.capacity} things.`,
+			text = `{Ui.number(nextDen.cost)} coral in the den menu ({byDevice("E", "Y", "DEN & SHOP")} in your den). It holds {nextDen.capacity} things.`,
 		})
 	end
 	return goals
 end
 
-local GUIDE: { { title: string, text: string } } = {
-	{
-		title = "Eat and grow",
-		text = "Swim into anything under about two thirds your size to swallow it. BITE (right click, RB) fish your own size, predators and bosses. A fish that's too big to eat will chase you: swim away.",
-	},
-	{
-		title = "Bank your Haul",
-		text = "Everything you eat on a dive is your Haul, and it grows you live. Swim home into your den's pool to bank it as growth for good. Get eaten first and it bursts into chum.",
-	},
-	{
-		title = "Biomes and depth",
-		text = "Kelp Shallows LV 1+, Shipwreck Graveyard 10+, Coral Reef 25+, Open Blue 35+, Sunken Ruins 50+, Hydrothermal Vents 65+, Abyssal Trench 80+. Too deep too soon and the pressure crushes you.",
-	},
-	{
-		title = "Shells and rolls",
-		text = "Every 50 shells is a roll: a skin, a body part or a variant for the fish you swim as. Skins you have never roll again for that fish. ROLL ODDS shows every chance.",
-	},
-	{
-		title = "Fish",
-		text = "Each fish levels up on its own. Unlock new fish in FISH with their home biome's DNA (it drops from fish there) and coral.",
-	},
-	{
-		title = "Your den",
-		text = "Your den is your house. Press E in it for the den menu and shop, B to build. Its Coral Garden grows coral and shells while you're away.",
-	},
-	{
-		title = "Healing",
-		text = "Health never comes back on its own. Kelp Wraps (H) heal 40%, and eating prey heals a little.",
-	},
-	{
-		title = "Rare catches and tides",
-		text = "Golden, Glowing, Crystal and Prism fish pay big and fill each fish's catch track (the LOG). The Tide Clock changes the sea every 20 minutes.",
-	},
-	{
-		title = "World bosses",
-		text = "The Megalodon and the Giant Squid rise about every 30 minutes. Fight together for trophies, exclusive skins and a huge Haul.",
-	},
-	{
-		title = "Treasure maps",
-		text = "Maps drop from prey, shells and big banks. Follow one (MAPS) and dig at the X: coral, shells and sometimes a rare skin.",
-	},
-	{
-		title = "The Tide Pass",
-		text = "Playing earns pass tiers: skins that work on every fish, boost trails, coral and more. The Deep Pass opens a second row.",
-	},
-}
+-- How it works, in this device's own buttons
+local function guide(): { { title: string, text: string } }
+	return {
+		{
+			title = "Eat and grow",
+			text = `Swim into anything under about two thirds your size to swallow it. BITE ({string.lower(
+				Input.biteKey()
+			)}) fish your own size, predators and bosses. A fish that's too big to eat will chase you: swim away.`,
+		},
+		{
+			title = "Bank your Haul",
+			text = "Everything you eat on a dive is your Haul, and it grows you live. Swim home into your den's pool to bank it as growth for good. Get eaten first and it bursts into chum.",
+		},
+		{
+			title = "Biomes and depth",
+			text = "Kelp Shallows LV 1+, Shipwreck Graveyard 10+, Coral Reef 25+, Open Blue 35+, Sunken Ruins 50+, Hydrothermal Vents 65+, Abyssal Trench 80+. Too deep too soon and the pressure crushes you.",
+		},
+		{
+			title = "Shells and rolls",
+			text = "Every 50 shells is a roll: a skin, a body part or a variant for the fish you swim as. Skins you have never roll again for that fish. ROLL ODDS shows every chance.",
+		},
+		{
+			title = "Fish",
+			text = "Each fish levels up on its own. Unlock new fish in FISH with their home biome's DNA (it drops from fish there) and coral.",
+		},
+		{
+			title = "Your den",
+			text = `Your den is your house. {byDevice(
+				"Press E in it for the den menu and shop, B to build.",
+				"Press Y in it for the den menu and shop; BUILD is in the menu.",
+				"Tap DEN & SHOP in it for the den menu and shop; BUILD is in the menu."
+			)} Its Coral Garden grows coral and shells while you're away.`,
+		},
+		{
+			title = "Healing",
+			text = `Health never comes back on its own. Kelp Wraps ({byDevice("H", "LB", "HEAL")}) heal 40%, and eating prey heals a little.`,
+		},
+		{
+			title = "Rare catches and tides",
+			text = "Golden, Glowing, Crystal and Prism fish pay big and fill each fish's catch track (the LOG). The Tide Clock changes the sea every 20 minutes.",
+		},
+		{
+			title = "World bosses",
+			text = "The Megalodon and the Giant Squid rise about every 30 minutes. Fight together for trophies, exclusive skins and a huge Haul.",
+		},
+		{
+			title = "Treasure maps",
+			text = "Maps drop from prey, shells and big banks. Follow one (MAPS) and dig at the X: coral, shells and sometimes a rare skin.",
+		},
+		{
+			title = "The Tide Pass",
+			text = "Playing earns pass tiers: skins that work on every fish, boost trails, coral and more. The Deep Pass opens a second row.",
+		},
+	}
+end
 
 function MenuController.openIndex(startTab: string?)
 	open("Index", "How to get everything, and what to do next", Vector2.new(920, 560), function(window)
@@ -1702,7 +1720,7 @@ function MenuController.openIndex(startTab: string?)
 							infoRow(list, next(), goal.title, goal.text, Ui.color.haul)
 						end
 						denSection(list, next(), "How it works")
-						for _, entry in GUIDE do
+						for _, entry in guide() do
 							infoRow(list, next(), entry.title, entry.text, Ui.color.accent)
 						end
 					elseif tab == "Skins" then
@@ -3386,6 +3404,9 @@ function MenuController.openPass()
 				seasonLabel.Text = `SEASON {pass.season or 1} · {string.upper(def.name)}`
 				window.subtitle.Text = if os.clock() < claimedUntil
 					then claimedText
+					elseif Input.isTouch() then `Skins work on every fish · ends in {Format.duration(
+						left
+					)}`
 					else `{def.blurb} · pass skins work on every fish · ends in {Format.duration(left)}`
 				window.subtitle.TextColor3 = if os.clock() < claimedUntil
 					then Ui.color.haul
@@ -4031,8 +4052,9 @@ local function buildHint(playerGui: Instance)
 		Ui.button(buttonGui, "Shop", "", UDim2.fromOffset(230, 44), UDim2.new(1, -96, 1, -204), "primary")
 	shopButton.AnchorPoint = Vector2.new(1, 1)
 	shopButton.Selectable = false
+	-- One line, long vendor names shrink a little: the label's spaces are
+	-- non-breaking, since turning TextWrapped off would turn TextScaled off too (HB1)
 	shopButton.TextScaled = true
-	shopButton.TextWrapped = false -- one line; long vendor names shrink a little
 	local fit = Instance.new("UITextSizeConstraint")
 	fit.MaxTextSize = 16
 	fit.Parent = shopButton
@@ -4093,7 +4115,7 @@ local function updateHint(root: BasePart?)
 			then (if touch or Input.isGamepad() then "DEN & SHOP" else "DEN & SHOP  ·  B  BUILD")
 			else `SHOP · {Shop.vendorsById[best].name}`
 		if touch then
-			shopButton.Text = label
+			shopButton.Text = (string.gsub(label, " ", "\u{00A0}"))
 		else
 			local at = denSpot or counters[best]
 			if at then
