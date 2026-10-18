@@ -36,6 +36,7 @@ local swim = Config.Tuning.swim
 local economy = Config.Tuning.economy
 local hub = Config.World.hub
 local money = Config.Monetization.tuning
+local growthTune = Config.Tuning.growth
 
 export type Session = {
 	haul: number,
@@ -136,19 +137,50 @@ local function mouthOf(root: BasePart, length: number): Vector3
 	return root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
 end
 
--- Adds to a fish's Haul: ×2 Mass and Server Frenzy multiply every gain, unless
--- `raw` (a Haul given back). Returns what was added.
-local function addHaul(player: Player, amount: number, raw: boolean?): number
+-- The share of a kg eaten that goes on the Haul at a banked level (Config/Tuning
+-- `growth`): all of it up to `fullBelow`, easing down to `haulRate` by `easeTo`
+local function haulRateAt(level: number): number
+	local span = math.max(growthTune.easeTo - growthTune.fullBelow, 1)
+	local t = math.clamp((level - growthTune.fullBelow) / span, 0, 1)
+	return 1 - (1 - growthTune.haulRate) * t
+end
+
+-- A fish's Haul rate (its banked level only changes on a bank, so it holds all dive)
+local function haulRate(player: Player): number
+	local data = DataService.get(player)
+	return haulRateAt(if data then Size.level(Progress.mass(data)) else 1)
+end
+
+-- How a gain counts (addHaul):
+--   "food"  eaten food: × the fish's Haul rate, then ×2 Mass and Server Frenzy
+--   "sized" sized for this fish already (a treasure's levels, a share of a kill that
+--           took the rate): ×2 Mass and Server Frenzy only
+--   "raw"   goes on as it is (a Haul given back, chum from a dead fish's Haul)
+export type Gain = "food" | "sized" | "raw"
+
+-- Adds to a fish's Haul (see Gain; "food" when `how` is nil). Returns what was added.
+local function addHaul(player: Player, amount: number, how: Gain?): number
 	local session = sessions[player]
 	if session == nil or amount <= 0 then
 		return 0
 	end
-	if not raw then
+	if how ~= "raw" then
+		if how ~= "sized" then
+			amount *= haulRate(player)
+		end
 		amount *= MonetizationService.growth(player)
 	end
 	session.haul += amount
 	refreshSize(player)
 	return amount
+end
+
+-- The Reef Shark's Blood Sense draws prey in from further (Perks.sense); the server
+-- keeps it on half a second longer, since it sees the fish a little in the past
+local function suctionOf(player: Player): number
+	local character = FishService.character(player)
+	local _, suction = Perks.sense(character, Timing.clock(), 0.5)
+	return suction
 end
 
 -- A Haul lost to being eaten, for a Second Chance bought on the eaten screen.

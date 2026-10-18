@@ -15,8 +15,10 @@ return {
 		lengthCap = 17,
 		startMass = 1, -- a brand-new fish (2 studs long)
 		-- A dive grows you live up to this many times your banked length; the Haul
-		-- keeps counting past it, but you have to bank to grow further
-		haulLengthCap = 1.75,
+		-- keeps counting past it, but you have to bank to grow further. 1.5 (was 1.75,
+		-- owner 2026-10-18: level up slower): MAX SIZE comes at ~12 levels' worth of
+		-- Haul (was ~16), so the HUD asks for a bank sooner
+		haulLengthCap = 1.5,
 		levelGrowth = 1.108, -- banked mass ×this per level (level 100 ≈ 26,000× start)
 		maxLevel = 100,
 		stages = {
@@ -168,6 +170,23 @@ return {
 		steerMax = 2.0, -- 2.6 (149°/s) spun a small fish's view too fast (playtest 2026-10-07)
 		minPitch = math.rad(-80),
 		maxPitch = math.rad(80),
+	},
+
+	-- How fast eating grows you (owner, 2026-10-18: "You should level up a lot slower.
+	-- One 2 minute run with a whale fall gave me 32kg and it sent me from lvl 1 to
+	-- level 35"). Levels stay where they are (a fish's size, speed and every size
+	-- ratio come from its mass), so the food counts for less instead: every kg eaten
+	-- goes on the Haul × `haulRate` (HuntService `addHaul`: prey, forage, slick and
+	-- whale chunks, the new part of a player kill, predator and boss Hauls, bait).
+	-- A new fish gets it all (`fullBelow`), easing down to `haulRate` by `easeTo`,
+	-- so the tutorial's first dives still level up quickly. Rewards sized in levels
+	-- (treasure Hauls) and chum (a Haul that was grown already) don't take it, and
+	-- what a bank pays (coral, Tide Pass XP, the treasure-map chance) is reckoned
+	-- from the Haul before it (HuntService `bank`), so a dive still pays the same.
+	growth = {
+		haulRate = 0.35,
+		fullBelow = 1, -- levels up to this one take the whole kg
+		easeTo = 8, -- ...easing (linearly by level) to `haulRate` here
 	},
 
 	hunt = {
