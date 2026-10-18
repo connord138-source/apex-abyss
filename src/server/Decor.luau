@@ -288,8 +288,9 @@ function Decor.plaque(parent: Instance, at: CFrame, size: Vector2, color: Color3
 	title.Position = if sub then UDim2.fromScale(0.035, 0.05) else UDim2.fromScale(0.04, 0.12)
 	title.Size = if sub then UDim2.fromScale(0.93, 0.56) else UDim2.fromScale(0.92, 0.76)
 	title.Font = Enum.Font.FredokaOne
+	-- (TextWrapped stays on: turning it off after TextScaled turns TextScaled off, which
+	-- drew every name 8 px high, PC 2026-10-17 HB1; Decor.oneLine keeps a line whole)
 	title.TextScaled = true
-	title.TextWrapped = false
 	title.TextColor3 = Decor.TEXT
 	title.Text = ""
 	title.Parent = gui
@@ -316,7 +317,6 @@ function Decor.plaque(parent: Instance, at: CFrame, size: Vector2, color: Color3
 		line.Size = UDim2.fromScale(0.4, 0.3)
 		line.Font = Enum.Font.GothamBlack
 		line.TextScaled = true
-		line.TextWrapped = false
 		line.TextColor3 = Decor.TEXT_GOLD
 		line.Text = ""
 		line.Parent = gui
