@@ -246,11 +246,15 @@ local megalodon: BossDef = {
 		shadeRollMin = "Rare",
 		title = "Megalodon Slayer",
 	},
-	-- Felt before it's seen: the dread starts well outside the fade-in
-	dread = { range = 460, shakeRange = 70, warning = "SOMETHING CIRCLES IN THE BLUE" },
-	-- Solid by 170 (it was 110): the haze carries the rest of the emergence, and the
-	-- body is never part see-through while it's in plain view (playtest 2026-10-10)
-	sight = { far = 280, near = 170, light = 190 },
+	-- Felt before it's seen: the dread (and SOMETHING CIRCLES IN THE BLUE, while it's
+	-- unseen) starts well outside the fade-in (460 until `sight` grew, 2026-10-18)
+	dread = { range = 680, shakeRange = 70, warning = "SOMETHING CIRCLES IN THE BLUE" },
+	-- Seen from further out in the clearer Open Blue (owner, 2026-10-18: "Megalodon
+	-- should be able to be seen from further out"; was 280 / 170 / 190): it starts to
+	-- show at 500 and is solid by 290, the haze carrying the rest of the emergence,
+	-- and the body is never part see-through while it's in plain view (playtest
+	-- 2026-10-10)
+	sight = { far = 500, near = 290, light = 240 },
 	event = { interval = 1800, warning = 120, studioInterval = 240, escapeDelay = 900 },
 }
 

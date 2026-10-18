@@ -16,11 +16,12 @@
 --   the TRENCH, a winding canyon cut deep into the floor to the south, with ragged
 --   walls, slate rims, ledges and basalt pillars;
 --   the VENTS' basins to the south-west with basalt chimneys (glowing caps);
---   the RUINS' mounds, column stubs, walls and a temple ring to the east;
+--   the RUINS' mounds to the east, and the ground of its city (a pale sand plain,
+--   drifts and the sunken courtyard's pit; the city itself is parts, Ruins.luau);
 --   and the Open Blue's ridges, knolls and pinnacles to the north.
 -- Heights follow Shared/Seafloor.luau, so placement code agrees with the ground.
 -- `Shelf.ops()` also returns the features WorldService dresses (chimneys,
--- pinnacles, chutes, ruin anchors, reef rocks).
+-- pinnacles, chutes, reef rocks).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -31,6 +32,7 @@ local World = Config.World
 local shelf = World.shelf
 local deep = World.deep
 local trench = World.trench
+local Ruins = Config.Ruins
 
 type Op = Cave.Op
 
@@ -38,7 +40,6 @@ export type Features = {
 	chimneys: { { position: Vector3, height: number } },
 	pinnacles: { Vector3 },
 	chutes: { number }, -- angles (degrees)
-	ruinAnchors: { Vector3 },
 	reefRocks: { { center: Vector3, radius: number } }, -- heads and ridges the corals grow on
 }
 
@@ -99,6 +100,41 @@ local function at(angleDeg: number, r: number, y: number): Vector3
 	return World.hub.center + outward(angleDeg) * r + Vector3.new(0, y, 0)
 end
 
+-- The Sunken Ruins' city frame (Config/Ruins): x out along its avenue, y up from
+-- the deep floor, z across toward larger angles
+local function ruinsFrame(floor: number): CFrame
+	local out = outward(Ruins.angle)
+	return CFrame.fromMatrix(at(Ruins.angle, Ruins.radius, floor), out, Vector3.yAxis, out:Cross(Vector3.yAxis))
+end
+
+-- Whether a mound at `center` (`radius` round) would reach into the city's box
+local function inCity(city: CFrame, center: Vector3, radius: number): boolean
+	local q = city:PointToObjectSpace(center)
+	local box = Ruins.keepOut
+	return q.X > box.x[1] - radius and q.X < box.x[2] + radius and q.Z > box.z[1] - radius and q.Z < box.z[2] + radius
+end
+
+-- The city's ground: a pale sand plain (low discs a few studs proud of the mud),
+-- sand drifted against its stones, and the sunken courtyard's pit cut into the
+-- floor, its floor `court.depth` under the deep floor (Ruins.luau lines it with
+-- walls, stairs and a paved floor; the carve's edge runs inside its walls)
+local function ruinsGround(ops: { Op }, city: CFrame, floor: number)
+	for _, disc in Ruins.sand do
+		cylinder(ops, SAND, city * Vector3.new(disc[1], 0, disc[2]), disc[3], Ruins.sandHeight)
+	end
+	for _, drift in Ruins.drifts do
+		ball(ops, SAND, city * Vector3.new(drift[1], -drift[3] * 0.8, drift[2]), drift[3])
+	end
+	local court = Ruins.court
+	local height = court.depth + 8
+	block(
+		ops,
+		AIR,
+		city * CFrame.new(court.x, -court.depth + height / 2, court.z),
+		Vector3.new(court.inner[1] + court.wall, height, court.inner[2] + court.wall)
+	)
+end
+
 local function sectorAngle(rng: Random, from: number, to: number): number
 	local span = (to - from) % 360
 	return (from + rng:NextNumber(0, if span == 0 then 360 else span)) % 360
@@ -108,7 +144,7 @@ function Shelf.ops(): ({ Op }, Features)
 	local ops: { Op } = {}
 	local rng = Random.new(World.seed + 7)
 	local features: Features =
-		{ chimneys = {}, pinnacles = {}, chutes = {}, ruinAnchors = {}, reefRocks = {} }
+		{ chimneys = {}, pinnacles = {}, chutes = {}, reefRocks = {} }
 	local floor = deep.floorY
 	local hubClear = World.hub.radius + World.hub.wallThickness + World.hub.tunnelLength + 20
 	local deepInner = shelf.radius + shelf.edge -- the foot of the drop-off
@@ -405,66 +441,27 @@ function Shelf.ops(): ({ Op }, Features)
 		table.insert(features.chimneys, { position = Vector3.new(x, base, z), height = height })
 	end
 
-	-- The Sunken Ruins: buried mounds, column stubs, plinths, broken walls and a
-	-- temple ring on a raised floor
+	-- The Sunken Ruins' ground: buried sandstone mounds out in the biome (none under
+	-- the city), then the city's sand plain, its drifts and the courtyard's pit
+	-- (ruinsGround). The city and the smaller ruins are parts (Ruins.luau; owner,
+	-- 2026-10-18: "Very crude down there"): the Terrain column stubs, plinths, walls
+	-- and temple ring that stood here are gone, but their random draws are still
+	-- taken, so the Open Blue's ridges and knolls below keep their places.
 	local ruinInner, ruinOuter = deepInner + 30, World.boundsRadius - 50
+	local city = ruinsFrame(floor)
 	for _ = 1, 50 do
 		local angle = sectorAngle(rng, 320, 62)
 		local r = rng:NextNumber(ruinInner, ruinOuter)
 		local radius = rng:NextNumber(18, 44)
-		ball(ops, SANDSTONE, at(angle, r, floor - radius * 0.7), radius)
-	end
-	for _ = 1, 40 do
-		local angle = sectorAngle(rng, 318, 64)
-		local r = rng:NextNumber(ruinInner + 10, ruinOuter - 10)
-		local height = rng:NextNumber(18, 50)
-		cylinder(ops, SANDSTONE, at(angle, r, floor + height / 2 - 2), rng:NextNumber(4, 7), height)
-	end
-	for _ = 1, 16 do
-		local angle = sectorAngle(rng, 320, 62)
-		local r = rng:NextNumber(ruinInner + 20, ruinOuter - 20)
-		local anchor = at(angle, r, floor)
-		block(
-			ops,
-			SANDSTONE,
-			CFrame.new(anchor + Vector3.new(0, 3, 0)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0),
-			Vector3.new(40, 8, 40)
-		)
-		table.insert(features.ruinAnchors, anchor)
-	end
-	for _ = 1, 14 do
-		local angle = sectorAngle(rng, 320, 62)
-		local r = rng:NextNumber(ruinInner + 10, ruinOuter - 10)
-		block(
-			ops,
-			SANDSTONE,
-			CFrame.new(at(angle, r, floor + 12))
-				* CFrame.Angles(0, rng:NextNumber(0, 6.28), rng:NextNumber(-0.15, 0.15)),
-			Vector3.new(60, 26, 6)
-		)
-	end
-	do
-		local templeCenter = at(12, (ruinInner + ruinOuter) / 2, floor)
-		cylinder(ops, SANDSTONE, templeCenter + Vector3.new(0, 4, 0), 70, 12)
-		for i = 1, 12 do
-			local a = i / 12 * 2 * math.pi
-			local foot = templeCenter + Vector3.new(math.cos(a) * 54, 10, math.sin(a) * 54)
-			local height = if i % 4 == 0 then rng:NextNumber(14, 24) else 48
-			cylinder(ops, SANDSTONE, foot + Vector3.new(0, height / 2, 0), 5, height)
-			if i % 4 ~= 0 and i % 4 ~= 3 then
-				local b = (i + 1) / 12 * 2 * math.pi
-				local next = templeCenter + Vector3.new(math.cos(b) * 54, 10, math.sin(b) * 54)
-				local mid = (foot + next) / 2 + Vector3.new(0, 50, 0)
-				block(
-					ops,
-					SANDSTONE,
-					CFrame.lookAt(mid, mid + (next - foot).Unit),
-					Vector3.new(7, 5, (next - foot).Magnitude + 6)
-				)
-			end
+		local center = at(angle, r, floor - radius * 0.7)
+		if not inCity(city, center, radius) then
+			ball(ops, SANDSTONE, center, radius)
 		end
-		table.insert(features.ruinAnchors, templeCenter + Vector3.new(0, 10, 0))
 	end
+	for _ = 1, 40 * 4 + 16 * 3 + 14 * 4 + 3 do
+		rng:NextNumber()
+	end
+	ruinsGround(ops, city, floor)
 
 	-- The Open Blue: long mud ridges, rock knolls and low rock spires on a floor lost
 	-- in the blue far below; above it is open ocean (owner, 2026-10-09: "deep blue

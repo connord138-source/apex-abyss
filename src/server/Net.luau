@@ -81,6 +81,7 @@ local REQUESTS: { [string]: number } = {
 	DenStore = 0.12, -- (uid) a placed thing back into the tray (0: everything)
 	DenColor = 0.25, -- (glowId) the den's glow color
 	DenFloor = 0.25, -- (floorId) the decks' stone
+	DenDoor = 0.25, -- (doorId) the doorway style on the plaza (bought once, then worn)
 	EnterDen = 0.5, -- (index) swam into that den's doorway portal on the plaza
 	LeaveDen = 0.5, -- () swam into the way out on your den's front wall
 	Prestream = 4, -- () near a portal: stream the far side in ahead of the swim through

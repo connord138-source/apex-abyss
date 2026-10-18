@@ -32,6 +32,7 @@ local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
 local ForageController = require(script.Parent.ForageController)
+local MenuController = require(script.Parent.MenuController)
 local SchoolController = require(script.Parent.SchoolController)
 local ShellController = require(script.Parent.ShellController)
 local StartController = require(script.Parent.StartController)
@@ -368,6 +369,11 @@ local function celebrate()
 	while Ui.stageWait() > 0 and waited < 8 do
 		waited += task.wait(0.1)
 	end
+	-- The last step opens the INDEX: the banner waits until it's read and closed
+	waited = 0
+	while MenuController.isOpen() and waited < 90 do
+		waited += task.wait(0.2)
+	end
 	Ui.clearTideBanner()
 	local holder = Instance.new("Frame")
 	holder.Name = "TutorialBanner"
@@ -531,7 +537,7 @@ local function onState(s: { [string]: any })
 	showMarkers(step.marker, s)
 end
 
--- Every frame: find or refresh the target, draw the trail, write the distance
+-- What the guide line says on a `point` step
 local POINT_LINES: { [string]: string } = {
 	Roll = "The gold ROLL button, under your wallet",
 	Wrap = "Your item bar, left of the Haul card",
@@ -546,7 +552,13 @@ local function stepPoint()
 		clearPoint()
 		return
 	end
-	if pointedAt == nil or pointedAt.Parent == nil or not pointedAt.Visible or pointRing == nil or pointRing.Parent == nil then
+	if
+		pointedAt == nil
+		or pointedAt.Parent == nil
+		or not pointedAt.Visible
+		or pointRing == nil
+		or pointRing.Parent == nil
+	then
 		clearPoint()
 		local found = pointTarget(kind)
 		if found then
@@ -558,6 +570,8 @@ local function stepPoint()
 	guideLine.Visible = true
 end
 
+-- Every frame: find or refresh the target, draw the trail, write the distance (or
+-- ring the HUD button a `point` step needs)
 local function step(_dt: number)
 	if pointKind ~= nil and panel.Visible then
 		hideTrail()

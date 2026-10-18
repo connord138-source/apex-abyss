@@ -296,6 +296,21 @@ local CLEAR_LENGTHS = 0.6
 local FINE_STEP = 2
 local LIFT_STEP = 6
 local SLOPE = 0.8
+-- Away from the hub's seamount and the drop-off, nothing rises more than RELIEF over
+-- the nominal floor (the Trench's basalt pillars stand up to ~170, the Vents'
+-- chimneys ~95, the Open Blue's spires ~70), so a fish higher than that over it needs
+-- no ground rays: with the deep biomes' mid-water schools (2026-10-18) the lift's
+-- rays at a server's start would have tripled
+local RELIEF = 240
+local SEAMOUNT_KEEP = 320 -- studs from the hub: always checked
+local function nearGround(x: number, z: number, y: number): boolean
+	local r = Seafloor.polar(x, z)
+	local shelf = World.shelf
+	if r < SEAMOUNT_KEEP or (r > shelf.radius - 30 and r < shelf.radius + shelf.edge + 60) then
+		return true
+	end
+	return y - Seafloor.y(x, z) < RELIEF
+end
 
 -- Works out every school's lift over `groundY` (Shared/Ground.y on the server, once
 -- the world's dressing is built), applies it here and returns it as the string
@@ -341,6 +356,9 @@ function Schools.settle(groundY: (number, number) -> number): string
 				local f = fish[i]
 				local at = frame:PointToWorldSpace(f.offset)
 				highest = math.max(highest, at.Y + f.length)
+				if not nearGround(at.X, at.Z, at.Y - f.length) then
+					continue
+				end
 				local ground = tallest(at.X, at.Z)
 				-- (a long fish's nose and tail, and its wobble along the loop)
 				if f.length > CELL * 0.5 then

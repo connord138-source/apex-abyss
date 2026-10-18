@@ -75,8 +75,11 @@ export type PlayerData = {
 		-- `placed`, and things bought then, kept in `owned`, into `items`)
 		furniture: { [string]: string },
 		-- the den's shape the placements were made in (3: the private interiors of
-		-- 2026-10-16; older ones are moved over once by DenService)
+		-- 2026-10-16, 4: the bigger rooms of 2026-10-18; older ones are moved over
+		-- once by DenService)
 		layout: number?,
+		door: string, -- the doorway style on the plaza (Config/Dens doors)
+		doors: { [string]: boolean }, -- doorway styles bought
 	},
 	coral: number, -- the currency (vendors)
 	trophies: { [string]: number }, -- boss currencies (MegalodonTeeth, KrakenBeaks)
@@ -178,6 +181,8 @@ local TEMPLATE: PlayerData = {
 		furniture = {},
 		-- (no `layout`: Reconcile would hand an old save the new one before
 		-- DenService moved its placements over; DenService sets it)
+		door = "Stone",
+		doors = {},
 	},
 	coral = 0,
 	trophies = {},

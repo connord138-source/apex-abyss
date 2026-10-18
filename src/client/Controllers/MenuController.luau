@@ -919,7 +919,8 @@ local function fishTraits(parent: Instance, species: any): number
 		Ui.corner(dot, UDim.new(1, 0))
 		dot.Parent = row
 		if good then
-			local tick = Ui.label(dot, "Tick", "✓", Ui.FONT_HEAVY, 12, Ui.color.panelFoot, UDim2.fromScale(1, 1))
+			local tick =
+				Ui.label(dot, "Tick", "✓", Ui.FONT_HEAVY, 12, Ui.color.panelFoot, UDim2.fromScale(1, 1))
 			tick.TextXAlignment = Enum.TextXAlignment.Center
 		else
 			-- A minus drawn as a bar (no glyph to go missing)
@@ -934,7 +935,16 @@ local function fishTraits(parent: Instance, species: any): number
 		end
 	end
 	local function section(title: string, color: Color3, lines: { string }, good: boolean)
-		local heading = Ui.label(parent, title, title, Ui.FONT_HEAVY, 12, color, UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, y))
+		local heading = Ui.label(
+			parent,
+			title,
+			title,
+			Ui.FONT_HEAVY,
+			12,
+			color,
+			UDim2.new(1, 0, 0, 16),
+			UDim2.fromOffset(0, y)
+		)
 		heading.Name = if good then "GoodAt" else "WatchOut"
 		y += 18
 		for i, text in lines do
@@ -945,7 +955,16 @@ local function fishTraits(parent: Instance, species: any): number
 			row.Size = UDim2.new(1, 0, 0, 17)
 			row.Parent = parent
 			badge(row, good)
-			local label = Ui.label(row, "Text", text, Ui.FONT_SEMI, 13, Ui.color.text, UDim2.new(1, -22, 1, 0), UDim2.fromOffset(22, 0))
+			local label = Ui.label(
+				row,
+				"Text",
+				text,
+				Ui.FONT_SEMI,
+				13,
+				Ui.color.text,
+				UDim2.new(1, -22, 1, 0),
+				UDim2.fromOffset(22, 0)
+			)
 			label.TextScaled = true
 			local fit = Instance.new("UITextSizeConstraint")
 			fit.MaxTextSize = 13
@@ -985,7 +1004,15 @@ local function fishAbility(parent: Instance, species: any, y: number)
 	layout.Parent = row
 	local cap = Ui.keycap(row, "Key", key, 24)
 	cap.LayoutOrder = 1
-	local name = Ui.label(row, "Name", string.upper(ability.name), Ui.FONT_HEAVY, 15, Ui.color.haul, UDim2.fromOffset(0, 24))
+	local name = Ui.label(
+		row,
+		"Name",
+		string.upper(ability.name),
+		Ui.FONT_HEAVY,
+		15,
+		Ui.color.haul,
+		UDim2.fromOffset(0, 24)
+	)
 	name.AutomaticSize = Enum.AutomaticSize.X
 	name.LayoutOrder = 2
 	local blurb = Ui.label(
@@ -2303,106 +2330,386 @@ function MenuController.openCodes()
 	end)
 end
 
+-- The daily panel's pictures: a reward's headline as a lit 3D photo (the roll cards'
+-- subjects: a charm, Kelp Wraps, shells, coral; a chest of coral for big amounts),
+-- and a chip in the corner for what has no photo (a wheel spin, a treasure map)
+local function dailyVisual(reward: Reward.Reward): (CardPhoto.Outcome?, string?)
+	local extra: { string } = {}
+	if reward.map then
+		table.insert(extra, "+MAP")
+	end
+	if reward.spins then
+		table.insert(extra, "+SPIN")
+	end
+	local chip = if #extra > 0 then table.concat(extra, " ") else nil
+	if reward.charms then
+		local id = if reward.charms.SecondChance then "secondChance" else "charm"
+		return { kind = "charm", id = id, name = "", tier = "Rare" }, chip
+	elseif reward.wraps then
+		return { kind = "wraps", id = "wraps", name = "", tier = "Uncommon" }, chip
+	elseif reward.shells and not reward.coral then
+		return { kind = "shells", id = "shells", name = "", tier = "Common" }, chip
+	elseif reward.coral then
+		return { kind = "coral", id = "coral", name = "", tier = "Coral", amount = reward.coral }, chip
+	elseif reward.shells then
+		return { kind = "shells", id = "shells", name = "", tier = "Common" }, chip
+	end
+	return nil, chip
+end
+
+-- A flame drawn from frames (no emoji icons): a round base under a turned square,
+-- with a lighter core
+local function flame(parent: Instance, size: number): Frame
+	local holder = Instance.new("Frame")
+	holder.Name = "Flame"
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromOffset(size, size)
+	holder.Parent = parent
+	local function drop(scale: number, color: Color3, z: number)
+		local s = size * scale
+		local base = Instance.new("Frame")
+		base.Name = "Base"
+		base.BackgroundColor3 = color
+		base.BorderSizePixel = 0
+		base.AnchorPoint = Vector2.new(0.5, 1)
+		base.Position = UDim2.new(0.5, 0, 1, -size * (1 - scale) * 0.1)
+		base.Size = UDim2.fromOffset(s * 0.72, s * 0.72)
+		base.ZIndex = z
+		Ui.corner(base, UDim.new(1, 0))
+		base.Parent = holder
+		local tip = Instance.new("Frame")
+		tip.Name = "Tip"
+		tip.BackgroundColor3 = color
+		tip.BorderSizePixel = 0
+		tip.AnchorPoint = Vector2.new(0.5, 0.5)
+		tip.Position = UDim2.new(0.5, 0, 1, -size * (1 - scale) * 0.1 - s * 0.5)
+		tip.Size = UDim2.fromOffset(s * 0.5, s * 0.5)
+		tip.Rotation = 45
+		tip.ZIndex = z
+		Ui.corner(tip, UDim.new(0, math.max(2, math.floor(s * 0.08))))
+		tip.Parent = holder
+	end
+	drop(1, Color3.fromRGB(255, 120, 40), 2)
+	drop(0.6, Color3.fromRGB(255, 214, 90), 3)
+	return holder
+end
+
+-- One tile of the daily panel or the gift strip: a heading, the reward's photo, its
+-- lines, and a foot that holds a CLAIM button, a check or a countdown
+type DailyTile = {
+	frame: Frame,
+	scale: UIScale,
+	stroke: UIStroke?,
+	head: TextLabel,
+	visual: Frame,
+	body: TextLabel,
+	foot: TextLabel,
+	check: Frame,
+	claim: TextButton,
+	chip: TextLabel?,
+}
+
+local function dailyTile(
+	parent: Instance,
+	name: string,
+	order: number,
+	size: Vector2,
+	reward: Reward.Reward,
+	visualHeight: number,
+	bodyHeight: number,
+	onClaim: () -> ()
+): DailyTile
+	local frame = Ui.panel(parent, name, UDim2.fromOffset(size.X, size.Y), UDim2.new())
+	frame.LayoutOrder = order
+	local scale = Instance.new("UIScale")
+	scale.Parent = frame
+	local head = Ui.label(
+		frame,
+		"Head",
+		"",
+		Ui.FONT_HEAVY,
+		13,
+		Ui.color.text,
+		UDim2.new(1, 0, 0, 16),
+		UDim2.fromOffset(0, 6)
+	)
+	head.TextXAlignment = Enum.TextXAlignment.Center
+	local visual = Instance.new("Frame")
+	visual.Name = "Visual"
+	visual.BackgroundColor3 = Ui.color.panelFoot
+	visual.BackgroundTransparency = 0.35
+	visual.BorderSizePixel = 0
+	visual.ClipsDescendants = true
+	visual.Position = UDim2.fromOffset(6, 23)
+	visual.Size = UDim2.new(1, -12, 0, visualHeight)
+	Ui.corner(visual, UDim.new(0, 8))
+	visual.Parent = frame
+	local outcome, chipText = dailyVisual(reward)
+	if outcome then
+		CardPhoto.new(visual, outcome, Ui.color.haul)
+	end
+	local chip: TextLabel? = nil
+	if chipText then
+		local made = Ui.chip(visual, "Extra", chipText, Ui.color.haul, 16)
+		made.AnchorPoint = Vector2.new(1, 1)
+		made.Position = UDim2.new(1, -3, 1, -3)
+		made.ZIndex = visual.ZIndex + 3
+		chip = made
+	end
+	local body = Ui.label(
+		frame,
+		"Reward",
+		"",
+		Ui.FONT_BOLD,
+		11,
+		Ui.color.text,
+		UDim2.new(1, -8, 0, bodyHeight),
+		UDim2.fromOffset(4, 25 + visualHeight)
+	)
+	body.TextXAlignment = Enum.TextXAlignment.Center
+	body.TextYAlignment = Enum.TextYAlignment.Center
+	body.TextWrapped = true
+	local foot = Ui.label(
+		frame,
+		"State",
+		"",
+		Ui.FONT_HEAVY,
+		12,
+		Ui.color.muted,
+		UDim2.new(1, 0, 0, 16),
+		UDim2.new(0, 0, 1, -22)
+	)
+	foot.TextXAlignment = Enum.TextXAlignment.Center
+	-- Claimed: a green check badge in the top-right corner
+	local check = Instance.new("Frame")
+	check.Name = "Check"
+	check.BackgroundColor3 = Ui.color.safe
+	check.BorderSizePixel = 0
+	check.AnchorPoint = Vector2.new(1, 0)
+	check.Position = UDim2.new(1, 4, 0, -4)
+	check.Size = UDim2.fromOffset(22, 22)
+	check.ZIndex = 6
+	Ui.corner(check, UDim.new(1, 0))
+	Ui.stroke(check, Ui.color.panelFoot, 0.2, 2)
+	local tick = Ui.label(check, "Tick", "✓", Ui.FONT_HEAVY, 15, Ui.color.panelFoot, UDim2.fromScale(1, 1))
+	tick.TextXAlignment = Enum.TextXAlignment.Center
+	tick.ZIndex = 7
+	check.Visible = false
+	check.Parent = frame
+	local claim =
+		Ui.button(frame, "Claim", "CLAIM", UDim2.new(1, -12, 0, 28), UDim2.new(0, 6, 1, -34), "gold")
+	claim.FontFace = Ui.FONT_HEAVY
+	claim.TextSize = 14
+	claim.ZIndex = 6
+	claim.Visible = false
+	claim.Activated:Connect(onClaim)
+	return {
+		frame = frame,
+		scale = scale,
+		stroke = frame:FindFirstChildOfClass("UIStroke"),
+		head = head,
+		visual = visual,
+		body = body,
+		foot = foot,
+		check = check,
+		claim = claim,
+		chip = chip,
+	}
+end
+
+-- A tile's look for its state: claimed (dim, a check), ready (gold edge, bigger, the
+-- CLAIM button), next (accent edge), later (dimmed); `big` keeps a gold edge
+local function styleTile(tile: DailyTile, kind: "done" | "ready" | "next" | "later", big: boolean?)
+	local done, ready = kind == "done", kind == "ready"
+	tile.frame.BackgroundTransparency = if done then 0.5 elseif kind == "later" then 0.35 else 0.1
+	tile.check.Visible = done
+	tile.claim.Visible = ready
+	tile.foot.Visible = not ready
+	local stroke = tile.stroke
+	if stroke then
+		stroke.Color = if ready or big
+			then Ui.color.haul
+			elseif kind == "next" then Ui.color.accent
+			else Ui.color.stroke
+		stroke.Thickness = if ready then 2.5 elseif big or kind == "next" then 1.5 else 1
+		stroke.Transparency = if ready then 0 elseif big or kind == "next" then 0.35 else 0.62
+	end
+	local muted = done or kind == "later"
+	tile.head.TextColor3 = if ready
+		then Ui.color.haul
+		elseif big and not done then Ui.color.haul
+		else Ui.color.text
+	tile.head.TextTransparency = if muted then 0.35 else 0
+	tile.body.TextColor3 = if muted then Ui.color.muted else Ui.color.text
+	tile.visual.BackgroundTransparency = if muted then 0.6 else 0.35
+	local photo = tile.visual:FindFirstChildOfClass("ViewportFrame")
+	if photo then
+		photo.ImageTransparency = if kind == "later" then 0.45 elseif done then 0.3 else 0
+	end
+	local want = if ready then 1.06 else 1
+	if math.abs(tile.scale.Scale - want) > 0.001 then
+		Ui.tween(tile.scale, 0.3, { Scale = want }, Enum.EasingStyle.Back)
+	end
+end
+
 -- The daily login streak (DAILY on the HUD; it opens by itself on joining when a
 -- reward is waiting): seven days that build to a big Day 7, then loop with a bonus
--- for each finished week.
+-- for each finished week. Spruced up (owner, 2026-10-18: "Daily reward screen could
+-- be spruced up a bit"): a streak strip with a flame, the count and the week bonus;
+-- every day a tile with its rewards as photos, today's raised with its own CLAIM,
+-- claimed days checked, later ones dimmed, Day 7 bigger and gold; the playtime gifts
+-- in the same tiles with a bar filling toward the next one. Tiles are built once and
+-- restyled every second (photos aren't rebuilt), and a pad lands on CLAIM.
 function MenuController.openDaily()
 	local Daily = Config.Daily
 	local Playtime = Config.Playtime
 	local premiumTune = Config.Monetization.tuning.premium
-	open("Daily Reward", "", Vector2.new(780, 540), function(window)
-		local holder = Instance.new("Frame")
-		holder.Name = "Days"
-		holder.BackgroundTransparency = 1
-		holder.Size = UDim2.new(1, 0, 0, 200)
-		holder.Parent = window.content
-		local layout = Instance.new("UIListLayout")
-		layout.FillDirection = Enum.FillDirection.Horizontal
-		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		layout.Padding = UDim.new(0, 8)
-		layout.SortOrder = Enum.SortOrder.LayoutOrder
-		layout.Parent = holder
+	open("Daily Reward", "", Vector2.new(780, 520), function(window)
+		local content = window.content
+		-- The streak strip: flame, count, best, the week's bonus
+		local strip = Instance.new("Frame")
+		strip.Name = "Streak"
+		strip.BackgroundTransparency = 1
+		strip.Size = UDim2.new(1, 0, 0, 32)
+		strip.Parent = content
+		local stripLayout = Instance.new("UIListLayout")
+		stripLayout.FillDirection = Enum.FillDirection.Horizontal
+		stripLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		stripLayout.Padding = UDim.new(0, 10)
+		stripLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		stripLayout.Parent = strip
+		local fire = flame(strip, 28)
+		fire.LayoutOrder = 1
+		local streakText =
+			Ui.label(strip, "Count", "", Ui.FONT_HEAVY, 22, Ui.color.text, UDim2.fromOffset(0, 30))
+		streakText.AutomaticSize = Enum.AutomaticSize.X
+		streakText.LayoutOrder = 2
+		local bestText =
+			Ui.label(strip, "Best", "", Ui.FONT_SEMI, 14, Ui.color.muted, UDim2.fromOffset(0, 30))
+		bestText.AutomaticSize = Enum.AutomaticSize.X
+		bestText.LayoutOrder = 3
+		local weekChip = Ui.chip(strip, "Week", "", Ui.color.haul, 26)
+		weekChip.LayoutOrder = 4
+		-- The days
+		local days = Instance.new("Frame")
+		days.Name = "Days"
+		days.BackgroundTransparency = 1
+		days.Position = UDim2.fromOffset(0, 38)
+		days.Size = UDim2.new(1, 0, 0, 172)
+		days.Parent = content
+		local dayLayout = Instance.new("UIListLayout")
+		dayLayout.FillDirection = Enum.FillDirection.Horizontal
+		dayLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		dayLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		dayLayout.Padding = UDim.new(0, 8)
+		dayLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		dayLayout.Parent = days
+		local dayTiles: { DailyTile } = {}
+		for i, reward in Daily.days do
+			local big = reward.big == true
+			local tile = dailyTile(
+				days,
+				`Day{i}`,
+				i,
+				Vector2.new(if big then 128 else 92, if big then 172 else 160),
+				reward,
+				if big then 66 else 56,
+				40,
+				function()
+					ClientState.request("ClaimDaily")
+				end
+			)
+			if big then
+				-- The day the week builds to: washed in gold, under everything on it
+				local band = Instance.new("Frame")
+				band.Name = "Band"
+				band.BackgroundColor3 = Ui.color.haul
+				band.BackgroundTransparency = 0.84
+				band.BorderSizePixel = 0
+				band.Size = UDim2.fromScale(1, 1)
+				band.ZIndex = 0
+				Ui.corner(band)
+				band.Parent = tile.frame
+			end
+			dayTiles[i] = tile
+		end
 		local footer = Ui.label(
-			window.content,
+			content,
 			"Footer",
 			"",
 			Ui.FONT_SEMI,
-			15,
+			14,
 			Ui.color.muted,
-			UDim2.new(1, 0, 0, 20),
-			UDim2.fromOffset(0, 212)
+			UDim2.new(1, 0, 0, 16),
+			UDim2.fromOffset(0, 214)
 		)
 		footer.TextXAlignment = Enum.TextXAlignment.Center
-		local claim = Ui.button(
-			window.content,
-			"Claim",
-			"CLAIM",
-			UDim2.fromOffset(240, 48),
-			UDim2.new(0.5, -120, 0, 240),
-			"gold"
+		-- Playtime gifts (owner, 2026-10-12): a ladder for minutes played today
+		local giftHeader = Ui.heading(content, "GiftHeader", "Playtime gifts", 236)
+		giftHeader.TextColor3 = Ui.color.haul
+		local giftState = Ui.label(
+			content,
+			"GiftState",
+			"",
+			Ui.FONT_BOLD,
+			12,
+			Ui.color.text,
+			UDim2.fromOffset(300, 16),
+			UDim2.new(1, -300, 0, 236)
 		)
-		claim.TextSize = 20
-		claim.FontFace = Ui.FONT_HEAVY
-		claim.Activated:Connect(function()
-			ClientState.request("ClaimDaily")
-		end)
-		-- Playtime gifts (owner, 2026-10-12): a ladder for minutes played today, under
-		-- the streak. The DAILY button counts down to the next one.
-		local giftHeader = Ui.label(
-			window.content,
-			"GiftHeader",
-			"PLAYTIME GIFTS",
-			Ui.FONT_HEAVY,
-			15,
-			Ui.color.haul,
-			UDim2.new(1, 0, 0, 18),
-			UDim2.fromOffset(0, 284)
-		)
-		giftHeader.TextXAlignment = Enum.TextXAlignment.Center
+		giftState.TextXAlignment = Enum.TextXAlignment.Right
+		local _, giftFill =
+			Ui.bar(content, "GiftProgress", UDim2.new(1, 0, 0, 5), UDim2.fromOffset(0, 258), Ui.color.haul)
 		local gifts = Instance.new("Frame")
 		gifts.Name = "Gifts"
 		gifts.BackgroundTransparency = 1
-		gifts.Position = UDim2.fromOffset(0, 306)
-		gifts.Size = UDim2.new(1, 0, 0, 92)
-		gifts.Parent = window.content
+		gifts.Position = UDim2.fromOffset(0, 268)
+		gifts.Size = UDim2.new(1, 0, 0, 112)
+		gifts.Parent = content
 		local giftLayout = Instance.new("UIListLayout")
 		giftLayout.FillDirection = Enum.FillDirection.Horizontal
 		giftLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		giftLayout.Padding = UDim.new(0, 6)
+		giftLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		giftLayout.Padding = UDim.new(0, 8)
 		giftLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		giftLayout.Parent = gifts
-		local claimGift = Ui.button(
-			window.content,
-			"ClaimGift",
-			"CLAIM GIFT",
-			UDim2.fromOffset(220, 38),
-			UDim2.new(0.5, -110, 0, 402),
-			"gold"
-		)
-		claimGift.FontFace = Ui.FONT_HEAVY
-		claimGift.Activated:Connect(function()
-			ClientState.request("ClaimGift")
-		end)
+		local giftTiles: { DailyTile } = {}
+		for i, gift in Playtime.gifts do
+			local tile = dailyTile(
+				gifts,
+				`Gift{i}`,
+				i,
+				Vector2.new(if gift.big then 108 else 92, 112),
+				gift,
+				28,
+				22,
+				function()
+					ClientState.request("ClaimGift")
+				end
+			)
+			tile.body.TextSize = 10
+			giftTiles[i] = tile
+		end
 		-- Premium's perks, for those without it (never a wall: the gifts come anyway)
 		local premiumButton = Ui.button(
-			window.content,
+			content,
 			"Premium",
 			"GET PREMIUM",
-			UDim2.fromOffset(150, 38),
-			UDim2.new(0.5, 130, 0, 402),
+			UDim2.fromOffset(150, 32),
+			UDim2.new(1, -150, 0, 388),
 			"secondary"
 		)
 		premiumButton.TextSize = 13
 		premiumButton.Activated:Connect(Store.buyPremium)
 		local premiumNote = Ui.label(
-			window.content,
+			content,
 			"PremiumNote",
 			`Premium: ×{premiumTune.gifts} gifts · {premiumTune.spins} free spin a day · +{premiumTune.gardenHours} h garden`,
 			Ui.FONT_SEMI,
 			12,
 			Ui.color.muted,
-			UDim2.fromOffset(250, 38),
-			UDim2.new(0.5, -380, 0, 402)
+			UDim2.new(1, -166, 0, 32),
+			UDim2.fromOffset(0, 388)
 		)
 		premiumNote.TextXAlignment = Enum.TextXAlignment.Right
 		premiumNote.TextWrapped = true
@@ -2411,6 +2718,26 @@ function MenuController.openDaily()
 		local claimed = (ReplicatedStorage:WaitForChild("Remotes") :: Instance):WaitForChild(
 				"DailyClaimed"
 			) :: RemoteEvent
+		local function reselect()
+			-- A pad's selection was on a CLAIM that just went away: the next one, or GET
+			-- PREMIUM, or the close button
+			local selected = GuiService.SelectedObject
+			if
+				not Input.isGamepad()
+				or (selected and selected.Visible and selected:IsDescendantOf(window.frame))
+			then
+				return
+			end
+			for _, tiles in { dayTiles, giftTiles } do
+				for _, tile in tiles do
+					if tile.claim.Visible then
+						GuiService.SelectedObject = tile.claim
+						return
+					end
+				end
+			end
+			GuiService.SelectedObject = if premiumButton.Visible then premiumButton else window.close
+		end
 		local connection = claimed.OnClientEvent:Connect(function(summary: { [string]: any })
 			local got = if typeof(summary.got) == "table" then table.concat(summary.got, " · ") else ""
 			claimedText = if summary.kind == "gift"
@@ -2419,121 +2746,59 @@ function MenuController.openDaily()
 			claimedUntil = os.clock() + 4
 			Sfx.play("Bank", { volume = 0.6 })
 			MenuController.rerenderCurrent()
+			task.defer(reselect)
 		end)
 		local function renderGifts()
 			local pt = state().playtime
-			for _, child in gifts:GetChildren() do
-				if child:IsA("GuiObject") then
-					child:Destroy()
-				end
-			end
 			if typeof(pt) ~= "table" then
-				claimGift.Visible = false
+				gifts.Visible = false
 				premiumButton.Visible = false
 				premiumNote.Visible = false
+				giftState.Text = ""
 				return
 			end
+			gifts.Visible = true
 			local now = workspace:GetServerTimeNow()
 			local claimedCount = pt.claimed or 0
 			local unlockedCount = pt.unlocked or 0
 			local bonus = pt.bonus or 1
 			local premium = state().premium == true
-			giftHeader.Text = if pt.claimable
-				then "PLAYTIME GIFTS · A GIFT IS READY"
-				elseif typeof(pt.nextAt) == "number" then `PLAYTIME GIFTS · NEXT IN {clockText(
+			local nextGift = Playtime.gifts[unlockedCount + 1]
+			local prevMinutes = if unlockedCount > 0 then Playtime.gifts[unlockedCount].minutes else 0
+			giftState.Text = if pt.claimable
+				then "A GIFT IS READY · CLAIM IT"
+				elseif nextGift and typeof(pt.nextAt) == "number" then `NEXT GIFT IN {clockText(
 					pt.nextAt - now
 				)}`
-				else "PLAYTIME GIFTS · ALL CLAIMED TODAY"
+				else "ALL CLAIMED TODAY"
+			giftState.TextColor3 = if pt.claimable then Ui.color.haul else Ui.color.text
+			-- The bar fills from the last gift's minute to the next one's
+			local fraction = 1
+			if nextGift and typeof(pt.nextAt) == "number" then
+				local span = math.max((nextGift.minutes - prevMinutes) * 60, 1)
+				fraction = 1 - math.clamp((pt.nextAt - now) / span, 0, 1)
+			end
+			giftFill.Size = UDim2.fromScale(fraction, 1)
 			for i, gift in Playtime.gifts do
+				local tile = giftTiles[i]
 				local done = i <= claimedCount
 				local ready = not done and i <= unlockedCount
 				local nextOne = not done and not ready and i == unlockedCount + 1
-				local tile = Ui.panel(
-					gifts,
-					`Gift{i}`,
-					UDim2.fromOffset(if gift.big then 108 else 92, 92),
-					UDim2.new()
-				)
-				tile.LayoutOrder = i
-				tile.BackgroundTransparency = if done then 0.55 else 0.15
-				local stroke = tile:FindFirstChildOfClass("UIStroke")
-				if stroke and (ready or gift.big) then
-					stroke.Color = Ui.color.haul
-					stroke.Transparency = if ready then 0 else 0.4
-					stroke.Thickness = if ready then 2.5 else 1.5
-				end
-				local when = Ui.label(
+				tile.head.Text = `{gift.minutes} MIN`
+				tile.body.Text = table.concat(Reward.lines(gift, bonus), " · ")
+				tile.foot.Text = if done
+					then "CLAIMED"
+					elseif nextOne and typeof(pt.nextAt) == "number" then clockText(pt.nextAt - now)
+					else ""
+				tile.foot.TextColor3 = if done then Ui.color.safe else Ui.color.accent
+				styleTile(
 					tile,
-					"When",
-					`{gift.minutes} MIN`,
-					Ui.FONT_HEAVY,
-					13,
-					if ready then Ui.color.haul else Ui.color.text,
-					UDim2.new(1, 0, 0, 16),
-					UDim2.fromOffset(0, 6)
+					if done then "done" elseif ready then "ready" elseif nextOne then "next" else "later",
+					gift.big
 				)
-				when.TextXAlignment = Enum.TextXAlignment.Center
-				local body = Ui.label(
-					tile,
-					"Reward",
-					table.concat(Reward.lines(gift, bonus), "\n"),
-					Ui.FONT_BOLD,
-					11,
-					if done then Ui.color.muted else Ui.color.text,
-					UDim2.new(1, -6, 0, 40),
-					UDim2.fromOffset(3, 24)
-				)
-				body.TextXAlignment = Enum.TextXAlignment.Center
-				body.TextYAlignment = Enum.TextYAlignment.Center
-				body.TextWrapped = true
-				local foot = Ui.label(
-					tile,
-					"State",
-					if done
-						then "✓"
-						elseif ready then "READY"
-						elseif nextOne and typeof(pt.nextAt) == "number" then clockText(pt.nextAt - now)
-						else "",
-					Ui.FONT_HEAVY,
-					12,
-					if done then Ui.color.safe else Ui.color.haul,
-					UDim2.new(1, 0, 0, 16),
-					UDim2.new(0, 0, 1, -20)
-				)
-				foot.TextXAlignment = Enum.TextXAlignment.Center
 			end
-			claimGift.Visible = pt.claimable == true
 			premiumButton.Visible = not premium
 			premiumNote.Visible = not premium
-			premiumNote.Text = if premium
-				then ""
-				else `Premium: ×{premiumTune.gifts} gifts · {premiumTune.spins} free spin a day · +{premiumTune.gardenHours} h garden`
-		end
-		local function lines(reward: typeof(Daily.days[1]), bonus: number): string
-			local parts: { string } = {}
-			if reward.coral then
-				table.insert(parts, `{Ui.number(reward.coral * bonus)} CORAL`)
-			end
-			if reward.shells then
-				table.insert(parts, `{Ui.number(reward.shells * bonus)} SHELLS`)
-			end
-			if reward.wraps then
-				table.insert(parts, `{reward.wraps} KELP WRAP`)
-			end
-			if reward.charms then
-				for id, count in reward.charms do
-					local charm = Config.Shop.charmsById[id]
-					table.insert(parts, `{count} {string.upper(if charm then charm.name else id)}`)
-				end
-			end
-			if reward.map then
-				local tier = Config.Treasure.byId[reward.map]
-				table.insert(parts, `{string.upper(if tier then tier.name else reward.map)} MAP`)
-			end
-			if reward.spins then
-				table.insert(parts, `{reward.spins} WHEEL SPIN{if reward.spins == 1 then "" else "S"}`)
-			end
-			return table.concat(parts, "\n")
 		end
 		return {
 			window = window,
@@ -2548,80 +2813,35 @@ function MenuController.openDaily()
 				end
 				local today = daily.day or 1
 				local bonus = daily.bonus or 1
-				local week = math.floor(((daily.streak or 1) - 1) / #Daily.days) + 1
+				local streak = daily.streak or 0
+				local week = math.floor((math.max(streak, 1) - 1) / #Daily.days) + 1
 				window.subtitle.Text = if daily.broken
 					then "You missed a day, so the streak starts again at Day 1"
 					elseif (daily.best or 0) == 0 then "Claim Day 1 to start your streak"
-					else `Streak: {daily.streak} day{if daily.streak == 1 then "" else "s"} · best {daily.best}`
-						.. (
-							if bonus > 1
-								then ` · week {week} bonus +{math.floor((bonus - 1) * 100 + 0.5)}%`
-								else ""
-						)
-				for _, child in holder:GetChildren() do
-					if child:IsA("GuiObject") then
-						child:Destroy()
-					end
-				end
+					else "Come back every day: the rewards build to Day 7"
+				streakText.Text = if (daily.best or 0) == 0 then "NO STREAK YET" else `{streak} DAY STREAK`
+				bestText.Text = if (daily.best or 0) > 0 then `best {daily.best}` else ""
+				weekChip.Text = if bonus > 1
+					then `WEEK {week} · +{math.floor((bonus - 1) * 100 + 0.5)}% CORAL & SHELLS`
+					else "EACH FULL WEEK: +25% MORE"
 				for i, reward in Daily.days do
+					local tile = dayTiles[i]
 					local done = i < today or (i == today and not daily.claimable)
 					local ready = i == today and daily.claimable
-					local tile = Ui.panel(
-						holder,
-						`Day{i}`,
-						UDim2.fromOffset(if reward.big then 128 else 92, 196),
-						UDim2.new()
-					)
-					tile.LayoutOrder = i
-					tile.BackgroundTransparency = if done then 0.55 else 0.15
-					local stroke = tile:FindFirstChildOfClass("UIStroke")
-					if stroke and (ready or reward.big) then
-						stroke.Color = Ui.color.haul
-						stroke.Transparency = if ready then 0 else 0.4
-						stroke.Thickness = if ready then 2.5 else 1.5
-					end
-					local dayLabel = Ui.label(
-						tile,
-						"Day",
-						`DAY {i}`,
-						Ui.FONT_HEAVY,
-						16,
-						if ready then Ui.color.haul else Ui.color.text,
-						UDim2.new(1, 0, 0, 22),
-						UDim2.fromOffset(0, 10)
-					)
-					dayLabel.TextXAlignment = Enum.TextXAlignment.Center
-					local body = Ui.label(
-						tile,
-						"Reward",
-						lines(reward, bonus),
-						Ui.FONT_BOLD,
-						if reward.big then 15 else 14,
-						if done then Ui.color.muted else Ui.color.text,
-						UDim2.new(1, -10, 1, -76),
-						UDim2.fromOffset(5, 40)
-					)
-					body.TextXAlignment = Enum.TextXAlignment.Center
-					body.TextYAlignment = Enum.TextYAlignment.Center
-					body.TextWrapped = true
-					local foot = Ui.label(
-						tile,
-						"State",
-						if done then "✓ CLAIMED" elseif ready then "TODAY" else "",
-						Ui.FONT_HEAVY,
-						13,
-						if done then Ui.color.safe else Ui.color.haul,
-						UDim2.new(1, 0, 0, 18),
-						UDim2.new(0, 0, 1, -28)
-					)
-					foot.TextXAlignment = Enum.TextXAlignment.Center
+					tile.head.Text = if ready then "TODAY" else `DAY {i}`
+					tile.body.Text = table.concat(Reward.lines(reward, bonus), "\n")
+					tile.foot.Text = if done
+						then (if i == today then "✓ TODAY" else "CLAIMED")
+						elseif i == today % #Daily.days + 1 then "TOMORROW"
+						else ""
+					tile.foot.TextColor3 = if done then Ui.color.safe else Ui.color.muted
+					styleTile(tile, if done then "done" elseif ready then "ready" else "later", reward.big)
 				end
-				claim.Visible = daily.claimable == true
 				renderGifts()
 				footer.TextColor3 = if os.clock() < claimedUntil then Ui.color.haul else Ui.color.muted
 				footer.Text = if os.clock() < claimedUntil
 					then claimedText
-					elseif daily.claimable then "Claim today's reward"
+					elseif daily.claimable then "Today's reward is waiting: CLAIM it on its tile"
 					else `Come back in {Format.duration(
 						(daily.nextAt or 0) - workspace:GetServerTimeNow()
 					)} for Day {today % #Daily.days + 1}`

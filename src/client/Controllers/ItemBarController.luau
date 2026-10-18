@@ -211,8 +211,7 @@ local function makeSlot(index: number, id: string): Slot
 	Ui.corner(sweep)
 	sweep.Parent = frame
 	-- A running charm's time left, along the foot
-	local timer, timerFill =
-		Ui.bar(frame, "Timer", UDim2.new(1, -14, 0, 3), UDim2.new(0, 7, 1, -5), color)
+	local timer, timerFill = Ui.bar(frame, "Timer", UDim2.new(1, -14, 0, 3), UDim2.new(0, 7, 1, -5), color)
 	timer.Visible = false
 	-- Its key, a small cap over the top-left corner
 	local key = Ui.keycap(frame, "Key", "1", 20)
@@ -281,7 +280,9 @@ local function statusOf(slot: Slot, count: number): (string, Color3, number)
 		local readyAt = if character then character:GetAttribute("WrapReadyAt") else nil
 		local now = Timing.clock()
 		if typeof(readyAt) == "number" and readyAt > now then
-			return `{math.ceil(readyAt - now)}s`, Ui.color.muted, math.clamp((readyAt - now) / heal.wrapCooldown, 0, 1)
+			return `{math.ceil(readyAt - now)}s`,
+				Ui.color.muted,
+				math.clamp((readyAt - now) / heal.wrapCooldown, 0, 1)
 		end
 		local health = if character then character:GetAttribute("Health") else nil
 		local most = if character then character:GetAttribute("MaxHealth") else nil
@@ -349,16 +350,6 @@ local function step()
 		then "ITEMS"
 		elseif Input.isGamepad() then "ITEMS · HOLD LB"
 		else "ITEMS · 1-4 · G"
-end
-
--- The slot frame for an item, for the tutorial's ring (nil while it's hidden)
-function ItemBarController.slot(id: string): GuiObject?
-	for _, slot in slots do
-		if slot.id == id and slot.frame.Visible then
-			return slot.frame
-		end
-	end
-	return nil
 end
 
 function ItemBarController.start()

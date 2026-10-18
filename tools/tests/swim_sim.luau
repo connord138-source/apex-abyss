@@ -601,7 +601,10 @@ for _, level in { 40, 60, 100 } do
 			)
 		)
 		if level == 100 and id == "Nibbler" then
-			check(new[1] >= 55 and new[1] <= 75, `a LV 100 Nibbler crosses in {fmt(new[1], 0)} s (55–75 wanted)`)
+			check(
+				new[1] >= 55 and new[1] <= 75,
+				`a LV 100 Nibbler crosses in {fmt(new[1], 0)} s (55–75 wanted)`
+			)
 		end
 		if level == 100 and id == "Cuda" then
 			check(new[3] >= 30, `a maxed LV 100 'Cuda crosses in {fmt(new[3], 0)} s with its Torpedo chained`)

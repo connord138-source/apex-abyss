@@ -71,7 +71,11 @@ function ItemService.use(player: Player, id: string)
 		local health = if character then character:GetAttribute("Health") else nil
 		local most = if character then character:GetAttribute("MaxHealth") else nil
 		if typeof(health) == "number" and typeof(most) == "number" and health >= most then
-			Net.notify(player, "You're at full health: your Kelp Wrap stays in your item bar for when you're hurt", "info")
+			Net.notify(
+				player,
+				"You're at full health: your Kelp Wrap stays in your item bar for when you're hurt",
+				"info"
+			)
 			Events.usedItem:fire(player, id, false)
 			return
 		end

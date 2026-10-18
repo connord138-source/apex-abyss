@@ -21,6 +21,7 @@ local UserInputService = game:GetService("UserInputService")
 local Format = require(ReplicatedStorage.Shared.Format)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Bubbles = require(script.Parent.Parent.Bubbles)
+local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
@@ -41,8 +42,10 @@ local SKIP_AFTER = 0.25 -- a key pressed in the first moment isn't a skip (the s
 local FRAME_SHARE = 0.42 -- how much of the screen's width the grown fish takes
 
 local gui: ScreenGui
-local playing = 0 -- the sequence now playing (a new bank or a skip ends the old one)
-local skipRequested = false
+local playing = 0 -- the sequence now playing (a newer one ends the old one)
+local active = false -- whether a sequence holds the fish still
+local lockedBefore = false -- Input.locked from before the first of them
+local lastPress = -math.huge -- os.clock() of the last key, click, tap or pad button
 
 local function ease(t: number): number
 	t = math.clamp(t, 0, 1)
@@ -130,7 +133,8 @@ type Card = { frame: Frame, after: TextLabel, scale: UIScale }
 
 local function card(summary: { [string]: any }, before: number): Card
 	local amount = typeof(summary.amount) == "number" and summary.amount or 0
-	local frame = Ui.panel(gui, "BankGrowth", UDim2.fromOffset(470, 150), UDim2.new(0.5, 0, 0, 0), Vector2.new(0.5, 0))
+	local frame =
+		Ui.panel(gui, "BankGrowth", UDim2.fromOffset(470, 150), UDim2.new(0.5, 0, 0, 0), Vector2.new(0.5, 0))
 	frame.Position = UDim2.new(0.5, 0, 0, math.max(Ui.topBottom() + 14, 74))
 	local stroke = frame:FindFirstChildOfClass("UIStroke")
 	if stroke then
@@ -179,7 +183,9 @@ local function card(summary: { [string]: any }, before: number): Card
 	-- Levels and coral
 	local level = summary.level
 	local levelBefore = summary.levelBefore
-	local gained = if typeof(level) == "number" and typeof(levelBefore) == "number" then level - levelBefore else 0
+	local gained = if typeof(level) == "number" and typeof(levelBefore) == "number"
+		then level - levelBefore
+		else 0
 	local line = if gained > 0
 		then `LEVEL {levelBefore} → {level} · +{gained} LEVEL{if gained == 1 then "" else "S"} · {string.upper(
 			tostring(summary.stage or "")
@@ -266,14 +272,22 @@ local function play(summary: { [string]: any })
 	end
 	playing += 1
 	local mine = playing
-	skipRequested = false
 	local before = Size.length(math.max(mass - amount, 1e-4))
 	local after = Size.length(mass)
-	-- A doubled Haul (bought after the bank) may be another fish's: the card only
+	-- A doubled Haul (bought after the bank) may be another fish's: then the card
+	-- only. It's this fish's when the mass before it is the banked mass shown now.
+	local s: { [string]: any } = ClientState.current or {}
+	local shownMass = if typeof(s.mass) == "number" then s.mass else nil
 	local grows = not summary.doubled
+		or (shownMass ~= nil and math.abs(shownMass - (mass - amount)) <= math.max(shownMass, 1) * 1e-3)
 	Ui.holdStage(GROW_SECONDS + HOLD_AFTER + CAMERA_OUT + 0.3)
-	local wasLocked = Input.locked
-	Input.locked = true -- the fish holds still for its moment
+	if grows and not active then
+		lockedBefore = Input.locked
+	end
+	if grows then
+		active = true
+		Input.locked = true -- the fish holds still for its moment
+	end
 	local root = SwimController.root() :: BasePart
 	local camera = workspace.CurrentCamera
 	local startOffset = camera.CFrame - root.Position
@@ -294,7 +308,7 @@ local function play(summary: { [string]: any })
 	end
 	-- Hemmed in by rock on both sides: the camera stays behind, the rest still plays
 	local distance = math.max(left, right)
-	local turns = distance >= math.max(after * 0.9, 2.5)
+	local turns = grows and distance >= math.max(after * 0.9, 2.5)
 	local blendStart = os.clock()
 	local phase = "in"
 	local outStart = 0
@@ -327,8 +341,11 @@ local function play(summary: { [string]: any })
 		end
 		return sideOn:Lerp(behind, t)
 	end
-	CameraController.override = override
-	CameraController.overrideFov = startFov
+	-- (A card-only doubled Haul leaves the camera to the swim)
+	if grows then
+		CameraController.override = override
+		CameraController.overrideFov = startFov
+	end
 	local shown = card(summary, before)
 	local growStarts = if grows then FishAnimator.showGrowth(before, after, GROW_SECONDS) else 0
 	-- The ring, sparkles and bubbles as the growth starts; the level-up sound at the pop
@@ -359,10 +376,12 @@ local function play(summary: { [string]: any })
 			phase = "hold"
 		end
 		local drawn = if grows then FishAnimator.drawnLength() else nil
-		local shownLength = if elapsed < growStarts then before else math.clamp(drawn or after, before, after * 1.2)
+		local shownLength = if elapsed < growStarts
+			then before
+			else math.clamp(drawn or after, before, after * 1.2)
 		shown.after.Text = Format.length(if elapsed >= GROW_SECONDS + 0.05 then after else shownLength)
 		shown.after.TextColor3 = if elapsed >= growStarts then Ui.color.haul else Ui.color.text
-		local skipping = skipRequested and elapsed >= SKIP_AFTER
+		local skipping = lastPress >= started + SKIP_AFTER
 		if phase ~= "out" and (skipping or elapsed >= GROW_SECONDS + HOLD_AFTER) then
 			phase = "out"
 			outStart = now
@@ -382,15 +401,15 @@ local function play(summary: { [string]: any })
 		CameraController.overrideFov = nil
 	end
 	if mine == playing then
-		Input.locked = wasLocked
+		if active then
+			active = false
+			Input.locked = lockedBefore
+		end
 		-- The stage is free again once the camera's back (a skip frees it early)
 		Ui.releaseStage()
-	else
-		-- A newer bank took over: put the card away
-		Input.locked = wasLocked
-		if shown.frame.Parent then
-			fadeCard(shown, 0.2)
-		end
+	elseif shown.frame.Parent then
+		-- A newer bank took over (it holds the fish now): put the card away
+		fadeCard(shown, 0.2)
 	end
 end
 
@@ -412,7 +431,7 @@ function BankController.start()
 			or kind == Enum.UserInputType.Touch
 			or kind.Name:sub(1, 7) == "Gamepad" and input.KeyCode.Name:sub(1, 6) == "Button"
 		then
-			skipRequested = true
+			lastPress = os.clock()
 		end
 	end)
 end

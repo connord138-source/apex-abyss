@@ -42,7 +42,7 @@ export type Biome = {
 -- `haze` and `decay` are the Atmosphere's colours where the light is the shelf
 -- floor's (y 0); the depth's light scales them, so the same reef water is brighter
 -- near the surface and a deep biome's darker on its floor. `tint` multiplies the
--- colour grade every fish is seen through: keep it near white with red at 250+, so
+-- colour grade every fish is seen through: keep it near white with red at 255, so
 -- skins read true (a greener grade turned gold skins lime, playtest 2026-10-10).
 -- `density`, `exposure` and `saturation` are added to the depth's.
 export type Water = {
@@ -74,7 +74,7 @@ local list: { Biome } = {
 		water = {
 			haze = Color3.fromRGB(56, 124, 106),
 			decay = Color3.fromRGB(18, 62, 52),
-			tint = Color3.fromRGB(252, 255, 248),
+			tint = Color3.fromRGB(255, 255, 248),
 			density = 0.02,
 			exposure = 0,
 			saturation = 0.02,
@@ -96,7 +96,7 @@ local list: { Biome } = {
 		water = {
 			haze = Color3.fromRGB(76, 108, 98),
 			decay = Color3.fromRGB(30, 48, 44),
-			tint = Color3.fromRGB(252, 252, 246),
+			tint = Color3.fromRGB(255, 252, 244),
 			density = 0.04,
 			exposure = -0.05,
 			saturation = -0.06,
@@ -139,8 +139,8 @@ local list: { Biome } = {
 		deep = true,
 		-- Clear deep blue: open water the Megalodon is seen coming through
 		water = {
-			haze = Color3.fromRGB(40, 104, 152),
-			decay = Color3.fromRGB(12, 50, 92),
+			haze = Color3.fromRGB(42, 100, 142),
+			decay = Color3.fromRGB(12, 48, 86),
 			tint = Color3.fromRGB(255, 255, 255),
 			density = -0.03,
 			exposure = 0.04,
@@ -163,7 +163,7 @@ local list: { Biome } = {
 		water = {
 			haze = Color3.fromRGB(38, 126, 138),
 			decay = Color3.fromRGB(10, 62, 74),
-			tint = Color3.fromRGB(252, 255, 255),
+			tint = Color3.fromRGB(255, 255, 255),
 			density = 0,
 			exposure = 0,
 			saturation = 0.02,
@@ -187,7 +187,7 @@ local list: { Biome } = {
 		water = {
 			haze = Color3.fromRGB(32, 98, 102),
 			decay = Color3.fromRGB(8, 40, 44),
-			tint = Color3.fromRGB(250, 255, 252),
+			tint = Color3.fromRGB(255, 255, 248),
 			density = 0.03,
 			exposure = -0.05,
 			saturation = -0.06,

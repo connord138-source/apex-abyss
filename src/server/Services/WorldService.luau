@@ -1540,6 +1540,16 @@ function WorldService.setDenLevel(index: number, levelName: string?)
 	refreshSign(index)
 end
 
+-- The den's doorway style on the plaza (Config/Dens `doors`; nil = the Stone Arch).
+-- DenDoor rebuilds it only when it changes; the `Door` attribute tells clients.
+function WorldService.setDenDoor(index: number, styleId: string?)
+	DenDoor.restyle(index, styleId)
+	local model = denModels[index]
+	if model then
+		model:SetAttribute("Door", styleId or "Stone")
+	end
+end
+
 -- The Treasure Wheel (Config/Wheel) on the plaza, facing the beacon, standing on
 -- the cave floor's highest point under its stage (by raycast down from inside the
 -- cavern; its footing reaches down past the rest)

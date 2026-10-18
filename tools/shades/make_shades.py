@@ -2953,41 +2953,49 @@ def ang_starfall(m):  # Starfall: constellations joined by glowing lines, fallin
 # ---------------------------------------------------------------------------
 
 
-def catch_golden(m):  # Golden: polished gold with the fish's own pattern engraved darker
+def catch_golden(m):  # Golden (v13): polished gold, its own pattern engraved, reflections and a gloss
+    """Owner, 2026-10-18: "The gold skin needs more of a gold sheen." v10's even
+    orange-gold (satin, a faint even glow) read gold through the water but flat, a
+    painted yellow. Polished gold reads as gold by its reflections: a bright streak
+    along the upper flank where it faces the light, a deep amber band under it where
+    it faces the dark water, a warm bounce lower down, crisp edges between them, all
+    brushed along the body; and a gloss finish so the game's lights (the sun and the
+    shine that runs down it, SkinFx `sheen`) lay real highlights on it. Every tone is
+    a saturated gold or amber with no blue in it (a pale gold reads cream to the
+    screen, and orange or gold blended into white makes peach), the hottest
+    highlight a lemon gold. Still about 33-37 degrees through the middle tones, so
+    the shallows' blue-green haze leaves it gold, not olive (v10), with a faint glow
+    under it, stronger in the streak, so the streak burns through the water."""
     L = own_lum(m)
     lines = own_lines(m)
-    # An orange-gold that stays gold in the water (playtest 2026-10-16: olive-brown on
-    # the Nibbler, 'Cuda, Puffer and Moray, tan on the Reef Shark). The shallows grade
-    # the picture toward blue-green and haze it teal, which adds green and blue to
-    # whatever a skin reflects: a gold at 38-45 degrees came out at 55-70 there, olive,
-    # and the darker it was lit the more the haze won. So a warmer, brighter gold at
-    # about 33-37 degrees (warm gold under a neutral light, as in the Wardrobe; at 30 it
-    # read orange) with a glow under it (below), which together read ~45-50, gold,
-    # through the water. No blue at all (a gold with blue under 20/255 is outside every
-    # skin-tone rule), hard edges
-    gold = mix(board(m, (0.98, 0.54, 0.0)), (1.0, 0.64, 0.03), smoothstep(0.1, 0.85, L))
-    # The engraving lighter and a little thinner: dark bands of it made the gold muddy
-    engraved = hard(smoothstep(0.4, 0.62, lines))
-    gold = mix(gold, (0.62, 0.25, 0.0), engraved * 0.75)
-    # A fine brushed grain running nose to tail (on the smooth frame, so it doesn't
-    # jump at every slice): brushed metal, and it breaks up the big smooth fields of
-    # a plainly painted fish, which the moderation classifier read as skin once
-    # JPEG-packed (the Reef Shark's: 0.72 without it, about 0.01 with it; screen
-    # 2026-10-11)
     sm = smooth(m)
+    gold = mix(board(m, (0.96, 0.52, 0.0)), (1.0, 0.63, 0.02), smoothstep(0.1, 0.85, L))
+    engraved = hard(smoothstep(0.4, 0.62, lines))
+    # A fine brushed grain nose to tail (the smooth frame; it also breaks up the big
+    # smooth fields the classifier read as skin once JPEG-packed, 2026-10-11)
     gp = np.stack([sm.ex * 0.02, m.y * 3.0, sm.ez * 40], -1).astype(np.float32)
     grain = value_noise(gp, 1.0, 410) * 0.6 + value_noise(gp, 2.3, 411) * 0.4
-    gold = gold * (0.92 + 0.16 * grain)[..., None]
-    rgb = sheen(m, gold, 0.24, (1.0, 0.8, 0.12))
-    # A faint, even self-glow over the gold (the eyes, teeth and mouth left out by
-    # done()), so it holds its colour where the water's light is blue: the importer
-    # turns this into a grayscale mask on the colour map, about a third of the gold at
-    # the game's default EmissiveStrength 1, less in the engraving
-    emit = gold * (0.55 * (1 - 0.4 * engraved))[..., None]
-    # An even metal map, and little of it (0.35 before): metal reflects the water's
-    # blue through the gold's own colour, which comes out green; one that traced the
-    # engraving was a grey line drawing the classifier scored 0.5-0.98 (2026-10-10)
-    return done(m, rgb, "satin", emit=emit, metal=np.full(m.y.shape, 0.15, np.float32), detail=0.4)
+    # The reflections, from which way the skin faces (both flanks alike): up the
+    # flank the streak, round the middle the dark horizon, under it the bounce. Each
+    # band's edge wanders a little with the grain, as on brushed metal
+    nz = m.nrm[..., 2] + 0.06 * (grain - 0.5)
+    streak = smoothstep(0.36, 0.5, nz) * smoothstep(0.97, 0.8, nz)
+    core = smoothstep(0.5, 0.6, nz) * smoothstep(0.86, 0.74, nz)
+    horizon = smoothstep(0.3, 0.16, nz) * smoothstep(-0.32, -0.12, nz)
+    bounce = smoothstep(-0.42, -0.62, nz)
+    gold = mix(gold, (0.62, 0.27, 0.0), horizon * 0.62)
+    gold = mix(gold, (1.0, 0.72, 0.06), bounce * 0.55)
+    gold = mix(gold, (1.0, 0.80, 0.16), streak * 0.85)
+    gold = mix(gold, (1.0, 0.90, 0.36), core * 0.8)
+    gold = mix(gold, (0.6, 0.24, 0.0), engraved * 0.7)
+    gold = gold * (0.9 + 0.2 * grain)[..., None]
+    gold = np.clip(gold, 0, 1)
+    # A faint, even self-glow over it, stronger in the streak, less in the engraving
+    # (the importer turns this into a mask on the colour map)
+    emit = gold * (0.5 * (1 - 0.4 * engraved) * (1 + 0.6 * streak))[..., None]
+    # An even metal map, and little of it: metal reflects the water's blue through
+    # the gold's own colour, which comes out green (v10); the polish is the gloss
+    return done(m, gold, "gloss", emit=emit, metal=np.full(m.y.shape, 0.15, np.float32), detail=0.4)
 
 
 def catch_glowing(m):  # Glowing: deep navy, the fish's own lines softly glowing cyan-green

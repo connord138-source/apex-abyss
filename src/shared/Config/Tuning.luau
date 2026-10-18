@@ -264,7 +264,9 @@ return {
 		environment = 0.3, -- share of the environment's light left
 		water = Color3.fromRGB(20, 44, 48),
 		decay = Color3.fromRGB(7, 20, 24),
-		density = 0.7,
+		-- (0.7 until 2026-10-18: a little clearer with the rest of the sea, still the
+		-- murkiest water in it; the deep biomes' floors are 0.59–0.65)
+		density = 0.66,
 		exposure = 0.1,
 		grade = { tint = Color3.fromRGB(206, 228, 220), saturation = -0.22, contrast = 0.1 },
 		-- Each light source, rarest last: the glow's range and brightness, the forward

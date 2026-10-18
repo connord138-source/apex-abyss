@@ -99,8 +99,8 @@ local FILTERS = {
 -- ones that stream a trail behind the fish are listed apart: a skin with one says so
 -- (owner, 2026-10-18).
 local TRAIL_WORDS: { [string]: string } = {
-	swirls = "swirl ribbons spiralling round it from head to tail",
-	ring = "an accretion ring circling its middle, leaving a spiral of light",
+	swirls = "swirl ribbons spiralling head to tail",
+	ring = "an accretion ring that leaves a spiral of light",
 	aurora = "aurora ribbons off its back",
 	currents = "current ribbons along both flanks",
 	foam = "white-water streaks off its fins and tail",
@@ -109,53 +109,53 @@ local TRAIL_WORDS: { [string]: string } = {
 }
 local EFFECT_WORDS: { [string]: string } = {
 	rim = "a glowing outline",
-	rainbowRim = "a rainbow outline over a holographic sheen",
-	halo = "a halo of light turning over its head",
-	crown = "a spiked gold crown",
-	rays = "light rays fanning over its head",
-	sunburst = "sun rays turning round its body",
-	arcs = "lightning crawling over its body",
-	mist = "spectral mist rolling off it",
-	wisps = "spirits curling up off it",
+	rainbowRim = "a rainbow outline",
+	halo = "a turning halo",
+	crown = "a gold crown",
+	rays = "light rays over its head",
+	sunburst = "turning sun rays",
+	arcs = "crawling lightning",
+	mist = "spectral mist",
+	wisps = "rising spirits",
 	stardust = "twinkling stardust",
-	nebula = "nebula clouds drifting round it",
-	vortex = "grit pulled into a vortex",
-	glints = "bright glints flicking off it",
-	crystal = "crystal flashes on its facets",
-	gold = "gold flakes glittering down",
-	tropical = "a reef's worth of coloured motes",
-	starfall = "stars falling off it like a meteor shower",
-	embers = "embers rising off it",
-	drips = "molten drips falling off its belly",
-	ink = "glowing ink curling off it",
-	motes = "soft lights drifting up",
-	bubbles = "bubbles rising off it",
-	frost = "rime and cold haze sinking off it",
-	flame = "licking flames",
+	nebula = "nebula clouds",
+	vortex = "a swallowing vortex",
+	glints = "bright glints",
+	crystal = "crystal flashes",
+	gold = "falling gold flakes",
+	tropical = "reef-coloured motes",
+	starfall = "falling stars",
+	embers = "rising embers",
+	drips = "molten drips",
+	ink = "glowing ink",
+	motes = "drifting lights",
+	bubbles = "rising bubbles",
+	frost = "sinking frost",
+	flame = "flames",
 	sparks = "electric sparks",
-	whirls = "whirlpools turning on its body",
-	pearls = "pearls rising slowly",
-	shimmer = "rainbow sparkles twinkling over it",
-	sheen = "a band of polished light running head to tail with gold sparks and glitter",
+	whirls = "turning whirlpools",
+	pearls = "rising pearls",
+	shimmer = "holographic sparkles",
+	sheen = "a polished gold shine running head to tail",
 }
 local AURA_WORDS: { [string]: string } = {
-	glints = "glints drifting off it",
-	embers = "embers drifting off it",
-	frost = "frost drifting off it",
-	sparks = "sparks crackling off it",
-	stars = "stars drifting off it",
-	motes = "soft motes of light drifting off it",
-	bubbles = "bubbles drifting off it",
-	ink = "ink curling off it",
+	glints = "drifting glints",
+	embers = "drifting embers",
+	frost = "drifting frost",
+	sparks = "crackling sparks",
+	stars = "drifting stars",
+	motes = "drifting motes of light",
+	bubbles = "drifting bubbles",
+	ink = "curling ink",
 }
 local PULSE_WORDS: { [string]: string } = {
-	breathe = "breathes slowly",
+	breathe = "breathes",
 	heartbeat = "thumps like a heartbeat",
-	flicker = "flickers like a fire",
+	flicker = "flickers",
 	wave = "rolls in waves",
 	twinkle = "twinkles",
-	strobe = "flashes like lightning",
-	scan = "sweeps with a scan of light",
+	strobe = "flashes",
+	scan = "sweeps",
 }
 
 local MUTED = Ui.color.muted
@@ -177,8 +177,8 @@ local function layout(): Layout
 	if Ui.isTouch() then
 		return {
 			window = Vector2.new(920, 520),
-			hero = 300,
-			stage = 152,
+			hero = 320,
+			stage = 146,
 			columns = 3,
 			cardH = 168,
 			nameSize = 19,
@@ -269,13 +269,13 @@ local function effectsOf(shade: any): ({ string }, { string })
 		end
 	end
 	if shade.cycle then
-		table.insert(others, "colours that cycle through the rainbow")
+		table.insert(others, "colours cycling the rainbow")
 	end
 	if shade.spectral then
-		table.insert(others, "a breathing spectral glow")
+		table.insert(others, "a breathing ghostly glow")
 	end
 	if shade.glow and not shade.emissive and not shade.spectral then
-		table.insert(others, "a soft light on its body")
+		table.insert(others, "a soft glow")
 	end
 	return trails, others
 end
@@ -316,7 +316,7 @@ local function itemsFor(tab: string, s: { [string]: any }, filter: string): ({ I
 				species = shade.species,
 				universal = universal,
 				trailFx = hasTrail(shade),
-				fx = shade.fx ~= nil or shade.aura ~= nil,
+				fx = shade.fx ~= nil or shade.aura ~= nil or shade.sparkle ~= nil,
 				order = index,
 				record = shade,
 			})
@@ -718,6 +718,20 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 		UDim2.new(0, 12, 1, -22)
 	)
 	fishLabel.ZIndex = 5
+	-- Effects and trails don't draw in a ViewportFrame: the stage says where they show
+	local seaNote = Ui.label(
+		stage,
+		"SeaNote",
+		"EFFECTS SHOW IN THE SEA",
+		Ui.FONT_BOLD,
+		10,
+		MUTED,
+		UDim2.new(0.6, 0, 0, 14),
+		UDim2.new(0.4, -12, 1, -22)
+	)
+	seaNote.TextXAlignment = Enum.TextXAlignment.Right
+	seaNote.ZIndex = 5
+	seaNote.Visible = false
 
 	---------------------------------------------------------------- the details
 	local infoTop = L.stage + 10
@@ -739,6 +753,25 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 	infoList.Padding = UDim.new(0, 5)
 	infoList.SortOrder = Enum.SortOrder.LayoutOrder
 	infoList.Parent = info
+	-- A fade and an arrow at the foot while there's more to read below
+	local more = Instance.new("Frame")
+	more.Name = "More"
+	more.BackgroundColor3 = Ui.color.panelFoot
+	more.BorderSizePixel = 0
+	more.AnchorPoint = Vector2.new(0, 1)
+	more.Position = UDim2.fromOffset(0, infoTop + info.Size.Y.Offset)
+	more.Size = UDim2.fromOffset(L.hero, 22)
+	more.ZIndex = 4
+	more.Visible = false
+	local moreFade = Instance.new("UIGradient")
+	moreFade.Rotation = 90
+	moreFade.Transparency = NumberSequence.new(1, 0.15)
+	moreFade.Parent = more
+	more.Parent = hero
+	local moreArrow =
+		Ui.label(more, "Arrow", "▼", Ui.FONT_BOLD, 11, Ui.color.accent, UDim2.new(1, -4, 1, 0))
+	moreArrow.TextXAlignment = Enum.TextXAlignment.Right
+	moreArrow.ZIndex = 5
 
 	local nameLabel = Ui.label(
 		info,
@@ -991,14 +1024,8 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 		local current = s.species or Config.Species.STARTER
 		add(esc(r.blurb or ""), MUTED)
 		if item.kind == "shade" then
-			if item.has then
-				add(
-					if r.pass
-						then "<b>Yours</b> on every fish."
-						else `<b>Yours</b> on your {esc(fishName(current))}.`,
-					Ui.color.safe
-				)
-			else
+			-- (an owned one says so on the stage and its button)
+			if not item.has then
 				local how = esc(deps.shadeHow(r, s))
 				add(
 					if item.elsewhere
@@ -1012,7 +1039,7 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			end
 			if #trails > 0 then
 				add(
-					`<b>Comes with a trail:</b> {esc(capital(table.concat(trails, " and ")))}. The trail streams behind you as you swim, on top of any boost trail you wear.`,
+					`<b>Comes with a trail:</b> {esc(capital(table.concat(trails, " and ")))}, streaming behind you as you swim, on top of any boost trail.`,
 					Ui.color.haul
 				)
 			end
@@ -1021,29 +1048,25 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 				if source then
 					local pulse = if r.pulse then PULSE_WORDS[r.pulse] else nil
 					add(
-						`<b>Lights the dark:</b> about {Format.distance(source.range)} round you in deep water{if pulse
+						`<b>Lights the dark:</b> about {Format.distance(source.range)} round you in the deep{if pulse
 							then `, and its glow {pulse}`
 							else ""}.`,
 						Color3.fromRGB(150, 236, 255)
 					)
 				end
 			end
-			if #trails > 0 or #others > 0 then
-				add("Effects show on your fish in the sea, not on this stage.", MUTED, true)
-			end
 		elseif item.kind == "part" then
 			if r.id == "AnglerLure" then
 				add("Lights up dark water like an Anglerfish's lure.", Color3.fromRGB(150, 236, 255))
 			end
 			add(`Worn in the <b>{esc(r.slot)}</b> slot, one part a slot, on any fish. Looks only: no stats.`)
-			add(
-				if item.has
-					then "<b>Yours</b> on every fish."
-					else `<b>How to get:</b> roll it as any fish · about {RollOdds.oneIn(1 / r.chance)}. A duplicate turns into {Ui.number(
+			if not item.has then
+				add(
+					`<b>How to get:</b> roll it as any fish · about {RollOdds.oneIn(1 / r.chance)}. A duplicate turns into {Ui.number(
 						r.refund
-					)} coral.`,
-				if item.has then Ui.color.safe else nil
-			)
+					)} coral.`
+				)
+			end
 		elseif item.kind == "variant" then
 			local fish = esc(fishName(r.species))
 			add(
@@ -1051,24 +1074,20 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 					then `Reshapes your {fish}. One variant is worn at a time.`
 					else `<b>{fish} only:</b> it shows when you swim as the {fish}. One variant is worn at a time.`
 			)
-			add(
-				if item.has
-					then "<b>Yours.</b>"
-					else `<b>How to get:</b> roll it as the {fish} · about {RollOdds.oneIn(1 / r.chance)}. A duplicate turns into {Ui.number(
+			if not item.has then
+				add(
+					`<b>How to get:</b> roll it as the {fish} · about {RollOdds.oneIn(1 / r.chance)}. A duplicate turns into {Ui.number(
 						r.refund
-					)} coral.`,
-				if item.has then Ui.color.safe else nil
-			)
+					)} coral.`
+				)
+			end
 		else
 			add("Streams off your tail when you swim fast, and full on a dash. One at a time, on every fish.")
-			add(
-				if item.has
-					then "<b>Yours</b> on every fish."
-					else `<b>How to get:</b> {esc(
-						deps.passSource("trail", item.id) or "A later Tide Pass season"
-					)}. Boost trails are earned, never sold.`,
-				if item.has then Ui.color.safe else nil
-			)
+			if not item.has then
+				add(
+					`<b>How to get:</b> {esc(deps.passSource("trail", item.id) or "A later Tide Pass season")}. Boost trails are earned, never sold.`
+				)
+			end
 		end
 		return lines
 	end
@@ -1172,6 +1191,7 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 				end
 			end
 			stateChip.Visible = false
+			seaNote.Visible = false
 			primary.Visible = false
 			secondary.Visible = false
 			setGlow(Ui.color.accent, false)
@@ -1184,6 +1204,10 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			tier.color,
 			item.kind == "shade" and r.cycle == true or item.kind == "trail" and r.style == "rainbow"
 		)
+		seaNote.Visible = item.fx or item.kind == "trail"
+		seaNote.Text = if item.kind == "trail"
+			then "STREAMS OFF YOU IN THE SEA"
+			else "EFFECTS SHOW IN THE SEA"
 		stateChip.Visible = true
 		if worn then
 			chipColor(stateChip, "✓ WORN", Ui.color.safe)
@@ -1228,7 +1252,7 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 				if item.trailFx then
 					table.insert(chips, { text = "+ TRAIL", color = Ui.color.haul })
 				end
-				if r.fx or r.aura then
+				if item.fx and not item.trailFx then
 					table.insert(chips, { text = "EFFECTS", color = FX_COLOR })
 				end
 				if r.emissive or r.spectral then
@@ -1489,7 +1513,7 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			"Status",
 			"",
 			Ui.FONT_BOLD,
-			10,
+			11,
 			MUTED,
 			UDim2.new(1, -16, 0, 13),
 			UDim2.fromOffset(9, visualH + 49)
@@ -1831,6 +1855,17 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			end
 		end)
 	end
+	-- The mouse reaching the buttons ends any hover at once, so they act on the
+	-- picked card and say what they'll do to it
+	for _, button in { primary, secondary } do
+		button.MouseEnter:Connect(function()
+			if hoverKey then
+				hoverKey = nil
+				hoverEndAt = nil
+				refreshFocus()
+			end
+		end)
+	end
 	primary.Activated:Connect(function()
 		local item = focusItem()
 		if item and item.has and not isWorn(item, state()) then
@@ -1894,6 +1929,9 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			if clock >= nextAttach then
 				nextAttach = clock + 0.1
 				attachVisible()
+				local canvas = info.AbsoluteCanvasSize.Y
+				local shown = info.AbsoluteWindowSize.Y
+				more.Visible = canvas > shown + 4 and info.CanvasPosition.Y < canvas - shown - 4
 			end
 		end)
 	)

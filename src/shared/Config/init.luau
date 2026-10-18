@@ -38,4 +38,5 @@ return {
 	Pvp = require(script.Pvp),
 	Hooks = require(script.Hooks),
 	Trails = require(script.Trails),
+	Ruins = require(script.Ruins),
 }

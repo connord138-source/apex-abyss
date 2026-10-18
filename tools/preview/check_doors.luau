@@ -46,7 +46,11 @@ end
 for index = 1, Layout.DEN_COUNT do
 	local den = Instance.new("Model")
 	DenDoor.front(den, index)
-	check(`den {index} doorway`, Layout.doorFrame(index), den, 8)
+	-- every doorway style (Config/Dens `doors`), on every doorway
+	for _, style in DenDoor.styles() do
+		DenDoor.restyle(index, style)
+		check(`den {index} doorway {style}`, Layout.doorFrame(index), den, 8)
+	end
 	local inside = Instance.new("Model")
 	DenDoor.exit(inside, index)
 	check(`den {index} exit`, Layout.exitFrame(index), inside, 8)

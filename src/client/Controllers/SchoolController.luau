@@ -12,6 +12,16 @@
 -- gold foil, a teal glow, clear crystal or a shifting rainbow, with sparkles and a
 -- small light so they can be spotted from a distance. A tide's own schools (the
 -- Sardine Run's bait balls) are only drawn while it's up.
+--
+-- Only the schools near the camera are built (owner, 2026-10-18: "We still need so
+-- much more fish too", which took the sea from ~1,300 fish to ~4,100): a school is
+-- built when it comes within its reach (Schools `reach`), nearest first within a
+-- small time budget a frame, and let go well past it; until then only what the
+-- server said about its fish is kept (eaten until, rarity). Each fish is drawn
+-- within its own range (Schools `range`: bigger fish further, the back of a big
+-- school thinning first) and fades out over the last FADE_SHARE of it
+-- (LocalTransparencyModifier). A client whose frames run slow draws everything a
+-- little nearer (`detail`, eased; SchoolController.detail for the ambient life).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -38,11 +48,21 @@ local SchoolController = {
 
 local lastTooBig = 0
 
-local DRAW_DISTANCE = 520 -- schools further than this from the camera aren't moved
 -- Bodies further than this hold their spine still (they still swim their paths): the
 -- wave can't be seen that far off, and there are many more small fish near the hub
--- now (owner, 2026-10-10: "far too scarce")
+-- now (owner, 2026-10-10: "far too scarce"). Small fish stop sooner (Schools `wave`).
 local WAVE_DISTANCE = 160
+-- A fish fades out over the last share of its draw range (Schools `range`)
+local FADE_SHARE = 0.2
+-- A school is let go this far past its reach (so one on the edge isn't rebuilt
+-- every few frames)
+local RELEASE_SLACK = 90
+local BUILD_BUDGET = 0.003 -- seconds a frame spent building newly near schools
+-- How far the client draws (×): eased toward DETAIL_MIN while frames take longer
+-- than SLOW_FRAME, back to 1 under FAST_FRAME
+local DETAIL_MIN = 0.7
+local SLOW_FRAME = 1 / 38
+local FAST_FRAME = 1 / 52
 -- Static GLB prey meshes came in facing +Z (owner, 2026-10-07: "swimming backwards");
 -- they're turned round when drawn. Rigged FBX bodies face -Z already.
 local MESH_FLIP = CFrame.Angles(0, math.pi, 0)
@@ -72,6 +92,8 @@ type Visual = {
 	-- Its rarity's look while it swims rare (Config/Catch): what was changed, to put
 	-- back, and what was added
 	look: Look?,
+	parts: { BasePart }, -- every part of its body (fades and hiding)
+	cull: number, -- its LocalTransparencyModifier: 0 drawn .. 1 out of range
 }
 
 type Look = {
@@ -82,11 +104,23 @@ type Look = {
 	},
 	extras: { Instance },
 	light: PointLight?,
+	sparkle: ParticleEmitter?,
 	glint: BillboardGui?, -- a star that stays a few pixels wide however far off
 	glintScale: UIScale?,
 }
 
-local visuals: { Visual } = {}
+-- Each prey's body set up once from its import, cloned for each of its fish
+type Proto = { model: Model?, mesh: MeshPart?, unitLength: number, extents: Vector3, flip: boolean }
+
+local visuals: { [number]: Visual } = {} -- prey index → its body, while its school is built
+local built: { [number]: boolean } = {} -- school index → its fish are built
+local backAts: { [number]: number } = {} -- prey index → clock it's back after being eaten
+local protos: { [string]: Proto } = {}
+local folder: Folder? = nil
+local detail = 1 -- how far this client draws (×), from its frame time
+local smoothDt = 1 / 60
+local wanted: { { index: number, away: number } } = {}
+local drawList: { number } = {}
 local parts: { BasePart } = {}
 local frames: { CFrame } = {}
 local batch: { { number } } = {}
@@ -97,7 +131,6 @@ local chaseWarningUntil = 0
 local CatchConfig = Config.Catch
 local rarities: { [number]: string } = {} -- prey index → rarity id (rare fish only)
 local prisms: { [number]: Visual } = {} -- fish wearing the Prism look (their colour cycles)
-local tideOff: { [number]: boolean } = {} -- tide schools hidden because their tide isn't up
 -- A tide school near the camera when its tide ends shrinks away over TIDE_FADE
 -- seconds instead of popping out in front of you (playtest 2026-10-10); far off,
 -- out in the haze, it just goes
@@ -112,6 +145,7 @@ local GLINT_RANGE = 240
 local GLINT_NEAR = 18
 local GLINT_FADE = 30
 local GLINT_PIXELS: { [string]: number } = { Golden = 15, Glowing = 17, Crystal = 19, Prism = 21 }
+local RARE_RANGE = GLINT_RANGE + 15 -- a rare fish is drawn at least this far, for its glint
 -- Its light reaches further for the rarer ones (×length, plus studs)
 local LIGHT_BONUS: { [string]: number } = { Golden = 2, Glowing = 5, Crystal = 7, Prism = 9 }
 local glints: { [number]: Look } = {} -- fish index → its look, while it has a glint
@@ -232,119 +266,47 @@ local function bonesOf(model: Model): ({ [string]: Bone }, { string })
 	return bones, spine
 end
 
-local function build()
-	local folder = Instance.new("Folder")
-	folder.Name = "Prey"
-	for index, fish in Schools.fish do
-		local prey = Config.Prey.byId[fish.prey]
-		local length = fish.length
-		local bodySize = Vector3.new(length * prey.slim * 0.8, length * prey.slim, length * 0.78)
-		local tailSize = Vector3.new(length * 0.03, length * prey.slim * 1.1, length * 0.26)
-		local template, rigged = preyTemplate(prey.id)
-		local body: BasePart
-		local tail: BasePart? = nil
-		local model: Model? = nil
-		local bones: { [string]: Bone } = {}
-		local spine: { string } = {}
-		local unitScale = 1
-		local flip = false
-		if rigged then
-			-- A rigged body: anchored, scaled to the fish's length, its bones swim
-			local clone = rigged:Clone()
-			for _, descendant in clone:GetDescendants() do
-				if descendant:IsA("BasePart") then
-					descendant.Anchored = true
-					descendant.CanCollide = false
-					descendant.CanQuery = false
-					descendant.CanTouch = false
-					descendant.CastShadow = false
-				end
-			end
-			clone:ScaleTo(1)
-			unitScale = length / math.max(clone:GetExtentsSize().Z, 0.01)
-			clone:ScaleTo(unitScale)
-			clone:PivotTo(CFrame.new())
-			clone:PivotTo(CFrame.new(-clone:GetBoundingBox().Position))
-			local primary = clone.PrimaryPart or clone:FindFirstChildWhichIsA("MeshPart", true)
-			clone.PrimaryPart = primary
-			bodySize = clone:GetExtentsSize()
-			bones, spine = bonesOf(clone)
-			clone.Parent = folder
-			model = clone
-			body = primary :: BasePart
-		elseif template then
-			local mesh = template:Clone()
-			mesh.Anchored = true
-			mesh.CanCollide = false
-			mesh.CanQuery = false
-			mesh.CanTouch = false
-			mesh.CastShadow = false
-			bodySize = template.Size * (length / math.max(template.Size.Z, 0.01))
-			mesh.Size = bodySize
-			mesh.Parent = folder
-			body = mesh
-			flip = SwimWave.needsFlip(template)
-		else
-			body = makePart(folder, prey.back, "Ellipsoid")
-			body.Size = bodySize
-			local fin = makePart(folder, prey.back:Lerp(prey.belly, 0.3), "Fin")
-			fin.Name = "Tail"
-			fin.Size = tailSize
-			tail = fin
-		end
-		body.Name = prey.id
-		visuals[index] = {
-			body = body,
-			tail = tail,
-			bodySize = bodySize,
-			tailSize = tailSize,
-			hidden = false,
-			backAt = 0,
-			pendingUntil = 0,
-			suckFrom = nil,
-			suckStart = 0,
-			fadeIn = 1,
-			model = model,
-			bones = bones,
-			spine = spine,
-			unitScale = unitScale,
-			phase = fish.phase * 3,
-			flip = flip,
-			chase = nil,
-		}
+-- A prey's body from its import, set up once (anchored, scaled to 1, its size
+-- measured) and cloned for each of its fish as their schools are built
+local function protoOf(prey: any): Proto
+	local known = protos[prey.id]
+	if known then
+		return known
 	end
-	folder.Parent = workspace
-end
-
-local function setHidden(visual: Visual, hidden: boolean)
-	if visual.hidden == hidden then
-		return
-	end
-	visual.hidden = hidden
-	local transparency = if hidden then 1 else 0
-	if visual.model then
-		for _, descendant in (visual.model :: Model):GetDescendants() do
+	local template, rigged = preyTemplate(prey.id)
+	local proto: Proto = { model = nil, mesh = nil, unitLength = 1, extents = Vector3.one, flip = false }
+	if rigged then
+		local clone = rigged:Clone()
+		for _, descendant in clone:GetDescendants() do
 			if descendant:IsA("BasePart") then
-				descendant.Transparency = transparency
+				descendant.Anchored = true
+				descendant.CanCollide = false
+				descendant.CanQuery = false
+				descendant.CanTouch = false
+				descendant.CastShadow = false
 			end
 		end
-	else
-		visual.body.Transparency = transparency
+		clone:ScaleTo(1)
+		proto.extents = clone:GetExtentsSize()
+		proto.unitLength = math.max(proto.extents.Z, 0.01)
+		clone:PivotTo(CFrame.new())
+		clone:PivotTo(CFrame.new(-clone:GetBoundingBox().Position))
+		clone.PrimaryPart = clone.PrimaryPart or clone:FindFirstChildWhichIsA("MeshPart", true)
+		proto.model = clone
+	elseif template then
+		local mesh = template:Clone()
+		mesh.Anchored = true
+		mesh.CanCollide = false
+		mesh.CanQuery = false
+		mesh.CanTouch = false
+		mesh.CastShadow = false
+		proto.mesh = mesh
+		proto.extents = template.Size
+		proto.unitLength = math.max(template.Size.Z, 0.01)
+		proto.flip = SwimWave.needsFlip(template)
 	end
-	if visual.tail then
-		visual.tail.Transparency = transparency
-	end
-	if not hidden then
-		if visual.model then
-			(visual.model :: Model):ScaleTo(visual.unitScale)
-		else
-			visual.body.Size = visual.bodySize
-		end
-		if visual.tail then
-			visual.tail.Size = visual.tailSize
-		end
-		visual.fadeIn = 0
-	end
+	protos[prey.id] = proto
+	return proto
 end
 
 local function partsOf(visual: Visual): { BasePart }
@@ -362,6 +324,115 @@ local function partsOf(visual: Visual): { BasePart }
 		table.insert(list, visual.tail :: BasePart)
 	end
 	return list
+end
+
+-- How far out of its range a fish is drawn (LocalTransparencyModifier: 0 shown .. 1
+-- gone); a rare fish's look sheds nothing while it's out of range
+local function setCull(visual: Visual, cull: number)
+	local was = visual.cull
+	visual.cull = cull
+	for _, part in visual.parts do
+		part.LocalTransparencyModifier = cull
+	end
+	local look = visual.look
+	if look and (was >= 1) ~= (cull >= 1) then
+		if look.sparkle then
+			look.sparkle.Enabled = cull < 1
+		end
+		if look.light then
+			look.light.Enabled = cull < 1
+		end
+	end
+end
+
+-- One fish's body, out of sight until it's drawn in range
+local function makeVisual(index: number): Visual
+	local fish = Schools.fish[index]
+	local prey = Config.Prey.byId[fish.prey]
+	local length = fish.length
+	local bodySize = Vector3.new(length * prey.slim * 0.8, length * prey.slim, length * 0.78)
+	local tailSize = Vector3.new(length * 0.03, length * prey.slim * 1.1, length * 0.26)
+	local proto = protoOf(prey)
+	local parent = folder :: Folder
+	local body: BasePart
+	local tail: BasePart? = nil
+	local model: Model? = nil
+	local bones: { [string]: Bone } = {}
+	local spine: { string } = {}
+	local unitScale = 1
+	local flip = false
+	if proto.model then
+		-- A rigged body: anchored, scaled to the fish's length, its bones swim
+		local clone = (proto.model :: Model):Clone()
+		unitScale = length / proto.unitLength
+		clone:ScaleTo(unitScale)
+		bodySize = proto.extents * unitScale
+		bones, spine = bonesOf(clone)
+		clone.Parent = parent
+		model = clone
+		body = (clone.PrimaryPart or clone:FindFirstChildWhichIsA("MeshPart", true)) :: BasePart
+	elseif proto.mesh then
+		local mesh = (proto.mesh :: MeshPart):Clone()
+		bodySize = proto.extents * (length / proto.unitLength)
+		mesh.Size = bodySize
+		mesh.Parent = parent
+		body = mesh
+		flip = proto.flip
+	else
+		body = makePart(parent, prey.back, "Ellipsoid")
+		body.Size = bodySize
+		local fin = makePart(parent, prey.back:Lerp(prey.belly, 0.3), "Fin")
+		fin.Name = "Tail"
+		fin.Size = tailSize
+		tail = fin
+	end
+	body.Name = prey.id
+	local visual: Visual = {
+		body = body,
+		tail = tail,
+		bodySize = bodySize,
+		tailSize = tailSize,
+		hidden = false,
+		backAt = 0,
+		pendingUntil = 0,
+		suckFrom = nil,
+		suckStart = 0,
+		fadeIn = 1,
+		model = model,
+		bones = bones,
+		spine = spine,
+		unitScale = unitScale,
+		phase = fish.phase * 3,
+		flip = flip,
+		chase = nil,
+		parts = {},
+		cull = 0,
+	}
+	visual.parts = partsOf(visual)
+	setCull(visual, 1)
+	return visual
+end
+
+local function setHidden(visual: Visual, hidden: boolean)
+	if visual.hidden == hidden then
+		return
+	end
+	visual.hidden = hidden
+	local transparency = if hidden then 1 else 0
+	for _, part in visual.parts do
+		part.Transparency = transparency
+	end
+	if not hidden then
+		if visual.model then
+			(visual.model :: Model):ScaleTo(visual.unitScale)
+		else
+			visual.body.Size = visual.bodySize
+		end
+		if visual.tail then
+			visual.tail.Size = visual.tailSize
+		end
+		visual.fadeIn = 0
+	end
 end
 
 -- Takes a rarity's look off a fish, putting its own texture and colours back
@@ -496,6 +567,12 @@ local function setLook(index: number, rarityId: string?)
 	glints[index] = look
 	table.insert(look.extras, attachment)
 	look.light = light
+	look.sparkle = sparkle
+	if visual.cull >= 1 then
+		-- (out of range: nothing shows until it's drawn)
+		sparkle.Enabled = false
+		light.Enabled = false
+	end
 	visual.look = look
 	if rarityId == "Prism" then
 		prisms[index] = visual
@@ -507,6 +584,11 @@ function SchoolController.rarityOf(index: number): string?
 	return rarities[index]
 end
 
+-- Whether a school is out now: a tide's own schools only while it's up
+local function schoolOut(school: Schools.School): boolean
+	return school.tide == nil or school.tide == Tides.at(Timing.unix()).id
+end
+
 -- The nearest prey fish a fish `length` long could swallow, within `range` studs of
 -- `from` (the tutorial's guide points at it). Positions come off the shared paths,
 -- so it costs nothing to ask for one that isn't drawn.
@@ -515,14 +597,18 @@ function SchoolController.nearestEdible(from: Vector3, length: number, range: nu
 	local best: Vector3? = nil
 	local bestDistance = range
 	for schoolIndex, school in Schools.list do
-		if (school.center - from).Magnitude > range + school.radius or tideOff[schoolIndex] then
+		if (school.center - from).Magnitude > range + school.radius or not schoolOut(school) then
 			continue
 		end
 		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
 		for index = school.first, school.first + school.count - 1 do
 			local fish = Schools.fish[index]
 			local visual = visuals[index]
-			if visual == nil or visual.hidden or not Size.canSwallow(length, fish.length) then
+			if not Size.canSwallow(length, fish.length) then
+				continue
+			end
+			-- (a school not built here yet: what the server said about its fish)
+			if if visual then visual.hidden else (backAts[index] or 0) > now then
 				continue
 			end
 			local position = Schools.fishFrame(index, schoolFrame, now).Position
@@ -552,7 +638,7 @@ function SchoolController.edibleNear(
 		return found
 	end
 	for schoolIndex, school in Schools.list do
-		if (school.center - from).Magnitude > range + school.radius or tideOff[schoolIndex] then
+		if (school.center - from).Magnitude > range + school.radius or not schoolOut(school) then
 			continue
 		end
 		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
@@ -562,6 +648,7 @@ function SchoolController.edibleNear(
 			if
 				visual == nil
 				or visual.hidden
+				or visual.cull >= 1 -- (out of its draw range: not where it swims)
 				or visual.suckFrom ~= nil
 				or not Size.canSwallow(length, fish.length)
 			then
@@ -587,7 +674,7 @@ local function onRarity(indices: { number }, codes: { number })
 	for i, index in indices do
 		local code = codes[i]
 		local def = if typeof(code) == "number" and code > 0 then CatchConfig.rarities[code] else nil
-		if typeof(index) ~= "number" or visuals[index] == nil then
+		if typeof(index) ~= "number" or Schools.fish[index] == nil then
 			continue
 		end
 		if def then
@@ -595,7 +682,10 @@ local function onRarity(indices: { number }, codes: { number })
 		else
 			rarities[index] = nil
 		end
-		setLook(index, if def then def.id else nil)
+		-- (a fish whose school isn't built here wears it when it is)
+		if visuals[index] then
+			setLook(index, if def then def.id else nil)
+		end
 	end
 end
 
@@ -606,6 +696,52 @@ local function flush(now: number)
 	lastSend = now
 	ClientState.request("EatPrey", batch)
 	batch = {}
+end
+
+-- A school comes into reach: its fish get bodies, wearing what the server said
+-- about them (eaten until, rarity)
+local function buildSchool(schoolIndex: number, now: number)
+	local school = Schools.list[schoolIndex]
+	for index = school.first, school.first + school.count - 1 do
+		local visual = makeVisual(index)
+		visuals[index] = visual
+		local back = backAts[index]
+		if back and back > now then
+			visual.backAt = back
+			setHidden(visual, true)
+		end
+		local rarity = rarities[index]
+		if rarity then
+			setLook(index, rarity)
+		end
+	end
+	built[schoolIndex] = true
+end
+
+-- A school far out of reach (or its tide over): its fish's bodies go
+local function releaseSchool(schoolIndex: number)
+	local school = Schools.list[schoolIndex]
+	built[schoolIndex] = nil
+	tideFade[schoolIndex] = nil
+	for index = school.first, school.first + school.count - 1 do
+		local visual = visuals[index]
+		if visual == nil then
+			continue
+		end
+		visuals[index] = nil
+		clearLook(index, visual)
+		if visual.chase then
+			visual.chase.glow:Destroy()
+		end
+		if visual.model then
+			(visual.model :: Model):Destroy()
+		else
+			visual.body:Destroy()
+		end
+		if visual.tail then
+			(visual.tail :: BasePart):Destroy()
+		end
+	end
 end
 
 local function step(dt: number)
@@ -648,35 +784,60 @@ local function step(dt: number)
 	end
 	table.clear(glintSeen)
 	table.clear(glintAt)
+	-- How far this client can afford to draw: its frame time, smoothed over a couple
+	-- of seconds, eases the ranges in on a slow device and back out
+	smoothDt += (math.min(dt, 0.1) - smoothDt) * math.min(1, dt * 0.6)
+	local target = if smoothDt > SLOW_FRAME then DETAIL_MIN elseif smoothDt < FAST_FRAME then 1 else detail
+	detail += (target - detail) * math.min(1, dt * 0.3)
+	-- Schools near enough are built (nearest first, a few milliseconds a frame), far
+	-- ones let go; only built ones are drawn
+	table.clear(wanted)
+	table.clear(drawList)
 	for schoolIndex, school in Schools.list do
-		if (school.center - camera).Magnitude > DRAW_DISTANCE + school.radius then
-			continue
+		local away = (school.center - camera).Magnitude
+		local reachHere = school.reach * detail
+		if built[schoolIndex] then
+			if away > reachHere + RELEASE_SLACK then
+				releaseSchool(schoolIndex)
+			else
+				table.insert(drawList, schoolIndex)
+			end
+		elseif away <= reachHere and (school.tide == nil or school.tide == tideId) then
+			table.insert(wanted, { index = schoolIndex, away = away })
 		end
-		-- A tide's school (the Sardine Run's bait balls) only while its tide is up
+	end
+	if #wanted > 0 then
+		table.sort(wanted, function(a, b)
+			return a.away < b.away
+		end)
+		local started = os.clock()
+		for _, entry in wanted do
+			buildSchool(entry.index, now)
+			table.insert(drawList, entry.index)
+			if os.clock() - started > BUILD_BUDGET then
+				break
+			end
+		end
+	end
+	for _, schoolIndex in drawList do
+		local school = Schools.list[schoolIndex]
+		-- A tide's school (the Sardine Run's bait balls) only while its tide is up: near
+		-- the camera when it ends it shrinks away, then it's let go
 		local fadeOut: number? = nil
 		if school.tide and school.tide ~= tideId then
-			if tideOff[schoolIndex] then
-				continue
-			end
 			local fading = tideFade[schoolIndex]
 			if fading == nil and (school.center - camera).Magnitude < TIDE_FADE_RANGE + school.radius then
 				fading = now
 				tideFade[schoolIndex] = now
 			end
 			if fading == nil or now - fading >= TIDE_FADE then
-				tideFade[schoolIndex] = nil
-				tideOff[schoolIndex] = true
-				for index = school.first, school.first + school.count - 1 do
-					setHidden(visuals[index], true)
-				end
+				releaseSchool(schoolIndex)
 				continue
 			end
 			fadeOut = (now - fading) / TIDE_FADE
-		elseif tideOff[schoolIndex] or tideFade[schoolIndex] then
+		elseif tideFade[schoolIndex] then
 			tideFade[schoolIndex] = nil
-			tideOff[schoolIndex] = nil
 			for index = school.first, school.first + school.count - 1 do
-				setHidden(visuals[index], false)
 				visuals[index].fadeIn = 0 -- one caught mid-fade grows back
 			end
 		end
@@ -722,6 +883,19 @@ local function step(dt: number)
 					end
 					chase.glow.FillTransparency = 0.6 + 0.3 * (1 - blend)
 				end
+			end
+			-- Out of its draw range it isn't drawn (or eaten); over the last of it, it fades
+			local far = (frame.Position - camera).Magnitude
+			local range = (if rarities[index] then math.max(fish.range, RARE_RANGE) else fish.range) * detail
+			local cull = 0
+			if visual.suckFrom == nil and visual.chase == nil and far > range * (1 - FADE_SHARE) then
+				cull = math.min(math.floor((far - range * (1 - FADE_SHARE)) / (range * FADE_SHARE) * 10 + 0.5) / 10, 1)
+			end
+			if cull ~= visual.cull then
+				setCull(visual, cull)
+			end
+			if cull >= 1 then
+				continue
 			end
 			if visual.suckFrom then
 				-- Sucked into our mouth: slide in and shrink, then vanish
@@ -832,7 +1006,7 @@ local function step(dt: number)
 					-- (Shared/SwimWave), faster for the quick little ones
 					local prey = Config.Prey.byId[fish.prey]
 					visual.phase += dt * 2 * math.pi * (0.9 + prey.speed * 0.22)
-					if (frame.Position - camera).Magnitude < WAVE_DISTANCE then
+					if far < math.min(fish.wave, WAVE_DISTANCE) * detail then
 						SwimWave.applyBones(visual.bones, visual.spine, visual.phase, 0.34, 0)
 					end
 					table.insert(frames, frame)
