@@ -225,7 +225,12 @@ local function eatPlayer(victim: Player, eater: Player)
 	-- Eating much smaller players pays almost nothing, so farming new fish is pointless
 	local ratio = math.clamp(Size.ratio(victimLength, eaterLength) / hunt.swallowRatio, 0, 1)
 	local farm = math.max(ratio * ratio, 0.02)
-	local gain = (lost * hunt.playerHaulShare + Progress.mass(victimData) * hunt.playerBaseShare) * farm
+	-- The victim's Haul took its Haul rate as it was eaten; the share of its banked
+	-- mass is new food and takes the eater's (Config/Tuning `growth`)
+	local gain = (
+		lost * hunt.playerHaulShare
+		+ Progress.mass(victimData) * hunt.playerBaseShare * haulRate(eater)
+	) * farm
 	EconomyService.earnCoral(eater, economy.eatPlayerCoral * farm)
 	local offer = if saved then nil else rememberLost(victimData, lost)
 	local _, victimRoot = FishService.character(victim)
@@ -250,9 +255,10 @@ local function eatPlayer(victim: Player, eater: Player)
 	Net.notify(eater, `You ate {victim.DisplayName}!`, "good")
 	FishService.respawnIn(victim, hunt.respawnSeconds)
 	DataService.markDirty(victim)
-	addHaul(eater, gain)
+	addHaul(eater, gain, "sized")
 	Events.ate:fire(eater, 1)
-	-- (the gain before ×2 Mass and Frenzy: a podmate's share gets its own)
+	-- (the gain before ×2 Mass and Frenzy, after the Haul rate: a podmate's share
+	-- gets its own ×2 Mass and Frenzy, "sized")
 	Events.atePlayer:fire(eater, victim, gain)
 end
 
@@ -277,6 +283,7 @@ local function onEatPrey(player: Player, batch: any)
 	local now = Timing.clock()
 	local mouth = mouthOf(root, length)
 	local allowance = slack(length)
+	local suction = suctionOf(player)
 	local tide = Tides.at(Timing.unix())
 	local gained = 0
 	local count = 0
