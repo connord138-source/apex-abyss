@@ -25,6 +25,7 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local CardPhoto = require(script.Parent.Parent.CardPhoto)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
+local ItemPhoto = require(script.Parent.Parent.ItemPhoto)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
@@ -522,6 +523,111 @@ local function denRecord(): any
 	return s.den or { level = 1, glow = "Teal", floor = "Flagstone", owned = {}, items = {}, placed = {} }
 end
 
+-- A den row with a picture at its left (owner, 2026-10-18: "Den shop needs pics of
+-- the items they are buying"): the row grows taller, its words move over and get
+-- two lines, and the picture's frame is returned to fill
+local function pictureRow(frame: Frame): Frame
+	frame.Size = UDim2.new(1, -8, 0, 84)
+	local holder = Instance.new("Frame")
+	holder.Name = "Picture"
+	holder.Size = UDim2.fromOffset(72, 72)
+	holder.Position = UDim2.fromOffset(18, 6)
+	holder.BackgroundColor3 = Color3.new(1, 1, 1)
+	holder.BackgroundTransparency = 0.1
+	holder.BorderSizePixel = 0
+	Ui.corner(holder, UDim.new(0, 8))
+	local floor = Instance.new("UIGradient")
+	floor.Rotation = 90
+	floor.Color = ColorSequence.new(Color3.fromRGB(58, 92, 112), Color3.fromRGB(14, 30, 44))
+	floor.Parent = holder
+	holder.Parent = frame
+	local title = frame:FindFirstChild("Title") :: TextLabel?
+	if title then
+		title.Position = UDim2.fromOffset(100, 12)
+		title.Size = UDim2.new(1, -398, 0, 22)
+	end
+	local blurb = frame:FindFirstChild("Blurb") :: TextLabel?
+	if blurb then
+		blurb.Position = UDim2.fromOffset(100, 36)
+		blurb.Size = UDim2.new(1, -398, 0, 38)
+		blurb.TextWrapped = true
+		blurb.TextYAlignment = Enum.TextYAlignment.Top
+	end
+	return holder
+end
+
+-- The doorway styles' rows (Config/Dens `doors`; owner, 2026-10-18: "change the
+-- actual entrance to our den to unlockable versions to make it easier to spot"):
+-- each with a swatch of its stone, trim and glow; bought once, then worn or swapped
+local function denDoorRows(list: ScrollingFrame, next: () -> number, s: any, den: any)
+	local Dens = Config.Dens
+	local progress = if typeof(s.achievements) == "table" then s.achievements else {}
+	local owned = if typeof(den.doors) == "table" then den.doors else {}
+	local wearing = if typeof(den.door) == "string" then den.door else "Stone"
+	denSection(list, next(), "Doorway · your den's front door on the plaza, easy to spot")
+	for _, style in Dens.doors do
+		local has = style.price == 0 or owned[style.id] == true
+		local worn = wearing == style.id
+		local locked: string? = nil
+		local count: string? = nil
+		if not has then
+			if style.level and (den.level or 1) < style.level then
+				local level = Dens.levels[style.level]
+				locked = `needs a {if level then level.name else "bigger"} den`
+			elseif style.achievement then
+				local achievement = Config.Achievements.byId[style.achievement]
+				if achievement and (progress[achievement.id] or 0) < achievement.goal then
+					locked = `opens with {achievement.name}: {achievement.blurb}`
+					count = `{Ui.number(progress[achievement.id] or 0)} / {Ui.number(achievement.goal)}`
+				end
+			end
+		end
+		local frame, button = row(
+			list,
+			next(),
+			`Door{style.id}`,
+			style.name,
+			if locked then `{style.blurb} · {locked}` else style.blurb,
+			if count then count elseif has and not worn then "Owned" else nil,
+			if worn then "IN USE" elseif has then "USE" elseif locked then "LOCKED" else coralText(style.price),
+			if worn
+				then "disabled"
+				elseif has then "secondary"
+				elseif locked then "disabled"
+				else priceStyle(style.price),
+			style.colors[3]
+		)
+		-- The swatch: its stone round its trim round its glow, like a little doorway
+		local swatch = pictureRow(frame)
+		swatch.BackgroundColor3 = style.colors[1]
+		local shade = swatch:FindFirstChildOfClass("UIGradient")
+		if shade then
+			shade:Destroy()
+		end
+		local ring = Instance.new("Frame")
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromScale(0.5, 0.56)
+		ring.Size = UDim2.fromOffset(48, 48)
+		ring.BackgroundColor3 = style.colors[2]
+		ring.BorderSizePixel = 0
+		Ui.corner(ring, UDim.new(1, 0))
+		ring.Parent = swatch
+		local glow = Instance.new("Frame")
+		glow.AnchorPoint = Vector2.new(0.5, 0.5)
+		glow.Position = UDim2.fromScale(0.5, 0.5)
+		glow.Size = UDim2.fromOffset(32, 32)
+		glow.BackgroundColor3 = style.colors[3]
+		glow.BorderSizePixel = 0
+		Ui.corner(glow, UDim.new(1, 0))
+		glow.Parent = ring
+		if button and not worn and locked == nil then
+			button.Activated:Connect(function()
+				ClientState.request("DenDoor", style.id)
+			end)
+		end
+	end
+end
+
 -- The den shop's rows: things (into the Build tray), the furniture sets, floors and
 -- glows. Part of the den menu, and on its own as Build mode's SHOP
 local function denShopRows(list: ScrollingFrame, next: () -> number, s: any, den: any)
@@ -529,10 +635,11 @@ local function denShopRows(list: ScrollingFrame, next: () -> number, s: any, den
 	-- Things: bought into the Build tray (the furniture sets come after)
 	denSection(list, next(), "Things · they go into your Build tray")
 	local items = if typeof(den.items) == "table" then den.items else {}
+	local glowColor = (Dens.glowsById[den.glow] or Dens.glows[1]).color
 	local function itemRow(item: typeof(Dens.items[1]))
 		local owned = items[item.id] or 0
 		local where = table.concat(item.kinds, " / ")
-		local _, button = row(
+		local frame, button = row(
 			list,
 			next(),
 			`Item{item.id}`,
@@ -543,6 +650,8 @@ local function denShopRows(list: ScrollingFrame, next: () -> number, s: any, den
 			priceStyle(item.price),
 			item.color
 		)
+		-- Its picture, made as it scrolls into view (ItemPhoto)
+		ItemPhoto.attach(pictureRow(frame), item, glowColor, list)
 		if button then
 			button.Activated:Connect(function()
 				ClientState.request("DenBuy", item.id)
@@ -786,6 +895,7 @@ local function denRows(list: ScrollingFrame, shopOnly: boolean?)
 			end)
 		end
 	end
+	denDoorRows(list, next, s, den)
 	denShopRows(list, next, s, den)
 end
 

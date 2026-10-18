@@ -53,6 +53,7 @@ local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
+local ItemPhoto = require(script.Parent.Parent.ItemPhoto)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
 local CameraController = require(script.Parent.CameraController)
@@ -1099,7 +1100,7 @@ local function tile(parent: Instance, id: string, order: number)
 	button.LayoutOrder = order
 	button.Text = ""
 	button.AutoButtonColor = false
-	button.Size = UDim2.fromOffset(112, 64)
+	button.Size = UDim2.fromOffset(156, 64)
 	button.BackgroundColor3 = if picked then Color3.fromRGB(30, 70, 90) else Ui.color.track
 	button.BackgroundTransparency = if picked then 0.05 elseif empty then 0.7 else 0.3
 	button.BorderSizePixel = 0
@@ -1110,13 +1111,18 @@ local function tile(parent: Instance, id: string, order: number)
 		if picked then 0 else 0.55,
 		if picked then 2 else 1
 	)
-	local swatch = Instance.new("Frame")
-	swatch.Size = UDim2.fromOffset(10, 10)
-	swatch.Position = UDim2.fromOffset(8, 9)
-	swatch.BackgroundColor3 = item.color
-	swatch.BorderSizePixel = 0
-	Ui.corner(swatch, UDim.new(1, 0))
-	swatch.Parent = button
+	-- Its picture (owner, 2026-10-18: the shop "needs pics of the items"), made as
+	-- the tile scrolls into view (ItemPhoto)
+	local picture = Instance.new("Frame")
+	picture.Name = "Picture"
+	picture.Size = UDim2.fromOffset(52, 52)
+	picture.Position = UDim2.fromOffset(6, 6)
+	picture.BackgroundColor3 = Color3.fromRGB(14, 30, 44)
+	picture.BackgroundTransparency = if empty then 0.6 else 0.2
+	picture.BorderSizePixel = 0
+	Ui.corner(picture, UDim.new(0, 8))
+	picture.Parent = button
+	ItemPhoto.attach(picture, item, glowColor(), trayFrame)
 	local name = Ui.label(
 		button,
 		"Name",
@@ -1124,8 +1130,8 @@ local function tile(parent: Instance, id: string, order: number)
 		Ui.FONT_BOLD,
 		13,
 		if empty then Ui.color.muted else Ui.color.text,
-		UDim2.new(1, -26, 0, 30),
-		UDim2.fromOffset(22, 3)
+		UDim2.new(1, -70, 0, 30),
+		UDim2.fromOffset(64, 4)
 	)
 	name.TextWrapped = true
 	name.TextYAlignment = Enum.TextYAlignment.Top
@@ -1136,8 +1142,8 @@ local function tile(parent: Instance, id: string, order: number)
 		Ui.FONT_SEMI,
 		11,
 		Ui.color.muted,
-		UDim2.new(1, -16, 0, 14),
-		UDim2.new(0, 8, 1, -19)
+		UDim2.new(1, -70, 0, 14),
+		UDim2.new(0, 64, 1, -19)
 	)
 	count.TextXAlignment = Enum.TextXAlignment.Left
 	button.Activated:Connect(function()

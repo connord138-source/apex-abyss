@@ -118,8 +118,8 @@ local upgrades: { Upgrade } = {
 		id = "Fins",
 		vendor = "Outfitter",
 		name = "Strong Fins",
-		blurb = "+4% top speed per level",
-		per = 0.04,
+		blurb = "+3% top speed per level",
+		per = 0.03, -- (was 0.04: a maxed LV 100 'Cuda chaining Torpedo crossed the map in 31 s; 33 s now)
 		costs = { 200, 600, 1500, 3500, 8000 },
 	},
 	{
