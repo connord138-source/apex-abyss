@@ -951,6 +951,36 @@
   "task_id": "4672369d-4ca5-4f27-96bc-e60a462a8db3",
   "type": "text_to_model"
  },
+ "ruins/RuinCapital": {
+  "status": "queued",
+  "task_id": "793a36dd-1156-425b-9774-d5d74f99e86d",
+  "type": "text_to_model"
+ },
+ "ruins/RuinGuardian": {
+  "status": "queued",
+  "task_id": "8dff3474-0388-475b-8387-e5a44128107c",
+  "type": "text_to_model"
+ },
+ "ruins/RuinHand": {
+  "status": "queued",
+  "task_id": "414e7e9e-fa66-4f82-a165-88dfc4c43dfe",
+  "type": "text_to_model"
+ },
+ "ruins/RuinHead": {
+  "status": "queued",
+  "task_id": "3d9b6a20-91f4-41d1-9dd6-c2e363974819",
+  "type": "text_to_model"
+ },
+ "ruins/RuinStele": {
+  "status": "queued",
+  "task_id": "b20d1e40-d6e2-4f0d-bcad-25e5eba9ba29",
+  "type": "text_to_model"
+ },
+ "ruins/RuinUrn": {
+  "status": "queued",
+  "task_id": "63601142-271f-49f4-b03e-ff1dfdb56925",
+  "type": "text_to_model"
+ },
  "species/Angler": {
   "credits": 30,
   "files": [

@@ -1,0 +1,46 @@
+{
+  "jobs": [
+    {
+      "name": "RuinHead",
+      "group": "ruins",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a colossal ancient statue head carved from stone, broken off cleanly at the neck, sitting upright on its flat neck break. A calm, stylized classical face with closed eyes, heavy brows, a straight nose with a chipped tip and closed lips, wearing a carved headband of wave patterns. Weathered cool blue-grey and seafoam-white marble with big cracks, a chunk missing at the back of the head, and patches of teal-green moss. Chunky faceted carving like a sunken temple ruin. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, skin, flesh, pink, peach, beige, body, shoulders"
+    },
+    {
+      "name": "RuinHand",
+      "group": "ruins",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a colossal ancient stone hand broken off a giant statue at the wrist, lying palm up with the fingers gently curled, one fingertip broken off, a rough broken wrist end. Weathered cool blue-grey marble with cracks and patches of teal-green moss. Chunky faceted carving like a sunken temple ruin. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, skin, flesh, pink, peach, beige, arm, body"
+    },
+    {
+      "name": "RuinGuardian",
+      "group": "ruins",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: an ancient sunken temple guardian statue, a crouching sea-dragon sphinx with a long finned crest down its back, a fish-like curled tail, folded fin wings and clawed front paws, sitting on a square carved stone plinth with wave carvings. Weathered blue-grey and teal-green stone with cracks and moss patches, a broken tip on one fin. Chunky faceted carving. A single object, centered, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, pink, peach, beige, skin"
+    },
+    {
+      "name": "RuinUrn",
+      "group": "ruins",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: an ancient two-handled amphora urn with a round belly and narrow neck, a chipped rim and a crack down one side, glazed deep teal with dark navy wave bands and a slate-grey foot, a few barnacles. Chunky faceted. A single object, standing upright, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, pink, peach, beige, terracotta, orange"
+    },
+    {
+      "name": "RuinCapital",
+      "group": "ruins",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a fallen ancient column capital, the carved top block of a giant marble column with two spiral scroll volutes and a square slab on top, a short stub of fluted column shaft still attached below, a big chunk broken off one corner. Weathered cool grey and seafoam-white marble with teal-green moss patches. Chunky faceted carving. A single object, centered, no base plate, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, pink, peach, beige"
+    },
+    {
+      "name": "RuinStele",
+      "group": "ruins",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: an ancient upright stone tablet stele with a rounded top, its face carved with rows of simple geometric glyphs and a wave border, standing on a small stepped stone foot, one top corner broken off and a crack across it. Dark slate blue-grey stone with the carved glyph grooves painted bright turquoise. Chunky faceted. A single object, centered, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, letters, words, pink, peach, beige"
+    }
+  ]
+}
