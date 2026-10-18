@@ -163,6 +163,24 @@
   "task_id": "8b84f648-3f49-428f-abe5-b7331a708629",
   "type": "generate_image"
  },
+ "den_concepts/DenPropsA": {
+  "credits": 10,
+  "files": [
+   "DenPropsA.png"
+  ],
+  "status": "success",
+  "task_id": "c8925072-d0b8-41cd-9354-2a628983d696",
+  "type": "generate_image"
+ },
+ "den_concepts/DenPropsB": {
+  "credits": 10,
+  "files": [
+   "DenPropsB.png"
+  ],
+  "status": "success",
+  "task_id": "d408d903-6ea8-40fd-844b-327e2f326070",
+  "type": "generate_image"
+ },
  "food/Shrimp": {
   "credits": 20,
   "files": [
@@ -811,6 +829,158 @@
   "task_id": "5264590d-c0d0-4512-b4b1-49755c9e9ed1",
   "type": "text_to_model"
  },
+ "prey2/Garibaldi": {
+  "credits": 30,
+  "files": [
+   "Garibaldi.glb",
+   "Garibaldi_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "12d7d0fe-8e67-423b-9c04-c8bd602ede1d",
+  "type": "image_to_model"
+ },
+ "prey2/GhostShrimp": {
+  "credits": 30,
+  "files": [
+   "GhostShrimp.glb",
+   "GhostShrimp_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "4c326df3-09a9-4831-92bf-75353030c572",
+  "type": "image_to_model"
+ },
+ "prey2/Lanternfish": {
+  "credits": 30,
+  "files": [
+   "Lanternfish.glb",
+   "Lanternfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "1d08eb96-a7fe-4829-a1a4-711a6cedabe5",
+  "type": "image_to_model"
+ },
+ "prey2/Lionfish": {
+  "credits": 30,
+  "files": [
+   "Lionfish.glb",
+   "Lionfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "cdd0d4ca-d3cb-4b14-b7bc-181ab8362a0d",
+  "type": "image_to_model"
+ },
+ "prey2/MahiMahi": {
+  "credits": 30,
+  "files": [
+   "MahiMahi.glb",
+   "MahiMahi_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "2c1e4c44-a6b5-4121-bc9d-1bb783699e5b",
+  "type": "image_to_model"
+ },
+ "prey2/Parrotfish": {
+  "credits": 30,
+  "files": [
+   "Parrotfish.glb",
+   "Parrotfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "6ca1152e-ee93-4893-baa5-09a5b667bd79",
+  "type": "image_to_model"
+ },
+ "prey2/WreckCod": {
+  "credits": 30,
+  "files": [
+   "WreckCod.glb",
+   "WreckCod_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "1ca43b9c-170f-4793-af5d-d32e3e22aa2b",
+  "type": "image_to_model"
+ },
+ "prey2/YellowfinTuna": {
+  "credits": 30,
+  "files": [
+   "YellowfinTuna.glb",
+   "YellowfinTuna_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "bcd0b2ad-ccda-4ff6-8e31-d4d7180bfee2",
+  "type": "image_to_model"
+ },
+ "prey2_sheets/Garibaldi": {
+  "credits": 5,
+  "files": [
+   "Garibaldi.png"
+  ],
+  "status": "success",
+  "task_id": "dc07415e-73b3-4ac6-b209-5c1c5e804832",
+  "type": "generate_image"
+ },
+ "prey2_sheets/GhostShrimp": {
+  "credits": 5,
+  "files": [
+   "GhostShrimp.png"
+  ],
+  "status": "success",
+  "task_id": "ea8ceada-9005-41fb-8974-9fafd9699c32",
+  "type": "generate_image"
+ },
+ "prey2_sheets/Lanternfish": {
+  "credits": 5,
+  "files": [
+   "Lanternfish.png"
+  ],
+  "status": "success",
+  "task_id": "11a67801-f90d-4b1e-8335-1ca817575815",
+  "type": "generate_image"
+ },
+ "prey2_sheets/Lionfish": {
+  "credits": 5,
+  "files": [
+   "Lionfish.png"
+  ],
+  "status": "success",
+  "task_id": "2c19eb95-b87f-4fd4-a34e-dbfd4d3459d9",
+  "type": "generate_image"
+ },
+ "prey2_sheets/MahiMahi": {
+  "credits": 5,
+  "files": [
+   "MahiMahi.png"
+  ],
+  "status": "success",
+  "task_id": "3b987a28-2231-471e-bf15-cc60b65c9b53",
+  "type": "generate_image"
+ },
+ "prey2_sheets/Parrotfish": {
+  "credits": 5,
+  "files": [
+   "Parrotfish.png"
+  ],
+  "status": "success",
+  "task_id": "0ccde48c-015d-4821-bf70-eb2efbc74071",
+  "type": "generate_image"
+ },
+ "prey2_sheets/WreckCod": {
+  "credits": 5,
+  "files": [
+   "WreckCod.png"
+  ],
+  "status": "success",
+  "task_id": "171dcf75-7ef6-4aaf-ac09-22440fabac38",
+  "type": "generate_image"
+ },
+ "prey2_sheets/YellowfinTuna": {
+  "credits": 5,
+  "files": [
+   "YellowfinTuna.png"
+  ],
+  "status": "success",
+  "task_id": "8e4234ee-c1da-4645-859c-a3ae84b5799c",
+  "type": "generate_image"
+ },
  "prey_concepts/PreySheetA": {
   "credits": 10,
   "files": [
@@ -818,6 +988,15 @@
   ],
   "status": "success",
   "task_id": "f971d45e-b09e-404e-b1e4-4410798b0478",
+  "type": "generate_image"
+ },
+ "prey_concepts/PreySheetB": {
+  "credits": 10,
+  "files": [
+   "PreySheetB.png"
+  ],
+  "status": "success",
+  "task_id": "801b3f41-58c4-4f39-a1eb-601f9940440d",
   "type": "generate_image"
  },
  "props/Anemone": {

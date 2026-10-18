@@ -3009,6 +3009,98 @@ def catch_golden(m):  # Golden (v13): polished gold, its own pattern engraved, r
     return done(m, gold, "satin", emit=emit, metal=np.full(m.y.shape, 0.15, np.float32), rough=rough, detail=0.4)
 
 
+def mirror_scales(m: Fish, size, radius=0.75):
+    """Overlapping scales laid round the body in its own girth, each its own flat
+    mirror (v14, Silver). Rows run nose to tail, a row's scales offset half a scale
+    from the row ahead, and each scale's front lies under the scale ahead of it (a
+    fish's own imbrication), so every scale shows its free back edge. Returns, per
+    texel: its scale's own random number (0..1, the same over the whole scale: how
+    that mirror is tilted), how far out from its scale's middle it lies (1 at the
+    free edge), and the crease behind the free edge of the scale ahead (1 right at
+    it .. 0 a sixth of a scale back), where that scale shades this one."""
+    hh, _ = girth(m)
+    U = (m.y / size).astype(np.float64)
+    A = (round_angle(m) * np.maximum(hh, 0.02) / size).astype(np.float64)
+    r0 = np.floor(U)
+
+    def nearest_in(row):
+        off = 0.5 * (row % 2)
+        col = np.round(A - off)
+        return np.hypot(U - row, A - (col + off)), col
+
+    d0, c0 = nearest_in(r0)
+    d1, c1 = nearest_in(r0 + 1)
+    mine = d0 < radius
+    row = np.where(mine, r0, r0 + 1)
+    col = np.where(mine, c0, c1)
+    out = np.where(mine, d0, d1) / radius
+    h = np.sin(row * 127.1 + col * 311.7) * 43758.5453
+    h = h - np.floor(h)
+    crease = np.where(mine, 0.0, smoothstep(radius + 0.16, radius, d0))
+    return h.astype(np.float32), out.astype(np.float32), crease.astype(np.float32)
+
+
+def catch_silver(m):  # Silver (v14): polished silver, mirror scales catching the light, steel-blue creases
+    """The commonest catch track's skin (Silver prey, 2026-10-18): Golden's polish in
+    silver. Not the plain silvery prey (a dark back over a silver belly) and not
+    Chrome's dark gunmetal: the whole fish is bright polished silver from back to
+    belly, read by its reflections as Golden is (a bright streak along the upper
+    flank, a deep steel-blue horizon band under it, a cool bounce lower down), over
+    big mirror scales, each tilted its own way, so the bands break into steps scale
+    by scale and a few scales flash bright, like a tarpon's. Cool steel-blue in the
+    creases (behind each scale's free edge, the fish's own painted creases and its
+    pattern engraved), a fine brushed grain nose to tail, a semi-gloss and a faint
+    glow so it stays silver through the water's haze. Mid-toned and cool throughout:
+    the brightest flash is a blue-white well under white (a near-white skin on a fish
+    with dark parts trips the classifier), blue above green above red everywhere (no
+    cream or beige), and little metal (metal shows the dark water, not its colour:
+    Chrome went dark that way). The moving shine is the game's: Config/Shades FX
+    `sheen` in silver."""
+    base = m.base if isinstance(m, Smooth) else m
+    sm = smooth(base)
+    L = own_lum(base)
+    lines = own_lines(base)
+    fins, _ = fin_parts(base)
+    u, _, _ = height(sm)
+    engraved = hard(smoothstep(0.4, 0.62, lines))
+    # Brushed nose to tail, as Golden (it also breaks up the big even fields the
+    # classifier reads as skin)
+    gp = np.stack([sm.ex * 0.02, base.y * 3.0, sm.ez * 40], -1).astype(np.float32)
+    grain = value_noise(gp, 1.0, 420) * 0.45 + value_noise(gp, 2.3, 421) * 0.35 + value_noise(gp, 5.1, 422) * 0.2
+    # Scales on the body only (not the face or the fins)
+    on = smoothstep(0.17, 0.25, u) * (1 - hard(fins))
+    h, out, behind = mirror_scales(sm, 0.055)
+    tilt = (h - 0.5) * on
+    # The reflections from which way the skin faces (both flanks alike), each scale's
+    # own tilt shifting them a little, so a band's edge steps from scale to scale
+    nz = base.nrm[..., 2] + 0.06 * (grain - 0.5) + 0.12 * tilt
+    streak = smoothstep(0.36, 0.5, nz) * smoothstep(0.97, 0.8, nz)
+    core = smoothstep(0.5, 0.6, nz) * smoothstep(0.86, 0.74, nz)
+    horizon = smoothstep(0.3, 0.16, nz) * smoothstep(-0.32, -0.12, nz)
+    bounce = smoothstep(-0.42, -0.62, nz)
+    rgb = mix(board(base, (0.62, 0.66, 0.72)), (0.70, 0.73, 0.78), smoothstep(0.1, 0.85, L))
+    rgb = mix(rgb, (0.20, 0.27, 0.40), horizon * 0.7)
+    rgb = mix(rgb, (0.66, 0.70, 0.77), bounce * 0.45)
+    rgb = mix(rgb, (0.81, 0.84, 0.89), streak * 0.9)
+    rgb = mix(rgb, (0.86, 0.88, 0.93), core * 0.8)
+    # Each scale a flat mirror: lighter toward its free edge (a sequin's tilt), a
+    # few tilted to the light flashing bright
+    rgb = rgb * (0.95 + 0.1 * out * on)[..., None]
+    flash = smoothstep(0.86, 0.92, h) * on * smoothstep(-0.3, 0.2, nz)
+    rgb = mix(rgb, (0.85, 0.88, 0.94), flash * 0.6)
+    # The crease behind each free edge steel-blue
+    rgb = mix(rgb, (0.20, 0.28, 0.42), behind * on * 0.55)
+    crease = smoothstep(-0.02, -0.14, base.fine)
+    rgb = mix(rgb, (0.24, 0.32, 0.46), crease * 0.5)
+    rgb = mix(rgb, (0.24, 0.31, 0.45), engraved * 0.6)
+    rgb = np.clip(rgb * (0.9 + 0.2 * grain)[..., None], 0, 1)
+    # A faint even glow, stronger in the streak and on the flashing scales
+    emit = rgb * (0.4 * (1 - 0.5 * engraved) * (1 + 0.8 * streak + 0.4 * core + 0.6 * flash))[..., None]
+    rough = 0.42 - 0.1 * streak - 0.08 * flash + 0.12 * behind * on
+    metal = np.full(base.y.shape, 0.25, np.float32)
+    return done(base, rgb, "satin", emit=emit, metal=metal, rough=rough, detail=0.4)
+
+
 def catch_glowing(m):  # Glowing: deep navy, the fish's own lines softly glowing cyan-green
     lines = own_lines(m)
     L = own_lum(m)
@@ -4208,6 +4300,7 @@ RECIPES = {
     "AngLanternKing": ang_lantern_king,
     "AngStarfall": ang_starfall,
     # Universal: the catch track and the weekly skins
+    "CatchSilver": catch_silver,
     "CatchGolden": catch_golden,
     "CatchGlowing": catch_glowing,
     "CatchCrystal": catch_crystal,

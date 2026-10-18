@@ -1,0 +1,68 @@
+{
+ "jobs": [
+  {
+   "name": "Garibaldi",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/Garibaldi.png",
+   "prompt": "The TOP of the attached image is the approved design of a GARIBALDI damselfish; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A small, deep, round-bodied damselfish, solid bright vivid orange all over (no white, pink or peach anywhere), rounded dorsal, anal and tail fins edged a slightly deeper orange, a small mouth. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "WreckCod",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/WreckCod.png",
+   "prompt": "The TOP of the attached image is the approved design of a WRECK COD; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A chunky Atlantic cod: an olive-brown back mottled with darker brown spots, a pale curved line along its side, a cool light grey belly, three rounded dorsal fins, two anal fins, a square tail and one small barbel under its chin. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Parrotfish",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/Parrotfish.png",
+   "prompt": "The TOP of the attached image is the approved design of a PARROTFISH; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A bulky, deep-bodied parrotfish in teal-green and blue with big outlined scales, a blunt teal face with green stripes round the eye, a pale blue-white beak of fused teeth, blue-edged fins and a crescent tail. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "YellowfinTuna",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/YellowfinTuna.png",
+   "prompt": "The TOP of the attached image is the approved design of a YELLOWFIN TUNA; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A sleek, thick torpedo-shaped tuna: a dark steel-blue back, bright silver sides and belly with a thin yellow stripe along the flank, a long curved bright yellow second dorsal fin and anal fin, a row of small yellow finlets before the tail, and a stiff, deep crescent tail. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "MahiMahi",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/MahiMahi.png",
+   "prompt": "The TOP of the attached image is the approved design of a MAHI-MAHI (dolphinfish); the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A long, flattened fish with a tall blunt square forehead, one long dark blue-green dorsal fin running from head to tail, a gold-yellow body shading to green on the back with small blue-green speckles, a yellow belly and a deeply forked tail. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Lionfish",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/Lionfish.png",
+   "prompt": "The TOP of the attached image is the approved design of a LIONFISH; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A compact lionfish with bold vertical bands of deep rust-orange and dark charcoal, a crest of long separate striped spines along its back, large fanned striped pectoral fins spread out to the sides like wings, a rounded dark tail fin and small tentacles over the eye. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "GhostShrimp",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/GhostShrimp.png",
+   "prompt": "The TOP of the attached image is the approved design of a GHOST SHRIMP; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A small swimming shrimp: a long segmented body held out straight with the tail fan spread behind it, an opaque cool blue-grey shell (not see-through) with lighter blue-grey edges, glowing bright teal tips on its thin legs, its tail fan and its two long antennae, small black eyes. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One shrimp alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat white background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Lanternfish",
+   "group": "prey2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey2_refs/Lanternfish.png",
+   "prompt": "The TOP of the attached image is the approved design of a LANTERNFISH; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A small slim deep-sea fish: a dark navy-blue body with a slightly lighter blue belly, a blunt head, big round eyes with a cyan ring, two neat rows of round glowing cyan light spots along its lower flank and belly, small dark fins and a forked tail. Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  }
+ ]
+}

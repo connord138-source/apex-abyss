@@ -1,0 +1,52 @@
+{
+ "jobs": [
+  {
+   "name": "Garibaldi",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/Garibaldi.png"
+  },
+  {
+   "name": "WreckCod",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/WreckCod_top.png"
+  },
+  {
+   "name": "Parrotfish",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/Parrotfish.png"
+  },
+  {
+   "name": "YellowfinTuna",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/YellowfinTuna_top.png"
+  },
+  {
+   "name": "MahiMahi",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/MahiMahi.png"
+  },
+  {
+   "name": "Lionfish",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/Lionfish.png"
+  },
+  {
+   "name": "GhostShrimp",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/GhostShrimp.png"
+  },
+  {
+   "name": "Lanternfish",
+   "group": "prey2",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey2_sheets/Lanternfish.png"
+  }
+ ]
+}
