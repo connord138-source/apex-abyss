@@ -74,7 +74,7 @@ local function bounds(model: Model): (Vector3, Vector3)
 	return (low + high) / 2, high - low
 end
 
-local function photo(entry: Pending)
+local function photo(entry: Pending): boolean
 	local holder = entry.holder
 	local item = entry.item
 	local frame = Instance.new("ViewportFrame")
@@ -105,6 +105,7 @@ local function photo(entry: Pending)
 	local distance = radius / math.sin(math.rad(FOV / 2)) * 0.92
 	camera.CFrame = CFrame.lookAt(center + from.Unit * distance, center)
 	frame.Parent = holder
+	return true
 end
 
 local function inView(entry: Pending): boolean

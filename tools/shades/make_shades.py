@@ -3002,7 +3002,7 @@ def catch_golden(m):  # Golden (v13): polished gold, its own pattern engraved, r
     # the gold's own colour, which comes out green (v10). The polish is a semi-gloss,
     # glossier in the streak: a full gloss mirrored the teal water at the edges and
     # went lime there too
-    rough = np.full(m.y.shape, 0.42, np.float32) - 0.1 * streak
+    rough = np.full(m.y.shape, 0.48, np.float32) - 0.1 * streak
     return done(m, gold, "satin", emit=emit, metal=np.full(m.y.shape, 0.15, np.float32), rough=rough, detail=0.4)
 
 
