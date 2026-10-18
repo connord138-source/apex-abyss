@@ -1288,7 +1288,7 @@ local FX: { [string]: FxSet } = {
 	AngLanternKing = { fx = { "crown", "embers" }, color = C(255, 200, 80), color2 = C(255, 150, 40) },
 	DrownedPearl = { fx = { "pearls", "bubbles" }, color = C(225, 220, 255), color2 = C(190, 230, 255) },
 	-- Mythic
-	Prismatic = { fx = { "rainbowRim", "rainbow", "stardust" }, color = C(255, 255, 255) },
+	Prismatic = { fx = { "rainbowRim", "shimmer", "rainbow", "stardust" }, color = C(255, 255, 255) },
 	Nebula = { fx = { "nebula", "stardust" }, color = C(170, 110, 255), color2 = C(80, 200, 255) },
 	Void = { fx = { "ring", "vortex", "ink" }, color = C(160, 80, 255), color2 = C(20, 10, 40) },
 	Exotic = { fx = { "tropical", "bubbles" }, color = C(80, 230, 200) },

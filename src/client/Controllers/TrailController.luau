@@ -5,6 +5,13 @@
 -- fast, full on a dash (over its top speed). Your own fish reads SwimController's
 -- velocity; other fish the velocity their root replicates. Particles are left in
 -- the water where they're shed, so they hang behind the fish as it swims.
+--
+-- Drawn about twice as present as the same presets on a skin (playtest 2026-10-17:
+-- at LV 40 every trail read small and faint): particles `SIZE` times bigger, ribbons
+-- `WIDE` times wider, denser on a dash. Colours that must hold their own against the
+-- blue water (fire, ink, the rainbow) are drawn mostly blended rather than added: an
+-- added orange or red on blue water turns grey-blue or violet, the way Fire Wake
+-- went grey on a dash and the rainbow read teal to violet.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -15,6 +22,9 @@ local Fx = require(ReplicatedStorage.Shared.Fx)
 local Size = require(ReplicatedStorage.Shared.Size)
 local SwimController = require(script.Parent.SwimController)
 
+-- A storm's lightning: points behind the tail joined by bolts
+type Arc = { points: { Attachment }, beams: { Beam } }
+
 type Entry = {
 	player: Player,
 	root: BasePart,
@@ -22,14 +32,20 @@ type Entry = {
 	length: number,
 	holder: Attachment, -- at the tail
 	emitters: { ParticleEmitter },
-	ribbon: Trail?,
+	ribbons: { Trail },
 	flicker: boolean, -- a storm's ribbon crackles
+	arcs: { Arc },
+	nextArc: number,
+	lit: boolean, -- an arc may be showing
+	extras: { Instance }, -- made on the root (the arcs' points and bolts)
 }
 
 local TrailController = {}
 
 local entries: { [Model]: Entry } = {}
 local FAR = 320 -- studs from the camera past which nothing is shed
+local SIZE = 2 -- particles, × a skin's
+local WIDE = 1.4 -- ribbons, × their old width
 
 local function lengthOf(character: Model): number
 	local length = character:GetAttribute("Length")
@@ -41,6 +57,9 @@ local function forget(character: Model)
 	if entry then
 		entries[character] = nil
 		entry.holder:Destroy()
+		for _, made in entry.extras do
+			made:Destroy()
+		end
 	end
 end
 
@@ -63,52 +82,111 @@ local function build(player: Player, character: Model)
 	holder.Parent = root
 	local c, c2 = trail.color, trail.color2
 	local emitters: { ParticleEmitter } = {}
-	local function emit(preset: Fx.Preset, rate: number, color: ColorSequence?)
-		local e = Fx.emitter(holder, preset, L, c, c2, rate)
+	local function emit(
+		preset: Fx.Preset,
+		rate: number,
+		color: ColorSequence?,
+		size: number?
+	): ParticleEmitter
+		local e = Fx.emitter(holder, preset, L, c, c2, rate, size or SIZE)
 		if color then
 			e.Color = color
 		end
 		e.Enabled = false
 		table.insert(emitters, e)
+		return e
 	end
-	local ribbon: Trail? = nil
-	local function band(width: number, lifetime: number, color: ColorSequence)
+	local ribbons: { Trail } = {}
+	-- A ribbon `width` lengths across, standing up (or lying flat)
+	local function band(width: number, lifetime: number, color: ColorSequence, flat: boolean?): Trail
+		local half = width * WIDE * L * 0.5
+		local across = if flat then Vector3.new(half, 0, 0) else Vector3.new(0, half, 0)
 		local a0 = Instance.new("Attachment")
 		a0.Name = "BoostTrail0"
-		a0.Position = Vector3.new(0, width * L * 0.5, 0)
+		a0.Position = across
 		a0.Parent = holder
 		local a1 = Instance.new("Attachment")
 		a1.Name = "BoostTrail1"
-		a1.Position = Vector3.new(0, -width * L * 0.5, 0)
+		a1.Position = -across
 		a1.Parent = holder
-		local made = Fx.ribbon(holder, a0, a1, lifetime, color, Fx.keys({ 0, 0.2, 0.6, 0.55, 1, 1 }))
+		local made = Fx.ribbon(holder, a0, a1, lifetime, color, Fx.keys({ 0, 0.15, 0.6, 0.5, 1, 1 }))
 		made.Enabled = false
-		ribbon = made
+		table.insert(ribbons, made)
+		return made
 	end
+	local arcs: { Arc } = {}
+	local extras: { Instance } = {}
 	local style = trail.style
 	if style == "bubbles" then
-		emit("bubbles", 4)
+		emit("bubbles", 3.6)
 	elseif style == "glitter" then
-		emit("glints", 3)
-		emit("gold", 1.2)
+		-- Glints flicking off, gold flakes falling and twinkles in both colours
+		emit("glints", 2)
+		emit("gold", 1)
+		emit("stardust", 1)
 	elseif style == "flame" then
-		emit("flame", 1)
-		emit("embers", 1)
+		-- Orange-red to the end of its life, fading out (never a smoke stage)
+		local hot = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, c:Lerp(Color3.new(1, 1, 1), 0.35)),
+			ColorSequenceKeypoint.new(0.4, c),
+			ColorSequenceKeypoint.new(1, c2),
+		})
+		local fire = emit("flame", 1.2, hot, 1.8)
+		fire.LightEmission = 0.45
+		fire.Brightness = 2.4
+		fire.Transparency = Fx.keys({ 0, 0.05, 0.5, 0.2, 1, 1 })
+		local sparks = emit("embers", 1.2, ColorSequence.new(c, c2))
+		sparks.LightEmission = 0.6
 	elseif style == "rainbow" then
-		band(0.22, 0.65, Fx.rainbow(0.7))
-		emit("stardust", 1.5, Fx.rainbow(0.6))
+		-- Two ribbons crossed, so it reads from the side and from above
+		for _, flat in { false, true } do
+			local made = band(0.22, 0.65, Fx.rainbow(0.75), flat)
+			made.LightEmission = 0.35
+			made.Brightness = 2
+		end
+		emit("stardust", 1.6, Fx.rainbow(0.6), 2.2)
 	elseif style == "storm" then
-		band(0.1, 0.35, ColorSequence.new(c2, c))
-		emit("sparks", 2.5)
+		local charged = band(0.1, 0.35, ColorSequence.new(c2, c))
+		charged.Brightness = 2
+		emit("sparks", 2.5, nil, 2.2)
+		-- Lightning crackling off the tail (re-struck in `strike`)
+		local bolt = ColorSequence.new(Color3.new(1, 1, 1), c)
+		for _ = 1, 2 do
+			local points: { Attachment } = {}
+			local beams: { Beam } = {}
+			for i = 1, 4 do
+				local point = Instance.new("Attachment")
+				point.Name = "BoostArc"
+				point.Position = holder.Position
+				point.Parent = root
+				points[i] = point
+				table.insert(extras, point)
+			end
+			for i = 1, 3 do
+				local beam = Fx.beam(root, points[i], points[i + 1], L * 0.035, L * 0.035, bolt)
+				beam.Name = "BoostArc"
+				beam.Brightness = 2.5
+				beam.Enabled = false
+				beams[i] = beam
+				table.insert(extras, beam)
+			end
+			table.insert(arcs, { points = points, beams = beams })
+		end
 	elseif style == "stardust" then
-		emit("stardust", 2)
-		emit("nebula", 1.2)
+		emit("stardust", 2, nil, 2.2)
+		emit("nebula", 1.2, nil, 1.3)
 	elseif style == "frost" then
-		band(0.14, 0.5, ColorSequence.new(c, c2))
-		emit("frost", 1.2)
-		emit("crystal", 1)
+		local made = band(0.14, 0.5, ColorSequence.new(c, c2))
+		made.LightEmission = 0.7
+		made.Brightness = 1.6
+		emit("frost", 1.2, nil, 1.6)
+		emit("crystal", 1.2)
 	elseif style == "ink" then
-		emit("ink", 1.6)
+		-- A lit violet-indigo cloud: glowing at first, deepening as it spreads
+		local ink = emit("ink", 1.2, ColorSequence.new(c2, c), 1.6)
+		ink.LightEmission = 0.3
+		ink.LightInfluence = 0.25
+		ink.Transparency = Fx.keys({ 0, 1, 0.1, 0.2, 0.6, 0.4, 1, 1 })
 	end
 	entries[character] = {
 		player = player,
@@ -117,9 +195,40 @@ local function build(player: Player, character: Model)
 		length = L,
 		holder = holder,
 		emitters = emitters,
-		ribbon = ribbon,
+		ribbons = ribbons,
 		flicker = style == "storm",
+		arcs = arcs,
+		nextArc = 0,
+		lit = false,
+		extras = extras,
 	}
+end
+
+-- A storm's arcs jump somewhere new behind the tail (every 0.06-0.12 s), each lit
+-- on most strikes, more often the faster it goes; `k` 0 puts them out
+local function strike(entry: Entry, k: number)
+	local L = entry.length
+	for _, arc in entry.arcs do
+		local on = k > 0 and math.random() < 0.35 + 0.35 * k
+		for _, beam in arc.beams do
+			beam.Enabled = on
+		end
+		if on then
+			local n = #arc.points
+			local reach = L * (0.5 + math.random() * 0.9)
+			local endX = (math.random() - 0.5) * L * 0.5
+			local endY = (math.random() - 0.5) * L * 0.5
+			for i, point in arc.points do
+				local f = (i - 1) / (n - 1)
+				local jag = if i == 1 then L * 0.06 elseif i == n then 0 else L * 0.18
+				point.Position = Vector3.new(
+					endX * f + (math.random() - 0.5) * jag,
+					endY * f + (math.random() - 0.5) * jag,
+					L * 0.42 + reach * f
+				)
+			end
+		end
+	end
 end
 
 local function watch(player: Player)
@@ -143,6 +252,7 @@ end
 
 local function step()
 	local camera = Workspace.CurrentCamera
+	local now = os.clock()
 	for character, entry in entries do
 		if entry.root.Parent == nil or character.Parent == nil then
 			forget(character)
@@ -166,15 +276,20 @@ local function step()
 			e.Enabled = on
 			if on then
 				local base = e:GetAttribute("Rate")
-				e.Rate = (if typeof(base) == "number" then base else 6) * (0.25 + 0.75 * k)
+				-- (a fifth at the first, a fifth over its own rate on a dash)
+				e.Rate = (if typeof(base) == "number" then base else 6) * (0.2 + k)
 			end
 		end
-		local ribbon = entry.ribbon
-		if ribbon then
+		for _, ribbon in entry.ribbons do
 			ribbon.Enabled = on
 			if on and entry.flicker then
 				ribbon.Transparency = Fx.keys({ 0, if math.random() < 0.3 then 0.7 else 0.1, 1, 1 })
 			end
+		end
+		if #entry.arcs > 0 and ((on and now >= entry.nextArc) or (not on and entry.lit)) then
+			entry.nextArc = now + 0.06 + math.random() * 0.06
+			entry.lit = on
+			strike(entry, if on then k else 0)
 		end
 	end
 end

@@ -8,26 +8,32 @@
 --
 --   swirls    ribbons spiralling round the body from head to tail (Undertow, Jade)
 --   ring      an accretion ring circling the body's middle (Void)
---   aurora    long curtains streaming off the back (Aurora)
+--   aurora    curtains of light waving over the back, streaming off it (Aurora)
 --   currents  dark current ribbons along both flanks (Abyssal Current)
 --   foam      white water ribbons off the pectorals (Riptide)
 --   comet     a wide glowing tail (Comet)
 --   rainbow   a rainbow ribbon off the tail (Prismatic)
---   halo      a ring of light over the head, turning (Divine, Lantern King's crown)
+--   halo      a ring of light over the head, turning (Divine)
+--   crown     a spiked gold band seated on the head (Lantern King)
 --   rays      soft light rays fanning up over the head (Divine)
 --   sunburst  rays turning round the body (Sunburst)
 --   arcs      lightning crawling over the body in bursts (Thunder)
 --   rim       an outline in the effect colour; rainbowRim cycles through the hues
+--             over a faint holographic fill
 --   anything else is a Shared/Fx particle preset emitted from the body (mist,
---   stardust, nebula, vortex, gold, embers, drips, crystal, ...)
+--   stardust, nebula, vortex, gold, embers, drips, crystal, shimmer, ...)
 --
 -- Ribbons sway a little on their own, so they draw even while the fish holds still.
+-- Past top speed their trails shorten, so a dash draws about the streak a cruise
+-- does (playtest 2026-10-17: Undertow's swirls stretched into long zig-zags that
+-- read like lightning on a dash).
 -- None of this draws in a ViewportFrame (Roblox draws no particles, trails or beams
 -- there), so the menus' fish show only the skin.
 local Workspace = game:GetService("Workspace")
 
 local Fx = require(script.Parent.Fx)
 local ShadesConfig = require(script.Parent.Config.Shades)
+local Size = require(script.Parent.Size)
 
 local SkinFx = {}
 
@@ -42,6 +48,9 @@ type Ribbon = {
 	radial: boolean, -- the ribbon's width points out from the body (else up)
 	phase: number,
 	sway: number,
+	lifetime: number, -- its trail's at a cruise
+	keep: number, -- the least share of that kept on a dash
+	scale: number, -- the share it has now
 }
 
 type Orbiter = {
@@ -50,9 +59,20 @@ type Orbiter = {
 	trail: Trail,
 	phase: number,
 	last: number,
+	lifetime: number,
+	scale: number,
+	fade: number, -- how far it's faded out, past top speed
 }
 
 type Arc = { points: { Attachment }, beams: { Beam } }
+
+-- A curtain of light standing over the back (Aurora)
+type Curtain = { a0: Attachment, a1: Attachment, beam: Beam, at: number, phase: number }
+
+-- Where a crown sits on a fish's head, in its unit box (nose at z -0.5, the box's
+-- middle at 0, as Cosmetics' ANCHORS): `z` along the body, `y` the head's top there,
+-- `radius` and `tilt` (radians, its top leaning back)
+type Seat = { z: number, y: number, radius: number, tilt: number }
 
 export type Live = {
 	core: BasePart,
@@ -61,7 +81,15 @@ export type Live = {
 	swirls: { Orbiter },
 	ring: { Orbiter },
 	ribbons: { Ribbon },
-	halo: { points: { Attachment }, radius: number, lift: number, crown: boolean }?,
+	curtains: { Curtain },
+	halo: {
+		points: { Attachment },
+		tips: { { tip: Attachment, base: number } },
+		radius: number,
+		lift: number,
+		crown: boolean,
+		seat: Seat?,
+	}?,
 	rays: { points: { Attachment }, tips: { Attachment } }?,
 	sunburst: { center: Attachment, tips: { Attachment } }?,
 	arcs: { Arc },
@@ -70,6 +98,18 @@ export type Live = {
 	rainbowRim: boolean,
 	color: Color3,
 	color2: Color3,
+	speed: number, -- studs a second, eased
+	lastPos: Vector3?,
+	lastT: number,
+}
+
+-- Seats measured from the rigged FBX (assets/fbx/species). The Angler's box top
+-- (0.37 over the middle) is its lure stalk's arch, so a crown set on the box's height
+-- floated over the lure (playtest 2026-10-17: 3.8 studs over the root of a 7.5-stud
+-- fish); the head's own top is 0.20-0.21 between the stalk's foot (z -0.2) and the
+-- dorsal fin (z -0.04), its flat crest about 0.08 to each side.
+local SEATS: { [string]: Seat } = {
+	Angler = { z = -0.11, y = 0.212, radius = 0.08, tilt = 0.1 }, -- (tilt about 6°)
 }
 
 local function colorsOf(shade: ShadesConfig.Shade): (Color3, Color3)
@@ -100,13 +140,28 @@ local function spineOf(holder: Instance): { Bone }
 	return list
 end
 
+-- The fish's own frame: its root (the box's middle), facing its heading and banked
+-- with it (the body Model has no PrimaryPart, so its own pivot doesn't turn with
+-- the fish)
+local function frameOf(body: Model): CFrame
+	local holder = body.Parent
+	if holder and holder:IsA("Model") then
+		local root: Instance? = holder.PrimaryPart
+			or holder:FindFirstChild("HumanoidRootPart")
+			or holder:FindFirstChild("Root")
+		if root and root:IsA("BasePart") then
+			return root.CFrame
+		end
+	end
+	return body:GetPivot()
+end
+
 -- A point on the body's middle line `f` of the way from head to tail, and the way
 -- forward there
-local function spineAt(live: Live, body: Model, f: number, L: number): (Vector3, Vector3)
+local function spineAt(live: Live, frame: CFrame, f: number, L: number): (Vector3, Vector3)
 	local bones = live.bones
-	local pivot = body:GetPivot()
 	if #bones < 2 then
-		return pivot.Position + pivot.LookVector * (0.5 - f) * L, pivot.LookVector
+		return frame.Position + frame.LookVector * (0.5 - f) * L, frame.LookVector
 	end
 	-- The bones run over the middle of the body: stretch them to the ends
 	local span = (#bones - 1) * math.clamp((f - 0.08) / 0.84, 0, 1)
@@ -114,7 +169,7 @@ local function spineAt(live: Live, body: Model, f: number, L: number): (Vector3,
 	local a = bones[i].TransformedWorldCFrame.Position
 	local b = bones[i + 1].TransformedWorldCFrame.Position
 	local forward = a - b
-	forward = if forward.Magnitude > 1e-4 then forward.Unit else pivot.LookVector
+	forward = if forward.Magnitude > 1e-4 then forward.Unit else frame.LookVector
 	local base = a:Lerp(b, span - (i - 1))
 	-- Past the end bones, along the line they make
 	if f < 0.08 then
@@ -123,6 +178,33 @@ local function spineAt(live: Live, body: Model, f: number, L: number): (Vector3,
 		base -= forward * (f - 0.92) * L
 	end
 	return base, forward
+end
+
+-- The point on the bone line at `z` along the unit box (nose -0.5, tail +0.5) as the
+-- bones lie now, and the way forward there; the box's middle line without bones
+local function boneAt(live: Live, frame: CFrame, z: number, L: number): (Vector3, Vector3)
+	local target = z * L
+	local previous: Vector3? = nil
+	local previousZ = 0
+	for _, bone in live.bones do
+		local p = bone.TransformedWorldCFrame.Position
+		local along = frame:PointToObjectSpace(p).Z
+		if previous and along > previousZ and along >= target and previousZ <= target then
+			local forward = previous - p
+			return previous:Lerp(p, (target - previousZ) / (along - previousZ)),
+				if forward.Magnitude > 1e-4 then forward.Unit else frame.LookVector
+		end
+		previous, previousZ = p, along
+	end
+	return frame * Vector3.new(0, 0, target), frame.LookVector
+end
+
+-- `forward` made square to `up` (with a fallback), and the right hand there
+local function square(forward: Vector3, up: Vector3, frame: CFrame): (Vector3, Vector3)
+	local flat = forward - up * forward:Dot(up)
+	flat = if flat.Magnitude > 1e-4 then flat.Unit else frame.LookVector
+	local right = flat:Cross(up)
+	return flat, if right.Magnitude > 1e-4 then right.Unit else frame.RightVector
 end
 
 -- The body's half width and half height at `f` (thinner toward the tail)
@@ -139,20 +221,25 @@ end
 local function surface(
 	live: Live,
 	body: Model,
+	frame: CFrame,
 	f: number,
 	angle: number,
 	out: number,
 	L: number
 ): (Vector3, Vector3)
-	local center, forward = spineAt(live, body, f, L)
-	local up0 = body:GetPivot().UpVector
-	local right = forward:Cross(up0)
-	right = if right.Magnitude > 1e-4 then right.Unit else body:GetPivot().RightVector
+	local center, forward = spineAt(live, frame, f, L)
+	local right = forward:Cross(frame.UpVector)
+	right = if right.Magnitude > 1e-4 then right.Unit else frame.RightVector
 	local up = right:Cross(forward).Unit
 	local rw, rh = radiiAt(body, f, L)
 	local dir = up * math.cos(angle) + right * math.sin(angle)
 	local reach = up * math.cos(angle) * rh + right * math.sin(angle) * rw
 	return center + reach + dir * out * L, dir
+end
+
+-- An orbiter's trail, faded out `fade` of the way (0 as Fx.ribbon draws it)
+local function orbitFade(fade: number): NumberSequence
+	return Fx.keys({ 0, 0.15 + 0.7 * fade, 0.6, 0.5 + 0.4 * fade, 1, 1 })
 end
 
 local function ribbon(
@@ -165,11 +252,11 @@ local function ribbon(
 	color: ColorSequence,
 	fade: NumberSequence?,
 	radial: boolean?
-)
+): Ribbon
 	local a0 = Fx.attachment(live.core, "FxRibbon0")
 	local a1 = Fx.attachment(live.core, "FxRibbon1")
 	local trail = Fx.ribbon(live.core, a0, a1, lifetime, color, fade)
-	table.insert(live.ribbons, {
+	local made: Ribbon = {
 		a0 = a0,
 		a1 = a1,
 		trail = trail,
@@ -180,14 +267,22 @@ local function ribbon(
 		radial = radial == true,
 		phase = math.random() * 10,
 		sway = 0.06,
-	})
+		lifetime = lifetime,
+		keep = 0.5,
+		scale = 1,
+	}
+	table.insert(live.ribbons, made)
+	return made
 end
 
 local function orbiter(live: Live, list: { Orbiter }, color: ColorSequence, lifetime: number, phase: number)
 	local a0 = Fx.attachment(live.core, "FxOrbit0")
 	local a1 = Fx.attachment(live.core, "FxOrbit1")
-	local trail = Fx.ribbon(live.core, a0, a1, lifetime, color)
-	table.insert(list, { a0 = a0, a1 = a1, trail = trail, phase = phase, last = 0 })
+	local trail = Fx.ribbon(live.core, a0, a1, lifetime, color, orbitFade(0))
+	table.insert(
+		list,
+		{ a0 = a0, a1 = a1, trail = trail, phase = phase, last = 0, lifetime = lifetime, scale = 1, fade = 0 }
+	)
 end
 
 -- Builds a shade's effects on a dressed body (`holder` is the mesh model, or the
@@ -211,6 +306,7 @@ function SkinFx.build(
 		swirls = {},
 		ring = {},
 		ribbons = {},
+		curtains = {},
 		halo = nil,
 		rays = nil,
 		sunburst = nil,
@@ -220,6 +316,9 @@ function SkinFx.build(
 		rainbowRim = false,
 		color = c,
 		color2 = c2,
+		speed = 0,
+		lastPos = nil,
+		lastT = 0,
 	}
 	local L = length
 	local pair = ColorSequence.new(c, c2)
@@ -238,17 +337,37 @@ function SkinFx.build(
 				ColorSequenceKeypoint.new(0.5, c2),
 				ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 90, 255)),
 			})
+			-- Curtains standing over the back, waving: on a still fish the trailing
+			-- ribbons alone were thin streaks (playtest 2026-10-17)
+			for i, at in { 0.3, 0.5, 0.7 } do
+				local a0 = Fx.attachment(core, "FxCurtain0")
+				local a1 = Fx.attachment(core, "FxCurtain1")
+				local beam = Fx.beam(
+					core,
+					a0,
+					a1,
+					L * 0.26,
+					L * 0.38,
+					curtain,
+					Fx.keys({ 0, 0.4, 0.2, 0.28, 0.65, 0.5, 1, 1 })
+				)
+				beam.Segments = 12
+				beam.Brightness = 1.6
+				table.insert(live.curtains, { a0 = a0, a1 = a1, beam = beam, at = at, phase = i * 1.9 })
+			end
+			-- and ribbons streaming off them as it swims
 			for i, at in { 0.28, 0.5, 0.72 } do
-				ribbon(
+				local made = ribbon(
 					live,
 					at,
 					(i - 2) * 0.35,
 					0.02,
-					0.24,
+					0.3,
 					1.3,
 					curtain,
-					Fx.keys({ 0, 0.35, 0.5, 0.55, 1, 1 })
+					Fx.keys({ 0, 0.3, 0.5, 0.5, 1, 1 })
 				)
+				made.trail.Brightness = 1.4
 			end
 		elseif kind == "currents" then
 			for _, side in { math.pi * 0.5, -math.pi * 0.5 } do
@@ -262,7 +381,8 @@ function SkinFx.build(
 			end
 			ribbon(live, 0.98, 0, 0.01, 0.12, 0.45, white)
 		elseif kind == "comet" then
-			ribbon(
+			-- (its tail is the point: it keeps more of it on a dash)
+			local tail = ribbon(
 				live,
 				1.0,
 				0,
@@ -272,6 +392,7 @@ function SkinFx.build(
 				ColorSequence.new(Color3.new(1, 1, 1), c),
 				Fx.keys({ 0, 0.05, 0.4, 0.4, 1, 1 })
 			)
+			tail.keep = 0.7
 		elseif kind == "rainbow" then
 			ribbon(live, 1.0, 0, 0, 0.26, 0.9, Fx.rainbow(0.6), Fx.keys({ 0, 0.15, 0.6, 0.45, 1, 1 }))
 		elseif kind == "halo" or kind == "crown" then
@@ -282,22 +403,28 @@ function SkinFx.build(
 				points[i] = Fx.attachment(core, "FxHalo")
 			end
 			local gold = ColorSequence.new(c)
+			local band = if crown then L * 0.03 else L * 0.028
 			for i = 1, count do
-				Fx.beam(core, points[i], points[i % count + 1], L * 0.028, L * 0.028, gold)
+				Fx.beam(core, points[i], points[i % count + 1], band, band, gold)
 			end
+			local tips: { { tip: Attachment, base: number } } = {}
 			if crown then
 				-- Points on every other link
 				for i = 1, count, 2 do
 					local tip = Fx.attachment(core, "FxCrownTip")
-					tip:SetAttribute("Base", i)
-					Fx.beam(core, points[i], tip, L * 0.03, L * 0.004, gold)
+					Fx.beam(core, points[i], tip, L * 0.032, L * 0.004, gold)
+					table.insert(tips, { tip = tip, base = i })
 				end
 			end
+			-- A crown sits on the head where its fish has a seat measured
+			local plan = body:GetAttribute("MeshPlan")
 			live.halo = {
 				points = points,
+				tips = tips,
 				radius = if crown then 0.11 else 0.16,
 				lift = if crown then 0.1 else 0.2,
 				crown = crown,
+				seat = if crown and typeof(plan) == "string" then SEATS[plan] else nil,
 			}
 		elseif kind == "rays" then
 			local points: { Attachment } = {}
@@ -346,17 +473,22 @@ function SkinFx.build(
 				table.insert(live.arcs, { points = points, beams = beams })
 			end
 		elseif kind == "rim" or kind == "rainbowRim" then
+			-- A rainbow outline alone was lost on Prismatic's rainbow body (playtest
+			-- 2026-10-17): it draws solid over a faint fill of the opposite hue, a
+			-- holographic wash that drifts round the wheel (with Fx "shimmer")
+			local rainbow = kind == "rainbowRim"
 			local rim = Instance.new("Highlight")
 			rim.Name = "FxRim"
 			rim.Adornee = holder
-			rim.FillTransparency = 1
+			rim.FillTransparency = if rainbow then 0.84 else 1
+			rim.FillColor = c
 			rim.OutlineColor = c
-			rim.OutlineTransparency = 0.25
+			rim.OutlineTransparency = if rainbow then 0 else 0.25
 			rim.DepthMode = Enum.HighlightDepthMode.Occluded
 			rim:SetAttribute("ShadeEffect", true)
 			rim.Parent = core
 			live.rim = rim
-			live.rainbowRim = kind == "rainbowRim"
+			live.rainbowRim = rainbow
 		else
 			Fx.emitter(core, kind :: Fx.Preset, L, c, c2)
 		end
@@ -370,12 +502,39 @@ function SkinFx.step(live: Live, body: Model, t: number)
 	local drawn = body:GetAttribute("Applied")
 	local L = if typeof(drawn) == "number" then drawn else live.length
 	local camera = Workspace.CurrentCamera
-	local pivot = body:GetPivot()
-	if camera and (camera.CFrame.Position - pivot.Position).Magnitude > 260 then
+	local frame = frameOf(body)
+	if camera and (camera.CFrame.Position - frame.Position).Magnitude > 260 then
+		live.lastPos = nil
 		return
+	end
+	-- Its speed, from its moves between steps (eased): past top speed the trails
+	-- shorten so a dash draws about the streak a cruise does, and the swirls fade
+	-- a little
+	local top = math.max(Size.topSpeed(live.length), 1)
+	local last = live.lastPos
+	local dt = t - live.lastT
+	if last and dt > 1e-3 and dt < 0.5 then
+		local speed = math.min((frame.Position - last).Magnitude / dt, top * 4)
+		live.speed += (speed - live.speed) * math.min(dt * 8, 1)
+	end
+	live.lastPos = frame.Position
+	live.lastT = t
+	local over = top / math.max(live.speed, 1e-3)
+	local orbitScale = math.clamp(over, 0.15, 1)
+	local fade = math.floor(math.clamp((live.speed / top - 1.1) / 0.6, 0, 1) * 6 + 0.5) / 10
+	local function orbit(o: Orbiter)
+		if math.abs(o.scale - orbitScale) > 0.02 then
+			o.scale = orbitScale
+			o.trail.Lifetime = o.lifetime * orbitScale
+		end
+		if o.fade ~= fade then
+			o.fade = fade
+			o.trail.Transparency = orbitFade(fade)
+		end
 	end
 	-- Swirls: head to tail in 2.4 s, once round every 1.1 s
 	for _, o in live.swirls do
+		orbit(o)
 		local f = (t / 2.4 + o.phase) % 1
 		if f < o.last then
 			o.trail:Clear()
@@ -383,69 +542,96 @@ function SkinFx.step(live: Live, body: Model, t: number)
 		o.last = f
 		local at = 0.06 + f * 0.86
 		local angle = t * (2 * math.pi / 1.1) + o.phase * 2 * math.pi
-		local p, dir = surface(live, body, at, angle, 0.06, L)
+		local p, dir = surface(live, body, frame, at, angle, 0.06, L)
 		o.a0.WorldPosition = p
 		o.a1.WorldPosition = p + dir * L * 0.06
 	end
 	-- The ring: twice round the middle a second, tilted a little
 	for _, o in live.ring do
+		orbit(o)
 		local angle = t * 2 * math.pi * 0.9 + o.phase * 2 * math.pi
-		local p, dir = surface(live, body, 0.45 + 0.05 * math.sin(angle), angle, 0.22, L)
+		local p, dir = surface(live, body, frame, 0.45 + 0.05 * math.sin(angle), angle, 0.22, L)
 		o.a0.WorldPosition = p
 		o.a1.WorldPosition = p + dir * L * 0.08
 	end
+	local up = frame.UpVector
 	for _, r in live.ribbons do
+		local scale = math.clamp(over * 1.25, r.keep, 1)
+		if math.abs(r.scale - scale) > 0.02 then
+			r.scale = scale
+			r.trail.Lifetime = r.lifetime * scale
+		end
 		local swing = math.sin(t * 2.2 + r.phase) * r.sway * L
-		local p, dir = surface(live, body, r.at, r.side, r.out, L)
-		local up = pivot.UpVector
+		local p, dir = surface(live, body, frame, r.at, r.side, r.out, L)
 		local across = if r.radial then dir else up
-		local sideways = pivot.RightVector * swing + up * math.cos(t * 1.7 + r.phase) * r.sway * 0.6 * L
+		local sideways = frame.RightVector * swing + up * math.cos(t * 1.7 + r.phase) * r.sway * 0.6 * L
 		r.a0.WorldPosition = p + sideways
 		r.a1.WorldPosition = p + sideways + across * r.width * L
 	end
+	-- Curtains: from the back up and a little back, waving (each end's curve runs
+	-- along the body, so the sheet bends like cloth)
+	for _, curtain in live.curtains do
+		local foot = surface(live, body, frame, curtain.at, 0, 0, L)
+		local _, forward = spineAt(live, frame, curtain.at, L)
+		local ahead = square(forward, up, frame)
+		local rise = L * (0.48 + 0.07 * math.sin(t * 0.7 + curtain.phase))
+		local crest = foot + up * rise - ahead * L * 0.1
+		curtain.a0.WorldCFrame = CFrame.fromMatrix(foot, ahead, up)
+		curtain.a1.WorldCFrame = CFrame.fromMatrix(crest, ahead, up)
+		curtain.beam.CurveSize0 = math.sin(t * 1.1 + curtain.phase) * L * 0.16
+		curtain.beam.CurveSize1 = math.sin(t * 1.1 + curtain.phase + 1.5) * L * 0.16
+	end
 	local halo = live.halo
 	if halo then
-		local center, forward = spineAt(live, body, 0.18, L)
-		local _, rh = radiiAt(body, 0.18, L)
-		local up = pivot.UpVector
-		local right = forward:Cross(up)
-		right = if right.Magnitude > 1e-4 then right.Unit else pivot.RightVector
-		local middle = center + up * (rh + halo.lift * L)
+		local seat = halo.seat
+		local middle: Vector3
+		local forward: Vector3
+		if seat then
+			-- Seated on the head's top, riding the bones (it turns with the head)
+			local p, along = boneAt(live, frame, seat.z, L)
+			middle = p + up * (seat.y * L - frame:PointToObjectSpace(p).Y)
+			forward = along
+		else
+			local center, along = spineAt(live, frame, 0.18, L)
+			local _, rh = radiiAt(body, 0.18, L)
+			middle = center + up * (rh + halo.lift * L)
+			forward = along
+		end
+		local ahead, right = square(forward, up, frame)
+		-- A seat tips the ring back by its tilt: the front rises, the top leans back
+		local tilt = if seat then seat.tilt else 0
+		local axis = up * math.cos(tilt) - ahead * math.sin(tilt)
+		ahead = ahead * math.cos(tilt) + up * math.sin(tilt)
+		local radius = (if seat then seat.radius else halo.radius) * L
 		local count = #halo.points
-		local spin = t * 0.6
+		-- A halo turns; a seated crown holds still with a point at the back, none
+		-- at the front (where the Angler's lure stalk rises)
+		local spin = if seat then 1.5 * math.pi else t * 0.6
 		for i, a in halo.points do
 			local angle = spin + (i - 1) / count * 2 * math.pi
-			a.WorldPosition = middle + (right * math.cos(angle) + forward * math.sin(angle)) * halo.radius * L
+			a.WorldPosition = middle + (right * math.cos(angle) + ahead * math.sin(angle)) * radius
 		end
-		if halo.crown then
-			for _, tip in live.core:GetChildren() do
-				if tip.Name == "FxCrownTip" and tip:IsA("Attachment") then
-					local base = tip:GetAttribute("Base")
-					local from = halo.points[if typeof(base) == "number" then base else 1]
-					tip.WorldPosition = from.WorldPosition + up * L * 0.07
-				end
-			end
+		local height = if seat then L * 0.065 else L * 0.07
+		for _, entry in halo.tips do
+			entry.tip.WorldPosition = halo.points[entry.base].WorldPosition + axis * height
 		end
 	end
 	local rays = live.rays
 	if rays then
-		local center = spineAt(live, body, 0.2, L)
+		local center = spineAt(live, frame, 0.2, L)
 		local _, rh = radiiAt(body, 0.2, L)
-		local up = pivot.UpVector
 		local base = center + up * rh * 0.9
 		for i, a in rays.points do
 			local angle = t * 0.25 + (i - 1) / #rays.points * 2 * math.pi
-			local lean = (pivot.RightVector * math.cos(angle) + pivot.LookVector * math.sin(angle)) * 0.45
+			local lean = (frame.RightVector * math.cos(angle) + frame.LookVector * math.sin(angle)) * 0.45
 			a.WorldPosition = base
 			rays.tips[i].WorldPosition = base + (up + lean).Unit * L * (0.55 + 0.1 * math.sin(t * 1.3 + i))
 		end
 	end
 	local sun = live.sunburst
 	if sun then
-		local center, forward = spineAt(live, body, 0.45, L)
-		local up = pivot.UpVector
-		local right = forward:Cross(up)
-		right = if right.Magnitude > 1e-4 then right.Unit else pivot.RightVector
+		local center, forward = spineAt(live, frame, 0.45, L)
+		local _, right = square(forward, up, frame)
 		sun.center.WorldPosition = center
 		for i, tip in sun.tips do
 			local angle = t * 0.35 + (i - 1) / #sun.tips * 2 * math.pi
@@ -472,7 +658,7 @@ function SkinFx.step(live: Live, body: Model, t: number)
 				for i, a in arc.points do
 					local k = (i - 1) / (n - 1)
 					local jitter = if i == 1 or i == n then 0.01 else 0.04 + math.random() * 0.1
-					local p = surface(live, body, f1 + (f2 - f1) * k, s1 + (s2 - s1) * k, jitter, L)
+					local p = surface(live, body, frame, f1 + (f2 - f1) * k, s1 + (s2 - s1) * k, jitter, L)
 					a.WorldPosition = p
 				end
 			end
@@ -480,7 +666,9 @@ function SkinFx.step(live: Live, body: Model, t: number)
 	end
 	local rim = live.rim
 	if rim and live.rainbowRim then
-		rim.OutlineColor = Color3.fromHSV((t * 0.15) % 1, 0.55, 1)
+		local hue = (t * 0.15) % 1
+		rim.OutlineColor = Color3.fromHSV(hue, 0.85, 1)
+		rim.FillColor = Color3.fromHSV((hue + 0.5) % 1, 0.45, 1)
 	end
 end
 

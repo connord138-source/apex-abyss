@@ -5,6 +5,12 @@
 -- stars drifting off a nebula, dark grit sucked into a void, foam streaking off a
 -- riptide. Textures come from Config/Textures `fx*` once they're uploaded
 -- (assets/textures/fx_*.png), and from Roblox's own particle images until then.
+--
+-- Sized to read in a still at 15-25 studs in the shallow haze (playtest 2026-10-17:
+-- at LV 40 gold dust, glints, crystal flashes, embers, ink, bubbles and falling stars
+-- were a few specks). The glows carry `Brightness` over 1: an emitted colour is
+-- blended toward the water's haze with distance like anything else, and a brighter
+-- one keeps its colour further out.
 local Config = require(script.Parent.Config)
 
 local Fx = {}
@@ -63,16 +69,28 @@ export type Preset =
 	| "sparks"
 	| "pearls"
 	| "whirls"
+	| "shimmer"
+
+-- A size sequence `k` times bigger (its envelopes too)
+local function grown(sequence: NumberSequence, k: number): NumberSequence
+	local list = {}
+	for _, point in sequence.Keypoints do
+		table.insert(list, NumberSequenceKeypoint.new(point.Time, point.Value * k, point.Envelope * k))
+	end
+	return NumberSequence.new(list)
+end
 
 -- One emitter of a preset, parented to `parent` (a part: it emits from the part's
--- box; an attachment: from a point). `rate` scales its usual rate.
+-- box; an attachment: from a point). `rate` scales its usual rate and `size` its
+-- particles (the boost trails draw theirs bigger than a skin's).
 function Fx.emitter(
 	parent: Instance,
 	preset: Preset,
 	L: number,
 	c: Color3,
 	c2: Color3?,
-	rate: number?
+	rate: number?,
+	size: number?
 ): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
 	e.Name = `Fx{preset}`
@@ -106,11 +124,13 @@ function Fx.emitter(
 		e.Transparency = keys({ 0, 1, 0.2, 0.4, 1, 1 })
 	elseif preset == "stardust" then
 		-- Pinpricks that twinkle twice and fade
-		base = 12
+		base = 14
+		e.Brightness = 1.6
 		e.Lifetime = NumberRange.new(1.4, 2.4)
 		e.Speed = NumberRange.new(L * 0.02, L * 0.1)
 		e.Drag = 1
-		e.Size = keys({ 0, 0, 0.2, L * 0.06, 0.4, L * 0.015, 0.6, L * 0.06, 1, 0 })
+		e.Rotation = NumberRange.new(0, 90)
+		e.Size = keys({ 0, 0, 0.2, L * 0.085, 0.4, L * 0.025, 0.6, L * 0.085, 1, 0 })
 	elseif preset == "nebula" then
 		-- Coloured gas clouds drifting round the fish
 		e.Texture = texture("fxMist", BUILT_IN.smoke)
@@ -147,77 +167,92 @@ function Fx.emitter(
 		e.LightEmission = 0.6
 	elseif preset == "glints" then
 		-- Bright points flicking off it
-		base = 7
+		base = 10
+		e.Brightness = 1.8
 		e.Lifetime = NumberRange.new(0.6, 1.2)
 		e.Speed = NumberRange.new(L * 0.2, L * 0.6)
 		e.Drag = 2
-		e.Size = keys({ 0, 0, 0.3, L * 0.06, 1, 0 })
+		e.Rotation = NumberRange.new(0, 90)
+		e.Size = keys({ 0, 0, 0.3, L * 0.095, 1, 0 })
 	elseif preset == "crystal" then
-		-- Hard star flashes on the facets, gone in a blink
+		-- Hard star flashes on the facets, gone in a blink (about seven at once)
 		e.Texture = texture("fxStar", BUILT_IN.sparkle)
-		base = 8
+		base = 13
+		e.Brightness = 2.2
 		e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
-		e.Lifetime = NumberRange.new(0.25, 0.45)
+		e.Lifetime = NumberRange.new(0.35, 0.6)
 		e.Speed = NumberRange.new(0, L * 0.02)
 		e.Rotation = NumberRange.new(0, 90)
-		e.Size = keys({ 0, 0, 0.4, L * 0.14, 1, 0 })
+		e.Size = keys({ 0, 0, 0.35, L * 0.19, 1, 0 })
 	elseif preset == "gold" then
-		-- Gold dust glittering down off it
-		base = 18
+		-- Gold flakes glittering down off it, turning as they fall
+		base = 22
+		e.Brightness = 2
 		e.Lifetime = NumberRange.new(1, 1.6)
 		e.Speed = NumberRange.new(L * 0.02, L * 0.06)
 		e.Acceleration = Vector3.new(0, -L * 0.2, 0)
 		e.Drag = 0.8
-		e.Size = keys({ 0, L * 0.03, 0.5, L * 0.025, 1, 0 })
-		e.Transparency = keys({ 0, 0, 0.7, 0.2, 1, 1 })
+		e.Rotation = NumberRange.new(0, 90)
+		e.RotSpeed = NumberRange.new(-120, 120)
+		e.Size = keys({ 0, L * 0.06, 0.25, L * 0.075, 0.5, L * 0.045, 1, 0 })
+		e.Transparency = keys({ 0, 0, 0.7, 0.15, 1, 1 })
 	elseif preset == "tropical" then
 		-- Many-coloured motes, a reef's worth
-		base = 10
 		e.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 196, 40)),
 			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 230, 160)),
 			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(70, 160, 255)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 110, 255)),
 		})
+		base = 14
+		e.Brightness = 1.7
 		e.Lifetime = NumberRange.new(1.2, 2)
 		e.Speed = NumberRange.new(L * 0.04, L * 0.12)
 		e.Drag = 1
-		e.Size = keys({ 0, 0, 0.3, L * 0.05, 1, 0 })
+		e.Rotation = NumberRange.new(0, 90)
+		e.Size = keys({ 0, 0, 0.3, L * 0.09, 1, 0 })
 	elseif preset == "starfall" then
-		-- Stars dropping off it like a meteor shower
-		base = 9
+		-- Stars dropping off it like a meteor shower, drawn out a little as they fall
+		base = 12
+		e.Brightness = 2
 		e.Lifetime = NumberRange.new(0.9, 1.4)
 		e.Speed = NumberRange.new(0, L * 0.05)
 		e.Acceleration = Vector3.new(0, -L * 0.9, 0)
-		e.Size = keys({ 0, L * 0.07, 0.6, L * 0.04, 1, 0 })
+		e.Size = keys({ 0, L * 0.12, 0.6, L * 0.075, 1, 0 })
+		e.Squash = keys({ 0, 0, 0.3, 0.5, 1, 0.8 })
 	elseif preset == "embers" then
 		-- Sparks rising off a fire, yellow cooling to red
-		base = 14
+		base = 18
+		e.Brightness = 2.2
 		e.Lifetime = NumberRange.new(0.8, 1.6)
 		e.Speed = NumberRange.new(L * 0.05, L * 0.2)
 		e.Acceleration = Vector3.new(0, L * 0.5, 0)
 		e.Drag = 1
-		e.Size = keys({ 0, L * 0.035, 1, 0 })
+		e.Size = keys({ 0, L * 0.065, 0.6, L * 0.045, 1, 0 })
 	elseif preset == "drips" then
 		-- Molten drops falling off the belly
-		base = 6
+		base = 8
+		e.Brightness = 1.8
 		e.Lifetime = NumberRange.new(0.6, 0.9)
 		e.Speed = NumberRange.new(0, L * 0.03)
 		e.Acceleration = Vector3.new(0, -L * 1.4, 0)
-		e.Size = keys({ 0, L * 0.04, 1, L * 0.02 })
+		e.Size = keys({ 0, L * 0.065, 1, L * 0.035 })
 	elseif preset == "ink" then
-		-- Dark ink curling off and hanging in the water
+		-- Ink curling off and hanging in the water: thick and faintly lit in its
+		-- colour, deepening toward `c2` as it spreads (unlit dark ink at 45% was lost
+		-- in the blue shallows, playtest 2026-10-17)
 		e.Texture = texture("fxMist", BUILT_IN.smoke)
-		base = 8
-		e.LightEmission = 0
-		e.LightInfluence = 0.35
+		base = 10
+		e.Color = ColorSequence.new(c, c:Lerp(c2 or c, 0.45))
+		e.LightEmission = 0.25
+		e.LightInfluence = 0.2
 		e.Lifetime = NumberRange.new(1.8, 2.8)
 		e.Speed = NumberRange.new(L * 0.03, L * 0.1)
 		e.Drag = 1
 		e.RotSpeed = NumberRange.new(-30, 30)
 		e.Rotation = NumberRange.new(0, 360)
-		e.Size = keys({ 0, L * 0.1, 1, L * 0.5 })
-		e.Transparency = keys({ 0, 1, 0.15, 0.45, 1, 1 })
+		e.Size = keys({ 0, L * 0.14, 1, L * 0.55 })
+		e.Transparency = keys({ 0, 1, 0.12, 0.28, 0.6, 0.45, 1, 1 })
 	elseif preset == "motes" then
 		-- Soft lights drifting up slowly
 		base = 7
@@ -230,15 +265,15 @@ function Fx.emitter(
 	elseif preset == "bubbles" then
 		-- Small bubbles rising
 		e.Texture = texture("fxBubble", BUILT_IN.sparkle)
-		base = 8
-		e.LightEmission = 0.5
-		e.LightInfluence = 0.7
+		base = 10
+		e.LightEmission = 0.6
+		e.LightInfluence = 0.6
 		e.Lifetime = NumberRange.new(1.2, 2)
 		e.Speed = NumberRange.new(L * 0.02, L * 0.08)
 		e.Acceleration = Vector3.new(0, L * 0.45, 0)
 		e.Drag = 2
-		e.Size = keys({ 0, L * 0.015, 0.3, L * 0.04, 1, L * 0.045 })
-		e.Transparency = keys({ 0, 0.3, 0.7, 0.45, 1, 1 })
+		e.Size = keys({ 0, L * 0.022, 0.3, L * 0.058, 1, L * 0.065 })
+		e.Transparency = keys({ 0, 0.2, 0.7, 0.35, 1, 1 })
 	elseif preset == "frost" then
 		-- Rime and cold haze sinking off it
 		e.Texture = texture("fxMist", BUILT_IN.smoke)
@@ -292,6 +327,23 @@ function Fx.emitter(
 		e.Acceleration = Vector3.new(0, L * 0.12, 0)
 		e.Size = keys({ 0, 0, 0.2, L * 0.07, 1, L * 0.06 })
 		e.Transparency = keys({ 0, 1, 0.2, 0.1, 0.85, 0.2, 1, 1 })
+	elseif preset == "shimmer" then
+		-- A shell of rainbow sparkles twinkling over the body, held to it, each one
+		-- running through the hues as it lives (Prismatic: an outline alone was lost
+		-- on a rainbow body, playtest 2026-10-17)
+		e.Texture = texture("fxStar", BUILT_IN.sparkle)
+		base = 10
+		e.Brightness = 1.6
+		e.LockedToPart = true
+		e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		e.Color = Fx.rainbow(0.55)
+		e.Lifetime = NumberRange.new(0.6, 1)
+		e.Speed = NumberRange.new(0, 0)
+		e.Rotation = NumberRange.new(0, 90)
+		e.Size = keys({ 0, 0, 0.25, L * 0.085, 0.5, L * 0.03, 0.75, L * 0.085, 1, 0 })
+	end
+	if size and size ~= 1 then
+		e.Size = grown(e.Size, size)
 	end
 	e.Rate = base * (rate or 1)
 	e:SetAttribute("Rate", e.Rate)

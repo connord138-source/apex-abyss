@@ -46,9 +46,11 @@ local list: { Trail } = {
 		name = "Ink Cloud",
 		tier = "Rare",
 		style = "ink",
-		color = C(60, 40, 110),
-		color2 = C(140, 100, 255),
-		blurb = "Dark ink billowing out behind you, edged in violet.",
+		-- Lit violet-indigo, not dark: dark ink was lost in the blue water (playtest
+		-- 2026-10-17). It glows `color2` as it's shed and deepens to `color`
+		color = C(96, 70, 205),
+		color2 = C(160, 130, 255),
+		blurb = "Glowing indigo ink billowing out behind you.",
 	},
 	{
 		id = "Fire",
