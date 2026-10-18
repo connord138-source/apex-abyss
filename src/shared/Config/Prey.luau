@@ -112,7 +112,14 @@ local list: { PreyDef } = {
 				spread = 0.55,
 				pathRadius = { 10, 22 },
 			},
-			{ band = DEEP, angles = OPEN_BLUE, schools = 12, perSchool = 16, depth = { 140, 420 }, spread = 1.4 },
+			{
+				band = DEEP,
+				angles = OPEN_BLUE,
+				schools = 12,
+				perSchool = 16,
+				depth = { 140, 420 },
+				spread = 1.4,
+			},
 			{
 				band = OUTER,
 				angles = REEF,
@@ -185,7 +192,14 @@ local list: { PreyDef } = {
 			-- (2026-10-18) every biome past the kelp has its snappers
 			{ band = OUTER, angles = REEF, schools = 10, perSchool = 6, depth = { 10, 70 } },
 			{ band = OUTER, angles = WRECKS, schools = 5, perSchool = 5, depth = { 10, 60 } },
-			{ band = DEEP, angles = OPEN_BLUE, schools = 12, perSchool = 8, depth = { 140, 400 }, spread = 1.3 },
+			{
+				band = DEEP,
+				angles = OPEN_BLUE,
+				schools = 12,
+				perSchool = 8,
+				depth = { 140, 400 },
+				spread = 1.3,
+			},
 			{ band = DEEP, angles = RUINS, schools = 12, perSchool = 6, depth = { 20, 120 } },
 			{ band = DEEP, angles = VENTS, schools = 12, perSchool = 6, depth = { 30, 160 } },
 			{ band = TRENCH, trench = true, schools = 5, perSchool = 6, depth = { 30, 200 } },
@@ -221,7 +235,14 @@ local list: { PreyDef } = {
 				pathRadius = { 12, 24 },
 			},
 			{ band = OUTER, angles = REEF, schools = 5, perSchool = 3, depth = { 8, 50 } },
-			{ band = DEEP, angles = RUINS, schools = 10, perSchool = 1, depth = { 6, 50 }, pathRadius = { 14, 28 } },
+			{
+				band = DEEP,
+				angles = RUINS,
+				schools = 10,
+				perSchool = 1,
+				depth = { 6, 50 },
+				pathRadius = { 14, 28 },
+			},
 			{ band = DEEP, angles = OPEN_BLUE, schools = 6, perSchool = 3, depth = { 150, 400 } },
 			{ band = DEEP, angles = VENTS, schools = 12, perSchool = 2, depth = { 15, 90 } },
 			{ band = DEEP, angles = { 70, 123 }, schools = 4, perSchool = 2, depth = { 15, 100 } }, -- the Trench's rim

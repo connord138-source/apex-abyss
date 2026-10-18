@@ -889,7 +889,10 @@ local function step(dt: number)
 			local range = (if rarities[index] then math.max(fish.range, RARE_RANGE) else fish.range) * detail
 			local cull = 0
 			if visual.suckFrom == nil and visual.chase == nil and far > range * (1 - FADE_SHARE) then
-				cull = math.min(math.floor((far - range * (1 - FADE_SHARE)) / (range * FADE_SHARE) * 10 + 0.5) / 10, 1)
+				cull = math.min(
+					math.floor((far - range * (1 - FADE_SHARE)) / (range * FADE_SHARE) * 10 + 0.5) / 10,
+					1
+				)
 			end
 			if cull ~= visual.cull then
 				setCull(visual, cull)

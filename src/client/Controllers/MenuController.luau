@@ -2469,6 +2469,13 @@ local function dailyTile(
 	body.TextXAlignment = Enum.TextXAlignment.Center
 	body.TextYAlignment = Enum.TextYAlignment.Center
 	body.TextWrapped = true
+	-- (a long line, "1 SECOND CHANCE", shrinks to fit instead of running off)
+	body.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.Name = "Fit"
+	fit.MaxTextSize = 11
+	fit.MinTextSize = 7
+	fit.Parent = body
 	local foot = Ui.label(
 		frame,
 		"State",
@@ -2687,7 +2694,10 @@ function MenuController.openDaily()
 					ClientState.request("ClaimGift")
 				end
 			)
-			tile.body.TextSize = 10
+			local fit = tile.body:FindFirstChild("Fit")
+			if fit and fit:IsA("UITextSizeConstraint") then
+				fit.MaxTextSize = 10
+			end
 			giftTiles[i] = tile
 		end
 		-- Premium's perks, for those without it (never a wall: the gifts come anyway)

@@ -170,7 +170,11 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 		for k = 1, perSchool do
 			local offset = Vector3.zero
 			if perSchool > 1 then
-				offset = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(-0.45, 0.45) * deep, rng:NextNumber(-1, 1))
+				offset = Vector3.new(
+					rng:NextNumber(-1, 1),
+					rng:NextNumber(-0.45, 0.45) * deep,
+					rng:NextNumber(-1, 1)
+				)
 				if zone.round and offset.Magnitude > 1 then
 					offset = offset.Unit -- a ball, not a box
 				end

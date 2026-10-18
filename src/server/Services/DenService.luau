@@ -97,18 +97,108 @@ local OLD_SLOTS: { [string]: { surface: string, at: Vector3 } } = {
 
 -- Placements made before the private interiors (owner, 2026-10-16): the main
 -- storey kept its height, but the lower storeys' decks went down from -34 and -70
--- to -54 and -114. Each thing moves with its storey; anything that no longer fits
--- the bigger rooms goes back to the tray (it's still owned).
+-- to -54 and -114. Each thing moves with its storey.
 local OLD_DECKS = { 1, -34, -70 }
+
+-- v4 (owner, 2026-10-18: "Den needs to be bigger ... Rug is stupid small"): every
+-- room grew by `growth` across and along (Config/Dens `layout`) and the things grew
+-- to a real scale. Each thing moves out with its walls (x and z times `growth`; the
+-- storeys kept their heights); one that stood on another goes onto that thing's new,
+-- higher top; one now overhanging the deck's edge is nudged back onto it (up to 10
+-- studs). What still doesn't fit goes back to the tray (it's still owned).
+local function growPlacements(den: DenRecord)
+	local growth = Dens.layout.growth
+	local oldY: { [number]: number } = {}
+	for _, placement in den.placed do
+		oldY[placement.uid] = placement.y
+		placement.x = snap(placement.x * growth)
+		placement.z = snap(placement.z * growth)
+	end
+	-- Stacks: lowest first, each onto the top of the highest thing it stood on
+	local order = table.clone(den.placed)
+	table.sort(order, function(a, b)
+		return oldY[a.uid] < oldY[b.uid]
+	end)
+	for _, placement in order do
+		local storey = DenSpace.storeyAt(placement.y)
+		if placement.s ~= "floor" or storey == nil then
+			continue
+		end
+		local deck = DenSpace.storey(storey).deck
+		if oldY[placement.uid] <= deck + 0.3 then
+			placement.y = deck
+			continue
+		end
+		local best: DenSpace.Placed? = nil
+		for _, other in den.placed do
+			local item = Dens.itemsById[other.id]
+			if
+				other.uid ~= placement.uid
+				and other.s == "floor"
+				and item ~= nil
+				and oldY[other.uid] < oldY[placement.uid] - 0.05
+				and (best == nil or oldY[other.uid] > oldY[(best :: DenSpace.Placed).uid])
+				and DenSpace.resting(den.level, { other }, Vector3.new(placement.x, other.y + item.size.Y, placement.z)).ok
+			then
+				best = other
+			end
+		end
+		if best then
+			local item = Dens.itemsById[best.id]
+			placement.y = snap(best.y + item.size.Y)
+		else
+			placement.y = deck
+		end
+	end
+	-- Things on the deck that now hang over its edge come back onto it
+	for _, placement in den.placed do
+		local item = Dens.itemsById[placement.id]
+		local storey = DenSpace.storeyAt(placement.y)
+		if item == nil or placement.s ~= "floor" or storey == nil then
+			continue
+		end
+		if placement.y > DenSpace.storey(storey).deck + 0.3 then
+			continue
+		end
+		local fits = function(x: number, z: number): boolean
+			return DenSpace.footprintOnDeck(den.level, storey, item, x, z, placement.r, 0.4)
+		end
+		if fits(placement.x, placement.z) then
+			continue
+		end
+		local found = false
+		for step = 1, 10 do
+			for _, way in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } } do
+				local x, z = placement.x + way[1] * step, placement.z + way[2] * step
+				if fits(x, z) then
+					placement.x, placement.z = snap(x), snap(z)
+					found = true
+					break
+				end
+			end
+			if found then
+				break
+			end
+		end
+	end
+end
+
 local function relayout(den: DenRecord)
-	if (den.layout or 2) >= 3 then
+	local mark = den.layout or 2
+	if mark >= Dens.layout.current then
 		return
 	end
-	den.layout = 3
-	for _, placement in den.placed do
-		local old = if placement.y >= -8 then 1 elseif placement.y >= -52 then 2 else 3
-		placement.y += DenSpace.storey(old).deck - OLD_DECKS[old]
+	den.layout = Dens.layout.current
+	if mark < 3 then
+		for _, placement in den.placed do
+			local old = if placement.y >= -8 then 1 elseif placement.y >= -52 then 2 else 3
+			placement.y += DenSpace.storey(old).deck - OLD_DECKS[old]
+		end
 	end
+	if mark < 4 then
+		growPlacements(den)
+	end
+	-- Anything that no longer fits goes back to the tray
 	for _ = 1, 3 do
 		local kept = {}
 		for _, placement in den.placed do
@@ -548,8 +638,9 @@ end
 
 -- Admin (PC 2026-10-16 round 2, D7: Studio had no old saves to load): turns this
 -- den's record back into one saved before the private interiors (every placed thing
--- at its storey's old height, no layout mark), then loads it the way an old save
--- loads (relayout). Returns a line for the admin panel.
+-- at its storey's old height, pulled in to the old rooms' size, no layout mark),
+-- then loads it the way an old save loads (relayout). Returns a line for the admin
+-- panel.
 function DenService.simulateOldSave(player: Player): string
 	local data = DataService.get(player)
 	if data == nil then
@@ -558,12 +649,15 @@ function DenService.simulateOldSave(player: Player): string
 	local den = data.den
 	local before = #den.placed
 	local lower = 0
+	local growth = Dens.layout.growth
 	for _, placement in den.placed do
 		local storey = DenSpace.storeyAt(placement.y) or 1
 		if storey > 1 then
 			lower += 1
 		end
 		placement.y += OLD_DECKS[storey] - DenSpace.storey(storey).deck
+		placement.x = snap(placement.x / growth)
+		placement.z = snap(placement.z / growth)
 	end
 	den.layout = nil
 	relayout(den)
