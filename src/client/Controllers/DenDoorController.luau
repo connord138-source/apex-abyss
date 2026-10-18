@@ -34,6 +34,10 @@ local FADE_OUT = 0.45
 local WAIT_MOST = 2.5 -- seconds to wait for the move before clearing anyway
 local LOAD_MOST = 25 -- seconds to wait for the place to stream in before clearing anyway
 local SETTLE = 0.6 -- the place must be there this long (Terrain meshes after it arrives)
+-- Coming out on the plaza, longer: Roblox first draws the newly arrived hub Terrain
+-- coarse, which closes the doorway's arch over (a dark blue rock face, though rays
+-- already pass), and meshes it finely only 1.5–3.6 s after arriving (PC 2026-10-18, LD2)
+local SETTLE_HUB = 3.4
 local PRESTREAM_REACH = 36 -- studs from a portal at which the far side is asked for
 local COOLDOWN = 1.2 -- after a move, before another portal takes the fish
 
@@ -146,11 +150,12 @@ local function go(request: string, index: number?)
 		Input.locked = true
 		local since: number? = nil
 		local shown = false
+		local settle = if door then SETTLE_HUB else SETTLE
 		started = os.clock()
 		while os.clock() - started < LOAD_MOST do
 			if arrivedAt(door) then
 				since = since or os.clock()
-				if os.clock() - (since :: number) >= SETTLE then
+				if os.clock() - (since :: number) >= settle then
 					break
 				end
 			else
