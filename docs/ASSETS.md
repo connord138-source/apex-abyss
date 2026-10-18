@@ -268,9 +268,11 @@ this looks rough"):
   and a darker shadow olive, and a full gloss mirrored the teal water at the edges. The
   moving part is the game's: Config/Shades `FX` gives it SkinFx `sheen` (a band of warm
   light, a light riding it and gold sparks running head to tail every 2.5 s, fine
-  glitter). Measured in the `water=0.35 strength=0.65` preview: hue about as warm as
-  v10, the brightest 5% lifted (Cuda 0.54 -> 0.60, Nibbler 0.56 -> 0.61), the mean
-  unchanged.
+  glitter). Measured in the `water=0.35 strength=0.65` preview: the median hue as warm
+  as v10's or warmer on every fish, the brightest 5% lifted (0.53-0.57 -> 0.58-0.62),
+  the mean unchanged. The bands leave bigger even fields than v10's, so the brushed
+  grain is stronger, with a finer third octave: at v10's strength the Reef Shark's
+  packed image scored 0.23 on the classifier (one tile, round its eye), now 0.03.
 - **X-Ray** (the Cuda's Epic) is an anatomical skeleton (`xray` and its helpers
   `outline`, `curve`, `bones_along`, `fin_rays`): laid out on the body's own side
   silhouette (the midpoint of its top and bottom, fins left out, so the column runs
