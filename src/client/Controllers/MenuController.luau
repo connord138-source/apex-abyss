@@ -3926,11 +3926,16 @@ local function goalCard(parent: Frame, index: number, rarity: CatchRarity, s: an
 			rarity.color
 		)
 	end
-	if owned then
-		local chip = Ui.chip(visual, "Owned", "✓ EVERY FISH", Ui.color.safe, 18)
-		chip.Position = UDim2.fromOffset(6, 6)
-		chip.ZIndex = visual.ZIndex + 4
-	end
+	-- (once won it's every fish's, the ones to come too: said on every card)
+	local chip = Ui.chip(
+		visual,
+		"EveryFish",
+		if owned then "✓ EVERY FISH" else "FOR EVERY FISH",
+		if owned then Ui.color.safe else rarity.color,
+		18
+	)
+	chip.Position = UDim2.fromOffset(6, 6)
+	chip.ZIndex = visual.ZIndex + 4
 	Ui.label(
 		card,
 		"Title",
