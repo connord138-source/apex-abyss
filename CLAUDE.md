@@ -1119,6 +1119,25 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (`ItemPhoto`); the plaza exit hold 5 s. Weakest props for a Tripo batch: Driftwood
     Table, Pearl Pedestal, Jellyfish Lamp, Banner, Sea Glass Lantern, Bubble Column,
     Coral Lamp, Kelp Bed (concept boards first).
+  - **The Sunken Ruins rebuilt** (`src/server/Ruins.luau`, `Config/Ruins`, called at
+    the end of `WorldService.buildBiomes`; the old `ruin()` temples, plinths and
+    temple ring are gone from WorldService and `Shelf.luau`): a drowned city at 2°,
+    r 1,230 between the drop-off's sand chutes (a three-tier great temple with 16
+    fluted Ionic columns, fallen pediment, inner chamber, the god's broken legs; a
+    toppled colossal head and a giant hand; a paved avenue of columns, sea-dragon
+    guardians and glowing obelisks from a triple-arch gateway; a theatre; a sunken
+    courtyard pit 18 deep; a back quarter of houses and steles) plus 15 outlying
+    ruins and 34 boulders, overgrown, with faint cyan rune glyphs (not Latin letters,
+    no "+"). ~3,340 parts (~2,840 with the props), 12–16 lights; stone solid and in
+    `World.Biomes.Ruins` (so `Ground` covers it), decor non-colliding; big stones the
+    toon Marble/Slate, small pieces SmoothPlastic. Six Tripo hero props
+    (`ruins_glb`: RuinHead, RuinHand, RuinGuardian, RuinUrn, RuinCapital, RuinStele;
+    sha256 b28a74fe…, normals stripped, safe_colors, highest classifier 0.056) with
+    part-built stand-ins; `GLB_FRONT` in Ruins.luau for facing. Removing the old
+    ruins shifted the shared random sequence after it (Vents rubble, Trench glow,
+    plankton mats, seeps, light shafts moved). The map chart was regenerated
+    (`assets/textures/map_chart.png`, needs a re-upload). Preview:
+    `bash tools/preview/run_ruins.sh`.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
