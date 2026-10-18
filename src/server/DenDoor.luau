@@ -925,7 +925,7 @@ end
 -- of vertebrae along the top, pale lanterns hung from the ribs
 STYLES.Whalebone = function(folder: Model, site: Site): Parts
 	local frame, floor = site.frame, site.floor
-	for pair, spec in { { a = 14.4, b = 31, z = WALL_Z - 1.2 }, { a = 13.6, b = 29, z = WALL_Z - 3.4 } } do
+	for pair, spec in { { a = 16.6, b = 30, z = WALL_Z - 1.0 }, { a = 13.4, b = 28, z = WALL_Z - 3.6 } } do
 		for side = -1, 1, 2 do
 			local points: { Vector3 } = {}
 			for k = 0, 9 do
@@ -958,7 +958,7 @@ STYLES.Whalebone = function(folder: Model, site: Site): Parts
 	end
 	-- Vertebrae along the top: each a disc with a spine up and wings out
 	for k = -3, 3 do
-		local at = frame * CFrame.new(k * 1.7, 19.6 - math.abs(k) * 0.25, WALL_Z - 2.3)
+		local at = frame * CFrame.new(k * 1.7, 18.9 - math.abs(k) * 0.2, WALL_Z - 2.3)
 		Decor.pebble(folder, "Vertebra", at, Vector3.new(1.5, 1.6, 2.2), BONE)
 		part(folder, {
 			Name = "VertebraSpine",
@@ -979,7 +979,7 @@ STYLES.Whalebone = function(folder: Model, site: Site): Parts
 	local glows: { Glow } = {}
 	local pale = Color3.fromRGB(170, 240, 235)
 	for side = -1, 1, 2 do
-		lantern(glows, folder, frame * CFrame.new(side * 15.4, 2.4, WALL_Z - 4.6), -side, pale, 15)
+		lantern(glows, folder, frame * CFrame.new(side * 14.2, 2.4, WALL_Z - 4.8), -side, pale, 15)
 		if side ~= site.open then
 			Decor.kelp(folder, frame * CFrame.new(side * 17.4, floor, WALL_Z - 1.0), 3, 3.6, site.rng)
 		end
@@ -992,7 +992,7 @@ STYLES.Whalebone = function(folder: Model, site: Site): Parts
 		glow = pale,
 	}
 	return {
-		plaque = plaque(folder, frame, 24.4, WALL_Z - 2.6),
+		plaque = plaque(folder, frame, 25.2, WALL_Z - 2.6),
 		glows = glows,
 		pane = look,
 		look = {

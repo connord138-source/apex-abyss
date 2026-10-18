@@ -83,7 +83,8 @@ end
 local city = CFrame.identity
 local spots: { Spot } = {}
 local footprints: { Footprint } = {}
-local stats: Stats = { parts = 0, solid = 0, glow = 0, lights = 0, emitters = 0, props = 0, standins = 0, tidied = 0 }
+local stats: Stats =
+	{ parts = 0, solid = 0, glow = 0, lights = 0, emitters = 0, props = 0, standins = 0, tidied = 0 }
 
 -- ---------------------------------------------------------------------------
 -- Parts
@@ -227,7 +228,14 @@ local function rod(
 	return p
 end
 
-local function ball(parent: Instance, name: string, center: Vector3, diameter: number, color: Color3, solid: boolean): Part
+local function ball(
+	parent: Instance,
+	name: string,
+	center: Vector3,
+	diameter: number,
+	color: Color3,
+	solid: boolean
+): Part
 	local p = if solid
 		then stone(parent, name, Vector3.one * diameter, CFrame.new(center), color, SMOOTH)
 		else trim(parent, name, Vector3.one * diameter, CFrame.new(center), color)
@@ -347,20 +355,22 @@ end
 -- Glyphs
 -- ---------------------------------------------------------------------------
 
--- Strokes on a 2 x 2 cell (x0, y0, x1, y1): an invented script, simple and angular
+-- Strokes on a 2 x 2 cell (x0, y0, x1, y1): a rune-like script of stems, twigs,
+-- chevrons and diamonds (no crosses or plain letters: on a column a "+" read as a
+-- first-aid sign)
 local GLYPHS: { { { number } } } = {
-	{ { -1, 1, 1, 1 }, { 0, 1, 0, -1 } },
-	{ { -1, 1, -1, -1 }, { -1, -1, 1, -1 }, { 0.2, 0.3, 1, 0.3 } },
-	{ { -1, -1, -1, 1 }, { -1, 1, 1, 1 }, { 1, 1, 1, -1 } },
-	{ { -1, 1, 1, 1 }, { -1, 0, 0.6, 0 }, { -1, -1, 1, -1 } },
-	{ { 0, 1, 0, -1 }, { -1, 0.2, 1, 0.2 } },
-	{ { -1, 1, 1, -1 }, { -1, -1, 1, -1 } },
-	{ { -1, 0, 1, 0 }, { 0, 1, 0, -0.2 }, { -0.6, -1, 0.6, -1 } },
-	{ { -1, -1, 0, 1 }, { 0, 1, 1, -1 } },
-	{ { -1, 1, -1, -1 }, { 1, 1, 1, -1 }, { -1, 0, 1, 0 } },
-	{ { -0.8, 1, 0.8, 1 }, { 0.8, 1, -0.8, -1 }, { -0.8, -1, 0.8, -1 } },
-	{ { -1, -1, -1, 1 }, { -1, 0, 1, 1 }, { -1, 0, 1, -1 } },
-	{ { -1, 1, 1, 1 }, { 1, 1, 1, -1 }, { 1, -1, -0.2, -1 } },
+	{ { -0.6, -1, -0.6, 1 }, { -0.6, 1, 0.8, 0.3 }, { -0.6, 0.2, 0.8, -0.5 } },
+	{ { 0, -1, 0, 1 }, { 0, 0.2, -0.9, 1 }, { 0, 0.2, 0.9, 1 } },
+	{ { -0.9, -1, -0.2, 1 }, { -0.2, 1, 0.9, -1 } },
+	{ { -0.6, -1, -0.6, 1 }, { -0.6, 0.6, 0.6, 0 }, { 0.6, 0, -0.6, -0.6 } },
+	{ { 0, -1, 0, 1 }, { 0, 1, -0.8, 0.4 }, { 0, 1, 0.8, 0.4 } },
+	{ { -1, 0, 0, 0.8 }, { 0, 0.8, 1, 0 }, { 1, 0, 0, -0.8 }, { 0, -0.8, -1, 0 } },
+	{ { -1, 1, -1, -1 }, { 1, 1, 1, -1 }, { -1, 1, 1, -1 }, { -1, -1, 1, 1 } },
+	{ { 0, 1, 0, -1 }, { 0, 1, 0.7, 0.5 }, { 0, -1, -0.7, -0.5 } },
+	{ { -1, 0, -0.5, 0.7 }, { -0.5, 0.7, 0, 0 }, { 0, 0, 0.5, 0.7 }, { 0.5, 0.7, 1, 0 } },
+	{ { -1, -0.7, 0, 0.3 }, { 0, 0.3, 1, -0.7 }, { 0, 0.3, 0, 1 } },
+	{ { -1, 1, 0.6, 1 }, { 0.6, 1, 0.6, -1 }, { 0.6, -1, -0.3, -1 }, { -0.3, -1, -0.3, 0.2 } },
+	{ { -1, -1, 1, 1 }, { -1, 1, 0, 0 }, { 0.4, -0.6, 1, -1 } },
 }
 
 -- One glyph on a face (`face` on the stone's surface, looking out of it)
@@ -386,7 +396,7 @@ local function glyphPanel(parent: Instance, face: CFrame, cols: number, rows: nu
 	local gap = s * 0.42
 	local w = cols * s + (cols + 1) * gap
 	local h = rows * s + (rows + 1) * gap
-	trim(parent, "GlyphPanel", Vector3.new(w, h, 0.3), face * CFrame.new(0, 0, -0.05), COLORS.dark)
+	trim(parent, "GlyphPanel", Vector3.new(w, h, 0.3), face * CFrame.new(0, 0, -0.05), COLORS.inset)
 	for i = 1, cols do
 		for j = 1, rows do
 			local x = -w / 2 + gap + s / 2 + (i - 1) * (s + gap)
@@ -396,23 +406,13 @@ local function glyphPanel(parent: Instance, face: CFrame, cols: number, rows: nu
 	end
 end
 
--- A dark band round a column (`axis` at the band's middle, its up along the column)
--- with glowing glyph strokes round it
+-- A band round a column (`axis` at the band's middle, its up along the column)
+-- with glowing glyphs round it
 local function glyphRing(parent: Instance, axis: CFrame, radius: number, marks: number)
-	drum(parent, "GlyphBand", axis * CFrame.new(0, -1.2, 0), 2.4, radius, COLORS.dark, false)
+	drum(parent, "GlyphBand", axis * CFrame.new(0, -1.1, 0), 2.2, radius, COLORS.inset, false)
 	for k = 1, marks do
-		local a = (k / marks) * TAU + rng:NextNumber(-0.15, 0.15)
-		local around = axis * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -(radius + 0.02))
-		local h = rng:NextNumber(1.0, 1.8)
-		glow(parent, "Glyph", Vector3.new(GLYPH.stroke, h, 0.2), around * CFrame.new(rng:NextNumber(-0.3, 0.3), 0, 0))
-		if rng:NextNumber() < 0.6 then
-			glow(
-				parent,
-				"Glyph",
-				Vector3.new(0.9, GLYPH.stroke, 0.2),
-				around * CFrame.new(0.3, rng:NextNumber(-0.5, 0.5), 0)
-			)
-		end
+		local a = (k / marks) * TAU + rng:NextNumber(-0.12, 0.12)
+		glyph(parent, axis * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -(radius + 0.02)), 1.3)
 	end
 end
 
@@ -451,7 +451,7 @@ local function column(parent: Instance, base: CFrame, o: ColumnOpts): Vector3?
 		)
 	end
 	if o.band and o.band * h < shaft - 2 then
-		glyphRing(parent, base * CFrame.new(0, y0 + o.band * h, 0), r * 1.2, 6)
+		glyphRing(parent, base * CFrame.new(0, y0 + o.band * h, 0), r * 1.2, 3)
 	end
 	local top = y0 + shaft
 	if o.keep < 1 then
@@ -471,7 +471,14 @@ local function column(parent: Instance, base: CFrame, o: ColumnOpts): Vector3?
 	end
 	drum(parent, "Necking", base * CFrame.new(0, top - 1.8, 0), 0.8, r * 1.1, COLORS.teal, true)
 	drum(parent, "Echinus", base * CFrame.new(0, top, 0), 1.4, r * 1.3, color, true)
-	stone(parent, "Abacus", Vector3.new(r * 2.9, 1.5, r * 2.9), base * CFrame.new(0, top + 2.15, 0), color, SMOOTH)
+	stone(
+		parent,
+		"Abacus",
+		Vector3.new(r * 2.9, 1.5, r * 2.9),
+		base * CFrame.new(0, top + 2.15, 0),
+		color,
+		SMOOTH
+	)
 	for side = -1, 1, 2 do
 		rod(
 			parent,
@@ -511,7 +518,14 @@ local fallenCapital: (parent: Instance, at: Vector3, dir: Vector3, radius: numbe
 
 -- A column's drums where it fell: from `foot` (on the ground) along `dir` (flat),
 -- each one turned a little, rolled apart and sunk into the sand, its capital last
-local function fallenColumn(parent: Instance, foot: Vector3, dir: Vector3, radius: number, count: number, band: boolean?)
+local function fallenColumn(
+	parent: Instance,
+	foot: Vector3,
+	dir: Vector3,
+	radius: number,
+	count: number,
+	band: boolean?
+)
 	local along = 0
 	local side = Vector3.new(-dir.Z, 0, dir.X)
 	for i = 1, count do
@@ -523,7 +537,7 @@ local function fallenColumn(parent: Instance, foot: Vector3, dir: Vector3, radiu
 		local a, b = center - turned * (len / 2), center + turned * (len / 2)
 		lyingDrum(parent, a, b, radius, COLORS.marble)
 		if band and i == 2 then
-			glyphRing(parent, CFrame.lookAt(center, b) * CFrame.Angles(-HALF, 0, 0), radius * 1.2, 5)
+			glyphRing(parent, CFrame.lookAt(center, b) * CFrame.Angles(-HALF, 0, 0), radius * 1.2, 3)
 		end
 		spot(CFrame.new(center + Vector3.new(0, radius * 1.1, 0)), radius)
 		along += len + rng:NextNumber(0.4, 2)
@@ -539,7 +553,13 @@ local function architrave(parent: Instance, a: Vector3, b: Vector3, depth: numbe
 	local frame = CFrame.lookAt(mid, b)
 	local len = (b - a).Magnitude + depth
 	stone(parent, "Architrave", Vector3.new(depth, 4.4, len), frame * CFrame.new(0, 2.2, 0), COLORS.marble)
-	trim(parent, "Cornice", Vector3.new(depth + 1.2, 1, len + 1.2), frame * CFrame.new(0, 4.9, 0), COLORS.teal)
+	trim(
+		parent,
+		"Cornice",
+		Vector3.new(depth + 1.2, 1, len + 1.2),
+		frame * CFrame.new(0, 4.9, 0),
+		COLORS.teal
+	)
 	spot(frame * CFrame.new(0, 5.4, rng:NextNumber(-len / 3, len / 3)), 2.5)
 	if glyphs then
 		glyphPanel(
@@ -584,7 +604,13 @@ local function arch(parent: Instance, frame: CFrame, o: ArchOpts): number
 			frame * CFrame.new(x, 0.2, 0),
 			COLORS.shade
 		)
-		stone(parent, "Pier", Vector3.new(o.pier, o.spring, o.depth), frame * CFrame.new(x, o.spring / 2 + 1, 0), COLORS.marble)
+		stone(
+			parent,
+			"Pier",
+			Vector3.new(o.pier, o.spring, o.depth),
+			frame * CFrame.new(x, o.spring / 2 + 1, 0),
+			COLORS.marble
+		)
 		stone(
 			parent,
 			"Impost",
@@ -610,12 +636,18 @@ local function arch(parent: Instance, frame: CFrame, o: ArchOpts): number
 		end
 		local t = (i - 0.5) / count * math.pi
 		local key = i == math.ceil(count / 2)
-		local size = Vector3.new(ring + (if key then 0.8 else 0), math.pi * radius / count * 1.06, o.depth + (if key then 0.6 else 0))
+		local size = Vector3.new(
+			ring + (if key then 0.8 else 0),
+			math.pi * radius / count * 1.06,
+			o.depth + (if key then 0.6 else 0)
+		)
 		stone(
 			parent,
 			"Voussoir",
 			size,
-			frame * CFrame.new(math.cos(t) * radius, spring + math.sin(t) * radius, 0) * CFrame.Angles(0, 0, t),
+			frame
+				* CFrame.new(math.cos(t) * radius, spring + math.sin(t) * radius, 0)
+				* CFrame.Angles(0, 0, t),
 			if key then COLORS.teal else COLORS.marble,
 			SMOOTH
 		)
@@ -624,7 +656,12 @@ local function arch(parent: Instance, frame: CFrame, o: ArchOpts): number
 	if o.keystone then
 		local face = frame * CFrame.new(0, spring + radius, -(o.depth / 2 + 0.3))
 		glyph(parent, face, 1.8)
-		local holder = glow(parent, "KeyGlow", Vector3.new(1.6, 0.4, 1.6), frame * CFrame.new(0, spring + radius - ring / 2 - 0.3, 0))
+		local holder = glow(
+			parent,
+			"KeyGlow",
+			Vector3.new(1.6, 0.4, 1.6),
+			frame * CFrame.new(0, spring + radius - ring / 2 - 0.3, 0)
+		)
 		light(holder, 50, 1.1)
 	end
 	if not o.broken then
@@ -640,13 +677,19 @@ local function arch(parent: Instance, frame: CFrame, o: ArchOpts): number
 		spot(frame * CFrame.new(-half - o.pier / 2, crown, 0), 2.5)
 		-- its fallen voussoirs
 		for _ = 1, 4 do
-			local p = frame * Vector3.new(rng:NextNumber(half * 0.2, half * 2.2), 0, rng:NextNumber(-o.depth, o.depth))
+			local p = frame
+				* Vector3.new(rng:NextNumber(half * 0.2, half * 2.2), 0, rng:NextNumber(-o.depth, o.depth))
 			local g = floorAt(p)
 			stone(
 				parent,
 				"Fallen",
 				Vector3.new(ring, ring * 1.3, o.depth * rng:NextNumber(0.6, 1)),
-				CFrame.new(g + Vector3.new(0, ring * 0.4, 0)) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, TAU), rng:NextNumber(-0.5, 0.5)),
+				CFrame.new(g + Vector3.new(0, ring * 0.4, 0))
+					* CFrame.Angles(
+						rng:NextNumber(-0.5, 0.5),
+						rng:NextNumber(0, TAU),
+						rng:NextNumber(-0.5, 0.5)
+					),
 				COLORS.marble,
 				SMOOTH
 			)
@@ -670,7 +713,7 @@ export type WallOpts = {
 -- the openings (sills, piers, the courses over doors and windows), a teal lintel
 -- and sill trim every opening, and a ragged top where it has broken down
 local function wall(parent: Instance, frame: CFrame, o: WallOpts)
-	local openings = o.openings or {}
+	local openings: { Opening } = o.openings or {}
 	local length, height = o.length, o.height
 	local color = o.color or COLORS.shade
 	local edges = { -length / 2, length / 2 }
@@ -737,20 +780,46 @@ local function wall(parent: Instance, frame: CFrame, o: WallOpts)
 			)
 		end
 		if op.y > 1 then
-			trim(parent, "Sill", Vector3.new(op.w + 1, 0.8, o.thick + 0.8), frame * CFrame.new(op.x, op.y - 0.3, 0), COLORS.teal)
+			trim(
+				parent,
+				"Sill",
+				Vector3.new(op.w + 1, 0.8, o.thick + 0.8),
+				frame * CFrame.new(op.x, op.y - 0.3, 0),
+				COLORS.teal
+			)
 		end
 	end
-	spot(frame * CFrame.new(rng:NextNumber(-length / 2, length / 2), 0, (o.thick / 2 + 2) * (if rng:NextNumber() < 0.5 then -1 else 1)), 3, true)
+	spot(
+		frame
+			* CFrame.new(
+				rng:NextNumber(-length / 2, length / 2),
+				0,
+				(o.thick / 2 + 2) * (if rng:NextNumber() < 0.5 then -1 else 1)
+			),
+		3,
+		true
+	)
 end
 
 -- Cut stone and broken blocks scattered round `center` on the ground
-local function rubble(parent: Instance, center: Vector3, radius: number, count: number, small: number, big: number)
+local function rubble(
+	parent: Instance,
+	center: Vector3,
+	radius: number,
+	count: number,
+	small: number,
+	big: number
+)
 	for _ = 1, count do
 		local a = rng:NextNumber(0, TAU)
 		local d = math.sqrt(rng:NextNumber()) * radius
 		local x, z = center.X + math.cos(a) * d, center.Z + math.sin(a) * d
 		local s = rng:NextNumber(small, big)
-		local size = Vector3.new(s * rng:NextNumber(0.8, 1.6), s * rng:NextNumber(0.5, 1), s * rng:NextNumber(0.8, 1.4))
+		local size = Vector3.new(
+			s * rng:NextNumber(0.8, 1.6),
+			s * rng:NextNumber(0.5, 1),
+			s * rng:NextNumber(0.8, 1.4)
+		)
 		local cf = CFrame.new(x, groundY(x, z) + size.Y * 0.28, z)
 			* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, TAU), rng:NextNumber(-0.4, 0.4))
 		local color = pick({ COLORS.marble, COLORS.shade, COLORS.weathered })
@@ -763,7 +832,14 @@ local function rubble(parent: Instance, center: Vector3, radius: number, count: 
 end
 
 -- A ring of mosaic tiles on a floor (`center` upright on its top)
-local function mosaicRing(parent: Instance, center: CFrame, radius: number, count: number, tile: number, colors: { Color3 })
+local function mosaicRing(
+	parent: Instance,
+	center: CFrame,
+	radius: number,
+	count: number,
+	tile: number,
+	colors: { Color3 }
+)
 	for k = 1, count do
 		if rng:NextNumber() < 0.1 then
 			continue -- lost tiles
@@ -780,7 +856,14 @@ local function mosaicRing(parent: Instance, center: CFrame, radius: number, coun
 end
 
 -- Rays of tiles from `inner` to `outer`
-local function mosaicRays(parent: Instance, center: CFrame, inner: number, outer: number, count: number, color: Color3)
+local function mosaicRays(
+	parent: Instance,
+	center: CFrame,
+	inner: number,
+	outer: number,
+	count: number,
+	color: Color3
+)
 	for k = 1, count do
 		local a = (k / count) * TAU
 		trim(
@@ -796,28 +879,62 @@ end
 -- An obelisk on `base`: stepped base, a shaft in three tapering blocks with a glyph
 -- column down its front, a pyramidion of four wedges; `lit` rings its top in a
 -- faint glow with a light
-local function obelisk(parent: Instance, base: CFrame, height: number, width: number, lit: boolean, lamp: boolean?)
-	stone(parent, "ObeliskBase", Vector3.new(width * 2.2, 2.6, width * 2.2), base * CFrame.new(0, 0.3, 0), COLORS.shade)
-	stone(parent, "ObeliskStep", Vector3.new(width * 1.6, 1.6, width * 1.6), base * CFrame.new(0, 2.4, 0), COLORS.marble)
+local function obelisk(
+	parent: Instance,
+	base: CFrame,
+	height: number,
+	width: number,
+	lit: boolean,
+	lamp: boolean?
+)
+	stone(
+		parent,
+		"ObeliskBase",
+		Vector3.new(width * 2.2, 2.6, width * 2.2),
+		base * CFrame.new(0, 0.3, 0),
+		COLORS.shade
+	)
+	stone(
+		parent,
+		"ObeliskStep",
+		Vector3.new(width * 1.6, 1.6, width * 1.6),
+		base * CFrame.new(0, 2.4, 0),
+		COLORS.marble
+	)
 	local y = 3.2
 	local seg = height / 3
 	local w = width
 	for k = 0, 2 do
 		w = width * (1 - 0.1 * k)
-		stone(parent, "ObeliskShaft", Vector3.new(w, seg, w), base * CFrame.new(0, y + seg / 2, 0), COLORS.marble, SMOOTH)
+		stone(
+			parent,
+			"ObeliskShaft",
+			Vector3.new(w, seg, w),
+			base * CFrame.new(0, y + seg / 2, 0),
+			COLORS.marble,
+			SMOOTH
+		)
 		y += seg
 	end
-	glyphPanel(parent, base * CFrame.new(0, 3.2 + height * 0.5, -width * 0.45), 1, math.max(math.floor(height / 9), 2), width * 0.42)
+	glyphPanel(
+		parent,
+		base * CFrame.new(0, 3.2 + height * 0.5, -width * 0.45),
+		1,
+		math.max(math.floor(height / 9), 2),
+		width * 0.42
+	)
 	if lamp then
 		-- a lamp pillar: a glowing block under its pyramidion
-		local cap = glow(parent, "LampGlow", Vector3.new(w * 0.9, 1.8, w * 0.9), base * CFrame.new(0, y + 0.9, 0))
+		local cap =
+			glow(parent, "LampGlow", Vector3.new(w * 0.9, 1.8, w * 0.9), base * CFrame.new(0, y + 0.9, 0))
 		cap.Transparency = 0.12
 		if lit then
 			light(cap, 48, 1.1)
 		end
 		y += 1.8
 	elseif lit then
-		local band = glow(parent, "ObeliskGlow", Vector3.new(w + 0.3, 0.6, w + 0.3), base * CFrame.new(0, y - 1.2, 0))
+		local band =
+			glow(parent, "ObeliskGlow", Vector3.new(w + 0.3, 0.6, w + 0.3), base * CFrame.new(0, y - 1.2, 0))
 		light(band, 44, 1)
 	end
 	local cap = w * 0.95
@@ -826,7 +943,10 @@ local function obelisk(parent: Instance, base: CFrame, height: number, width: nu
 			parent,
 			"Pyramidion",
 			Vector3.new(cap, cap * 0.9, cap / 2),
-			base * CFrame.new(0, y + cap * 0.45, 0) * CFrame.Angles(0, k * HALF, 0) * CFrame.new(0, 0, -cap / 4),
+			base
+				* CFrame.new(0, y + cap * 0.45, 0)
+				* CFrame.Angles(0, k * HALF, 0)
+				* CFrame.new(0, 0, -cap / 4),
 			COLORS.teal,
 			true
 		)
@@ -837,9 +957,22 @@ end
 -- An obelisk that fell along `dir` from `foot`: its base and stub stand, the shaft
 -- lies in two pieces, the pyramidion beyond
 local function toppled(parent: Instance, foot: CFrame, dir: Vector3, height: number, width: number)
-	stone(parent, "ObeliskBase", Vector3.new(width * 2.2, 2.6, width * 2.2), foot * CFrame.new(0, 0.3, 0), COLORS.shade)
+	stone(
+		parent,
+		"ObeliskBase",
+		Vector3.new(width * 2.2, 2.6, width * 2.2),
+		foot * CFrame.new(0, 0.3, 0),
+		COLORS.shade
+	)
 	local stub = height * 0.18
-	stone(parent, "ObeliskStub", Vector3.new(width, stub, width), foot * CFrame.new(0, 1.6 + stub / 2, 0), COLORS.marble, SMOOTH)
+	stone(
+		parent,
+		"ObeliskStub",
+		Vector3.new(width, stub, width),
+		foot * CFrame.new(0, 1.6 + stub / 2, 0),
+		COLORS.marble,
+		SMOOTH
+	)
 	wedge(
 		parent,
 		"Shard",
@@ -855,11 +988,23 @@ local function toppled(parent: Instance, foot: CFrame, dir: Vector3, height: num
 		local w = width * (1 - 0.12 * k)
 		local mid = at + dir * (len / 2) + side * rng:NextNumber(-1.5, 1.5)
 		local g = groundY(mid.X, mid.Z)
-		local frame = CFrame.lookAt(Vector3.new(mid.X, g + w * 0.32, mid.Z), Vector3.new(mid.X, g + w * 0.32, mid.Z) + dir)
-			* CFrame.Angles(rng:NextNumber(-0.05, 0.05), rng:NextNumber(-0.12, 0.12), rng:NextNumber(-0.3, 0.3))
+		local frame = CFrame.lookAt(
+			Vector3.new(mid.X, g + w * 0.32, mid.Z),
+			Vector3.new(mid.X, g + w * 0.32, mid.Z) + dir
+		) * CFrame.Angles(
+			rng:NextNumber(-0.05, 0.05),
+			rng:NextNumber(-0.12, 0.12),
+			rng:NextNumber(-0.3, 0.3)
+		)
 		stone(parent, "ObeliskPiece", Vector3.new(w, w, len), frame, COLORS.marble)
 		if k == 1 then
-			glyphPanel(parent, frame * CFrame.new(0, w / 2 + 0.02, 0) * CFrame.Angles(HALF, 0, 0), 4, 1, w * 0.45)
+			glyphPanel(
+				parent,
+				frame * CFrame.new(0, w / 2 + 0.02, 0) * CFrame.Angles(HALF, 0, 0),
+				4,
+				1,
+				w * 0.45
+			)
 		end
 		spot(frame * CFrame.new(0, w / 2, 0), w / 2)
 		at += dir * (len + rng:NextNumber(1, 3))
@@ -883,9 +1028,26 @@ end
 -- A bronze brazier with a cold glowing flame (the eerie lights the city still has)
 local function brazier(parent: Instance, base: CFrame, size: number, range: number?): Part
 	drum(parent, "BrazierFoot", base * CFrame.new(0, -0.4, 0), size * 0.5, size * 0.42, COLORS.bronze, true)
-	drum(parent, "BrazierStem", base * CFrame.new(0, size * 0.1, 0), size * 0.7, size * 0.2, COLORS.bronze, true)
-	drum(parent, "BrazierBowl", base * CFrame.new(0, size * 0.8, 0), size * 0.42, size * 0.62, COLORS.bronze, true)
-	local flame = drum(parent, "BrazierGlow", base * CFrame.new(0, size * 1.2, 0), 0.4, size * 0.54, GLYPH.color, false)
+	drum(
+		parent,
+		"BrazierStem",
+		base * CFrame.new(0, size * 0.1, 0),
+		size * 0.7,
+		size * 0.2,
+		COLORS.bronze,
+		true
+	)
+	drum(
+		parent,
+		"BrazierBowl",
+		base * CFrame.new(0, size * 0.8, 0),
+		size * 0.42,
+		size * 0.62,
+		COLORS.bronze,
+		true
+	)
+	local flame =
+		drum(parent, "BrazierGlow", base * CFrame.new(0, size * 1.2, 0), 0.4, size * 0.54, GLYPH.color, false)
 	flame.Material = Enum.Material.Neon
 	flame.Transparency = 0.15
 	stats.glow += 1
@@ -922,7 +1084,8 @@ local function hero(parent: Instance, name: string, box: CFrame, size: Vector3, 
 	anchor.CanQuery = false
 	anchor.CanTouch = false
 	anchor.Parent = holder
-	local dressed = Props.dress(anchor, name, { cframe = box, size = size, solid = true, blocksCamera = true })
+	local dressed =
+		Props.dress(anchor, name, { cframe = box, size = size, solid = true, blocksCamera = true })
 	if dressed then
 		standin:Destroy()
 		stats.parts, stats.solid, stats.glow = parts, solid, glows
@@ -953,18 +1116,63 @@ local function statueHead(parent: Instance, at: Vector3, pose: CFrame, scale: nu
 		local c = COLORS.marble
 		stone(m, "Neck", Vector3.new(W * 0.62, H * 0.2, D * 0.66), F * CFrame.new(0, -H * 0.39, D * 0.06), c)
 		stone(m, "Skull", Vector3.new(W * 0.9, H * 0.6, D * 0.84), F * CFrame.new(0, H * 0.01, D * 0.06), c)
-		stone(m, "Crown", Vector3.new(W * 0.98, H * 0.12, D * 0.92), F * CFrame.new(0, H * 0.26, D * 0.05), COLORS.teal)
+		stone(
+			m,
+			"Crown",
+			Vector3.new(W * 0.98, H * 0.12, D * 0.92),
+			F * CFrame.new(0, H * 0.26, D * 0.05),
+			COLORS.teal
+		)
 		stone(m, "Pate", Vector3.new(W * 0.8, H * 0.13, D * 0.76), F * CFrame.new(0, H * 0.38, D * 0.07), c)
 		local face = F * CFrame.new(0, 0, -D * 0.36)
 		trim(m, "Brow", Vector3.new(W * 0.8, H * 0.05, D * 0.1), face * CFrame.new(0, H * 0.1, -D * 0.03), c)
 		for side = -1, 1, 2 do
-			trim(m, "Eyelid", Vector3.new(W * 0.2, H * 0.028, 0.4), face * CFrame.new(side * W * 0.2, H * 0.05, -0.12), COLORS.dark)
-			stone(m, "Ear", Vector3.new(W * 0.08, H * 0.2, D * 0.18), F * CFrame.new(side * W * 0.47, H * 0.0, D * 0.06), c, SMOOTH)
+			trim(
+				m,
+				"Eyelid",
+				Vector3.new(W * 0.2, H * 0.028, 0.4),
+				face * CFrame.new(side * W * 0.2, H * 0.05, -0.12),
+				COLORS.dark
+			)
+			stone(
+				m,
+				"Ear",
+				Vector3.new(W * 0.08, H * 0.2, D * 0.18),
+				F * CFrame.new(side * W * 0.47, H * 0.0, D * 0.06),
+				c,
+				SMOOTH
+			)
 		end
-		wedge(m, "Nose", Vector3.new(W * 0.13, H * 0.18, D * 0.13), face * CFrame.new(0, -H * 0.02, -D * 0.06), c, true)
-		trim(m, "Lips", Vector3.new(W * 0.26, H * 0.035, 0.5), face * CFrame.new(0, -H * 0.14, -0.2), COLORS.weathered)
-		stone(m, "Chin", Vector3.new(W * 0.46, H * 0.12, D * 0.12), face * CFrame.new(0, -H * 0.21, -D * 0.02), c, SMOOTH)
-		trim(m, "Crack", Vector3.new(0.35, H * 0.34, 0.4), face * CFrame.new(W * 0.28, H * 0.04, -0.12) * CFrame.Angles(0, 0, 0.5), COLORS.dark)
+		wedge(
+			m,
+			"Nose",
+			Vector3.new(W * 0.13, H * 0.18, D * 0.13),
+			face * CFrame.new(0, -H * 0.02, -D * 0.06),
+			c,
+			true
+		)
+		trim(
+			m,
+			"Lips",
+			Vector3.new(W * 0.26, H * 0.035, 0.5),
+			face * CFrame.new(0, -H * 0.14, -0.2),
+			COLORS.weathered
+		)
+		stone(
+			m,
+			"Chin",
+			Vector3.new(W * 0.46, H * 0.12, D * 0.12),
+			face * CFrame.new(0, -H * 0.21, -D * 0.02),
+			c,
+			SMOOTH
+		)
+		trim(
+			m,
+			"Crack",
+			Vector3.new(0.35, H * 0.34, 0.4),
+			face * CFrame.new(W * 0.28, H * 0.04, -0.12) * CFrame.Angles(0, 0, 0.5),
+			COLORS.dark
+		)
 		glyphPanel(m, F * CFrame.new(0, H * 0.26, -D * 0.51), 3, 1, H * 0.06)
 	end)
 	-- moss and coral on whichever side faces up
@@ -985,20 +1193,56 @@ local function statueHand(parent: Instance, base: CFrame, scale: number)
 		local foot = F * CFrame.new(0, -H / 2, 0)
 		drum(m, "Wrist", foot, H * 0.34, W * 0.3, c, true)
 		local palm = foot * CFrame.new(0, H * 0.32, 0) * CFrame.Angles(0.35, 0, 0)
-		stone(m, "Palm", Vector3.new(W * 0.74, H * 0.34, D * 0.24), palm * CFrame.new(0, H * 0.17, 0), c, SMOOTH)
+		stone(
+			m,
+			"Palm",
+			Vector3.new(W * 0.74, H * 0.34, D * 0.24),
+			palm * CFrame.new(0, H * 0.17, 0),
+			c,
+			SMOOTH
+		)
 		for i = 1, 4 do
 			local x = (i - 2.5) * W * 0.18
 			local len = H * (if i == 1 or i == 4 then 0.18 else 0.22)
 			local knuckle = palm * CFrame.new(x, H * 0.34, 0) * CFrame.Angles(-0.25, 0, 0)
-			stone(m, "Finger", Vector3.new(W * 0.16, len, D * 0.15), knuckle * CFrame.new(0, len / 2, 0), c, SMOOTH)
+			stone(
+				m,
+				"Finger",
+				Vector3.new(W * 0.16, len, D * 0.15),
+				knuckle * CFrame.new(0, len / 2, 0),
+				c,
+				SMOOTH
+			)
 			if i ~= 3 then -- one fingertip broke off
-				local tip = knuckle * CFrame.new(0, len, 0) * CFrame.Angles(-0.5 - rng:NextNumber(0, 0.5), 0, 0)
-				stone(m, "Finger", Vector3.new(W * 0.15, len * 0.8, D * 0.14), tip * CFrame.new(0, len * 0.4, 0), c, SMOOTH)
+				local tip = knuckle
+					* CFrame.new(0, len, 0)
+					* CFrame.Angles(-0.5 - rng:NextNumber(0, 0.5), 0, 0)
+				stone(
+					m,
+					"Finger",
+					Vector3.new(W * 0.15, len * 0.8, D * 0.14),
+					tip * CFrame.new(0, len * 0.4, 0),
+					c,
+					SMOOTH
+				)
 			end
 		end
 		local thumb = palm * CFrame.new(-W * 0.42, H * 0.1, 0) * CFrame.Angles(0, 0, 0.8)
-		stone(m, "Thumb", Vector3.new(W * 0.17, H * 0.22, D * 0.16), thumb * CFrame.new(0, H * 0.11, 0), c, SMOOTH)
-		trim(m, "Crack", Vector3.new(0.35, H * 0.22, 0.35), palm * CFrame.new(W * 0.15, H * 0.17, -D * 0.125) * CFrame.Angles(0, 0, 0.4), COLORS.dark)
+		stone(
+			m,
+			"Thumb",
+			Vector3.new(W * 0.17, H * 0.22, D * 0.16),
+			thumb * CFrame.new(0, H * 0.11, 0),
+			c,
+			SMOOTH
+		)
+		trim(
+			m,
+			"Crack",
+			Vector3.new(0.35, H * 0.22, 0.35),
+			palm * CFrame.new(W * 0.15, H * 0.17, -D * 0.125) * CFrame.Angles(0, 0, 0.4),
+			COLORS.dark
+		)
 	end)
 	spot(base * CFrame.new(W * 0.2, 0, -D * 0.5), 4, true)
 	spot(base * CFrame.new(-W * 0.5, 0, D * 0.3), 3, true)
@@ -1013,11 +1257,31 @@ local function guardian(parent: Instance, base: CFrame, scale: number)
 	hero(parent, "RuinGuardian", F, Vector3.new(W, H, D), function(m: Model)
 		local c = COLORS.weathered
 		local foot = F * CFrame.new(0, -H / 2, 0)
-		stone(m, "GuardianPlinth", Vector3.new(W, H * 0.3, D), foot * CFrame.new(0, H * 0.15, 0), COLORS.shade, SMOOTH)
-		trim(m, "PlinthBand", Vector3.new(W + 0.4, H * 0.04, D + 0.4), foot * CFrame.new(0, H * 0.26, 0), COLORS.teal)
-		glyphPanel(m, foot * CFrame.new(0, H * 0.13, -D / 2), 3, 1, H * 0.07)
+		stone(
+			m,
+			"GuardianPlinth",
+			Vector3.new(W, H * 0.3, D),
+			foot * CFrame.new(0, H * 0.15, 0),
+			COLORS.shade,
+			SMOOTH
+		)
+		trim(
+			m,
+			"PlinthBand",
+			Vector3.new(W + 0.4, H * 0.04, D + 0.4),
+			foot * CFrame.new(0, H * 0.26, 0),
+			COLORS.teal
+		)
+		glyphPanel(m, foot * CFrame.new(0, H * 0.13, -D / 2), 2, 1, H * 0.07)
 		local top = foot * CFrame.new(0, H * 0.3, 0)
-		stone(m, "Haunch", Vector3.new(W * 0.62, H * 0.24, D * 0.44), top * CFrame.new(0, H * 0.12, D * 0.2), c, SMOOTH)
+		stone(
+			m,
+			"Haunch",
+			Vector3.new(W * 0.62, H * 0.24, D * 0.44),
+			top * CFrame.new(0, H * 0.12, D * 0.2),
+			c,
+			SMOOTH
+		)
 		stone(
 			m,
 			"Chest",
@@ -1028,9 +1292,21 @@ local function guardian(parent: Instance, base: CFrame, scale: number)
 		)
 		local head = top * CFrame.new(0, H * 0.46, -D * 0.22)
 		stone(m, "Head", Vector3.new(W * 0.42, H * 0.18, D * 0.3), head, c, SMOOTH)
-		wedge(m, "Snout", Vector3.new(W * 0.32, H * 0.1, D * 0.2), head * CFrame.new(0, -H * 0.04, -D * 0.24), c, true)
+		wedge(
+			m,
+			"Snout",
+			Vector3.new(W * 0.32, H * 0.1, D * 0.2),
+			head * CFrame.new(0, -H * 0.04, -D * 0.24),
+			c,
+			true
+		)
 		for side = -1, 1, 2 do
-			glow(m, "Eye", Vector3.new(W * 0.07, H * 0.03, 0.3), head * CFrame.new(side * W * 0.12, H * 0.03, -D * 0.151))
+			glow(
+				m,
+				"Eye",
+				Vector3.new(W * 0.07, H * 0.03, 0.3),
+				head * CFrame.new(side * W * 0.12, H * 0.03, -D * 0.151)
+			)
 			stone(
 				m,
 				"Paw",
@@ -1053,12 +1329,22 @@ local function guardian(parent: Instance, base: CFrame, scale: number)
 				m,
 				"Crest",
 				Vector3.new(0.6, H * (0.18 - k * 0.03), D * 0.18),
-				top * CFrame.new(0, H * (0.52 - k * 0.1), D * (-0.06 + k * 0.16)) * CFrame.Angles(0, math.pi, 0),
+				top
+					* CFrame.new(0, H * (0.52 - k * 0.1), D * (-0.06 + k * 0.16))
+					* CFrame.Angles(0, math.pi, 0),
 				COLORS.teal,
 				false
 			)
 		end
-		rod(m, "Tail", top * Vector3.new(W * 0.2, H * 0.08, D * 0.38), top * Vector3.new(-W * 0.3, H * 0.05, D * 0.46), H * 0.05, c, false)
+		rod(
+			m,
+			"Tail",
+			top * Vector3.new(W * 0.2, H * 0.08, D * 0.38),
+			top * Vector3.new(-W * 0.3, H * 0.05, D * 0.46),
+			H * 0.05,
+			c,
+			false
+		)
 	end)
 	spot(base * CFrame.new(W * 0.7, 0, 0), 2.5, true)
 	claim(base, W * 0.6, D * 0.6)
@@ -1093,9 +1379,24 @@ fallenCapital = function(parent: Instance, at: Vector3, dir: Vector3, radius: nu
 		local c = COLORS.marble
 		drum(m, "Stub", F * CFrame.new(0, -Y / 2, 0), Y * 0.42, radius, c, true)
 		drum(m, "Echinus", F * CFrame.new(0, Y * 0.0, 0), Y * 0.16, radius * 1.3, c, true)
-		stone(m, "Abacus", Vector3.new(X * 0.95, Y * 0.18, Z * 0.85), F * CFrame.new(0, Y * 0.33, 0), c, SMOOTH)
+		stone(
+			m,
+			"Abacus",
+			Vector3.new(X * 0.95, Y * 0.18, Z * 0.85),
+			F * CFrame.new(0, Y * 0.33, 0),
+			c,
+			SMOOTH
+		)
 		for side = -1, 1, 2 do
-			rod(m, "Volute", F * Vector3.new(side * X * 0.36, Y * 0.12, -Z * 0.42), F * Vector3.new(side * X * 0.36, Y * 0.12, Z * 0.42), Y * 0.17, c, false)
+			rod(
+				m,
+				"Volute",
+				F * Vector3.new(side * X * 0.36, Y * 0.12, -Z * 0.42),
+				F * Vector3.new(side * X * 0.36, Y * 0.12, Z * 0.42),
+				Y * 0.17,
+				c,
+				false
+			)
 		end
 	end)
 	spot(CFrame.new(F.Position + Vector3.new(0, reach, 0)), radius)
@@ -1107,9 +1408,23 @@ local function stele(parent: Instance, base: CFrame, scale: number)
 	local F = base * CFrame.new(0, H / 2 - 0.5, 0)
 	hero(parent, "RuinStele", F * GLB_FRONT, Vector3.new(D, H, W), function(m: Model)
 		local foot = F * CFrame.new(0, -H / 2, 0)
-		stone(m, "SteleFoot", Vector3.new(W * 1.15, H * 0.12, D * 1.3), foot * CFrame.new(0, H * 0.06, 0), COLORS.shade, SMOOTH)
+		stone(
+			m,
+			"SteleFoot",
+			Vector3.new(W * 1.15, H * 0.12, D * 1.3),
+			foot * CFrame.new(0, H * 0.06, 0),
+			COLORS.shade,
+			SMOOTH
+		)
 		local slab = H * 0.62
-		stone(m, "Stele", Vector3.new(W, slab, D * 0.62), foot * CFrame.new(0, H * 0.12 + slab / 2, 0), COLORS.weathered, SMOOTH)
+		stone(
+			m,
+			"Stele",
+			Vector3.new(W, slab, D * 0.62),
+			foot * CFrame.new(0, H * 0.12 + slab / 2, 0),
+			COLORS.weathered,
+			SMOOTH
+		)
 		rod(
 			m,
 			"SteleTop",
@@ -1119,7 +1434,7 @@ local function stele(parent: Instance, base: CFrame, scale: number)
 			COLORS.weathered,
 			true
 		)
-		glyphPanel(m, foot * CFrame.new(0, H * 0.12 + slab * 0.55, -D * 0.31), 2, 4, W * 0.17)
+		glyphPanel(m, foot * CFrame.new(0, H * 0.12 + slab * 0.55, -D * 0.31), 2, 2, W * 0.22)
 	end)
 	spot(base * CFrame.new(0, 0, -D * 1.5), 2.5, true)
 end
@@ -1196,25 +1511,49 @@ local function greatTemple(parent: Instance, T0: CFrame)
 			end
 		end
 		for side = -1, 1, 2 do
-			trim(m, "TierLip", Vector3.new(w + 0.6, 0.9, 0.9), T * CFrame.new(0, k * TIER - 0.5, side * (d / 2 + 0.1)), COLORS.teal)
+			trim(
+				m,
+				"TierLip",
+				Vector3.new(w + 0.6, 0.9, 0.9),
+				T * CFrame.new(0, k * TIER - 0.5, side * (d / 2 + 0.1)),
+				COLORS.teal
+			)
 		end
 		spot(T * CFrame.new(rng:NextNumber(-w / 2, w / 2), k * TIER, -d / 2 + 2), 2.5)
 		spot(T * CFrame.new(-w / 2 + 2, k * TIER, rng:NextNumber(-d / 2, d / 2)), 2.5)
 		spot(T * CFrame.new(w / 2 - 2, k * TIER, rng:NextNumber(-d / 2, d / 2)), 2.5)
 	end
 	rubble(m, T * Vector3.new(-46, 0, -58), 12, 8, 2.4, 5.5)
+	glyphPanel(m, T * CFrame.new(34, 2.6, -65.05), 6, 1)
+	glyphPanel(m, T * CFrame.new(0, 2.6, 65.05) * CFrame.Angles(0, math.pi, 0), 8, 1)
 	for _ = 1, 4 do
-		spot(CFrame.new(floorAt(T * Vector3.new(rng:NextNumber(-56, 56), 0, rng:NextNumber(-70, 70)))), 5, true)
+		spot(
+			CFrame.new(floorAt(T * Vector3.new(rng:NextNumber(-56, 56), 0, rng:NextNumber(-70, 70)))),
+			5,
+			true
+		)
 	end
 
 	-- The grand stair up the front (and its cheek walls)
 	for k = 1, 9 do
 		local z0 = -78 + (k - 1) * 3
-		stone(m, "Step", Vector3.new(30, k * 2 + 2.5, -51 - z0), T * CFrame.new(0, (k * 2 - 2.5) / 2, (z0 - 51) / 2), COLORS.marble)
+		stone(
+			m,
+			"Step",
+			Vector3.new(30, k * 2 + 2.5, -51 - z0),
+			T * CFrame.new(0, (k * 2 - 2.5) / 2, (z0 - 51) / 2),
+			COLORS.marble
+		)
 	end
 	for side = -1, 1, 2 do
 		local a, b = T * Vector3.new(side * 16.6, 2.8, -79), T * Vector3.new(side * 16.6, 20.8, -51)
-		stone(m, "Cheek", Vector3.new(3.2, 3.6, (b - a).Magnitude + 2), CFrame.lookAt((a + b) / 2, b), COLORS.shade)
+		stone(
+			m,
+			"Cheek",
+			Vector3.new(3.2, 3.6, (b - a).Magnitude + 2),
+			CFrame.lookAt((a + b) / 2, b),
+			COLORS.shade
+		)
 	end
 
 	-- The peristyle
@@ -1236,7 +1575,14 @@ local function greatTemple(parent: Instance, T0: CFrame)
 		end
 	end
 	-- Two columns fell off the platform: one rolled off the right side, one off the back
-	fallenColumn(m, floorAt(T * Vector3.new(57, 0, -14)), (T.RightVector + T.LookVector * 0.15).Unit, 3, 5, true)
+	fallenColumn(
+		m,
+		floorAt(T * Vector3.new(57, 0, -14)),
+		(T.RightVector + T.LookVector * 0.15).Unit,
+		3,
+		5,
+		true
+	)
 	fallenColumn(m, floorAt(T * Vector3.new(36, 0, 70)), (-T.LookVector + T.RightVector * 0.3).Unit, 3, 5)
 	-- An architrave slid down the front, right of the stair
 	do
@@ -1271,7 +1617,13 @@ local function greatTemple(parent: Instance, T0: CFrame)
 	wall(m, C * CFrame.new(-14.5, 0, -27), { length = 9, height = 28, thick = 3 })
 	wall(m, C * CFrame.new(14.5, 0, -27), { length = 9, height = 28, thick = 3 })
 	stone(m, "DoorLintel", Vector3.new(24, 4, 3.6), C * CFrame.new(0, 26, -27), COLORS.teal)
-	stone(m, "DoorCourse", Vector3.new(38, 2.4, 3.2), C * CFrame.new(-2, 29.2, -27) * CFrame.Angles(0, 0, 0.03), COLORS.shade)
+	stone(
+		m,
+		"DoorCourse",
+		Vector3.new(38, 2.4, 3.2),
+		C * CFrame.new(-2, 29.2, -27) * CFrame.Angles(0, 0, 0.03),
+		COLORS.shade
+	)
 	for side = -1, 1, 2 do
 		glyphPanel(m, C * CFrame.new(side * 14.5, 14, -28.6), 1, 5, 2.2)
 	end
@@ -1293,7 +1645,11 @@ local function greatTemple(parent: Instance, T0: CFrame)
 		openings = { { x = 2, w = 7, y = 11, h = 9 } },
 		ragged = 0.45,
 	})
-	wall(m, C * CFrame.new(18, 0, 18) * CFrame.Angles(0, HALF, 0), { length = 30, height = 5, thick = 3, ragged = 0.6 })
+	wall(
+		m,
+		C * CFrame.new(18, 0, 18) * CFrame.Angles(0, HALF, 0),
+		{ length = 30, height = 5, thick = 3, ragged = 0.6 }
+	)
 	rubble(m, C * Vector3.new(22, 0, 18), 9, 9, 2, 4.5)
 	wall(m, C * CFrame.new(0, 0, 33), { length = 39, height = 28, thick = 3, ragged = 0.15 })
 	trim(m, "Niche", Vector3.new(12, 16, 0.4), C * CFrame.new(0, 14, 31.4), COLORS.dark)
@@ -1309,9 +1665,23 @@ local function greatTemple(parent: Instance, T0: CFrame)
 		trim(m, "Fold", Vector3.new(0.7, 12, 0.7), robe * CFrame.new(k * 2.4, 6.2, -2.8), COLORS.shade)
 	end
 	for side = -1, 1, 2 do
-		stone(m, "Foot", Vector3.new(2.6, 1.6, 3.6), robe * CFrame.new(side * 2, 0.8, -3.5), COLORS.marble, SMOOTH)
+		stone(
+			m,
+			"Foot",
+			Vector3.new(2.6, 1.6, 3.6),
+			robe * CFrame.new(side * 2, 0.8, -3.5),
+			COLORS.marble,
+			SMOOTH
+		)
 	end
-	wedge(m, "Break", Vector3.new(8, 2.6, 5), robe * CFrame.new(0, 14.2, 0) * CFrame.Angles(0, 0.4, 0), COLORS.marble, true)
+	wedge(
+		m,
+		"Break",
+		Vector3.new(8, 2.6, 5),
+		robe * CFrame.new(0, 14.2, 0) * CFrame.Angles(0, 0.4, 0),
+		COLORS.marble,
+		true
+	)
 	spot(robe * CFrame.new(-2, 15.5, 0), 2)
 	-- The cold fire still burning in the cella, a ring of tiles round it
 	brazier(m, C * CFrame.new(0, 0, -4), 4.4, 60)
@@ -1335,9 +1705,19 @@ local function gateway(parent: Instance, T0: CFrame)
 	local crown = arch(m, G, { span = 24, spring = 22, depth = 10, pier = 7, keystone = true })
 	glyphPanel(m, G * CFrame.new(0, crown + 1.7, -5.55), 6, 1, 1.9)
 	-- the right arch stands, the left one is down to its outer pier and rubble
-	arch(m, G * CFrame.new(25, 0, 0), { span = 12, spring = 13, depth = 8, pier = 6, skipPier = -1, ring = 3 })
+	arch(
+		m,
+		G * CFrame.new(25, 0, 0),
+		{ span = 12, spring = 13, depth = 8, pier = 6, skipPier = -1, ring = 3 }
+	)
 	stone(m, "PierBase", Vector3.new(7.6, 2.4, 9.6), G * CFrame.new(-34, 0.2, 0), COLORS.shade)
-	stone(m, "Pier", Vector3.new(6, 8, 8), G * CFrame.new(-34, 5, 0) * CFrame.Angles(0, 0, 0.05), COLORS.marble)
+	stone(
+		m,
+		"Pier",
+		Vector3.new(6, 8, 8),
+		G * CFrame.new(-34, 5, 0) * CFrame.Angles(0, 0, 0.05),
+		COLORS.marble
+	)
 	rubble(m, G * Vector3.new(-26, 0, 0), 10, 10, 2, 5)
 	for side = -1, 1, 2 do
 		glyphPanel(m, G * CFrame.new(side * 15.5, 12, -5.05), 1, 4, 2.2)
@@ -1398,7 +1778,9 @@ local function avenue(parent: Instance, T0: CFrame)
 				m,
 				"Paving",
 				Vector3.new(16.2, 1.6, 15.8),
-				CFrame.new(p.X, g - 0.2 + rng:NextNumber(-0.25, 0.1), p.Z) * T0.Rotation * CFrame.Angles(tilt, 0, tilt * 0.5),
+				CFrame.new(p.X, g + 0.25 + rng:NextNumber(-0.25, 0.1), p.Z)
+					* T0.Rotation
+					* CFrame.Angles(tilt, 0, tilt * 0.5),
 				COLORS.paving
 			)
 		end
@@ -1409,7 +1791,13 @@ local function avenue(parent: Instance, T0: CFrame)
 				continue
 			end
 			local p = T0 * Vector3.new(side * 17.6, 0, -236 + k * 32 + 16)
-			trim(m, "Curb", Vector3.new(1.6, 1.2, 30), CFrame.new(p.X, groundY(p.X, p.Z) + 0.3, p.Z) * T0.Rotation, COLORS.teal)
+			trim(
+				m,
+				"Curb",
+				Vector3.new(1.6, 1.2, 30),
+				CFrame.new(p.X, groundY(p.X, p.Z) + 0.3, p.Z) * T0.Rotation,
+				COLORS.teal
+			)
 		end
 	end
 	-- Colonnades
@@ -1418,7 +1806,11 @@ local function avenue(parent: Instance, T0: CFrame)
 		local side = colonnade.side
 		for _, c in colonnade.list do
 			local base = siteAt(T0, c.x, c.z, 0, 4, 4)
-			local top = column(m, base, { radius = 2.6, height = 30, keep = c.keep, band = if c.band then 0.3 else nil })
+			local top = column(
+				m,
+				base,
+				{ radius = 2.6, height = 30, keep = c.keep, band = if c.band then 0.3 else nil }
+			)
 			if top then
 				tops[`{side},{c.z}`] = top
 			end
@@ -1451,7 +1843,7 @@ local function avenue(parent: Instance, T0: CFrame)
 	statueHead(
 		m,
 		T0 * Vector3.new(-36, 0, -94),
-		T0.Rotation * CFrame.Angles(0, 0.55, 0) * CFrame.Angles(0, 0, 1.25) * CFrame.Angles(-0.35, 0, 0),
+		T0.Rotation * CFrame.Angles(0, -0.6, 0) * CFrame.Angles(0, 0, 1.2) * CFrame.Angles(-0.3, 0, 0),
 		26
 	)
 	-- and the hand rises from the sand by the platform's front-right corner
@@ -1464,7 +1856,7 @@ local function avenue(parent: Instance, T0: CFrame)
 	-- (the swim line's height over the paving, wherever the sand plain lifts it)
 	local points = Ruins.passes[#Ruins.passes].points
 	for i, p in points do
-		points[i] = Vector3.new(p.X, groundY(p.X, p.Z) + 16, p.Z)
+		points[i] = Vector3.new(p.X, groundY(p.X, p.Z) + 18, p.Z)
 	end
 end
 
@@ -1489,7 +1881,11 @@ local function theatre(parent: Instance)
 			end
 			local cf = H
 				* CFrame.Angles(0, math.rad(deg), 0)
-				* CFrame.new(rng:NextNumber(-0.2, 0.2), (top + 1) / 2 - 1.2 + rng:NextNumber(-0.3, 0.15), r0 + 3.5)
+				* CFrame.new(
+					rng:NextNumber(-0.2, 0.2),
+					(top + 1) / 2 - 1.2 + rng:NextNumber(-0.3, 0.15),
+					r0 + 3.5
+				)
 				* CFrame.Angles(rng:NextNumber(-0.015, 0.015), 0, rng:NextNumber(-0.015, 0.015))
 			stone(
 				m,
@@ -1506,16 +1902,31 @@ local function theatre(parent: Instance)
 	rubble(m, H * Vector3.new(math.sin(math.rad(60)) * 44, 0, math.cos(math.rad(60)) * 44), 15, 12, 2.2, 5.5)
 	-- The orchestra's mosaic floor round a glowing glyph circle
 	local O = H * CFrame.new(0, 0.6, 0)
-	local orchestra =
-		paving(m, "Orchestra", Vector3.new(1.6, 46, 46), H * CFrame.new(0, -0.2, 0) * CFrame.Angles(0, 0, HALF), COLORS.paving)
+	local orchestra = paving(
+		m,
+		"Orchestra",
+		Vector3.new(1.6, 46, 46),
+		H * CFrame.new(0, -0.2, 0) * CFrame.Angles(0, 0, HALF),
+		COLORS.paving
+	)
 	orchestra.Shape = Enum.PartType.Cylinder
 	mosaicRing(m, O, 19.5, 22, 3.4, COLORS.mosaic)
 	mosaicRing(m, O, 14, 16, 2.8, { COLORS.mosaic[2], COLORS.mosaic[1] })
 	mosaicRays(m, O, 3.5, 10, 8, COLORS.mosaic[4])
 	for k = 1, 8 do
-		glow(m, "Glyph", Vector3.new(0.42, 0.2, 1.6), O * CFrame.Angles(0, k * TAU / 8, 0) * CFrame.new(0, 0.2, -2.4))
+		glow(
+			m,
+			"Glyph",
+			Vector3.new(0.42, 0.2, 1.6),
+			O * CFrame.Angles(0, k * TAU / 8, 0) * CFrame.new(0, 0.2, -2.4)
+		)
 	end
-	local heart = glow(m, "OrchestraGlow", Vector3.new(0.3, 2.6, 2.6), O * CFrame.new(0, 0.15, 0) * CFrame.Angles(0, 0, HALF))
+	local heart = glow(
+		m,
+		"OrchestraGlow",
+		Vector3.new(0.3, 2.6, 2.6),
+		O * CFrame.new(0, 0.15, 0) * CFrame.Angles(0, 0, HALF)
+	)
 	heart.Shape = Enum.PartType.Cylinder
 	light(heart, 56, 1.1)
 	-- The stage toward the avenue: a low platform with broken columns
@@ -1552,7 +1963,13 @@ local function court(parent: Instance)
 	-- The paved floor and its mosaic
 	for sx = -1, 1, 2 do
 		for sz = -1, 1, 2 do
-			paving(m, "CourtFloor", Vector3.new(ix - 0.4, 1.8, iz - 0.4), C * CFrame.new(sx * ix / 2, bottom - 0.7, sz * iz / 2), COLORS.paving)
+			paving(
+				m,
+				"CourtFloor",
+				Vector3.new(ix - 0.4, 1.8, iz - 0.4),
+				C * CFrame.new(sx * ix / 2, bottom - 0.7, sz * iz / 2),
+				COLORS.paving
+			)
 		end
 	end
 	local F = C * CFrame.new(0, bottom + 0.2, 12)
@@ -1560,14 +1977,31 @@ local function court(parent: Instance)
 	mosaicRing(m, F, 16, 24, 2.6, { COLORS.mosaic[2], COLORS.mosaic[4] })
 	-- The lining walls, a parapet on their rim; the stair side has its gap
 	local function lining(x: number, z: number, length: number, along: boolean, niches: { number })
-		local frame = C * CFrame.new(x, bottom - 1, z) * (if along then CFrame.new() else CFrame.Angles(0, HALF, 0))
-		stone(m, "CourtWall", Vector3.new(length, wallH, w), frame * CFrame.new(0, wallH / 2, 0), COLORS.shade, MARBLE)
+		local frame = C
+			* CFrame.new(x, bottom - 1, z)
+			* (if along then CFrame.new() else CFrame.Angles(0, HALF, 0))
+		stone(
+			m,
+			"CourtWall",
+			Vector3.new(length, wallH, w),
+			frame * CFrame.new(0, wallH / 2, 0),
+			COLORS.shade,
+			MARBLE
+		)
 		-- the face toward the pit
 		local inward = if along then (if z > 0 then -1 else 1) else (if x > 0 then -1 else 1)
 		for _, n in niches do
-			local face = frame * CFrame.new(n, 0, inward * (w / 2 + 0.05)) * CFrame.Angles(0, if inward > 0 then math.pi else 0, 0)
+			local face = frame
+				* CFrame.new(n, 0, inward * (w / 2 + 0.05))
+				* CFrame.Angles(0, if inward > 0 then math.pi else 0, 0)
 			trim(m, "Niche", Vector3.new(8, 10, 0.4), face * CFrame.new(0, 6, 0), COLORS.dark)
-			local arc = trim(m, "NicheArch", Vector3.new(0.4, 8, 8), face * CFrame.new(0, 11, 0) * CFrame.Angles(0, HALF, 0), COLORS.dark)
+			local arc = trim(
+				m,
+				"NicheArch",
+				Vector3.new(0.4, 8, 8),
+				face * CFrame.new(0, 11, 0) * CFrame.Angles(0, HALF, 0),
+				COLORS.dark
+			)
 			arc.Shape = Enum.PartType.Cylinder
 			trim(m, "NicheSill", Vector3.new(9, 0.8, 1.2), face * CFrame.new(0, 1, -0.4), COLORS.teal)
 		end
@@ -1583,7 +2017,11 @@ local function court(parent: Instance)
 				"Parapet",
 				Vector3.new(len, 3, 1.8),
 				frame
-					* CFrame.new(-length / 2 + (k - 0.5) * length / pieces, wallH + 1.3, inward * -(w / 2 - 1.2))
+					* CFrame.new(
+						-length / 2 + (k - 0.5) * length / pieces,
+						wallH + 1.3,
+						inward * -(w / 2 - 1.2)
+					)
 					* CFrame.Angles(0, 0, rng:NextNumber(-0.03, 0.03)),
 				COLORS.marble,
 				SMOOTH
@@ -1598,7 +2036,7 @@ local function court(parent: Instance)
 	local side = ix + w - gap
 	lining(-(gap + side / 2), -iz - w / 2, side, true, {})
 	lining(gap + side / 2, -iz - w / 2, side, true, {})
-	glyphPanel(m, C * CFrame.new(0, bottom + 17.5, iz - 0.05), 9, 1, 2.2)
+	glyphPanel(m, C * CFrame.new(0, bottom + 17.5, iz - 0.05), 7, 1, 2.2)
 	-- The stairs down from the rim
 	local steps = 10
 	local rise = -bottom / steps
@@ -1615,8 +2053,17 @@ local function court(parent: Instance)
 		)
 	end
 	for s = -1, 1, 2 do
-		local a, b = C * Vector3.new(s * (gap + 0.9), 1.4, -iz - w), C * Vector3.new(s * (gap + 0.9), bottom + 1.4, -iz + run * steps)
-		stone(m, "StairWall", Vector3.new(1.8, 3, (b - a).Magnitude), CFrame.lookAt((a + b) / 2, b), COLORS.shade, SMOOTH)
+		local a, b =
+			C * Vector3.new(s * (gap + 0.9), 1.4, -iz - w),
+			C * Vector3.new(s * (gap + 0.9), bottom + 1.4, -iz + run * steps)
+		stone(
+			m,
+			"StairWall",
+			Vector3.new(1.8, 3, (b - a).Magnitude),
+			CFrame.lookAt((a + b) / 2, b),
+			COLORS.shade,
+			SMOOTH
+		)
 	end
 	-- The fountain: an octagonal basin of glowing water round a glyph pillar
 	for k = 0, 7 do
@@ -1629,7 +2076,12 @@ local function court(parent: Instance)
 			SMOOTH
 		)
 	end
-	local water = glow(m, "FountainWater", Vector3.new(0.3, 14.8, 14.8), F * CFrame.new(0, 1.7, 0) * CFrame.Angles(0, 0, HALF))
+	local water = glow(
+		m,
+		"FountainWater",
+		Vector3.new(0.3, 14.8, 14.8),
+		F * CFrame.new(0, 1.7, 0) * CFrame.Angles(0, 0, HALF)
+	)
 	water.Shape = Enum.PartType.Cylinder
 	water.Transparency = 0.4
 	light(water, 50, 1.3)
@@ -1638,14 +2090,29 @@ local function court(parent: Instance)
 	for k = 0, 1 do
 		glyphPanel(m, F * CFrame.Angles(0, k * math.pi, 0) * CFrame.new(0, 6, -1.45), 1, 3, 1.4)
 	end
-	wedge(m, "Break", Vector3.new(2.8, 1.6, 2.8), F * CFrame.new(0, 10.8, 0) * CFrame.Angles(0, 0.6, 0), COLORS.marble, true)
+	wedge(
+		m,
+		"Break",
+		Vector3.new(2.8, 1.6, 2.8),
+		F * CFrame.new(0, 10.8, 0) * CFrame.Angles(0, 0.6, 0),
+		COLORS.marble,
+		true
+	)
 	-- A column fallen against the back-left corner, urns in the niches and corners
 	do
 		local a, b = C * Vector3.new(-26, bottom + 2.6, 22), C * Vector3.new(-41, 1.4, iz + 3)
 		lyingDrum(m, a, b, 2.6, COLORS.marble)
 		fallenCapital(m, C * Vector3.new(-20, 0, 26), (C.RightVector).Unit, 2.6)
 	end
-	for i, u in { Vector2.new(-24, iz - 2.6), Vector2.new(24, iz - 2.6), Vector2.new(ix - 2.6, 14), Vector2.new(-ix + 2.6, -14), Vector2.new(31, -24) } do
+	for i, u in
+		{
+			Vector2.new(-24, iz - 2.6),
+			Vector2.new(24, iz - 2.6),
+			Vector2.new(ix - 2.6, 14),
+			Vector2.new(-ix + 2.6, -14),
+			Vector2.new(31, -24),
+		}
+	do
 		urn(m, C * Vector3.new(u.X, bottom, u.Y), 5, i % 2 == 1 and i > 1)
 	end
 	for _, corner in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
@@ -1663,7 +2130,15 @@ end
 
 -- A house: walls with windows round a floor, its front fallen; `door` cuts a
 -- doorway through the back wall big enough to swim through
-local function house(parent: Instance, H: CFrame, width: number, depth: number, height: number, door: boolean, label: string)
+local function house(
+	parent: Instance,
+	H: CFrame,
+	width: number,
+	depth: number,
+	height: number,
+	door: boolean,
+	label: string
+)
 	local m = model(parent, "House")
 	claim(H, width / 2 + 4, depth / 2 + 4)
 	paving(m, "HouseFloor", Vector3.new(width, 1.6, depth), H * CFrame.new(0, -0.5, 0), COLORS.paving)
@@ -1674,7 +2149,13 @@ local function house(parent: Instance, H: CFrame, width: number, depth: number, 
 	if door and width >= 40 then
 		table.insert(openings, { x = -width / 2 + 5, w = 5, y = 11, h = 8 })
 	end
-	wall(m, back, { length = width, height = height, thick = 3, openings = openings, ragged = if door then 0.08 else 0.2 })
+	wall(m, back, {
+		length = width,
+		height = height,
+		thick = 3,
+		openings = openings,
+		ragged = if door then 0.08 else 0.2,
+	})
 	wall(m, H * CFrame.new(-width / 2, 0, 0) * CFrame.Angles(0, HALF, 0), {
 		length = depth,
 		height = height * 0.9,
@@ -1708,7 +2189,8 @@ local function quarter(parent: Instance)
 	local tops: { [number]: Vector3 } = {}
 	for i, keep in { 1, 1, 0.5, 0, 1, 1, 0.35 } do
 		local base = S * CFrame.new(-60 + (i - 1) * 20, 1.7, 0)
-		local top = column(m, base, { radius = 2.6, height = 28, keep = keep, band = if i == 2 then 0.35 else nil })
+		local top =
+			column(m, base, { radius = 2.6, height = 28, keep = keep, band = if i == 2 then 0.35 else nil })
 		if top then
 			tops[i] = top
 		end
@@ -1737,6 +2219,90 @@ local function quarter(parent: Instance)
 	rubble(m, city * Vector3.new(120, 0, 40), 14, 8, 1.6, 4)
 end
 
+-- A patch of coral, sponges and sea grass on the sand round `center`, kept off the
+-- ruins' footprints (the growth pass fills it)
+local function garden(center: Vector3, radius: number, count: number)
+	for _ = 1, count do
+		local a = rng:NextNumber(0, TAU)
+		local d = math.sqrt(rng:NextNumber()) * radius
+		local p = center + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
+		if not claimed(p, 1) then
+			spot(CFrame.new(floorAt(p)), rng:NextNumber(3.5, 7), true)
+		end
+	end
+end
+
+-- A fragment of a building between the city's monuments: a broken wall with a
+-- window, its rubble, sometimes a column still standing beside it
+local function fragment(parent: Instance, x: number, z: number, yaw: number)
+	local m = model(parent, "Fragment")
+	local length = rng:NextNumber(14, 26)
+	local height = rng:NextNumber(10, 18)
+	local F = siteAt(city, x, z, yaw, length / 2, 3)
+	claim(F, length / 2 + 4, 6)
+	wall(m, F, {
+		length = length,
+		height = height,
+		thick = 3,
+		openings = {
+			{
+				x = rng:NextNumber(-length / 4, length / 4),
+				w = 5,
+				y = height * 0.4,
+				h = math.min(6, height * 0.3),
+			},
+		},
+		ragged = 0.45,
+	})
+	rubble(m, F * Vector3.new(0, 0, rng:NextNumber(4, 8)), 8, 6, 1.5, 4)
+	if rng:NextNumber() < 0.5 then
+		column(
+			m,
+			F * CFrame.new(length / 2 + 6, 0, 0),
+			{ radius = 2.4, height = 24, keep = rng:NextNumber(0.3, 0.8) }
+		)
+	end
+	spot(F * CFrame.new(-length / 2 - 2, 0, 3), 5, true)
+end
+
+-- Between the monuments: wall fragments, and coral gardens round the head, the hand,
+-- the avenue's sides, the theatre, the courtyard's rim, the temple's back and the
+-- gateway (the city's frame: x, z, then a turn, or a radius and a count)
+local FRAGMENTS = {
+	{ -205, 72, 0.3 },
+	{ -95, 92, -0.4 },
+	{ -225, -88, 0.2 },
+	{ -52, -96, 0.5 },
+	{ 35, 128, -0.2 },
+	{ 30, -120, 0.1 },
+	{ -30, 162, 0.8 },
+	{ -252, 112, 0 },
+}
+local GARDENS = {
+	{ -100, 54, 14, 6 },
+	{ -70, -68, 12, 5 },
+	{ -200, 52, 16, 6 },
+	{ -150, -52, 16, 6 },
+	{ -118, 52, 14, 5 },
+	{ -80, 120, 18, 7 },
+	{ -205, 122, 16, 6 },
+	{ -118, -96, 18, 6 },
+	{ 70, 72, 16, 6 },
+	{ 72, -70, 16, 6 },
+	{ 130, 40, 14, 5 },
+	{ -278, 32, 12, 5 },
+	{ -278, -34, 12, 5 },
+}
+
+local function between(parent: Instance)
+	for _, f in FRAGMENTS do
+		fragment(parent, f[1], f[2], f[3])
+	end
+	for _, g in GARDENS do
+		garden(city * Vector3.new(g[1], 0, g[2]), g[3], g[4])
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- The smaller ruins out in the biome
 -- ---------------------------------------------------------------------------
@@ -1746,7 +2312,11 @@ local function outGate(m: Model, O: CFrame, label: string)
 	arch(m, O, { span = 22, spring = 18, depth = 8, pier = 7, keystone = lit })
 	for side = -1, 1, 2 do
 		local len = rng:NextNumber(10, 18)
-		wall(m, O * CFrame.new(side * (11 + 7 + len / 2), 0, 0), { length = len, height = rng:NextNumber(8, 16), thick = 4, ragged = 0.5 })
+		wall(
+			m,
+			O * CFrame.new(side * (11 + 7 + len / 2), 0, 0),
+			{ length = len, height = rng:NextNumber(8, 16), thick = 4, ragged = 0.5 }
+		)
 	end
 	glyphPanel(m, O * CFrame.new(-14.5, 10, -4.05), 1, 3, 2)
 	for side = -1, 1, 2 do
@@ -1759,13 +2329,23 @@ local function outStoa(m: Model, O: CFrame)
 	stone(m, "StoaFloor", Vector3.new(94, 2.6, 11), O * CFrame.new(0, 0.1, 0), COLORS.shade)
 	local tops: { [number]: Vector3 } = {}
 	for i = 1, 5 do
-		local keep = if rng:NextNumber() < 0.5 then 1 elseif rng:NextNumber() < 0.6 then rng:NextNumber(0.3, 0.75) else 0
+		local keep = if rng:NextNumber() < 0.5
+			then 1
+			elseif rng:NextNumber() < 0.6 then rng:NextNumber(0.3, 0.75)
+			else 0
 		local base = O * CFrame.new(-40 + (i - 1) * 20, 1.4, 0)
-		local top = column(m, base, { radius = 2.4, height = 24, keep = keep, band = if i == 3 then 0.3 else nil })
+		local top =
+			column(m, base, { radius = 2.4, height = 24, keep = keep, band = if i == 3 then 0.3 else nil })
 		if top then
 			tops[i] = top
 		elseif keep <= 0 then
-			fallenColumn(m, floorAt(base * Vector3.new(0, 0, -8)), (O.LookVector + O.RightVector * rng:NextNumber(-0.4, 0.4)).Unit, 2.4, 4)
+			fallenColumn(
+				m,
+				floorAt(base * Vector3.new(0, 0, -8)),
+				(O.LookVector + O.RightVector * rng:NextNumber(-0.4, 0.4)).Unit,
+				2.4,
+				4
+			)
 		end
 	end
 	for i = 1, 4 do
@@ -1785,7 +2365,11 @@ local function outTholos(m: Model, O: CFrame)
 	for k = 1, 6 do
 		local a = k * TAU / 6
 		local keep = if k % 3 == 0 then rng:NextNumber(0.25, 0.6) else 1
-		local top = column(m, O * CFrame.Angles(0, a, 0) * CFrame.new(0, 3.2, -14), { radius = 1.8, height = 20, keep = keep })
+		local top = column(
+			m,
+			O * CFrame.Angles(0, a, 0) * CFrame.new(0, 3.2, -14),
+			{ radius = 1.8, height = 20, keep = keep }
+		)
 		if top then
 			tops[k] = top
 		end
@@ -1805,22 +2389,41 @@ end
 
 local function outObelisks(m: Model, O: CFrame)
 	obelisk(m, O * CFrame.new(-14, 0, 0), rng:NextNumber(26, 34), 3.8, rng:NextNumber() < 0.5)
-	toppled(m, O * CFrame.new(14, 0, 0), (O.RightVector + O.LookVector * rng:NextNumber(-0.6, 0.6)).Unit, 30, 3.8)
+	toppled(
+		m,
+		O * CFrame.new(14, 0, 0),
+		(O.RightVector + O.LookVector * rng:NextNumber(-0.6, 0.6)).Unit,
+		30,
+		3.8
+	)
 	for k = -1, 1, 2 do
-		paving(m, "Slab", Vector3.new(14, 1.4, 14), O * CFrame.new(0, -0.3, k * 9) * CFrame.Angles(0, rng:NextNumber(-0.1, 0.1), 0), COLORS.paving)
+		paving(
+			m,
+			"Slab",
+			Vector3.new(14, 1.4, 14),
+			O * CFrame.new(0, -0.3, k * 9) * CFrame.Angles(0, rng:NextNumber(-0.1, 0.1), 0),
+			COLORS.paving
+		)
 	end
 end
 
 local function outColossus(m: Model, O: CFrame)
 	-- The feet and shins of a colossus on its pedestal: the rest of it is long gone
 	stone(m, "ColossusPedestal", Vector3.new(28, 6.5, 20), O * CFrame.new(0, 2.6, 0), COLORS.shade)
-	glyphPanel(m, O * CFrame.new(0, 2.8, -10.05), 8, 1, 2)
+	glyphPanel(m, O * CFrame.new(0, 2.8, -10.05), 6, 1, 2)
 	local top = O * CFrame.new(0, 5.85, 0)
 	for side = -1, 1, 2 do
 		local foot = top * CFrame.new(side * 6, 0, 0)
 		stone(m, "Foot", Vector3.new(6, 3.4, 12), foot * CFrame.new(0, 1.7, -2), COLORS.marble, SMOOTH)
 		for t = -1.5, 1.5 do
-			stone(m, "Toe", Vector3.new(1.3, 1.6, 2.2), foot * CFrame.new(t * 1.4, 0.8, -8.6), COLORS.marble, SMOOTH)
+			stone(
+				m,
+				"Toe",
+				Vector3.new(1.3, 1.6, 2.2),
+				foot * CFrame.new(t * 1.4, 0.8, -8.6),
+				COLORS.marble,
+				SMOOTH
+			)
 		end
 		local shin = rng:NextNumber(10, 18)
 		drum(m, "Shin", foot * CFrame.new(0, 3, 1), shin, 3.2, COLORS.marble, true)
@@ -1953,6 +2556,7 @@ local function outlying(parent: Instance)
 		else
 			outSteles(m, O)
 		end
+		garden(O * Vector3.new(0, 0, size * 0.9), size * 0.5, 4)
 	end
 	return #placed
 end
@@ -1974,9 +2578,17 @@ local function boulders(parent: Instance)
 		end
 		local size = rng:NextNumber(7, 22)
 		local g = floorAt(p)
-		local rock = ball(parent, "Boulder", g + Vector3.new(0, size * 0.3, 0), size, pick({ COLORS.weathered, COLORS.dark, COLORS.paving }), true)
+		local rock = ball(
+			parent,
+			"Boulder",
+			g + Vector3.new(0, size * 0.3, 0),
+			size,
+			pick({ COLORS.weathered, COLORS.dark, COLORS.paving }),
+			true
+		)
 		Props.dress(rock, "BoulderRound", {
-			cframe = CFrame.new(g + Vector3.new(0, size * 0.4, 0)) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0),
+			cframe = CFrame.new(g + Vector3.new(0, size * 0.4, 0))
+				* CFrame.Angles(0, rng:NextNumber(0, TAU), 0),
 			size = Vector3.new(size * 1.1, size * 0.9, size * 1.1),
 			solid = true,
 			blocksCamera = true,
@@ -2004,7 +2616,9 @@ local function coral(parent: Instance, at: CFrame, size: number)
 		piece,
 		"Coral",
 		if round then Vector3.one * size else Vector3.new(size * 1.6, size * 0.6, size * 0.6),
-		at * CFrame.new(0, size * 0.3, 0) * CFrame.Angles(0, rng:NextNumber(0, TAU), math.rad(rng:NextNumber(40, 90))),
+		at
+			* CFrame.new(0, size * 0.3, 0)
+			* CFrame.Angles(0, rng:NextNumber(0, TAU), math.rad(rng:NextNumber(40, 90))),
 		pick(Decor.CORALS),
 		hard
 	)
@@ -2044,12 +2658,22 @@ local function grow(parent: Instance)
 		end
 		local at = CFrame.new(s.at.Position) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0)
 		local roll = rng:NextNumber()
-		if passDistance(s.at.Position) < 14 then
-			blob(folder, "Moss", at * CFrame.new(0, 0.1, 0), Vector3.new(s.size * 1.4, 0.55, s.size), pick(COLORS.moss))
+		if passDistance(s.at.Position) < 16 + s.size then
+			blob(
+				folder,
+				"Moss",
+				at * CFrame.new(0, 0.1, 0),
+				Vector3.new(s.size * 1.4, 0.55, s.size),
+				pick(COLORS.moss)
+			)
 		elseif s.foot then
 			if roll < 0.45 then
 				for _ = 1, rng:NextInteger(1, 3) do
-					coral(folder, at * CFrame.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2)), rng:NextNumber(2.2, math.max(s.size, 2.5)))
+					coral(
+						folder,
+						at * CFrame.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2)),
+						rng:NextNumber(2.2, math.max(s.size, 2.5))
+					)
 				end
 			elseif roll < 0.65 then
 				local before = #folder:GetChildren()
@@ -2060,13 +2684,31 @@ local function grow(parent: Instance)
 				Decor.kelp(folder, at, rng:NextInteger(3, 4), rng:NextNumber(2.2, 3.4), rng)
 				stats.parts += #folder:GetChildren() - before
 			else
-				blob(folder, "Moss", at * CFrame.new(0, 0.1, 0), Vector3.new(s.size * 1.6, 0.6, s.size * 1.1), pick(COLORS.moss))
+				blob(
+					folder,
+					"Moss",
+					at * CFrame.new(0, 0.1, 0),
+					Vector3.new(s.size * 1.6, 0.6, s.size * 1.1),
+					pick(COLORS.moss)
+				)
 			end
 		else
 			if roll < 0.4 then
-				blob(folder, "Moss", at * CFrame.new(0, 0.1, 0), Vector3.new(s.size * 1.4, 0.55, s.size), pick(COLORS.moss))
+				blob(
+					folder,
+					"Moss",
+					at * CFrame.new(0, 0.1, 0),
+					Vector3.new(s.size * 1.4, 0.55, s.size),
+					pick(COLORS.moss)
+				)
 				if rng:NextNumber() < 0.5 then
-					blob(folder, "Moss", at * CFrame.new(s.size * 0.5, 0.05, 0.4), Vector3.new(s.size, 0.45, s.size * 0.8), pick(COLORS.moss))
+					blob(
+						folder,
+						"Moss",
+						at * CFrame.new(s.size * 0.5, 0.05, 0.4),
+						Vector3.new(s.size, 0.45, s.size * 0.8),
+						pick(COLORS.moss)
+					)
 				end
 			elseif roll < 0.75 then
 				coral(folder, at, rng:NextNumber(1.4, math.max(s.size, 1.6)))
@@ -2165,6 +2807,7 @@ function Ruins.build(parent: Instance, ground: Ground): Stats
 	theatre(parent)
 	court(parent)
 	quarter(parent)
+	between(parent)
 	local placed = outlying(parent)
 	boulders(model(parent, "Boulders"))
 	grow(parent)

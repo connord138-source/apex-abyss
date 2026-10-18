@@ -104,14 +104,22 @@ end
 -- the deep floor, z across toward larger angles
 local function ruinsFrame(floor: number): CFrame
 	local out = outward(Ruins.angle)
-	return CFrame.fromMatrix(at(Ruins.angle, Ruins.radius, floor), out, Vector3.yAxis, out:Cross(Vector3.yAxis))
+	return CFrame.fromMatrix(
+		at(Ruins.angle, Ruins.radius, floor),
+		out,
+		Vector3.yAxis,
+		out:Cross(Vector3.yAxis)
+	)
 end
 
 -- Whether a mound at `center` (`radius` round) would reach into the city's box
 local function inCity(city: CFrame, center: Vector3, radius: number): boolean
 	local q = city:PointToObjectSpace(center)
 	local box = Ruins.keepOut
-	return q.X > box.x[1] - radius and q.X < box.x[2] + radius and q.Z > box.z[1] - radius and q.Z < box.z[2] + radius
+	return q.X > box.x[1] - radius
+		and q.X < box.x[2] + radius
+		and q.Z > box.z[1] - radius
+		and q.Z < box.z[2] + radius
 end
 
 -- The city's ground: a pale sand plain (low discs a few studs proud of the mud),
@@ -143,8 +151,7 @@ end
 function Shelf.ops(): ({ Op }, Features)
 	local ops: { Op } = {}
 	local rng = Random.new(World.seed + 7)
-	local features: Features =
-		{ chimneys = {}, pinnacles = {}, chutes = {}, reefRocks = {} }
+	local features: Features = { chimneys = {}, pinnacles = {}, chutes = {}, reefRocks = {} }
 	local floor = deep.floorY
 	local hubClear = World.hub.radius + World.hub.wallThickness + World.hub.tunnelLength + 20
 	local deepInner = shelf.radius + shelf.edge -- the foot of the drop-off

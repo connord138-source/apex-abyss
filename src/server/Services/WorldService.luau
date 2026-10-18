@@ -17,6 +17,7 @@ local Cave = require(script.Parent.Parent.Cave)
 local Decor = require(script.Parent.Parent.Decor)
 local DenDoor = require(script.Parent.Parent.DenDoor)
 local Plaza = require(script.Parent.Parent.Plaza)
+local Ruins = require(script.Parent.Parent.Ruins)
 local Props = require(ReplicatedStorage.Shared.Props)
 local TreasureWheel = require(script.Parent.Parent.TreasureWheel)
 local Shelf = require(script.Parent.Parent.Shelf)
@@ -154,8 +155,8 @@ local function setupLighting()
 end
 
 -- The seafloor is Terrain (Shelf.luau): the shelf, the drop-off, the deep floor,
--- the Trench canyon, the Vents' basin, the Ruins' stones. The features it returns
--- (chimneys, pinnacles, chutes, ruin anchors) are dressed with parts below.
+-- the Trench canyon, the Vents' basin, the Ruins' ground. The features it returns
+-- (chimneys, pinnacles, chutes, reef rocks) are dressed with parts below.
 local features: Shelf.Features
 
 local function buildSeabed()
@@ -461,7 +462,6 @@ end
 local WOOD = Color3.fromRGB(132, 96, 66)
 local WRECK_WOOD = Color3.fromRGB(70, 52, 38)
 local WRECK_WOOD_LIGHT = Color3.fromRGB(110, 86, 60)
-local STONE_PALE = Color3.fromRGB(176, 166, 140)
 local CORAL_COLORS = {
 	Color3.fromRGB(240, 110, 120),
 	Color3.fromRGB(255, 160, 80),
@@ -728,96 +728,6 @@ local function wreck(parent: Instance, rng: Random, ground: Vector3)
 	light.Color = Color3.fromRGB(255, 190, 110)
 	light.Brightness = 1.4
 	light.Range = 26
-	light.Parent = lanternPart
-	Props.dress(lanternPart, "Lantern", {
-		cframe = lanternPart.CFrame,
-		size = Vector3.new(3, 4.5, 3),
-		solid = true, -- the lantern itself, not an invisible box round it (playtest 2026-10-10)
-	})
-end
-
--- A ruin: columns, a lintel, steps, a statue and a teal lantern
-local function ruin(parent: Instance, rng: Random, anchor: Vector3)
-	local model = Instance.new("Model")
-	model.Name = "Ruin"
-	model.Parent = parent
-	local base = CFrame.new(anchor) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
-	local columns = rng:NextInteger(4, 6)
-	local radius = rng:NextNumber(14, 22)
-	local tallest = 0
-	for i = 1, columns do
-		local a = (i / columns) * 2 * math.pi
-		local height = rng:NextNumber(14, 40)
-		if rng:NextNumber() < 0.3 then
-			height *= 0.45 -- broken
-		end
-		tallest = math.max(tallest, height)
-		local column = Instance.new("Part")
-		column.Name = "Column"
-		column.Anchored = true
-		column.Shape = Enum.PartType.Cylinder
-		column.Size = Vector3.new(height, 5, 5)
-		column.CFrame = base
-			* CFrame.new(math.cos(a) * radius, height / 2, math.sin(a) * radius)
-			* CFrame.Angles(0, 0, math.rad(90))
-		column.Color = STONE_PALE
-		column.Material = Enum.Material.Sandstone
-		column.Parent = model
-	end
-	block(
-		model,
-		"Lintel",
-		Vector3.new(radius * 1.6, 4, 6),
-		base * CFrame.new(0, tallest + 2, radius),
-		STONE_PALE,
-		Enum.Material.Sandstone
-	)
-	for step = 1, 3 do
-		block(
-			model,
-			"Step",
-			Vector3.new(radius * 1.4, 2, 5),
-			base * CFrame.new(0, step, -radius - step * 4),
-			STONE_PALE,
-			Enum.Material.Sandstone
-		)
-	end
-	block(
-		model,
-		"Plinth",
-		Vector3.new(8, 4, 8),
-		base * CFrame.new(0, 2, 0),
-		STONE_PALE,
-		Enum.Material.Sandstone
-	)
-	block(
-		model,
-		"Statue",
-		Vector3.new(4, 12, 4),
-		base * CFrame.new(0, 10, 0) * CFrame.Angles(0, 0, math.rad(rng:NextNumber(-8, 8))),
-		STONE_PALE,
-		Enum.Material.Sandstone
-	)
-	local head = Instance.new("Part")
-	head.Anchored = true
-	head.Shape = Enum.PartType.Ball
-	head.Size = Vector3.one * 4.5
-	head.CFrame = base * CFrame.new(0, 18, 0)
-	head.Color = STONE_PALE
-	head.Material = Enum.Material.Sandstone
-	head.Parent = model
-	local lanternPart = block(
-		model,
-		"Lantern",
-		Vector3.new(2, 3, 2),
-		base * CFrame.new(radius * 0.6, 6, 0),
-		Color3.fromRGB(120, 255, 230),
-		Enum.Material.Neon
-	)
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(120, 255, 230)
-	light.Brightness = 1.6
-	light.Range = 34
 	light.Parent = lanternPart
 	Props.dress(lanternPart, "Lantern", {
 		cframe = lanternPart.CFrame,
@@ -1261,22 +1171,7 @@ local function buildBiomes(parent: Instance)
 		end
 	end
 
-	-- Sunken Ruins: temples round the plinths the Terrain laid, plus a few more
-	for _, anchor in features.ruinAnchors do
-		ruin(ruins, rng, anchor)
-	end
-	for _ = 1, 8 do
-		local ground = spotIn(rng, "SunkenRuins", 60)
-		if ground then
-			ruin(ruins, rng, ground)
-		end
-	end
-	for _ = 1, 80 do
-		local ground = spotIn(rng, "SunkenRuins", 16)
-		if ground then
-			rock(rocks, rng, ground, 1.3, true)
-		end
-	end
+	-- (Sunken Ruins: built last, by Ruins.luau)
 
 	-- Hydrothermal Vents: every chimney glows and smokes; basalt rubble
 	for _, chimney in features.chimneys do
@@ -1514,6 +1409,12 @@ local function buildBiomes(parent: Instance)
 			)
 		end
 	end
+
+	-- Sunken Ruins (owner, 2026-10-18: "Sunken ruins need an extreme update with the
+	-- structures and detail"): a drowned city and smaller ruins round it, built from
+	-- parts (Ruins.luau, Config/Ruins); last, so it clears the seeps and plankton the
+	-- loops above scattered into its stones
+	Ruins.build(ruins, groundAt)
 end
 
 local denOwnerNames: { [number]: string? } = {}

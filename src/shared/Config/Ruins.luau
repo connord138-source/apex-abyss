@@ -58,14 +58,15 @@ return {
 	outlying = { count = 15, angles = { 322, 62 }, radii = { 1010, 1440 }, apart = 170, margin = 60 },
 	boulders = 34,
 	-- How much of the stones grows coral, sponges, anemones, moss and sea grass
-	growth = { top = 0.45, foot = 0.7 },
+	growth = { top = 0.45, foot = 0.8 },
 
 	colors = {
 		marble = Color3.fromRGB(196, 212, 206), -- seafoam-white marble: columns, arches, statues
 		shade = Color3.fromRGB(150, 172, 172), -- the platforms and walls
 		weathered = Color3.fromRGB(122, 148, 150),
 		teal = Color3.fromRGB(64, 140, 140), -- bands, lips, lintels
-		dark = Color3.fromRGB(34, 56, 66), -- recesses, glyph panels, cracks
+		dark = Color3.fromRGB(34, 56, 66), -- recesses, niches, cracks
+		inset = Color3.fromRGB(62, 100, 108), -- the panels and bands glyphs are cut into
 		paving = Color3.fromRGB(116, 136, 144),
 		bronze = Color3.fromRGB(60, 98, 92), -- verdigris: braziers, basins
 		moss = { Color3.fromRGB(70, 140, 104), Color3.fromRGB(98, 160, 92), Color3.fromRGB(56, 118, 112) },
@@ -79,7 +80,7 @@ return {
 	},
 	-- The glyphs carved in the stones glow faintly (Neon), and a few lights read
 	-- through the deep haze: few and big
-	glyph = { color = Color3.fromRGB(84, 226, 222), transparency = 0.3, size = 2.2, stroke = 0.42 },
+	glyph = { color = Color3.fromRGB(84, 226, 222), transparency = 0.35, size = 1.9, stroke = 0.36 },
 	light = { color = Color3.fromRGB(110, 232, 226), range = 56, brightness = 1.25 },
 	-- Faint shafts of light from the surface onto the great temple
 	shafts = { count = 2, strength = 0.1 },
