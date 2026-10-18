@@ -199,5 +199,25 @@ view("court", Vector3.new(-118, 34, -84), Vector3.new(-118, -10, -150), 72)
 view("theatre", Vector3.new(-140, 28, 78), Vector3.new(-140, 4, 172), 72)
 view("quarter", Vector3.new(30, 32, -70), Vector3.new(160, 10, 30), 72)
 view("aerial", Vector3.new(-330, 260, -300), Vector3.new(-40, -10, 20), 58)
+-- The outlying ruins: where each is (O| lines) and a camera on it from the hub's side
+-- (render them with BOUNDS round it: their spots here follow the stub's Random, not
+-- the game's)
+for _, child in folder:GetChildren() do
+	local kind = child:GetAttribute("Kind")
+	if kind then
+		local sum, n = Vector3.new(0, 0, 0), 0
+		for _, d in child:GetDescendants() do
+			if d.IsPart then
+				sum = sum + d.CFrame.p
+				n += 1
+			end
+		end
+		local c = sum / math.max(n, 1)
+		local back = Vector3.new(-c.X, 0, -c.Z).Unit
+		local from = c + back * 62 + Vector3.new(0, 20, 0) + Vector3.new(back.Z, 0, -back.X) * 18
+		print(string.format("O|%s|%s|%.0f,%.0f,%.0f", child.Name, kind, c.X, c.Y, c.Z))
+		print(string.format("V|out_%s|%.2f,%.2f,%.2f|%.2f,%.2f,%.2f|70.0", child.Name, from.X, from.Y, from.Z, c.X, c.Y + 4, c.Z))
+	end
+end
 
 dumpParts(root)

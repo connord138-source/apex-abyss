@@ -20,6 +20,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `whalefall_glb` | WhaleFall (GLB; the Whale Fall's carcass, 2026-10-15; lengthwise along its Z, head at +Z in the GLB; normal map stripped, colours made safe, screened) | `ReplicatedStorage.WorldProps.WhaleFall` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`; v2 colors made safe by `tools/props/safe_colors.py` and screened 2026-10-11) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `furniture_glb` | the 38 den furniture pieces of batch 1, `furniture/<Name>.glb` (GLB; cut off `assets/concepts/Furn*.jpg` by `tools/props/furniture_crops.py`, Tripo image_to_model; normal maps taken out by `tools/props/strip_normals.py`, colors made safe by `safe_colors.py`, all 76 images screened 2026-10-13; front faces +X) | `ReplicatedStorage.WorldProps.<Name>` |
+| `ruins_glb` | RuinHead, RuinHand, RuinGuardian, RuinUrn, RuinCapital, RuinStele, `props/<Name>.glb` (GLB; the Sunken Ruins' hero props, 2026-10-18, Tripo text_to_model from `tools/tripo_jobs_ruins_props.json` in the BiomeSunkenRuins concept's marble; normal maps stripped, colours made safe, all 12 images screened, highest 0.056; the head and the stele face +X, the guardian +Z) | `ReplicatedStorage.WorldProps.<Name>` |
 | `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
 | `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
 | `shade_patch_v11` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch11`: WeekWave and WeekWreck on every fish, lighter for the water, each with a faint even glow map (2026-10-17, K1 of the round-2 report; 6 images a GLB) | the same folders; import after v10 |
@@ -31,7 +32,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
 The Barracuda and Reef Shark predators (and prey schools) are the rigged 'Cuda and
 Reef Shark species models, copied into `PreyModels` by `organize_imports`. The Tripo
-balance is about 1,360 credits (`python tools/tripo.py balance`).
+balance is about 1,290 credits (`python tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -66,6 +67,32 @@ Don't scale or position anything; the code does it:
 | Prey | One MeshPart each, scaled to the fish's length, moved with `BulkMoveTo`, with a small yaw wiggle. |
 | Keepers | `WorldService.keeper` stands `WorldProps.Keeper<VendorId>` on the plaza beside its counter (on the right as you face the stall), full height, facing the plaza and turned 25° toward the counter, and hides the placeholder ball and eyes behind the counter. Like the stall it gets `GLB_FRONT` (see Facing). |
 | Props | `Props.dress` fits a copy over its placeholder part (kelp, boulders, coral, the beacon, stalls, lanterns) and hides the part. Shrimp, starfish and shells go through `PropParts` and keep the client's bulk movement. |
+
+### The Sunken Ruins' hero props (`ruins_glb`, 2026-10-18)
+
+`src/server/Ruins.luau` builds the whole drowned city from parts and fits these six
+models over their part-built stand-ins once they're in `WorldProps` (`Props.dress`,
+solid, the camera kept out): the colossal head toppled by the temple's stair, a giant
+hand rising from the sand (and a smaller one by a colossus's feet), the sea-dragon
+guardians on the avenue, urns, the capitals at the ends of fallen columns, and the
+glyph steles. Until they're imported the stand-ins show; nothing else changes.
+
+1. `python tools/fetch_assets.py` (fetches `ruins_glb` into `assets/glb/props/`).
+2. **File → Import 3D**, select the six `Ruin*.glb` in `assets/glb/props/` (no rig),
+   **Import All**. A row named "Scene" gets its file name first.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the six
+   names), then **save the place**.
+4. Play: the server prints `[Ruins] ... N hero props (0 part-built stand-ins)`. In the
+   Sunken Ruins (east, LV 50+; Admin "teleport to a biome"), check that the head lies
+   on its side with its face toward the avenue, the guardians face across the avenue,
+   the steles face their braziers, and nothing floats or sinks out of sight. If a
+   model faces the wrong way, the turn is `GLB_FRONT` in `Ruins.luau` (the head and
+   the stele take it; the guardian faces its frame's look without it).
+
+The Terrain under the ruins changed (a sand plain, drifts and the sunken courtyard's
+pit; the old column stubs, plinths, walls and temple ring are parts now), so the map
+chart is regenerated (`assets/textures/map_chart.png`, screened): upload it as an
+Image and paste its id into `Config/Textures` `mapChart`.
 
 ## Shade skins (tools/shades)
 

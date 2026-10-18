@@ -38,6 +38,8 @@ local PROPS = {
 	ScallopLamp = true, SharkToothPlaque = true, ShipAnchor = true, ShipLantern = true,
 	ShipsWheel = true, StaghornChandelier = true, SulfurCrystals = true, TealBrazier = true,
 	TreasurePile = true, TubeWormPlanter = true, VentCauldron = true, VoidThrone = true,
+	-- The Sunken Ruins' hero props (ruins_glb; Ruins.luau fits them over their stand-ins)
+	RuinHead = true, RuinHand = true, RuinGuardian = true, RuinUrn = true, RuinCapital = true, RuinStele = true,
 }
 
 local function folder(name: string): Folder

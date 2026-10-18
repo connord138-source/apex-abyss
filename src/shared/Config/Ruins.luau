@@ -35,6 +35,7 @@ return {
 		{ -250, -20, 70 },
 	},
 	sandHeight = 3,
+	sandRim = 7, -- smaller discs round each disc's edge (and two patches beyond it)
 	drifts = {
 		{ 20, 60, 22 }, -- the temple's sides and back
 		{ -34, -60, 20 },

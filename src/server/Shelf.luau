@@ -127,20 +127,44 @@ end
 -- floor, its floor `court.depth` under the deep floor (Ruins.luau lines it with
 -- walls, stairs and a paved floor; the carve's edge runs inside its walls)
 local function ruinsGround(ops: { Op }, city: CFrame, floor: number)
+	-- the plain: big discs, a ragged rim of smaller ones round each and a few
+	-- patches beyond, so its edge wanders instead of running round in arcs
+	local sandRng = Random.new(World.seed + 73)
 	for _, disc in Ruins.sand do
 		cylinder(ops, SAND, city * Vector3.new(disc[1], 0, disc[2]), disc[3], Ruins.sandHeight)
+	end
+	for _, disc in Ruins.sand do
+		for k = 1, Ruins.sandRim + 2 do
+			local a = sandRng:NextNumber(0, 2 * math.pi)
+			local patch = k > Ruins.sandRim
+			local d = disc[3]
+				* (if patch then sandRng:NextNumber(1.15, 1.4) else sandRng:NextNumber(0.75, 1.05))
+			local r = disc[3]
+				* (if patch then sandRng:NextNumber(0.06, 0.12) else sandRng:NextNumber(0.16, 0.32))
+			cylinder(
+				ops,
+				SAND,
+				city * Vector3.new(disc[1] + math.cos(a) * d, 0, disc[2] + math.sin(a) * d),
+				r,
+				Ruins.sandHeight
+			)
+		end
 	end
 	for _, drift in Ruins.drifts do
 		ball(ops, SAND, city * Vector3.new(drift[1], -drift[3] * 0.8, drift[2]), drift[3])
 	end
+	-- (twice: an Air fill takes occupancy away rather than clearing it, and one pass
+	-- over the mud left some behind, as DenCarve found)
 	local court = Ruins.court
 	local height = court.depth + 8
-	block(
-		ops,
-		AIR,
-		city * CFrame.new(court.x, -court.depth + height / 2, court.z),
-		Vector3.new(court.inner[1] + court.wall, height, court.inner[2] + court.wall)
-	)
+	for _ = 1, 2 do
+		block(
+			ops,
+			AIR,
+			city * CFrame.new(court.x, -court.depth + height / 2, court.z),
+			Vector3.new(court.inner[1] + court.wall, height, court.inner[2] + court.wall)
+		)
+	end
 end
 
 local function sectorAngle(rng: Random, from: number, to: number): number
