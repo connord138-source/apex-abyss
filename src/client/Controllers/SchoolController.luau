@@ -94,6 +94,20 @@ type Visual = {
 	look: Look?,
 	parts: { BasePart }, -- every part of its body (fades and hiding)
 	cull: number, -- its LocalTransparencyModifier: 0 drawn .. 1 out of range
+	-- Part-built extras riding on it (SHAPES on a part body, GLOWS on any: makeExtras)
+	extras: { Extra }?,
+}
+
+-- (its part is made the first time it shows: a Lanternfish far off never builds spots)
+type Extra = {
+	part: BasePart?,
+	color: Color3,
+	size: Vector3,
+	offset: CFrame,
+	neon: boolean,
+	near: number,
+	light: boolean,
+	shown: boolean,
 }
 
 type Look = {
@@ -136,6 +150,12 @@ local chaseWarningUntil = 0
 local CatchConfig = Config.Catch
 local rarities: { [number]: string } = {} -- prey index → rarity id (rare fish only)
 local prisms: { [number]: Visual } = {} -- fish wearing the Prism look (their colour cycles)
+-- Fish wearing the Silver look: polished bright silver that flashes white as they
+-- turn, like scales catching the light, so it reads apart from the plain silvery
+-- minnows and sardines (owner, 2026-10-18)
+local silvers: { [number]: Visual } = {}
+local SILVER_BASE = Color3.fromRGB(196, 210, 226)
+local SILVER_FLASH = Color3.fromRGB(255, 255, 255)
 -- A tide school near the camera when its tide ends shrinks away over TIDE_FADE
 -- seconds instead of popping out in front of you (playtest 2026-10-10); far off,
 -- out in the haze, it just goes
@@ -149,10 +169,11 @@ local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
 local GLINT_RANGE = 240
 local GLINT_NEAR = 18
 local GLINT_FADE = 30
-local GLINT_PIXELS: { [string]: number } = { Golden = 15, Glowing = 17, Crystal = 19, Prism = 21 }
+local GLINT_PIXELS: { [string]: number } =
+	{ Silver = 13, Golden = 15, Glowing = 17, Crystal = 19, Prism = 21 }
 local RARE_RANGE = GLINT_RANGE + 15 -- a rare fish is drawn at least this far, for its glint
 -- Its light reaches further for the rarer ones (×length, plus studs)
-local LIGHT_BONUS: { [string]: number } = { Golden = 2, Glowing = 5, Crystal = 7, Prism = 9 }
+local LIGHT_BONUS: { [string]: number } = { Silver = 1, Golden = 2, Glowing = 5, Crystal = 7, Prism = 9 }
 local glints: { [number]: Look } = {} -- fish index → its look, while it has a glint
 local glintShown: { [number]: boolean } = {}
 local glintSeen: { [number]: boolean } = {}
@@ -184,6 +205,13 @@ local LOOKS: {
 	},
 } =
 	{
+		Silver = {
+			material = Enum.Material.Foil,
+			color = SILVER_BASE,
+			reflectance = 0.3,
+			transparency = 0,
+			light = 1.3,
+		},
 		Golden = {
 			material = Enum.Material.Foil,
 			color = Color3.fromRGB(255, 196, 64),
@@ -231,6 +259,226 @@ local function makePart(parent: Instance, color: Color3, shape: "Ellipsoid" | "F
 		part.Reflectance = 0.05
 	end
 	return part
+end
+
+-- Part-built extras on some prey, each an ellipsoid riding on the fish (moved with its
+-- body). SHAPES give the second prey batch (Config/Prey, 2026-10-18) a look of its own
+-- while its model isn't imported: a belly, bands, fins on the part body. GLOWS are
+-- the glowing bits every body wears, imported or not: the Lanternfish's light spots and
+-- the Ghost Shrimp's teal tips (Neon parts; never a see-through body, which sorts
+-- badly). `at` is a place on the body in its half-extents (x across, y up, z along:
+-- -1 the snout, 1 the tail), and `hug` pulls it in to the body's egg-shaped outline
+-- toward the ends (a spot on the flank); `size` is × the body's extents, or `ball` ×
+-- its length. A glow shows only within its `near` studs of the camera (past that it's
+-- a speck), and the GLOW_LIGHTS nearest glowing fish with `light` carry a faint light.
+type ExtraSpec = { at: Vector3, size: Vector3?, ball: number?, color: Color3, hug: boolean? }
+type Glow = { near: number, color: Color3, light: boolean, spots: { ExtraSpec } }
+
+local LANTERN = Color3.fromRGB(90, 236, 255)
+local SHRIMP_TIP = Color3.fromRGB(60, 240, 214)
+local CHARCOAL = Color3.fromRGB(52, 44, 44)
+local GLOW_LIGHTS = 3
+local GLOW_LIGHT_RANGE = 7
+local GLOW_LIGHT_BRIGHTNESS = 0.7
+
+local lanternSpots: { ExtraSpec } = {}
+-- (along the mid-flank row painted on the imported model, measured on a render)
+for _, z in { -0.34, -0.04, 0.26, 0.52 } do
+	for _, side in { -1, 1 } do
+		table.insert(
+			lanternSpots,
+			{ at = Vector3.new(side * 0.85, 0.02, z), ball = 0.05, color = LANTERN, hug = true }
+		)
+	end
+end
+
+local GLOWS: { [string]: Glow } = {
+	Lanternfish = { near = 60, color = LANTERN, light = true, spots = lanternSpots },
+	GhostShrimp = {
+		near = 45,
+		color = SHRIMP_TIP,
+		light = false,
+		spots = {
+			-- (where the imported model's tips are, measured on a render: its tail fan
+			-- curls down, its antennae arch up over its back)
+			{ at = Vector3.new(0, -0.78, 0.86), ball = 0.08, color = SHRIMP_TIP }, -- the tail fan
+			{ at = Vector3.new(0.9, 0.93, -0.09), ball = 0.05, color = SHRIMP_TIP }, -- the antennae
+			{ at = Vector3.new(-0.9, 0.93, -0.09), ball = 0.05, color = SHRIMP_TIP },
+			{ at = Vector3.new(0.25, -0.88, -0.38), ball = 0.045, color = SHRIMP_TIP }, -- leg tips
+			{ at = Vector3.new(-0.25, -0.88, -0.16), ball = 0.045, color = SHRIMP_TIP },
+			{ at = Vector3.new(0.25, -0.88, 0.06), ball = 0.045, color = SHRIMP_TIP },
+		},
+	},
+}
+
+local SHAPES: { [string]: { ExtraSpec } } = {
+	Garibaldi = {
+		{
+			at = Vector3.new(0, 0.85, 0.1),
+			size = Vector3.new(0.12, 0.5, 0.6),
+			color = Color3.fromRGB(214, 76, 10),
+		},
+	},
+	WreckCod = {
+		{
+			at = Vector3.new(0, -0.35, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(172, 178, 176),
+		},
+		{
+			at = Vector3.new(0, 0.85, 0.15),
+			size = Vector3.new(0.12, 0.4, 0.7),
+			color = Color3.fromRGB(84, 78, 44),
+		},
+	},
+	Parrotfish = {
+		{
+			at = Vector3.new(0, -0.35, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(96, 196, 176),
+		},
+		{
+			at = Vector3.new(0, -0.1, -0.95),
+			size = Vector3.new(0.45, 0.35, 0.18),
+			color = Color3.fromRGB(200, 226, 240),
+		},
+	},
+	YellowfinTuna = {
+		{
+			at = Vector3.new(0, -0.3, 0),
+			size = Vector3.new(0.9, 0.65, 0.9),
+			color = Color3.fromRGB(196, 206, 220),
+		},
+		{
+			at = Vector3.new(0, 1, 0.1),
+			size = Vector3.new(0.1, 0.7, 0.25),
+			color = Color3.fromRGB(250, 204, 40),
+		},
+		{
+			at = Vector3.new(0, -1, 0.15),
+			size = Vector3.new(0.1, 0.7, 0.25),
+			color = Color3.fromRGB(250, 204, 40),
+		},
+	},
+	MahiMahi = {
+		{
+			at = Vector3.new(0, -0.3, 0),
+			size = Vector3.new(0.85, 0.65, 0.9),
+			color = Color3.fromRGB(222, 196, 52),
+		},
+		{
+			at = Vector3.new(0, 0.8, 0.05),
+			size = Vector3.new(0.1, 0.55, 0.95),
+			color = Color3.fromRGB(30, 90, 120),
+		},
+	},
+	Lionfish = {
+		{ at = Vector3.new(0, 0, -0.25), size = Vector3.new(1.04, 1.04, 0.12), color = CHARCOAL, hug = true },
+		{ at = Vector3.new(0, 0, 0.25), size = Vector3.new(1.04, 1.04, 0.12), color = CHARCOAL, hug = true },
+		{
+			at = Vector3.new(0, 1.2, -0.05),
+			size = Vector3.new(0.08, 0.9, 0.6),
+			color = Color3.fromRGB(150, 60, 30),
+		},
+		{
+			at = Vector3.new(0.75, -0.1, 0.05),
+			size = Vector3.new(0.5, 0.9, 0.5),
+			color = Color3.fromRGB(120, 56, 34),
+		},
+		{
+			at = Vector3.new(-0.75, -0.1, 0.05),
+			size = Vector3.new(0.5, 0.9, 0.5),
+			color = Color3.fromRGB(120, 56, 34),
+		},
+	},
+	GhostShrimp = {
+		{
+			at = Vector3.new(0, 0.35, -1.25),
+			size = Vector3.new(0.08, 0.3, 0.8),
+			color = Color3.fromRGB(170, 196, 214),
+		},
+	},
+	Lanternfish = {
+		{
+			at = Vector3.new(0, -0.35, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(58, 80, 122),
+		},
+	},
+}
+
+local glowLights: { { part: BasePart, light: PointLight } } = {} -- made in start
+local lightPicks: { { distance: number, at: Vector3, color: Color3 } } = {} -- this frame's nearest
+
+-- A fish's extras (nil = none): its SHAPES on a part body, its GLOWS on any body
+local function makeExtras(preyId: string, length: number, bodySize: Vector3, partBody: boolean): { Extra }?
+	local list: { Extra } = {}
+	local half = bodySize / 2
+	local function add(spec: ExtraSpec, near: number, neon: boolean, light: boolean)
+		local at = spec.at
+		local taper = if spec.hug then math.sqrt(math.max(1 - at.Z * at.Z, 0.05)) else 1
+		local ball = spec.ball
+		table.insert(list, {
+			part = nil,
+			color = spec.color,
+			size = if ball
+				then Vector3.one * (ball * length)
+				else bodySize * (spec.size or Vector3.one) * taper,
+			offset = CFrame.new(at.X * half.X * taper, at.Y * half.Y * taper, at.Z * half.Z),
+			neon = neon,
+			near = near,
+			light = light,
+			shown = false,
+		})
+	end
+	local shapes = SHAPES[preyId]
+	if partBody and shapes then
+		for _, spec in shapes do
+			add(spec, math.huge, false, false)
+		end
+	end
+	local glow = GLOWS[preyId]
+	if glow then
+		for i, spec in glow.spots do
+			add(spec, glow.near, true, glow.light and i == 1)
+		end
+	end
+	return if #list > 0 then list else nil
+end
+
+local function showExtra(extra: Extra, shown: boolean)
+	if extra.shown == shown then
+		return
+	end
+	extra.shown = shown
+	local part = extra.part
+	if part == nil and shown and folder then
+		local made = makePart(folder :: Folder, extra.color, "Ellipsoid")
+		made.Name = "Extra"
+		made.Size = extra.size
+		if extra.neon then
+			made.Material = Enum.Material.Neon
+		end
+		extra.part = made
+	elseif part then
+		part.Transparency = if shown then 0 else 1
+	end
+end
+
+-- Keeps the GLOW_LIGHTS nearest glowing fish this frame (sorted, nearest first)
+local function pickLight(distance: number, at: Vector3, color: Color3)
+	local count = #lightPicks
+	if count >= GLOW_LIGHTS and distance >= lightPicks[count].distance then
+		return
+	end
+	local i = count
+	while i >= 1 and lightPicks[i].distance > distance do
+		i -= 1
+	end
+	table.insert(lightPicks, i + 1, { distance = distance, at = at, color = color })
+	if #lightPicks > GLOW_LIGHTS then
+		table.remove(lightPicks)
+	end
 end
 
 -- The imported prey (docs/ASSETS.md): ReplicatedStorage.PreyModels.<PreyId>, a rigged
@@ -339,6 +587,17 @@ local function setCull(visual: Visual, cull: number)
 	for _, part in visual.parts do
 		part.LocalTransparencyModifier = cull
 	end
+	local extras = visual.extras
+	if extras then
+		for _, extra in extras do
+			if extra.part then
+				(extra.part :: BasePart).LocalTransparencyModifier = cull
+			end
+			if cull >= 1 then
+				showExtra(extra, false) -- (not moved while it's out of range)
+			end
+		end
+	end
 	local look = visual.look
 	if look and (was >= 1) ~= (cull >= 1) then
 		if look.sparkle then
@@ -414,6 +673,7 @@ local function makeVisual(index: number): Visual
 		cull = 0,
 	}
 	visual.parts = partsOf(visual)
+	visual.extras = makeExtras(prey.id, length, bodySize, model == nil and not proto.mesh)
 	setCull(visual, 1)
 	return visual
 end
@@ -426,6 +686,11 @@ local function setHidden(visual: Visual, hidden: boolean)
 	local transparency = if hidden then 1 else 0
 	for _, part in visual.parts do
 		part.Transparency = transparency
+	end
+	if hidden and visual.extras then
+		for _, extra in visual.extras do
+			showExtra(extra, false) -- (shown again as it's drawn: step)
+		end
 	end
 	if not hidden then
 		if visual.model then
@@ -448,6 +713,7 @@ local function clearLook(index: number, visual: Visual)
 	end
 	visual.look = nil
 	prisms[index] = nil
+	silvers[index] = nil
 	glints[index] = nil
 	glintShown[index] = nil
 	glintBlocked[index] = nil
@@ -509,9 +775,11 @@ local function setLook(index: number, rarityId: string?)
 	attachment.Parent = visual.body
 	local sparkle = Instance.new("ParticleEmitter")
 	sparkle.Texture = SPARKLE
-	sparkle.Color = ColorSequence.new(def.color)
+	sparkle.Color = if rarityId == "Silver"
+		then ColorSequence.new(Color3.new(1, 1, 1), def.color)
+		else ColorSequence.new(def.color)
 	sparkle.LightEmission = 1
-	sparkle.Rate = 5 + math.min(length, 6)
+	sparkle.Rate = (if rarityId == "Silver" then 8 else 5) + math.min(length, 6)
 	sparkle.Lifetime = NumberRange.new(0.6, 1.2)
 	sparkle.Speed = NumberRange.new(0.2, 0.8)
 	sparkle.SpreadAngle = Vector2.new(180, 180)
@@ -581,6 +849,8 @@ local function setLook(index: number, rarityId: string?)
 	visual.look = look
 	if rarityId == "Prism" then
 		prisms[index] = visual
+	elseif rarityId == "Silver" then
+		silvers[index] = visual
 	end
 end
 
@@ -756,6 +1026,13 @@ local function releaseSchool(schoolIndex: number)
 		if visual.tail then
 			(visual.tail :: BasePart):Destroy()
 		end
+		if visual.extras then
+			for _, extra in visual.extras do
+				if extra.part then
+					(extra.part :: BasePart):Destroy()
+				end
+			end
+		end
 	end
 end
 
@@ -794,6 +1071,21 @@ local function step(dt: number)
 				if look.light then
 					look.light.Color = color
 				end
+			end
+		end
+	end
+	-- Silver fish flash white once a turn (sharp, like a scale catching the light)
+	for index, visual in silvers do
+		local look = visual.look
+		if look and visual.cull < 1 then
+			local flash = math.max(math.sin(now * 5.5 + index * 1.3), 0) ^ 6
+			local color = SILVER_BASE:Lerp(SILVER_FLASH, 0.3 + 0.7 * flash)
+			for part in look.saved do
+				part.Color = color
+				part.Reflectance = 0.3 + 0.3 * flash
+			end
+			if look.light then
+				look.light.Brightness = 1.1 + 2.6 * flash
 			end
 		end
 	end
@@ -1062,9 +1354,41 @@ local function step(dt: number)
 							* (if visual.flip then MESH_FLIP else CFrame.identity)
 					)
 				end
+				-- Its extras ride on it (not while it's sucked in, growing back or shrinking
+				-- away: they don't scale); a glow only near the camera
+				local extras = visual.extras
+				if extras then
+					local whole = visual.suckFrom == nil and fadeOut == nil and visual.fadeIn >= 1
+					for _, extra in extras do
+						local shown = whole and far < extra.near * detail
+						showExtra(extra, shown)
+						if shown and extra.part then
+							table.insert(parts, extra.part :: BasePart)
+							table.insert(frames, frame * extra.offset)
+							if extra.light then
+								pickLight(far, frame.Position, GLOWS[fish.prey].color)
+							end
+						end
+					end
+				end
 			end
 		end
 	end
+	-- The faint lights go to the nearest glowing fish (GLOW_LIGHTS)
+	for i, slot in glowLights do
+		local pick = lightPicks[i]
+		if pick then
+			table.insert(parts, slot.part)
+			table.insert(frames, CFrame.new(pick.at))
+			if slot.light.Color ~= pick.color then
+				slot.light.Color = pick.color
+			end
+		end
+		if slot.light.Enabled ~= (pick ~= nil) then
+			slot.light.Enabled = pick ~= nil
+		end
+	end
+	table.clear(lightPicks)
 	-- Rock checks for the stars in reach, a few a frame, round robin
 	table.clear(glintQueue)
 	for index in glintAt do
@@ -1175,6 +1499,26 @@ function SchoolController.start()
 	made.Name = "Prey"
 	made.Parent = workspace
 	folder = made -- (each school's fish are built as it comes near: step)
+	-- The few faint lights the nearest glowing fish carry (GLOWS `light`)
+	for _ = 1, GLOW_LIGHTS do
+		local anchor = Instance.new("Part")
+		anchor.Name = "GlowLight"
+		anchor.Anchored = true
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.CastShadow = false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.one * 0.2
+		local light = Instance.new("PointLight")
+		light.Range = GLOW_LIGHT_RANGE
+		light.Brightness = GLOW_LIGHT_BRIGHTNESS
+		light.Shadows = false
+		light.Enabled = false
+		light.Parent = anchor
+		anchor.Parent = made
+		table.insert(glowLights, { part = anchor :: BasePart, light = light })
+	end
 	-- The schools' lifts over the rocks and reefs, as the server worked them out
 	-- (Schools.settle), so we draw every fish where the server checks it
 	local function loadLifts()

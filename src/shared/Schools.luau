@@ -68,6 +68,7 @@ type Zone = {
 	round: boolean?,
 	pathRadius: { number }?,
 	trench: boolean?,
+	vents: boolean?,
 }
 
 -- How far a client draws each fish (SchoolController; owner, 2026-10-18: "We still
@@ -129,6 +130,16 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 			local _, halfMiddle = Seafloor.trenchHalfWidths(width)
 			local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-1, 1) * math.max(halfMiddle - margin, 0))
 			dx, dz = x - World.hub.center.X, z - World.hub.center.Z
+		elseif zone.vents then
+			-- Over one of the Hydrothermal Vents' basins (Seafloor.ventBasins), its loop
+			-- inside the rim; its height is over the basin's floor, and the lift carries
+			-- it over the chimneys
+			local basins = Seafloor.ventBasins()
+			local basin = basins[rng:NextInteger(1, #basins)]
+			local angle = rng:NextNumber(0, 2 * math.pi)
+			local r = rng:NextNumber(0, math.max(basin.radius - margin, 0))
+			dx = basin.x + math.cos(angle) * r - World.hub.center.X
+			dz = basin.z + math.sin(angle) * r - World.hub.center.Z
 		else
 			for _ = 1, 12 do
 				local angle

@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Garden = require(ReplicatedStorage.Shared.Garden)
@@ -19,6 +20,7 @@ local Catch = require(ReplicatedStorage.Shared.Catch)
 local Fx = require(ReplicatedStorage.Shared.Fx)
 local Reward = require(ReplicatedStorage.Shared.Reward)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
+local Schools = require(ReplicatedStorage.Shared.Schools)
 local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
@@ -26,6 +28,7 @@ local CardPhoto = require(script.Parent.Parent.CardPhoto)
 local FishPreview = require(script.Parent.Parent.FishPreview)
 local Input = require(script.Parent.Parent.Input)
 local ItemPhoto = require(script.Parent.Parent.ItemPhoto)
+local PreyPhoto = require(script.Parent.Parent.PreyPhoto)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
@@ -1542,8 +1545,11 @@ local function shadeHow(shade: any, s: any): string
 		return `{passSource("skin", shade.id) or "A Tide Pass season"} · works on every fish`
 	elseif shade.catch then
 		local rarity = Config.Catch.byId[shade.catch]
-		local count = ((s.catchTracks or {})[s.species or ""] or {})[rarity.id] or 0
-		return `Catch {rarity.track} {rarity.name} fish as this fish ({math.min(count, rarity.track)} / {rarity.track} so far) · the LOG's catch track`
+		local done = Catch.goal(s.catchLog, rarity.id)
+		return `Catch {rarity.unlock.each} {rarity.name} fish of each of {rarity.unlock.species} species, as any fish ({math.min(
+			done,
+			rarity.unlock.species
+		)} / {rarity.unlock.species} species so far) · then it's every fish's · the LOG's logbook`
 	elseif shade.week then
 		return "The Catch of the Week's skin: catch that week's fish (the LOG) while it runs"
 	elseif shade.boss then
@@ -1694,7 +1700,7 @@ local function guide(): { { title: string, text: string } }
 		},
 		{
 			title = "Rare catches and tides",
-			text = "Golden, Glowing, Crystal and Prism fish pay big and fill each fish's catch track (the LOG). The Tide Clock changes the sea every 20 minutes.",
+			text = "Silver, Golden, Glowing, Crystal and Prism fish sparkle and pay big. Catch them from five species for skins every fish wears (the LOG's logbook). The Tide Clock changes the sea every 20 minutes.",
 		},
 		{
 			title = "World bosses",
@@ -3740,7 +3746,7 @@ for _, vendor in Shop.vendors do
 end
 
 -- The LOG (owner, 2026-10-10: "a factor that pulls people back over and over"):
--- the Catch Log and your fish's catch track, today's bounties, the Catch of the Week
+-- the Catch Logbook and its skin goals, today's bounties, the Catch of the Week
 -- with the weekly leaderboards, and the Tide Clock's forecast.
 local LOG_TABS = { "Catch Log", "Bounties", "Weekly", "Tides" }
 local logBoards: { [string]: any }? = nil -- the last GetBoards answer
@@ -3806,188 +3812,451 @@ local function fetchBoards(force: boolean?)
 	end)
 end
 
--- One Catch Log line: a prey species, its biggest ever, and a cell per rarity (how
--- many, and the biggest of that rarity; a dash until caught)
-local function logLine(
-	list: ScrollingFrame,
-	order: number,
-	preyId: string,
-	counts: { [string]: number },
-	best: { [string]: number },
-	done: boolean
-)
+-- The Catch Logbook (owner, 2026-10-18: "We want a catch logbook that shows the
+-- largest they have caught and they can track total gold/crystal/silver etc that they
+-- have for each fish. They will need atleast 10 gold of 5 different species to unlock
+-- the skin. Once the skin is unlocked, it is unlocked for all of their fish"): the
+-- skin goals across the top (your fish in each skin, how far along it is, which
+-- species count), then an entry per prey species, straight from Config/Prey so a new
+-- species turns up by itself (a photo, a dark ??? until it's caught; where it swims;
+-- its biggest; a cell per rarity with how many, the biggest of that rarity and how it
+-- stands toward that skin), then how often each rarity swims.
+type CatchRarity = typeof(Config.Catch.rarities[1])
+
+local LOG_COLUMNS: { string } = { "Normal" }
+for _, rarity in Config.Catch.rarities do
+	table.insert(LOG_COLUMNS, rarity.id)
+end
+local LOG_ENTRY = 96 -- an entry's height
+local LOG_CELL = 96 -- a rarity cell's width
+local LOG_GAP = 6
+local LOG_CELLS_X = 250 -- where the cells start (856 - 6 × 102 + 6)
+local GOAL_W, GOAL_H, GOAL_GAP = 164, 220, 9
+
+-- Where each prey species swims: its schools' biomes, most schools first (once)
+local preyWhere: { [string]: string }? = nil
+local function whereSwims(preyId: string): string
+	local known = preyWhere
+	if known == nil then
+		local counts: { [string]: { [string]: number } } = {}
+		for _, school in Schools.list do
+			local biome = Biomes.at(school.center)
+			if biome then
+				local byBiome = counts[school.prey] or {}
+				counts[school.prey] = byBiome
+				byBiome[biome.name] = (byBiome[biome.name] or 0) + 1
+			end
+		end
+		local made: { [string]: string } = {}
+		for id, byBiome in counts do
+			local names: { string } = {}
+			for name in byBiome do
+				table.insert(names, name)
+			end
+			table.sort(names, function(a, b)
+				if byBiome[a] ~= byBiome[b] then
+					return byBiome[a] > byBiome[b]
+				end
+				return a < b
+			end)
+			made[id] = table.concat(names, " · ")
+		end
+		preyWhere = made
+		known = made
+	end
+	return (known :: { [string]: string })[preyId] or "the open sea"
+end
+
+local function preyName(preyId: string): string
 	local prey = Config.Prey.byId[preyId]
-	local frame = Instance.new("Frame")
-	frame.Name = `Log{preyId}`
-	frame.LayoutOrder = order
-	frame.Size = UDim2.new(1, -8, 0, 48)
-	frame.BackgroundColor3 = Ui.color.track
-	frame.BackgroundTransparency = 0.35
-	frame.BorderSizePixel = 0
-	Ui.corner(frame, UDim.new(0, 8))
-	local biggest = 0
-	for _, kg in best do
-		biggest = math.max(biggest, kg)
+	return if prey then prey.name else preyId
+end
+
+-- A see-through button over a whole card or entry, so a controller can walk them
+-- (the list itself isn't selectable)
+local function selectOver(frame: GuiObject, onPick: (() -> ())?)
+	local hit = Instance.new("TextButton")
+	hit.Name = "Select"
+	hit.Text = ""
+	hit.BackgroundTransparency = 1
+	hit.AutoButtonColor = false
+	hit.Size = UDim2.fromScale(1, 1)
+	hit.ZIndex = frame.ZIndex + 6
+	hit.Selectable = true
+	hit.Parent = frame
+	if onPick then
+		hit.Activated:Connect(onPick)
+	end
+end
+
+-- A skin goal's card: a photo of your fish in the skin, the rule, how many species
+-- are done, which ones count and the nearest to counting
+local function goalCard(parent: Frame, index: number, rarity: CatchRarity, s: any)
+	local skin = Config.Shades.byId[rarity.skin]
+	local owned = typeof(s.shades) == "table" and s.shades[rarity.skin] == true
+	local rule = rarity.unlock
+	local done, counted, _, counts = Catch.goal(s.catchLog, rarity.id)
+	local card = Instance.new("Frame")
+	card.Name = `Goal{rarity.id}`
+	card.Size = UDim2.fromOffset(GOAL_W, GOAL_H)
+	card.Position = UDim2.fromOffset((index - 1) * (GOAL_W + GOAL_GAP), 0)
+	card.BackgroundColor3 = Ui.color.track
+	card.BackgroundTransparency = 0.3
+	card.BorderSizePixel = 0
+	Ui.corner(card, UDim.new(0, 10))
+	Ui.stroke(card, rarity.color, if owned then 0.15 else 0.6, if owned then 2 else 1)
+	local visual = Instance.new("Frame")
+	visual.Name = "Visual"
+	visual.BackgroundColor3 = Color3.new(1, 1, 1)
+	visual.BackgroundTransparency = 0.1
+	visual.BorderSizePixel = 0
+	visual.ClipsDescendants = true
+	visual.Position = UDim2.fromOffset(6, 6)
+	visual.Size = UDim2.new(1, -12, 0, 104)
+	Ui.corner(visual, UDim.new(0, 8))
+	local backdrop = Instance.new("UIGradient")
+	backdrop.Rotation = 90
+	backdrop.Color = ColorSequence.new(rarity.color:Lerp(Ui.color.panel, 0.6), Ui.color.panelFoot)
+	backdrop.Parent = visual
+	visual.Parent = card
+	if skin then
+		CardPhoto.new(
+			visual,
+			{ id = skin.id, kind = "shade", name = skin.name, tier = skin.tier },
+			rarity.color
+		)
+	end
+	if owned then
+		local chip = Ui.chip(visual, "Owned", "✓ EVERY FISH", Ui.color.safe, 18)
+		chip.Position = UDim2.fromOffset(6, 6)
+		chip.ZIndex = visual.ZIndex + 4
 	end
 	Ui.label(
-		frame,
-		"Name",
-		if done then `{prey.name}  ✓` else prey.name,
-		Ui.FONT_BOLD,
-		16,
-		if done then Ui.color.haul else Ui.color.text,
-		UDim2.fromOffset(150, 20),
-		UDim2.fromOffset(14, 5)
+		card,
+		"Title",
+		`{string.upper(if skin then skin.name else rarity.name)} SKIN`,
+		Ui.FONT_HEAVY,
+		15,
+		rarity.color,
+		UDim2.new(1, -16, 0, 18),
+		UDim2.fromOffset(10, 114)
 	)
 	Ui.label(
-		frame,
-		"Biggest",
-		if biggest > 0 then `biggest {Format.catchMass(biggest)}` else "not caught yet",
+		card,
+		"Rule",
+		`{rule.each} {rarity.name} × {rule.species} species`,
 		Ui.FONT_SEMI,
 		12,
 		Ui.color.muted,
-		UDim2.fromOffset(150, 16),
-		UDim2.fromOffset(14, 26)
+		UDim2.new(1, -16, 0, 16),
+		UDim2.fromOffset(10, 133)
 	)
-	local columns = { "Normal" }
-	for _, rarity in Config.Catch.rarities do
-		table.insert(columns, rarity.id)
+	local _, fill = Ui.bar(card, "Progress", UDim2.new(1, -20, 0, 6), UDim2.fromOffset(10, 154), rarity.color)
+	fill.Size = UDim2.fromScale(if owned then 1 else math.clamp(done / rule.species, 0, 1), 1)
+	Ui.label(
+		card,
+		"Count",
+		if owned then "✓ every fish has it" else `{math.min(done, rule.species)} / {rule.species} species`,
+		Ui.FONT_BOLD,
+		13,
+		if owned then Ui.color.safe else Ui.color.text,
+		UDim2.new(1, -16, 0, 16),
+		UDim2.fromOffset(10, 164)
+	)
+	-- Which species count, then the nearest one that doesn't yet
+	local names: { string } = {}
+	for i, preyId in counted do
+		if i > 3 then
+			table.insert(names, `+{#counted - 3}`)
+			break
+		end
+		table.insert(names, preyName(preyId))
 	end
-	for i, id in columns do
-		local count = counts[id] or 0
+	local nextId, nextCount = nil :: string?, 0
+	for preyId, n in counts do
+		if n < rule.each and (n > nextCount or (n == nextCount and nextId and preyId < nextId)) then
+			nextId, nextCount = preyId, n
+		end
+	end
+	local lines: { string } = {}
+	if #names > 0 then
+		table.insert(lines, `✓ {table.concat(names, ", ")}`)
+	end
+	if nextId and not owned then
+		table.insert(lines, `next: {preyName(nextId)} {nextCount}/{rule.each}`)
+	end
+	if #lines == 0 then
+		table.insert(
+			lines,
+			if rarity.tide
+				then "Prism Tides only: 03, 09, 15, 21 UTC"
+				else `Catch {rarity.name} fish of any kind`
+		)
+	end
+	local detail = Ui.label(
+		card,
+		"Species",
+		table.concat(lines, "\n"),
+		Ui.FONT,
+		11,
+		Ui.color.muted,
+		UDim2.new(1, -16, 0, 32),
+		UDim2.fromOffset(10, 183)
+	)
+	detail.TextWrapped = true
+	detail.TextYAlignment = Enum.TextYAlignment.Top
+	card.Parent = parent
+	selectOver(card, if owned then MenuController.openWardrobe else nil)
+end
+
+-- One prey species' entry: its photo, name, where it swims, its biggest, and a cell
+-- per rarity
+local function logEntry(
+	list: ScrollingFrame,
+	order: number,
+	prey: typeof(Config.Prey.list[1]),
+	counts: { [string]: number },
+	best: { [string]: number },
+	rowDone: boolean
+)
+	local caught = false
+	local biggest = 0
+	for _, n in counts do
+		if n > 0 then
+			caught = true
+		end
+	end
+	for _, kg in best do
+		biggest = math.max(biggest, kg)
+	end
+	local frame = Instance.new("Frame")
+	frame.Name = `Log{prey.id}`
+	frame.LayoutOrder = order
+	frame.Size = UDim2.new(1, -8, 0, LOG_ENTRY)
+	frame.BackgroundColor3 = Ui.color.track
+	frame.BackgroundTransparency = 0.35
+	frame.BorderSizePixel = 0
+	Ui.corner(frame, UDim.new(0, 10))
+	local holder = Instance.new("Frame")
+	holder.Name = "Picture"
+	holder.Size = UDim2.fromOffset(112, 80)
+	holder.Position = UDim2.fromOffset(8, 8)
+	holder.BackgroundColor3 = Color3.new(1, 1, 1)
+	holder.BackgroundTransparency = 0.1
+	holder.BorderSizePixel = 0
+	holder.ClipsDescendants = true
+	Ui.corner(holder, UDim.new(0, 8))
+	local backdrop = Instance.new("UIGradient")
+	backdrop.Rotation = 90
+	backdrop.Color = if caught
+		then ColorSequence.new(Color3.fromRGB(70, 118, 140), Color3.fromRGB(14, 34, 50))
+		else ColorSequence.new(Color3.fromRGB(44, 70, 86), Color3.fromRGB(12, 24, 34))
+	backdrop.Parent = holder
+	holder.Parent = frame
+	PreyPhoto.attach(holder, prey.id, not caught, list)
+	Ui.label(
+		frame,
+		"Name",
+		if not caught then "???" elseif rowDone then `{prey.name}  ✓` else prey.name,
+		Ui.FONT_HEAVY,
+		16,
+		if not caught then Ui.color.muted elseif rowDone then Ui.color.haul else Ui.color.text,
+		UDim2.fromOffset(116, 20),
+		UDim2.fromOffset(128, 8)
+	)
+	local where = Ui.label(
+		frame,
+		"Where",
+		whereSwims(prey.id),
+		Ui.FONT,
+		11,
+		Ui.color.muted,
+		UDim2.fromOffset(116, 30),
+		UDim2.fromOffset(128, 30)
+	)
+	where.TextWrapped = true
+	where.TextYAlignment = Enum.TextYAlignment.Top
+	Ui.label(
+		frame,
+		"Biggest",
+		if biggest > 0 then `BIGGEST {Format.catchMass(biggest)}` else "not caught yet",
+		Ui.FONT_BOLD,
+		12,
+		if biggest > 0 then Ui.color.haul else Ui.color.muted,
+		UDim2.fromOffset(116, 16),
+		UDim2.fromOffset(128, 70)
+	)
+	for i, id in LOG_COLUMNS do
 		local rarity = Config.Catch.byId[id]
+		local count = counts[id] or 0
+		local color = if rarity then rarity.color else Ui.color.muted
 		local cell = Instance.new("Frame")
 		cell.Name = id
-		cell.Size = UDim2.fromOffset(92, 38)
-		cell.Position = UDim2.fromOffset(170 + (i - 1) * 100, 5)
-		cell.BackgroundColor3 = if count > 0 and rarity then rarity.color else Ui.color.panel
-		cell.BackgroundTransparency = if count > 0 then 0.55 else 0.4
+		cell.Size = UDim2.fromOffset(LOG_CELL, 80)
+		cell.Position = UDim2.fromOffset(LOG_CELLS_X + (i - 1) * (LOG_CELL + LOG_GAP), 8)
+		cell.BackgroundColor3 = if count > 0 then color else Ui.color.panel
+		cell.BackgroundTransparency = if count > 0 then 0.76 else 0.5
 		cell.BorderSizePixel = 0
-		Ui.corner(cell, UDim.new(0, 6))
-		local top = Ui.label(
-			cell,
+		Ui.corner(cell, UDim.new(0, 8))
+		local qualifies = rarity ~= nil and count >= rarity.unlock.each
+		if qualifies then
+			Ui.stroke(cell, color, 0.1, 1.5)
+		end
+		local function centred(name: string, text: string, font: Font, size: number, tint: Color3, y: number)
+			local label = Ui.label(
+				cell,
+				name,
+				text,
+				font,
+				size,
+				tint,
+				UDim2.new(1, 0, 0, size + 4),
+				UDim2.fromOffset(0, y)
+			)
+			label.TextXAlignment = Enum.TextXAlignment.Center
+		end
+		centred("Rarity", if rarity then string.upper(rarity.name) else "PLAIN", Ui.FONT_BOLD, 11, color, 4)
+		centred(
 			"Count",
 			if count > 0 then `×{Ui.number(count)}` else "—",
-			Ui.FONT_SEMI,
-			14,
+			Ui.FONT_HEAVY,
+			20,
 			if count > 0 then Ui.color.text else Ui.color.muted,
-			UDim2.new(1, 0, 0, 20),
-			UDim2.fromOffset(0, 2)
+			19
 		)
-		top.TextXAlignment = Enum.TextXAlignment.Center
-		if count > 0 and best[id] then
-			local sub = Ui.label(
-				cell,
-				"Best",
-				Format.catchMass(best[id]),
+		local bestText = if count > 0 and best[id]
+			then Format.catchMass(best[id])
+			elseif rarity and rarity.tide and count == 0 then "Prism Tide"
+			else ""
+		centred("Best", bestText, Ui.FONT_SEMI, 11, Ui.color.muted, 44)
+		if rarity and count > 0 then
+			centred(
+				"Goal",
+				if qualifies then "✓ counts" else `{count}/{rarity.unlock.each} for skin`,
 				Ui.FONT_SEMI,
-				11,
-				Ui.color.text,
-				UDim2.new(1, 0, 0, 14),
-				UDim2.fromOffset(0, 21)
+				10,
+				if qualifies then Ui.color.safe else Ui.color.muted,
+				60
 			)
-			sub.TextXAlignment = Enum.TextXAlignment.Center
-			sub.TextTransparency = 0.25
 		end
 		cell.Parent = frame
 	end
 	frame.Parent = list
+	selectOver(frame)
 end
 
-local function catchLogRows(list: ScrollingFrame)
-	local s = state()
-	local species = Config.Species.byId[s.species or "Nibbler"]
-	local speciesName = if species then species.name else "fish"
-	local tracks = (s.catchTracks or {})[s.species or ""] or {}
-	local owned: { [string]: boolean } = if typeof(s.shades) == "table" then s.shades else {}
-	heading(
-		list,
-		1,
-		`YOUR {string.upper(speciesName)}'S CATCH TRACK · catch rare fish as it to unlock its skins`
-	)
+-- How often each rarity swims, and which tides bring more
+local function rarityRows(list: ScrollingFrame, order: number)
+	heading(list, order, "RARE FISH · spot the sparkle and the glint; the tides change how often they swim")
 	for i, rarity in Config.Catch.rarities do
-		local count = tracks[rarity.id] or 0
-		local skin = Config.Shades.byId[rarity.skin]
-		local name = `{if skin then skin.name else rarity.name} {speciesName}`
-		local have = owned[rarity.skin] == true
-		local blurb = `{rarity.track} {rarity.name} catches as your {speciesName} · Haul ×{rarity.haul}`
-		if rarity.tide then
-			blurb ..= " · only in the Prism Tide"
+		local boosts: { string } = {}
+		for _, tide in Config.Tides.list do
+			local boost = tide.rarity[rarity.id]
+			if boost and boost > 1 and tide.id ~= rarity.tide then
+				local deep = if tide.id == "Biolum" and rarity.id == "Glowing"
+					then ` (×{Format.number(boost * Config.Tides.deepGlow)} in the deep)`
+					else ""
+				table.insert(boosts, `{tide.name} ×{boost}{deep}`)
+			end
 		end
-		row(
+		local often = if rarity.tide
+			then `Only in the Prism Tide: about {math.floor(20 / rarity.every + 0.5)} a tide when you hunt`
+			else `About one every {rarity.every} min when you hunt`
+		local more = if #boosts > 0 then ` · more in {table.concat(boosts, ", ")}` else ""
+		tallRow(
 			list,
-			1 + i,
-			`Track{rarity.id}`,
-			name,
-			blurb,
-			if have then "✓ UNLOCKED" else `{math.min(count, rarity.track)} / {rarity.track}`,
+			order + i,
+			`Rarity{rarity.id}`,
+			rarity.name,
+			`{often}{more} · Haul ×{rarity.haul}`,
+			nil,
 			nil,
 			nil,
 			rarity.color
 		)
 	end
+end
+
+local function catchLogRows(list: ScrollingFrame)
+	local s = state()
+	heading(
+		list,
+		1,
+		"SKIN GOALS · each one, once won, is every fish's: the ones you have and the ones to come"
+	)
+	local goals = Instance.new("Frame")
+	goals.Name = "Goals"
+	goals.LayoutOrder = 2
+	goals.BackgroundTransparency = 1
+	goals.Size = UDim2.new(1, -8, 0, GOAL_H)
+	goals.Parent = list
+	for i, rarity in Config.Catch.rarities do
+		goalCard(goals, i, rarity, s)
+	end
 	local log = s.catchLog or {}
 	local rows = s.logRows or {}
-	local found, total = 0, 0
+	local best = s.catchBest or {}
+	local found = 0
 	for _, prey in Config.Prey.list do
-		local counts = log[prey.id] or {}
-		total += 1 + #Config.Catch.rarities
-		if (counts.Normal or 0) > 0 then
-			found += 1
-		end
-		for _, rarity in Config.Catch.rarities do
-			if (counts[rarity.id] or 0) > 0 then
+		for _, n in log[prey.id] or {} do
+			if n > 0 then
 				found += 1
+				break
 			end
 		end
 	end
 	heading(
 		list,
 		10,
-		`CATCH LOG · {found} / {total} found · each cell: how many, and your biggest · a first catch pays, a full row more`
+		`LOGBOOK · {found} / {#Config.Prey.list} species caught · a first catch pays, a full row more`
 	)
 	local header = Instance.new("Frame")
 	header.Name = "LogHeader"
 	header.LayoutOrder = 11
 	header.BackgroundTransparency = 1
-	header.Size = UDim2.new(1, -8, 0, 20)
-	local columns = { "Plain" }
-	for _, rarity in Config.Catch.rarities do
-		table.insert(columns, rarity.name)
-	end
-	for i, text in columns do
+	header.Size = UDim2.new(1, -8, 0, 18)
+	for i, id in LOG_COLUMNS do
+		local rarity = Config.Catch.byId[id]
 		local label = Ui.label(
 			header,
-			text,
-			string.upper(text),
+			id,
+			if rarity then string.upper(rarity.name) else "PLAIN",
 			Ui.FONT_BOLD,
 			12,
-			if i == 1 then Ui.color.muted else Config.Catch.rarities[i - 1].color,
-			UDim2.fromOffset(92, 20),
-			UDim2.fromOffset(170 + (i - 1) * 100, 0)
+			if rarity then rarity.color else Ui.color.muted,
+			UDim2.fromOffset(LOG_CELL, 18),
+			UDim2.fromOffset(LOG_CELLS_X + (i - 1) * (LOG_CELL + LOG_GAP), 0)
 		)
 		label.TextXAlignment = Enum.TextXAlignment.Center
 	end
 	header.Parent = list
-	local best = s.catchBest or {}
 	for i, prey in Config.Prey.list do
-		logLine(list, 11 + i, prey.id, log[prey.id] or {}, best[prey.id] or {}, rows[prey.id] == true)
+		logEntry(list, 100 + i, prey, log[prey.id] or {}, best[prey.id] or {}, rows[prey.id] == true)
 	end
-	heading(list, 40, "RARE FISH · spot their sparkle; the tides change the odds")
-	for i, rarity in Config.Catch.rarities do
-		local odds = `about 1 in {Ui.number(math.floor(1 / rarity.chance + 0.5))} fish`
-		row(
-			list,
-			40 + i,
-			`Rarity{rarity.id}`,
-			rarity.name,
-			`{if rarity.tide then "Only in the Prism Tide, " else ""}{odds} · Haul ×{rarity.haul} · coral and DNA ×{rarity.dna}`,
-			nil,
-			nil,
-			nil,
-			rarity.color
-		)
+	rarityRows(list, 1000)
+end
+
+-- What the logbook shows, as one string: it's rebuilt only when this changes (the LOG
+-- redraws every second for its countdowns, and the photos would start over each time)
+local function logKey(): string
+	local s = state()
+	local parts: { string } = { tostring(s.species) }
+	local log = s.catchLog or {}
+	local best = s.catchBest or {}
+	local rows = s.logRows or {}
+	for _, prey in Config.Prey.list do
+		local row = log[prey.id] or {}
+		local top = best[prey.id] or {}
+		for _, id in LOG_COLUMNS do
+			table.insert(parts, `{row[id] or 0}:{top[id] or 0}`)
+		end
+		table.insert(parts, if rows[prey.id] then "1" else "0")
 	end
+	local shades = if typeof(s.shades) == "table" then s.shades else {}
+	for _, rarity in Config.Catch.rarities do
+		table.insert(parts, if shades[rarity.skin] then "1" else "0")
+	end
+	return table.concat(parts, ",")
 end
 
 local function bountyRows(list: ScrollingFrame)
@@ -4045,7 +4314,7 @@ local function weeklyRows(list: ScrollingFrame)
 			2,
 			"Featured",
 			`{string.upper(rarity.name)} {string.upper(prey.name)}`,
-			`It swims {rarity.name} ×{Config.Catch.weekly.chance} as often all week. The first one you catch pays {Ui.number(
+			`It swims {rarity.name} far more often all week: hunting where {prey.name}s swim, about one every {Config.Catch.weekly.every} min. The first one you catch pays {Ui.number(
 				featured.coral
 			)} coral, {featured.shells} shells, {Config.Wheel.weekly} wheel spins and the {if skin
 				then skin.name
@@ -4188,7 +4457,7 @@ end
 function MenuController.openLog(tab: string?)
 	open(
 		"Log",
-		"Rare catches, bounties, the weekly race and the tides",
+		"Your Catch Logbook and its skin goals, bounties, the weekly race and the tides",
 		Vector2.new(900, 540),
 		function(window)
 			local shown = tab or "Catch Log"
@@ -4218,6 +4487,7 @@ function MenuController.openLog(tab: string?)
 					menu.render()
 				end)
 			end
+			local builtKey: string? = nil
 			menu = {
 				window = window,
 				ticking = true,
@@ -4228,6 +4498,12 @@ function MenuController.openLog(tab: string?)
 					if shown == "Weekly" then
 						fetchBoards()
 					end
+					-- (the logbook only when what it shows changed: its photos)
+					local key = if shown == "Catch Log" then logKey() else nil
+					if key and key == builtKey then
+						return
+					end
+					builtKey = key
 					rerender(list, function()
 						if shown == "Catch Log" then
 							catchLogRows(list)

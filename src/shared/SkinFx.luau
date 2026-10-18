@@ -13,9 +13,10 @@
 --   foam      white water ribbons off the pectorals (Riptide)
 --   comet     a wide glowing tail (Comet)
 --   rainbow   a rainbow ribbon off the tail (Prismatic, Prism)
---   sheen     a polished shine: a band of warm light running head to tail every
---             2.5 s, a light riding it so the skin's own gloss catches it, gold
---             sparks following it and fine glitter on the body (Golden)
+--   sheen     a polished shine: a band of light running head to tail every 2.5 s,
+--             a light riding it so the skin's own gloss catches it, sparks
+--             following it and fine glitter on the body, all in the skin's effect
+--             colours (Golden's warm gold, Silver's cool silver-white)
 --   halo      a ring of light over the head, turning (Divine)
 --   crown     a spiked gold band seated on the head (Lantern King)
 --   rays      soft light rays fanning up over the head (Divine)
@@ -42,7 +43,7 @@
 -- None of this draws in a ViewportFrame (Roblox draws no particles, trails, beams or
 -- lights there): the menus' fish and the cards get 2D stand-ins instead
 -- (src/client/PreviewFx: sparkles in the effect colours, the skin's light behind the
--- fish, Golden's shine as the viewport's light sweeping over it).
+-- fish, the shine as the viewport's light sweeping over it).
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
@@ -60,7 +61,7 @@ local SHORTEST = 0.12 -- seconds a ribbon or particle lives at the least
 -- most (a hint of the tail stays)
 local VIEW_FADE = 0.8
 
--- Golden's shine: one sweep head to tail every PERIOD seconds, taking SWEEP
+-- The shine (Golden, Silver): one sweep head to tail every PERIOD seconds, taking SWEEP
 local SHEEN_PERIOD = 2.5
 local SHEEN_SWEEP = 0.95
 
@@ -108,7 +109,7 @@ type Orbiter = {
 -- lifetime
 type Shed = { emitter: ParticleEmitter, life: NumberRange, cap: number }
 
--- Golden's shine (`sheen`): the band across the flank (three points, upper flank to
+-- The shine (`sheen`; Golden, Silver): the band across the flank (three points, upper flank to
 -- lower), the light riding just off it, the sparks it sheds, and the glitter's seat,
 -- which hops over the body
 type Sweep = {
@@ -774,7 +775,7 @@ function SkinFx.step(live: Live, body: Model, t: number)
 			r.a1.WorldPosition = p + sideways + across * r.width * L
 		end
 	end
-	-- Golden's shine: a band of light runs head to tail on the flank facing the
+	-- The shine (Golden, Silver): a band of light runs head to tail on the flank facing the
 	-- camera, a light riding just off the upper flank (the gloss catches it), sparks
 	-- thrown off it; then a rest. The glitter's seat hops about the body every step.
 	local sweep = live.sweep

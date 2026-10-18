@@ -7,7 +7,8 @@
 -- Every player out in the biomes has their own stream of rare fish: each rarity at
 -- its rate a minute (Shared/Catch `rate`: the tide's boost, a rush early in a tide),
 -- each one set swimming on a fish `near`–`far` studs from them, one they can swallow,
--- with nobody within `clearance` of it, so nothing turns rare in sight. The species is
+-- with nobody within `clearance` of it, so nothing turns rare in sight. It lands in
+-- the biome the player is in (the one they're searching) when it can. The species is
 -- picked first, evenly among the ones there they could eat, then a school of it, then
 -- a fish in it, so every species gets its share of rare fish (the skin goals want
 -- five). The Catch of the Week has a stream of its own (`weekly.rate`), only on its
@@ -20,18 +21,19 @@
 -- With no such fish (a full server crowding one biome), an eaten fish there that's
 -- about to come back is picked instead: it comes back rare, fading in as it would.
 --
--- Pure (Schools, Size, Tides; no services): CatchService runs it on the server and
+-- Pure (Schools, Size, Seafloor; no services): CatchService runs it on the server and
 -- tools/tests/catch_sim.luau runs the same code to measure the rates.
 local Catch = require(script.Parent.Catch)
 local Config = require(script.Parent.Config)
 local Schools = require(script.Parent.Schools)
+local Seafloor = require(script.Parent.Seafloor)
 local Size = require(script.Parent.Size)
-local Tides = require(script.Parent.Tides)
 
 local CatchConfig = Config.Catch
 local SPAWN = CatchConfig.spawn
 local TRIES = 8 -- school picks before falling back to an eaten fish
 local COMING_BACK = 45 -- seconds: an eaten fish back within this may be picked
+local RETRY = 5 -- seconds before trying again when there was nowhere to put one
 
 export type Hunter = {
 	id: number, -- the player's UserId (its own spawn clock)
@@ -49,7 +51,7 @@ export type Spawner = {
 	queued: { [number]: string }, -- eaten fish that come back rare
 	count: { [string]: number }, -- rare fish of each rarity swimming (queued too)
 	owed: { [number]: { [string]: number } }, -- hunter id → rarity → spawn clock
-	due: { [number]: { [string]: number } }, -- hunter id → rarity → when the next one comes
+	due: { [number]: { [string]: number? } }, -- hunter id → rarity → when the next one comes
 	rng: Random,
 }
 
@@ -61,9 +63,27 @@ type SchoolInfo = {
 	prey: string,
 	smallest: number, -- its smallest fish's length
 	tide: string?,
+	biome: string, -- the biome its middle is in
 }
 
 local RareSpawn = {}
+
+-- The biome at (x, z) (Shared/Biomes without the hub's Layout): a sector that names
+-- this spot, else the ring all round (the Kelp Shallows)
+local function biomeOf(x: number, z: number): string
+	local r, angle = Seafloor.polar(x, z)
+	local fallback = ""
+	for _, biome in Config.Biomes.list do
+		if r >= biome.radiusFrom and r < biome.radiusTo then
+			if (biome.angleTo - biome.angleFrom) % 360 == 0 then
+				fallback = biome.id
+			elseif Seafloor.inSector(angle, biome.angleFrom, biome.angleTo) then
+				return biome.id
+			end
+		end
+	end
+	return fallback
+end
 
 local infos: { SchoolInfo }? = nil
 local function schoolInfos(): { SchoolInfo }
@@ -85,6 +105,7 @@ local function schoolInfos(): { SchoolInfo }
 			prey = school.prey,
 			smallest = smallest,
 			tide = school.tide,
+			biome = biomeOf(school.center.X, school.center.Z),
 		})
 	end
 	infos = made
@@ -157,10 +178,14 @@ local function place(
 	local rng = spawner.rng
 	local near, far, clearance = SPAWN.near, SPAWN.far, SPAWN.clearance
 	local at = hunter.position
-	-- The schools in reach with a fish the hunter can swallow, by species
+	-- The schools in reach with a fish the hunter can swallow, by species: in the
+	-- biome the hunter is in if it has any, else anywhere in reach
 	local bySpecies: { [string]: { number } } = {}
 	local species: { string } = {}
 	local open: { [number]: boolean } = {} -- clear of everyone at its center
+	local home = biomeOf(at.X, at.Z)
+	local elsewhere: { [string]: { number } } = {}
+	local elsewhereSpecies: { string } = {}
 	for index, info in schoolInfos() do
 		if info.tide and info.tide ~= tideId then
 			continue
@@ -172,14 +197,19 @@ local function place(
 		if distance < near - info.loop or distance > far + info.loop then
 			continue
 		end
-		local list = bySpecies[info.prey]
+		local inHome = info.biome == home
+		local group = if inHome then bySpecies else elsewhere
+		local list = group[info.prey]
 		if list == nil then
 			list = {}
-			bySpecies[info.prey] = list
-			table.insert(species, info.prey)
+			group[info.prey] = list
+			table.insert(if inHome then species else elsewhereSpecies, info.prey)
 		end
 		table.insert(list, index)
 		open[index] = not nearAnyone(everyone, info.x, info.y, info.z, clearance)
+	end
+	if #species == 0 then
+		bySpecies, species = elsewhere, elsewhereSpecies
 	end
 	if #species == 0 then
 		return false
@@ -250,28 +280,30 @@ local function place(
 	return false
 end
 
--- One step of `dt` seconds: rare fish past their life (or their tide) that no one is
--- near turn plain, and each hunter's rarities come due and are placed. `hunters` are
--- the players out in the biomes; `everyone` is where every player is (the hub too);
--- `eatenUntil(index)` is when an eaten fish is back (nil if it isn't eaten). Returns
--- what changed, for the clients.
+-- One step of `dt` seconds (`now` on the shared clock, `unix` for the Catch of the
+-- Week, tide `tideId` up for `sinceTide` seconds: Shared/Tides.at): rare fish past
+-- their life (or their tide) that no one is near turn plain, and each hunter's
+-- rarities come due and are placed. `hunters` are the players out in the biomes;
+-- `everyone` is where every player is (the hub too); `eatenUntil(index)` is when an
+-- eaten fish is back (nil if it isn't eaten). Returns what changed, for the clients.
 function RareSpawn.step(
 	spawner: Spawner,
 	dt: number,
 	now: number,
 	unix: number,
+	tideId: string,
+	sinceTide: number, -- seconds since the tide turned
 	hunters: { Hunter },
 	everyone: { Vector3 },
 	eatenUntil: (number) -> number?
 ): { Change }
 	local changes: { Change } = {}
-	local tide, startedAt = Tides.at(unix)
 	local clearance = SPAWN.clearance
 	for index, rare in spawner.rare do
 		local rarity = CatchConfig.byId[rare.rarity]
-		if not Schools.out(index, tide.id) then
+		if not Schools.out(index, tideId) then
 			set(spawner, index, nil, now, changes)
-		elseif now >= rare.fadeAt or (rarity.tide and rarity.tide ~= tide.id) then
+		elseif now >= rare.fadeAt or (rarity.tide and rarity.tide ~= tideId) then
 			local position = Schools.position(index, now)
 			if not nearAnyone(everyone, position.X, position.Y, position.Z, clearance) then
 				set(spawner, index, nil, now, changes)
@@ -279,11 +311,12 @@ function RareSpawn.step(
 		end
 	end
 	-- Each rarity's spawns a second, summed over the hunters (the cap)
-	local since = unix - startedAt
+	local since = sinceTide
 	local rates: { [string]: number } = {}
 	for _, hunter in hunters do
 		for _, rarity in CatchConfig.rarities do
-			rates[rarity.id] = (rates[rarity.id] or 0) + Catch.rate(rarity.id, tide.id, hunter.deep, since) / 60
+			rates[rarity.id] = (rates[rarity.id] or 0)
+				+ Catch.rate(rarity.id, tideId, hunter.deep, since) / 60
 		end
 	end
 	local seen: { [number]: boolean } = {}
@@ -298,17 +331,14 @@ function RareSpawn.step(
 		end
 		for _, rarity in CatchConfig.rarities do
 			local id = rarity.id
-			local rate = Catch.rate(id, tide.id, hunter.deep, since) / 60
+			local rate = Catch.rate(id, tideId, hunter.deep, since) / 60
 			if rate <= 0 then
 				continue
 			end
 			-- A Poisson clock: the next one comes after an exponential wait
 			owed[id] = (owed[id] or 0) + rate * dt
-			local wait = due[id]
-			if wait == nil then
-				wait = -math.log(1 - spawner.rng:NextNumber())
-				due[id] = wait
-			end
+			local wait: number = due[id] or -math.log(1 - spawner.rng:NextNumber())
+			due[id] = wait
 			if owed[id] < wait then
 				continue
 			end
@@ -316,28 +346,36 @@ function RareSpawn.step(
 			if spawner.count[id] >= cap then
 				owed[id] = 0
 				due[id] = nil
-			elseif place(spawner, hunter, id, now, tide.id, everyone, eatenUntil, changes) then
+			elseif place(spawner, hunter, id, now, tideId, everyone, eatenUntil, changes) then
 				owed[id] -= wait
 				due[id] = nil
 			else
-				-- (nowhere this time: it comes when there's room, at most one owed)
-				owed[id] = math.min(owed[id], wait + 1)
+				-- (nowhere this time: it comes when there's room, tried again in a
+				-- few seconds, never more than the one)
+				owed[id] = wait - rate * RETRY
 			end
 		end
 		-- The Catch of the Week's own stream: its rarity on its species, only while
 		-- the player is near where that species swims (nothing owed elsewhere)
-		local featured, weekly = Catch.weeklyRate(unix, tide.id, hunter.deep)
+		local featured, weekly = Catch.weeklyRate(unix, tideId, hunter.deep)
 		if featured and weekly > 0 then
 			owed.Weekly = (owed.Weekly or 0) + weekly / 60 * dt
-			local wait = due.Weekly
-			if wait == nil then
-				wait = -math.log(1 - spawner.rng:NextNumber())
-				due.Weekly = wait
-			end
+			local wait: number = due.Weekly or -math.log(1 - spawner.rng:NextNumber())
+			due.Weekly = wait
 			if owed.Weekly >= wait then
 				owed.Weekly -= wait
 				due.Weekly = nil
-				place(spawner, hunter, featured.rarity, now, tide.id, everyone, eatenUntil, changes, featured.prey)
+				place(
+					spawner,
+					hunter,
+					featured.rarity,
+					now,
+					tideId,
+					everyone,
+					eatenUntil,
+					changes,
+					featured.prey
+				)
 			end
 		end
 	end

@@ -1,7 +1,8 @@
 --!strict
--- NPC prey for the Kelp Shallows graybox. Mass is in kg; body length comes from
--- mass the same way as for players (Size.length). Schools are placed from these
--- by Shared/Schools.luau.
+-- The NPC prey fish. Mass is in kg; body length comes from mass the same way as for
+-- players (Size.length). Schools are placed from these by Shared/Schools.luau. New
+-- prey go at the end of the list: Schools lays the list out in order from one seed,
+-- so a prey added after the others moves none of their schools.
 -- Where some of a prey's schools live: a distance band, a sector round the hub
 -- (degrees from +X toward +Z, clockwise; nil = all round) and a depth band
 export type Zone = {
@@ -22,11 +23,18 @@ export type Zone = {
 	pathRadius: { number }?,
 	-- Down in the Abyssal Trench's canyon, along its line (`band` is ignored)
 	trench: boolean?,
+	-- Over one of the Hydrothermal Vents' basins, inside its rim (Seafloor.ventBasins;
+	-- `band` and `angles` are ignored)
+	vents: boolean?,
 }
 
 export type PreyDef = {
 	id: string,
-	name: string,
+	name: string, -- what players see (the Catch Log, toasts, the chase warning)
+	-- Its home biome (Config/Biomes id): where it's mostly found and what the Catch Log
+	-- files it under. Many swim in other biomes too (`zones`); DNA always comes from
+	-- the biome a fish is eaten in (HuntService).
+	biome: string,
 	mass: number,
 	schools: number, -- how many schools of it
 	perSchool: number, -- fish in each school
@@ -58,6 +66,7 @@ local list: { PreyDef } = {
 	{
 		id = "Minnow",
 		name = "Minnow",
+		biome = "KelpShallows",
 		mass = 0.1,
 		schools = 14,
 		perSchool = 14,
@@ -73,13 +82,12 @@ local list: { PreyDef } = {
 			{ band = { 340, 560 }, schools = 12, depth = { 6, 80 } },
 			{ band = { 560, 830 }, schools = 8 },
 			-- (2026-10-18, "the ocean has a pretty empty feeling") loose clouds over the
-			-- wrecks' sand, tight clouds low round the reef's coral heads, flickers
-			-- among the Ruins' columns and pale schools down in the Trench's canyon
+			-- wrecks' sand, tight clouds low round the reef's coral heads and flickers
+			-- among the Ruins' columns (the Vents' and the Trench's minnow schools became
+			-- Ghost Shrimp swarms and Lanternfish, the second prey batch, below)
 			{ band = OUTER, angles = WRECKS, schools = 6, depth = { 4, 40 }, spread = 1.6 },
-			{ band = OUTER, angles = REEF, schools = 14, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
+			{ band = OUTER, angles = REEF, schools = 11, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
 			{ band = DEEP, angles = RUINS, schools = 10, depth = { 6, 50 } },
-			{ band = DEEP, angles = VENTS, schools = 8, perSchool = 18, depth = { 20, 120 }, spread = 0.9 },
-			{ band = TRENCH, trench = true, schools = 8, perSchool = 20, depth = { 15, 160 } },
 		} :: { Zone },
 		respawn = 8,
 		back = Color3.fromRGB(122, 150, 160),
@@ -89,6 +97,7 @@ local list: { PreyDef } = {
 	{
 		id = "Sardine",
 		name = "Sardine",
+		biome = "KelpShallows",
 		mass = 0.3,
 		schools = 14,
 		perSchool = 10,
@@ -105,7 +114,7 @@ local list: { PreyDef } = {
 			{
 				band = DEEP,
 				angles = OPEN_BLUE,
-				schools = 14,
+				schools = 10, -- (14 until the Yellowfin Tuna came)
 				perSchool = 34,
 				depth = { 150, 400 },
 				round = true,
@@ -134,7 +143,7 @@ local list: { PreyDef } = {
 			{
 				band = DEEP,
 				angles = VENTS,
-				schools = 10,
+				schools = 6, -- (10 until the Ghost Shrimp came)
 				perSchool = 24,
 				depth = { 60, 200 },
 				round = true,
@@ -157,6 +166,7 @@ local list: { PreyDef } = {
 	{
 		id = "Wrasse",
 		name = "Kelp Wrasse",
+		biome = "KelpShallows",
 		mass = 0.9,
 		schools = 12,
 		perSchool = 6,
@@ -169,7 +179,7 @@ local list: { PreyDef } = {
 			-- (2026-10-18) loose shoals over the wrecks and the reef, and in the Ruins
 			{ band = OUTER, angles = WRECKS, schools = 6, perSchool = 8, depth = { 6, 50 }, spread = 1.5 },
 			{ band = OUTER, angles = REEF, schools = 10, perSchool = 8, depth = { 5, 45 } },
-			{ band = DEEP, angles = RUINS, schools = 12, perSchool = 7, depth = { 10, 80 } },
+			{ band = DEEP, angles = RUINS, schools = 9, perSchool = 7, depth = { 10, 80 } }, -- (12 before the Lionfish)
 		} :: { Zone },
 		respawn = 12,
 		back = Color3.fromRGB(196, 120, 64),
@@ -179,6 +189,7 @@ local list: { PreyDef } = {
 	{
 		id = "Snapper",
 		name = "Snapper",
+		biome = "CoralReef",
 		mass = 2.5,
 		schools = 5,
 		perSchool = 4,
@@ -213,6 +224,7 @@ local list: { PreyDef } = {
 	{
 		id = "Grouper",
 		name = "Grouper",
+		biome = "ShipwreckGraveyard",
 		mass = 8,
 		schools = 4,
 		perSchool = 2,
@@ -256,6 +268,7 @@ local list: { PreyDef } = {
 	{
 		id = "Barracuda",
 		name = "Barracuda",
+		biome = "CoralReef",
 		mass = 20,
 		schools = 4,
 		perSchool = 1,
@@ -289,6 +302,7 @@ local list: { PreyDef } = {
 	{
 		id = "ReefShark",
 		name = "Reef Shark",
+		biome = "OpenBlue",
 		mass = 60,
 		schools = 3,
 		perSchool = 1,
@@ -317,6 +331,183 @@ local list: { PreyDef } = {
 		belly = Color3.fromRGB(222, 226, 228),
 		slim = 0.26,
 	},
+	-- The second batch (owner approved the PreySheetA concepts, 2026-10-18): one new fish
+	-- for each biome, from the docs/ASSETS.md prey2_fbx models. Each took schools over
+	-- from the Minnows, Sardines and Wrasse rather than adding to them, so the sea holds
+	-- about as many fish as before (tools/tests/run_density.sh).
+	{
+		-- A small, bright orange damselfish keeping to its patch of kelp, low down
+		id = "Garibaldi",
+		name = "Garibaldi",
+		biome = "KelpShallows",
+		mass = 0.4, -- (a LV 5 fish can swallow most of them)
+		schools = 8,
+		perSchool = 5,
+		spread = 2.6,
+		speed = 5,
+		pathRadius = { 10, 22 },
+		depth = { 3, 28 },
+		zones = {
+			{ band = { 160, 460 }, schools = 8, spread = 1.2 },
+		} :: { Zone },
+		respawn = 10,
+		back = Color3.fromRGB(240, 104, 20),
+		belly = Color3.fromRGB(255, 140, 36),
+		slim = 0.55,
+	},
+	{
+		-- A chunky mottled cod lurking low among the wrecks in threes
+		id = "WreckCod",
+		name = "Wreck Cod",
+		biome = "ShipwreckGraveyard",
+		mass = 1.5, -- (swallowed from about LV 15, the Wrecks' middle)
+		schools = 8,
+		perSchool = 3,
+		spread = 2.2,
+		speed = 4,
+		pathRadius = { 12, 26 },
+		depth = { 4, 30 },
+		zones = {
+			{ band = OUTER, angles = WRECKS, schools = 8 },
+		} :: { Zone },
+		respawn = 16,
+		back = Color3.fromRGB(106, 100, 58),
+		belly = Color3.fromRGB(172, 178, 176),
+		slim = 0.3,
+	},
+	{
+		-- A bulky teal parrotfish grazing the reef's coral heads in small groups
+		id = "Parrotfish",
+		name = "Parrotfish",
+		biome = "CoralReef",
+		mass = 4,
+		schools = 10,
+		perSchool = 4,
+		spread = 2.4,
+		speed = 6,
+		pathRadius = { 18, 34 },
+		depth = { 4, 36 },
+		zones = {
+			{ band = OUTER, angles = REEF, schools = 10 },
+		} :: { Zone },
+		respawn = 15,
+		back = Color3.fromRGB(36, 150, 140),
+		belly = Color3.fromRGB(96, 196, 176),
+		slim = 0.4,
+	},
+	{
+		-- Fast, tight schools sweeping wide loops through the Open Blue's mid-water: the
+		-- quickest prey in the sea, hard to run down
+		id = "YellowfinTuna",
+		name = "Yellowfin Tuna",
+		biome = "OpenBlue",
+		mass = 35,
+		schools = 7,
+		perSchool = 8,
+		spread = 2.2,
+		speed = 16,
+		pathRadius = { 70, 130 },
+		depth = { 160, 420 },
+		zones = {
+			{ band = DEEP, angles = OPEN_BLUE, schools = 7, spread = 0.7 },
+		} :: { Zone },
+		respawn = 22,
+		back = Color3.fromRGB(32, 48, 84),
+		belly = Color3.fromRGB(196, 206, 220),
+		slim = 0.3,
+	},
+	{
+		-- Gold-and-green dolphinfish cruising high in the Open Blue in threes
+		id = "MahiMahi",
+		name = "Mahi-mahi",
+		biome = "OpenBlue",
+		mass = 22,
+		schools = 6,
+		perSchool = 3,
+		spread = 2.4,
+		speed = 13,
+		pathRadius = { 50, 90 },
+		depth = { 180, 430 },
+		zones = {
+			{ band = DEEP, angles = OPEN_BLUE, schools = 6 },
+		} :: { Zone },
+		respawn = 22,
+		back = Color3.fromRGB(56, 140, 88),
+		belly = Color3.fromRGB(222, 196, 52),
+		slim = 0.3,
+	},
+	{
+		-- Hovering in pairs low among the Ruins' stones. Venomous: swallowing one stings
+		-- (`venom` below, HuntService)
+		id = "Lionfish",
+		name = "Lionfish",
+		biome = "SunkenRuins",
+		mass = 10,
+		schools = 12,
+		perSchool = 2,
+		spread = 2,
+		speed = 3,
+		pathRadius = { 8, 16 },
+		depth = { 4, 28 },
+		zones = {
+			{ band = DEEP, angles = RUINS, schools = 12 },
+		} :: { Zone },
+		respawn = 18,
+		back = Color3.fromRGB(176, 70, 32),
+		belly = Color3.fromRGB(58, 46, 44),
+		slim = 0.45,
+	},
+	{
+		-- Swarms of little glowing-tipped shrimp over the Vents' warm basins (and a few in
+		-- the kelp)
+		id = "GhostShrimp",
+		name = "Ghost Shrimp",
+		biome = "HydrothermalVents",
+		mass = 0.2,
+		schools = 8,
+		perSchool = 26,
+		spread = 2.2,
+		speed = 4,
+		pathRadius = { 8, 16 },
+		depth = { 6, 50 },
+		zones = {
+			{ band = DEEP, vents = true, schools = 8, round = true, spread = 0.7 },
+			-- and a few smaller swarms low among the kelp, a fifth small fish for new
+			-- players (the Catch Log's goals count species)
+			{
+				band = { 170, 460 },
+				schools = 3,
+				perSchool = 16,
+				depth = { 4, 30 },
+				round = true,
+				spread = 0.8,
+			},
+		} :: { Zone },
+		respawn = 8,
+		back = Color3.fromRGB(150, 176, 198),
+		belly = Color3.fromRGB(186, 206, 222),
+		slim = 0.22,
+	},
+	{
+		-- Small dark fish with glowing light spots, schooling in the Trench's dark water
+		id = "Lanternfish",
+		name = "Lanternfish",
+		biome = "AbyssalTrench",
+		mass = 0.5,
+		schools = 8,
+		perSchool = 18,
+		spread = 2.6,
+		speed = 7,
+		pathRadius = { 20, 40 },
+		depth = { 20, 220 },
+		zones = {
+			{ band = TRENCH, trench = true, schools = 8 },
+		} :: { Zone },
+		respawn = 9,
+		back = Color3.fromRGB(30, 40, 72),
+		belly = Color3.fromRGB(58, 80, 122),
+		slim = 0.26,
+	},
 }
 
 local byId: { [string]: PreyDef } = {}
@@ -340,4 +531,11 @@ return {
 		pull = 1.8,
 		pullShare = 0.4,
 	},
+	-- Venomous prey (HuntService): swallowing one stings for `share` of the eater's max
+	-- health (and heals nothing), full for a fish up to `fullRatio` × its raw length,
+	-- less for a bigger one (share × fullRatio / ratio, never under `least`). A sting
+	-- never kills: it stops at `floor` of max health. None in the hub (it's safe).
+	venom = {
+		Lionfish = { share = 0.06, fullRatio = 2.5, least = 0.01, floor = 0.05 },
+	} :: { [string]: { share: number, fullRatio: number, least: number, floor: number } },
 }

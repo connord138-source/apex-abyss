@@ -6,7 +6,7 @@
 # one biome, and the hours each skin goal takes. Rerun after changing Config/Catch,
 # Config/Tides or Config/Prey.
 #   LUAU=/path/to/luau bash tools/tests/run_catch_sim.sh
-#   HOURS=40 ... (simulated hours per biome and player; default 60)
+#   HOURS=40 ... (simulated hours per biome and player; default 30)
 #   QUICK=1 ... (the Kelp, the Reef and the Ruins only)
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -39,6 +39,6 @@ for f in "$tmp"/{Size,Seafloor,Schools,Tides,Catch,RareSpawn,catch_sim}.luau; do
 	sed -i -E 's/require\(script\.Parent\.Config\.([A-Za-z]+)\)/require(".\/Config\/\1")/; s/require\(script\.Parent\.([A-Za-z]+)\)/require(".\/\1")/' "$f"
 done
 cat > "$tmp/simargs.luau" <<LUA
-return { hours = ${HOURS:-60}, quick = ${QUICK:-0} == 1 }
+return { hours = ${HOURS:-30}, quick = ${QUICK:-0} == 1 }
 LUA
 cd "$tmp" && "${LUAU:-luau}" catch_sim.luau

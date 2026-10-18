@@ -1,5 +1,7 @@
 -- Checks Shared/Tides and Shared/Catch: the Prism Tide's schedule, no tide twice in a
--- row, every tide turns up, weeks, and the rare-catch odds.
+-- row, every tide turns up, weeks, and the rare fish's spawn rates under each tide
+-- (the goals and the old saves: catch_test.luau; how often players meet them:
+-- run_catch_sim.sh).
 local Tides = require("./Tides")
 local Catch = require("./Catch")
 local Config = require("./Config")
@@ -54,36 +56,51 @@ check(week == 1 and featured ~= nil and featured.prey == "Grouper", "week 1's Ca
 local _, before = Catch.weekly(first - 100)
 check(before == 0, "no Catch of the Week before week 1")
 check(Tides.weekStart(Tides.week(first)) == first, "week 1 starts on a Monday")
--- Odds
-local calm = Catch.chances("Minnow", "Calm", false, start + 100)
-check(calm.Prism == 0, "Prism outside its tide")
-check(math.abs(calm.Golden - 1 / 35) < 1e-12, "Golden at its base odds")
-local golden = Catch.chances("Minnow", "Golden", false, start + 100)
-check(math.abs(golden.Golden - 5 / 35) < 1e-12, "Golden Hour ×5")
-local prism = Catch.chances("Minnow", "Prism", false, start + 100)
-check(prism.Prism > 0, "Prism in the Prism Tide")
-local biolumDeep = Catch.chances("Sardine", "Biolum", true, start + 100)
-check(math.abs(biolumDeep.Glowing - 5 / 180) < 1e-12, "Glowing ×5 in the deep at night")
-local weeklyFish = Catch.chances("Grouper", "Calm", false, first + 100)
-check(math.abs(weeklyFish.Crystal - 3 / 900) < 1e-12, "the featured fish ×3")
--- Rolling: the rarest first, and plain past the sum
-check(Catch.roll(0, golden) == "Crystal", "roll 0 is the rarest available")
-check(Catch.roll(0.99, golden) == nil, "a high roll is plain")
--- Simulated spawn rates under Calm
-math.randomseed(1)
-local tally: { [string]: number } = {}
-local n = 2000000
-for _ = 1, n do
-	local id = Catch.roll(math.random(), calm)
-	if id then
-		tally[id] = (tally[id] or 0) + 1
-	end
-end
-for _, rarity in Config.Catch.rarities do
-	local want = calm[rarity.id]
-	local got = (tally[rarity.id] or 0) / n
-	check(want == 0 and got == 0 or math.abs(got - want) / want < 0.05, `{rarity.id}: {got} vs {want}`)
-end
+-- Spawn rates (Shared/Catch: a rarity's rare fish a minute round one player)
+local GOLDEN = Config.Catch.byId.Golden.rate
+local PRISM = Config.Catch.byId.Prism.rate
+local late = Config.Catch.spawn.rush.seconds + 1
+check(Catch.rate("Prism", "Calm", false, late) == 0, "Prism outside its tide")
+check(math.abs(Catch.rate("Golden", "Calm", false, late) - GOLDEN) < 1e-12, "Golden at its base rate")
+check(math.abs(Catch.rate("Golden", "Golden", false, late) - 5 * GOLDEN) < 1e-12, "Golden Hour ×5")
+check(
+	math.abs(Catch.rate("Golden", "Golden", false, 0) - 5 * Config.Catch.spawn.rush.boost * GOLDEN) < 1e-12,
+	"a tide's rush early on"
+)
+check(
+	math.abs(Catch.rate("Golden", "Calm", false, 0) - GOLDEN) < 1e-12,
+	"no rush for what a tide doesn't boost"
+)
+check(Catch.rate("Prism", "Prism", false, late) > 0, "Prism in the Prism Tide")
+check(
+	math.abs(Catch.rate("Prism", "Prism", false, 0) - Config.Catch.spawn.rush.boost * PRISM) < 1e-12,
+	"Prism's rush"
+)
+local glowing = Config.Catch.byId.Glowing.rate
+check(
+	math.abs(Catch.rate("Glowing", "Biolum", true, late) - 3 * Config.Tides.deepGlow * glowing) < 1e-12,
+	"Glowing ×5 in the deep at night"
+)
+check(
+	math.abs(Catch.rate("Glowing", "Biolum", false, late) - 3 * glowing) < 1e-12,
+	"Glowing ×3 on the shelf at night"
+)
+check(
+	math.abs(Catch.rate("Silver", "Golden", false, 0) - Config.Catch.byId.Silver.rate) < 1e-12,
+	"Silver steady"
+)
+-- The Catch of the Week's own stream: its rarity, the tide's boost on it
+local week1, weeklyRate = Catch.weeklyRate(first + 100, "Calm", false)
+check(week1 ~= nil and math.abs(weeklyRate - Config.Catch.weekly.rate) < 1e-12, "the week's stream")
+local _, blood = Catch.weeklyRate(first + 100, "Blood", false)
+check(
+	math.abs(
+		blood - Config.Catch.weekly.rate * (Config.Tides.byId.Blood.rarity[week1 and week1.rarity or ""] or 1)
+	) < 1e-12,
+	"the week's stream × the tide"
+)
+local _, none = Catch.weeklyRate(first - 100, "Calm", false)
+check(none == 0, "no week's stream before week 1")
 print(
 	`tides: {counts.Calm} calm, {counts.Golden} golden, {counts.Blood} blood, {counts.Sardine} sardine, {counts.Biolum} biolum, {counts.Prism} prism a week`
 )

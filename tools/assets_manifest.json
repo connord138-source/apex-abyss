@@ -110,6 +110,13 @@
       "sha256": "b28a74fe758a4c8755fd37d85da9dec47976fa21acc66c118399018eedb5abf2",
       "contents": "props/<Name>.glb: the Sunken Ruins' hero props (2026-10-18, owner: \"Sunken ruins need an extreme update with the structures and detail\"), Tripo text_to_model (tools/tripo_jobs_ruins_props.json) in the approved BiomeSunkenRuins concept's blue-grey and seafoam marble: RuinHead (a colossal statue head broken at the neck, face +X), RuinHand (a giant stone hand), RuinGuardian (a sea-dragon sphinx on a plinth, face +Z), RuinUrn (a teal amphora), RuinCapital (a fallen Ionic capital on a shaft stub, scrolls on +-Z), RuinStele (a glyph tablet, face +X). Ruins.luau fits each over its part-built stand-in (Props.dress, solid).",
       "clean": "Normal maps stripped by tools/props/strip_normals.py (one per GLB); base colours through safe_colors.py (the head's and urn's peach chips to cool white: skin 0.1% / 1.3% -> 0.0%); all 12 images (Color + ORM) cleared by screen_shades.py with the classifier, none flagged, highest 0.056 (RuinUrn ORM)."
+    },
+    "prey2_fbx": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/ed049c8c-a580-4712-9008-647ddff41c0e.zip",
+      "into": "assets/fbx",
+      "contents": "prey/<PreyId>.fbx: Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept: a clean model sheet each, tools/tripo_jobs_prey2_sheets.json, then Tripo image_to_model, tools/tripo_jobs_prey2_models.json; rigged like prey_fbx by rig_fish.py --segments 4: Root/Head/Spine1..4/Tail, head at -Y, facing -Z once imported). Import into ReplicatedStorage.PreyModels.<PreyId> beside the first five.",
+      "sha256": "cc9d695c61859fd689c385cb49ca86945e0a08c51760295aa805eec9b47facaa",
+      "clean": "Normal maps stripped from every Tripo GLB by strip_normals.py before rigging (one each); base colours through safe_colors.py (skin-tone texels: Lionfish 66.1%, WreckCod 42.5%, MahiMahi 34.7%, YellowfinTuna 12.0%, Garibaldi 5.9% -> 0.0%; Ghost Shrimp kept cool blue-grey). Each FBX embeds only its colour map (no ORM, no normal map; fbx_strip_normals.py finds nothing to drop), and all 8 embedded images, as uploaded, cleared by screen_shades.py with the classifier (exit 0, none flagged, highest 0.025 Lanternfish)."
     }
   }
 }

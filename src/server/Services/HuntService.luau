@@ -311,6 +311,7 @@ local function onEatPrey(player: Player, batch: any)
 	local tide = Tides.at(Timing.unix())
 	local gained = 0
 	local count = 0
+	local stung, stingFloor = 0, 0 -- venomous prey swallowed: share of max health, and the floor
 	for _, entry in batch do
 		if typeof(entry) ~= "table" then
 			continue
@@ -355,9 +356,15 @@ local function onEatPrey(player: Player, batch: any)
 			data.stats.bestPreyMass = fish.mass
 			Events.trophies:fire(player)
 		end
-		-- Eating heals a little, so snacking matters in a long fight
+		-- Eating heals a little, so snacking matters in a long fight; a venomous fish
+		-- (Config/Prey `venom`: the Lionfish) heals nothing and stings instead
 		local most = maxHealth(player)
-		if session.health < most then
+		local venom = Config.Prey.venom[prey.id]
+		if venom then
+			local ratio = Size.ratio(length, fish.length)
+			stung += math.max(venom.least, venom.share * math.min(1, venom.fullRatio / ratio))
+			stingFloor = math.max(stingFloor, venom.floor)
+		elseif session.health < most then
 			session.health =
 				math.min(most, session.health + most * (heal.eatBase + heal.eatPerKg * fish.mass))
 			character:SetAttribute("Health", session.health)
@@ -386,6 +393,19 @@ local function onEatPrey(player: Player, batch: any)
 	if gained > 0 then
 		addHaul(player, gained)
 		Events.ate:fire(player, count)
+	end
+	-- The sting: never in the hub or under spawn protection, and never fatal (it stops
+	-- at the venom's floor of max health)
+	if stung > 0 and not isSafe(session, now) then
+		local most = maxHealth(player)
+		local amount = math.min(most * stung, math.max(session.health - most * stingFloor, 0))
+		if amount > 0 then
+			session.health -= amount
+			session.lastHitAt = now
+			character:SetAttribute("Health", session.health)
+			Net.hitBy(player, -1, amount)
+		end
+		Net.notify(player, "STUNG · venomous spines", "bad")
 	end
 end
 

@@ -3,8 +3,10 @@
 -- folder the game code reads, by name:
 --   species (rigged FBX: Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler) and bosses (Megalodon, GiantSquid)
 --       -> ReplicatedStorage.FishModels.<SpeciesId>   (a Model holding the skinned MeshPart)
---   prey (rigged FBX: Minnow, Sardine, Wrasse, Snapper, Grouper; the Barracuda and
---   ReefShark prey are copies of the 'Cuda and Reef Shark species models)
+--   prey (rigged FBX: Minnow, Sardine, Wrasse, Snapper, Grouper, and the second batch
+--   Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp,
+--   Lanternfish; the Barracuda and ReefShark prey are copies of the 'Cuda and Reef
+--   Shark species models)
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
 --   props, food and den furniture (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
@@ -20,7 +22,12 @@ local SPECIES = {
 	Megalodon = true, -- the world bosses: rigged like a species, read by PredatorController
 	GiantSquid = true,
 }
-local PREY = { Minnow = true, Sardine = true, Wrasse = true, Snapper = true, Grouper = true, Barracuda = true }
+local PREY = {
+	Minnow = true, Sardine = true, Wrasse = true, Snapper = true, Grouper = true, Barracuda = true,
+	-- The second batch (prey2_fbx, 2026-10-18)
+	Garibaldi = true, WreckCod = true, Parrotfish = true, YellowfinTuna = true, MahiMahi = true,
+	Lionfish = true, GhostShrimp = true, Lanternfish = true,
+}
 local PROPS = {
 	GiantKelp = true, KelpClump = true, BoulderRound = true, BoulderJagged = true,
 	BrainCoral = true, FanCoral = true, StaghornCoral = true, TubeSponge = true, Anemone = true,

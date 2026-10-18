@@ -13,6 +13,8 @@ return {
 	-- Bigger prey sometimes carry shells: chance, and how many
 	preyDrops = {
 		Grouper = { chance = 0.25, min = 1, max = 2 },
+		MahiMahi = { chance = 0.25, min = 1, max = 2 },
+		YellowfinTuna = { chance = 0.3, min = 1, max = 3 },
 		Barracuda = { chance = 0.35, min = 1, max = 3 },
 		ReefShark = { chance = 0.5, min = 2, max = 4 },
 	} :: { [string]: { chance: number, min: number, max: number } },

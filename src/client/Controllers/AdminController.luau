@@ -377,7 +377,35 @@ local function build()
 		table.insert(rarities, { label = rarity.name, value = rarity.id })
 	end
 	pickRow("Turn the 10 nearest fish", rarities, "rareNear", "TURN")
-	pickRow("Catch track: add catches (current fish)", rarities, "trackAdd", "ADD", "×")
+	-- The Catch Logbook's skin goals: catches of a rarity on one prey species, or on
+	-- each of the first N species (an unlock in one tap: 10 Golden × 5 species)
+	do
+		local frame = row("Catch Log: add catches")
+		local wheres: { { label: string, value: string } } = {
+			{ label = "5 species", value = "spread:5" },
+			{ label = "4 species", value = "spread:4" },
+			{ label = "1 species", value = "spread:1" },
+		}
+		for _, prey in Config.Prey.list do
+			table.insert(wheres, { label = prey.name, value = prey.id })
+		end
+		local rarityIndex, whereIndex = 1, 1
+		local rarityPick = button(frame, rarities[1].label, 210, 100, "secondary")
+		rarityPick.Activated:Connect(function()
+			rarityIndex = rarityIndex % #rarities + 1
+			rarityPick.Text = rarities[rarityIndex].label
+		end)
+		local wherePick = button(frame, wheres[1].label, 316, 130, "secondary")
+		wherePick.Activated:Connect(function()
+			whereIndex = whereIndex % #wheres + 1
+			wherePick.Text = wheres[whereIndex].label
+		end)
+		local box = textBox(frame, "×each", 452, 64)
+		local go = button(frame, "ADD", 522, 76)
+		go.Activated:Connect(function()
+			ask("catchAdd", rarities[rarityIndex].value, wheres[whereIndex].value, parseAmount(box.Text) or 1)
+		end)
+	end
 	actionRow("Catch of the Week: catch it", "weeklyCatch", "CATCH", "secondary")
 	pickRow("Bounties", {
 		{ label = "Finish all three", value = "finish" },

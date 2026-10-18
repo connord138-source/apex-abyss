@@ -1,20 +1,24 @@
 --!strict
 -- Rare catches (Config/Catch; owner, 2026-10-10: "random rarities of fish that can be
--- eaten for more towards the haul or like 10 total unlocks a skin").
+-- eaten for more towards the haul or like 10 total unlocks a skin"; 2026-10-18: "They
+-- will need atleast 10 gold of 5 different species to unlock the skin. Once the skin
+-- is unlocked, it is unlocked for all of their fish").
 --
--- Which prey fish swim rare. A fish's rarity is rolled when it respawns, and fish no
--- one is near are re-rolled now and then, so the sea keeps changing and the tide's
--- odds reach every school (Shared/Catch, Config/Tides). Every client is told which
--- fish are rare (`PreyRarity`) and draws them so (SchoolController); HuntService
--- takes a fish's rarity when it's eaten and pays its Haul, then this pays the rest:
--- coral, the Catch Log, the fish's catch track (its skin at `track` catches), the
--- Catch of the Week, and the server announcements.
+-- Which prey fish swim rare. Every player out in the biomes brings their own stream
+-- of rare fish, set swimming out of everyone's sight and fading when they've had
+-- their time (Shared/RareSpawn, run here every `spawn.tick` s). Every client is told
+-- which fish are rare (`PreyRarity`) and draws them so (SchoolController);
+-- HuntService takes a fish's rarity when it's eaten and pays its Haul, then this pays
+-- the rest: coral, the Catch Log, the skin goals (Shared/Catch `goal`: a skin for
+-- every fish), the Catch of the Week, and the server announcements.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Catch = require(ReplicatedStorage.Shared.Catch)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Layout = require(ReplicatedStorage.Shared.Layout)
+local RareSpawn = require(ReplicatedStorage.Shared.RareSpawn)
 local Schools = require(ReplicatedStorage.Shared.Schools)
 local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -34,27 +38,16 @@ local CatchConfig = Config.Catch
 
 local CatchService = {}
 
-local rarity: { [number]: string } = {} -- prey index → rarity id (rare fish only)
-local respawning: { [number]: number } = {} -- prey index → clock when it's back (rolled then)
-local deep: { [number]: boolean } = {} -- school index → swims in a deep biome
+local spawner = RareSpawn.new(math.floor(os.clock() * 1000) % 1000003 + 1)
+local respawning: { [number]: number } = {} -- prey index → clock when it's back
 local sendIndices: { number } = {}
 local sendCodes: { number } = {}
-local rng = Random.new()
-local cursor = 0 -- the rotation's place in the fish list
+local NEWS_GAP = 45 -- seconds between "a Prism fish shimmers" announcements
+local lastNews = -math.huge
 
-local function setRarity(index: number, id: string?)
-	if rarity[index] == id then
-		return
-	end
-	local code = 0
-	if id then
-		rarity[index] = id
-		code = CatchConfig.codes[id]
-	else
-		rarity[index] = nil
-	end
+local function send(index: number, id: string?)
 	table.insert(sendIndices, index)
-	table.insert(sendCodes, code)
+	table.insert(sendCodes, if id then CatchConfig.codes[id] else 0)
 end
 
 local function flush()
@@ -70,88 +63,99 @@ local function where(index: number): string
 	return if biome then `the {biome.name}` else "the sea"
 end
 
-local function roll(index: number, tideId: string, unix: number): string?
-	local fish = Schools.fish[index]
-	local chances = Catch.chances(fish.prey, tideId, deep[fish.school] == true, unix)
-	return Catch.roll(rng:NextNumber(), chances)
-end
-
--- A fish (re)spawning with a new roll; a Prism fish is news
-local function spawned(index: number, tideId: string, unix: number)
-	local id = roll(index, tideId, unix)
-	setRarity(index, id)
-	local def = if id then CatchConfig.byId[id] else nil
-	if def and def.announce.spawn then
+-- A Prism fish is news (one a while: with a full server there's one a minute)
+local function spawned(index: number, id: string)
+	local def = CatchConfig.byId[id]
+	local now = Timing.clock()
+	if def and def.announce.spawn and now - lastNews >= NEWS_GAP then
+		lastNews = now
 		local prey = Config.Prey.byId[Schools.fish[index].prey]
 		Net.notifyAll(
-			`A {string.upper(def.name)} {string.upper(prey.name)} shimmers in {where(index)}!`,
+			`A {string.upper(def.name)} {string.upper(if prey then prey.name else "fish")} shimmers in {where(
+				index
+			)}!`,
 			"rare"
 		)
 	end
 end
 
-local function nearAnyone(position: Vector3, clearance: number): boolean
-	for _, player in Players:GetPlayers() do
-		local _, root = FishService.character(player)
-		if root and (root.Position - position).Magnitude < clearance then
-			return true
-		end
-	end
-	return false
+local function eatenUntil(index: number): number?
+	return respawning[index]
 end
 
 local function tick()
 	local now = Timing.clock()
 	local unix = Timing.unix()
 	local tide, startedAt = Tides.at(unix)
-	-- Eaten fish that are back
+	-- Eaten fish that are back (one picked while it was eaten comes back rare)
 	for index, backAt in respawning do
 		if backAt <= now then
 			respawning[index] = nil
-			if Schools.out(index, tide.id) then
-				spawned(index, tide.id, unix)
+			local id = RareSpawn.respawned(spawner, index, now)
+			if id and Schools.out(index, tide.id) then
+				send(index, id)
+				spawned(index, id)
+			elseif id then
+				RareSpawn.set(spawner, index, nil, now)
 			end
 		end
 	end
-	-- Re-roll a few fish nobody's near (three times as many just after the tide
-	-- turns, so its fish show up early in its 20 minutes)
-	local rotate = CatchConfig.rotate
-	local quota = rotate.perTick * (if unix - startedAt < 120 then 3 else 1)
-	local done = 0
-	for _ = 1, Schools.COUNT do
-		if done >= quota then
-			break
-		end
-		cursor = cursor % Schools.COUNT + 1
-		local index = cursor
-		if respawning[index] then
+	-- Who's out hunting (not in the hub or a den), and where everyone is
+	local hunters: { RareSpawn.Hunter } = {}
+	local everyone: { Vector3 } = {}
+	for _, player in Players:GetPlayers() do
+		local character, root = FishService.character(player)
+		if character == nil or root == nil then
 			continue
 		end
-		if not Schools.out(index, tide.id) then
-			setRarity(index, nil)
+		local position = root.Position
+		table.insert(everyone, position)
+		if Layout.inHub(position) then
 			continue
 		end
-		if nearAnyone(Schools.position(index, now), rotate.clearance) then
-			continue
+		local length = character:GetAttribute("Length")
+		local biome = Biomes.at(position)
+		table.insert(hunters, {
+			id = player.UserId,
+			position = position,
+			length = if typeof(length) == "number" then length else 2,
+			deep = biome ~= nil and biome.deep == true,
+		})
+	end
+	local changes = RareSpawn.step(
+		spawner,
+		CatchConfig.spawn.tick,
+		now,
+		unix,
+		tide.id,
+		unix - startedAt,
+		hunters,
+		everyone,
+		eatenUntil
+	)
+	for _, change in changes do
+		send(change.index, change.rarity)
+		if change.rarity then
+			spawned(change.index, change.rarity)
 		end
-		done += 1
-		spawned(index, tide.id, unix)
 	end
 	flush()
 end
 
--- The rarity of fish `index` as it's eaten (nil = plain): taken off it, and a new
--- one is rolled when it respawns at `backAt` (HuntService).
+-- The rarity of fish `index` as it's eaten (nil = plain): taken off it; it comes
+-- back at `backAt` (HuntService), plain unless it's picked meanwhile.
 function CatchService.take(index: number, backAt: number): string?
-	local id = rarity[index]
-	setRarity(index, nil)
+	local id = RareSpawn.take(spawner, index)
+	if id then
+		send(index, nil)
+	end
 	respawning[index] = backAt
 	flush()
 	return id
 end
 
 function CatchService.rarityOf(index: number): string?
-	return rarity[index]
+	return RareSpawn.rarityOf(spawner, index)
 end
 
 -- Testing (the admin panel): the `count` prey fish nearest `position` turn `rarityId`
@@ -175,28 +179,82 @@ function CatchService.forceNear(position: Vector3, rarityId: string, count: numb
 	end)
 	local made = 0
 	for i = 1, math.min(count, #nearest) do
-		setRarity(nearest[i].index, rarityId)
+		RareSpawn.set(spawner, nearest[i].index, rarityId, now)
+		send(nearest[i].index, rarityId)
 		made += 1
 	end
 	flush()
 	return made
 end
 
--- Testing (the admin panel): `count` catches of `rarityId` on the catch track of the
--- fish a player swims as, unlocking its skin at the track's count
-function CatchService.addTrack(player: Player, rarityId: string, count: number): string?
+-- Unlocks a catch skin for every fish the player has or will have (the playable
+-- species all get it now, the way a Tide Pass skin does); false if they all had it
+-- or the skin isn't in Config/Shades yet
+function CatchService.grantEveryFish(data: PlayerData, skin: string): boolean
+	if Config.Shades.byId[skin] == nil then
+		return false
+	end
+	local new = false
+	for _, species in Config.Species.list do
+		new = Progress.grantShade(data, skin, species.id) or new
+	end
+	return new
+end
+
+-- Every catch skin whose goal the player's Catch Log has met, on every fish (and any
+-- catch skin one fish earned on the old per-fish tracks: DataService does that on
+-- load). The skins that were new.
+local function checkGoals(data: PlayerData): { string }
+	local got: { string } = {}
+	for _, rarityId in Catch.met(data.catchLog) do
+		local skin = CatchConfig.byId[rarityId].skin
+		if CatchService.grantEveryFish(data, skin) then
+			table.insert(got, skin)
+		end
+	end
+	return got
+end
+
+-- Testing (the admin panel): `count` catches of `rarityId` on prey `preyId`'s Catch
+-- Log row, or on each of the first `spread` prey species; unlocks the skin when its
+-- goal is met. What it did, in words.
+function CatchService.addCatches(
+	player: Player,
+	rarityId: string,
+	preyId: string?,
+	spread: number,
+	count: number
+): string
 	local data = DataService.get(player)
 	local def = CatchConfig.byId[rarityId]
 	if data == nil or def == nil then
-		return nil
+		return "no data"
 	end
-	local species = Progress.speciesId(data)
-	local track = data.catchTracks[species] or {}
-	data.catchTracks[species] = track
-	track[rarityId] = (track[rarityId] or 0) + count
-	local unlocked = track[rarityId] >= def.track and Progress.grantShade(data, def.skin, species)
+	local targets: { string } = {}
+	if preyId and Config.Prey.byId[preyId] then
+		table.insert(targets, preyId)
+	else
+		for i, prey in Config.Prey.list do
+			if i > spread then
+				break
+			end
+			table.insert(targets, prey.id)
+		end
+	end
+	for _, id in targets do
+		local row: { [string]: number } = data.catchLog[id] or {}
+		data.catchLog[id] = row
+		row[rarityId] = (row[rarityId] or 0) + count
+		if (row.Normal or 0) == 0 then
+			row.Normal = 1
+		end
+	end
+	local got = checkGoals(data)
 	DataService.markDirty(player)
-	return if unlocked then def.skin else ""
+	local done, _, met = Catch.goal(data.catchLog, rarityId)
+	return `{player.DisplayName}: +{count} {rarityId} on {#targets} species · {done}/{def.unlock.species} species at {def.unlock.each}{if met
+		then " · goal met"
+		else ""}{if #got > 0 then ` · unlocked {table.concat(got, ", ")}` else ""}`
 end
 
 local function grantTitle(data: PlayerData, title: string): boolean
@@ -204,19 +262,6 @@ local function grantTitle(data: PlayerData, title: string): boolean
 		return false
 	end
 	data.titles[title] = true
-	return true
-end
-
--- A finished Catch Log row: every rarity of one prey species caught at least once
-local function rowDone(row: { [string]: number }): boolean
-	if (row.Normal or 0) == 0 then
-		return false
-	end
-	for _, def in CatchConfig.rarities do
-		if (row[def.id] or 0) == 0 then
-			return false
-		end
-	end
 	return true
 end
 
@@ -250,7 +295,7 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 		local coral = CatchConfig.firstCatch[rarityId] or 0
 		EconomyService.addCoral(player, coral)
 		summary.first = coral
-		if not data.logRows[preyId] and rowDone(row) then
+		if not data.logRows[preyId] and Catch.rowDone(row) then
 			data.logRows[preyId] = true
 			EconomyService.addCoral(player, CatchConfig.rowComplete.coral)
 			EconomyService.addShells(player, CatchConfig.rowComplete.shells)
@@ -273,14 +318,13 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 		-- Coral, the tide's bonus on top
 		local tide = Tides.at(unix)
 		summary.coral = EconomyService.earnCoral(player, Catch.coral(rarityId, mass) * (tide.coral or 1))
-		-- The catch track of the fish we're swimming as
-		local track = data.catchTracks[species] or {}
-		data.catchTracks[species] = track
-		track[rarityId] = (track[rarityId] or 0) + 1
-		summary.track = track[rarityId]
-		summary.need = def.track
-		summary.species = species
-		if track[rarityId] >= def.track and Progress.grantShade(data, def.skin, species) then
+		-- The skin goal: `each` of this rarity from each of `species` prey species
+		local done, _, met = Catch.goal(data.catchLog, rarityId)
+		summary.count = row[rarityId]
+		summary.each = def.unlock.each
+		summary.done = done
+		summary.need = def.unlock.species
+		if met and CatchService.grantEveryFish(data, def.skin) then
 			summary.skin = def.skin
 		end
 		if def.announce.catch then
@@ -303,6 +347,7 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 			summary.weeklySpins = Config.Wheel.weekly
 			summary.weeklyCoral = featured.coral
 			summary.weeklyShells = featured.shells
+			summary.species = species
 			if Progress.grantShade(data, featured.skin, species) then
 				summary.weeklySkin = featured.skin
 			end
@@ -320,34 +365,20 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 end
 
 function CatchService.start()
-	-- Which schools swim in the deep (a Bioluminescent Night glows brighter there)
-	for index, school in Schools.list do
-		local biome = Biomes.at(school.center)
-		deep[index] = biome ~= nil and biome.deep
-	end
-	-- Every fish starts with a roll
-	local unix = Timing.unix()
-	local tide = Tides.at(unix)
-	for index = 1, Schools.COUNT do
-		local id = if Schools.out(index, tide.id) then roll(index, tide.id, unix) else nil
-		if id then
-			rarity[index] = id
-		end
-	end
 	Net.onGetRarities(function(): { [string]: number }
 		local result: { [string]: number } = {}
-		for index, id in rarity do
-			result[tostring(index)] = CatchConfig.codes[id]
+		for index, rare in spawner.rare do
+			result[tostring(index)] = CatchConfig.codes[rare.rarity]
 		end
 		return result
 	end)
 	Events.caught:connect(onCaught)
-	Guard.loop("CatchService.tick", CatchConfig.rotate.seconds, tick)
+	-- (every goal is checked again on each join: DataService)
+	Guard.loop("CatchService.tick", CatchConfig.spawn.tick, tick)
 	StateService.provide(function(_player, data, state)
 		state.catchLog = data.catchLog
 		state.catchBest = data.catchBest
 		state.logRows = data.logRows
-		state.catchTracks = data.catchTracks
 		state.weeklyFeatured = Weekly.record(data).featured
 	end)
 end

@@ -21,6 +21,7 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Catch = require(ReplicatedStorage.Shared.Catch)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -137,6 +138,10 @@ local EFFECT_WORDS: { [string]: string } = {
 	pearls = "rising pearls",
 	shimmer = "holographic sparkles",
 	sheen = "a polished gold shine running head to tail",
+}
+-- A skin whose effect reads otherwise (the same `sheen` in silver)
+local SKIN_EFFECT_WORDS: { [string]: { [string]: string } } = {
+	CatchSilver = { sheen = "a polished silver shine running head to tail" },
 }
 local AURA_WORDS: { [string]: string } = {
 	glints = "drifting glints",
@@ -258,7 +263,13 @@ local function effectsOf(shade: any): ({ string }, { string })
 		if TRAIL_WORDS[kind] then
 			table.insert(trails, TRAIL_WORDS[kind])
 		else
-			table.insert(others, EFFECT_WORDS[kind] or string.lower((string.gsub(kind, "(%l)(%u)", "%1 %2"))))
+			local own = SKIN_EFFECT_WORDS[shade.id]
+			table.insert(
+				others,
+				(own and own[kind])
+					or EFFECT_WORDS[kind]
+					or string.lower((string.gsub(kind, "(%l)(%u)", "%1 %2")))
+			)
 		end
 	end
 	if shade.fx == nil then
@@ -996,8 +1007,8 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 				return pass("skin")
 			elseif r.catch then
 				local rarity = Config.Catch.byId[r.catch]
-				local count = ((s.catchTracks or {})[s.species or ""] or {})[r.catch] or 0
-				return `CATCH TRACK {math.min(count, rarity.track)}/{rarity.track}`
+				local done = Catch.goal(s.catchLog, rarity.id)
+				return `CATCH GOAL {math.min(done, rarity.unlock.species)}/{rarity.unlock.species} SPECIES`
 			elseif r.week then
 				return "CATCH OF THE WEEK"
 			elseif r.boss then

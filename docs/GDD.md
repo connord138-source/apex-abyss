@@ -1112,50 +1112,84 @@ I do want to add random rarities of fish that can be eaten for more towards the 
 like 10 total unlocks a skin." Claude proposed four pieces that feed each other; the
 owner picked all four ("All four please!").
 
-- **Rare catches** (`Config/Catch`, `Shared/Catch`, `CatchService`): any prey fish can
-  swim rare, rolled when it (re)spawns and re-rolled now and then while no one is
-  within 260 studs, so the sea keeps changing and the tide's odds reach every school.
+- **Rare catches** (`Config/Catch`, `Shared/Catch`, `Shared/RareSpawn`, `CatchService`):
+  any prey fish can swim rare. **How often (owner, 2026-10-18: "I caught three crystal
+  fish in about 5 minutes ... rerun the spawn rates to fit what you think is best that
+  players dont get annoyed with the grind but they are also not done super quick"):**
+  until then every fish rolled its rarity, so the rare fish alive at once grew with the
+  ~4,100 fish (4–5 Crystals in the sea at any moment, glints seen from 240 studs; the
+  sim gives a hunter a Crystal every ~5 min and 5–10 Golden a minute). Now each rarity
+  has a spawn rate **per player out in the biomes**: a rare fish is set swimming on a
+  fish that player can swallow, in their biome, 340–750 studs off and never within 320
+  of anyone (so nothing turns rare in sight), the species picked evenly among the ones
+  there (then a school, then a fish). It lives about its `life`, then turns plain once
+  no one's within 320. So a player's encounters depend on neither the number of fish
+  nor of players; twelve hunting one biome don't starve each other (each brings their
+  own stream). In a crowded biome with nowhere out of sight, an eaten fish there comes
+  back rare. A tide multiplies the rates (×3 in its first 2 minutes for what it
+  boosts, so its fish show early). Tuned by `tools/tests/run_catch_sim.sh` (a hunter
+  sees glints within 240 studs, a quarter hidden by rock, and detours; a casual player
+  takes only what swims within 60 studs of its way), averaged over the normal tides:
 
-  | Rarity | Tier | Chance per spawn | Haul | Coral | DNA | Track |
-  |---|---|---|---|---|---|---|
-  | Golden | Rare | 1 in 35 | ×3 | 6/kg, min 10 | ×2 | 10 |
-  | Glowing | Epic | 1 in 180 | ×6 | 15/kg, min 40 | ×3 | 10 |
-  | Crystal | Legendary | 1 in 900 | ×12 | 40/kg, min 150 | ×5 | 5 |
-  | Prism | Mythic | 1 in 150, Prism Tide only | ×25 | 100/kg, min 500 | ×8 | 3 |
+  | Rarity | Tier | A hunter meets one | Casual | Haul | Coral | DNA | Skin goal | Skin |
+  |---|---|---|---|---|---|---|---|---|
+  | Silver | Uncommon | every 1 min | 3 min | ×2 | 3/kg, min 5 | ×1 | 10 × 5 species (~1–2 h) | Common |
+  | Golden | Rare | every 5 min (Calm 11, Golden Hour 2) | 12 min | ×3 | 6/kg, min 10 | ×2 | 10 × 5 species (~6–9 h) | Uncommon |
+  | Glowing | Epic | every 25 min (Calm 40, Biolum Night 10) | 52 min | ×6 | 15/kg, min 40 | ×3 | 5 × 5 species (~15–20 h) | Rare |
+  | Crystal | Legendary | every 100 min (Blood Tide 58) | 170 min | ×12 | 40/kg, min 150 | ×5 | 2 × 5 species (~18–39 h) | Epic |
+  | Prism | Mythic | 2 a Prism Tide | 1 a tide | ×25 | 100/kg, min 500 | ×8 | 1 × 5 species (3–5 Prism Tides) | Epic |
 
-  - They look the part from a distance (`SchoolController`): gold foil, a teal glow,
-    clear crystal, a shifting rainbow, each with sparkles and a small light.
-  - A Crystal or Prism catch is announced; a Prism fish is announced when it appears.
-- **The Catch Log:** every prey species × rarity (plain too). A first catch pays (25 /
-  120 / 400 / 1,500 / 5,000 coral), a finished species row 3,000 coral and 60 shells,
-  and the whole log the Master Angler title.
+  - They look the part from a distance (`SchoolController`): polished silver that
+    flashes white as it turns (so it reads apart from plain silvery minnows and
+    sardines), gold foil, a teal glow, clear crystal, a shifting rainbow, each with
+    sparkles, a small light and a four-point glint star to 240 studs.
+  - A Crystal or Prism catch is announced; a Prism fish is announced when it appears
+    (one announcement in 45 s at most).
+- **The Catch Logbook** (the LOG's first tab; owner, 2026-10-18: "a catch logbook that
+  shows the largest they have caught and they can track total gold/crystal/silver etc
+  that they have for each fish"): an entry per prey species, straight from
+  `Config/Prey`, with a lit photo (a dark ??? silhouette until it's caught), where it
+  swims, its biggest, and a cell per rarity (plain, Silver, Golden, Glowing, Crystal,
+  Prism) with how many, the biggest of that rarity and how it stands toward that skin.
+  A first catch pays (25 / 60 / 120 / 400 / 1,500 / 5,000 coral), a finished species
+  row 3,000 coral and 60 shells (Silver joined the row on 2026-10-18; a row paid before
+  stays paid), and the whole log the Master Angler title.
   - **Biggest catches (owner: "track their biggest eat of each species and rarity of
     species too"):** every school fish has its own size (`Schools` `size`: 0.82–1.18
     of its species' length, and 1 in 25 a trophy at 1.25–1.5), so its mass, and what
     eating it is worth, goes with the cube of that. The log keeps your heaviest of
-    each species at each rarity (`data.catchBest`); each cell shows how many and the
-    biggest, each row the species' biggest. A new record on a rare or trophy-sized
-    fish (≥1.9× the species' mass) says NEW BIGGEST.
-- **Catch tracks (owner: "10 total unlocks a skin", per fish, per rarity):** rare
-  catches count on the fish you're swimming as; 100 Golden, 100 Glowing, 100 Crystal
-  and 100 Prism catches (owner, 2026-10-18) unlock that rarity's skin for that fish. Those skins are never rolled.
+    each species at each rarity (`data.catchBest`). A new record on a rare or
+    trophy-sized fish (≥1.9× the species' mass) says NEW BIGGEST.
+- **Skin goals (owner, 2026-10-18: "They will need atleast 10 gold of 5 different
+  species to unlock the skin. Once the skin is unlocked, it is unlocked for all of
+  their fish"):** `unlock.each` catches of a rarity from each of `unlock.species` prey
+  species (the lifetime Catch Log counts, any fish you swim as) unlock that rarity's
+  skin for every playable fish, the ones not unlocked yet too, the way a Tide Pass
+  skin is (`CatchService.grantEveryFish`). The goals sit at the top of the logbook:
+  your fish in the skin, the species done and the nearest to counting. A biome's rare
+  fish are its own species, so five usually means the Coral Reef or deeper (the Kelp
+  Shallows has five for a small fish since the Garibaldi and Ghost Shrimp). Those skins
+  are never rolled. (Until 2026-10-18 each fish had its own catch track: 100 of a
+  rarity as that fish. On every join a save gets every goal its log meets and any
+  catch skin one of its fish earned that way, on every fish; nothing is taken away;
+  `data.catchTracks` stays in the save, unused.)
   - **Earned skins stop at Epic** (owner, 2026-10-10: "we still don't want the most
-    elite skins obtained that way that'll be rng and bosses/treasure chests"): Golden
-    is Uncommon, Glowing Rare, Crystal and Prism Epic, and the weekly skins Epic.
-    Legendary and Mythic skins come only from rolls, the Treasure Wheel's jackpot,
-    bosses and treasure chests.
+    elite skins obtained that way that'll be rng and bosses/treasure chests"): Silver
+    is Common, Golden Uncommon, Glowing Rare, Crystal and Prism Epic, and the weekly
+    skins Epic. Legendary and Mythic skins come only from rolls, the Treasure Wheel's
+    jackpot, bosses and treasure chests.
 - **The Tide Clock** (`Config/Tides`, `Shared/Tides`, `TideService`, `TideController`):
   the sea changes every 20 minutes, on the :00, :20 and :40, on one clock for every
   server (arithmetic on Unix time, so nothing is sent).
 
   | Tide | How often | What it does |
   |---|---|---|
-  | Calm Waters | twice as often as the others | rare fish at their usual odds |
+  | Calm Waters | twice as often as the others | rare fish at their usual rates |
   | Golden Hour | | Golden ×5, coral from rare catches ×1.5 |
   | Blood Tide | | Golden, Glowing and Crystal ×2, Haul ×1.25, AI hunters ×1.2 speed and ×1.5 aggro |
   | Sardine Run | | bait balls of 36 sardines in the shallows and over the reef (`Config/Prey` `tideZones`), small fish Haul ×1.5 |
   | Bioluminescent Night | | Glowing ×3 (×5 in the deep), the sea dims |
-  | Prism Tide | 03:00, 09:00, 15:00, 21:00 UTC | Prism fish swim; every rare ×2 |
+  | Prism Tide | 03:00, 09:00, 15:00, 21:00 UTC | Prism fish swim; Golden, Glowing and Crystal ×2 |
 
   - Never the same tide twice in a row. A chip at the top names the tide and its time
     left, and counts down to a Prism Tide within the hour; a banner and a faint tint
@@ -1167,14 +1201,16 @@ owner picked all four ("All four please!").
   Charm, a Treasure Wheel spin).
 - **Catch of the Week:** one prey and rarity a week (Monday 00:00 UTC; week 1 is
   2026-10-05: Crystal Grouper, then Glowing Snapper, Golden Barracuda, Crystal
-  Wrasse), ×3 as common all week. The first one caught pays big and unlocks that week's
+  Wrasse), with a spawn stream of its own all week (`weekly.rate`, on its species only,
+  where it swims near the player): a hunter there meets one in about 45 minutes. The
+  first one caught pays big and unlocks that week's
   limited skin for the fish that caught it (Great Wave, Living Reef, Shipwreck, Sea
   Glass). The list cycles; add a week and a skin to keep it fresh.
 - **Weekly leaderboards** (`Config/Leaderboards`, `LeaderboardService`): Rare Catches
-  (Golden 1, Glowing 5, Crystal 25, Prism 100, Catch of the Week +50), Biggest Haul and
+  (Silver 0.2, Golden 1, Glowing 5, Crystal 25, Prism 100, Catch of the Week +50), Biggest Haul and
   Boss Damage; this server's live and every server's top 50 (OrderedDataStores per
   week). Last week's top 1, 10 and 100 earn a title on their next join.
-- **The LOG** (HUD button beside DAILY): Catch Log and catch track, Bounties, Weekly
+- **The LOG** (HUD button beside DAILY): the Catch Logbook and its skin goals, Bounties, Weekly
   (Catch of the Week and the boards), Tides.
 - **The Treasure Wheel** (owner, 2026-10-10: "do want a spin wheel again"; ported from
   Hatch & Snatch's Luck Wheel: `Config/Wheel`, `TreasureWheel.luau`, `WheelService`,

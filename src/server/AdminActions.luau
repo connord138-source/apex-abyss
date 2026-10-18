@@ -590,19 +590,32 @@ local function rareNear(_admin: Player, targets: { Player }, rarityId: any): str
 	return `{made} fish turned {rarityId}`
 end
 
-local function trackAdd(_admin: Player, targets: { Player }, rarityId: any, amount: any): string
+-- The Catch Logbook's skin goals: `count` catches of a rarity on one prey species'
+-- row, or on each of the first N species ("spread:N"), unlocking the skin for every
+-- fish when its goal is met (so the PC can test an unlock quickly)
+local function catchAdd(_admin: Player, targets: { Player }, rarityId: any, where: any, amount: any): string
 	local n = amountOf(amount, 1) or 1
 	if typeof(rarityId) ~= "string" or Config.Catch.byId[rarityId] == nil then
 		return "Pick a rarity"
 	end
-	local unlocked = 0
-	for _, player in targets do
-		local skin = CatchService.addTrack(player, rarityId, n)
-		if skin and skin ~= "" then
-			unlocked += 1
+	local preyId: string? = nil
+	local spread = 0
+	if typeof(where) == "string" then
+		local count = string.match(where, "^spread:(%d+)$")
+		if count then
+			spread = tonumber(count) or 0
+		elseif Config.Prey.byId[where] then
+			preyId = where
 		end
 	end
-	return `+{n} {rarityId} catches on the current fish's track ({unlocked} skin(s) unlocked)`
+	if preyId == nil and spread <= 0 then
+		return "Pick a prey species or a spread"
+	end
+	local lines: { string } = {}
+	for _, player in targets do
+		table.insert(lines, CatchService.addCatches(player, rarityId, preyId, spread, n))
+	end
+	return table.concat(lines, " · ")
 end
 
 local function weeklyCatch(_admin: Player, targets: { Player }): string
@@ -763,7 +776,7 @@ AdminActions.byName = {
 	codesReset = codesReset :: Handler,
 	forceTide = forceTide :: Handler,
 	rareNear = rareNear :: Handler,
-	trackAdd = trackAdd :: Handler,
+	catchAdd = catchAdd :: Handler,
 	weeklyCatch = weeklyCatch :: Handler,
 	bounties = bounties :: Handler,
 	boardPoints = boardPoints :: Handler,

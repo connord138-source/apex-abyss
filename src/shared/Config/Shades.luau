@@ -54,6 +54,7 @@ export type Shade = {
 	fx: { string }?,
 	fxColor: Color3?,
 	fxColor2: Color3?,
+	fxLight: Color3?, -- the colour a `sheen` flares the viewport's light (PreviewFx; nil: Golden's warm white)
 	-- Living shades (owner, 2026-10-08: "much much more variance and depth"): how
 	-- bright the skin's glow map burns (SurfaceAppearance.EmissiveStrength), how the
 	-- glow moves, and what drifts off the fish. Cosmetics reads them.
@@ -981,6 +982,19 @@ local list: { Shade } = {
 	-- the most elite skins obtained that way that'll be rng and bosses/treasure
 	-- chests"), and so do the weekly ones
 	earned(
+		"CatchSilver",
+		"Silver",
+		"Common",
+		{ catch = "Silver" },
+		C(150, 162, 180),
+		C(205, 214, 228),
+		C(112, 128, 152),
+		"Polished silver: mirror scales that catch the light, a shine running down it. Earned by catching Silver fish; works on every fish.",
+		-- Cool and mid-toned (skins v14): a near-white or creamy silver reads as skin
+		-- to the moderation screen, and a mirror shows the dark water, not its colour
+		{ material = Enum.Material.Metal, reflectance = 0.2, sparkle = C(220, 232, 255), aura = "glints" }
+	),
+	earned(
 		"CatchGolden",
 		"Golden",
 		"Uncommon",
@@ -988,7 +1002,7 @@ local list: { Shade } = {
 		C(245, 170, 0),
 		C(255, 205, 70),
 		C(200, 123, 0),
-		"Polished gold, its own pattern engraved, a shine running down it. 100 Golden catches as this fish.",
+		"Polished gold, its own pattern engraved, a shine running down it. 10 Golden fish of each of 5 species, and it's every fish's.",
 		-- Less mirror than it was: reflecting the blue water, gold read lime (playtest
 		-- 2026-10-10; the skin's metal map went from 0.6 to 0.35)
 		{ material = Enum.Material.Metal, reflectance = 0.2, sparkle = C(255, 226, 150), aura = "glints" }
@@ -1001,7 +1015,7 @@ local list: { Shade } = {
 		C(10, 30, 60),
 		C(30, 160, 160),
 		C(60, 240, 220),
-		"Bioluminescent: its own markings glow. 100 Glowing catches as this fish.",
+		"Bioluminescent: its own markings glow. 5 Glowing fish of each of 5 species, and it's every fish's.",
 		{ emissive = 1.3, pulse = "breathe", aura = "motes", light = C(70, 240, 220) }
 	),
 	earned(
@@ -1012,7 +1026,7 @@ local list: { Shade } = {
 		C(150, 200, 240),
 		C(200, 230, 255),
 		C(120, 180, 230),
-		"Clear crystal full of glints. 100 Crystal catches as this fish.",
+		"Clear crystal full of glints. 3 Crystal fish of each of 5 species, and it's every fish's.",
 		{ material = Enum.Material.Glass, reflectance = 0.35, sparkle = C(220, 240, 255), aura = "glints" }
 	),
 	earned(
@@ -1023,7 +1037,7 @@ local list: { Shade } = {
 		C(255, 120, 230),
 		C(120, 220, 255),
 		C(255, 230, 90),
-		"Holographic prism foil. 100 Prism catches as this fish.",
+		"Holographic prism foil. 2 Prism fish of each of 5 species (Prism Tides), and it's every fish's.",
 		{ emissive = 0.9, pulse = "wave", aura = "stars", light = C(255, 140, 230) }
 	),
 	-- The Catch of the Week's limited skins (Config/Catch weekly), never rolled
@@ -1264,7 +1278,7 @@ end
 -- Effects instead (Shared/SkinFx) on the Tide Pass skins, every Legendary and
 -- Mythic, the boss trophies, the treasure skins and the Epics people chase. Each
 -- list is a set the skin wears; the colours default to the skin's glow and belly.
-type FxSet = { fx: { string }, color: Color3?, color2: Color3? }
+type FxSet = { fx: { string }, color: Color3?, color2: Color3?, light: Color3? }
 local FX: { [string]: FxSet } = {
 	-- Tide Pass
 	PassTideglass = {
@@ -1310,6 +1324,14 @@ local FX: { [string]: FxSet } = {
 	-- it over the polished skin (skins v13: gloss, painted highlights), gold sparks
 	-- and glitter. Saturated golds: a pale one reads cream through the water
 	CatchGolden = { fx = { "sheen" }, color = C(255, 190, 40), color2 = C(255, 228, 120) },
+	-- Golden's shine in silver (skins v14): a cool silver-white band and light, steel
+	-- to silver-white sparks and glitter (all cool: a warm pale reads cream)
+	CatchSilver = {
+		fx = { "sheen" },
+		color = C(170, 196, 235),
+		color2 = C(226, 236, 255),
+		light = C(222, 234, 255),
+	},
 	Glacier = { fx = { "frost", "crystal" }, color = C(190, 230, 255), color2 = C(230, 245, 255) },
 }
 local AURAS: { [string]: Aura } = {
@@ -1342,6 +1364,7 @@ for id, set in FX do
 	shade.fx = set.fx
 	shade.fxColor = set.color
 	shade.fxColor2 = set.color2
+	shade.fxLight = set.light
 end
 
 -- Whether a fish of `speciesId` can have a skin: one of its own line, or one every

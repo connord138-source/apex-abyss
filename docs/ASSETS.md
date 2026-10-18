@@ -14,6 +14,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 |---|---|---|
 | `species_fbx` | Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged FBX) | `ReplicatedStorage.FishModels.<SpeciesId>` |
 | `prey_fbx` | Minnow, Sardine, Wrasse, Snapper, Grouper (rigged FBX, 4 spine segments: their bones swim) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `prey2_fbx` | Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept; rigged FBX like `prey_fbx`, 4 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.025; see "The second prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
@@ -32,7 +33,8 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
 The Barracuda and Reef Shark predators (and prey schools) are the rigged 'Cuda and
 Reef Shark species models, copied into `PreyModels` by `organize_imports`. The Tripo
-balance is about 1,290 credits (`python tools/tripo.py balance`).
+balance is about 950 credits (2026-10-18, after the second prey batch; `python
+tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -93,6 +95,59 @@ The Terrain under the ruins changed (a sand plain, drifts and the sunken courtya
 pit; the old column stubs, plinths, walls and temple ring are parts now), so the map
 chart is regenerated (`assets/textures/map_chart.png`, screened): upload it as an
 Image and paste its id into `Config/Textures` `mapChart`.
+
+### The second prey batch (`prey2_fbx`, 2026-10-18)
+
+Eight prey from the approved concept sheet `assets/tripo/prey_concepts/PreySheetA.png`,
+one for each biome (`Config/Prey`, ids as below; the Ghost Shrimp has a few swarms in
+the kelp too): Garibaldi (Kelp), WreckCod (Shipwreck Graveyard), Parrotfish (Coral
+Reef), YellowfinTuna and MahiMahi (Open Blue), Lionfish (Sunken Ruins, venomous: it
+stings when swallowed), GhostShrimp (Hydrothermal Vents) and Lanternfish (Abyssal
+Trench).
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/`):
+
+1. `python3 tools/props/prey_refs.py`: each fish's crop of the concept sheet, large,
+   over a strip of `StyleRef.png`, as one reference image (`assets/tripo/prey2_refs/`).
+2. `python tools/tripo.py run tools/tripo_jobs_prey2_sheets.json`: a clean side-on
+   model sheet each (Nano Banana, 5 credits). Two copied the style strip under the
+   fish; `prey_refs.py --tops WreckCod YellowfinTuna` cut them above it instead of
+   redrawing.
+3. `python tools/tripo.py run tools/tripo_jobs_prey2_models.json`: image_to_model
+   (30 credits each).
+4. `tools/props/strip_normals.py` (every GLB had one), `tools/props/safe_colors.py`
+   (skin-tone texels: Lionfish 66%, WreckCod 43%, MahiMahi 35%, YellowfinTuna 12%,
+   Garibaldi 6%, all to 0%; the Ghost Shrimp stays cool blue-grey), then
+   `python3.11 tools/blender/rig_fish.py <safe>.glb assets/fbx/prey/<Id>.fbx --segments 4`
+   and `tools/blender/fish_check.py` (every head on the left).
+5. Each FBX embeds only its colour map (no ORM, no normal map;
+   `fbx_strip_normals.py` drops nothing). The eight embedded images were extracted
+   and screened with `screen_shades.py` and the classifier: exit 0, none flagged,
+   highest 0.025 (Lanternfish).
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `prey2_fbx` into `assets/fbx/prey/`, beside
+   the first five).
+2. **File → Import 3D**, the eight new files in `assets/fbx/prey/`
+   (`"Garibaldi.fbx" "WreckCod.fbx" "Parrotfish.fbx" "YellowfinTuna.fbx" "MahiMahi.fbx"
+   "Lionfish.fbx" "GhostShrimp.fbx" "Lanternfish.fbx"`), rig on and textures on like
+   the first prey, **Import All**.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the eight
+   names and keeps each rigged Model in `ReplicatedStorage.PreyModels.<Id>`), then
+   **save the place**.
+
+What the code does with them: `SchoolController` draws them like every rigged prey
+(scaled to each fish's length, the spine wave on their bones). Until a model is
+imported the fish is the part-built ellipsoid in its `back` colour with a few extra
+parts in its own colours (`SHAPES`: a belly, fins, the Lionfish's dark bands, spine
+crest and fanned fins, the Parrotfish's pale beak). Whether imported or not, the
+Lanternfish wears eight small Neon light spots along its lower flanks (within 60
+studs of the camera) and the Ghost Shrimp glowing teal tips on its tail fan, legs
+and antennae (within 45), never a see-through body (`GLOWS`); the three nearest
+Lanternfish carry a faint cyan PointLight (range 7). The spots sit on the body's
+outline from its bounding box, so if they float off or sink into an imported
+Lanternfish, nudge `at` in `GLOWS` (x across, y up, z along the body, in half-extents).
 
 ## Shade skins (tools/shades)
 

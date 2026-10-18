@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ProfileStore = require(script.Parent.Parent.Packages.ProfileStore)
 local Signal = require(ReplicatedStorage.Shared.Signal)
+local Catch = require(ReplicatedStorage.Shared.Catch)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 
@@ -108,8 +109,9 @@ export type PlayerData = {
 	-- collected, and the Unix time it was last grown to
 	garden: { coral: number, shells: number, at: number },
 	-- Rare catches (Config/Catch): the Catch Log (prey id → rarity id, "Normal" too →
-	-- catches), its finished rows, and each fish's catch track (species id → rarity
-	-- id → catches as that fish)
+	-- lifetime catches; the skin goals count it, Shared/Catch `goal`) and its finished
+	-- rows. `catchTracks` is retired (each fish's own catch track until 2026-10-18,
+	-- species id → rarity id → catches as that fish): kept in the save, unused.
 	catchLog: { [string]: { [string]: number } },
 	catchBest: { [string]: { [string]: number } }, -- prey id → rarity id → the biggest eaten (kg)
 	logRows: { [string]: boolean },
@@ -417,6 +419,31 @@ local function onPlayerAdded(player: Player)
 	end
 	if not Config.Shades.fits(data.equipped.shade, data.current) then
 		data.equipped.shade = ""
+	end
+	-- Catch skins are every fish's (owner, 2026-10-18: "Once the skin is unlocked, it
+	-- is unlocked for all of their fish"): each goal the Catch Log meets (checked again
+	-- on every join, so a changed rule or a skin added later lands), and any catch skin
+	-- one fish earned on the old per-fish catch tracks, go on every playable fish,
+	-- the ones not unlocked yet too. Nothing is taken away.
+	local owned: { [string]: { [string]: boolean }? } = {}
+	for id, record in data.species do
+		owned[id] = record.shades
+	end
+	for _, skin in Catch.accountSkins(data.catchLog, owned) do
+		if Config.Shades.byId[skin] == nil then
+			continue
+		end
+		for _, species in Config.Species.list do
+			local record = data.species[species.id]
+			if record == nil then
+				local start = Config.Tuning.size.startMass
+				record = { mass = start, bestMass = start }
+				data.species[species.id] = record
+			end
+			local shades = record.shades or {}
+			shades[skin] = true
+			record.shades = shades
+		end
 	end
 
 	profiles[player] = profile

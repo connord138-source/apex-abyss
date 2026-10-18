@@ -17,8 +17,9 @@
 --     upward, drips down), bubbles as rings, mist and ink as faint puffs; rainbow
 --     colours for the rainbow effects (as Hatch & Snatch's viewports got matching 2D
 --     glints)
---   * Golden's shine (`sheen`): the viewport's light sweeps over the fish head to tail
---     every 2.5 s, as the game's runs down it, with gold stars following
+--   * the shine (`sheen`: Golden, Silver): the viewport's light sweeps over the fish
+--     head to tail every 2.5 s, as the game's runs down it, with stars in the skin's
+--     effect colours following
 --
 -- A live preview (FishPreview, one at a time) is stepped every frame by its owner; a
 -- card (CardPhoto, many) is set up once and its sparkles are tweens, so a grid of
@@ -39,9 +40,11 @@ local GLOW_BOOST = 1.6
 -- The back glow's ellipses (outermost first) and how much each adds at full strength
 local RINGS = 7
 local RING_ALPHA = 0.1
--- Golden's shine: one sweep every PERIOD, taking SWEEP (SkinFx's numbers)
+-- The shine (`sheen`: Golden, Silver): one sweep every PERIOD, taking SWEEP (SkinFx's
+-- numbers), the light flaring toward the skin's `fxLight`, else Golden's warm white
 local SHEEN_PERIOD = 2.5
 local SHEEN_SWEEP = 0.95
+local SHEEN_LIGHT = Color3.fromRGB(255, 236, 190)
 
 type Shape = "star" | "dot" | "ring" | "puff"
 
@@ -98,7 +101,7 @@ type Sprite = {
 	period: number,
 	phase: number,
 	cycle: number,
-	follow: boolean, -- rides Golden's sweep
+	follow: boolean, -- rides the shine's sweep (Golden, Silver)
 }
 
 export type Handle = {
@@ -492,7 +495,8 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 				ring.BackgroundColor3 = hue
 			end
 		end
-		-- Golden's shine: the light swings over the fish head (left) to tail
+		-- The shine (Golden's, Silver's): the light swings over the fish head (left) to
+		-- tail, flaring in the skin's shine colour
 		local sweepAt: number? = nil
 		if sheen then
 			local k = (t % SHEEN_PERIOD) / SHEEN_SWEEP
@@ -501,7 +505,7 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 				local a = math.pi * (0.1 + 0.8 * k)
 				frame.LightDirection = Vector3.new(math.cos(a), -0.7, -0.55)
 				local flare = math.sin(math.pi * k)
-				frame.LightColor = baseLight:Lerp(Color3.fromRGB(255, 236, 190), 0.6 * flare)
+				frame.LightColor = baseLight:Lerp(current.fxLight or SHEEN_LIGHT, 0.6 * flare)
 			else
 				frame.LightDirection = baseDirection
 				frame.LightColor = baseLight

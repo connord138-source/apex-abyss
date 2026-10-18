@@ -1,8 +1,10 @@
 --!strict
 -- Rare catches on this client (Config/Catch; CatchService sends a summary of every
--- catch that's news, `Caught`): a toast for each rare catch with its coral and the
--- fish's catch-track count, a NEW IN THE CATCH LOG note for a first, and a banner
--- when a catch unlocks a skin or lands the Catch of the Week.
+-- catch that's news, `Caught`): a toast for each rare catch with its coral and where
+-- it stands on that rarity's skin goal (this species' count toward `each`, and the
+-- species done), a NEW IN THE CATCH LOG note for a first, NEW BIGGEST for a record,
+-- and a banner when a catch unlocks a skin (for every fish) or lands the Catch of the
+-- Week.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -31,6 +33,11 @@ end
 local function speciesName(id: string?): string
 	local species = if id then Config.Species.byId[id] else nil
 	return if species then species.name else "fish"
+end
+
+-- The roll stinger for a tier (there's none of its own for Uncommon)
+local function stinger(tier: string): string
+	return if tier == "Uncommon" then "RollCommon" else `Roll{tier}`
 end
 
 -- A big centred line or two for a skin unlock or the Catch of the Week
@@ -104,14 +111,25 @@ local function onCaught(summary: { [string]: any })
 	local rare = if typeof(summary.rarity) == "string" then CatchConfig.byId[summary.rarity] else nil
 	if rare then
 		local tier = Config.Tiers.byId[rare.tier]
-		Sfx.play(`Roll{rare.tier}`, { volume = 0.45 })
+		Sfx.play(stinger(rare.tier), { volume = 0.45 })
 		local text = `{string.upper(rare.name)} {string.upper(prey)}`
 		if typeof(summary.coral) == "number" and summary.coral > 0 then
 			text ..= ` · +{Format.number(summary.coral)} coral`
 		end
-		if typeof(summary.track) == "number" and typeof(summary.need) == "number" and summary.skin == nil then
-			if summary.track < summary.need then
-				text ..= ` · {rare.name} skin {summary.track}/{summary.need}`
+		-- Where this catch leaves the skin goal (nothing once it's met)
+		local count, each, done, need = summary.count, summary.each, summary.done, summary.need
+		if
+			typeof(count) == "number"
+			and typeof(each) == "number"
+			and typeof(done) == "number"
+			and typeof(need) == "number"
+			and summary.skin == nil
+			and done < need
+		then
+			if count < each then
+				text ..= ` · {rare.name} skin: {prey} {count}/{each}, {done}/{need} species`
+			elseif count == each then
+				text ..= ` · {prey} counts for the {rare.name} skin! {done}/{need} species`
 			end
 		end
 		HudController.toast(text, if tier and tier.order >= 4 then "rare" else "good")
@@ -146,9 +164,9 @@ local function onCaught(summary: { [string]: any })
 	if typeof(summary.skin) == "string" and rare then
 		Sfx.play("LevelUp", { volume = 0.7 })
 		banner(
-			"SKIN UNLOCKED",
-			`{string.upper(shadeName(summary.skin))} {string.upper(speciesName(summary.species))}`,
-			`{summary.need} {rare.name} catches as your {speciesName(summary.species)} · wear it in the WARDROBE`,
+			"SKIN UNLOCKED · FOR EVERY FISH",
+			`{string.upper(shadeName(summary.skin))} SKIN`,
+			`{rare.unlock.each} {rare.name} from each of {rare.unlock.species} species · wear it on any fish in the WARDROBE`,
 			rare.color
 		)
 	end

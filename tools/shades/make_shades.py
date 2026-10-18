@@ -3079,15 +3079,15 @@ def catch_silver(m):  # Silver (v14): polished silver, mirror scales catching th
     horizon = smoothstep(0.3, 0.16, nz) * smoothstep(-0.32, -0.12, nz)
     bounce = smoothstep(-0.42, -0.62, nz)
     rgb = mix(board(base, (0.62, 0.66, 0.72)), (0.70, 0.73, 0.78), smoothstep(0.1, 0.85, L))
-    rgb = mix(rgb, (0.20, 0.27, 0.40), horizon * 0.7)
+    rgb = mix(rgb, (0.17, 0.24, 0.37), horizon * 0.8)
     rgb = mix(rgb, (0.66, 0.70, 0.77), bounce * 0.45)
-    rgb = mix(rgb, (0.81, 0.84, 0.89), streak * 0.9)
+    rgb = mix(rgb, (0.82, 0.85, 0.90), streak * 0.9)
     rgb = mix(rgb, (0.86, 0.88, 0.93), core * 0.8)
     # Each scale a flat mirror: lighter toward its free edge (a sequin's tilt), a
     # few tilted to the light flashing bright
-    rgb = rgb * (0.95 + 0.1 * out * on)[..., None]
-    flash = smoothstep(0.86, 0.92, h) * on * smoothstep(-0.3, 0.2, nz)
-    rgb = mix(rgb, (0.85, 0.88, 0.94), flash * 0.6)
+    rgb = rgb * (0.93 + 0.14 * out * on)[..., None]
+    flash = smoothstep(0.82, 0.9, h) * on * smoothstep(-0.3, 0.2, nz)
+    rgb = mix(rgb, (0.85, 0.88, 0.94), flash * 0.7)
     # The crease behind each free edge steel-blue
     rgb = mix(rgb, (0.20, 0.28, 0.42), behind * on * 0.55)
     crease = smoothstep(-0.02, -0.14, base.fine)
@@ -3095,7 +3095,7 @@ def catch_silver(m):  # Silver (v14): polished silver, mirror scales catching th
     rgb = mix(rgb, (0.24, 0.31, 0.45), engraved * 0.6)
     rgb = np.clip(rgb * (0.9 + 0.2 * grain)[..., None], 0, 1)
     # A faint even glow, stronger in the streak and on the flashing scales
-    emit = rgb * (0.4 * (1 - 0.5 * engraved) * (1 + 0.8 * streak + 0.4 * core + 0.6 * flash))[..., None]
+    emit = rgb * (0.45 * (1 - 0.5 * engraved) * (1 + 0.8 * streak + 0.4 * core + 0.6 * flash))[..., None]
     rough = 0.42 - 0.1 * streak - 0.08 * flash + 0.12 * behind * on
     metal = np.full(base.y.shape, 0.25, np.float32)
     return done(base, rgb, "satin", emit=emit, metal=metal, rough=rough, detail=0.4)
