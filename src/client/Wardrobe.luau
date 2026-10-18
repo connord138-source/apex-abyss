@@ -597,7 +597,8 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 	local hoverKey: string? = nil
 	local hoverEndAt: number? = nil
 	local shownKey = ""
-	local pendingShow: { dress: Cosmetics.Dress, species: string?, at: number }? = nil
+	local pendingShow: { dress: Cosmetics.Dress, species: string?, fish: string, at: number }? = nil
+	local shownFish: string? = nil -- the fish on the stage, re-dressed in place
 	local firstShow = true
 	local detailKey = ""
 	local glowColor = Ui.color.accent
@@ -1151,8 +1152,12 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			shownKey = key
 			-- (a new fish waits a moment, so sweeping the mouse or the D-pad over the
 			-- grid doesn't build one for every card it crosses)
-			pendingShow =
-				{ dress = dress, species = species, at = os.clock() + (if firstShow then 0 else 0.07) }
+			pendingShow = {
+				dress = dress,
+				species = species,
+				fish = species or current,
+				at = os.clock() + (if firstShow then 0 else 0.07),
+			}
 			firstShow = false
 		end
 		fishLabel.Text =
@@ -1910,7 +1915,13 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			local waiting = pendingShow
 			if waiting and os.clock() >= waiting.at then
 				pendingShow = nil
-				preview:show(waiting.dress, waiting.species)
+				-- The same fish is re-dressed in place (no rebuild); another is built
+				if waiting.fish == shownFish then
+					preview:dress(waiting.dress)
+				else
+					shownFish = waiting.fish
+					preview:show(waiting.dress, waiting.species)
+				end
 			end
 			if stageCycle then
 				local color = Color3.fromHSV((clock * 0.12) % 1, 0.55, 1)
