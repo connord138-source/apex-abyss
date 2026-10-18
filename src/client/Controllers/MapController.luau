@@ -143,7 +143,11 @@ local function closeFull()
 	full = nil
 	whereLabel = nil
 	window.frame:Destroy()
-	Input.cursorWanted = false
+	-- (a menu that opened over it keeps the cursor free: closing the map under the
+	-- INDEX locked the cursor, so its X couldn't be clicked, PC 2026-10-19)
+	if not MenuController.isOpen() then
+		Input.cursorWanted = false
+	end
 	ContextActionService:UnbindAction("ApexCloseMap")
 end
 
