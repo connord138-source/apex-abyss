@@ -45,8 +45,9 @@ rayParams.IgnoreWater = true
 -- How big the camera frames your fish (owner, 2026-10-11: "ensure that player fish
 -- are actually getting bigger as they grow"): the distance followed the length one
 -- for one, so a fish grown 36% longer looked 8% bigger on screen. Now it follows the
--- banked length to the power `growFraming` and only `growHaul` of a dive's growth,
--- so a fish fills more of the screen as it eats and as it levels.
+-- banked length to the power `growFraming` and only `growHaul` of a dive's growth
+-- (since 2026-10-18 `growFraming` 1.0 and a lens widening with size, `growFov`: a
+-- grown fish no longer fills more of the screen; the bank shows the growth).
 local function framedLength(live: number): number
 	local s = ClientState.current
 	local mass = if s and typeof(s.mass) == "number" then s.mass else nil
@@ -233,7 +234,9 @@ local function update(dt: number)
 	end
 	distance, distanceVelocity =
 		Spring.number(distance, distanceVelocity, wantDistance, tuning.distanceSpring, dt)
-	local wantFov = if SwimController.boosting then tuning.boostFov else tuning.fov
+	local start = Size.length(Config.Tuning.size.startMass)
+	local grown = math.clamp((length - start) / math.max(Config.Tuning.size.lengthCap - start, 1), 0, 1)
+	local wantFov = (if SwimController.boosting then tuning.boostFov else tuning.fov) + tuning.growFov * grown
 	fov, fovVelocity = Spring.number(fov, fovVelocity, wantFov, 6, dt)
 
 	local rotation = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)

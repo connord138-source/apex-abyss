@@ -118,11 +118,17 @@ return {
 		-- about 7 studs out (it was 13 and read as a dot, playtest 2026-10-06).
 		baseDistance = 2,
 		perLength = 2.4,
-		-- ...where the length is framed smaller than it is, so a growing fish fills
-		-- more of the screen: the banked length to this power (a level-100 fish of
-		-- 60 studs sits as if 36) and this share of a dive's live growth
-		growFraming = 0.85,
+		-- ...where the length is the banked length to this power plus this share of
+		-- a dive's live growth. 1.0 keeps a grown fish's share of the screen about
+		-- the same (owner, 2026-10-18: "As the fish grows the FOV needs to be slightly
+		-- moved back so the fish isnt taking up more of the screen"; at 0.85 a
+		-- 17-stud fish filled ~1.85× the screen a new one did); the bank's growth
+		-- sequence shows the growth instead
+		growFraming = 1.0,
 		growHaul = 0.3,
+		-- and the lens widens by up to this many degrees as the fish grows to the
+		-- size cap (it sees more round a big fish)
+		growFov = 6,
 		zoomMin = 0.6, -- the mouse wheel scales the distance within these
 		zoomMax = 1.8,
 		zoomStep = 0.1,
