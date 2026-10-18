@@ -39,7 +39,9 @@ local function use()
 	if count() < 1 then
 		return
 	end
-	ClientState.request("UseWrap")
+	-- Through the item service, like the item bar and wheel (at full health it says
+	-- the wrap is kept, and the tutorial's Kelp Wrap step counts any of them)
+	ClientState.request("UseItem", "KelpWrap")
 end
 
 -- A green glow on any fish that's healing (and off again when it stops)

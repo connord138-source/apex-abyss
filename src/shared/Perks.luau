@@ -61,4 +61,19 @@ function Perks.shellReach(
 	return if Perks.active(boosts, "Magnet", now) then reach * 2 else reach
 end
 
+-- The Reef Shark's Blood Sense (Config/Abilities BloodSense), a feeding frenzy: while
+-- a fish's `Sensing` attribute (the server clock it ends at, set by AbilityService) is
+-- ahead of `now` it swims × `speed` (a multiplier on Size.topSpeed, like Strong Fins)
+-- and draws prey in and swallows them from × `suction` as far. `grace` keeps it on
+-- that many seconds longer (the server sees a fish a little in the past). Returns the
+-- speed and suction multipliers (1, 1 when it isn't sensing).
+function Perks.sense(character: Instance?, now: number, grace: number?): (number, number)
+	local untilAt = if character then character:GetAttribute("Sensing") else nil
+	if typeof(untilAt) ~= "number" or untilAt + (grace or 0) <= now then
+		return 1, 1
+	end
+	local sense = Config.Abilities.byId.BloodSense
+	return sense.speed or 1, sense.suction or 1
+end
+
 return Perks

@@ -12,11 +12,13 @@
 --               do half and hurt the biter, but it swims slowly
 --   Moray Eel   Burrow: against rock or wreckage it hides (predators lose it, it
 --               fades from view) until it moves; its next bite is an ambush
---   Reef Shark  Blood Sense: every fish and predator shows through rock as heat
+--   Reef Shark  Blood Sense: a feeding frenzy: every fish and predator shows through
+--               rock as heat, the prey round it too, and it swims faster and draws
+--               prey in from further
 --   Anglerfish  Lantern Flash: a blinding flash that stuns predators and whites out
 --               nearby players' screens
 -- AbilityController (client) runs them; AbilityService (server) owns the ones the
--- server must know about (Puff Up, Burrow, Lantern Flash).
+-- server must know about (Puff Up, Burrow, Lantern Flash, Blood Sense).
 export type Ability = {
 	name: string,
 	blurb: string,
@@ -35,6 +37,9 @@ export type Ability = {
 	strikeBonus: number?, -- Burrow: × that bite's damage
 	stun: number?, -- Lantern Flash: seconds predators are stunned
 	blind: number?, -- Lantern Flash: seconds a nearby player's screen is whited out
+	speed: number?, -- Blood Sense: × top speed while it runs
+	suction: number?, -- Blood Sense: × the reach prey are drawn in and swallowed from
+	range: number?, -- Blood Sense: studs round the shark its prey are marked within
 }
 
 local byId: { [string]: Ability } = {
@@ -74,12 +79,20 @@ local byId: { [string]: Ability } = {
 	},
 	Shock = { name = "Shock", blurb = "Stun every fish touching you." },
 	Frenzy = { name = "Frenzy", blurb = "Bite faster after every hit." },
+	-- A feeding frenzy (owner, 2026-10-18: "Sharks frenzy should have him move a bit
+	-- faster and should also act as a bit of a magnet towards prey fish and pull them
+	-- in from a wider distance. Should also highlight both prey and predator fish"):
+	-- the server sets `Sensing` on the character (AbilityService), SwimController,
+	-- SchoolController, ForageController and HuntService read it (Perks.sense)
 	BloodSense = {
 		name = "Blood Sense",
 		label = "SENSE",
-		blurb = "Every fish and predator in the sea shows through rock and murk as a flashing red heat signature for 7 seconds.",
+		blurb = "A feeding frenzy for 7 seconds: you swim 25% faster, prey are pulled into your jaws from twice as far, and every other fish and predator shows through rock and murk as heat, the prey round you too.",
 		seconds = 7,
 		cooldown = 24,
+		speed = 1.25,
+		suction = 2,
+		range = 120,
 	},
 	Ram = { name = "Ram", blurb = "Charge and knock a fish aside." },
 	Lure = { name = "Lure", blurb = "Your light pulls nearby prey toward you." },

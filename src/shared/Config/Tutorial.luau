@@ -1,8 +1,18 @@
 --!strict
 -- The first-session tutorial (owner: everyone starts as the Nibbler and is led
--- through upgrading it before other species can be picked). Each step counts one
--- kind of event (TutorialService); finishing unlocks the 'Cuda and species select.
--- Steps for the barracuda and the upgrade tree get added when those systems land.
+-- through it before other species can be picked). Each step counts one kind of
+-- event on the server (TutorialService); the client shows the step, its keys and
+-- the way (TutorialController). Finishing pays a little coral and shells (the 'Cuda
+-- is earned after, Config/Species).
+--
+-- A full first loop (owner, 2026-10-18: "Tutorial could be a bit longer and
+-- actually show them how to complete a full cycle of hunting, storing, spinning,
+-- etc."; a large share of the players are kids who need direction): out of the den
+-- and the hub, eat, pick up shells, fill the Haul, bank it at home (the growth
+-- sequence shows the fish getting bigger), spin the Treasure Wheel, roll, use a
+-- Kelp Wrap from the item bar, and open the INDEX, which says what to do next.
+local Tuning = require(script.Parent.Tuning)
+
 -- A control the step's card shows: the key on each kind of device (nil = the
 -- device has no key for it, so the cap is left out) and what it does
 export type Control = {
@@ -15,23 +25,31 @@ export type Control = {
 export type Step = {
 	id: string,
 	text: string,
+	-- How many of `event` finish it ("haul": percent of the Haul target)
 	goal: number,
-	event: "leftHub" | "ate" | "banked" | "shells" | "level",
-	marker: string?, -- what the client points at ("exits", "den")
+	event: "leftHub" | "ate" | "shells" | "haul" | "banked" | "spun" | "rolled" | "item" | "index",
+	marker: string?, -- what the client points at in the world ("exits", "den")
 	-- What the guide trail leads to while this step is up (TutorialController):
-	-- the nearest exit, the nearest food, your den's pool, the nearest shell
-	guide: ("exits" | "food" | "den" | "shells")?,
+	-- the nearest exit, the nearest food, your den's pool, the nearest shell, the
+	-- Treasure Wheel's red button
+	guide: ("exits" | "food" | "den" | "shells" | "wheel")?,
+	-- A HUD button the step rings instead (TutorialController): the ROLL button, the
+	-- item bar's Kelp Wrap, the INDEX button
+	point: ("Roll" | "Wrap" | "Index")?,
+	-- What the server hands over as the step starts, when the player has none: a
+	-- wheel spin, shells up to a roll, a Kelp Wrap (TutorialService `enter`)
+	grant: ("spin" | "roll" | "wrap")?,
 	controls: { Control },
 }
 
--- The tutorial is directed (owner, 2026-10-12: "Controls need to be more obvious
--- during the tutorial and tutorial needs to be more directed instead of just a
--- floating Ui"): each step's card shows the keys it needs as key caps, and a
--- trail of lights leads to the step's target.
+-- Each step's card shows the keys it needs as key caps (owner, 2026-10-12:
+-- "Controls need to be more obvious during the tutorial and tutorial needs to be
+-- more directed instead of just a floating Ui"), and a trail of lights leads to the
+-- step's target, or a ring breathes round the HUD button it needs.
 local steps: { Step } = {
 	{
 		id = "LeaveHub",
-		text = "Follow the lights out of the hub, through a tunnel or the hole in the roof",
+		text = "Swim out of your den, then follow the lights out of the hub: a tunnel or the hole in the roof",
 		goal = 1,
 		event = "leftHub",
 		marker = "exits",
@@ -44,7 +62,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Eat",
-		text = "Swim into 10 small fish, shrimp or starfish. They're swallowed on touch, no button",
+		text = "Swim into 10 small fish, shrimp or starfish. Smaller things are swallowed on touch, no button",
 		goal = 10,
 		event = "ate",
 		guide = "food",
@@ -54,44 +72,100 @@ local steps: { Step } = {
 		},
 	},
 	{
+		id = "Shells",
+		text = "Pick up 5 shells from the seabed. Every 50 shells buys a roll for a new skin",
+		goal = 5,
+		event = "shells",
+		guide = "shells",
+		controls = {
+			{ keys = "W A S D", pad = "L STICK", touch = "STICK", does = "swim to it" },
+			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
+		},
+	},
+	{
+		id = "Haul",
+		text = "Keep eating to fill your Haul. It grows you now, but it's only yours for good once it's banked",
+		goal = 100,
+		event = "haul",
+		guide = "food",
+		controls = {
+			{ keys = "RIGHT CLICK", pad = "RB", touch = "BITE", does = "bite fish your size" },
+			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
+		},
+	},
+	{
 		id = "Bank",
-		text = "Swim home and into your den's glowing pool to bank your Haul",
+		text = "Swim home through your den's door and into the glowing pool to bank your Haul. Watch yourself grow!",
 		goal = 1,
 		event = "banked",
 		marker = "den",
 		guide = "den",
 		controls = {
-			{ keys = "RIGHT CLICK", pad = "RB", touch = "BITE", does = "bite fish your size" },
-			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash away" },
+			{ keys = "M", pad = "R3", touch = "MAP", does = "map" },
+			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash home" },
 		},
 	},
 	{
-		id = "Shells",
-		text = "Pick up 5 shells from the seabed. 50 shells buy a roll for a new skin",
-		goal = 5,
-		event = "shells",
-		guide = "shells",
+		id = "Wheel",
+		text = "Spin the Treasure Wheel on the plaza: here's a free spin! A new one comes every 4 hours",
+		goal = 1,
+		event = "spun",
+		guide = "wheel",
+		grant = "spin",
 		controls = {
-			{ keys = "ALT", does = "free the cursor for buttons" },
-			{ keys = "E", pad = "Y", touch = "SHOP", does = "shop at a stall" },
+			{ keys = "E", pad = "Y", touch = "SPIN", does = "spin at the red button" },
 		},
 	},
 	{
-		id = "Level",
-		text = "Grow your Nibbler to level 10: eat, bank, repeat. Bigger fish are worth more",
-		goal = 10,
-		event = "level",
-		guide = "food",
+		id = "Roll",
+		text = "Roll for a new look! Every 50 shells is a roll, and here are enough for your first",
+		goal = 1,
+		event = "rolled",
+		point = "Roll",
+		grant = "roll",
 		controls = {
-			{ keys = "H", pad = "LB", touch = "HEAL", does = "heal (Kelp Wrap)" },
+			{ keys = "R", pad = "D-PAD ▼", touch = "ROLL", does = "roll" },
+		},
+	},
+	{
+		id = "Wrap",
+		text = "Health never comes back on its own. Use your Kelp Wrap from the item bar to heal",
+		goal = 1,
+		event = "item",
+		point = "Wrap",
+		grant = "wrap",
+		controls = {
+			{ keys = "H or 1", pad = "LB", touch = "TAP IT", does = "use a Kelp Wrap" },
 			{ keys = "G", pad = "HOLD LB", touch = "ITEMS", does = "item wheel" },
-			{ keys = "ALT", does = "free the cursor" },
+		},
+	},
+	{
+		id = "Index",
+		text = "Open the INDEX. Its NEXT FOR YOU always shows what to do next",
+		goal = 1,
+		event = "index",
+		point = "Index",
+		controls = {
+			{ keys = "I", pad = "D-PAD →", touch = "INDEX", does = "open the Index" },
 		},
 	},
 }
 
+-- The Haul step's target: a Haul worth this many levels once banked, from the
+-- fish's banked mass (~half of it; with the slower Haul gain of 2026-10-18 about a
+-- minute of eating in the Kelp for a LV 1-3 fish, counting the Eat step's catch)
+local HAUL_LEVELS = 4
+local function haulTarget(banked: number): number
+	return math.max(banked, Tuning.size.startMass) * (Tuning.size.levelGrowth ^ HAUL_LEVELS - 1)
+end
+
 return {
 	steps = steps,
+	-- The step list's version, stamped on the save (TutorialService maps older saves'
+	-- step numbers onto this list once)
+	version = 2,
+	haulLevels = HAUL_LEVELS,
+	haulTarget = haulTarget,
 	-- For finishing: enough shells for a first roll and some coral (the 'Cuda is
 	-- earned now, Config/Species)
 	reward = { shells = 50, coral = 500 },

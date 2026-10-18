@@ -30,10 +30,15 @@ local World = Config.World
 
 local ChumService = {}
 
+-- What one fish has taken from one whale (Haul before ×2 Mass and Frenzy), and the
+-- most it may (Config/Chum `whale.levels`)
+type Fed = { taken: number, cap: number, told: boolean }
+
 type Entry = {
 	cloud: Chum.Cloud,
 	eaten: { [number]: number }, -- chunk → clock it's back (math.huge: gone)
 	respawn: number?, -- a whale's chunks grow back
+	fed: { [Player]: Fed }, -- a whale: each fish's share so far
 }
 
 local MAX_CLOUDS = 24
@@ -96,9 +101,16 @@ local function payload(entry: Entry): { [string]: any }
 end
 
 local function remove(id: number)
-	if clouds[id] then
+	local entry = clouds[id]
+	if entry then
 		clouds[id] = nil
 		Net.chum("remove", { id = id })
+		-- Fish full of this whale can eat the next one
+		for player in entry.fed do
+			if player:GetAttribute("WhaleFull") == id then
+				player:SetAttribute("WhaleFull", nil)
+			end
+		end
 	end
 end
 
@@ -146,7 +158,7 @@ local function add(
 		biome = if biome then biome.id else nil,
 		yaw = yaw,
 	}
-	local entry: Entry = { cloud = cloud, eaten = {}, respawn = respawn }
+	local entry: Entry = { cloud = cloud, eaten = {}, respawn = respawn, fed = {} }
 	clouds[id] = entry
 	Net.chum("add", payload(entry))
 	return id
@@ -219,7 +231,8 @@ local function onEat(player: Player, batch: any)
 	local now = Timing.clock()
 	-- The client's reach and suction (as forage), with room for the chunk's own size
 	local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * 1.35 + 1.6 + slack
-	local fed, fresh, count = 0, 0, 0
+	local fed, fresh, whaleGain, count = 0, 0, 0, 0
+	local rate = HuntService.haulRate(player)
 	for _, pair in batch do
 		if typeof(pair) ~= "table" then
 			continue
@@ -238,6 +251,29 @@ local function onEat(player: Player, batch: any)
 		if math.min((here - mouth).Magnitude, (before - mouth).Magnitude) > reach then
 			continue
 		end
+		-- A whale feeds each fish only so much (Config/Chum `whale.levels`): a full fish
+		-- leaves its chunks for the others
+		if entry.cloud.kind == "whale" then
+			local share = entry.fed[player]
+			if share == nil then
+				share = { taken = 0, cap = HuntService.levelsWorth(player, tune.whale.levels), told = false }
+				entry.fed[player] = share
+			end
+			-- (in Haul after the Haul rate, before ×2 Mass and Frenzy)
+			local take = math.min(entry.cloud.chunks[index].m * rate, math.max(share.cap - share.taken, 0))
+			if take > 1e-6 then
+				share.taken += take
+				whaleGain += take
+			end
+			if share.cap - share.taken <= 1e-6 and not share.told then
+				share.told = true
+				player:SetAttribute("WhaleFull", entry.cloud.id)
+				Net.notify(player, "You're full of whale! Leave the rest for the others", "info")
+			end
+			if take <= 1e-6 then
+				continue
+			end
+		end
 		local backAt = if entry.respawn then now + entry.respawn else math.huge
 		entry.eaten[index] = backAt
 		Net.chum("eat", {
@@ -248,18 +284,22 @@ local function onEat(player: Player, batch: any)
 		})
 		-- A dead fish's chum is Haul that was already grown (×2 Mass, Frenzy): it
 		-- goes back on as it is, so kills don't compound; slicks and whales are new food
+		-- (a whale's share took the Haul rate above)
 		if entry.cloud.kind == "chum" then
 			fed += entry.cloud.chunks[index].m
-		else
+		elseif entry.cloud.kind ~= "whale" then
 			fresh += entry.cloud.chunks[index].m
 		end
 		count += 1
 	end
 	if fed > 0 then
-		HuntService.gain(player, fed, true)
+		HuntService.gain(player, fed, "raw")
 	end
 	if fresh > 0 then
 		HuntService.gain(player, fresh)
+	end
+	if whaleGain > 0 then
+		HuntService.gain(player, whaleGain, "sized")
 	end
 	if count > 0 then
 		Events.ate:fire(player, count)
@@ -344,7 +384,8 @@ local function siteIn(biome: Biomes.Biome, crush: boolean?): (Vector3?, number, 
 	for _ = 1, 40 do
 		local span = (biome.angleTo - biome.angleFrom) % 360
 		local angle = math.rad(biome.angleFrom + rng:NextNumber(0, if span == 0 then 360 else span))
-		local from = biome.radiusFrom + 40
+		-- (never in the starter ring round the hub, Config/Chum `whale.minRadius`)
+		local from = math.max(biome.radiusFrom + 40, tune.whale.minRadius)
 		local to = math.min(biome.radiusTo - 40, World.boundsRadius - 80)
 		if to <= from then
 			continue
@@ -388,7 +429,7 @@ end
 local function warnWhale(startsAt: number, crush: boolean?): boolean
 	local live: { Biomes.Biome } = {}
 	for _, biome in Config.Biomes.list do
-		if biome.live and (not crush or biome.id == "CoralReef") then
+		if biome.live and not table.find(tune.whale.never, biome.id) and (not crush or biome.id == "CoralReef") then
 			table.insert(live, biome)
 		end
 	end

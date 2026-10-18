@@ -952,12 +952,22 @@
   "type": "text_to_model"
  },
  "ruins/RuinCapital": {
-  "status": "queued",
+  "credits": 20,
+  "files": [
+   "RuinCapital.glb",
+   "RuinCapital_preview.webp"
+  ],
+  "status": "success",
   "task_id": "793a36dd-1156-425b-9774-d5d74f99e86d",
   "type": "text_to_model"
  },
  "ruins/RuinGuardian": {
-  "status": "queued",
+  "credits": 20,
+  "files": [
+   "RuinGuardian.glb",
+   "RuinGuardian_preview.webp"
+  ],
+  "status": "success",
   "task_id": "8dff3474-0388-475b-8387-e5a44128107c",
   "type": "text_to_model"
  },
@@ -992,7 +1002,12 @@
   "type": "text_to_model"
  },
  "ruins/RuinUrn": {
-  "status": "queued",
+  "credits": 20,
+  "files": [
+   "RuinUrn.glb",
+   "RuinUrn_preview.webp"
+  ],
+  "status": "success",
   "task_id": "63601142-271f-49f4-b03e-ff1dfdb56925",
   "type": "text_to_model"
  },

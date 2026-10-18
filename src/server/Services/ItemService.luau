@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Events = require(script.Parent.Parent.Events)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local HuntService = require(script.Parent.HuntService)
@@ -58,7 +59,26 @@ function ItemService.use(player: Player, id: string)
 		return
 	end
 	if id == "KelpWrap" then
+		local data = DataService.get(player)
+		local held = if data then data.charms.KelpWrap or 0 else 0
+		if held < 1 then
+			HuntService.useWrap(player) -- (it says where to get one)
+			return
+		end
+		-- At full health the wrap stays in the bar (the item bar's H, 1 and taps
+		-- come here too), and that still counts as learning where it is
+		local character = player.Character
+		local health = if character then character:GetAttribute("Health") else nil
+		local most = if character then character:GetAttribute("MaxHealth") else nil
+		if typeof(health) == "number" and typeof(most) == "number" and health >= most then
+			Net.notify(player, "You're at full health: your Kelp Wrap stays in your item bar for when you're hurt", "info")
+			Events.usedItem:fire(player, id, false)
+			return
+		end
 		HuntService.useWrap(player)
+		if data and (data.charms.KelpWrap or 0) < held then
+			Events.usedItem:fire(player, id, true)
+		end
 		return
 	end
 	local data = DataService.get(player)
@@ -76,6 +96,7 @@ function ItemService.use(player: Player, id: string)
 	WardrobeService.refresh(player)
 	DataService.markDirty(player)
 	Net.notify(player, `{charm.name} on · {Format.clock(ends - now)}`, "good")
+	Events.usedItem:fire(player, id, true)
 end
 
 function ItemService.start()

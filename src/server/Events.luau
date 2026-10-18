@@ -8,7 +8,9 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 return {
 	ate = Signal.new(), -- (player, count) prey, forage or players eaten
 	atePrey = Signal.new(), -- (player, preyId, position) one prey fish eaten (treasure drops)
-	banked = Signal.new(), -- (player, amount, level) a Haul banked
+	-- (player, amount, level, worth) a Haul banked: `amount` kg went on, `worth` is that
+	-- Haul before the Haul rate (Config/Tuning `growth`), for what a bank pays
+	banked = Signal.new(),
 	leftHub = Signal.new(), -- (player) swam out of the safe zone
 	shells = Signal.new(), -- (player, count) shells picked up
 	unlocked = Signal.new(), -- (player, speciesId) a species unlocked
@@ -28,4 +30,9 @@ return {
 	burst = Signal.new(),
 	-- (eater, victim, gain) a player ate another player (pods share it, the Apex bounty pays)
 	atePlayer = Signal.new(),
+	spun = Signal.new(), -- (player) a Treasure Wheel spin paid out (the tutorial)
+	rolled = Signal.new(), -- (player) a roll spent 50 shells (the tutorial)
+	-- (player, itemId, used) an item from the item bar or wheel: used, or tried with
+	-- one in hand at full health (a Kelp Wrap is kept then; the tutorial counts both)
+	usedItem = Signal.new(),
 }

@@ -20,6 +20,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local TreasureWheel = require(script.Parent.Parent.TreasureWheel)
+local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local Progress = require(script.Parent.Parent.Progress)
@@ -269,6 +270,7 @@ local function award(player: Player, prize: Prize)
 		data.wheel.spins += prize.amount
 	end
 	DataService.markDirty(player)
+	Events.spun:fire(player)
 end
 
 local startNext: () -> ()

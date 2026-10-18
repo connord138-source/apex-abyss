@@ -257,8 +257,8 @@ local function grant(
 	elseif reward.kind == "haul" then
 		local level = Size.level(Progress.mass(data))
 		local mass = math.max(Size.massForLevel(level + (reward.levels or 1)) - Size.massForLevel(level), 2)
-		HuntService.feed(player, mass)
-		result.haul = mass
+		-- Sized in levels already: no Haul rate (×2 Mass and Frenzy still count)
+		result.haul = HuntService.feed(player, mass, "sized")
 	elseif reward.kind == "dna" then
 		HuntService.giveDna(player, siteOf(map), reward.amount or 0)
 		result.dna = reward.amount
@@ -367,8 +367,9 @@ function TreasureService.start()
 			tryDrop(player, drops.shell, drops.shellTiers)
 		end
 	end)
-	Events.banked:connect(function(player: Player, amount: number, _level: number)
-		if amount >= drops.bankMinMass then
+	Events.banked:connect(function(player: Player, amount: number, _level: number, worth: number?)
+		-- (the Haul before the Haul rate, Config/Tuning `growth`)
+		if (worth or amount) >= drops.bankMinMass then
 			tryDrop(player, drops.bank, drops.bankTiers)
 		end
 	end)

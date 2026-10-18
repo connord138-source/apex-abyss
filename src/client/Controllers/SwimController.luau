@@ -440,6 +440,9 @@ local function step(dt: number)
 	if typeof(puffed) == "number" and puffed > Timing.clock() then
 		top *= Config.Abilities.byId.PuffUp.slow or 0.45
 	end
+	-- A Reef Shark's Blood Sense frenzy swims faster (Perks.sense; SpeedService allows it)
+	local senseSpeed = Perks.sense(character, Timing.clock())
+	top *= senseSpeed
 	-- A podmate's slipstream: close behind one swimming the same way is faster
 	-- (Config/Pvp `pods.slipstream`)
 	SwimController.slipstream = slipstreamOf(currentRoot)

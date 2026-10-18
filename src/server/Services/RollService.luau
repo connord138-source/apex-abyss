@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
+local Events = require(script.Parent.Parent.Events)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
@@ -80,6 +81,7 @@ local function roll(player: Player)
 	result.rollsLeft = math.floor(data.shells / Rolls.shellsPerRoll)
 	DataService.markDirty(player)
 	Net.rollResult(player, result)
+	Events.rolled:fire(player)
 
 	local tier = Tiers.byId[outcome.tier]
 	if tier and tier.order >= Tiers.byId[Rolls.announceFrom].order then

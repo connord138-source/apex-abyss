@@ -91,6 +91,7 @@ local REQUESTS: { [string]: number } = {
 	ClaimPass = 0.5, -- () every Tide Pass reward unlocked and not yet claimed (Config/Pass)
 	WatchAd = 3, -- () a rewarded video ad (its reward: Double Haul on a small Haul)
 	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
+	TutorialSaw = 1, -- ("Index") the tutorial's last step: the INDEX was opened
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do

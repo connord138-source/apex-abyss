@@ -45,6 +45,18 @@ return {
 		chunks = 18,
 		respawn = 14, -- a chunk grows back this long after it's eaten
 		chunkScale = 3, -- × the biome's chunk
+		-- Never in the starter ring (owner, 2026-10-18: "I also dont think a whale fall
+		-- should ever fall right outside the kelp shallows"): not in these biomes, and
+		-- its middle at least `minRadius` studs from the hub's (the Kelp Shallows end at
+		-- 480, so it's the Shipwreck Graveyard, the Coral Reef or the deep)
+		never = { "KelpShallows" } :: { string },
+		minRadius = 520,
+		-- One fish takes at most this many levels' worth of Haul from one whale, at its
+		-- banked mass when it first feeds there and before ×2 Mass and Frenzy (like the
+		-- bait's `baitLevels`, Config/Hooks; owner, 2026-10-18: a 2-minute dive with a
+		-- whale took a LV 1 fish to LV 35). Full, it's told so and its chunks stay for
+		-- the others (the `WhaleFull` player attribute, ChumController)
+		levels = 4,
 		length = 60, -- the carcass, studs
 		-- The marker over a settled whale, through the haze (ChumController): studs
 		-- from the camera, none inside `hide`, full from `full`, fading out from

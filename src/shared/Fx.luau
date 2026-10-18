@@ -70,6 +70,7 @@ export type Preset =
 	| "pearls"
 	| "whirls"
 	| "shimmer"
+	| "glitter"
 
 -- A size sequence `k` times bigger (its envelopes too)
 local function grown(sequence: NumberSequence, k: number): NumberSequence
@@ -185,7 +186,9 @@ function Fx.emitter(
 		e.Rotation = NumberRange.new(0, 90)
 		e.Size = keys({ 0, 0, 0.35, L * 0.19, 1, 0 })
 	elseif preset == "gold" then
-		-- Gold flakes glittering down off it, turning as they fall
+		-- Gold flakes glittering down off it, turning as they fall (Roblox's own white
+		-- sparkle: the fx images are drawn in a light cyan, which turned gold olive)
+		e.Texture = BUILT_IN.sparkle
 		base = 22
 		e.Brightness = 2
 		e.Lifetime = NumberRange.new(1, 1.6)
@@ -327,6 +330,18 @@ function Fx.emitter(
 		e.Acceleration = Vector3.new(0, L * 0.12, 0)
 		e.Size = keys({ 0, 0, 0.2, L * 0.07, 1, L * 0.06 })
 		e.Transparency = keys({ 0, 1, 0.2, 0.1, 0.85, 0.2, 1, 1 })
+	elseif preset == "glitter" then
+		-- Fine gold glitter: quick hard twinkles where they're shed, barely moving
+		-- (Golden's shine; on Roblox's own white sparkle, so the gold stays gold)
+		e.Texture = BUILT_IN.sparkle
+		base = 10
+		e.Brightness = 2.6
+		e.Lifetime = NumberRange.new(0.25, 0.5)
+		e.Speed = NumberRange.new(0, L * 0.04)
+		e.Drag = 4
+		e.Rotation = NumberRange.new(0, 90)
+		e.RotSpeed = NumberRange.new(-90, 90)
+		e.Size = keys({ 0, 0, 0.35, L * 0.075, 1, 0 })
 	elseif preset == "shimmer" then
 		-- A shell of rainbow sparkles twinkling over the body, held to it, each one
 		-- running through the hues as it lives (Prismatic: an outline alone was lost

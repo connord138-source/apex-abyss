@@ -988,7 +988,7 @@ local list: { Shade } = {
 		C(245, 170, 0),
 		C(255, 205, 70),
 		C(200, 123, 0),
-		"Warm brushed gold, its own pattern engraved. 100 Golden catches as this fish.",
+		"Polished gold, its own pattern engraved, a shine running down it. 100 Golden catches as this fish.",
 		-- Less mirror than it was: reflecting the blue water, gold read lime (playtest
 		-- 2026-10-10; the skin's metal map went from 0.6 to 0.35)
 		{ material = Enum.Material.Metal, reflectance = 0.2, sparkle = C(255, 226, 150), aura = "glints" }
@@ -1001,7 +1001,7 @@ local list: { Shade } = {
 		C(10, 30, 60),
 		C(30, 160, 160),
 		C(60, 240, 220),
-		"Bioluminescent: its own markings glow. 10 Glowing catches as this fish.",
+		"Bioluminescent: its own markings glow. 100 Glowing catches as this fish.",
 		{ emissive = 1.3, pulse = "breathe", aura = "motes", light = C(70, 240, 220) }
 	),
 	earned(
@@ -1012,7 +1012,7 @@ local list: { Shade } = {
 		C(150, 200, 240),
 		C(200, 230, 255),
 		C(120, 180, 230),
-		"Clear crystal full of glints. 5 Crystal catches as this fish.",
+		"Clear crystal full of glints. 100 Crystal catches as this fish.",
 		{ material = Enum.Material.Glass, reflectance = 0.35, sparkle = C(220, 240, 255), aura = "glints" }
 	),
 	earned(
@@ -1023,7 +1023,7 @@ local list: { Shade } = {
 		C(255, 120, 230),
 		C(120, 220, 255),
 		C(255, 230, 90),
-		"Holographic prism foil. 3 Prism catches as this fish.",
+		"Holographic prism foil. 100 Prism catches as this fish.",
 		{ emissive = 0.9, pulse = "wave", aura = "stars", light = C(255, 140, 230) }
 	),
 	-- The Catch of the Week's limited skins (Config/Catch weekly), never rolled
@@ -1305,6 +1305,11 @@ local FX: { [string]: FxSet } = {
 	Diamond = { fx = { "crystal", "glints" }, color = C(220, 240, 255), color2 = C(170, 220, 255) },
 	CatchCrystal = { fx = { "crystal", "frost" }, color = C(190, 235, 255), color2 = C(150, 200, 255) },
 	CatchPrism = { fx = { "rainbow", "stardust" }, color = C(255, 255, 255) },
+	-- A real gold sheen (owner, 2026-10-18: "The gold skin needs more of a gold
+	-- sheen"): a band of warm light running head to tail every 2.5 s, a light riding
+	-- it over the polished skin (skins v13: gloss, painted highlights), gold sparks
+	-- and glitter. Saturated golds: a pale one reads cream through the water
+	CatchGolden = { fx = { "sheen" }, color = C(255, 190, 40), color2 = C(255, 228, 120) },
 	Glacier = { fx = { "frost", "crystal" }, color = C(190, 230, 255), color2 = C(230, 245, 255) },
 }
 local AURAS: { [string]: Aura } = {

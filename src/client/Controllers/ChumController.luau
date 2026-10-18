@@ -779,6 +779,8 @@ local function step(dt: number)
 	local length = SwimController.length()
 	local mouth = if fishRoot then fishRoot.CFrame:PointToWorldSpace(Size.mouthOffset(length)) else nil
 	local reach = Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS
+	-- A whale we're full of (Config/Chum `whale.levels`): its chunks stay for the others
+	local fullOf = Players.LocalPlayer:GetAttribute("WhaleFull")
 	local markersHidden = StartController.isUp()
 		or MenuController.isOpen()
 		or Input.editing
@@ -853,7 +855,7 @@ local function step(dt: number)
 				end
 				continue
 			end
-			if mouth and now < cloud.ends then
+			if mouth and now < cloud.ends and fullOf ~= cloud.id then
 				local size = piece.sizes[1].X
 				local gap = (at - mouth).Magnitude - size * 0.5
 				local pullRange = reach * Forage.PULL

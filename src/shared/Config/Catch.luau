@@ -45,7 +45,11 @@ local rarities: { Rarity } = {
 		dna = 2,
 		points = 1,
 		skin = "CatchGolden",
-		track = 100, -- owner, 2026-10-17: 100 Golden catches for the Golden skin (was 10)
+		-- Every track is 100 (owner, 2026-10-17 for Golden, 2026-10-18 for all: "all skins
+		-- that require certain fish to be eaten ... need to be 100 eaten"); the rarer
+		-- fish make the later ones far more work (~3,500 / 18,000 / 90,000 fish eaten
+		-- at their base odds, the Prism ~15,000 in Prism Tides)
+		track = 100,
 		color = Color3.fromRGB(255, 196, 60),
 		announce = { spawn = false, catch = false },
 	},
@@ -60,7 +64,7 @@ local rarities: { Rarity } = {
 		dna = 3,
 		points = 5,
 		skin = "CatchGlowing",
-		track = 10,
+		track = 100, -- (was 10)
 		color = Color3.fromRGB(70, 240, 220),
 		announce = { spawn = false, catch = false },
 	},
@@ -75,7 +79,7 @@ local rarities: { Rarity } = {
 		dna = 5,
 		points = 25,
 		skin = "CatchCrystal",
-		track = 5,
+		track = 100, -- (was 5)
 		color = Color3.fromRGB(170, 225, 255),
 		announce = { spawn = false, catch = true },
 	},
@@ -91,7 +95,7 @@ local rarities: { Rarity } = {
 		dna = 8,
 		points = 100,
 		skin = "CatchPrism",
-		track = 3,
+		track = 100, -- (was 3)
 		color = Color3.fromRGB(255, 120, 230),
 		announce = { spawn = true, catch = true },
 	},

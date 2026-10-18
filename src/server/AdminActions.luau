@@ -127,7 +127,7 @@ local function feed(_admin: Player, targets: { Player }, kg: any): string
 		return "Give a mass in kg"
 	end
 	for _, player in targets do
-		HuntService.feed(player, n)
+		HuntService.feed(player, n, "sized") -- (the kg asked for, without the Haul rate)
 	end
 	return `+{n} kg Haul for {names(targets)}`
 end
@@ -267,8 +267,8 @@ local function title(_admin: Player, targets: { Player }, text: any): string
 end
 
 local function resetTutorial(_admin: Player, targets: { Player }): string
-	each(targets, function(_, data)
-		data.tutorial = { step = 1, progress = 0, done = false }
+	each(targets, function(player, data)
+		TutorialService.restart(player, data)
 	end)
 	return `Tutorial restarted for {names(targets)}`
 end

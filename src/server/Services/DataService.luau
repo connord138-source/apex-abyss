@@ -38,7 +38,7 @@ export type PlayerData = {
 	current: string, -- the species the player swims as
 	unlocked: { [string]: boolean },
 	dna: { [string]: number }, -- per biome, for unlocking species
-	tutorial: { step: number, progress: number, done: boolean },
+	tutorial: { step: number, progress: number, done: boolean, v: number? }, -- v: the step list's version (TutorialService; kept out of the template)
 	-- The last haul banked, so a Double Haul receipt that lands late (or after a
 	-- rejoin) still doubles exactly that amount, once
 	lastHaul: { id: number, amount: number, doubled: boolean, species: string? },

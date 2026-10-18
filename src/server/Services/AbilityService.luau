@@ -14,8 +14,12 @@
 --               when its ambush bite runs out (HuntService)
 --   FlashAt     server clock of an Anglerfish's Lantern Flash: predators round it are
 --               stunned (PredatorService.stun) and clients dazzle the players near it
--- The Dash, the 'Cuda's Torpedo and the Reef Shark's Blood Sense are the client's
--- alone (movement and a reveal).
+--   Sensing     server clock a Reef Shark's Blood Sense ends at (a feeding frenzy,
+--               owner 2026-10-18): it swims faster and draws prey in from further
+--               (Perks.sense: SwimController, SchoolController, ForageController, and
+--               HuntService and SpeedService allow for it); its owner's client draws
+--               the reveal
+-- The Dash and the 'Cuda's Torpedo are the client's alone (movement).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -120,6 +124,8 @@ local function use(player: Player, id: any)
 		burrows[player] = { spot = root.Position, since = now }
 		character:SetAttribute("Burrowed", true)
 		return -- (its cooldown starts when it ends)
+	elseif id == "BloodSense" then
+		character:SetAttribute("Sensing", now + (ability.seconds or 7))
 	elseif id == "LanternFlash" then
 		character:SetAttribute("FlashAt", now)
 		local stun = (PredatorService :: any).stun
