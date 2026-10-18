@@ -344,11 +344,26 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   that pulls people back over and over. I do want to add random rarities of fish that
   can be eaten for more towards the haul or like 10 total unlocks a skin"; of the four
   proposed, "All four please!"; built, GDD §8 "The pull-back loop"):**
-  - **Rare catches** (`Config/Catch`, `Shared/Catch`, `CatchService`): any prey can
-    swim Golden (1/35, Haul ×3), Glowing (1/180, ×6), Crystal (1/900, ×12) or Prism
-    (Prism Tide only, 1/150, ×25), with coral and DNA. Rolled on respawn and re-rolled
-    while no one's within 260 studs (12 fish every 5 s, ×3 just after a tide turns);
-    the server streams which are rare (`PreyRarity`, `GetRarities`) and
+  - **Rare catches** (`Config/Catch`, `Shared/Catch`, `Shared/RareSpawn`,
+    `CatchService`): any prey can swim Silver (Haul ×2, since 2026-10-18), Golden
+    (×3), Glowing (×6), Crystal (×12) or Prism (Prism Tide only, ×25), with coral and
+    DNA. **Rates are per player, not per fish** (owner, 2026-10-18: "I caught three
+    crystal fish in about 5 minutes ... rerun the spawn rates"; the old per-fish odds
+    over ~4,100 fish gave a hunter a Crystal every ~5 min and 5–10 Golden a minute):
+    each player out in the biomes has a stream per rarity (`RareSpawn`, the same code
+    in the server and the sim) that turns a fish rare in their own biome, 340–750
+    studs off, on a fish they can swallow, never within 320 studs of anyone (no pop
+    in view); species picked evenly, then a school, then a fish; it lives 2–7 min by
+    rarity and turns plain only out of everyone's sight; a crowded biome with nowhere
+    out of sight brings an eaten fish back rare. Tides multiply the rate (×3 in their
+    first 2 min); the Catch of the Week has its own `weekly.rate` stream on its
+    species. Measured by `tools/tests/run_catch_sim.sh` (the school layout, a hunter
+    chasing glints and a casual player taking only what's within 60 studs of their
+    path; checks `every` within ±30%; rerun it after changing rates, lives, `spawn`,
+    `Config/Prey` or `Config/Tides`): a hunter's minutes per catch Silver 1.0, Golden
+    5 (Calm 11, Golden Hour 2), Glowing 25, Crystal ~100 (Blood Tide ~50), Prism ~2.5
+    a Prism Tide; a casual player a third to a half of that. The server streams which
+    are rare (`PreyRarity`, `GetRarities`) and
     `SchoolController` draws them (foil, Neon teal, Glass, rainbow; sparkles and a
     light; their texture held aside), each with a **glint** (playtest 2026-10-10: a
     Golden Minnow was gone by 100 studs): a four-point star at a fixed 15–21 px out
@@ -358,10 +373,24 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     camera, round the stars in reach, against Terrain and the collidable parts of
     `Workspace.World`, easing it out and in (`glintBlocked`, `glintVis`). `HuntService` takes a fish's rarity as it's
     eaten (`CatchService.take`) and fires `Events.caught`.
-  - **Catch Log and catch tracks:** every prey × rarity with first-catch rewards, row
-    rewards and the Master Angler title; per fish, 100 catches of a rarity (owner,
-    2026-10-18: all 100; Golden was 10, then 100 on 10-17) unlock that rarity's skin for it (`data.catchLog`, `logRows`,
-    `catchTracks`).
+  - **The Catch Logbook and skin goals** (owner, 2026-10-18: "a catch logbook that
+    shows the largest they have caught and they can track total gold/crystal/silver
+    etc that they have for each fish. They will need atleast 10 gold of 5 different
+    species to unlock the skin. Once the skin is unlocked, it is unlocked for all of
+    their fish"): the LOG's Catch Log is an entry per prey species (from
+    `Config/Prey`, so new prey show by themselves; `PreyPhoto` lazy photos, a dark
+    ??? silhouette until caught) with its biggest (overall and per rarity) and its
+    totals per rarity, and the five goals on top with your fish in the skin and FOR
+    EVERY FISH. A goal is N of a rarity from each of S prey species (`Config/Catch`
+    `unlock`, `Catch.goal`/`met`, counted from the lifetime `data.catchLog`): Silver
+    10 × 5, Golden 10 × 5, Glowing 5 × 5, Crystal 2 × 5, Prism 1 × 5; a met goal
+    unlocks the skin for every playable fish, locked ones too
+    (`CatchService.grantEveryFish`), re-checked on join, and a catch skin one fish
+    earned on the old per-fish tracks became every fish's (`data.catchTracks` stays,
+    unused). Sim hours of hunting in one biome: Silver ~1–1.5, Golden ~7 (Kelp ~10),
+    Glowing ~15–22, Crystal ~25–30 (Reef ~60), Prism 2–6 Prism Tides. Catch Log rows
+    include Silver (rows already paid keep `logRows`). Admin "Catch Log: add catches"
+    (`catchAdd`: a rarity, N species, × count). Tests: `run_catch.sh`.
   - **Tide Clock** (`Config/Tides`, `Shared/Tides`, `TideService`, `TideController`):
     20-minute tides on Unix time, the same on every server, never one twice in a row:
     Calm, Golden Hour, Blood Tide (hunters faster, `PredatorService`), Sardine Run
@@ -379,7 +408,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `tools/tests/run_tides.sh`.
   - **Earned skins stop at Epic (owner, 2026-10-10: "we still don't want the most
     elite skins obtained that way that'll be rng and bosses/treasure chests"):** catch
-    tracks give Golden Uncommon, Glowing Rare, Crystal and Prism Epic; the weekly
+    goals give Silver Common, Golden Uncommon, Glowing Rare, Crystal and Prism Epic; the weekly
     skins are Epic. Legendary and Mythic only roll (rolls, the wheel's jackpot,
     bosses, treasure). Keep any new earned skin at Epic or below.
   - **Biggest catches (owner: "track their biggest eat of each species and rarity of
@@ -1046,8 +1075,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `whale.never`, `minRadius`); one fish takes at most `levels` 4 levels' worth from
     one whale ("You're full of whale!", `WhaleFull` attribute; its chunks stay for
     others).
-  - **Catch tracks 100 each** (Golden ~3,500 fish eaten, Glowing ~18,000, Crystal
-    ~90,000, Prism ~15,000 during Prism Tides).
+  - **Catch tracks 100 each** (superseded the same day by the account-wide skin goals
+    and per-player rare streams; see "The Catch Logbook and skin goals").
   - **Blood Sense frenzy** (server: `AbilityService` `Sensing`, `Perks.sense`): 7 s
     of ×1.25 top speed (SpeedService allows it), ×2 swallow reach and suction (client
     and server), and amber Highlights on the nearest edible prey within 120 after the
@@ -1127,6 +1156,19 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     sparkles, Golden's sweep). **Ribbons** sit on the tail fin's line (Prism,
     Prismatic, Comet, Riptide) and, on your own fish, are cut short of the camera and
     fade when seen end-on.
+  - **Skins v14: Silver** (`shade_patch_v14`, sha256 e718efcc…, 6 GLBs, 18 images, no
+    normal maps, highest classifier 0.005): `CatchSilver` (Common), the Silver catch
+    goal's skin, every fish's. Golden's polish in silver (`catch_silver`): reflection
+    bands over `mirror_scales` (overlapping scales each a flat mirror tilted its own
+    way, so the bands step and a few scales flash), steel-blue creases, its pattern
+    engraved, semi-gloss 0.42, metal 0.25, a faint glow; cool and mid-toned (Cr − Cb
+    ~−18, mean 0.54–0.63). `Config/Shades` FX gives it `sheen` in silver (SkinFx's
+    `sheen` takes the shade's colours); an FX `light` (`Shade.fxLight`) sets the
+    preview's flare colour (nil = Golden's warm white). A new `sheen` skin gets an FX
+    `light` and, if it isn't gold, a Wardrobe `SKIN_EFFECT_WORDS` entry. Bounties now
+    Silver10, Golden5, Glowing2 (Golden8 and Glowing3 took ~40 / ~75 min of hunting
+    at the new rates); Silver is 8 Pass XP and 0.2 leaderboard points, ×2 in the
+    Blood and Prism Tides.
   - **Dens:** rooms 1.22× (deck ~1.5×), capacities 24/48/80/125/180; things at real
     scale (floor ×1.9, rugs 18–24 studs, wall lanterns small) and clusters built from
     pieces (`cluster`, `DenItems.piece`: Anemone Garden, Tube Sponges, Shell Pile, …);
