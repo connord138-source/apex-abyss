@@ -1336,14 +1336,13 @@ function bind()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, Enum.KeyCode.L, Enum.KeyCode.DPadDown)
-	-- The stall menu and the HUD's D-pad menus wait till you're done
+	-- Y opens the den shop (and, sunk, the stall menu and the HUD's D-pad menus wait
+	-- till you're done). A second sink on Y bound after it took Y first and the shop
+	-- never opened (PC 2026-10-17, DS1)
 	ContextActionService:BindActionAtPriority("ApexBuildShop", function(_, inputState)
 		if inputState == Enum.UserInputState.Begin then
 			openShop()
 		end
-		return Enum.ContextActionResult.Sink
-	end, false, PRIORITY, Enum.KeyCode.ButtonY)
-	ContextActionService:BindActionAtPriority("ApexBuildQuiet", function()
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, Enum.KeyCode.ButtonY)
 end
@@ -1360,7 +1359,6 @@ function unbind()
 			"ApexBuildDone",
 			"ApexBuildSnap",
 			"ApexBuildLayout",
-			"ApexBuildQuiet",
 			"ApexBuildShop",
 		}
 	do
