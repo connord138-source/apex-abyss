@@ -122,6 +122,10 @@ local detail = 1 -- how far this client draws (×), from its frame time
 local smoothDt = 1 / 60
 local wanted: { { index: number, away: number } } = {}
 local drawList: { number } = {}
+-- (a readout on the Prey folder for play tests: Detail, Built, Drawn, once a second)
+local builtCount = 0
+local drawnCount = 0
+local readoutAt = 0
 local parts: { BasePart } = {}
 local frames: { CFrame } = {}
 local batch: { { number } } = {}
@@ -714,6 +718,7 @@ local function buildSchool(schoolIndex: number, now: number, started: number)
 		end
 		local visual = makeVisual(index)
 		visuals[index] = visual
+		builtCount += 1
 		local back = backAts[index]
 		if back and back > now then
 			visual.backAt = back
@@ -738,6 +743,7 @@ local function releaseSchool(schoolIndex: number)
 			continue
 		end
 		visuals[index] = nil
+		builtCount -= 1
 		clearLook(index, visual)
 		if visual.chase then
 			visual.chase.glow:Destroy()
@@ -1022,6 +1028,7 @@ local function step(dt: number)
 				end
 			end
 			if not visual.hidden then
+				drawnCount += 1
 				local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
 				table.insert(parts, visual.body)
 				local tail = visual.tail
@@ -1097,6 +1104,13 @@ local function step(dt: number)
 		workspace:BulkMoveTo(parts, frames, Enum.BulkMoveMode.FireCFrameChanged)
 	end
 	flush(now)
+	if now >= readoutAt and folder then
+		readoutAt = now + 1
+		folder:SetAttribute("Detail", math.floor(detail * 100 + 0.5) / 100)
+		folder:SetAttribute("Built", builtCount)
+		folder:SetAttribute("Drawn", drawnCount)
+	end
+	drawnCount = 0
 end
 
 -- The server says a fish turned on a player (AggroService): it darts at them.

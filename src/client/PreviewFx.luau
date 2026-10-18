@@ -229,14 +229,14 @@ local function shapeIn(holder: Frame, shape: Shape, color: Color3)
 		holder.BackgroundColor3 = color
 		holder.BackgroundTransparency = 0.82
 	else
-		-- A faint puff: three soft stacked circles
+		-- A faint puff: three soft stacked circles (faint enough not to veil the fish)
 		for i = 1, 3 do
 			local ring = Instance.new("Frame")
 			ring.AnchorPoint = Vector2.new(0.5, 0.5)
 			ring.Position = UDim2.fromScale(0.5, 0.5)
 			ring.Size = UDim2.fromScale(1 - (i - 1) * 0.28, 1 - (i - 1) * 0.28)
 			ring.BackgroundColor3 = color
-			ring.BackgroundTransparency = 0.9
+			ring.BackgroundTransparency = 0.94
 			ring.BorderSizePixel = 0
 			corner(ring, 0.5)
 			ring.Parent = holder

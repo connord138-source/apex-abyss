@@ -1555,9 +1555,9 @@ local function court(parent: Instance)
 			paving(m, "CourtFloor", Vector3.new(ix - 0.4, 1.8, iz - 0.4), C * CFrame.new(sx * ix / 2, bottom - 0.7, sz * iz / 2), COLORS.paving)
 		end
 	end
-	local F = C * CFrame.new(0, bottom + 0.2, 8)
-	mosaicRing(m, F, 13.5, 20, 3, COLORS.mosaic)
-	mosaicRing(m, F, 17, 24, 2.6, { COLORS.mosaic[2], COLORS.mosaic[4] })
+	local F = C * CFrame.new(0, bottom + 0.2, 12)
+	mosaicRing(m, F, 12.5, 20, 3, COLORS.mosaic)
+	mosaicRing(m, F, 16, 24, 2.6, { COLORS.mosaic[2], COLORS.mosaic[4] })
 	-- The lining walls, a parapet on their rim; the stair side has its gap
 	local function lining(x: number, z: number, length: number, along: boolean, niches: { number })
 		local frame = C * CFrame.new(x, bottom - 1, z) * (if along then CFrame.new() else CFrame.Angles(0, HALF, 0))
@@ -1654,10 +1654,10 @@ local function court(parent: Instance)
 		spot(CFrame.new(p + C.RightVector * -corner[1] * 6), 4, true)
 	end
 	pass("courtyard stairs", {
-		C * Vector3.new(0, 15, -iz - 34),
-		C * Vector3.new(0, 11.5, -iz - 2),
-		C * Vector3.new(0, bottom + 11.5, -iz + run * steps),
-		C * Vector3.new(0, bottom + 11.5, 4),
+		C * Vector3.new(0, 16, -iz - 34),
+		C * Vector3.new(0, 14, -iz - 2),
+		C * Vector3.new(0, bottom + 14, -iz + run * steps),
+		C * Vector3.new(0, bottom + 12, -iz + run * steps + 2),
 	})
 end
 
@@ -1749,8 +1749,10 @@ local function outGate(m: Model, O: CFrame, label: string)
 		wall(m, O * CFrame.new(side * (11 + 7 + len / 2), 0, 0), { length = len, height = rng:NextNumber(8, 16), thick = 4, ragged = 0.5 })
 	end
 	glyphPanel(m, O * CFrame.new(-14.5, 10, -4.05), 1, 3, 2)
-	rubble(m, O * Vector3.new(0, 0, 14), 16, 8, 1.6, 4.5)
-	pass(label, { O * Vector3.new(0, 12, -30), O * Vector3.new(0, 12, 30) })
+	for side = -1, 1, 2 do
+		rubble(m, O * Vector3.new(side * 24, 0, 10), 9, 5, 1.6, 4.5)
+	end
+	pass(label, { O * Vector3.new(0, 13, -30), O * Vector3.new(0, 13, 30) })
 end
 
 local function outStoa(m: Model, O: CFrame)
@@ -2017,8 +2019,23 @@ local function coral(parent: Instance, at: CFrame, size: number)
 	})
 end
 
+-- How near `p` comes to any swim line (studs)
+local function passDistance(p: Vector3): number
+	local best = math.huge
+	for _, line in Ruins.passes do
+		for i = 1, #line.points - 1 do
+			local a, b = line.points[i], line.points[i + 1]
+			local span = b - a
+			local t = math.clamp((p - a):Dot(span) / math.max(span:Dot(span), 1e-6), 0, 1)
+			best = math.min(best, (p - (a + span * t)).Magnitude)
+		end
+	end
+	return best
+end
+
 -- Coral, sponges, anemones, moss and sea grass over the stones' tops and round
--- their feet (Config/Ruins `growth`)
+-- their feet (Config/Ruins `growth`); only moss (it doesn't collide) where a fish
+-- swims through
 local function grow(parent: Instance)
 	local folder = model(parent, "Growth")
 	for _, s in spots do
@@ -2027,7 +2044,9 @@ local function grow(parent: Instance)
 		end
 		local at = CFrame.new(s.at.Position) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0)
 		local roll = rng:NextNumber()
-		if s.foot then
+		if passDistance(s.at.Position) < 14 then
+			blob(folder, "Moss", at * CFrame.new(0, 0.1, 0), Vector3.new(s.size * 1.4, 0.55, s.size), pick(COLORS.moss))
+		elseif s.foot then
 			if roll < 0.45 then
 				for _ = 1, rng:NextInteger(1, 3) do
 					coral(folder, at * CFrame.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2)), rng:NextNumber(2.2, math.max(s.size, 2.5)))

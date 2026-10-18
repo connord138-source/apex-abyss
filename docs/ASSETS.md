@@ -24,6 +24,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
 | `shade_patch_v11` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch11`: WeekWave and WeekWreck on every fish, lighter for the water, each with a faint even glow map (2026-10-17, K1 of the round-2 report; 6 images a GLB) | the same folders; import after v10 |
 | `shade_patch_v12` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch12`: every skin on the Nibbler, Puffer, MorayEel and Angler (the whole eye kept, skins v12), Bumblebee and Lilac redesigned on the Nibbler, and WeekWreck ("Barnacled"), WeekWave, PassUndertow and PassRiptide redesigned on every fish (2026-10-17; 228 images: Nibbler 48, Puffer 46, MorayEel 49, Angler 63, Cuda 11, ReefShark 11) | the same folders; import after v11 |
+| `shade_patch_v13` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch13`: CatchGolden on every fish (polished: reflection bands, a semi-gloss) and X-Ray on the Cuda (an anatomical skeleton) (2026-10-18; 21 images: 3 a GLB, 6 on the Cuda) | the same folders; import after v12 |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -226,6 +227,55 @@ mesh slapped onto the fish"):
 What the patch holds and its screen are in tools/assets_manifest.json `shade_patch_v12`.
 Sheets: `assets/shades/previews/v12_<Fish>_compare.jpg` (before | after, in the water) and
 `v12_<Fish>_eyes.jpg` (eye close-ups before | after). Import it after v11.
+
+**Skins v13** (`shade_patch_v13`, in `assets/shades/patch13`; owner, 2026-10-18: "The
+gold skin needs more of a gold sheen" and "X ray needs to be an actual skeleton too
+this looks rough"):
+
+- **Golden** (every fish) reads as polished metal: reflection bands from which way the
+  skin faces (a bright streak along the upper flank, an amber horizon band under it, a
+  warm bounce lower down), brushed along the body, on a semi-gloss (its own roughness
+  map, 0.48, 0.38 in the streak) so the game's lights lay real highlights on it, and its
+  glow map stronger in the streak. Every tone stays as orange as v10's gold (green at
+  most 0.64 of red, no blue): through the shallows' haze a yellower highlight went lime
+  and a darker shadow olive, and a full gloss mirrored the teal water at the edges. The
+  moving part is the game's: Config/Shades `FX` gives it SkinFx `sheen` (a band of warm
+  light, a light riding it and gold sparks running head to tail every 2.5 s, fine
+  glitter). Measured in the `water=0.35 strength=0.65` preview: hue about as warm as
+  v10, the brightest 5% lifted (Cuda 0.54 -> 0.60, Nibbler 0.56 -> 0.61), the mean
+  unchanged.
+- **X-Ray** (the Cuda's Epic) is an anatomical skeleton (`xray` and its helpers
+  `outline`, `curve`, `bones_along`, `fin_rays`): laid out on the body's own side
+  silhouette (the midpoint of its top and bottom, fins left out, so the column runs
+  straight where the old frame wandered with the fins), placed from the fish's own
+  landmarks (the eye, the teeth, the painted gill line, each fin's root): braincase,
+  eye ring, skull floor, jaws to the jaw joint, preopercle, gill cover edge,
+  branchiostegal rays, shoulder girdle with rods to the paired fins, about 30
+  spool-shaped vertebrae with dark joints, neural spines, ribs round the belly cavity
+  (a faint swim bladder), haemal spines, supports under the dorsal and anal fins, and
+  rays in every fin fanning in the fin's own plane. Ice-cyan bones with a wide soft
+  blue glow on a mid-toned deep blue that is lighter where the body is thickest;
+  `render_shades.py ... side` shoots both flanks square on to check it.
+
+Sheets: `assets/shades/previews/v13_<Fish>_golden.jpg` (v12 | v13, in studio light
+and in the water) and `v13_Cuda_xray.jpg`. What the patch holds and its screen are in
+tools/assets_manifest.json `shade_patch_v13`. Import it after v12.
+
+On the PC:
+
+```
+git pull
+python tools/fetch_assets.py                                    # shade_patch_v13 -> assets/shades/patch13
+python tools/shades/screen_shades.py assets/shades/patch13/Nibbler_ShadesPatch.glb
+python tools/shades/screen_shades.py assets/shades/patch13/Cuda_ShadesPatch.glb
+...                                                             # one fish at a time; each must exit 0
+```
+
+Then in Studio (`ApexAbyss.rbxl`): File → Import 3D, one
+`assets/shades/patch13/<Fish>_ShadesPatch.glb` at a time (a few minutes apart, for
+moderation), run `tools/studio/organize_shades.luau` in the Command Bar once they're
+all in, and save the place. Check: the Golden skin on any fish shows the shine running
+down it every 2.5 s; the Cuda in X-Ray shows its skeleton side-on.
 
 **FX particle textures** (`tools/shades/make_fx.py`, python3.11 + scipy):
 `assets/textures/fx_{swirl,mist,bubble,star,flame,spark}.png`, 512² RGBA, for the skins'

@@ -154,7 +154,21 @@ for _, line in Ruins.passes do
 						worst = d
 					end
 					if d < 0 and blocked == nil then
-						blocked = string.format("%s (%s) at %.0f, %.0f, %.0f", part.Name, part.Parent and part.Parent.Name or "?", center.X, center.Y, center.Z)
+						local q = part.CFrame:PointToObjectSpace(center)
+						blocked = string.format(
+							"%s (%s) at %.0f, %.0f, %.0f: %.1f, %.1f, %.1f in its box %.1f x %.1f x %.1f",
+							part.Name,
+							part.Parent and part.Parent.Name or "?",
+							center.X,
+							center.Y,
+							center.Z,
+							q.X,
+							q.Y,
+							q.Z,
+							part.Size.X,
+							part.Size.Y,
+							part.Size.Z
+						)
 					end
 				end
 			end

@@ -76,7 +76,7 @@ local list: { PreyDef } = {
 			-- wrecks' sand, tight clouds low round the reef's coral heads, flickers
 			-- among the Ruins' columns and pale schools down in the Trench's canyon
 			{ band = OUTER, angles = WRECKS, schools = 6, depth = { 4, 40 }, spread = 1.6 },
-			{ band = OUTER, angles = REEF, schools = 14, perSchool = 18, depth = { 3, 30 }, spread = 0.8 },
+			{ band = OUTER, angles = REEF, schools = 14, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
 			{ band = DEEP, angles = RUINS, schools = 10, depth = { 6, 50 } },
 			{ band = DEEP, angles = VENTS, schools = 8, perSchool = 18, depth = { 20, 120 }, spread = 0.9 },
 			{ band = TRENCH, trench = true, schools = 8, perSchool = 20, depth = { 15, 160 } },
@@ -231,7 +231,7 @@ local list: { PreyDef } = {
 				angles = WRECKS,
 				schools = 6,
 				perSchool = 1,
-				depth = { 4, 30 },
+				depth = { 4, 32 },
 				pathRadius = { 12, 24 },
 			},
 			{ band = OUTER, angles = REEF, schools = 5, perSchool = 3, depth = { 8, 50 } },

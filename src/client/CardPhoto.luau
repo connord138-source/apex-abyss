@@ -16,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
+local PreviewFx = require(script.Parent.PreviewFx)
 
 local CardPhoto = {}
 
@@ -803,7 +804,10 @@ function CardPhoto.reset()
 end
 
 -- A lit 3D shot of `outcome` in a ViewportFrame filling `parent`, tinted toward
--- `tint` (the tier's color). Nil if there's nothing to show.
+-- `tint` (the tier's color). Nil if there's nothing to show. A skin's card shows it
+-- as the water does (PreviewFx: its glow map brighter, the light it casts behind it
+-- and over the fill light, its effects as sparkles; owner, 2026-10-18: "skins should
+-- also exactly match in the example screen").
 function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): ViewportFrame?
 	local source = master(outcome)
 	if source == nil then
@@ -813,7 +817,7 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	frame.Name = "Photo"
 	frame.BackgroundTransparency = 1
 	frame.Size = UDim2.fromScale(1, 1)
-	frame.Ambient = Color3.fromRGB(118, 132, 150):Lerp(tint, 0.18)
+	frame.Ambient = Color3.fromRGB(128, 146, 162):Lerp(tint, 0.18)
 	frame.LightColor = Color3.fromRGB(255, 250, 240)
 	frame.LightDirection = Vector3.new(-0.45, -1, -0.55)
 	frame.ZIndex = parent.ZIndex
@@ -890,6 +894,9 @@ function CardPhoto.new(parent: GuiObject, outcome: Outcome, tint: Color3): Viewp
 	local look = (Vector3.new(0, 0.22, 1)).Unit
 	camera.CFrame = CFrame.lookAt(center + look * distance, center)
 	frame.Parent = parent
+	if outcome.kind == "shade" then
+		PreviewFx.new(frame, { live = false }):setShade(outcome.id, model)
+	end
 	return frame
 end
 

@@ -178,7 +178,7 @@ local function staghorn(parent: Instance, foot: CFrame, height: number, color: C
 			table.insert(tips, tip)
 		end
 	end
-	branch(foot, height * 0.38, height * 0.14, 2)
+	branch(foot, height * 0.4, height * 0.11, 2)
 end
 
 local function anemone(parent: Instance, foot: CFrame, height: number, color: Color3, rng: Random)
@@ -255,20 +255,21 @@ local function sponge(parent: Instance, foot: CFrame, height: number, color: Col
 	local radius = height * 0.14
 	upright(parent, "Tube", foot, height, radius, color)
 	-- a flared lip and the dark mouth
+	local lip = height * 0.06
 	upright(
 		parent,
 		"Lip",
-		foot * CFrame.new(0, height - 0.05, 0),
-		height * 0.06,
+		foot * CFrame.new(0, height - lip, 0),
+		lip + 0.02,
 		radius * 1.18,
 		paler(color, 0.15)
 	)
 	upright(
 		parent,
 		"Mouth",
-		foot * CFrame.new(0, height + 0.01, 0),
-		0.05,
-		radius * 0.72,
+		foot * CFrame.new(0, height + 0.02, 0),
+		0.06,
+		radius * 0.78,
 		Color3.fromRGB(30, 18, 40)
 	)
 end
@@ -360,7 +361,7 @@ local function kelp(parent: Instance, foot: CFrame, height: number, color: Color
 		blob(
 			parent,
 			"KelpBlade",
-			Vector3.new(height * 0.24, l * 1.1, height * 0.05),
+			Vector3.new(height * 0.36, l * 1.15, height * 0.06),
 			foot * CFrame.new(0, y + l / 2, 0) * CFrame.Angles(0, rng:NextNumber(-0.5, 0.5), lean),
 			if k == count then paler(color, 0.35) else color
 		)

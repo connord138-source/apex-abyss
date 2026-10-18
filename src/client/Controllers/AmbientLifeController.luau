@@ -1110,6 +1110,10 @@ local function step(dt: number)
 	if now >= nextScan then
 		nextScan = now + Ambient.cloudScan
 		refreshClouds(camera, scale)
+		-- (a readout on the folder for play tests: how many of each are built)
+		for id in KINDS do
+			folder:SetAttribute(id, counts[id] or 0)
+		end
 	end
 	table.clear(moveParts)
 	table.clear(moveFrames)

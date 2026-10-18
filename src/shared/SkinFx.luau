@@ -39,8 +39,10 @@
 -- one's lifetime is cut to `BEHIND` of the time the following camera takes to reach
 -- where it was shed, and a ribbon fades back while the camera looks along it from
 -- behind. Other players' fish keep theirs whole.
--- None of this draws in a ViewportFrame (Roblox draws no particles, trails or beams
--- there), so the menus' fish show only the skin.
+-- None of this draws in a ViewportFrame (Roblox draws no particles, trails, beams or
+-- lights there): the menus' fish and the cards get 2D stand-ins instead
+-- (src/client/PreviewFx: sparkles in the effect colours, the skin's light behind the
+-- fish, Golden's shine as the viewport's light sweeping over it).
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
@@ -626,6 +628,7 @@ function SkinFx.build(
 			light.Name = "FxSheenLight"
 			light.Color = c2
 			light.Brightness = 0
+			light.Enabled = false
 			light.Range = math.clamp(L * 0.9, 2, 30)
 			light.Shadows = false
 			light:SetAttribute("ShadeEffect", true)
@@ -790,6 +793,7 @@ function SkinFx.step(live: Live, body: Model, t: number)
 			sweep.points[2].WorldPosition = surface(live, body, frame, f, s * math.pi * 0.5, 0.02, L)
 			sweep.points[3].WorldPosition = surface(live, body, frame, f, s * math.pi * 0.82, 0.012, L)
 			sweep.lamp.WorldPosition = surface(live, body, frame, f, s * math.pi * 0.3, 0.35, L)
+			sweep.light.Enabled = true
 			sweep.light.Brightness = 7 * glow
 			for _, beam in sweep.beams do
 				beam.Enabled = true
@@ -799,6 +803,7 @@ function SkinFx.step(live: Live, body: Model, t: number)
 			sweep.on = true
 		elseif sweep.on then
 			sweep.on = false
+			sweep.light.Enabled = false
 			sweep.light.Brightness = 0
 			for _, beam in sweep.beams do
 				beam.Enabled = false
