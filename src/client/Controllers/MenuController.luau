@@ -1464,6 +1464,15 @@ end
 -- each with how it's got and whether it's yours. ROLL ODDS opens the odds panel.
 local INDEX_TABS = { "Guide", "Skins", "Parts", "Variants", "Fish", "Trails" }
 
+-- A skin's effect ids as words ("rainbowRim" reads "rainbow rim")
+local function fxWords(ids: { string }): string
+	local words: { string } = {}
+	for _, id in ids do
+		table.insert(words, string.lower((string.gsub(id, "(%l)(%u)", "%1 %2"))))
+	end
+	return table.concat(words, ", ")
+end
+
 -- A row whose text runs to more lines (the Index): the title, then `text` wrapped
 local function infoRow(
 	list: ScrollingFrame,
@@ -1704,7 +1713,7 @@ function MenuController.openIndex(startTab: string?)
 						for _, shade in line do
 							local tier = Tiers.byId[shade.tier]
 							local status, color = owned(shades[shade.id] == true)
-							local fx = if shade.fx then ` · effects: {table.concat(shade.fx, ", ")}` else ""
+							local fx = if shade.fx then ` · effects: {fxWords(shade.fx)}` else ""
 							infoRow(
 								list,
 								next(),
@@ -1724,9 +1733,7 @@ function MenuController.openIndex(startTab: string?)
 							if shade.species == nil and (shade.week == nil or shades[shade.id]) then
 								local tier = Tiers.byId[shade.tier]
 								local status, color = owned(shades[shade.id] == true)
-								local fx = if shade.fx
-									then ` · effects: {table.concat(shade.fx, ", ")}`
-									else ""
+								local fx = if shade.fx then ` · effects: {fxWords(shade.fx)}` else ""
 								infoRow(
 									list,
 									next(),
