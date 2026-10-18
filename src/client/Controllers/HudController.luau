@@ -446,71 +446,7 @@ local function toast(text: string, kind: string)
 	end)
 end
 
--- The bank celebration: "+12.4 kg BANKED", and the new level if there is one.
-local function celebrate(summary: { [string]: any })
-	local leveled = typeof(summary.level) == "number"
-		and typeof(summary.levelBefore) == "number"
-		and summary.level > summary.levelBefore
-	Sfx.play("Bank", { volume = 0.7 })
-	Ui.holdStage(3)
-	if leveled then
-		task.delay(0.45, function()
-			Sfx.play("LevelUp", { volume = 0.75 })
-		end)
-	end
-	local holder = Instance.new("Frame")
-	holder.Name = "Banked"
-	holder.BackgroundTransparency = 1
-	holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.fromScale(0.5, 0.36)
-	holder.Size = UDim2.fromOffset(600, 110)
-	local scale = Instance.new("UIScale")
-	scale.Scale = 0.6
-	scale.Parent = holder
-	local amount = typeof(summary.amount) == "number" and summary.amount or 0
-	local title = Ui.label(
-		holder,
-		"Title",
-		if summary.doubled then `HAUL DOUBLED · +{Format.mass(amount)}` else `+{Format.mass(amount)} BANKED`,
-		Ui.FONT_HEAVY,
-		46,
-		Ui.color.haul,
-		UDim2.new(1, 0, 0, 52)
-	)
-	title.TextXAlignment = Enum.TextXAlignment.Center
-	title.TextStrokeTransparency = 0.55
-	local level = summary.level
-	local before = summary.levelBefore
-	local sub = if typeof(level) == "number"
-			and typeof(before) == "number"
-			and level > before
-		then `LEVEL {level} · {string.upper(tostring(summary.stage))}`
-		else "Your fish keeps this size now"
-	if typeof(summary.coral) == "number" and summary.coral > 0 then
-		sub ..= `  ·  +{Ui.number(summary.coral)} coral`
-	end
-	local line = Ui.label(
-		holder,
-		"Sub",
-		sub,
-		Ui.FONT_BOLD,
-		22,
-		Ui.color.text,
-		UDim2.new(1, 0, 0, 28),
-		UDim2.fromOffset(0, 56)
-	)
-	line.TextXAlignment = Enum.TextXAlignment.Center
-	line.TextStrokeTransparency = 0.6
-	holder.Parent = gui
-	Ui.tween(scale, 0.5, { Scale = 1 }, Enum.EasingStyle.Back)
-	task.delay(2.4, function()
-		Ui.tween(title, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
-		Ui.tween(line, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
-		Ui.tween(scale, 0.5, { Scale = 1.08 })
-		task.wait(0.55)
-		holder:Destroy()
-	end)
-end
+-- (The bank celebration is BankController's growth sequence since 2026-10-18.)
 
 -- A toast from the client itself (the Shop's notes)
 function HudController.toast(text: string, kind: string?)
@@ -1057,8 +993,6 @@ function HudController.start()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local notify = remotes:WaitForChild("Notify") :: RemoteEvent
 	notify.OnClientEvent:Connect(toast)
-	local banked = remotes:WaitForChild("Banked") :: RemoteEvent
-	banked.OnClientEvent:Connect(celebrate)
 	local eaten = remotes:WaitForChild("Eaten") :: RemoteEvent
 	eaten.OnClientEvent:Connect(eatenScreen)
 

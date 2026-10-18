@@ -121,10 +121,12 @@ local list: { PredatorDef } = {
 		model = "ReefShark",
 		length = 14,
 		health = 320,
-		-- The relentless tracker: 46 studs/s sustained runs down a Nibbler to ~LV 55 in
-		-- a straight line and a 'Cuda only under ~LV 40 (it was 24: nothing in its
-		-- water was slower than it, owner 2026-10-17)
-		speed = 46,
+		-- The relentless tracker: 44 studs/s sustained runs down a Nibbler through its
+		-- whole water (to ~LV 70) in a straight line and a 'Cuda only under ~LV 42 (it
+		-- was 24: nothing in its water was slower than it, owner 2026-10-17; 46 until
+		-- the player speed curve flattened past LV 33, 2026-10-18: a LV 45 'Cuda swims
+		-- 45.9, was 47.2). At 42 a juke at its tell stopped beating it (19% bitten).
+		speed = 44,
 		turnRate = 1.6,
 		aggroRange = 80,
 		style = {

@@ -299,7 +299,7 @@ local function onEat(player: Player, batch: any)
 		HuntService.gain(player, fresh)
 	end
 	if whaleGain > 0 then
-		HuntService.gain(player, whaleGain, "sized")
+		HuntService.gain(player, whaleGain, "rated")
 	end
 	if count > 0 then
 		Events.ate:fire(player, count)
@@ -429,7 +429,11 @@ end
 local function warnWhale(startsAt: number, crush: boolean?): boolean
 	local live: { Biomes.Biome } = {}
 	for _, biome in Config.Biomes.list do
-		if biome.live and not table.find(tune.whale.never, biome.id) and (not crush or biome.id == "CoralReef") then
+		if
+			biome.live
+			and not table.find(tune.whale.never, biome.id)
+			and (not crush or biome.id == "CoralReef")
+		then
 			table.insert(live, biome)
 		end
 	end

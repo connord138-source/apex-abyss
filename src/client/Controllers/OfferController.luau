@@ -252,8 +252,12 @@ local function onBanked(summary: { [string]: any })
 		})
 	end
 	table.insert(choices, { text = "SKIP", style = "secondary", width = 90, pressed = closeCard })
-	-- Shown once the banked banner has had its moment
+	-- Shown once the bank's growth sequence has had its moment (it holds the stage)
 	task.delay(1.1, function()
+		local waited = 0
+		while Ui.stageWait() > 0 and waited < 8 do
+			waited += task.wait(0.1)
+		end
 		openCard(
 			"double",
 			"DOUBLE THIS HAUL?",

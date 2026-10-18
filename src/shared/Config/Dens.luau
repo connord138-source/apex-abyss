@@ -105,7 +105,7 @@ export type Item = {
 export type Cluster = {
 	kinds: { string },
 	count: number,
-	bed: string?, -- "sand" (a sand bed in a ring of stones), "rock" (a low rock base) or "kelp" (a mound)
+	bed: string?, -- "sand" (a sand bed in a ring of stones), "rock" (a low rock base), "kelp" or "heap" (a mound)
 	colors: { Color3 }?, -- taken in turn over the pieces (default: the reef's colors)
 	glow: boolean?, -- glowing tips and a light (a lamp)
 	spread: number?, -- how far out the pieces go, as a share of the half-footprint (default 0.78)
@@ -254,7 +254,11 @@ local items: { Item } = {
 			kinds = { "Staghorn", "Staghorn", "Brain" },
 			count = 3,
 			bed = "rock",
-			colors = { Color3.fromRGB(255, 146, 110), Color3.fromRGB(255, 120, 140), Color3.fromRGB(255, 196, 120) },
+			colors = {
+				Color3.fromRGB(255, 146, 110),
+				Color3.fromRGB(255, 120, 140),
+				Color3.fromRGB(255, 196, 120),
+			},
 			glow = true,
 			spread = 0.45,
 		},
@@ -265,7 +269,7 @@ local items: { Item } = {
 		name = "Kelp Bed",
 		price = 180,
 		kinds = { "floor" },
-		size = Vector3.new(14, 3.2, 10),
+		size = Vector3.new(14, 5, 10),
 		color = Color3.fromRGB(78, 116, 52),
 		cluster = {
 			kinds = { "Blade", "Blade", "Blade", "Kelp", "Blade", "Blade" },
@@ -296,6 +300,7 @@ local items: { Item } = {
 		cluster = {
 			kinds = { "Shell" },
 			count = 18,
+			bed = "heap",
 			colors = {
 				Color3.fromRGB(242, 228, 204),
 				Color3.fromRGB(236, 196, 160),
@@ -355,7 +360,11 @@ local items: { Item } = {
 			kinds = { "Sponge" },
 			count = 7,
 			bed = "rock",
-			colors = { Color3.fromRGB(170, 110, 220), Color3.fromRGB(196, 130, 236), Color3.fromRGB(140, 90, 200) },
+			colors = {
+				Color3.fromRGB(170, 110, 220),
+				Color3.fromRGB(196, 130, 236),
+				Color3.fromRGB(140, 90, 200),
+			},
 			spread = 0.55,
 		},
 		blurb = "Tall purple sponges",
@@ -1168,6 +1177,91 @@ local floors: { FloorStyle } = {
 	},
 }
 
+-- Doorway styles (owner, 2026-10-18): your den's front door on the plaza, so it
+-- stands out among twelve. Each is bought once (coral, at its den level, and the
+-- Megalodon Jaws only after three world bosses) and can be worn or swapped back in
+-- the den menu's Doorway rows. DenDoor builds each from parts; every one leaves the
+-- doorway as open as the stone one (tools/preview/check_doors.luau tries them all).
+local doors: { Door } = {
+	{
+		id = "Stone",
+		name = "Stone Arch",
+		price = 0,
+		blurb = "Rounded sandstone over two brass lanterns",
+		colors = { Color3.fromRGB(214, 186, 140), Color3.fromRGB(214, 160, 70), Color3.fromRGB(242, 162, 72) },
+		glow = Color3.fromRGB(255, 186, 112),
+	},
+	{
+		id = "KelpCurtain",
+		name = "Kelp Curtain",
+		price = 2000,
+		blurb = "A driftwood frame hung with kelp, lit by green lanterns",
+		colors = { Color3.fromRGB(132, 104, 76), Color3.fromRGB(64, 150, 74), Color3.fromRGB(170, 255, 140) },
+		glow = Color3.fromRGB(170, 255, 140),
+	},
+	{
+		id = "CoralArch",
+		name = "Coral Arch",
+		price = 5000,
+		blurb = "An arch of living reef: brain, staghorn, fans and anemones",
+		colors = {
+			Color3.fromRGB(255, 118, 132),
+			Color3.fromRGB(255, 160, 80),
+			Color3.fromRGB(110, 214, 200),
+		},
+		glow = Color3.fromRGB(255, 170, 140),
+	},
+	{
+		id = "BrassPorthole",
+		name = "Brass Porthole",
+		price = 12000,
+		level = 2,
+		blurb = "A ship's porthole the size of a door, riveted iron and brass",
+		colors = { Color3.fromRGB(214, 160, 70), Color3.fromRGB(46, 52, 60), Color3.fromRGB(255, 200, 110) },
+		glow = Color3.fromRGB(255, 200, 110),
+	},
+	{
+		id = "Whalebone",
+		name = "Whalebone Gate",
+		price = 30000,
+		level = 3,
+		blurb = "Great curved ribs meeting over the door, a spine along the top",
+		colors = { Color3.fromRGB(232, 226, 206), Color3.fromRGB(90, 78, 66), Color3.fromRGB(170, 240, 235) },
+		glow = Color3.fromRGB(170, 240, 235),
+	},
+	{
+		id = "CrystalGrotto",
+		name = "Crystal Grotto",
+		price = 60000,
+		level = 4,
+		blurb = "Glowing crystal growing out of the rock all round the door",
+		colors = {
+			Color3.fromRGB(110, 230, 255),
+			Color3.fromRGB(176, 110, 236),
+			Color3.fromRGB(140, 220, 255),
+		},
+		glow = Color3.fromRGB(140, 220, 255),
+	},
+	{
+		id = "AbyssalGate",
+		name = "Abyssal Gate",
+		price = 150000,
+		level = 5,
+		blurb = "Black stone, violet runes and two angler lures on stalks",
+		colors = { Color3.fromRGB(34, 32, 44), Color3.fromRGB(170, 90, 255), Color3.fromRGB(90, 240, 255) },
+		glow = Color3.fromRGB(170, 90, 255),
+	},
+	{
+		id = "MegalodonJaws",
+		name = "Megalodon Jaws",
+		price = 75000,
+		achievement = "MonsterHunter",
+		blurb = "Swim in through a Megalodon's open jaws",
+		colors = { Color3.fromRGB(236, 232, 220), Color3.fromRGB(84, 92, 96), Color3.fromRGB(196, 255, 170) },
+		glow = Color3.fromRGB(196, 255, 170),
+	},
+}
+
 local function index<T>(list: { T }): { [string]: T }
 	local map: { [string]: T } = {}
 	for _, entry in list do
@@ -1192,18 +1286,25 @@ return {
 	glowsById = index(glows),
 	floors = floors,
 	floorsById = index(floors),
+	doors = doors,
+	doorsById = index(doors),
 	-- The Den Expansion pass: this many more things placed, at any level
 	expansionCapacity = 25,
 	-- The main room's back wall at plaque height (local z), before and after the
 	-- Burrow carves it back (the trophy wall is seated on the real rock by raycast)
-	backWall = { -30, -90 },
+	backWall = { -36, -110 },
 	-- The furthest the rooms reach back and forward (local z): the den's block of
 	-- rock (DenCarve) and the safe zone (Layout.denAt)
-	maxBack = -180,
-	maxFront = 30,
+	maxBack = -220,
+	maxFront = 36,
 	-- The Haul Pool, near the front of the Nook: you come in over it, so swimming
 	-- home through your doorway banks your Haul (local z, and its radius)
-	pool = { z = 12, radius = 8 },
+	pool = { z = 14, radius = 9 },
+	-- The shape the placements are saved in (`den.layout`): 3 the private interiors
+	-- of 2026-10-16, 4 the bigger rooms and things of 2026-10-18. An older save is
+	-- moved over once (DenService `relayout`): across and along by `growth`, the v4
+	-- rooms' size over the v3 ones'.
+	layout = { current = 4, growth = 1.22 },
 	-- The way out: a bubble portal on the main storey's front wall (its middle's
 	-- height over the deck, and its radius)
 	exit = { y = 13, radius = 9 },

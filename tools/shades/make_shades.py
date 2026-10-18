@@ -831,25 +831,6 @@ def photophores(m: Fish, rows, spacing, radius):
     return out * span * (1 - m.fin)
 
 
-def skeleton(m: Fish):
-    """An x-ray skeleton drawn on the flanks: skull, spine, ribs, spines and fin rays."""
-    body = 1 - m.fin
-    spine = smoothstep(0.05, 0.02, np.abs(m.ez - 0.02)) * smoothstep(0.17, 0.22, m.y) * smoothstep(0.93, 0.87, m.y)
-    spine *= smoothstep(0.15, 0.35, 0.5 + 0.5 * np.cos(m.y * 2 * np.pi / 0.032))
-    ribs = np.zeros_like(m.y)
-    for yi in np.arange(0.25, 0.64, 0.042):
-        yr = yi + 0.05 * m.ez * m.ez
-        ribs = np.maximum(ribs, smoothstep(0.009, 0.0035, np.abs(m.y - yr)) * smoothstep(0.08, -0.05, m.ez) * smoothstep(-0.85, -0.65, m.ez))
-    for yi in np.arange(0.24, 0.86, 0.036):
-        yr = yi - 0.04 * m.ez
-        ribs = np.maximum(ribs, 0.8 * smoothstep(0.006, 0.0025, np.abs(m.y - yr)) * smoothstep(0.08, 0.2, m.ez) * smoothstep(0.75, 0.55, m.ez))
-    d = np.sqrt(((m.y - 0.12) / 0.095) ** 2 + (m.ez / 0.72) ** 2)
-    skull = smoothstep(0.07, 0.02, np.abs(d - 1)) * smoothstep(0.25, 0.2, m.y)
-    orbit = smoothstep(0.05, 0.015, np.abs(np.sqrt(((m.y - 0.09) / 0.03) ** 2 + ((m.ez - 0.2) / 0.2) ** 2) - 1))
-    rays = m.fin * smoothstep(0.86, 0.96, 0.5 + 0.5 * np.cos(m.theta * 18 + m.y * 20))
-    return np.clip((spine + ribs) * body + (skull + orbit) * body + rays, 0, 1)
-
-
 def flame_field(m: Fish, seed):
     warp = (fbm(m, 6, seed) - 0.5) * 0.5
     return m.up + 0.2 * np.sin(m.y * 46 + warp * 9) + warp * 0.6
@@ -1330,21 +1311,6 @@ def glacier(m):  # Ice in strata: layers of teal and cyan, a frosted cap, rime
     rgb = mix(rgb, (0.9, 0.97, 1.0), speckle(m, 180, 0.84, seed=36) * 0.7)
     rgb = sheen(m, rgb, 0.2, (0.9, 0.97, 1.0))
     return done(m, rgb, "gloss")
-
-
-def xray(m):  # A glowing skeleton seen through a dark body
-    rgb = coat(m, (0.03, 0.07, 0.16), (0.05, 0.12, 0.24), (0.04, 0.10, 0.22))
-    scan = 0.15 * (0.5 + 0.5 * np.sin(m.ez * 80))  # faint scanlines
-    rgb = mix(rgb, (0.05, 0.18, 0.30), scan)
-    bones = skeleton(m)
-    halo = glow_halo(bones, 6)
-    # Electric blue bones in a wide inner glow, not thin near-white lines on black:
-    # those scored high on the moderation classifier (screen, 2026-10-08)
-    rgb = mix(rgb, (0.15, 0.45, 1.0), halo * 0.65)
-    rgb = mix(rgb, (0.45, 0.72, 1.0), bones)
-    emit = bones[..., None] * C(0.35, 0.6, 1.0) + (halo * 0.3)[..., None] * C(0.15, 0.3, 1.0)
-    emit = emit + ndimage.gaussian_filter(emit, (4, 4, 0)) * 1.6
-    return done(m, rgb, "satin", emit=emit, detail=0.6)
 
 
 def divine(m):
@@ -3784,6 +3750,365 @@ def pass_abyssal_current(m):  # Abyssal Current: the deep's black-green water, a
         + (band * 0.35 + under * 0.2)[..., None] * C(0.05, 0.5, 0.45)
     )
     return done(m, rgb, "satin", emit=emit, detail=0.7)
+
+
+# ---------------------------------------------------------------------------
+# X-Ray (v13; owner, 2026-10-18: "X ray needs to be an actual skeleton too this looks
+# rough"): an anatomical skeleton laid out on the body's own side silhouette
+# ---------------------------------------------------------------------------
+
+
+def outline(m: Fish):
+    """The body's side silhouette with the fins left out, smooth along it: (u at the
+    bins' middles, the middle height there, half the height there), all in body
+    lengths (u along the body from the snout, heights in the print coordinates'
+    v, so on both flanks alike). Fish._cross_section's middle follows the median
+    texel and the fins pull it about (a straight spine drawn on it wandered with
+    the dorsal fins); this is the midpoint of the body's own top and bottom."""
+    if isinstance(m, Smooth):
+        m = m.base
+
+    def make():
+        mask, _, _ = blades(m)
+        body = m.real & (mask < 0.3)
+        u, z = m.y, m.p[..., 2]
+        bins = 64
+        idx = np.clip((u * bins).astype(int), 0, bins - 1)
+        top = np.full(bins, np.nan)
+        bot = np.full(bins, np.nan)
+        for b in range(bins):
+            sel = body & (idx == b)
+            if sel.sum() > 40:
+                top[b], bot[b] = np.percentile(z[sel], 97), np.percentile(z[sel], 3)
+        good = np.isfinite(top)
+        at = np.arange(bins)
+        top = np.interp(at, at[good], top[good])
+        bot = np.interp(at, at[good], bot[good])
+        top = ndimage.gaussian_filter1d(top, 1.6, mode="nearest")
+        bot = ndimage.gaussian_filter1d(bot, 1.6, mode="nearest")
+        centres = (at + 0.5) / bins
+        return centres, (top + bot) / 2, np.maximum((top - bot) / 2, 1e-3)
+
+    return cache(m, "outline", make)
+
+
+def curve(points, steps=6):
+    """A smooth polyline through `points` (Catmull-Rom, `steps` pieces between each
+    pair), for bones that bend."""
+    pts = np.asarray(points, np.float32)
+    if len(pts) < 3:
+        return pts
+    ext = np.concatenate([2 * pts[:1] - pts[1:2], pts, 2 * pts[-1:] - pts[-2:-1]])
+    out = []
+    for i in range(1, len(ext) - 2):
+        p0, p1, p2, p3 = ext[i - 1], ext[i], ext[i + 1], ext[i + 2]
+        for t in np.linspace(0, 1, steps, endpoint=False):
+            t2, t3 = t * t, t * t * t
+            out.append(0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3))
+    out.append(pts[-1])
+    return np.asarray(out, np.float32)
+
+
+def bones_along(m: Fish, U, V, bones, texel):
+    """Bones drawn along polylines in print coordinates (U along the body, V up, both
+    in body lengths): each bone is (points (k, 2), half-width at its start, at its
+    end). Returns (core 0..1 anti-aliased over about a texel and a half, roundness
+    0..1: 1 down a bone's middle, 0 at its edges, so it can be shaded as a rod)."""
+    core = np.zeros(U.shape, np.float32)
+    round_ = np.zeros(U.shape, np.float32)
+    real = m.real
+    for pts, w0, w1 in bones:
+        pts = np.asarray(pts, np.float32)
+        pad = max(w0, w1) + 3 * texel
+        lo, hi = pts.min(0) - pad, pts.max(0) + pad
+        sel = real & (U >= lo[0]) & (U <= hi[0]) & (V >= lo[1]) & (V <= hi[1])
+        if not sel.any():
+            continue
+        uu, vv = U[sel], V[sel]
+        seg = np.diff(pts, axis=0)
+        lens = np.linalg.norm(seg, axis=1)
+        total = max(float(lens.sum()), 1e-6)
+        cum = np.concatenate([[0.0], np.cumsum(lens)])
+        best = np.full(uu.shape, np.inf, np.float32)
+        ratio = np.full(uu.shape, np.inf, np.float32)
+        for k in range(len(seg)):
+            a, d = pts[k], seg[k]
+            t = np.clip(((uu - a[0]) * d[0] + (vv - a[1]) * d[1]) / max(float(d @ d), 1e-12), 0, 1)
+            dist = np.hypot(uu - a[0] - t * d[0], vv - a[1] - t * d[1])
+            s_ = (cum[k] + t * lens[k]) / total
+            w = w0 + (w1 - w0) * s_
+            edge = dist - w
+            better = edge < best
+            best = np.where(better, edge, best)
+            ratio = np.where(better, dist / np.maximum(w, 1e-6), ratio)
+        c = np.clip(0.5 - best / (1.5 * texel), 0, 1)
+        r = np.clip(1 - ratio, 0, 1) ** 0.5
+        core[sel] = np.maximum(core[sel], c)
+        round_[sel] = np.maximum(round_[sel], r * c)
+    return core, round_
+
+
+def fin_rays(m: Fish, texel, spacing=0.016, width=(0.0022, 0.0011)):
+    """The rays in every fin, fanning out from its root to its edge, in the fin's own
+    plane (a fin's texels' two main axes in 3D, so a pectoral that stands out
+    sideways is drawn flat on itself and both its faces agree): each ray a line from
+    a centre a little inside the body behind the root, one every `spacing` body
+    lengths at mid-fin, thinning out to the edge. (rays 0..1, membrane 0..1)."""
+    _, _, label = blades(m)
+    reach = fin_reach(m)
+    rays_ = np.zeros(m.y.shape, np.float32)
+    for k in np.unique(label):
+        if k < 0:
+            continue
+        sel = (label == k) & m.real
+        if sel.sum() < 200:
+            continue
+        P = m.p[sel]
+        mean = P.mean(0)
+        _, _, axes = np.linalg.svd(P - mean, full_matrices=False)
+        a, b = (P - mean) @ axes[0], (P - mean) @ axes[1]
+        r_sel = reach[sel]
+        root = r_sel < 0.12
+        tip = r_sel > 0.7
+        if root.sum() < 10 or tip.sum() < 10:
+            continue
+        ra, rb = float(a[root].mean()), float(b[root].mean())
+        ta, tb = float(a[tip].mean()), float(b[tip].mean())
+        da, db = ta - ra, tb - rb
+        span = max(float(np.hypot(da, db)), 1e-4)
+        da, db = da / span, db / span
+        # The fan's centre: back from the root, inside the body, about half the
+        # fin's length (a long-based fin gets nearly parallel rays)
+        root_len = float(np.ptp(-db * a[root] + da * b[root]))
+        back = 0.45 * span + 0.6 * root_len
+        ca, cb = ra - da * back, rb - db * back
+        rho = np.hypot(a - ca, b - cb)
+        phi = np.arctan2(b - cb, a - ca)
+        lo, hi = np.percentile(phi, [1, 99])
+        if hi - lo > np.pi:  # wrapped round
+            phi = np.where(phi < 0, phi + 2 * np.pi, phi)
+            lo, hi = np.percentile(phi, [1, 99])
+        mid = back + 0.5 * span
+        step = spacing / mid
+        count = max(int(round((hi - lo) / step)), 3)
+        step = (hi - lo) / count
+        f = (phi - lo) / step
+        off = np.abs(f - np.round(f)) * step * rho  # body lengths from the nearest ray
+        w = width[0] + (width[1] - width[0]) * np.clip(r_sel, 0, 1)
+        ray = np.clip(0.5 - (off - w) / (1.5 * texel), 0, 1)
+        # Each ray stops just short of the fin's free edge
+        ray *= smoothstep(1.0, 0.9, r_sel)
+        rays_[sel] = np.maximum(rays_[sel], ray)
+    return rays_
+
+
+def xray(m):  # X-Ray (v13): an anatomical skeleton glowing through a translucent deep-blue body
+    """The fish seen through an X-ray (owner, 2026-10-18: "X ray needs to be an actual
+    skeleton too this looks rough"; v3 was wavy stripes on a dark body). Laid out on
+    the body's own side silhouette (outline), so it reads side-on on both flanks:
+    the skull (the braincase over the eye, a bony ring round the eye, the skull's
+    floor running into the spine, upper and lower jaws to the jaw joint, the
+    preopercle and the gill cover's edge, the shoulder girdle behind it), the
+    vertebral column from the back of the skull to the tail (spool-shaped centra with
+    dark joints between), neural spines up from every vertebra, ribs curving down
+    and back round the belly cavity (a faint swim bladder under the spine), haemal
+    spines down the tail, the supports under the dorsal and anal fins, and rays in
+    every fin and the tail. Bones are ice-cyan with a wide soft blue glow on a
+    mid-toned deep-blue body, lighter where the body is thickest like an X-ray,
+    never thin near-white lines on black (the classifier reads those as skin); the
+    eyes and the bone-white teeth are the fish's own (done())."""
+    sm = smooth(m)
+    texel = texel_size(m)
+    fins, _ = fin_parts(m)
+    reach = fin_reach(m)
+    on_fin = hard(fins)
+    body = 1 - on_fin
+    U = m.y.astype(np.float32)
+    Z = m.p[..., 2].astype(np.float32)
+    cu, cmid, chalf = outline(m)
+    mid = np.interp(U, cu, cmid).astype(np.float32)
+    half = np.interp(U, cu, chalf).astype(np.float32)
+    W = (Z - mid) / half  # -1 belly .. +1 back, on the body's own silhouette
+
+    def mid_at(u):
+        return float(np.interp(u, cu, cmid))
+
+    def half_at(u):
+        return float(np.interp(u, cu, chalf))
+
+    def P(u, w):
+        """A point at `u` along the body, `w` up its height (-1 belly .. 1 back)."""
+        return (u, mid_at(u) + w * half_at(u))
+
+    # Landmarks from the fish itself: the eye, the mouth (its teeth), the fins
+    eye = (m.eyes > 0.5) & m.real
+    eu = float(np.median(U[eye])) if eye.any() else 0.16
+    ew = float(np.median(W[eye])) if eye.any() else 0.4
+    toothy = (m.teeth > 0.5) & m.real & (m.y < 0.3)
+    mw = float(np.median(W[toothy])) if toothy.any() else ew - 0.55
+    mouth_end = float(np.percentile(U[toothy], 97)) if toothy.any() else eu * 0.7
+    _, _, label = blades(m)
+    fins_at = []  # (u, w, |x|) at each fin's root
+    for k in np.unique(label):
+        if k < 0:
+            continue
+        sel = (label == k) & m.real & (reach < 0.15)
+        if sel.sum() < 20:
+            continue
+        fins_at.append((float(np.median(U[sel])), float(np.median(W[sel])), float(np.median(np.abs(sm.ex[sel]))), sel))
+    # The skull ends at the gill cover's edge: the fish's own painted gill line, the
+    # strongest painted line across the flank a little behind the eye
+    lines = own_lines(m)
+    band = m.real & (fins < 0.3) & (np.abs(W) < 0.6) & (U > eu + 0.03) & (U < eu + 0.16)
+    gill_u = eu * 1.48
+    if band.sum() > 200:
+        hist, edges = np.histogram(U[band], bins=40, range=(eu + 0.03, eu + 0.16), weights=lines[band])
+        counts, _ = np.histogram(U[band], bins=40, range=(eu + 0.03, eu + 0.16))
+        dens = ndimage.gaussian_filter1d(hist / np.maximum(counts, 1), 1.0)
+        gill_u = float((edges[:-1] + edges[1:])[np.argmax(dens)] / 2)
+    skull = gill_u + 0.004
+    tail = float(np.percentile(U[(m.real & (fins < 0.3))], 99.3)) - 0.01
+    tail = max(tail, skull + 0.3)
+
+    bones = []
+    # -- The vertebral column: a little above the middle, down to the middle at the tail
+    def spine_w(u):
+        k = np.clip((u - skull) / max(tail - skull, 1e-3), 0, 1)
+        return 0.12 * (1 - k**1.5)
+
+    count = int(np.clip(round((tail - skull) / 0.021), 18, 40))
+    step = (tail - skull) / count
+    col_w = lambda u: (0.0105 - 0.0045 * np.clip((u - skull) / max(tail - skull, 1e-3), 0, 1)) * min(1.0, half_at(0.45) / 0.09)  # noqa: E731
+    # Centra drawn as spools: a rounded box per vertebra, a little waisted, with a dark
+    # joint between each
+    s_ = (U - skull) / step
+    i_ = np.floor(s_)
+    frac = s_ - i_
+    along = (frac - 0.5) * step
+    vc = np.array([mid_at(u) + spine_w(u) * half_at(u) for u in cu], np.float32)
+    v_col = np.interp(U, cu, vc).astype(np.float32)
+    cw = np.array([col_w(u) for u in cu], np.float32)
+    colw = np.interp(U, cu, cw).astype(np.float32)
+    a_ = 0.42 * step
+    waist = 1 - 0.22 * (1 - (2 * np.abs(along) / step) ** 2)
+    b_ = colw * waist
+    rr = 0.45 * np.minimum(a_, b_)
+    qx = np.abs(along) - (a_ - rr)
+    qy = np.abs(Z - v_col) - (b_ - rr)
+    sd = np.hypot(np.maximum(qx, 0), np.maximum(qy, 0)) + np.minimum(np.maximum(qx, qy), 0) - rr
+    in_col = (U > skull - 0.002) & (U < tail + 0.004)
+    centra = np.clip(0.5 - sd / (1.5 * texel), 0, 1) * in_col
+    centra_round = np.clip(1 - np.abs(Z - v_col) / np.maximum(b_, 1e-4), 0, 1) ** 0.5 * centra
+    # The notochord's line through them, faint
+    cord = np.clip(0.5 - (np.abs(Z - v_col) - 0.0012) / (1.5 * texel), 0, 1) * in_col
+
+    # -- Neural spines (up), ribs (down and back round the cavity), haemal spines (down
+    # the tail)
+    cavity_end = skull + 0.55 * (tail - skull)
+    for j in range(count):
+        u = skull + (j + 0.5) * step
+        top = spine_w(u)
+        k = (u - skull) / (tail - skull)
+        lean = 0.028 + 0.03 * k
+        # Neural spine from the column's top up toward the back
+        bones.append(([P(u, top + 0.08), P(u + lean * 0.5, 0.5), P(u + lean, 0.8)], 0.0021, 0.0011))
+        if u < cavity_end:
+            # A rib: down from the column, bowing forward, then back round the belly
+            pts = []
+            for t in np.linspace(0, 1, 9):
+                du = -0.012 * np.sin(np.pi * t) + 0.055 * t**1.4
+                pts.append(P(u + du, top - 0.1 - (top + 0.72) * t))
+            bones.append((pts, 0.0025, 0.0012))
+        else:
+            # A haemal spine down from the tail's column
+            bones.append(([P(u, top - 0.08), P(u + lean * 0.5, -0.5), P(u + lean, -0.8)], 0.0021, 0.0011))
+    # Supports under the median fins (dorsal, anal): short rods into the body under
+    # each fin's base, between the spines
+    for fu, fw, fx, sel in fins_at:
+        if fx > 0.35 or fu > tail - 0.02 or abs(fw) < 0.5:
+            continue  # a paired fin, or the tail
+        lo, hi = np.percentile(U[sel], [5, 95])
+        sign = 1.0 if fw > 0 else -1.0
+        for uu in np.linspace(lo, hi, max(int((hi - lo) / 0.012), 3)):
+            bones.append(([P(uu, sign * 0.95), P(uu - 0.012, sign * 0.62)], 0.0022, 0.0013))
+
+    # -- The skull
+    ew_ = float(np.clip(ew, 0.1, 0.7))
+    occ = skull - 0.008
+    # The braincase: an arc over the eye from the snout to the back of the skull,
+    # curving down behind into the column
+    bones.append((curve([P(0.02, mw + 0.35), P(eu * 0.5, ew_ + 0.3), P(eu, ew_ + 0.44), P((eu + occ) / 2, 0.78), P(occ, 0.58), P(skull + 0.004, spine_w(skull) + 0.22)]), 0.0042, 0.0058))
+    # Its floor (the parasphenoid), from the snout under the eye into the column
+    bones.append((curve([P(0.03, mw + 0.12), P(eu * 0.6, ew_ - 0.3), P(eu + 0.03, ew_ - 0.42), P(skull, spine_w(skull))]), 0.0036, 0.0068))
+    # Upper jaw along the mouth, lower jaw under it back to the jaw joint
+    joint = (min(mouth_end + 0.02, eu + 0.01), mw - 0.15)
+    bones.append((curve([P(0.004, mw + 0.08), P(mouth_end * 0.6, mw + 0.14), P(joint[0] - 0.01, mw + 0.04)]), 0.0028, 0.0046))
+    bones.append((curve([P(0.006, mw - 0.1), P(mouth_end * 0.5, mw - 0.32), P(mouth_end, mw - 0.42), P(*joint)]), 0.0032, 0.0055))
+    # The bone from the braincase down behind the eye to the jaw joint (the
+    # hyomandibular), the preopercle's curve behind it and the gill cover's edge
+    pre = eu + 0.035 + 0.25 * (occ - eu)
+    bones.append((curve([P(eu + 0.028, ew_ + 0.4), P(eu + 0.03, ew_ - 0.1), P(*joint)]), 0.0028, 0.0034))
+    bones.append((curve([P(pre, ew_ + 0.12), P(pre + 0.004, mw - 0.25), P(pre - 0.012, -0.62), P(joint[0] + 0.004, -0.66)]), 0.0032, 0.0026))
+    gill = occ + 0.006
+    bones.append((curve([P(pre + 0.01, ew_ + 0.22), P(gill - 0.008, 0.38), P(gill, 0.0), P(gill - 0.006, -0.42), P(gill - 0.022, -0.74)]), 0.0024, 0.0018))
+    # Rays fanning under the gill cover (the branchiostegals)
+    for i in range(4):
+        bones.append((curve([P(joint[0] + 0.006 + 0.004 * i, -0.68 - 0.04 * i), P((joint[0] + gill) / 2 + 0.006 * i, -0.8 - 0.03 * i), P(gill - 0.02 + 0.004 * i, -0.86 - 0.02 * i)]), 0.0016, 0.0011))
+    # The shoulder girdle (cleithrum) behind the gill cover, down to the belly
+    cl = gill + 0.014
+    bones.append((curve([P(cl - 0.004, 0.62), P(cl + 0.003, 0.2), P(cl + 0.008, -0.3), P(cl + 0.002, -0.72), P(cl - 0.012, -0.9)]), 0.0036, 0.0026))
+    # Rods from it to each paired fin's root (pectorals, pelvics)
+    for fu, fw, fx, sel in fins_at:
+        if fx <= 0.35 or fu > tail - 0.05:
+            continue
+        w_root = float(np.clip(fw, -0.95, 0.6))
+        start = P(cl + 0.006, float(np.clip(w_root * 0.6, -0.8, 0.1)))
+        bones.append(([start, P(fu, w_root)], 0.0028, 0.0022))
+
+    core, rnd = bones_along(m, U, Z, bones, texel)
+    # The eye's bony ring (in the eye's own radius, round it)
+    ring_core = smoothstep(0.24, 0.12, np.abs(m.eye_dist - 1.5)) * (m.eyes < 0.5)
+    bones_ = np.maximum(np.maximum(core, centra), ring_core) * body
+    rnd = np.maximum(np.maximum(rnd, centra_round), ring_core * 0.6) * body
+    rays_ = fin_rays(m, texel) * on_fin
+    bone = np.clip(np.maximum(bones_, rays_ * 0.92), 0, 1)
+
+    # -- The body: translucent deep blue, lighter where it's thickest, as an X-ray shows
+    # flesh; a darker cavity under the spine with a faint swim bladder in it; fins a
+    # thin blue membrane
+    thick = np.clip(1 - np.abs(W) ** 1.6, 0, 1)
+    rgb = mix(board(m, (0.035, 0.10, 0.26)), (0.09, 0.25, 0.50), thick * 0.85)
+    cloud = fbm(m, 9, 1301)
+    rgb = rgb * (0.9 + 0.2 * cloud)[..., None]
+    cavity = smoothstep(skull + 0.01, skull + 0.04, U) * smoothstep(cavity_end + 0.02, cavity_end - 0.03, U)
+    cavity *= smoothstep(0.05, -0.05, W - np.interp(U, cu, [spine_w(x) for x in cu]) + 0.08) * smoothstep(-0.95, -0.7, W)
+    rgb = mix(rgb, (0.05, 0.12, 0.32), cavity * 0.45 * body)
+    bu = skull + 0.4 * (cavity_end - skull)
+    bl = 0.32 * (cavity_end - skull)
+    bladder = np.hypot((U - bu) / max(bl, 1e-3), (W + 0.12) / 0.26)
+    bladder = smoothstep(1.0, 0.75, bladder) * body
+    rgb = mix(rgb, (0.12, 0.34, 0.62), bladder * 0.55)
+    membrane = mix(board(m, (0.06, 0.20, 0.44)), (0.10, 0.30, 0.58), smoothstep(0.3, 1.0, reach))
+    rgb = mix(rgb, membrane, on_fin)
+    # The joints between the centra, dark
+    joints = smoothstep(0.1, 0.0, np.minimum(frac, 1 - frac)) * in_col * smoothstep(colw * 1.3, colw * 0.7, np.abs(Z - v_col))
+    rgb = mix(rgb, (0.03, 0.07, 0.2), joints * 0.6 * body)
+
+    # -- The bones: ice-cyan, lit down their middles, in a wide soft blue glow
+    halo = np.clip(ndimage.gaussian_filter(bone, 3.5) * 2.2, 0, 1)
+    wide = np.clip(ndimage.gaussian_filter(bone, 11) * 2.6, 0, 1)
+    rgb = mix(rgb, (0.10, 0.36, 0.82), wide * 0.35)
+    rgb = mix(rgb, (0.16, 0.50, 0.95), halo * 0.45)
+    bone_rgb = mix(board(m, (0.30, 0.62, 0.98)), (0.62, 0.88, 1.0), np.clip(rnd * 1.2, 0, 1))
+    rgb = mix(rgb, bone_rgb, bone)
+    rgb = mix(rgb, (0.66, 0.9, 1.0), cord * 0.35 * body)
+    emit = (
+        C(0.30, 0.58, 1.0) * bone[..., None]
+        + C(0.12, 0.32, 0.95) * (halo * 0.45)[..., None]
+        + C(0.08, 0.18, 0.7) * (wide * 0.3)[..., None]
+        + C(0.06, 0.18, 0.5) * (bladder * 0.25)[..., None]
+    )
+    return done(m, rgb, "satin", emit=emit, detail=0.8)
 
 
 RECIPES = {

@@ -36,6 +36,11 @@ export type Species = {
 	camera: number?, -- camera distance × this (thin fish sit closer so they read)
 	abilities: { string }, -- ability options (picked in its tree; the Nibbler has one)
 	signature: string, -- the ability on its button (Config/Abilities)
+	-- What it's good at and what to watch out for, short and kid-readable, from its
+	-- stats and signature (owner, 2026-10-18: "The perks for each fish and their
+	-- drawbacks need to be listed on the ui where the player selects their fish")
+	perks: { string },
+	drawbacks: { string },
 	unlock: Unlock,
 }
 
@@ -54,6 +59,15 @@ local list: { Species } = {
 		collider = 1,
 		abilities = { "Dash" },
 		signature = "Dash",
+		perks = {
+			"Good at everything, no weak spot",
+			"DASH: the quickest recharge of any fish",
+			"Free from the start",
+		},
+		drawbacks = {
+			"No special trick besides its Dash",
+			"Average bite and health",
+		},
 		unlock = { kind = "start" },
 	},
 	{
@@ -73,6 +87,16 @@ local list: { Species } = {
 		camera = 0.8,
 		abilities = { "Torpedo", "RazorBite", "SilverFlash" },
 		signature = "Torpedo",
+		perks = {
+			"Fastest fish in a straight line",
+			"TORPEDO: a long sprint nothing outruns",
+			"Bites a little harder",
+		},
+		drawbacks = {
+			"Turns wide",
+			"Less health than most",
+			"Can't dodge while Torpedoing",
+		},
 		unlock = { kind = "dna", biome = "KelpShallows", dna = 40, coral = 1500, level = 15 },
 	},
 	{
@@ -89,6 +113,16 @@ local list: { Species } = {
 		collider = 1.25,
 		abilities = { "PuffUp", "SpikeBurst", "ToxicCloud" },
 		signature = "PuffUp",
+		perks = {
+			"Most health of any fish",
+			"PUFF UP: can't be swallowed, hurts biters",
+			"Turns quickly",
+		},
+		drawbacks = {
+			"Slowest swimmer",
+			"Weak bite",
+			"Very slow while puffed up",
+		},
 		unlock = { kind = "dna", biome = "CoralReef", dna = 100, coral = 2500 },
 	},
 	{
@@ -106,6 +140,16 @@ local list: { Species } = {
 		camera = 0.8,
 		abilities = { "Strike", "Burrow", "Shock" },
 		signature = "Burrow",
+		perks = {
+			"Sharpest turns of any fish",
+			"Thin: slips through gaps others can't",
+			"BURROW: hide in rock, then ambush ×1.6",
+			"Quick, with a strong bite",
+		},
+		drawbacks = {
+			"A little less health",
+			"Burrow needs rock or a wreck nearby",
+		},
 		unlock = { kind = "dna", biome = "ShipwreckGraveyard", dna = 120, coral = 6000 },
 	},
 	{
@@ -122,6 +166,15 @@ local list: { Species } = {
 		collider = 1,
 		abilities = { "Frenzy", "BloodSense", "Ram" },
 		signature = "BloodSense",
+		perks = {
+			"Hardest bite of any fish",
+			"BLOOD SENSE: see every fish through rock",
+			"Quick and tough",
+		},
+		drawbacks = {
+			"Turns a bit wide",
+			"Blood Sense takes 24 s to recharge",
+		},
 		unlock = { kind = "dna", biome = "OpenBlue", dna = 150, coral = 15000 },
 	},
 	{
@@ -138,6 +191,15 @@ local list: { Species } = {
 		collider = 1.1,
 		abilities = { "Lure", "LanternFlash", "DeepSight" },
 		signature = "LanternFlash",
+		perks = {
+			"Big bite and lots of health",
+			"LANTERN FLASH: stuns predators near you",
+			"Its lure lights up dark water",
+		},
+		drawbacks = {
+			"Slow swimmer",
+			"Turns wide",
+		},
 		unlock = { kind = "dna", biome = "AbyssalTrench", dna = 200, coral = 40000 },
 	},
 }

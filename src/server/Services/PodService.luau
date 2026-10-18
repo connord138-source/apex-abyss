@@ -180,8 +180,8 @@ local function shareKill(eater: Player, _victim: Player, gain: number)
 	for _, mate in PodService.mates(eater) do
 		local _, root = FishService.character(mate)
 		if root and (root.Position - eaterRoot.Position).Magnitude <= tune.shareRange then
-			-- (the kill took the eater's Haul rate already: "sized")
-			local added = HuntService.gain(mate, gain * tune.killShare, "sized")
+			-- (the kill took the eater's Haul rate already: "rated")
+			local added = HuntService.gain(mate, gain * tune.killShare, "rated")
 			if added > 0 then
 				Net.notify(
 					mate,

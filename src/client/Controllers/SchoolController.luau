@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 local Schools = require(ReplicatedStorage.Shared.Schools)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
@@ -535,6 +536,53 @@ function SchoolController.nearestEdible(from: Vector3, length: number, range: nu
 	return best
 end
 
+-- The prey fish a fish `length` long could swallow within `range` studs of `from`,
+-- drawn and showing, nearest first, at most `count` (Blood Sense marks them,
+-- AbilityController): each one's drawn body (its rigged Model, or its part) and how
+-- far off it is
+function SchoolController.edibleNear(
+	from: Vector3,
+	length: number,
+	range: number,
+	count: number
+): { { instance: Instance, distance: number } }
+	local now = Timing.clock()
+	local found: { { instance: Instance, distance: number } } = {}
+	if count <= 0 then
+		return found
+	end
+	for schoolIndex, school in Schools.list do
+		if (school.center - from).Magnitude > range + school.radius or tideOff[schoolIndex] then
+			continue
+		end
+		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
+		for index = school.first, school.first + school.count - 1 do
+			local fish = Schools.fish[index]
+			local visual = visuals[index]
+			if
+				visual == nil
+				or visual.hidden
+				or visual.suckFrom ~= nil
+				or not Size.canSwallow(length, fish.length)
+			then
+				continue
+			end
+			local distance = (Schools.fishFrame(index, schoolFrame, now).Position - from).Magnitude
+			if distance <= range then
+				local body: Instance = visual.model or visual.body
+				table.insert(found, { instance = body, distance = distance })
+			end
+		end
+	end
+	table.sort(found, function(a, b)
+		return a.distance < b.distance
+	end)
+	while #found > count do
+		table.remove(found)
+	end
+	return found
+end
+
 local function onRarity(indices: { number }, codes: { number })
 	for i, index in indices do
 		local code = codes[i]
@@ -568,10 +616,15 @@ local function step(dt: number)
 	local mouth: Vector3? = nil
 	local reach = Size.reach(length)
 	local inHub = false
+	-- A Reef Shark's Blood Sense frenzy draws prey in from further (Perks.sense; the
+	-- server allows the same)
+	local suction = 1
 	if root then
 		mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
 		local character = SwimController.character()
 		inHub = character ~= nil and character:GetAttribute("InHub") == true
+		local _, pull = Perks.sense(character, now)
+		suction = pull
 	end
 
 	table.clear(parts)
@@ -723,6 +776,8 @@ local function step(dt: number)
 				local inReach = false
 				if open and swallow then
 					local eatReach, pullRange = Schools.eatReach(length, fish.radius)
+					eatReach *= suction
+					pullRange *= suction
 					if gap < pullRange then
 						local share = (1 - gap / pullRange) * Config.Prey.eat.pullShare
 						frame = CFrame.new(frame.Position:Lerp(mouth :: Vector3, share)) * frame.Rotation

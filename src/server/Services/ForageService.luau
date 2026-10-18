@@ -90,6 +90,7 @@ local function onEat(player: Player, batch: any)
 		return
 	end
 	local now = Timing.clock()
+	local suction = HuntService.suction(player) -- (a Reef Shark's Blood Sense frenzy)
 	local fed = 0
 	local count = 0
 	for _, index in batch do
@@ -101,7 +102,8 @@ local function onEat(player: Player, batch: any)
 		end
 		local spot = spots[index]
 		-- The client's reach, its suction pull (eats from up to ~1.3 × reach) and a hop
-		local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * 1.35 + Forage.HOP
+		local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * 1.35 * suction
+			+ Forage.HOP
 		if (spot.position - mouth).Magnitude > reach + slack then
 			continue
 		end

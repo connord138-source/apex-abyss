@@ -47,6 +47,24 @@ local FishAnimator = {}
 local states: { [Model]: FishState } = {}
 local clock = 0
 
+-- The bank's growth sequence (BankController): your own fish drawn back at the size
+-- it started the dive at, then growing to its new banked size with a pop, instead of
+-- the spring toward the server's length (owner, 2026-10-18: "needs to be animation
+-- when they drop the haul off showing the fish getting bigger too")
+type GrowthShow = {
+	character: Model,
+	from: number, -- the length before the bank
+	to: number, -- the length after it
+	pop: number, -- how far past `to` the pop overshoots
+	start: number, -- `clock` when it began
+	duration: number,
+	startLength: number?, -- the length drawn when it began (taken on the first frame)
+}
+local growth: GrowthShow? = nil
+local SHRINK = 0.15 -- share of the show easing back to the old size
+local HOLD = 0.3 -- ...and holding it, before the growth
+local OVERSHOOT_AT = 0.45 -- share of the growth spent rising past the new size
+
 -- The bones of an imported mesh body, by name, and its spine order (Spine1..N then
 -- Tail), or nothing for a part body.
 local function bonesOf(body: Model): ({ [string]: Bone }, { string })
@@ -122,6 +140,38 @@ local function stateOf(character: Model): FishState?
 	return state
 end
 
+-- The bank's growth sequence on your own fish: from its drawn size back to `from`,
+-- a beat, then up to `to` with a pop, over `seconds` (BankController). Returns the
+-- moment (seconds from now) the growth itself starts, for the sparkles and sound.
+function FishAnimator.showGrowth(from: number, to: number, seconds: number): number
+	local character = Players.LocalPlayer.Character
+	if character == nil then
+		return 0
+	end
+	growth = {
+		character = character,
+		from = from,
+		to = to,
+		pop = math.max(to * 0.1, (to - from) * 0.3),
+		start = clock,
+		duration = seconds,
+		startLength = nil,
+	}
+	return seconds * (SHRINK + HOLD)
+end
+
+-- Ends the growth sequence now (skipped): the fish springs on to its real size
+function FishAnimator.endGrowth()
+	growth = nil
+end
+
+-- The length your own fish is drawn at right now (the growth card counts with it)
+function FishAnimator.drawnLength(): number?
+	local character = Players.LocalPlayer.Character
+	local state = if character then states[character] else nil
+	return if state then state.length else nil
+end
+
 -- Snaps a fish's jaw (its bite, or the server telling us someone bit).
 function FishAnimator.snap(character: Model)
 	local state = stateOf(character)
@@ -169,7 +219,9 @@ local function dress(character: Model, state: FishState)
 	local key = `{shade}|{character:GetAttribute("Parts")}|{character:GetAttribute("Variant")}|{if skin
 		then SkinLoader.state(skin)
 		else ""}`
+	-- (not mid growth sequence: it dips and pops, and would re-dress twice)
 	local grown = math.abs(state.length - state.dressLength) > state.dressLength * 0.25
+		and not (growth and growth.character == character)
 	if key == state.dressKey and not grown then
 		return
 	end
@@ -187,10 +239,38 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 	dress(character, state)
 	local shade = character:GetAttribute("Shade")
 	Cosmetics.animate(state.body, if typeof(shade) == "string" and shade ~= "" then shade else nil, clock)
-	-- Growth: spring toward the server's length
-	local target = character:GetAttribute("Length")
-	if typeof(target) == "number" then
-		state.length, state.lengthVelocity = Spring.number(state.length, state.lengthVelocity, target, 7, dt)
+	-- Growth: spring toward the server's length (or the bank's growth sequence)
+	local show = growth
+	if show and show.character == character then
+		local startLength = show.startLength or state.length
+		show.startLength = startLength
+		local t = (clock - show.start) / show.duration
+		if t >= 1 then
+			growth = nil
+			state.length, state.lengthVelocity = show.to, 0
+		elseif t < SHRINK then
+			local u = t / SHRINK
+			state.length = startLength + (show.from - startLength) * (1 - (1 - u) ^ 2)
+		elseif t < SHRINK + HOLD then
+			state.length = show.from
+		else
+			-- Up past the new size, then a damped wobble settling on it
+			local u = (t - SHRINK - HOLD) / (1 - SHRINK - HOLD)
+			if u < OVERSHOOT_AT then
+				local v = u / OVERSHOOT_AT
+				state.length = show.from + (show.to + show.pop - show.from) * (1 - (1 - v) ^ 2)
+			else
+				local v = (u - OVERSHOOT_AT) / (1 - OVERSHOOT_AT)
+				state.length = show.to + show.pop * math.exp(-4 * v) * math.cos(3 * math.pi * v)
+			end
+		end
+		state.lengthVelocity = 0
+	else
+		local target = character:GetAttribute("Length")
+		if typeof(target) == "number" then
+			state.length, state.lengthVelocity =
+				Spring.number(state.length, state.lengthVelocity, target, 7, dt)
+		end
 	end
 	-- Puffed up (Config/Abilities PuffUp): swells with a bounce, shrinks when it ends
 	local puffed = character:GetAttribute("Puffed")

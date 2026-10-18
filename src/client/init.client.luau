@@ -5,6 +5,7 @@ local Ads = require(script.Ads)
 local ClientState = require(script.ClientState)
 local Input = require(script.Input)
 local Store = require(script.Store)
+local BankController = require(script.Controllers.BankController)
 local BiomeController = require(script.Controllers.BiomeController)
 local BuildController = require(script.Controllers.BuildController)
 local DenDoorController = require(script.Controllers.DenDoorController)
@@ -17,6 +18,7 @@ local PvpController = require(script.Controllers.PvpController)
 local HookController = require(script.Controllers.HookController)
 local GardenController = require(script.Controllers.GardenController)
 local HealController = require(script.Controllers.HealController)
+local ItemBarController = require(script.Controllers.ItemBarController)
 local ItemWheelController = require(script.Controllers.ItemWheelController)
 local HintController = require(script.Controllers.HintController)
 local HudController = require(script.Controllers.HudController)
@@ -68,6 +70,8 @@ TutorialController.start() -- the first-session steps and markers
 TreasureController.start() -- treasure maps: sonar, the X, digging
 HealController.start() -- Kelp Wraps: H / LB / HEAL, the glow
 ItemWheelController.start() -- the item wheel: G / hold LB / ITEMS, wraps and timed charms used when picked
+ItemBarController.start() -- the item bar beside the Haul card: 1-4 / H / LB / tap, with counts and cooldowns
+BankController.start() -- the bank's growth sequence: side-on camera, the fish growing, before → after
 HintController.start() -- EAT / BITE / DANGER / TOO BIG hints while hunting
 CameraController.start()
 FishAnimator.start()

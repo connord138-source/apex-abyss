@@ -345,6 +345,10 @@ end
 function Ui.stageWait(): number
 	return math.max(0, stageHeldUntil - os.clock())
 end
+-- Frees the stage now (the bank's growth sequence, skipped)
+function Ui.releaseStage()
+	stageHeldUntil = os.clock()
+end
 
 function Ui.clearTideBanner()
 	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")

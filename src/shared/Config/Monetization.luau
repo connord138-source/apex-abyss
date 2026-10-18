@@ -168,11 +168,13 @@ local Monetization = {
 		doubleHaul = {
 			minLevels = 2,
 			tiers = {
-				{ key = "DoubleHaulSmall", maxKg = 60 },
-				{ key = "DoubleHaulBig", maxKg = 2500 },
+				-- (× 0.35 on 2026-10-18 with the Haul rate, so the same dives land in
+				-- the same tiers)
+				{ key = "DoubleHaulSmall", maxKg = 21 },
+				{ key = "DoubleHaulBig", maxKg = 875 },
 				{ key = "DoubleHaulHuge", maxKg = math.huge },
 			},
-			adMaxKg = 60,
+			adMaxKg = 21,
 		},
 		-- Free perks. Roblox Premium (owner, 2026-10-12; Creator Rewards pay for paying
 		-- players' time in the game): more coral, bigger playtime gifts, a free wheel

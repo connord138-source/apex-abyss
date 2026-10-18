@@ -96,6 +96,13 @@
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/530c2fa1-0323-4260-9b50-5e3730712f0a.zip",
       "into": "assets/glb",
       "contents": "furniture/<Name>.glb: the 38 den furniture pieces of batch 1 (Config/Dens items with a `set`), each cut off its approved board (assets/concepts/Furn*.jpg) and made with Tripo image_to_model (tools/tripo_jobs_furniture_models.json). Every normal map taken out by tools/props/strip_normals.py (never upload a normal map), base colors moved out of skin tones by tools/props/safe_colors.py (the Kraken eye repainted amber first), and all 76 images (color + ORM) cleared by screen_shades.py with the classifier (highest 0.11). Front faces +X in the GLB. sha256 55f68372..."
+    },
+    "ruins_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/dd8e5544-e518-472b-a6b7-1e47f1b951f1.zip",
+      "into": "assets/glb",
+      "sha256": "b28a74fe758a4c8755fd37d85da9dec47976fa21acc66c118399018eedb5abf2",
+      "contents": "props/<Name>.glb: the Sunken Ruins' hero props (2026-10-18, owner: \"Sunken ruins need an extreme update with the structures and detail\"), Tripo text_to_model (tools/tripo_jobs_ruins_props.json) in the approved BiomeSunkenRuins concept's blue-grey and seafoam marble: RuinHead (a colossal statue head broken at the neck, face +X), RuinHand (a giant stone hand), RuinGuardian (a sea-dragon sphinx on a plinth, face +Z), RuinUrn (a teal amphora), RuinCapital (a fallen Ionic capital on a shaft stub, scrolls on +-Z), RuinStele (a glyph tablet, face +X). Ruins.luau fits each over its part-built stand-in (Props.dress, solid).",
+      "clean": "Normal maps stripped by tools/props/strip_normals.py (one per GLB); base colours through safe_colors.py (the head's and urn's peach chips to cool white: skin 0.1% / 1.3% -> 0.0%); all 12 images (Color + ORM) cleared by screen_shades.py with the classifier, none flagged, highest 0.056 (RuinUrn ORM)."
     }
   }
 }

@@ -976,6 +976,14 @@ function RollController.start()
 		RollController.roll()
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.R)
+	-- I opens the INDEX (what to do next; the tutorial's last step asks for it)
+	ContextActionService:BindAction("ApexIndexKey", function(_, inputState)
+		if inputState ~= Enum.UserInputState.Begin or MenuController.isOpen() or Input.locked then
+			return Enum.ContextActionResult.Pass
+		end
+		MenuController.openIndex()
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.I)
 	-- The roll button breathes while a roll is ready; a lost request frees it again
 	RunService.Heartbeat:Connect(function()
 		if rollButton.Visible and not busy then

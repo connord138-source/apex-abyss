@@ -10,7 +10,12 @@
 --     and an arrow on the card, so there's always somewhere to swim
 --   * markers that point the way (the hub's exits breathe, BANK HERE at the pool)
 --   * a cursor tip: how to free the mouse for buttons and menus
---   * a celebration when it's done (the 'Cuda unlocked, a first roll ready)
+--   * a celebration when it's done
+-- Since 2026-10-18 it walks a whole first loop (owner: "show them how to complete a
+-- full cycle of hunting, storing, spinning, etc."): the trail also leads to the
+-- Treasure Wheel's red button, the Haul step counts the Haul against its target in
+-- kg, and the steps done at the HUD (ROLL, the item bar's Kelp Wrap, INDEX) get a
+-- ring breathing round that button instead of a trail (`point`).
 -- The server counts the steps (TutorialService).
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -56,11 +61,15 @@ local target: Vector3? = nil
 local guideKind: string? = nil
 local nextSearch = 0
 
+local pointRing: Frame? = nil -- the ring round the HUD button a step needs
+local pointKind: string? = nil
+local pointedAt: GuiObject? = nil
+
 local TRAIL_DOTS = 9 -- lights between the fish and the target
 local TRAIL_NEAR = 14 -- studs: the trail goes out this close to the target
 local TRAIL_SPAN = 90 -- studs: the trail reaches this far ahead at most
 local SEARCH_RANGE = 420 -- studs: how far the guide looks for food or a shell
-local PANEL_HEIGHT = 176
+local PANEL_HEIGHT = 194
 
 -- A floating label in the world, visible through walls: thin text and a short
 -- line, breathing slowly (owner, 2026-10-08: the old chips were "a flashing blue
@@ -217,8 +226,83 @@ local function findTarget(kind: string?, from: Vector3, s: { [string]: any }): V
 		return fish or food
 	elseif kind == "shells" then
 		return ShellController.nearest(from, SEARCH_RANGE)
+	elseif kind == "wheel" then
+		-- The Treasure Wheel's red button (WheelService publishes where it is); from a
+		-- den, through its way out first
+		local den = Layout.denAt(from)
+		if den then
+			return Layout.exitFrame(den).Position
+		end
+		local wheelState = ReplicatedStorage:FindFirstChild("WheelState")
+		local at = if wheelState then wheelState:GetAttribute("ButtonPosition") else nil
+		return if typeof(at) == "Vector3" then at else nil
 	end
 	return nil
+end
+
+-- The HUD button a `point` step needs (ROLL and INDEX on the wallet's row, the item
+-- bar's Kelp Wrap), while it's on screen
+local function pointTarget(kind: string): GuiObject?
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if playerGui == nil then
+		return nil
+	end
+	local found: Instance? = nil
+	if kind == "Roll" or kind == "Index" then
+		local wallet = playerGui:FindFirstChild("Wallet")
+		local buttons = wallet and wallet:FindFirstChild("Buttons", true)
+		found = buttons and buttons:FindFirstChild(kind)
+	elseif kind == "Wrap" then
+		local bar = playerGui:FindFirstChild("ItemBar")
+		found = bar and bar:FindFirstChild("KelpWrap", true)
+	end
+	if found and found:IsA("GuiObject") and found.Visible then
+		return found
+	end
+	return nil
+end
+
+-- A ring of light breathing round a HUD button, with a small arrow over it
+local function ringRound(target: GuiObject)
+	if pointRing then
+		pointRing:Destroy()
+	end
+	local ring = Instance.new("Frame")
+	ring.Name = "TutorialRing"
+	ring.BackgroundTransparency = 1
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.new(1, 14, 1, 14)
+	ring.ZIndex = 20
+	Ui.corner(ring, UDim.new(0, 14))
+	local stroke = Ui.stroke(ring, Ui.color.haul, 0, 3)
+	local arrow = Ui.label(
+		ring,
+		"Arrow",
+		"▼",
+		Ui.FONT_HEAVY,
+		18,
+		Ui.color.haul,
+		UDim2.fromOffset(24, 20),
+		UDim2.new(0.5, -12, 0, -24)
+	)
+	arrow.TextXAlignment = Enum.TextXAlignment.Center
+	arrow.TextStrokeTransparency = 0.4
+	arrow.ZIndex = 20
+	local info = TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	TweenService:Create(stroke, info, { Transparency = 0.6 }):Play()
+	TweenService:Create(arrow, info, { Position = UDim2.new(0.5, -12, 0, -32) }):Play()
+	ring.Parent = target
+	pointRing = ring
+	pointedAt = target
+end
+
+local function clearPoint()
+	if pointRing then
+		pointRing:Destroy()
+	end
+	pointRing = nil
+	pointedAt = nil
 end
 
 -- The trail of lights: small glowing beads on a straight line from the fish to the
@@ -278,12 +362,10 @@ local function drawTrail(from: Vector3, to: Vector3, t: number)
 end
 
 local function celebrate()
-	-- The bank that finishes the tutorial has its own "+kg BANKED" in the same
-	-- spot; wait for it to clear (they once drew on top of each other)
-	local hud = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-	local hudGui = hud and hud:FindFirstChild("Hud")
-	local waited = task.wait(0.3) -- the bank's own event can land just after this one
-	while hudGui and hudGui:FindFirstChild("Banked") and waited < 4 do
+	-- A big moment on the stage (the bank's growth sequence, a roll's reveal) goes
+	-- first; they once drew on top of each other
+	local waited = task.wait(0.3)
+	while Ui.stageWait() > 0 and waited < 8 do
 		waited += task.wait(0.1)
 	end
 	Ui.clearTideBanner()
@@ -311,7 +393,7 @@ local function celebrate()
 	local sub = Ui.label(
 		holder,
 		"Sub",
-		`Your first roll is ready · INDEX shows what's next · Nibbler LV {cuda.unlock.level or 15} unlocks the {cuda.name}`,
+		`INDEX shows what's next · Nibbler LV {cuda.unlock.level or 15} unlocks the {cuda.name}`,
 		Ui.FONT_BOLD,
 		20,
 		Ui.color.text,
@@ -401,6 +483,8 @@ local function onState(s: { [string]: any })
 		panel.Visible = false
 		showMarkers(nil, s)
 		guideKind = nil
+		pointKind = nil
+		clearPoint()
 		target = nil
 		hideTrail()
 		if wasDone == false then
@@ -418,7 +502,13 @@ local function onState(s: { [string]: any })
 	header.Text = `TUTORIAL · STEP {tutorial.step} OF {#Tutorial.steps}`
 	stepText.Text = step.text
 	local progress = math.min(tutorial.progress or 0, step.goal)
-	countText.Text = if step.goal > 1 then `{progress} / {step.goal}` else ""
+	if step.event == "haul" then
+		-- The Haul against its target, in kg (the server counts it in percent)
+		local haulTarget = TutorialConfig.haulTarget(s.mass or 1)
+		countText.Text = `{Format.mass(math.min(s.haul or 0, haulTarget))} / {Format.mass(haulTarget)}`
+	else
+		countText.Text = if step.goal > 1 then `{progress} / {step.goal}` else ""
+	end
 	Ui.tween(fill, 0.35, { Size = UDim2.fromScale(progress / step.goal, 1) })
 	if tutorial.step ~= shownStep then
 		-- A new step: a little bounce so it's noticed, and its keys
@@ -433,6 +523,8 @@ local function onState(s: { [string]: any })
 		showControls(step)
 		tipLine.Text = cursorTip()
 		guideKind = step.guide
+		pointKind = step.point
+		clearPoint()
 		target = nil
 		nextSearch = 0
 	end
@@ -440,7 +532,39 @@ local function onState(s: { [string]: any })
 end
 
 -- Every frame: find or refresh the target, draw the trail, write the distance
+local POINT_LINES: { [string]: string } = {
+	Roll = "The gold ROLL button, under your wallet",
+	Wrap = "Your item bar, left of the Haul card",
+	Index = "The INDEX button, under your wallet",
+}
+
+-- A `point` step: keep a ring on its HUD button (it can appear late, after the
+-- server's grant arrives, and be rebuilt)
+local function stepPoint()
+	local kind = pointKind
+	if kind == nil or not panel.Visible then
+		clearPoint()
+		return
+	end
+	if pointedAt == nil or pointedAt.Parent == nil or not pointedAt.Visible or pointRing == nil or pointRing.Parent == nil then
+		clearPoint()
+		local found = pointTarget(kind)
+		if found then
+			ringRound(found)
+		end
+	end
+	guideArrow.Visible = false
+	guideLine.Text = POINT_LINES[kind] or ""
+	guideLine.Visible = true
+end
+
 local function step(_dt: number)
+	if pointKind ~= nil and panel.Visible then
+		hideTrail()
+		stepPoint()
+		return
+	end
+	clearPoint()
 	if not panel.Visible or guideKind == nil then
 		hideTrail()
 		guideLine.Visible = false
@@ -477,6 +601,7 @@ local function step(_dt: number)
 		then "the nearest exit"
 		elseif guideKind == "den" then "your den's pool"
 		elseif guideKind == "shells" then "the nearest shell"
+		elseif guideKind == "wheel" then "the Treasure Wheel"
 		else "the nearest food"
 	local vertical = if offset.Y > 8 then " · above you" elseif offset.Y < -8 then " · below you" else ""
 	guideLine.Text = `{Format.distance(distance)} to {what}{vertical}`
@@ -509,7 +634,7 @@ function TutorialController.start()
 		Ui.FONT_SEMI,
 		14,
 		Ui.color.text,
-		UDim2.new(1, -28, 0, 38),
+		UDim2.new(1, -28, 0, 56),
 		UDim2.fromOffset(14, 28)
 	)
 	stepText.TextWrapped = true
@@ -521,14 +646,14 @@ function TutorialController.start()
 		Ui.FONT_BOLD,
 		12,
 		Ui.color.muted,
-		UDim2.fromOffset(80, 14),
-		UDim2.new(1, -94, 0, 10)
+		UDim2.fromOffset(120, 14),
+		UDim2.new(1, -134, 0, 10)
 	)
 	countText.TextXAlignment = Enum.TextXAlignment.Right
 	capsRow = Instance.new("Frame")
 	capsRow.Name = "Controls"
 	capsRow.BackgroundTransparency = 1
-	capsRow.Position = UDim2.fromOffset(14, 70)
+	capsRow.Position = UDim2.fromOffset(14, 88)
 	capsRow.Size = UDim2.new(1, -28, 0, 50)
 	capsRow.Parent = panel
 	-- The guide: an arrow and the distance to the step's target
@@ -540,10 +665,10 @@ function TutorialController.start()
 		16,
 		Ui.color.accent,
 		UDim2.fromOffset(18, 18),
-		UDim2.fromOffset(14, 124)
+		UDim2.fromOffset(14, 142)
 	)
 	guideArrow.AnchorPoint = Vector2.new(0.5, 0.5)
-	guideArrow.Position = UDim2.fromOffset(23, 133)
+	guideArrow.Position = UDim2.fromOffset(23, 151)
 	guideArrow.TextXAlignment = Enum.TextXAlignment.Center
 	guideArrow.Visible = false
 	guideLine = Ui.label(
@@ -554,7 +679,7 @@ function TutorialController.start()
 		12,
 		Ui.color.accent,
 		UDim2.new(1, -50, 0, 16),
-		UDim2.fromOffset(36, 125)
+		UDim2.fromOffset(36, 143)
 	)
 	guideLine.Visible = false
 	tipLine = Ui.label(
@@ -565,7 +690,7 @@ function TutorialController.start()
 		11,
 		Ui.color.muted,
 		UDim2.new(1, -28, 0, 14),
-		UDim2.fromOffset(14, 142)
+		UDim2.fromOffset(14, 160)
 	)
 	tipLine.TextWrapped = true
 	local _, bar =

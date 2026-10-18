@@ -459,6 +459,156 @@ end
 check(math.abs(lookRate(1, cam.gamepadCurve) - cam.gamepadSpeed) < 1e-9, "full tilt keeps the top look speed")
 check(math.abs(steerOf(1, 1) - 1) < 1e-9 and math.abs(steerOf(1, 0) - 1) < 1e-9, "full steer stays full")
 
+-- Speeds (owner, 2026-10-18: "Speed also scales far too high from level 1 to lvl
+-- 100 ... I do like how the bigger a fish is the easier they catch smaller prey"):
+-- the top speed by level and species, the old curve beside it, and how long the
+-- 3,000-stud map takes in a straight line, cruising and with every boost chained
+print("\n== Top speed (studs/s): cruise / Dash or Torpedo (×boostMultiplier); old curve in brackets ==")
+local Species = require("./Species")
+local Abilities = require("./Abilities")
+local Shop = require("./Shop")
+local Pvp = require("./Pvp")
+local size = Tuning.size
+local FINS_MAX = 1 + Shop.upgradesById.Fins.per * #Shop.upgradesById.Fins.costs
+local GILLS_MAX = 1 + Shop.upgradesById.Gills.per * #Shop.upgradesById.Gills.costs
+local SLIP = Pvp.pods.slipstream.speed
+local function oldTop(length: number): number
+	return swim.baseSpeed * Size.raw(length) ^ swim.speedExponent
+end
+local function lengthAt(level: number): number
+	return Size.length(Size.massForLevel(level))
+end
+local SHOWN = { "Nibbler", "Cuda", "ReefShark", "Pufferfish" }
+local header = "LV   "
+for _, id in SHOWN do
+	header ..= string.format("%-24s", id)
+end
+print(header)
+for _, level in { 1, 10, 25, 40, 60, 80, 100 } do
+	local length = lengthAt(level)
+	local line = string.format("%-5d", level)
+	for _, id in SHOWN do
+		local mul = Species.byId[id].stats.speed
+		local top = Size.topSpeed(length) * mul
+		line ..= string.format(
+			"%-24s",
+			string.format("%.1f / %.0f (%.0f)", top, top * swim.boostMultiplier, oldTop(length) * mul)
+		)
+	end
+	print(line)
+end
+do
+	local full = Size.length(Size.massForLevel(100) * size.haulLengthCap ^ 3)
+	print(`LV 100 with a full Haul: {fmt(Size.topSpeed(full), 1)} (old {fmt(oldTop(full), 1)})`)
+end
+
+-- Every size is faster than any smaller one (bigger fish still catch smaller prey
+-- easier), the curve under the knee is the old one, and the knee joins smoothly
+do
+	local last = 0
+	for level = 1, 100 do
+		for _, haul in { 1, 1.3, size.haulLengthCap } do
+			local top = Size.topSpeed(Size.length(Size.massForLevel(level) * haul ^ 3))
+			if haul == 1 then
+				check(top > last, `LV {level}: no faster than LV {level - 1}`)
+				last = top
+			end
+		end
+	end
+	for raw = 1, swim.speedKnee, 0.25 do
+		check(math.abs(Size.topSpeed(raw) - oldTop(raw)) < 1e-9, `under the knee the curve changed at {raw}`)
+	end
+	local eps = 1e-4
+	local k = swim.speedKnee
+	local slopeIn = (oldTop(k) - oldTop(k - eps)) / eps
+	local slopeOut = (Size.topSpeed(k + eps) - Size.topSpeed(k)) / eps
+	check(math.abs(slopeIn - slopeOut) < 0.01, `the knee kinks: {slopeIn} → {slopeOut}`)
+	check(Size.topSpeed(Size.raw(16.99)) < swim.speedCap, "past the cap")
+end
+
+-- A straight line from a standing start: cruising at `top`, and with a boost every
+-- `every` seconds for `seconds` (× `mul`; a `jump` starts at that speed at once, the
+-- Dash's tail flick, else the swim accelerates into it, Blood Sense). The swim's
+-- own equations: up to a target at `accel`, shedding within top at `decel`.
+type Boost = { mul: number, seconds: number, every: number, jump: boolean }
+local MAP = 3000
+local function cross(top: number, boost: Boost?): number
+	local t, x, speed = 0, 0, 0
+	local boostUntil, nextBoost = -1, 0
+	while x < MAP and t < 600 do
+		if boost and t >= nextBoost then
+			boostUntil, nextBoost = t + boost.seconds, t + boost.every
+			if boost.jump then
+				speed = math.max(speed, top * boost.mul)
+			end
+		end
+		local target = if boost and t < boostUntil then top * boost.mul else top
+		local rate = if target < speed and speed <= top then swim.decel else swim.accel
+		speed += (target - speed) * alpha(rate, DT)
+		x += speed * DT
+		t += DT
+	end
+	return t
+end
+local function signature(id: string, gills: number): Boost?
+	local key = Species.byId[id].signature
+	local ability = Abilities.byId[key]
+	if key == "Dash" then
+		return {
+			mul = swim.boostMultiplier,
+			seconds = swim.dashSeconds,
+			every = swim.dashSeconds + swim.dashRecharge / gills,
+			jump = true,
+		}
+	elseif key == "Torpedo" then
+		return { mul = swim.boostMultiplier, seconds = ability.seconds, every = ability.cooldown, jump = true }
+	elseif key == "BloodSense" and ability.speed then
+		return { mul = ability.speed, seconds = ability.seconds, every = ability.cooldown, jump = false }
+	end
+	return nil
+end
+print(
+	`\n== Across the {MAP}-stud map in a straight line (seconds): cruise / Strong Fins {#Shop.upgradesById.Fins.costs} / + its ability chained (Deep Gills {#Shop.upgradesById.Gills.costs}) / + a podmate's slipstream; old curve in brackets ==`
+)
+for _, level in { 40, 60, 100 } do
+	for _, id in SHOWN do
+		local mul = Species.byId[id].stats.speed
+		local length = lengthAt(level)
+		local function row(curve: (number) -> number): { number }
+			local top = curve(length) * mul
+			local boost = signature(id, GILLS_MAX)
+			return {
+				cross(top),
+				cross(top * FINS_MAX),
+				cross(top * FINS_MAX, boost),
+				cross(top * FINS_MAX * SLIP, boost),
+			}
+		end
+		local new, old = row(Size.topSpeed), row(oldTop)
+		print(
+			string.format(
+				"LV %-3d %-11s %5.0f / %5.0f / %5.0f / %5.0f   (%3.0f / %3.0f / %3.0f / %3.0f)",
+				level,
+				id,
+				new[1],
+				new[2],
+				new[3],
+				new[4],
+				old[1],
+				old[2],
+				old[3],
+				old[4]
+			)
+		)
+		if level == 100 and id == "Nibbler" then
+			check(new[1] >= 55 and new[1] <= 75, `a LV 100 Nibbler crosses in {fmt(new[1], 0)} s (55–75 wanted)`)
+		end
+		if level == 100 and id == "Cuda" then
+			check(new[3] >= 30, `a maxed LV 100 'Cuda crosses in {fmt(new[3], 0)} s with its Torpedo chained`)
+		end
+	end
+end
+
 if failures > 0 then
 	error(`{failures} check(s) failed`)
 end

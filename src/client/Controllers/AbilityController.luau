@@ -13,8 +13,13 @@
 -- "it should highlight players through surfaces as a flashing red thermal to show
 -- where the other players and predators are"): for a few seconds every other fish
 -- and every predator in the sea shows through rock and murk as a flashing red
--- heat signature, with a red cast over the water. It's a reveal on this client
--- only (characters and predator positions already replicate), on a cooldown.
+-- heat signature, with a red cast over the water. Since 2026-10-18 it's a feeding
+-- frenzy too (owner: "move a bit faster ... a bit of a magnet towards prey fish
+-- and pull them in from a wider distance ... highlight both prey and predator
+-- fish"): it's asked of the server (AbilityService sets `Sensing`), which the swim,
+-- the prey and forage eats and the server's checks read (Perks.sense), and the
+-- prey the shark could swallow within `range` glow a softer amber after the
+-- players and predators, inside Roblox's Highlight cap. The reveal is drawn here.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -29,23 +34,33 @@ local Ui = require(script.Parent.Parent.Ui)
 local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local PredatorController = require(script.Parent.PredatorController)
+local SchoolController = require(script.Parent.SchoolController)
 local SwimController = require(script.Parent.SwimController)
 
 local AbilityController = {}
 
--- Blood Sense
-local SENSE_SECONDS = 7
-local SENSE_COOLDOWN = 24
-local SENSE_REFRESH = 0.5 -- seconds between looks for new fish to mark
-local HIGHLIGHT_CAP = 31 -- Roblox draws at most 31 Highlights at once
+-- Blood Sense (Config/Abilities BloodSense)
+local SENSE = Config.Abilities.byId.BloodSense
+local SENSE_SECONDS = SENSE.seconds or 7
+local SENSE_COOLDOWN = SENSE.cooldown or 24
+local PREY_RANGE = SENSE.range or 120 -- studs round the shark its prey are marked within
+local SENSE_REFRESH = 0.25 -- seconds between looks for new fish to mark (prey dart about)
+-- Roblox draws at most 31 Highlights at once: a few are left for the game's own (a
+-- whale's rim, the Apex's outline, a chasing fish's glow)
+local HIGHLIGHT_CAP = 28
 local HOT = Color3.fromRGB(255, 36, 36) -- the signature's cool end
 local HOTTER = Color3.fromRGB(255, 176, 64) -- its hot end (a thermal's yellow core)
 local RIM = Color3.fromRGB(255, 120, 120)
+-- Prey glow softer, amber to a warm red, so the threats still stand out
+local PREY_HOT = Color3.fromRGB(255, 132, 48)
+local PREY_HOTTER = Color3.fromRGB(255, 196, 96)
+local PREY_RIM = Color3.fromRGB(255, 186, 120)
 
 local senseUntil = 0 -- when the reveal ends
 local senseReadyAt = 0 -- when it can go again
 local nextRefresh = 0
 local marks: { [Instance]: Highlight } = {}
+local preyMarks: { [Instance]: boolean } = {} -- the marks on prey (drawn softer)
 local cast: ColorCorrectionEffect? = nil
 local castAlpha = 0
 
@@ -135,8 +150,9 @@ function AbilityController.senseLeft(): number
 end
 
 -- Everything Blood Sense marks: the other players' fish and every drawn predator,
--- nearest first, within the Highlight cap
-local function targets(): { Instance }
+-- nearest first, then the prey within PREY_RANGE the shark could swallow, nearest
+-- first, all within the Highlight cap. Returns the list and which of it is prey.
+local function targets(): ({ Instance }, { [Instance]: boolean })
 	local root = SwimController.root()
 	local from = if root then root.Position else workspace.CurrentCamera.CFrame.Position
 	local found: { { instance: Instance, distance: number } } = {}
@@ -161,23 +177,35 @@ local function targets(): { Instance }
 	for i = 1, math.min(#found, HIGHLIGHT_CAP) do
 		table.insert(list, found[i].instance)
 	end
-	return list
+	local prey: { [Instance]: boolean } = {}
+	for _, entry in
+		SchoolController.edibleNear(from, SwimController.length(), PREY_RANGE, HIGHLIGHT_CAP - #list)
+	do
+		table.insert(list, entry.instance)
+		prey[entry.instance] = true
+	end
+	return list, prey
 end
 
-local function mark(instance: Instance)
+local function mark(instance: Instance, prey: boolean)
 	if marks[instance] then
 		return
 	end
 	local highlight = Instance.new("Highlight")
 	highlight.Name = "BloodSense"
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.FillColor = HOT
-	highlight.FillTransparency = 0.3
-	highlight.OutlineColor = RIM
-	highlight.OutlineTransparency = 0
+	highlight.FillColor = if prey then PREY_HOT else HOT
+	highlight.FillTransparency = if prey then 0.7 else 0.3
+	highlight.OutlineColor = if prey then PREY_RIM else RIM
+	highlight.OutlineTransparency = if prey then 0.3 else 0
 	highlight.Adornee = instance
 	highlight.Parent = instance
 	marks[instance] = highlight
+	if prey then
+		preyMarks[instance] = true
+	else
+		preyMarks[instance] = nil
+	end
 end
 
 local function clearMarks()
@@ -185,20 +213,28 @@ local function clearMarks()
 		highlight:Destroy()
 	end
 	table.clear(marks)
+	table.clear(preyMarks)
 end
 
 local function refreshMarks()
 	local wanted: { [Instance]: boolean } = {}
-	for _, instance in targets() do
+	local list, prey = targets()
+	for _, instance in list do
 		wanted[instance] = true
+		-- (a fish that was prey and is now a threat, or back, is marked afresh)
+		if marks[instance] and (preyMarks[instance] == true) ~= (prey[instance] == true) then
+			marks[instance]:Destroy()
+			marks[instance] = nil
+		end
 		if instance.Parent ~= nil then
-			mark(instance)
+			mark(instance, prey[instance] == true)
 		end
 	end
 	for instance, highlight in marks do
 		if not wanted[instance] or instance.Parent == nil then
 			highlight:Destroy()
 			marks[instance] = nil
+			preyMarks[instance] = nil
 		end
 	end
 end
@@ -250,7 +286,12 @@ end
 local function fire()
 	local id = AbilityController.name()
 	if id == "BloodSense" then
-		bloodSense()
+		if bloodSense() then
+			-- The frenzy's speed and pull come once the server says so (`Sensing`)
+			ClientState.request("UseAbility", "BloodSense")
+		else
+			Sfx.play("TooBig", { volume = 0.25 })
+		end
 	elseif id == "Torpedo" then
 		local ability = Abilities.Torpedo
 		if take("Torpedo") then
@@ -381,10 +422,20 @@ local function step(dt: number)
 		local throb = 0.5 + 0.5 * math.sin(now * 2 * math.pi * 2.5)
 		local color = HOT:Lerp(HOTTER, throb)
 		local fill = 0.5 - 0.35 * throb
-		for _, highlight in marks do
-			highlight.FillColor = color
-			highlight.FillTransparency = fill
-			highlight.OutlineTransparency = 0.2 * (1 - throb)
+		-- Prey breathe softer, a little out of step
+		local preyThrob = 0.5 + 0.5 * math.sin(now * 2 * math.pi * 1.6 + 1)
+		local preyColor = PREY_HOT:Lerp(PREY_HOTTER, preyThrob)
+		local preyFill = 0.78 - 0.18 * preyThrob
+		for instance, highlight in marks do
+			if preyMarks[instance] then
+				highlight.FillColor = preyColor
+				highlight.FillTransparency = preyFill
+				highlight.OutlineTransparency = 0.25 + 0.3 * (1 - preyThrob)
+			else
+				highlight.FillColor = color
+				highlight.FillTransparency = fill
+				highlight.OutlineTransparency = 0.2 * (1 - throb)
+			end
 		end
 	elseif next(marks) then
 		clearMarks()

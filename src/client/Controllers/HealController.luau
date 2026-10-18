@@ -83,9 +83,9 @@ end
 
 local function step()
 	local held = count()
-	-- Phones show the count and cooldown on the HEAL button itself: the chip sat on
-	-- BITE (playtest 2026-10-09)
-	chip.Visible = held > 0 and healButton == nil
+	-- The item bar (ItemBarController) shows the count and the cooldown now, on every
+	-- device; phones also keep them on the HEAL button. The old chip stays hidden.
+	chip.Visible = false
 	local keyHint = if Input.isTouch() then "" elseif Input.isGamepad() then " (LB)" else " (H)"
 	countLabel.Text = `{held} KELP WRAP{if held == 1 then "" else "S"}{keyHint}`
 	local character = Players.LocalPlayer.Character

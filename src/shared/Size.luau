@@ -78,8 +78,21 @@ function Size.ratio(a: number, b: number): number
 end
 
 -- Swimming, scaled by length: bigger fish are faster in studs but slower to turn.
+-- Speed grows as raw length ^ `speedExponent` up to `speedKnee`, then eases toward
+-- `speedCap` along a power curve that meets it with the same value and slope, so
+-- every size is still faster than any smaller one but a LV 100 fish is no longer
+-- four times a new one (owner, 2026-10-18: a LV 100 'Cuda crossed the map in seconds).
+local SPEED_KNEE = swim.speedKnee
+local SPEED_AT_KNEE = swim.baseSpeed * SPEED_KNEE ^ swim.speedExponent
+local SPEED_SPAN = swim.speedCap - SPEED_AT_KNEE
+local SPEED_EASE = swim.speedExponent * SPEED_AT_KNEE / SPEED_SPAN
+
 function Size.topSpeed(length: number): number
-	return swim.baseSpeed * Size.raw(length) ^ swim.speedExponent
+	local raw = Size.raw(length)
+	if raw <= SPEED_KNEE then
+		return swim.baseSpeed * raw ^ swim.speedExponent
+	end
+	return swim.speedCap - SPEED_SPAN * (raw / SPEED_KNEE) ^ -SPEED_EASE
 end
 
 function Size.turnRate(length: number): number

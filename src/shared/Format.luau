@@ -31,6 +31,16 @@ function Format.distance(studs: number): string
 	return string.format("%d ft", math.max(0, math.floor(studs * FEET_PER_STUD + 0.5)))
 end
 
+-- A fish's length in feet, with a decimal while it's small ("2.1 ft", "14 ft"), so a
+-- bank's growth shows even on a new fish (the bank's growth card)
+function Format.length(studs: number): string
+	local feet = studs * FEET_PER_STUD
+	if feet < 10 then
+		return string.format("%.1f ft", feet)
+	end
+	return Format.distance(studs)
+end
+
 -- Depth below the surface, in feet
 function Format.depth(studs: number): string
 	return Format.distance(studs)

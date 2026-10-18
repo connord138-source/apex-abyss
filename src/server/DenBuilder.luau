@@ -18,7 +18,6 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local DensConfig = require(ReplicatedStorage.Shared.Config.Dens)
 local DenItems = require(ReplicatedStorage.Shared.DenItems)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
-local Props = require(ReplicatedStorage.Shared.Props)
 local Cave = require(script.Parent.Cave)
 local DenCarve = require(script.Parent.DenCarve)
 
@@ -498,7 +497,7 @@ local function trophyWall(state: DenState, index: number, record: Record, trophi
 			Vector3.new(6, 4.4, 0.5),
 			at,
 			Color3.fromRGB(60, 66, 74),
-			Enum.Material.Slate
+			Enum.Material.SmoothPlastic
 		)
 		local trim = part(
 			folder,
@@ -725,137 +724,12 @@ local LAYOUTS: { [string]: { Coral } } = {
 	},
 }
 
--- (no Sponge: the imported TubeSponge reads as two flat boxes up close, playtest
--- 2026-10-13, so the garden's sponges are always the part-built tubes)
-local PROP_OF = {
-	Staghorn = "StaghornCoral",
-	Fan = "FanCoral",
-	Brain = "BrainCoral",
-	Anemone = "Anemone",
-}
-
--- A coral of `kind`, `height` tall, standing on `foot` (part-built when the prop
--- isn't imported): branching staghorn, a fan, a round brain, a cluster of tubes, a
--- fuzzy anemone
-local function coral(parent: Instance, kind: string, foot: CFrame, height: number, color: Color3)
-	local box = Vector3.new(height * 0.9, height, height * 0.9)
-	if kind == "Brain" then
-		box = Vector3.new(height * 1.3, height, height * 1.3)
-	elseif kind == "Fan" then
-		box = Vector3.new(height, height, height * 0.3)
-	end
-	local stand =
-		part(parent, "Coral", box, foot * CFrame.new(0, box.Y / 2, 0), color, Enum.Material.SmoothPlastic)
-	stand.Transparency = 1
-	local template = Props.template("WorldProps", PROP_OF[kind] or "")
-	if template then
-		local prop = Props.dress(stand, PROP_OF[kind], { cframe = stand.CFrame, size = box })
-		if prop then
-			Props.tint(prop, color:Lerp(Color3.new(1, 1, 1), 0.35))
-			return
-		end
-	end
-	local shade = color:Lerp(Color3.new(0, 0, 0), 0.18)
-	if kind == "Staghorn" then
-		-- A trunk that forks twice, every branch tapering, tips paler
-		local function branch(from: CFrame, length: number, thick: number, depth: number)
-			local tip = from * CFrame.new(0, length, 0)
-			local limb = part(
-				parent,
-				"Branch",
-				Vector3.new(length, thick, thick),
-				from * CFrame.new(0, length / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
-				if depth == 0 then color:Lerp(Color3.new(1, 1, 1), 0.25) else color,
-				Enum.Material.SmoothPlastic
-			)
-			limb.Shape = Enum.PartType.Cylinder
-			if depth > 0 then
-				for i = 1, 2 do
-					local spread = math.rad(28 + depth * 4) * (if i == 1 then 1 else -1)
-					branch(
-						tip * CFrame.Angles(0, i * 1.9 + depth, 0) * CFrame.Angles(spread, 0, 0),
-						length * 0.72,
-						thick * 0.72,
-						depth - 1
-					)
-				end
-			end
-		end
-		branch(foot, height * 0.38, height * 0.14, 2)
-	elseif kind == "Fan" then
-		local fan = part(
-			parent,
-			"Fan",
-			Vector3.new(0.18, height, height),
-			foot * CFrame.new(0, height * 0.45, 0) * CFrame.Angles(0, math.rad(90), 0),
-			color,
-			Enum.Material.Fabric
-		)
-		fan.Shape = Enum.PartType.Cylinder
-		part(
-			parent,
-			"Stem",
-			Vector3.new(0.35, height * 0.25, 0.35),
-			foot * CFrame.new(0, height * 0.12, 0),
-			shade,
-			Enum.Material.SmoothPlastic
-		)
-	elseif kind == "Brain" then
-		local brain = part(
-			parent,
-			"Brain",
-			Vector3.new(height * 1.25, height, height * 1.25),
-			foot * CFrame.new(0, height * 0.42, 0),
-			color,
-			Enum.Material.Pebble
-		)
-		brain.Shape = Enum.PartType.Ball
-	elseif kind == "Sponge" then
-		for i, t in { { 0, 0, 1 }, { 0.38, 0.1, 0.72 }, { -0.3, 0.32, 0.6 } } do
-			local h = height * t[3]
-			local tube = part(
-				parent,
-				"Tube",
-				Vector3.new(h, height * 0.26, height * 0.26),
-				foot
-					* CFrame.new(t[1] * height * 0.5, h / 2, t[2] * height * 0.5)
-					* CFrame.Angles(0, 0, math.rad(90)),
-				if i == 1 then color else shade,
-				Enum.Material.SmoothPlastic
-			)
-			tube.Shape = Enum.PartType.Cylinder
-			local mouth = part(
-				parent,
-				"Mouth",
-				Vector3.new(0.05, height * 0.18, height * 0.18),
-				foot
-					* CFrame.new(t[1] * height * 0.5, h + 0.02, t[2] * height * 0.5)
-					* CFrame.Angles(0, 0, math.rad(90)),
-				Color3.fromRGB(30, 18, 40),
-				Enum.Material.SmoothPlastic
-			)
-			mouth.Shape = Enum.PartType.Cylinder
-		end
-	else -- Anemone
-		local stalk = part(
-			parent,
-			"Stalk",
-			Vector3.new(height * 0.45, height * 0.5, height * 0.5),
-			foot * CFrame.new(0, height * 0.22, 0) * CFrame.Angles(0, 0, math.rad(90)),
-			shade,
-			Enum.Material.SmoothPlastic
-		)
-		stalk.Shape = Enum.PartType.Cylinder
-		local crown = part(
-			parent,
-			"Crown",
-			Vector3.new(height * 1.1, height * 0.6, height * 1.1),
-			foot * CFrame.new(0, height * 0.55, 0),
-			color,
-			Enum.Material.Grass
-		)
-		crown.Shape = Enum.PartType.Ball
-	end
+-- A coral of `kind`, `height` tall, standing on `foot`: the den things' reef pieces
+-- (Shared/DenItems: the imported reef props where they're in, else part-built
+-- staghorn, fans, brains, tube sponges and anemones). The garden's sponges are a
+-- clump of three tubes.
+local function coral(parent: Instance, kind: string, foot: CFrame, height: number, color: Color3, rng: Random)
+	DenItems.piece(parent, if kind == "Sponge" then "Sponges" else kind, foot, height, color, rng)
 end
 
 function DenBuilder.garden(index: number, record: Record, fill: number, shellFill: number)
@@ -884,7 +758,7 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 			Vector3.new(spot.width, depth, spot.depth),
 			center * CFrame.new(0, -0.1 - depth / 2, 0),
 			STONE,
-			Enum.Material.Slate
+			Enum.Material.SmoothPlastic
 		)
 		for _, side in { -1, 1 } do
 			part(
@@ -893,7 +767,7 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 				Vector3.new(spot.width + 0.6, 0.7, 0.6),
 				center * CFrame.new(0, 0.1, side * (hd + 0.05)),
 				STONE:Lerp(Color3.new(1, 1, 1), 0.08),
-				Enum.Material.Slate
+				Enum.Material.SmoothPlastic
 			)
 			local cap = part(
 				model,
@@ -901,7 +775,7 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 				Vector3.new(0.7, spot.depth + 0.6, spot.depth + 0.6),
 				center * CFrame.new(side * (hw + 0.1), 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
 				STONE:Lerp(Color3.new(1, 1, 1), 0.08),
-				Enum.Material.Slate
+				Enum.Material.SmoothPlastic
 			)
 			cap.Shape = Enum.PartType.Cylinder
 		end
@@ -919,7 +793,7 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 			Vector3.new(spot.width - 0.4, 0.3, spot.depth - 0.4),
 			center * CFrame.new(0, sandTop - 0.15, 0),
 			Color3.fromRGB(226, 208, 168),
-			Enum.Material.Sand
+			Enum.Material.SmoothPlastic
 		)
 	else
 		-- A sunken oval bed: a ring of rounded stones, a glow under them, sand below
@@ -953,9 +827,9 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 			Vector3.new(spot.width + 1.4, depth, spot.depth + 1.4),
 			center * CFrame.new(0, -0.9 - depth / 2, 0),
 			STONE:Lerp(Color3.new(0, 0, 0), 0.2),
-			Enum.Material.Slate
+			Enum.Material.SmoothPlastic
 		)
-		oval("Sand", 0.6, 0, sandTop - 0.3, Color3.fromRGB(226, 208, 168), Enum.Material.Sand)
+		oval("Sand", 0.6, 0, sandTop - 0.3, Color3.fromRGB(226, 208, 168), Enum.Material.SmoothPlastic)
 		oval("Glow", 0.2, 0.8, -0.2, glow, Enum.Material.Neon)
 		local stones = 22
 		for i = 1, stones do
@@ -970,7 +844,7 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 					* CFrame.new(x, big * 0.18, z)
 					* CFrame.Angles(0, -a + (i % 2) * 0.4, (i % 3 - 1) * 0.12),
 				STONE:Lerp(Color3.new(0, 0, 0), (i % 4) * 0.05),
-				Enum.Material.Slate
+				Enum.Material.SmoothPlastic
 			)
 			stone.Shape = Enum.PartType.Ball
 			stone.CanCollide = true
@@ -983,21 +857,23 @@ function DenBuilder.garden(index: number, record: Record, fill: number, shellFil
 				Vector3.new(1.8, 1.2, 1.5) * (1 + i * 0.25),
 				center * CFrame.new(at.X * hw, sandTop + 0.3, at.Y * hd) * CFrame.Angles(0.2, i, 0.1),
 				STONE:Lerp(Color3.new(0, 0, 0), 0.12),
-				Enum.Material.Rock
+				Enum.Material.SmoothPlastic
 			)
 			rock.Shape = Enum.PartType.Ball
 		end
 	end
 	-- The reef grows one coral after another; even an empty garden shows young ones
 	local layout = LAYOUTS[spot.shape] or LAYOUTS.trough
+	local rng = Random.new(index * 977 + record.level)
 	for i, c in layout do
 		local grown = math.clamp(fill * #layout - (i - 1), 0, 1)
-		local height = c.size * (0.3 + 0.7 * grown)
+		-- (1.3 times the v3 corals: the planters grew with the rooms, 2026-10-18)
+		local height = c.size * 1.3 * (0.3 + 0.7 * grown)
 		-- (the center's own +z runs back into the rock, the layout's z toward the hub)
 		local foot = center
 			* CFrame.new(c.x * hw * 0.85, sandTop, -c.z * hd * 0.8)
 			* CFrame.Angles(0, c.turn, 0)
-		coral(model, c.kind, foot, height, c.color)
+		coral(model, c.kind, foot, height, c.color, rng)
 	end
 	-- Shells washed up on the sand
 	for i = 1, math.floor(shellFill * 6 + 0.001) do

@@ -32,6 +32,15 @@ return {
 	swim = {
 		baseSpeed = 15, -- studs/s for a 1-stud fish; scales with length^speedExponent
 		speedExponent = 0.42,
+		-- ...up to `speedKnee` raw studs (about LV 33, 31.8 studs/s), then it eases
+		-- toward `speedCap` (owner, 2026-10-18: "Speed also scales far too high from
+		-- level 1 to lvl 100. A lvl 100 cuda can make it across the map in like 5
+		-- seconds ... I do like how the bigger a fish is the easier they catch smaller
+		-- prey though"). A Nibbler: LV 1 20, LV 30 30, LV 60 41, LV 80 46, LV 100 49
+		-- (was 83), a full Haul at LV 100 51: ~61 s across the 3,000-stud map (was 36).
+		-- Under the knee nothing changed; every size is still faster than any smaller.
+		speedKnee = 6,
+		speedCap = 56,
 		-- Easier handling (owner, 2026-10-16: "some adjustments need to be made to make
 		-- movement a tad easier"): quicker to answer (accel 2.6 → 3.1), stops sooner
 		-- when you let go (drag 1.7 → 2.3), carves a little tighter at speed
@@ -73,9 +82,10 @@ return {
 		--   ×1.46 at LV 100, ×1.06 at LV 60, nothing below the knee.
 		bigTurn = 0.3,
 		-- * Indoors (the hub's cavern and tunnels, the dens) top speed is at most this
-		--   (studs/s; a Dash still doubles it): a LV 100 fish (83) crossed its 60-stud
-		--   Nook in 0.7 s. A Nibbler under ~LV 60 (a 'Cuda under ~LV 45) never reaches
-		--   it, and outside nothing changes.
+		--   (studs/s; a Dash still doubles it): a LV 100 fish (83 before the speed
+		--   curve eased, 2026-10-18) crossed its 60-stud Nook in 0.7 s. Now a Nibbler
+		--   under ~LV 90 (a 'Cuda under ~LV 50) never reaches it, and outside nothing
+		--   changes.
 		indoorSpeed = 48,
 		-- * Level swimming: an aim tipped within `levelZone` of level swims level, and
 		--   by `levelFull` the fish swims exactly where you look (the old ease took the
@@ -178,11 +188,13 @@ return {
 	-- ratio come from its mass), so the food counts for less instead: every kg eaten
 	-- goes on the Haul × `haulRate` (HuntService `addHaul`: prey, forage, slick and
 	-- whale chunks, the new part of a player kill, predator and boss Hauls, bait).
-	-- A new fish gets it all (`fullBelow`), easing down to `haulRate` by `easeTo`,
-	-- so the tutorial's first dives still level up quickly. Rewards sized in levels
-	-- (treasure Hauls) and chum (a Haul that was grown already) don't take it, and
-	-- what a bank pays (coral, Tide Pass XP, the treasure-map chance) is reckoned
-	-- from the Haul before it (HuntService `bank`), so a dive still pays the same.
+	-- A new fish gets it all (`fullBelow`), easing down to `haulRate` by `easeTo`, by
+	-- the level its banked mass plus its Haul would make (so a first dive eases off
+	-- as it fills: 10 small fish still take a LV 1 Nibbler to ~LV 7). Rewards sized
+	-- in levels (treasure Hauls) and chum (a Haul that was grown already) don't take
+	-- it, and what a bank pays (coral, Tide Pass XP, the treasure-map chance) is
+	-- reckoned from the Haul before it (HuntService Session `worth`), so a dive still
+	-- pays the same.
 	growth = {
 		haulRate = 0.35,
 		fullBelow = 1, -- levels up to this one take the whole kg
@@ -292,7 +304,7 @@ return {
 	economy = {
 		-- Coral for banking a Haul: bankCoral × √(kg banked), so it grows with you
 		-- without running away late
-		bankCoral = 6,
+		bankCoral = 7, -- (was 6: a fish now stays smaller mid-dive, so it reaches richer prey later)
 		eatPlayerCoral = 20, -- for eating a player your size (less for smaller)
 		-- DNA (unlocks species): prey this heavy or heavier always carry some (1 per
 		-- this many kg); smaller prey carry 1 at this chance; forage at forageDnaChance

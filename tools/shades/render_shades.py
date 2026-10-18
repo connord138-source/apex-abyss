@@ -1,11 +1,12 @@
 """Renders a fish wearing each of its shade skins, three-quarter view, for review.
 
-    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [normals] [zoom=2.5 focus=0.3 res=900x600 water=0.35 strength=3] [Shade ...]
+    <blender python> tools/shades/render_shades.py -- <fish.glb> <skins_dir> <out_dir> [flip] [pair] [side] [normals] [zoom=2.5 focus=0.3 res=900x600 water=0.35 strength=3] [Shade ...]
 
 Writes <out_dir>/<Fish>_<Shade>.png (the fish's own texture as <Fish>_Base.png), by
 default every shade in the fish's own list (shade_lines.py: its line, then the
 universal skins). `pair` adds a second view from the fish's left side and a little
-below (the other flank and the belly) beside the first. contact_sheet.py lays them
+below (the other flank and the belly) beside the first. `side` shoots both flanks
+square from the side instead (a print that must read side-on: X-Ray's skeleton). contact_sheet.py lays them
 out. Each skin is shown the way it ships: its finish's roughness map (or its own),
 its metal map and its glow map, from skins.json. No normal map is wired in, since
 none ships (v8.1, pack_shades.py NORMALS = False); `normals` shows the relief maps
@@ -32,7 +33,8 @@ argv = sys.argv[sys.argv.index("--") + 1 :]
 SRC, SKINS, OUT = argv[0], pathlib.Path(argv[1]).resolve(), pathlib.Path(argv[2]).resolve()
 rest = argv[3:]
 FLIP = "flip" in rest
-PAIR = "pair" in rest
+PAIR = "pair" in rest or "side" in rest
+SIDE = "side" in rest
 NORMALS = "normals" in rest
 # Close-ups for review: zoom=<x> (2.5 frames about 40% of the fish) centred at
 # focus=<f> along it (0 the snout .. 1 the tail tip), res=<w>x<h>
@@ -45,7 +47,7 @@ STRENGTH = float(OPTS.get("strength", 3.0))
 # OceanController's shelf grade (tint) and the OceanAtmosphere haze colour
 WATER_TINT = np.array((222, 238, 246), np.float32) / 255
 WATER_HAZE = np.array((44, 126, 156), np.float32) / 255
-rest = [a for a in rest if a not in ("flip", "pair", "normals") and "=" not in a]
+rest = [a for a in rest if a not in ("flip", "pair", "side", "normals") and "=" not in a]
 NAME = pathlib.Path(SRC).stem
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -147,6 +149,9 @@ scene.camera = cam
 direction = Vector((1.0, -0.55, 0.35)).normalized()  # three-quarter from the fish's right, head forward
 # The second view (pair): the fish's left side from a little behind and below
 VIEWS = [Vector((1.0, -0.55, 0.35)).normalized(), Vector((-1.0, 0.3, -0.32)).normalized()]
+if SIDE:  # square from each side, a little from above
+    VIEWS = [Vector((1.0, 0.0, 0.08)).normalized(), Vector((-1.0, 0.0, 0.08)).normalized()]
+    direction = VIEWS[0]
 
 
 def aim(direction):

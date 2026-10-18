@@ -36,6 +36,9 @@ export type School = {
 	first: number, -- its fish are Schools.fish[first .. first + count - 1]
 	count: number,
 	tide: string?, -- only out while this tide is up (Config/Tides)
+	-- Studs from its center within which a client keeps its fish built
+	-- (SchoolController): its furthest-seen fish's range plus the loop and the school
+	reach: number,
 }
 
 export type Fish = {
@@ -47,6 +50,10 @@ export type Fish = {
 	radius: number, -- for eat checks
 	size: number, -- how big this one is next to its species (0.82–1.18, a few trophies to 1.5)
 	mass: number, -- kg: the species' mass × size³ (what eating it is worth; the Catch Log's biggest)
+	-- How far from the camera a client draws it (studs; SchoolController): bigger fish
+	-- further, and the back of a big school thins out before its core
+	range: number,
+	wave: number, -- how far its spine still swims (studs)
 }
 
 -- Where some of a prey's schools go (Config/Prey `zones`, `tideZones`)
@@ -57,7 +64,28 @@ type Zone = {
 	depth: { number }?,
 	tide: string?,
 	perSchool: number?,
+	spread: number?,
+	round: boolean?,
+	pathRadius: { number }?,
+	trench: boolean?,
 }
+
+-- How far a client draws each fish (SchoolController; owner, 2026-10-18: "We still
+-- need so much more fish too. I feel like the ocean has a pretty empty feeling"):
+-- DRAW_BASE plus DRAW_PER_STUD per stud of its length, at most DRAW_MAX (a 1-stud
+-- minnow is a few pixels at 200 studs, a reef shark reads to the haze). The first
+-- THIN_CORE of a school always shows to its full range; the rest thin out with
+-- distance down to THIN_LAST of it, so a far school reads as a school at half the
+-- fish. Spines swim within WAVE_BASE + WAVE_PER_STUD per stud, at most WAVE_MAX.
+local DRAW_BASE = 180
+local DRAW_PER_STUD = 55
+local DRAW_MAX = 520
+local THIN_CORE = 0.4
+local THIN_LAST = 0.45
+local WAVE_BASE = 40
+local WAVE_PER_STUD = 45
+local WAVE_MAX = 160
+local BUILD_MARGIN = 40 -- studs past a school's reach before a client builds its fish
 
 local list: { School } = {}
 local fish: { Fish } = {}
@@ -82,33 +110,49 @@ end
 local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 	local length = Size.length(prey.mass)
 	local perSchool = zone.perSchool or prey.perSchool
+	local pathRadius = zone.pathRadius or prey.pathRadius
+	-- A bait ball is round (as deep as it is wide); a shoal is flatter
+	local deep = if zone.round then 2 else 1
 	for _ = 1, zone.schools do
-		local radius = rng:NextNumber(prey.pathRadius[1], prey.pathRadius[2])
-		local spread = prey.spread * length * math.sqrt(perSchool)
+		local radius = rng:NextNumber(pathRadius[1], pathRadius[2])
+		local spread = prey.spread * length * math.sqrt(perSchool) * (zone.spread or 1)
 		local margin = radius + spread + 10
 		local band = zone.band
-		local angle, distance = 0, 0
-		for _ = 1, 12 do
-			if zone.angles then
-				local span = (zone.angles[2] - zone.angles[1]) % 360
-				angle = math.rad(zone.angles[1] + rng:NextNumber(0, if span == 0 then 360 else span))
-			else
-				angle = rng:NextNumber(0, 2 * math.pi)
-			end
-			distance = rng:NextNumber(band[1] + margin, band[2] - margin)
-			if not Seafloor.inTrench(math.cos(angle) * distance, math.sin(angle) * distance, margin) then
-				break
+		local dx, dz = 0, 0
+		if zone.trench then
+			-- Down in the Abyssal Trench's canyon: somewhere along its line, inside its
+			-- middle cut (Seafloor's canyon), its height over the floor there; the lift
+			-- keeps the loop off the steps and walls
+			local trench = World.trench
+			local r = rng:NextNumber(trench.radii[1] + margin, trench.radii[2] - margin)
+			local _, width = Seafloor.trenchAxis(r)
+			local _, halfMiddle = Seafloor.trenchHalfWidths(width)
+			local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-1, 1) * math.max(halfMiddle - margin, 0))
+			dx, dz = x - World.hub.center.X, z - World.hub.center.Z
+		else
+			for _ = 1, 12 do
+				local angle
+				if zone.angles then
+					local span = (zone.angles[2] - zone.angles[1]) % 360
+					angle = math.rad(zone.angles[1] + rng:NextNumber(0, if span == 0 then 360 else span))
+				else
+					angle = rng:NextNumber(0, 2 * math.pi)
+				end
+				local distance = rng:NextNumber(band[1] + margin, band[2] - margin)
+				dx, dz = math.cos(angle) * distance, math.sin(angle) * distance
+				if not Seafloor.inTrench(dx, dz, margin) then
+					break
+				end
 			end
 		end
 		local height = rng:NextNumber(4, 14)
-		local floor = Seafloor.y(math.cos(angle) * distance, math.sin(angle) * distance)
+		local floor = Seafloor.y(dx, dz)
 		local depth = zone.depth or prey.depth
 		local y = floor + rng:NextNumber(depth[1] + height, depth[2] - height)
 		local direction = if rng:NextInteger(0, 1) == 0 then -1 else 1
 		local school: School = {
 			prey = prey.id,
-			center = World.hub.center
-				+ Vector3.new(math.cos(angle) * distance, y, math.sin(angle) * distance),
+			center = World.hub.center + Vector3.new(dx, y, dz),
 			radius = radius,
 			ellipse = rng:NextNumber(0.55, 1),
 			height = height,
@@ -118,19 +162,28 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 			first = #fish + 1,
 			count = perSchool,
 			tide = tide,
+			reach = 0,
 		}
 		table.insert(list, school)
-		for _ = 1, perSchool do
-			local offset = if perSchool == 1
-				then Vector3.zero
-				else Vector3.new(
-					rng:NextNumber(-1, 1),
-					rng:NextNumber(-0.45, 0.45),
-					rng:NextNumber(-1, 1)
-				) * spread
+		local core = math.ceil(perSchool * THIN_CORE)
+		local furthest = 0
+		for k = 1, perSchool do
+			local offset = Vector3.zero
+			if perSchool > 1 then
+				offset = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(-0.45, 0.45) * deep, rng:NextNumber(-1, 1))
+				if zone.round and offset.Magnitude > 1 then
+					offset = offset.Unit -- a ball, not a box
+				end
+				offset *= spread
+			end
 			local size = sizeOf()
 			-- (its own mass's length, so a trophy eases like any other fish)
 			local own = Size.length(prey.mass * size ^ 3)
+			local keep = if k <= core
+				then 1
+				else 1 - (1 - THIN_LAST) * (k - core) / math.max(perSchool - core, 1)
+			local range = math.min(DRAW_BASE + DRAW_PER_STUD * own, DRAW_MAX) * keep
+			furthest = math.max(furthest, range)
 			table.insert(fish, {
 				school = #list,
 				prey = prey.id,
@@ -140,8 +193,11 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 				radius = own * 0.3,
 				size = size,
 				mass = prey.mass * size ^ 3,
+				range = range,
+				wave = math.min(WAVE_BASE + WAVE_PER_STUD * own, WAVE_MAX),
 			})
 		end
+		school.reach = furthest + radius + spread + BUILD_MARGIN
 	end
 end
 

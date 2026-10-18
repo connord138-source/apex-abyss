@@ -15,6 +15,8 @@ local DenSpace = {}
 
 DenSpace.CELL = 2
 local CELL = DenSpace.CELL
+-- How far over its deck a floor thing may stand (on top of other things)
+DenSpace.STACK = 20
 
 export type Tile = { x0: number, x1: number, z0: number, z1: number }
 export type Pillar = { x: number, z: number, room: string }
@@ -497,7 +499,8 @@ function DenSpace.check(level: number, item: DensConfig.Item, surface: string, a
 			return { ok = false, why = "Put it on the floor" }
 		end
 		local deck = DenSpace.storey(storey).deck
-		if at.Y < deck - 0.1 or at.Y > deck + 12 then
+		-- (up to STACK over the deck: on top of a table or a stack of crates)
+		if at.Y < deck - 0.1 or at.Y > deck + DenSpace.STACK then
 			return { ok = false, why = "Put it on the floor" }
 		end
 		if not DenSpace.onDeck(level, storey, at.X, at.Z) then
@@ -516,13 +519,42 @@ function DenSpace.check(level: number, item: DensConfig.Item, surface: string, a
 	end
 	local storey = DenSpace.storeyAt(at.Y) or 1
 	local deck = DenSpace.storey(storey).deck
-	if surface == "wall" and at.Y < deck + 1 then
-		return { ok = false, why = "Higher up the wall" }
+	-- A wall thing's pivot is its middle: its foot must clear the deck. A floor
+	-- thing on a wall juts out sideways, so its height there is its width.
+	if surface == "wall" then
+		local half = if table.find(item.kinds, "floor")
+			then math.min(item.size.X, item.size.Z) / 2
+			else item.size.Y / 2
+		if at.Y < deck + math.max(1, half - 0.5) then
+			return { ok = false, why = "Higher up the wall" }
+		end
 	end
-	if surface == "ceiling" and at.Y < deck + 6 then
+	-- A ceiling thing hangs down its height: room under it for a fish
+	if surface == "ceiling" and at.Y < deck + math.max(6, item.size.Y + 3) then
 		return { ok = false, why = "That ceiling is too low" }
 	end
 	return { ok = true }
+end
+
+-- Whether a floor thing's turned footprint (`inset` of its half-size out from its
+-- middle: 0.42 is nearly to its corners) lies on its storey's deck all round
+function DenSpace.footprintOnDeck(
+	level: number,
+	storey: number,
+	item: DensConfig.Item,
+	x: number,
+	z: number,
+	r: number,
+	inset: number
+): boolean
+	local rc, rs = math.cos(math.rad(r)), math.sin(math.rad(r))
+	for _, corner in { { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+		local lx, lz = corner[1] * inset * item.size.X, corner[2] * inset * item.size.Z
+		if not DenSpace.onDeck(level, storey, x + lx * rc + lz * rs, z + lx * rs - lz * rc) then
+			return false
+		end
+	end
+	return true
 end
 
 export type LayoutPlacement = { id: string, x: number, y: number, z: number, r: number }
@@ -531,7 +563,7 @@ export type LayoutPlacement = { id: string, x: number, y: number, z: number, r: 
 -- (den frame), its front turned to `facing` degrees (0 faces +z): every piece on the
 -- deck to its corners, clear of the floor things already placed (rugs only clash
 -- with rugs, others with others, so a chair may stand on your rug). It tries the
--- spot, then rings 2 studs apart up to 24 out, facing you; then the same turned
+-- spot, then rings 2 studs apart up to 40 out, facing you; then the same turned
 -- the other three ways. Nil and why when nothing fits.
 function DenSpace.fitLayout(
 	level: number,
@@ -576,12 +608,8 @@ function DenSpace.fitLayout(
 			if not DenSpace.check(level, item, "floor", Vector3.new(x, deck, z)).ok then
 				return nil
 			end
-			local rc, rs = math.cos(math.rad(r)), math.sin(math.rad(r))
-			for _, corner in { { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } } do
-				local lx, lz = corner[1] * 0.42 * item.size.X, corner[2] * 0.42 * item.size.Z
-				if not DenSpace.onDeck(level, storey, x + lx * rc + lz * rs, z + lx * rs - lz * rc) then
-					return nil
-				end
+			if not DenSpace.footprintOnDeck(level, storey :: number, item, x, z, r, 0.42) then
+				return nil
 			end
 			local radius = 0.4 * math.max(item.size.X, item.size.Z)
 			local flat = item.flat == true
@@ -594,9 +622,10 @@ function DenSpace.fitLayout(
 	end
 	local base = math.floor(facing / 90 + 0.5) * 90
 	local turns = { base % 360, (base + 90) % 360, (base - 90) % 360, (base + 180) % 360 }
-	-- Facing you anywhere in reach first, then turned the other ways
+	-- Facing you anywhere in reach first, then turned the other ways (out to 40
+	-- studs: the v4 sets spread twice as wide as the first ones)
 	for _, turn in turns do
-		for ring = 0, 12 do
+		for ring = 0, 20 do
 			for i = -ring, ring do
 				for k = -ring, ring do
 					if math.max(math.abs(i), math.abs(k)) ~= ring then

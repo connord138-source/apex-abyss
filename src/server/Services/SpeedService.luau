@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Size = require(ReplicatedStorage.Shared.Size)
+local Timing = require(ReplicatedStorage.Shared.Timing)
 local Guard = require(script.Parent.Parent.Guard)
 local Progress = require(script.Parent.Parent.Progress)
 local DataService = require(script.Parent.DataService)
@@ -38,7 +39,15 @@ local function fastest(player: Player, length: number): number
 	local data = DataService.get(player)
 	local species = if data then Progress.species(data).stats.speed else 1.3
 	local fins = Perks.speed(if data then data.upgrades else nil)
-	return Size.topSpeed(length) * fins * species * swim.boostMultiplier * Config.Pvp.pods.slipstream.speed
+	-- A Reef Shark's Blood Sense frenzy (kept on 1.5 s past its end: the check spans
+	-- the last second)
+	local sense = Perks.sense(FishService.character(player), Timing.clock(), 1.5)
+	return Size.topSpeed(length)
+		* fins
+		* species
+		* sense
+		* swim.boostMultiplier
+		* Config.Pvp.pods.slipstream.speed
 end
 
 function SpeedService.start()

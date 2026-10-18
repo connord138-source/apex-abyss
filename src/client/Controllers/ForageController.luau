@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 local Sfx = require(script.Parent.Parent.Sfx)
 local PropParts = require(ReplicatedStorage.Shared.PropParts)
 local Signal = require(ReplicatedStorage.Shared.Signal)
@@ -237,7 +238,9 @@ local function step()
 	local root = SwimController.root()
 	local length = SwimController.length()
 	local mouth = if root then root.CFrame:PointToWorldSpace(Size.mouthOffset(length)) else nil
-	local reach = Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS
+	-- (× a Reef Shark's Blood Sense frenzy, Perks.sense: ForageService allows the same)
+	local _, suction = Perks.sense(SwimController.character(), now)
+	local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * suction
 	local pullRange = reach * Forage.PULL
 	table.clear(moveParts)
 	table.clear(moveFrames)

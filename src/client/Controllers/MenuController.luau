@@ -1,8 +1,8 @@
 --!strict
 -- The menus: each vendor's shop (opened at its stall: E, Y or a tap on the hint
 -- that shows near a counter), the Wardrobe
--- (shades, body parts and variants you own, on a preview of your fish) and the
--- roll odds. One window at a time; the cursor is freed while it's open, and a
+-- (skins, body parts, variants and boost trails tried on your fish: Wardrobe.luau)
+-- and the roll odds. One window at a time; the cursor is freed while it's open, and a
 -- controller can drive it (the D-pad moves between buttons, B closes).
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -16,7 +16,6 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Catch = require(ReplicatedStorage.Shared.Catch)
-local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Fx = require(ReplicatedStorage.Shared.Fx)
 local Reward = require(ReplicatedStorage.Shared.Reward)
 local RollOdds = require(ReplicatedStorage.Shared.RollOdds)
@@ -29,6 +28,7 @@ local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
+local Wardrobe = require(script.Parent.Parent.Wardrobe)
 
 local Shop = Config.Shop
 local Tiers = Config.Tiers
@@ -845,250 +845,6 @@ function MenuController.rerenderCurrent()
 	end
 end
 
-local TABS = { "Shades", "Parts", "Variants", "Trails" }
-
--- Where a boost trail is earned this season ("Tide Pass free row, tier 6"), or nil
-local function trailSource(id: string): string?
-	local pass = state().pass
-	local season = if typeof(pass) == "table" and typeof(pass.season) == "number" then pass.season else 1
-	local def = Config.Pass.seasons[(season - 1) % #Config.Pass.seasons + 1]
-	for i, entry in def.tiers do
-		if entry.free and entry.free.trail == id then
-			return `Tide Pass free row, tier {i}`
-		elseif entry.paid and entry.paid.trail == id then
-			return `Deep Pass row, tier {i}`
-		end
-	end
-	return nil
-end
-
-local function equippedDress(): Cosmetics.Dress
-	local equipped = state().equipped or {}
-	return {
-		shade = if equipped.shade and equipped.shade ~= "" then equipped.shade else nil,
-		parts = equipped.parts or {},
-		variant = if equipped.variant and equipped.variant ~= "" then equipped.variant else nil,
-	}
-end
-
-local function wardrobeRows(list: ScrollingFrame, tab: string)
-	local s = state()
-	local equipped = s.equipped or { shade = "", variant = "", parts = {} }
-	local order = 0
-	local function add(
-		kind: string,
-		id: string,
-		name: string,
-		tier: string,
-		chance: number,
-		has: boolean,
-		worn: boolean,
-		slot: string?,
-		color: Color3?,
-		elsewhere: boolean?,
-		how: string? -- how a locked one that isn't rolled is got
-	)
-		order += 1
-		local tierInfo = Tiers.byId[tier]
-		local blurb = if has
-			then `{tierInfo.name}{if slot then ` · {slot}` else ""}`
-			elseif elsewhere then `{tierInfo.name} · on another of your fish · unlock it again for this one`
-			elseif how then `{tierInfo.name} · {how}`
-			elseif chance <= 0 then `{tierInfo.name} · beat the world boss to win it`
-			else `{tierInfo.name} · roll to find · {RollOdds.oneIn(1 / chance)}`
-		local action = if not has then "LOCKED" elseif worn then "TAKE OFF" else "WEAR"
-		local style: Ui.ButtonStyle = if not has then "disabled" elseif worn then "secondary" else "primary"
-		local _, button = row(
-			list,
-			order,
-			id,
-			if has or elsewhere then name else "???",
-			blurb,
-			nil,
-			action,
-			style,
-			color or tierInfo.color
-		)
-		if button and has then
-			button.Activated:Connect(function()
-				if worn then
-					ClientState.request("Equip", kind, "", slot)
-				else
-					ClientState.request("Equip", kind, id, slot)
-				end
-			end)
-		end
-	end
-	if tab == "Shades" then
-		-- This fish's own line (owner, 2026-10-10: every fish its own skins, wilder as
-		-- they get rarer), then the skins every fish can earn: its catch track, boss
-		-- trophies, treasure, and a week's limited skin once it has one
-		local owned = s.shades or {}
-		local shown: { any } = {}
-		local line: { any } = Config.Shades.lines[s.species or "Nibbler"] or {}
-		for _, shade in line do
-			table.insert(shown, shade)
-		end
-		-- (catch-track skins first, then the weeks', then trophies and treasure)
-		for pass = 1, 3 do
-			for _, shade in Config.Shades.list do
-				local group = if shade.catch then 1 elseif shade.week then 2 else 3
-				if shade.species == nil and group == pass and (shade.week == nil or owned[shade.id]) then
-					table.insert(shown, shade)
-				end
-			end
-		end
-		for _, shade in shown do
-			local has = owned[shade.id] == true
-			local elsewhere = not has and shade.species == nil and (s.otherShades or {})[shade.id] == true
-			local rarity = if shade.catch then Config.Catch.byId[shade.catch] else nil
-			local how = if rarity
-				then `catch {rarity.track} {rarity.name} fish as this fish (the LOG's catch track)`
-				elseif shade.treasure then "dug up from a Captain's treasure chest"
-				elseif shade.week then "the Catch of the Week"
-				else nil
-			add(
-				"shade",
-				shade.id,
-				shade.name,
-				shade.tier,
-				shade.chance,
-				has,
-				equipped.shade == shade.id,
-				nil,
-				if has or elsewhere then shade.back else nil,
-				elsewhere,
-				how
-			)
-		end
-	elseif tab == "Trails" then
-		-- Boost trails: every fish's, worn one at a time (Config/Trails)
-		local owned = s.trails or {}
-		for _, trail in Config.Trails.list do
-			local has = owned[trail.id] == true
-			local where = trailSource(trail.id)
-			add(
-				"trail",
-				trail.id,
-				trail.name,
-				trail.tier,
-				0,
-				has,
-				s.trail == trail.id,
-				if has then "every fish" else nil,
-				trail.color,
-				nil,
-				if where then `{where} · {trail.blurb}` else `a later Tide Pass season · {trail.blurb}`
-			)
-		end
-	elseif tab == "Parts" then
-		for _, part in Config.Exotics.parts do
-			local has = (s.parts or {})[part.id] == true
-			add(
-				"part",
-				part.id,
-				part.name,
-				"Abyssal",
-				part.chance,
-				has,
-				(equipped.parts or {})[part.slot] == part.id,
-				part.slot
-			)
-		end
-	else
-		-- Every fish has its own variant (Config/Exotics): this fish's first, then
-		-- the others', each named for the fish it reshapes
-		local current = s.species
-		local ordered = table.clone(Config.Exotics.variants)
-		table.sort(ordered, function(a, b)
-			local aMine, bMine = a.species == current, b.species == current
-			if aMine ~= bMine then
-				return aMine
-			end
-			return a.chance < b.chance
-		end)
-		for _, variant in ordered do
-			local has = (s.variants or {})[variant.id] == true
-			local species = Config.Species.byId[variant.species]
-			add(
-				"variant",
-				variant.id,
-				variant.name,
-				"Abyssal",
-				variant.chance,
-				has,
-				equipped.variant == variant.id,
-				if species then `{species.name} only` else nil
-			)
-		end
-	end
-end
-
-function MenuController.openWardrobe()
-	open(
-		"Wardrobe",
-		"Shades, body parts, exotic variants and boost trails you've found",
-		Vector2.new(880, 500),
-		function(window)
-			local previewFrame =
-				Ui.panel(window.content, "PreviewHolder", UDim2.new(0, 250, 1, 0), UDim2.new())
-			previewFrame.BackgroundTransparency = 0.6
-			local preview = FishPreview.new(previewFrame, UDim2.fromScale(1, 1), UDim2.new())
-			local right = Instance.new("Frame")
-			right.BackgroundTransparency = 1
-			right.Position = UDim2.fromOffset(264, 0)
-			right.Size = UDim2.new(1, -264, 1, 0)
-			right.Parent = window.content
-			local tab = "Shades"
-			local tabs: { [string]: TextButton } = {}
-			local listHolder = Instance.new("Frame")
-			listHolder.BackgroundTransparency = 1
-			listHolder.Position = UDim2.fromOffset(0, 50)
-			listHolder.Size = UDim2.new(1, 0, 1, -50)
-			listHolder.Parent = right
-			local list = Ui.list(listHolder)
-			local menu: Menu
-			for i, name in TABS do
-				local button = Ui.button(
-					right,
-					name,
-					string.upper(name),
-					UDim2.fromOffset(130, 38),
-					UDim2.fromOffset((i - 1) * 138, 0),
-					"secondary"
-				)
-				tabs[name] = button
-				button.Activated:Connect(function()
-					tab = name
-					menu.render()
-				end)
-			end
-			local lastDress = ""
-			menu = {
-				window = window,
-				render = function()
-					for name, button in tabs do
-						Ui.setButtonStyle(button, if name == tab then "primary" else "secondary")
-					end
-					local dress = equippedDress()
-					local key = `{dress.shade}|{Cosmetics.partsText(dress.parts)}|{dress.variant}`
-					if key ~= lastDress then
-						lastDress = key
-						preview:show(dress)
-					end
-					rerender(list, function()
-						wardrobeRows(list, tab)
-					end)
-				end,
-				cleanup = function()
-					preview:destroy()
-				end,
-			}
-			return menu
-		end
-	)
-end
-
 -- A stat as a bar (1 = the Nibbler's; the bar is full at 1.6).
 local function statBar(parent: Instance, y: number, label: string, value: number)
 	Ui.label(
@@ -1145,6 +901,105 @@ local function unlockNote(rule: any, s: any): (string, boolean)
 	end
 	local list = table.concat(parts, " · ")
 	return if ready then `Ready: {list}.` else `To unlock: {list}.`, ready
+end
+
+-- A fish's good points and its drawbacks (Config/Species `perks`, `drawbacks`) as
+-- rows with a green tick or a red minus badge (owner, 2026-10-18: "The perks for
+-- each fish and their drawbacks need to be listed on the ui where the player
+-- selects their fish"). Returns the height used.
+local function fishTraits(parent: Instance, species: any): number
+	local y = 0
+	local function badge(row: Frame, good: boolean)
+		local dot = Instance.new("Frame")
+		dot.Name = "Badge"
+		dot.BackgroundColor3 = if good then Ui.color.safe else Ui.color.danger
+		dot.BorderSizePixel = 0
+		dot.Size = UDim2.fromOffset(15, 15)
+		dot.Position = UDim2.fromOffset(0, 1)
+		Ui.corner(dot, UDim.new(1, 0))
+		dot.Parent = row
+		if good then
+			local tick = Ui.label(dot, "Tick", "✓", Ui.FONT_HEAVY, 12, Ui.color.panelFoot, UDim2.fromScale(1, 1))
+			tick.TextXAlignment = Enum.TextXAlignment.Center
+		else
+			-- A minus drawn as a bar (no glyph to go missing)
+			local bar = Instance.new("Frame")
+			bar.Name = "Minus"
+			bar.BackgroundColor3 = Color3.fromRGB(255, 240, 240)
+			bar.BorderSizePixel = 0
+			bar.AnchorPoint = Vector2.new(0.5, 0.5)
+			bar.Position = UDim2.fromScale(0.5, 0.5)
+			bar.Size = UDim2.fromOffset(8, 2)
+			bar.Parent = dot
+		end
+	end
+	local function section(title: string, color: Color3, lines: { string }, good: boolean)
+		local heading = Ui.label(parent, title, title, Ui.FONT_HEAVY, 12, color, UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, y))
+		heading.Name = if good then "GoodAt" else "WatchOut"
+		y += 18
+		for i, text in lines do
+			local row = Instance.new("Frame")
+			row.Name = `{if good then "Perk" else "Drawback"}{i}`
+			row.BackgroundTransparency = 1
+			row.Position = UDim2.fromOffset(0, y)
+			row.Size = UDim2.new(1, 0, 0, 17)
+			row.Parent = parent
+			badge(row, good)
+			local label = Ui.label(row, "Text", text, Ui.FONT_SEMI, 13, Ui.color.text, UDim2.new(1, -22, 1, 0), UDim2.fromOffset(22, 0))
+			label.TextScaled = true
+			local fit = Instance.new("UITextSizeConstraint")
+			fit.MaxTextSize = 13
+			fit.MinTextSize = 9
+			fit.Parent = label
+			y += 18
+		end
+	end
+	section("GOOD AT", Ui.color.safe, species.perks or {}, true)
+	y += 6
+	section("WATCH OUT", Ui.color.danger, species.drawbacks or {}, false)
+	return y
+end
+
+-- A fish's signature ability: the key that uses it on this device as a key cap, its
+-- name, and what it does
+local function fishAbility(parent: Instance, species: any, y: number)
+	local ability = Config.Abilities.byId[species.signature]
+	if ability == nil then
+		return
+	end
+	local key = if Input.isTouch()
+		then ability.label or string.upper(ability.name)
+		elseif Input.isGamepad() then "RT"
+		else "LEFT CLICK"
+	local row = Instance.new("Frame")
+	row.Name = "Ability"
+	row.BackgroundTransparency = 1
+	row.Position = UDim2.fromOffset(0, y)
+	row.Size = UDim2.new(1, 0, 0, 24)
+	row.Parent = parent
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local cap = Ui.keycap(row, "Key", key, 24)
+	cap.LayoutOrder = 1
+	local name = Ui.label(row, "Name", string.upper(ability.name), Ui.FONT_HEAVY, 15, Ui.color.haul, UDim2.fromOffset(0, 24))
+	name.AutomaticSize = Enum.AutomaticSize.X
+	name.LayoutOrder = 2
+	local blurb = Ui.label(
+		parent,
+		"AbilityBlurb",
+		ability.blurb,
+		Ui.FONT,
+		13,
+		Ui.color.muted,
+		UDim2.new(1, 0, 0, 72),
+		UDim2.fromOffset(0, y + 30)
+	)
+	blurb.TextWrapped = true
+	blurb.TextYAlignment = Enum.TextYAlignment.Top
 end
 
 function MenuController.openSpecies()
@@ -1209,53 +1064,49 @@ function MenuController.openSpecies()
 					UDim2.new(1, 0, 0, 18),
 					UDim2.fromOffset(0, 32)
 				)
-				local blurb = Ui.label(
-					info,
-					"Blurb",
-					species.blurb,
-					Ui.FONT,
-					15,
-					Ui.color.muted,
-					UDim2.new(1, 0, 0, 60),
-					UDim2.fromOffset(0, 54)
-				)
-				blurb.TextWrapped = true
-				blurb.TextYAlignment = Enum.TextYAlignment.Top
 				local level = (s.speciesLevels or {})[chosen]
 				Ui.label(
 					info,
 					"Level",
 					if owned then `LEVEL {level or 1}` else "NOT UNLOCKED",
 					Ui.FONT_HEAVY,
-					16,
+					15,
 					if owned then Ui.color.haul else Ui.color.muted,
-					UDim2.new(1, 0, 0, 20),
-					UDim2.fromOffset(0, 120)
+					UDim2.new(1, 0, 0, 18),
+					UDim2.fromOffset(0, 52)
 				)
+				-- Its ability, with the button that uses it on this device
+				fishAbility(info, species, 78)
 
-				statBar(lower, 0, "Speed", species.stats.speed)
-				statBar(lower, 22, "Turning", species.stats.turn)
-				statBar(lower, 44, "Health", species.stats.health)
-				statBar(lower, 66, "Bite", species.stats.bite)
-				local names: { string } = {}
-				for _, id in species.abilities do
-					table.insert(names, Config.Abilities.byId[id].name)
-				end
-				local abilityText = if #names == 1
-					then `Ability: {names[1]} · {Config.Abilities.byId[species.abilities[1]].blurb}`
-					else `Abilities (pick one in its tree): {table.concat(names, " · ")}`
-				local abilities = Ui.label(
-					lower,
-					"Abilities",
-					abilityText,
-					Ui.FONT_SEMI,
-					14,
-					Ui.color.text,
-					UDim2.new(1, 0, 0, 36),
-					UDim2.fromOffset(0, 94)
+				-- Stats and the blurb on the left, good at / watch out on the right
+				local stats = Instance.new("Frame")
+				stats.Name = "Stats"
+				stats.BackgroundTransparency = 1
+				stats.Size = UDim2.new(0.42, -8, 0, 170)
+				stats.Parent = lower
+				statBar(stats, 0, "Speed", species.stats.speed)
+				statBar(stats, 22, "Turning", species.stats.turn)
+				statBar(stats, 44, "Health", species.stats.health)
+				statBar(stats, 66, "Bite", species.stats.bite)
+				local blurb = Ui.label(
+					stats,
+					"Blurb",
+					species.blurb,
+					Ui.FONT,
+					13,
+					Ui.color.muted,
+					UDim2.new(1, 0, 0, 60),
+					UDim2.fromOffset(0, 92)
 				)
-				abilities.TextWrapped = true
-				abilities.TextYAlignment = Enum.TextYAlignment.Top
+				blurb.TextWrapped = true
+				blurb.TextYAlignment = Enum.TextYAlignment.Top
+				local traits = Instance.new("Frame")
+				traits.Name = "Traits"
+				traits.BackgroundTransparency = 1
+				traits.Position = UDim2.new(0.42, 8, 0, 0)
+				traits.Size = UDim2.new(0.58, -8, 0, 170)
+				traits.Parent = lower
+				fishTraits(traits, species)
 
 				-- What it takes, and the button
 				local rule = species.unlock
@@ -1577,6 +1428,31 @@ local function shadeHow(shade: any, s: any): string
 	return `Roll it (50 shells a roll) · about {RollOdds.oneIn(1 / shade.chance)}`
 end
 
+-- The Wardrobe (src/client/Wardrobe.luau): your fish on a lit stage trying things
+-- on, and every skin, part, variant and boost trail as a card. It reads the Index's
+-- text helpers above, and a locked thing's link opens the menu it's got from.
+function MenuController.openWardrobe()
+	open("Wardrobe", Wardrobe.subtitle(), Wardrobe.size(), function(window)
+		local built = Wardrobe.build(window, {
+			shadeHow = shadeHow,
+			passSource = passSource,
+			openPass = function()
+				MenuController.openPass()
+			end,
+			openLog = function()
+				MenuController.openLog()
+			end,
+			openOdds = function()
+				MenuController.openOdds()
+			end,
+			openIndex = function(tab: string?)
+				MenuController.openIndex(tab)
+			end,
+		})
+		return { window = window, render = built.render, cleanup = built.cleanup }
+	end)
+end
+
 -- What to do next, from where you are (the Guide's first rows)
 -- A key name for this device: keyboard, pad or touch
 local function byDevice(keyboard: string, pad: string, touch: string): string
@@ -1691,6 +1567,11 @@ local function guide(): { { title: string, text: string } }
 end
 
 function MenuController.openIndex(startTab: string?)
+	-- The tutorial's last step is opening this (TutorialService)
+	local tutorial = state().tutorial
+	if typeof(tutorial) == "table" and not tutorial.done then
+		ClientState.request("TutorialSaw", "Index")
+	end
 	open("Index", "How to get everything, and what to do next", Vector2.new(920, 560), function(window)
 		local tab = startTab or "Guide"
 		local tabs: { [string]: TextButton } = {}
@@ -1845,15 +1726,16 @@ function MenuController.openIndex(startTab: string?)
 								else `{if rule.level then `Nibbler LV {rule.level}, then ` else ""}{rule.dna or 0} {(
 									Config.Biomes.byId[rule.biome or ""] or { name = "?" }
 								).name} DNA and {Ui.number(rule.coral or 0)} coral (FISH menu).`
-							local stats = species.stats
-							local signature = Config.Abilities.byId[species.signature]
-								or { name = "Dash", blurb = "a short burst." }
 							local status, color = owned((s.unlocked or {})[species.id] == true)
+							-- Its good points and drawbacks, as in FISH (Config/Species)
 							infoRow(
 								list,
 								next(),
 								`{species.name} · {species.role}`,
-								`{species.blurb} {how} Ability: {signature.name}, {signature.blurb} Speed ×{stats.speed}, turn ×{stats.turn}, health ×{stats.health}, bite ×{stats.bite}.`,
+								`Good at: {table.concat(species.perks, ", ")}. Watch out: {table.concat(
+									species.drawbacks,
+									", "
+								)}. {how}`,
 								species.fin,
 								status,
 								color

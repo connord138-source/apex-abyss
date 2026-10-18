@@ -28,6 +28,30 @@ export type Biome = {
 	color: Color3, -- the zone banner's accent
 	deep: boolean, -- below the drop-off
 	dark: boolean?, -- dark and murky: a light helps (an Anglerfish's lure, a Deep Lantern)
+	water: Water?, -- its own water (OceanController)
+}
+
+-- Each biome's own water, Subnautica-style (owner, 2026-10-18: "Visibility needs to be
+-- turned up too. We did good on the ocean look feel but went a bit too blue and its
+-- hard to see anywhere other than the kelp area. Think Subnautica"): green-teal kelp,
+-- grey-green wreck murk, turquoise reef, clear deep-blue open water, teal-cyan ruins,
+-- the Vents' warm murk (OceanController VENTS_GRADE, by its basins) and the Trench's
+-- creepy teal (Config/Tuning `light`, under its dark). OceanController grades the
+-- water by depth (light, thickness, exposure) and blends these over it by how far
+-- inside each biome the camera is, easing across every border, never popping.
+-- `haze` and `decay` are the Atmosphere's colours where the light is the shelf
+-- floor's (y 0); the depth's light scales them, so the same reef water is brighter
+-- near the surface and a deep biome's darker on its floor. `tint` multiplies the
+-- colour grade every fish is seen through: keep it near white with red at 250+, so
+-- skins read true (a greener grade turned gold skins lime, playtest 2026-10-10).
+-- `density`, `exposure` and `saturation` are added to the depth's.
+export type Water = {
+	haze: Color3,
+	decay: Color3,
+	tint: Color3,
+	density: number,
+	exposure: number,
+	saturation: number,
 }
 
 local SHELF = 850 -- Config/World shelf.radius
@@ -46,6 +70,15 @@ local list: { Biome } = {
 		live = true,
 		color = Color3.fromRGB(150, 220, 120),
 		deep = false,
+		-- Green-teal, a little thicker among the fronds (it read best already)
+		water = {
+			haze = Color3.fromRGB(56, 124, 106),
+			decay = Color3.fromRGB(18, 62, 52),
+			tint = Color3.fromRGB(252, 255, 248),
+			density = 0.02,
+			exposure = 0,
+			saturation = 0.02,
+		},
 	},
 	{
 		id = "ShipwreckGraveyard",
@@ -59,6 +92,15 @@ local list: { Biome } = {
 		live = true,
 		color = Color3.fromRGB(150, 200, 150),
 		deep = false,
+		-- Grey-green murk, the thickest of the shallows and a little dimmer
+		water = {
+			haze = Color3.fromRGB(76, 108, 98),
+			decay = Color3.fromRGB(30, 48, 44),
+			tint = Color3.fromRGB(252, 252, 246),
+			density = 0.04,
+			exposure = -0.05,
+			saturation = -0.06,
+		},
 	},
 	{
 		-- The last of the shallows: the shelf's outer band, north round to south
@@ -73,6 +115,15 @@ local list: { Biome } = {
 		live = true,
 		color = Color3.fromRGB(255, 130, 170),
 		deep = false,
+		-- Clear, bright turquoise (the grade stays white: a cyan grade greens skins)
+		water = {
+			haze = Color3.fromRGB(42, 138, 158),
+			decay = Color3.fromRGB(12, 70, 90),
+			tint = Color3.fromRGB(255, 255, 255),
+			density = -0.03,
+			exposure = 0.04,
+			saturation = 0.05,
+		},
 	},
 	{
 		id = "OpenBlue",
@@ -86,6 +137,15 @@ local list: { Biome } = {
 		live = true,
 		color = Color3.fromRGB(100, 170, 255),
 		deep = true,
+		-- Clear deep blue: open water the Megalodon is seen coming through
+		water = {
+			haze = Color3.fromRGB(40, 104, 152),
+			decay = Color3.fromRGB(12, 50, 92),
+			tint = Color3.fromRGB(255, 255, 255),
+			density = -0.03,
+			exposure = 0.04,
+			saturation = 0,
+		},
 	},
 	{
 		id = "SunkenRuins",
@@ -99,6 +159,15 @@ local list: { Biome } = {
 		live = true,
 		color = Color3.fromRGB(120, 240, 220),
 		deep = true,
+		-- Teal-cyan
+		water = {
+			haze = Color3.fromRGB(38, 126, 138),
+			decay = Color3.fromRGB(10, 62, 74),
+			tint = Color3.fromRGB(252, 255, 255),
+			density = 0,
+			exposure = 0,
+			saturation = 0.02,
+		},
 	},
 	{
 		id = "AbyssalTrench",
@@ -113,6 +182,16 @@ local list: { Biome } = {
 		color = Color3.fromRGB(110, 230, 255),
 		deep = true,
 		dark = true,
+		-- A murkier, greener teal over the canyon, hinting at the creepy dark below
+		-- (down in it the dark's own water takes over: Config/Tuning `light`)
+		water = {
+			haze = Color3.fromRGB(32, 98, 102),
+			decay = Color3.fromRGB(8, 40, 44),
+			tint = Color3.fromRGB(250, 255, 252),
+			density = 0.03,
+			exposure = -0.05,
+			saturation = -0.06,
+		},
 	},
 	{
 		id = "HydrothermalVents",
@@ -126,6 +205,16 @@ local list: { Biome } = {
 		live = true,
 		color = Color3.fromRGB(255, 140, 70),
 		deep = true,
+		-- Deep water with a grey warmth over the basins; down in them the warm murk
+		-- (OceanController VENTS_GRADE)
+		water = {
+			haze = Color3.fromRGB(62, 90, 106),
+			decay = Color3.fromRGB(24, 38, 50),
+			tint = Color3.fromRGB(255, 253, 250),
+			density = 0.01,
+			exposure = 0,
+			saturation = -0.02,
+		},
 	},
 }
 
