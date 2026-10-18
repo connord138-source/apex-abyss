@@ -306,9 +306,10 @@ local function buildShell(state: DenState, index: number, record: Record)
 		end
 	end
 	-- Orb lamps hanging from the arch down every storey, one every 20 studs down the
-	-- middle, and in rooms wider than 40 a row down each side as well. Each cord
-	-- stops short of the arch, then reaches up to the real rock by a ray once the
-	-- Terrain answers (it poked out through the den's roof: PC 2026-10-16 round 2)
+	-- middle, and in rooms wider than 70 (the v4 Nook on) a row down each side as
+	-- well. Each cord stops short of the arch, then reaches up to the real rock by a
+	-- ray once the Terrain answers (it poked out through the den's roof: PC
+	-- 2026-10-16 round 2)
 	local cords: { Part } = {}
 	for storey = 1, DenSpace.storeys(level) do
 		local s = DenSpace.storey(storey)
@@ -328,7 +329,7 @@ local function buildShell(state: DenState, index: number, record: Record)
 			end
 			if widest then
 				local across = { 0 }
-				if widest.x > 40 then
+				if widest.x > 35 then
 					across = { -widest.x * 0.5, 0, widest.x * 0.5 }
 				end
 				for _, x in across do

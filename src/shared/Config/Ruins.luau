@@ -36,22 +36,21 @@ return {
 	},
 	sandHeight = 3,
 	drifts = {
-		{ -40, -66, 24 },
-		{ 10, -60, 20 },
-		{ 52, 30, 26 },
-		{ 60, -30, 18 },
-		{ -60, 58, 22 },
-		{ -200, -44, 16 },
-		{ -170, 40, 18 },
-		{ -262, 34, 20 },
-		{ -262, -40, 18 },
-		{ -190, 196, 26 },
-		{ -60, 200, 22 },
-		{ -66, -120, 20 },
-		{ -178, -100, 18 },
-		{ 140, 96, 22 },
-		{ 196, -20, 26 },
-		{ 110, -112, 20 },
+		{ 20, 60, 22 }, -- the temple's sides and back
+		{ -34, -60, 20 },
+		{ 72, 24, 20 },
+		{ 64, -38, 18 },
+		{ -200, -48, 16 }, -- outside the avenue's colonnades
+		{ -160, 46, 18 },
+		{ -262, 40, 18 }, -- the gateway's flanks
+		{ -262, -40, 16 },
+		{ -190, 196, 24 }, -- behind the theatre
+		{ -90, 200, 20 },
+		{ -64, -120, 18 }, -- round the courtyard
+		{ -176, -100, 16 },
+		{ 140, 102, 20 }, -- the back quarter
+		{ 196, -20, 22 },
+		{ 110, -112, 18 },
 	},
 	-- Smaller ruins over the rest of the biome (gateways, colonnades, houses,
 	-- obelisks, round shrines, a colossus's feet, glyph steles), each `apart` from

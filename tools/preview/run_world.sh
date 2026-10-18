@@ -20,7 +20,10 @@ chunk=$(mktemp --suffix=.luau)
 	echo 'local Dens = (function()'
 	grep -v '^--!strict' ../../src/shared/Config/Dens.luau
 	echo 'end)()'
-	echo 'local Config = { World = World, Dens = Dens }'
+	echo 'local Ruins = (function()'
+	grep -v '^--!strict' ../../src/shared/Config/Ruins.luau
+	echo 'end)()'
+	echo 'local Config = { World = World, Dens = Dens, Ruins = Ruins }'
 	echo 'local Layout = (function()'
 	grep -v '^--!strict' ../../src/shared/Layout.luau | sed 's#require(script.Parent.Config)#Config#'
 	echo 'end)()'

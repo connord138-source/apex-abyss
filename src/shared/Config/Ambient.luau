@@ -105,7 +105,7 @@ local kinds: { [string]: Kind } = {
 	giant = {
 		biomes = { "OpenBlue" },
 		perCell = 0, -- (lanes across the Open Blue, below)
-		range = 560,
+		range = 460,
 		size = { 55, 80 }, -- a whale's length (a manta's span is a third of it)
 		speed = { 5, 8 },
 		colors = {
@@ -125,10 +125,12 @@ return {
 	cloudScan = 1,
 	cloudFish = { 6, 12 },
 	-- The giants: `lanes` at a time, each crossing the Open Blue on a line `lane`
-	-- studs long over `period` seconds, seen only between `near` and the kind's range
-	-- (part-built shapes: never close enough to look at)
-	giants = { lanes = 4, period = 170, lane = 1100, near = 190 },
-	-- Everything fades away while a world boss is up within `bossClear` studs (the
-	-- Megalodon owns the Open Blue's dread; the squid's ink is its own)
+	-- studs long over `period` seconds (the same on every client), seen only past
+	-- `near` (part-built shapes, read as silhouettes in the haze: the Open Blue's
+	-- water shows ~280 studs, Config/Bosses `sight`)
+	giants = { lanes = 5, period = 170, lane = 1100, near = 140 },
+	-- Everything fades away while a world boss is up within `bossClear` studs, and the
+	-- giants hide while one is up anywhere (the Megalodon owns the Open Blue's dread and
+	-- comes out of the blue the same way; the squid's ink is its own)
 	bossClear = 600,
 }

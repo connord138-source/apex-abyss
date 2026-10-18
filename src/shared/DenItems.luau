@@ -242,9 +242,9 @@ local function brain(parent: Instance, foot: CFrame, height: number, color: Colo
 		blob(
 			parent,
 			"Groove",
-			Vector3.new(height * 1.05, height * 0.08, height * 0.12),
+			Vector3.new(height * 0.7, height * 0.08, height * 0.12),
 			foot
-				* CFrame.new(0, height * 0.9 + k * 0.01, (k - 2) * height * 0.22)
+				* CFrame.new(0, height * (0.84 - math.abs(k - 2) * 0.03), (k - 2) * height * 0.2)
 				* CFrame.Angles(0, (k - 2) * 0.35, 0),
 			darker(color, 0.3)
 		)
@@ -626,7 +626,7 @@ local function cluster(model: Model, item: DensConfig.Item, base: CFrame, glow: 
 		local x, z = math.cos(a) * r * hx, math.sin(a) * r * hz
 		-- Bigger in the middle and toward the back (+z), smaller toward the front
 		local back = (z / math.max(hz, 0.01) + 1) / 2
-		local f = math.clamp((0.62 + 0.38 * rng:NextNumber()) * (1 - 0.3 * r) * (0.85 + 0.15 * back), 0.45, 1)
+		local f = math.clamp((0.5 + 0.5 * rng:NextNumber()) * (1 - 0.3 * r) * (0.85 + 0.15 * back), 0.45, 1)
 		local h = pieceSize(kind, tall, f, hx, hz)
 		local sink = if kind == "Blade" or kind == "Star" or kind == "Shell" then 0.05 else 0.15
 		local foot = base

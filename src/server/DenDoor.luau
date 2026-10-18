@@ -618,16 +618,16 @@ STYLES.KelpCurtain = function(folder: Model, site: Site): Parts
 	local underside = lintel.CFrame * CFrame.new(0, -1.1, -0.6)
 	-- Swags of kelp down each side, gathered by a rope at waist height
 	for side = -1, 1, 2 do
-		for k = 1, 6 do
-			local x = side * (9.6 + k * 1.05)
-			local length = rng:NextNumber(9, 15) - k * 0.6
+		for k = 1, 9 do
+			local x = side * (9.2 + k * 0.85)
+			local length = rng:NextNumber(11, 17) - k * 0.5
 			Decor.pebble(
 				folder,
 				"KelpSwag",
 				underside
 					* CFrame.new(x, -length / 2, rng:NextNumber(-0.4, 0.4))
 					* CFrame.Angles(0, rng:NextNumber(-0.4, 0.4), side * rng:NextNumber(0.02, 0.1)),
-				Vector3.new(1.5, length, 0.3),
+				Vector3.new(2.3, length, 0.3),
 				Decor.KELP[(k % #Decor.KELP) + 1]
 			).CastShadow =
 				false
@@ -643,18 +643,18 @@ STYLES.KelpCurtain = function(folder: Model, site: Site): Parts
 	-- The fringe over the opening (it doesn't collide: fish swim through it)
 	local x = -9.2
 	while x <= 9.2 do
-		local length = rng:NextNumber(1.6, 3.4)
+		local length = rng:NextNumber(2.4, 4.4)
 		Decor.pebble(
 			folder,
 			"KelpFringe",
 			underside
 				* CFrame.new(x, -length / 2, rng:NextNumber(-0.3, 0.3))
 				* CFrame.Angles(0, rng:NextNumber(-0.5, 0.5), rng:NextNumber(-0.12, 0.12)),
-			Vector3.new(1.3, length, 0.25),
+			Vector3.new(1.9, length, 0.25),
 			Decor.KELP[rng:NextInteger(1, #Decor.KELP)]:Lerp(Color3.fromRGB(200, 230, 90), 0.2)
 		).CastShadow =
 			false
-		x += 1.55
+		x += 1.4
 	end
 	-- Lanterns on chains from the lintel's ends
 	local glows: { Glow } = {}
@@ -865,16 +865,13 @@ STYLES.BrassPorthole = function(folder: Model, site: Site): Parts
 		local at = frame
 			* CFrame.new(math.cos(a) * 15.6, math.sin(a) * 15.6, WALL_Z - 1.6)
 			* CFrame.Angles(0, 0, a)
-		part(
-			folder,
-			{
-				Name = "Hinge",
-				Size = Vector3.new(3.4, 2.6, 2.0),
-				CFrame = at,
-				Color = Decor.BRASS_DARK,
-				CanCollide = false,
-			}
-		)
+		part(folder, {
+			Name = "Hinge",
+			Size = Vector3.new(3.4, 2.6, 2.0),
+			CFrame = at,
+			Color = Decor.BRASS_DARK,
+			CanCollide = false,
+		})
 		Decor.upright(folder, "HingePin", at * CFrame.new(1.7, -1.6, 0), 3.2, 0.45).Color = Decor.BRASS_LIGHT
 	end
 	for _, deg in { 20, 340, 62 } do
@@ -882,26 +879,20 @@ STYLES.BrassPorthole = function(folder: Model, site: Site): Parts
 		local at = frame
 			* CFrame.new(math.cos(a) * 14.2, math.sin(a) * 14.2, WALL_Z - 2.4)
 			* CFrame.Angles(0, 0, a)
-		part(
-			folder,
-			{
-				Name = "Dog",
-				Size = Vector3.new(2.6, 0.9, 1.2),
-				CFrame = at,
-				Color = Decor.BRASS,
-				CanCollide = false,
-			}
-		)
-		part(
-			folder,
-			{
-				Name = "DogHandle",
-				Size = Vector3.new(0.5, 2.2, 0.5),
-				CFrame = at * CFrame.new(1.0, 0, -0.7),
-				Color = Decor.BRASS_LIGHT,
-				CanCollide = false,
-			}
-		)
+		part(folder, {
+			Name = "Dog",
+			Size = Vector3.new(2.6, 0.9, 1.2),
+			CFrame = at,
+			Color = Decor.BRASS,
+			CanCollide = false,
+		})
+		part(folder, {
+			Name = "DogHandle",
+			Size = Vector3.new(0.5, 2.2, 0.5),
+			CFrame = at * CFrame.new(1.0, 0, -0.7),
+			Color = Decor.BRASS_LIGHT,
+			CanCollide = false,
+		})
 	end
 	-- Ship's lanterns on iron arms either side
 	local glows: { Glow } = {}
@@ -1106,51 +1097,39 @@ STYLES.AbyssalGate = function(folder: Model, site: Site): Parts
 	local z = WALL_Z - 1.6
 	local glows: { Glow } = {}
 	local function runeBar(at: CFrame, size: Vector3)
-		local bar = part(
-			folder,
-			{
-				Name = "Rune",
-				Size = size,
-				CFrame = at,
-				Color = rune,
-				Material = Enum.Material.Neon,
-				CanCollide = false,
-				CastShadow = false,
-			}
-		)
+		local bar = part(folder, {
+			Name = "Rune",
+			Size = size,
+			CFrame = at,
+			Color = rune,
+			Material = Enum.Material.Neon,
+			CanCollide = false,
+			CastShadow = false,
+		})
 		table.insert(glows, glowOf(bar, nil, rune))
 	end
 	for side = -1, 1, 2 do
-		part(
-			folder,
-			{
-				Name = "Plinth",
-				Size = Vector3.new(4.4, 1.8, 4.4),
-				CFrame = frame * CFrame.new(side * 13.6, floor + 0.9, z),
-				Color = BASALT_LIGHT,
-				CanCollide = true,
-			}
-		)
-		part(
-			folder,
-			{
-				Name = "Pillar",
-				Size = Vector3.new(2.8, 6 - floor, 3.2),
-				CFrame = frame * CFrame.new(side * 13.6, (6 + floor) / 2, z),
-				Color = BASALT,
-				CanCollide = true,
-			}
-		)
-		part(
-			folder,
-			{
-				Name = "Capital",
-				Size = Vector3.new(4.0, 1.3, 4.0),
-				CFrame = frame * CFrame.new(side * 13.6, 6.4, z),
-				Color = BASALT_LIGHT,
-				CanCollide = true,
-			}
-		)
+		part(folder, {
+			Name = "Plinth",
+			Size = Vector3.new(4.4, 1.8, 4.4),
+			CFrame = frame * CFrame.new(side * 13.6, floor + 0.9, z),
+			Color = BASALT_LIGHT,
+			CanCollide = true,
+		})
+		part(folder, {
+			Name = "Pillar",
+			Size = Vector3.new(2.8, 6 - floor, 3.2),
+			CFrame = frame * CFrame.new(side * 13.6, (6 + floor) / 2, z),
+			Color = BASALT,
+			CanCollide = true,
+		})
+		part(folder, {
+			Name = "Capital",
+			Size = Vector3.new(4.0, 1.3, 4.0),
+			CFrame = frame * CFrame.new(side * 13.6, 6.4, z),
+			Color = BASALT_LIGHT,
+			CanCollide = true,
+		})
 		for k = 0, 2 do
 			local y = floor + 4 + k * 4.4
 			runeBar(frame * CFrame.new(side * 13.6, y, z - 1.65), Vector3.new(0.3, 1.8, 0.2))
@@ -1172,16 +1151,13 @@ STYLES.AbyssalGate = function(folder: Model, site: Site): Parts
 			local mid = (p0 + p1) / 2
 			local along = math.atan2(p1.Y - p0.Y, p1.X - p0.X)
 			local at = frame * CFrame.new(mid) * CFrame.Angles(0, 0, along)
-			part(
-				folder,
-				{
-					Name = "GateStone",
-					Size = Vector3.new((p1 - p0).Magnitude + 0.2, 2.8, 3.0),
-					CFrame = at,
-					Color = if k % 2 == 0 then BASALT else BASALT_LIGHT,
-					CanCollide = true,
-				}
-			)
+			part(folder, {
+				Name = "GateStone",
+				Size = Vector3.new((p1 - p0).Magnitude + 0.2, 2.8, 3.0),
+				CFrame = at,
+				Color = if k % 2 == 0 then BASALT else BASALT_LIGHT,
+				CanCollide = true,
+			})
 			runeBar(at * CFrame.new(0, 0, -1.55), Vector3.new(0.9, 0.25, 0.2))
 			-- a spine along its back, pointing out from the opening
 			local tangent = (p1 - p0).Unit
@@ -1223,16 +1199,13 @@ STYLES.AbyssalGate = function(folder: Model, site: Site): Parts
 	end
 	-- The keystone with a violet eye
 	local key = frame * CFrame.new(0, 6.6 + math.sqrt(20 * 20 - 49), z)
-	part(
-		folder,
-		{
-			Name = "Keystone",
-			Size = Vector3.new(3.2, 3.6, 3.4),
-			CFrame = key,
-			Color = BASALT_LIGHT,
-			CanCollide = true,
-		}
-	)
+	part(folder, {
+		Name = "Keystone",
+		Size = Vector3.new(3.2, 3.6, 3.4),
+		CFrame = key,
+		Color = BASALT_LIGHT,
+		CanCollide = true,
+	})
 	local eye =
 		Decor.pebble(folder, "KeystoneEye", key * CFrame.new(0, 0, -1.75), Vector3.new(1.6, 1.0, 0.4), rune)
 	eye.Material = Enum.Material.Neon

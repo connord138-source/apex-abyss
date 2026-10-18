@@ -28,6 +28,7 @@ local NametagController = require(script.Controllers.NametagController)
 local OfferController = require(script.Controllers.OfferController)
 local OceanController = require(script.Controllers.OceanController)
 local PlanktonController = require(script.Controllers.PlanktonController)
+local AmbientLifeController = require(script.Controllers.AmbientLifeController)
 local PredatorController = require(script.Controllers.PredatorController)
 local AbilityController = require(script.Controllers.AbilityController)
 local BossController = require(script.Controllers.BossController)
@@ -87,6 +88,7 @@ BubbleController.start() -- bubbles off every fish's mouth as it swims
 TrailController.start() -- boost trails off every fish's tail (Config/Trails)
 KelpController.start() -- kelp near the camera sways in the current
 PlanktonController.start() -- glowing plankton in the deepest water, wakes through it
+AmbientLifeController.start() -- jellies, rays, crabs, turtles, reef-fish clouds and far-off giants
 HuntController.start()
 SchoolController.start()
 ChumController.start() -- chum clouds, Blood Tide slicks and the Whale Fall: drawn and eaten here

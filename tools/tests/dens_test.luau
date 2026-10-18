@@ -246,6 +246,89 @@ do
 	end
 end
 
+-- An old save moved into the v4 dens (DenSpace.grow): out with its walls, a lamp
+-- that stood on a table onto the table's new top, a rug now over the wall's edge
+-- nudged back onto the deck
+do
+	local growth = Dens.layout.growth
+	local deck = DenSpace.storey(1).deck
+	local old = {
+		{ uid = 1, id = "DriftwoodTable", x = 4, y = deck, z = -6, r = 0, s = "floor" },
+		{ uid = 2, id = "CoralLamp", x = 4.5, y = deck + 3, z = -6, r = 0, s = "floor" },
+		{ uid = 3, id = "KelpRug", x = 25, y = deck, z = -14, r = 0, s = "floor" },
+		{ uid = 4, id = "SeaGlassLantern", x = 30.5, y = 8, z = 0, r = 90, s = "wall" },
+	}
+	DenSpace.grow(1, old, growth)
+	local tableTop = deck + Dens.itemsById.DriftwoodTable.size.Y
+	expect(
+		math.abs(old[1].x - 4 * growth) < 0.02 and math.abs(old[1].z + 6 * growth) < 0.02,
+		"grow: out with the walls"
+	)
+	expect(
+		math.abs(old[2].y - tableTop) < 0.02,
+		`grow: the lamp onto the table's new top ({old[2].y} vs {tableTop})`
+	)
+	expect(
+		ok(DenSpace.resting(1, old, v(old[2].x, old[2].y, old[2].z), 2)),
+		"grow: the lamp rests on the table"
+	)
+	local rug = Dens.itemsById.KelpRug
+	expect(
+		DenSpace.footprintOnDeck(1, 1, rug, old[3].x, old[3].z, 0, 0.4),
+		`grow: the rug back on the deck (x {old[3].x})`
+	)
+	expect(old[3].x < 25 * growth, "grow: the rug moved in, not out")
+	expect(
+		old[4].y == 8
+			and ok(DenSpace.check(1, Dens.itemsById.SeaGlassLantern, "wall", v(old[4].x, old[4].y, old[4].z))),
+		"grow: the lantern still on its wall"
+	)
+end
+
+-- Den things: a cluster's kinds are pieces DenItems builds; rugs are big, a wall
+-- lantern small
+local KINDS = {
+	Anemone = true,
+	Brain = true,
+	Sponge = true,
+	Sponges = true,
+	Staghorn = true,
+	Fan = true,
+	Shell = true,
+	Kelp = true,
+	Blade = true,
+	Crystal = true,
+	Rock = true,
+	Star = true,
+}
+for _, item in Dens.items do
+	local cluster = item.cluster
+	if cluster then
+		expect(cluster.count >= 3 or item.id == "CoralLamp", `{item.id}: a cluster of several pieces`)
+		for _, kind in cluster.kinds do
+			expect(KINDS[kind] == true, `{item.id}: piece kind {kind}`)
+		end
+	end
+	if item.flat then
+		expect(math.min(item.size.X, item.size.Z) >= 14, `{item.id}: a rug at least 14 studs across`)
+	end
+end
+expect(
+	Dens.itemsById.SeaGlassLantern.size.Y < Dens.itemsById.DriftwoodTable.size.Y,
+	"a wall lantern smaller than a table"
+)
+
+-- Doorway styles: Stone is free, each one's level and achievement exist
+expect(Dens.doorsById.Stone ~= nil and Dens.doorsById.Stone.price == 0, "the Stone Arch is free")
+for _, door in Dens.doors do
+	expect(#door.colors == 3, `{door.id}: three swatches`)
+	expect(door.level == nil or Dens.levels[door.level] ~= nil, `{door.id}: its level exists`)
+	expect(
+		door.achievement == nil or Config.Achievements.byId[door.achievement] ~= nil,
+		`{door.id}: its achievement exists`
+	)
+end
+
 -- Furniture sets: each has pieces and an achievement that opens it; each piece's set
 -- exists; ids are unique
 local seen: { [string]: boolean } = {}

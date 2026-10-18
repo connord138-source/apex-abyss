@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "name": "PreySheetA",
+      "group": "prey_concepts",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/prey_concepts/StyleRef.png",
+      "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, simple eyes with a small dark pupil and a white glint; a touch more realistic in proportion than a toy), draw a clean concept sheet of EIGHT new prey fish for an underwater eat-and-grow game: a neat grid of two rows of four on a plain flat soft teal background, each creature alone in its own space, whole body visible in a three-quarter side view facing left, evenly spaced. Copy the style only, not the species, poses or layout of the reference. Top row, left to right: 1) GARIBALDI: a small round bright orange damselfish with a deep body and rounded fins; 2) WRECK COD: a chunky olive-brown cod mottled with darker spots, a lighter grey belly and a small chin barbel; 3) PARROTFISH: a bulky teal-green and blue parrotfish with big scales and a beak-like mouth; 4) YELLOWFIN TUNA: a sleek torpedo-shaped tuna with a dark steel-blue back, silver sides, long yellow fins and a row of small yellow finlets. Bottom row, left to right: 5) MAHI-MAHI: a long gold and green dolphinfish with a tall blunt forehead and one long back fin; 6) LIONFISH: a lionfish with deep rust-orange and dark charcoal bands and big fanned spiny fins; 7) GHOST SHRIMP: a small swimming shrimp, see-through cool blue-grey with glowing teal tips on its legs and antennae; 8) LANTERNFISH: a small dark navy deep-sea fish with big eyes and rows of glowing cyan light spots along its side. No text, no labels, no numbers, no watermark, no ground, no shadows, no water effects."
+    }
+  ]
+}

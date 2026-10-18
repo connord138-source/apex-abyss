@@ -362,8 +362,12 @@ local function updateMarker()
 	end
 	local tag = markerTag
 	if tag then
+		-- (through the rock only from inside the hub: from the shallows it pointed
+		-- into the seamount)
 		local tutorial = workspace:FindFirstChild("TutorialMarkers")
-		tag.Enabled = not (tutorial and #tutorial:GetChildren() > 0)
+		tag.Enabled = root ~= nil
+			and Layout.inHub(root.Position)
+			and not (tutorial and #tutorial:GetChildren() > 0)
 		local label = tag:FindFirstChild("Text") :: TextLabel?
 		if label then
 			label.TextTransparency = 0.05 + 0.3 * wave

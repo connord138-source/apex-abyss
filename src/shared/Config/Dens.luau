@@ -33,7 +33,7 @@
 -- real scale beside a fish (2 to 17 studs long): rugs 18 to 24 studs across, beds,
 -- thrones and tables about twice as big, a wall lantern still a lantern. Gardens,
 -- piles and clusters are built of many pieces (`cluster`, Shared/DenItems). Saves
--- from before are moved over once (DenService `relayout`, LAYOUT).
+-- from before are moved over once (DenService `relayout`, DenSpace.grow, `layout`).
 export type Level = {
 	level: number,
 	name: string,
@@ -269,7 +269,7 @@ local items: { Item } = {
 		name = "Kelp Bed",
 		price = 180,
 		kinds = { "floor" },
-		size = Vector3.new(14, 5, 10),
+		size = Vector3.new(14, 7, 10),
 		color = Color3.fromRGB(78, 116, 52),
 		cluster = {
 			kinds = { "Blade", "Blade", "Blade", "Kelp", "Blade", "Blade" },
