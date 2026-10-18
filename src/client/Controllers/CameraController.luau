@@ -215,8 +215,13 @@ local function update(dt: number)
 	local limit = length * tuning.maxLag
 	local knee = limit * tuning.lagKnee
 	if lag.Magnitude > length * 6 + 30 then
-		-- A respawn or a teleport: cut straight there
+		-- A respawn or a teleport: cut straight there, behind the fish and as far back
+		-- as the rock allows (the sweep below still limits it). Leaving a den the camera
+		-- kept the den's heading, ~110° off the fish, and eased out from ~3 studs, so the
+		-- first second on the plaza looked through the doorway (PC 2026-10-18, LD2)
 		focus, focusVelocity = target, Vector3.zero
+		alignBehind(SwimController.heading())
+		reach = wantDistance
 	elseif lag.Magnitude > knee then
 		-- At full speed the spring trailed far enough to shrink the fish to a dot
 		-- (playtest re-test, 2026-10-06); a little trail still reads as motion. Past
