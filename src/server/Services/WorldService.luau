@@ -920,77 +920,248 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	bubbleColumn(holder, 1.4)
 end
 
--- Glowing fissures across the Vents' basin floors: short jagged cracks of lava,
--- each with a warm light pooled round it, so the floor (and its toon tile) reads
--- in the dark instead of only the chimneys' throats (PC 2026-10-17, T3: the basalt
--- floor read near black from 50 studs, however light its colour)
-local FISSURE = Color3.fromRGB(255, 108, 34)
+-- Glowing fissures across the Vents' basin floors, so the floor (and its toon tile)
+-- reads in the dark instead of only the chimneys' throats (PC 2026-10-17, T3: the
+-- basalt floor read near black from 50 studs, however light its colour). Since PC
+-- 2026-10-17 round 2 (V1: at ~100 studs only small red slivers showed and the tile
+-- didn't; wide, near black) each basin has 4–6 fissure systems instead of 6 short
+-- cracks, one near its middle and the rest spread round it: a long jagged trunk (a
+-- bright core over a wider deep-red rim, so it reads as a glowing seam from far
+-- off) running both ways from its spot, up to three thinner branches forking off it
+-- across the floor, one big warm light over the spot (fewer, bigger lights: range
+-- 60, Roblox's maximum, so their pools overlap over the whole floor), embers rising
+-- off the trunk and a faint warm heat haze hugging it. Small built pieces, all Neon
+-- (never a toon-overridden material): about 115 parts, 5 lights and 15 emitters a
+-- basin (ten basins).
+local FISSURE_CORE = Color3.fromRGB(255, 150, 54)
+local FISSURE_RIM = Color3.fromRGB(150, 34, 14)
+local FISSURE_LIGHT = Color3.fromRGB(255, 124, 56)
+local FISSURE = {
+	perRadius = 20, -- a basin gets one system per this many studs of its radius (4 to 6)
+	middle = 0.15, -- the first system's spot, × the radius from the basin's middle
+	ring = { 0.55, 0.7 }, -- the others', round it (~90–99% of a floor is in a light's range)
+	trunk = { segments = { 3, 5 }, length = { 7, 12 }, turn = 0.45, width = { 1.3, 2 } }, -- each way from its spot
+	branch = {
+		chance = 0.45,
+		max = 3,
+		segments = { 2, 4 },
+		length = { 5, 9 },
+		turn = 0.5,
+		width = { 0.6, 0.95 },
+	},
+	rim = 2.6, -- the rim's width × the core's
+	edge = 6, -- studs a crack keeps inside the basin's wall
+	step = 2.5, -- a crack stops where the floor jumps more than this (a chimney, rubble)
+	light = { range = 60, brightness = 2.2, height = 8 },
+}
+
+local function fissurePiece(parent: Instance, from: Vector3, to: Vector3, width: number, rim: boolean): Part
+	local span = to - from
+	local piece = Instance.new("Part")
+	piece.Name = if rim then "CrackRim" else "Crack"
+	piece.Anchored = true
+	piece.CanCollide = false
+	piece.CanQuery = false
+	piece.CanTouch = false
+	piece.CastShadow = false
+	piece.Material = Enum.Material.Neon
+	piece.Color = if rim then FISSURE_RIM else FISSURE_CORE
+	-- The rim lies just under the core, a little into the rock; both overlap at the
+	-- joints so a turn shows no gap
+	local thickness = if rim then 0.2 else 0.3
+	local lift = Vector3.new(0, if rim then 0.06 else 0.12, 0)
+	piece.Size = Vector3.new(width, thickness, span.Magnitude + width * 0.6)
+	piece.CFrame = CFrame.lookAt(from + span / 2 + lift, to + lift)
+	piece.Parent = parent
+	return piece
+end
+
+-- A jagged path over the basin floor from `start`, stopping at the basin's wall or
+-- where the floor jumps
+local function fissurePath(
+	rng: Random,
+	basin: { x: number, z: number, radius: number },
+	start: Vector3,
+	heading: number,
+	shape: { segments: { number }, length: { number }, turn: number }
+): { Vector3 }
+	local points: { Vector3 } = { start }
+	local at = start
+	for _ = 1, rng:NextInteger(shape.segments[1], shape.segments[2]) do
+		heading += rng:NextNumber(-shape.turn, shape.turn)
+		local length = rng:NextNumber(shape.length[1], shape.length[2])
+		local x, z = at.X + math.cos(heading) * length, at.Z + math.sin(heading) * length
+		if Vector2.new(x - basin.x, z - basin.z).Magnitude > basin.radius - FISSURE.edge then
+			break
+		end
+		local ground = groundAt(x, z)
+		if ground == nil or math.abs(ground.Y - at.Y) > FISSURE.step then
+			break
+		end
+		table.insert(points, ground)
+		at = ground
+	end
+	return points
+end
+
+-- The heading (radians about Y, from +X toward +Z) from one point to the next
+local function headingOf(from: Vector3, to: Vector3): number
+	return math.atan2(to.Z - from.Z, to.X - from.X)
+end
+
+local function emberEmitter(parent: Instance)
+	local embers = Instance.new("ParticleEmitter")
+	embers.Name = "Embers"
+	embers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	embers.Color = ColorSequence.new(Color3.fromRGB(255, 196, 96), Color3.fromRGB(255, 84, 30))
+	embers.LightEmission = 1
+	embers.LightInfluence = 0
+	embers.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(0.5, 0.45),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	embers.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0.7, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	embers.Lifetime = NumberRange.new(3, 6)
+	embers.Rate = 2.5
+	embers.Speed = NumberRange.new(1.5, 3.5)
+	embers.EmissionDirection = Enum.NormalId.Top
+	embers.SpreadAngle = Vector2.new(25, 25)
+	embers.Acceleration = Vector3.new(0, 0.8, 0)
+	embers.Drag = 0.4
+	embers.RotSpeed = NumberRange.new(-60, 60)
+	embers.Parent = parent
+end
+
+-- A low, faint warm haze over a trunk (the box along its chord): dimly self-lit,
+-- rising only a few studs, so from far off the floor shows a warm glow over its seams
+local function heatHaze(parent: Instance)
+	local haze = Instance.new("ParticleEmitter")
+	haze.Name = "HeatHaze"
+	haze.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	haze.Color = ColorSequence.new(Color3.fromRGB(255, 120, 60), Color3.fromRGB(160, 50, 30))
+	haze.LightEmission = 0.45
+	haze.LightInfluence = 0.2
+	haze.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 5),
+		NumberSequenceKeypoint.new(1, 12),
+	})
+	haze.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.25, 0.86),
+		NumberSequenceKeypoint.new(0.7, 0.9),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	haze.Lifetime = NumberRange.new(4, 7)
+	haze.Rate = 3
+	haze.Speed = NumberRange.new(0.6, 1.6)
+	haze.EmissionDirection = Enum.NormalId.Top
+	haze.SpreadAngle = Vector2.new(20, 20)
+	haze.Acceleration = Vector3.new(0, 0.3, 0)
+	haze.Drag = 0.5
+	haze.Rotation = NumberRange.new(0, 360)
+	haze.RotSpeed = NumberRange.new(-8, 8)
+	haze.Parent = parent
+end
+
 local function ventFissures(parent: Instance, rng: Random)
+	local systems, parts = 0, 0
 	for _, basin in Seafloor.ventBasins() do
-		for _ = 1, 6 do
-			local angle = rng:NextNumber(0, 2 * math.pi)
-			local r = basin.radius * math.sqrt(rng:NextNumber(0.05, 0.75))
-			local x, z = basin.x + math.cos(angle) * r, basin.z + math.sin(angle) * r
-			local start = groundAt(x, z)
-			if start == nil or start.Y > World.deep.floorY - 40 then
+		local count = math.clamp(math.floor(basin.radius / FISSURE.perRadius + 0.5), 4, 6)
+		local turn = rng:NextNumber(0, 2 * math.pi)
+		for k = 1, count do
+			-- One near the middle, the rest spread round it, each in its own slice, so
+			-- the lights pool over the whole floor
+			local angle = turn + (k - 2 + rng:NextNumber(0.3, 0.7)) * 2 * math.pi / (count - 1)
+			local r = basin.radius
+				* (
+					if k == 1
+						then rng:NextNumber(0, FISSURE.middle)
+						else rng:NextNumber(FISSURE.ring[1], FISSURE.ring[2])
+				)
+			local spot = groundAt(basin.x + math.cos(angle) * r, basin.z + math.sin(angle) * r)
+			if spot == nil or spot.Y > World.deep.floorY - 40 then
+				continue
+			end
+			-- The trunk runs both ways from the spot, so the spot is its middle
+			local heading = rng:NextNumber(0, 2 * math.pi)
+			local ahead = fissurePath(rng, basin, spot, heading, FISSURE.trunk)
+			local behind = fissurePath(rng, basin, spot, heading + math.pi, FISSURE.trunk)
+			local trunk: { Vector3 } = {}
+			for i = #behind, 2, -1 do
+				table.insert(trunk, behind[i])
+			end
+			for _, point in ahead do
+				table.insert(trunk, point)
+			end
+			if #trunk < 4 then
 				continue
 			end
 			local crack = Instance.new("Model")
 			crack.Name = "Fissure"
-			local heading = rng:NextNumber(0, 2 * math.pi)
-			local at = Vector3.new(start.X, 0, start.Z)
-			local middle = start
-			local segments = rng:NextInteger(4, 7)
+			local width = rng:NextNumber(FISSURE.trunk.width[1], FISSURE.trunk.width[2])
+			local segments = #trunk - 1
 			for i = 1, segments do
-				heading += rng:NextNumber(-0.6, 0.6)
-				local length = rng:NextNumber(5, 10)
-				local step = Vector3.new(math.cos(heading), 0, math.sin(heading)) * length
-				local mid = at + step / 2
-				local ground = groundAt(mid.X, mid.Z)
-				if ground == nil then
-					break
+				-- Widest in its middle, narrowing toward both ends
+				local w = width * (0.5 + 0.5 * math.sin(math.pi * (i - 0.5) / segments))
+				local core = fissurePiece(crack, trunk[i], trunk[i + 1], w, false)
+				fissurePiece(crack, trunk[i], trunk[i + 1], w * FISSURE.rim, true)
+				if i % 4 == 2 then
+					emberEmitter(core)
 				end
-				local piece = Instance.new("Part")
-				piece.Name = "Crack"
-				piece.Anchored = true
-				piece.CanCollide = false
-				piece.CanQuery = false
-				piece.CanTouch = false
-				piece.CastShadow = false
-				piece.Material = Enum.Material.Neon
-				piece.Color = FISSURE
-				piece.Size = Vector3.new(rng:NextNumber(0.5, 1.1), 0.3, length + 0.6)
-				piece.CFrame =
-					CFrame.lookAt(ground + Vector3.new(0, 0.05, 0), ground + step + Vector3.new(0, 0.05, 0))
-				piece.Parent = crack
-				if i == math.ceil(segments / 2) then
-					middle = ground
+			end
+			local branches = 0
+			for i = 2, #trunk - 1 do
+				if branches >= FISSURE.branch.max or rng:NextNumber() > FISSURE.branch.chance then
+					continue
 				end
-				at += step
+				local side = if rng:NextNumber() < 0.5 then -1 else 1
+				local fork = headingOf(trunk[i - 1], trunk[i]) + side * rng:NextNumber(0.6, 1.1)
+				local path = fissurePath(rng, basin, trunk[i], fork, FISSURE.branch)
+				local bw = rng:NextNumber(FISSURE.branch.width[1], FISSURE.branch.width[2])
+				for j = 1, #path - 1 do
+					local taper = 1 - 0.35 * (j - 1) / math.max(1, #path - 2)
+					fissurePiece(crack, path[j], path[j + 1], bw * taper, false)
+				end
+				if #path > 1 then
+					branches += 1
+				end
 			end
-			if #crack:GetChildren() == 0 then
-				crack:Destroy()
-				continue
-			end
+			-- The haze lies along the trunk's chord; the light hangs over the spot
+			local first, last = trunk[1], trunk[#trunk]
+			local chord = Vector3.new(last.X - first.X, 0, last.Z - first.Z)
 			local glow = Instance.new("Part")
-			glow.Name = "FissureLight"
+			glow.Name = "FissureGlow"
 			glow.Anchored = true
 			glow.CanCollide = false
 			glow.CanQuery = false
 			glow.CanTouch = false
 			glow.Transparency = 1
-			glow.Size = Vector3.one
-			glow.CFrame = CFrame.new(middle + Vector3.new(0, 3, 0))
+			glow.Size = Vector3.new(5, 1, math.max(chord.Magnitude, 8))
+			local mid = (first + last) / 2 + Vector3.new(0, 1.5, 0)
+			glow.CFrame = if chord.Magnitude > 1 then CFrame.lookAt(mid, mid + chord) else CFrame.new(mid)
 			glow.Parent = crack
+			heatHaze(glow)
+			local lamp = Instance.new("Attachment")
+			lamp.Name = "FissureLight"
+			lamp.Position = glow.CFrame:PointToObjectSpace(spot + Vector3.new(0, FISSURE.light.height, 0))
+			lamp.Parent = glow
 			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(255, 130, 60)
-			light.Brightness = 1.4
-			light.Range = 30
+			light.Color = FISSURE_LIGHT
+			light.Brightness = FISSURE.light.brightness
+			light.Range = FISSURE.light.range
 			light.Shadows = false
-			light.Parent = glow
+			light.Parent = lamp
 			crack.Parent = parent
+			systems += 1
+			parts += #crack:GetChildren()
 		end
 	end
+	print(`[WorldService] Vents: {systems} fissure systems ({parts} parts, {systems} lights)`)
 end
 
 -- The biomes' dressing, placed on the Terrain by raycast: dense kelp, rocks and

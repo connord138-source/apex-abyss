@@ -7,6 +7,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Spring = require(script.Parent.Parent.Spring)
@@ -100,7 +101,8 @@ local GRADES: { Grade } = {
 		-- Thinner than the floor above it, so the chimneys' glow reads across a basin
 		-- (playtest 2026-10-08: a chimney 45 studs off was only a silhouette); a little
 		-- lighter and warmer since the basins' floors read near black from 50 studs
-		-- (PC 2026-10-17, T3)
+		-- (PC 2026-10-17, T3). At this depth it is now the Trench's upper canyon
+		-- only: the Vents themselves blend toward VENTS_GRADE (below) by sector.
 		color = Color3.fromRGB(10, 48, 92),
 		decay = Color3.fromRGB(4, 22, 52),
 		density = 0.84,
@@ -125,6 +127,36 @@ local GRADES: { Grade } = {
 		sight = 160,
 	},
 }
+
+-- The Hydrothermal Vents' own water (PC 2026-10-17 round 2, V1: the basins' floor
+-- was near black from 100 studs and almost black wide): in the Vents' sector, from
+-- a little over the deep floor down, the grade blends toward this, thinner and
+-- warmer, lit by the lava, so distance fades into a dark red-brown murk rather than
+-- black, and lighter (exposure −0.15, was −0.32). By sector, not depth, so the
+-- Trench's canyon at the same depth keeps its own look (it's dark).
+local VENTS_ID = "HydrothermalVents"
+local VENTS_GRADE: Grade = {
+	y = World.deep.ventsFloorY,
+	color = Color3.fromRGB(86, 52, 40),
+	decay = Color3.fromRGB(44, 24, 20),
+	density = 0.76,
+	tint = Color3.fromRGB(236, 216, 204),
+	brightness = 0.02,
+	saturation = -0.02,
+	exposure = -0.15,
+	sight = 240,
+}
+-- Studs over the deep floor: none of it from VENTS_FADE up, all of it from VENTS_FULL
+-- down (a fish looking down into a basin from over its lip already sees it)
+local VENTS_FADE, VENTS_FULL = 140, 40
+
+local function ventsAt(position: Vector3): number
+	local biome = Biomes.at(position)
+	if biome == nil or biome.id ~= VENTS_ID then
+		return 0
+	end
+	return math.clamp((World.deep.floorY + VENTS_FADE - position.Y) / (VENTS_FADE - VENTS_FULL), 0, 1)
+end
 
 local HUB_TINT = Color3.fromRGB(246, 236, 222)
 -- Dread (a world boss near): the water turns colder and greyer toward this and the
@@ -217,6 +249,10 @@ local function step(dt: number)
 	-- A den is graded like the hub whatever storey you're on (its interior sits
 	-- at the hub's height, far outside the map: Layout.denOrigin)
 	local target = gradeAt(if Layout.denAt(position) then Config.World.hub.denFloorY else position.Y)
+	local vents = ventsAt(position)
+	if vents > 0 then
+		target = blendGrades(target, VENTS_GRADE, vents)
+	end
 	-- Ease toward the target look, so crossing a depth never pops
 	local blended = if current then blendGrades(current, target, Spring.alpha(2.5, dt)) else target
 	current = blended

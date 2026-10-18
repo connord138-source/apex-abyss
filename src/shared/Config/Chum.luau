@@ -46,5 +46,10 @@ return {
 		respawn = 14, -- a chunk grows back this long after it's eaten
 		chunkScale = 3, -- × the biome's chunk
 		length = 60, -- the carcass, studs
+		-- The marker over a settled whale, through the haze (ChumController): studs
+		-- from the camera, none inside `hide`, full from `full`, fading out from
+		-- `fade`, gone past `range` (PC 2026-10-17 round 2, W1c: from 120 studs up the
+		-- plume was lost in the haze)
+		marker = { hide = 70, full = 90, fade = 620, range = 700 },
 	},
 }

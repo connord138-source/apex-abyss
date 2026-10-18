@@ -1,7 +1,8 @@
 --!strict
 -- Chum and the Whale Fall on this client (Config/Chum, ChumService): draws each
 -- cloud's chunks on their shared paths (Shared/Chum) with a murky red haze, the
--- Whale Fall's carcass sinking to the floor, and eats chunks the moment they're in
+-- Whale Fall's carcass sinking to the floor (with its rim, its plume of silt and a
+-- marker through the haze from far off), and eats chunks the moment they're in
 -- reach of the mouth (sucked in like shrimp, no button), telling the server in small
 -- batches. A chunk the server doesn't confirm comes back.
 local Players = game:GetService("Players")
@@ -10,12 +11,18 @@ local RunService = game:GetService("RunService")
 
 local Chum = require(ReplicatedStorage.Shared.Chum)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local PropParts = require(ReplicatedStorage.Shared.PropParts)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
+local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Ui = require(script.Parent.Parent.Ui)
+local MenuController = require(script.Parent.MenuController)
+local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
 
 local Forage = Config.Forage
@@ -48,6 +55,29 @@ type Piece = {
 	suckStart: number,
 }
 
+-- A whale's plume (`plume`): the silt column's stacked sources, swaying slowly, and
+-- the flecks of chum rising through it
+type Plume = {
+	column: { ParticleEmitter }, -- the silt, from the carcass up (once it's down)
+	sources: { Attachment }, -- where each stretch of the column rises from
+	heights: { number }, -- each source's height over the carcass's middle
+	sway: { number }, -- how far (studs) each source wanders from the axis
+	base: ParticleEmitter, -- the lowest silt, which also puffs up as it lands
+	flecks: ParticleEmitter,
+	landed: boolean,
+}
+
+-- The long-range marker over a settled whale (`marker`)
+type Marker = {
+	gui: BillboardGui,
+	title: TextLabel,
+	distance: TextLabel,
+	glyph: { Frame },
+	shown: number, -- eased strength (0..1)
+	blocked: boolean, -- rock between the camera and the whale (dims it)
+	rayAt: number, -- when the rock was last looked for
+}
+
 type Drawn = {
 	cloud: Chum.Cloud,
 	folder: Folder,
@@ -59,7 +89,8 @@ type Drawn = {
 	crushed: { [BasePart]: number }, -- dressing hidden under a settled carcass (its old modifier)
 	crushAt: number,
 	rim: Highlight?, -- a carcass's faint outline through the haze
-	plume: { ParticleEmitter }?, -- a whale's silt and chum rising above it, seen over kelp and reef
+	plume: Plume?, -- a whale's silt and chum rising above it, seen over kelp and reef
+	marker: Marker?, -- a whale's chip through the haze from far off
 }
 
 local drawn: { [number]: Drawn } = {}
@@ -210,7 +241,8 @@ end
 -- faint shape past ~50 studs (PC 2026-10-15 round 2): a faint cool outline, like the
 -- eerie rim predators wear in the dark, hidden by rock in front of it. Every whale
 -- wears it since a Kelp Shallows one was hard to see from any distance too (PC
--- 2026-10-16), and a plume of chum rises from it over the kelp (`plume`).
+-- 2026-10-16), a plume of silt rises from it over the kelp (`plume`) and a marker
+-- shows it from far off (`marker`).
 local RIM = Color3.fromRGB(150, 205, 230)
 local RIM_RANGE = { 40, 200 } -- studs from the camera: none closer (it reads by its light), gone past
 local function rim(model: Model): Highlight
@@ -226,76 +258,252 @@ local function rim(model: Model): Highlight
 	return highlight
 end
 
--- A whale's plume: a column of silt and chum rising off the carcass to ~150 studs,
--- so it shows over a kelp forest's canopy and the reef's heads from far off (PC
--- 2026-10-16 round 2, W1: 3 faint dark-red puffs were lost in the haze). Murky,
--- not glowing (PC 2026-10-17: a bright, smooth white column read as smoke or a
--- beam of light): sandy, olive-grey silt with a thin, wispy core, barely self-lit,
--- and a second stream of small dark flecks (bits of chum) rising through it.
+-- A whale's plume: a column of silt and chum rising off the carcass, so it shows
+-- over a kelp forest's canopy and the reef's heads (PC 2026-10-16 round 2, W1: 3
+-- faint dark-red puffs were lost in the haze). Murky, not glowing (PC 2026-10-17: a
+-- bright, smooth white column read as smoke or a beam of light). Taller and darker
+-- up top since PC 2026-10-17 round 2 (W1c: it rose only ~90 studs, so from 120 and
+-- 200 up there was nothing but haze): three stretches stacked on each other, each
+-- rising from its own source so the whole column stands within seconds, to about
+-- 240 studs over the carcass (~265 to the top of its last puffs). Sandy silt low
+-- down, olive in the middle and dark olive-brown in the upper half, which is bigger
+-- and denser: what's far off fades into the haze's colour, so the column reads by
+-- its contrast close to a camera above or beside it, a shadow against the bright
+-- water, never a light. The upper sources wander a little off the axis, so the
+-- column meanders like silt drifting up instead of standing like a beam; it spreads
+-- and thins at the top. Small dark flecks (bits of chum) rise through the low part.
 local SILT_LOW = Color3.fromRGB(132, 116, 92)
-local SILT_HIGH = Color3.fromRGB(160, 162, 140)
-local FLECK = Color3.fromRGB(96, 52, 46)
-local function plume(parent: Instance): { ParticleEmitter }
-	local attachment = Instance.new("Attachment")
-	attachment.Name = "Plume"
-	attachment.Position = Vector3.new(0, 8, 0)
-	attachment.Parent = parent
-	local silt = Instance.new("ParticleEmitter")
-	silt.Name = "Plume"
-	silt.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	silt.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, SILT_LOW),
-		ColorSequenceKeypoint.new(1, SILT_HIGH),
-	})
-	silt.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.1, 0.55),
-		NumberSequenceKeypoint.new(0.6, 0.66),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	silt.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 7),
-		NumberSequenceKeypoint.new(0.4, 22),
-		NumberSequenceKeypoint.new(1, 40),
-	})
-	silt.Lifetime = NumberRange.new(13, 17)
-	silt.Rate = 8
-	silt.Speed = NumberRange.new(8, 12)
-	silt.EmissionDirection = Enum.NormalId.Top
-	silt.SpreadAngle = Vector2.new(16, 16)
-	silt.Rotation = NumberRange.new(0, 360)
-	silt.RotSpeed = NumberRange.new(-14, 14)
-	silt.Drag = 0.1
-	-- A slow sideways drift so the column wavers instead of standing like a beam
-	silt.Acceleration = Vector3.new(0.6, 0, 0.35)
-	silt.LightEmission = 0.08
-	silt.LightInfluence = 0.75
-	silt.Brightness = 1.15
-	silt.Parent = attachment
+local SILT_MID = Color3.fromRGB(100, 96, 76)
+local SILT_DARK = Color3.fromRGB(66, 64, 52)
+local SILT_TOP = Color3.fromRGB(54, 54, 46)
+local FLECK = Color3.fromRGB(92, 40, 34)
+local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
+local PLUME_RANGE = 900 -- studs from the camera it keeps rising (so it's standing when you get there)
+local LANDING_PUFF = 16 -- silt puffs kicked up as the carcass lands
+local PLUME_LINGER = 17 -- seconds its last silt lives on once the whale is gone (its longest lifetime)
+
+type Stretch = {
+	height: number, -- its source, studs over the carcass's middle
+	sway: number, -- studs its source wanders off the axis
+	colors: { Color3 },
+	transparency: { { number } },
+	size: { { number } },
+	rate: number,
+	lifetime: { number },
+	speed: { number },
+	drag: number, -- particles lose half their speed every 1/drag s
+	rise: number, -- upward pull (studs/s²): with the drag, a steady climb of rise / (drag × ln 2)
+	spread: number,
+	emission: number,
+	influence: number,
+}
+
+-- Each climbs ~70–105 studs in its lifetime (see `rise`), overlapping the next
+local STRETCHES: { Stretch } = {
+	{
+		height = 4,
+		sway = 0,
+		colors = { SILT_LOW, SILT_MID },
+		transparency = { { 0, 1 }, { 0.08, 0.56 }, { 0.6, 0.6 }, { 1, 1 } },
+		size = { { 0, 8 }, { 0.35, 20 }, { 1, 34 } },
+		rate = 6,
+		lifetime = { 10, 13 },
+		speed = { 8, 11 },
+		drag = 0.15,
+		rise = 0.9,
+		spread = 14,
+		emission = 0.06,
+		influence = 0.8,
+	},
+	{
+		height = 92,
+		sway = 5,
+		colors = { SILT_MID, SILT_DARK },
+		transparency = { { 0, 1 }, { 0.12, 0.5 }, { 0.65, 0.54 }, { 1, 1 } },
+		size = { { 0, 16 }, { 0.4, 32 }, { 1, 48 } },
+		rate = 4.5,
+		lifetime = { 11, 14 },
+		speed = { 6, 8 },
+		drag = 0.2,
+		rise = 1,
+		spread = 20,
+		emission = 0.03,
+		influence = 0.7,
+	},
+	{
+		height = 168,
+		sway = 10,
+		colors = { SILT_DARK, SILT_TOP },
+		transparency = { { 0, 1 }, { 0.12, 0.48 }, { 0.45, 0.5 }, { 0.8, 0.72 }, { 1, 1 } },
+		size = { { 0, 24 }, { 0.5, 46 }, { 1, 64 } },
+		rate = 3.5,
+		lifetime = { 12, 16 },
+		speed = { 4, 6 },
+		drag = 0.25,
+		rise = 0.85,
+		spread = 32,
+		emission = 0,
+		influence = 0.65,
+	},
+}
+
+local function numbers(points: { { number } }): NumberSequence
+	local keys = {}
+	for _, point in points do
+		table.insert(keys, NumberSequenceKeypoint.new(point[1], point[2]))
+	end
+	return NumberSequence.new(keys)
+end
+
+local function plume(parent: Instance, landed: boolean): Plume
+	local column: { ParticleEmitter } = {}
+	local sources: { Attachment } = {}
+	local heights: { number } = {}
+	local sway: { number } = {}
+	for i, stretch in STRETCHES do
+		local source = Instance.new("Attachment")
+		source.Name = `Plume{i}`
+		source.Position = Vector3.new(0, stretch.height, 0)
+		source.Parent = parent
+		local silt = Instance.new("ParticleEmitter")
+		silt.Name = "Silt"
+		silt.Texture = SMOKE
+		silt.Color = ColorSequence.new(stretch.colors[1], stretch.colors[2])
+		silt.Transparency = numbers(stretch.transparency)
+		silt.Size = numbers(stretch.size)
+		silt.Lifetime = NumberRange.new(stretch.lifetime[1], stretch.lifetime[2])
+		silt.Rate = stretch.rate
+		silt.Speed = NumberRange.new(stretch.speed[1], stretch.speed[2])
+		silt.EmissionDirection = Enum.NormalId.Top
+		silt.SpreadAngle = Vector2.new(stretch.spread, stretch.spread)
+		silt.Rotation = NumberRange.new(0, 360)
+		silt.RotSpeed = NumberRange.new(-12, 12)
+		silt.Drag = stretch.drag
+		-- Buoyant silt with the faintest sideways drift (the column leans a few studs)
+		silt.Acceleration = Vector3.new(0.08, stretch.rise, 0.05)
+		silt.LightEmission = stretch.emission
+		silt.LightInfluence = stretch.influence
+		silt.Enabled = false
+		silt.Parent = source
+		table.insert(column, silt)
+		table.insert(sources, source)
+		table.insert(heights, stretch.height)
+		table.insert(sway, stretch.sway)
+	end
 	local flecks = Instance.new("ParticleEmitter")
 	flecks.Name = "Flecks"
 	flecks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	flecks.Color = ColorSequence.new(FLECK, SILT_LOW)
-	flecks.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.1, 0.15),
-		NumberSequenceKeypoint.new(0.8, 0.35),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	flecks.Size = NumberSequence.new(0.5, 1.3)
-	flecks.Lifetime = NumberRange.new(8, 12)
-	flecks.Rate = 22
-	flecks.Speed = NumberRange.new(5, 10)
+	flecks.Color = ColorSequence.new(FLECK, Color3.fromRGB(120, 76, 60))
+	flecks.Transparency = numbers({ { 0, 1 }, { 0.08, 0.1 }, { 0.8, 0.3 }, { 1, 1 } })
+	-- Bigger than they were, since none could be picked out (PC 2026-10-17 round 2)
+	flecks.Size = numbers({ { 0, 0.7 }, { 0.5, 1.5 }, { 1, 1 } })
+	flecks.Lifetime = NumberRange.new(9, 13)
+	flecks.Rate = 18
+	flecks.Speed = NumberRange.new(6, 11)
 	flecks.EmissionDirection = Enum.NormalId.Top
 	flecks.SpreadAngle = Vector2.new(22, 22)
 	flecks.Rotation = NumberRange.new(0, 360)
 	flecks.RotSpeed = NumberRange.new(-90, 90)
 	flecks.Drag = 0.2
-	flecks.Acceleration = Vector3.new(0.6, -0.4, 0.35)
+	flecks.Acceleration = Vector3.new(0.08, 0.45, 0.05)
 	flecks.LightEmission = 0
 	flecks.LightInfluence = 1
-	flecks.Parent = attachment
-	return { silt, flecks }
+	flecks.Parent = sources[1]
+	return {
+		column = column,
+		sources = sources,
+		heights = heights,
+		sway = sway,
+		base = column[1],
+		flecks = flecks,
+		landed = landed,
+	}
+end
+
+-- A whale's marker: a small chip over the carcass that shows through the haze from
+-- 90 studs out to 700 (Config/Chum `whale.marker`), since past ~90 nothing a
+-- particle can do reads through the water (PC 2026-10-17 round 2, W1c). Subtle like
+-- the tutorial's markers (no box): a whale's flukes drawn in the map's W colour,
+-- WHALE FALL under it and how far it is in feet. It shows once the carcass is down,
+-- fades out close up (where the whale itself reads) and with the carcass at the end,
+-- dims while rock stands between (a ray now and then, like the glints), and hides
+-- under a menu, in Build mode, on the start screen and in the hub.
+local WHALE_MARK = Color3.fromRGB(150, 214, 230) -- MapController's W
+local MARK_EDGE = Color3.fromRGB(4, 12, 22)
+local MARK_LIFT = 18 -- studs over the carcass's middle (above its back)
+local MARK_BLOCKED = 0.45 -- its strength behind rock
+local markRange = tune.whale.marker
+local rockOnly = RaycastParams.new()
+rockOnly.FilterType = Enum.RaycastFilterType.Include
+rockOnly.FilterDescendantsInstances = { workspace.Terrain }
+
+local function marker(anchor: BasePart): Marker
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "WhaleMarker"
+	gui.Size = UDim2.fromOffset(140, 50)
+	gui.AlwaysOnTop = true -- through the haze, like the rare catches' glints
+	gui.LightInfluence = 0
+	gui.MaxDistance = markRange.range + 40
+	gui.StudsOffsetWorldSpace = Vector3.new(0, MARK_LIFT, 0)
+	gui.Enabled = false
+	gui.Adornee = anchor
+	-- The flukes: two rounded lobes in a shallow V on a short stem
+	local glyph: { Frame } = {}
+	local function piece(size: Vector2, at: Vector2, rotation: number)
+		local frame = Instance.new("Frame")
+		frame.Name = "Fluke"
+		frame.AnchorPoint = Vector2.new(0.5, 0.5)
+		frame.Position = UDim2.new(0.5, at.X, 0, at.Y)
+		frame.Size = UDim2.fromOffset(size.X, size.Y)
+		frame.Rotation = rotation
+		frame.BorderSizePixel = 0
+		frame.BackgroundColor3 = WHALE_MARK
+		frame.BackgroundTransparency = 1
+		Ui.corner(frame, UDim.new(1, 0))
+		frame.Parent = gui
+		table.insert(glyph, frame)
+	end
+	piece(Vector2.new(15, 5), Vector2.new(-7, 5), 16)
+	piece(Vector2.new(15, 5), Vector2.new(7, 5), -16)
+	piece(Vector2.new(4, 9), Vector2.new(0, 11), 0)
+	local title = Ui.label(
+		gui,
+		"Title",
+		"WHALE FALL",
+		Ui.FONT_HEAVY,
+		14,
+		WHALE_MARK,
+		UDim2.new(1, 0, 0, 16),
+		UDim2.fromOffset(0, 18)
+	)
+	title.TextXAlignment = Enum.TextXAlignment.Center
+	title.TextStrokeColor3 = MARK_EDGE
+	title.TextTransparency = 1
+	title.TextStrokeTransparency = 1
+	local distance = Ui.label(
+		gui,
+		"Distance",
+		"",
+		Ui.FONT_SEMI,
+		12,
+		Ui.color.text,
+		UDim2.new(1, 0, 0, 14),
+		UDim2.fromOffset(0, 34)
+	)
+	distance.TextXAlignment = Enum.TextXAlignment.Center
+	distance.TextStrokeColor3 = MARK_EDGE
+	distance.TextTransparency = 1
+	distance.TextStrokeTransparency = 1
+	gui.Parent = anchor
+	return {
+		gui = gui,
+		title = title,
+		distance = distance,
+		glyph = glyph,
+		shown = 0,
+		blocked = false,
+		rayAt = 0,
+	}
 end
 
 -- Small corals and boulders poking up through a settled carcass are hidden on this
@@ -343,8 +551,35 @@ local function remove(id: number)
 		for part, before in d.crushed do
 			part.LocalTransparencyModifier = before
 		end
+		-- A whale's last silt drifts on and fades out over its own lifetime instead of
+		-- the whole column vanishing at once
+		local rising = d.plume
+		if rising then
+			for _, emitter in rising.column do
+				emitter.Enabled = false
+			end
+			rising.flecks.Enabled = false
+			d.emitter.Enabled = false
+			local mark = d.marker
+			if mark then
+				mark.gui:Destroy()
+			end
+			local murk = d.murk
+			murk.Parent = root
+			task.delay(PLUME_LINGER, function()
+				murk:Destroy()
+			end)
+		end
 		d.folder:Destroy()
 	end
+end
+
+-- The carcass's pose: nose a little down while it sinks, level once it's down
+local function carcassFrame(cloud: Chum.Cloud, yaw: number, now: number): CFrame
+	local sinking = math.clamp(1 - (now - cloud.born) / tune.whale.sinkSeconds, 0, 1)
+	return CFrame.new(Chum.center(cloud, now))
+		* CFrame.Angles(0, yaw, 0)
+		* CFrame.Angles(math.rad(14), 0, math.rad(-12 * sinking - 6))
 end
 
 local function add(payload: { [string]: any })
@@ -414,7 +649,12 @@ local function add(payload: { [string]: any })
 	local body = d.carcass
 	if body then
 		d.rim = rim(body)
-		d.plume = plume(murk)
+		-- A whale already down when this client hears of it doesn't puff on landing
+		d.plume = plume(murk, Timing.clock() >= cloud.born + tune.whale.sinkSeconds)
+		d.marker = marker(murk)
+		-- Where it is now, so a whale first heard of from past DRAW_RANGE isn't left
+		-- where it was built (the world's origin: the hub) until the camera comes near
+		body:PivotTo(carcassFrame(cloud, d.yaw, Timing.clock()))
 	end
 	drawn[cloud.id] = d
 	for key, backAt in payload.eaten or {} do
@@ -453,44 +693,126 @@ local function place(piece: Piece, frame: CFrame, shrink: number)
 	end
 end
 
-local function step()
+-- The plume keeps rising while the camera is within PLUME_RANGE (so the column is
+-- standing by the time anyone gets there); the silt only once the carcass is down,
+-- the flecks from the start; the upper sources wander slowly off the axis
+local function updatePlume(cloud: Chum.Cloud, p: Plume, now: number, away: number)
+	local live = away < PLUME_RANGE and now < cloud.ends - 4
+	local down = now >= cloud.born + tune.whale.sinkSeconds
+	p.flecks.Enabled = live
+	for _, emitter in p.column do
+		emitter.Enabled = live and down
+	end
+	if down and not p.landed then
+		p.landed = true
+		if live then
+			p.base:Emit(LANDING_PUFF)
+		end
+	end
+	if live then
+		local phase = cloud.id * 1.7
+		for i, source in p.sources do
+			local sway = p.sway[i]
+			source.Position = Vector3.new(
+				math.sin(now * 0.17 + phase + i) * sway,
+				p.heights[i],
+				math.cos(now * 0.13 + phase * 0.7 + i) * sway
+			)
+		end
+	end
+end
+
+-- The marker's strength from the camera's distance, eased; `hidden` under a menu,
+-- in Build mode, on the start screen or in the hub
+local function updateMarker(
+	cloud: Chum.Cloud,
+	mark: Marker,
+	center: Vector3,
+	camera: Vector3,
+	now: number,
+	dt: number,
+	hidden: boolean
+)
+	local target = 0
+	if not hidden and now >= cloud.born + tune.whale.sinkSeconds and now < cloud.ends then
+		local away = (center - camera).Magnitude
+		target = math.clamp((away - markRange.hide) / (markRange.full - markRange.hide), 0, 1)
+			* math.clamp((markRange.range - away) / (markRange.range - markRange.fade), 0, 1)
+			* math.clamp((cloud.ends - now) / 3, 0, 1)
+		if target > 0 and now >= mark.rayAt then
+			mark.rayAt = now + 0.3
+			local top = center + Vector3.new(0, MARK_LIFT, 0)
+			mark.blocked = workspace:Raycast(camera, top - camera, rockOnly) ~= nil
+		end
+		if mark.blocked then
+			target *= MARK_BLOCKED
+		end
+	end
+	mark.shown += (target - mark.shown) * math.min(1, dt * 5)
+	local s = mark.shown
+	mark.gui.Enabled = s > 0.01
+	if s <= 0.01 then
+		return
+	end
+	mark.title.TextTransparency = 1 - 0.92 * s
+	mark.title.TextStrokeTransparency = 1 - 0.55 * s
+	mark.distance.TextTransparency = 1 - 0.78 * s
+	mark.distance.TextStrokeTransparency = 1 - 0.45 * s
+	-- The flukes breathe slowly, like the tutorial's markers
+	local breathe = 0.85 + 0.15 * math.sin(now * 2.2)
+	for _, frame in mark.glyph do
+		frame.BackgroundTransparency = 1 - 0.9 * s * breathe
+	end
+	-- How far your fish is from it (the camera sits behind)
+	local fishRoot = SwimController.root()
+	local from = if fishRoot then fishRoot.Position else camera
+	local text = Format.distance((center - from).Magnitude)
+	if mark.distance.Text ~= text then
+		mark.distance.Text = text
+	end
+end
+
+local function step(dt: number)
 	local now = Timing.clock()
 	local camera = workspace.CurrentCamera.CFrame.Position
 	local fishRoot = SwimController.root()
 	local length = SwimController.length()
 	local mouth = if fishRoot then fishRoot.CFrame:PointToWorldSpace(Size.mouthOffset(length)) else nil
 	local reach = Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS
+	local markersHidden = StartController.isUp()
+		or MenuController.isOpen()
+		or Input.editing
+		or Input.building
+		or Layout.inHub(camera)
 	table.clear(moveParts)
 	table.clear(moveFrames)
 	for _, d in drawn do
 		local cloud = d.cloud
 		local center = Chum.center(cloud, now)
-		local near = (center - camera).Magnitude < DRAW_RANGE
+		local away = (center - camera).Magnitude
+		local near = away < DRAW_RANGE
 		d.emitter.Enabled = near and now < cloud.ends - 2
+		-- Placed even when far: a whale's plume and marker are seen past DRAW_RANGE
+		d.murk.CFrame = CFrame.new(center)
 		local rising = d.plume
 		if rising then
-			for _, emitter in rising do
-				emitter.Enabled = near and now < cloud.ends - 4
-			end
+			updatePlume(cloud, rising, now, away)
+		end
+		local mark = d.marker
+		if mark then
+			updateMarker(cloud, mark, center, camera, now, dt, markersHidden)
 		end
 		if not near then
 			continue
 		end
-		d.murk.CFrame = CFrame.new(center)
 		local model = d.carcass
 		if model then
-			-- Nose a little down while it sinks, level once it's down
 			local sinking = math.clamp(1 - (now - cloud.born) / tune.whale.sinkSeconds, 0, 1)
-			model:PivotTo(
-				CFrame.new(center)
-					* CFrame.Angles(0, d.yaw, 0)
-					* CFrame.Angles(math.rad(14), 0, math.rad(-12 * sinking - 6))
-			)
+			model:PivotTo(carcassFrame(cloud, d.yaw, now))
 			local outline = d.rim
 			if outline then
 				-- Fades in past RIM_RANGE[1] and out toward RIM_RANGE[2], and with the
 				-- carcass's own fade at the end
-				local away = (center - camera).Magnitude
 				local inner = math.clamp((away - RIM_RANGE[1]) / 30, 0, 1)
 				local outer = math.clamp((RIM_RANGE[2] - away) / 40, 0, 1)
 				local strength = inner * outer * math.clamp((cloud.ends - now) / 3, 0, 1)
