@@ -106,10 +106,12 @@ export type Live = {
 -- Seats measured from the rigged FBX (assets/fbx/species). The Angler's box top
 -- (0.37 over the middle) is its lure stalk's arch, so a crown set on the box's height
 -- floated over the lure (playtest 2026-10-17: 3.8 studs over the root of a 7.5-stud
--- fish); the head's own top is 0.20-0.21 between the stalk's foot (z -0.2) and the
--- dorsal fin (z -0.04), its flat crest about 0.08 to each side.
+-- fish); the head's own top is 0.19-0.22 between the stalk's foot (z -0.2 to -0.16)
+-- and the dorsal fin (from z -0.04), its flat crest about 0.08 to each side. The
+-- crown hugs the back of the stalk's foot, its band just clear of the crest at the
+-- sides and front, its back dipping into the head as it leans back (about 5°).
 local SEATS: { [string]: Seat } = {
-	Angler = { z = -0.11, y = 0.212, radius = 0.08, tilt = 0.1 }, -- (tilt about 6°)
+	Angler = { z = -0.105, y = 0.206, radius = 0.075, tilt = 0.08 },
 }
 
 local function colorsOf(shade: ShadesConfig.Shade): (Color3, Color3)

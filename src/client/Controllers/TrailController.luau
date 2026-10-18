@@ -134,8 +134,8 @@ local function build(player: Player, character: Model)
 		local fire = emit("flame", 1.2, hot, 1.8)
 		fire.LightEmission = 0.45
 		fire.Brightness = 2.4
-		fire.Transparency = Fx.keys({ 0, 0.05, 0.5, 0.2, 1, 1 })
-		local sparks = emit("embers", 1.2, ColorSequence.new(c, c2))
+		fire.Transparency = Fx.keys({ 0, 0.1, 0.5, 0.3, 1, 1 })
+		local sparks = emit("embers", 1.2)
 		sparks.LightEmission = 0.6
 	elseif style == "rainbow" then
 		-- Two ribbons crossed, so it reads from the side and from above
