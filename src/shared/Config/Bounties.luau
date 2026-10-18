@@ -29,6 +29,14 @@ export type Bounty = {
 
 local pool: { Bounty } = {
 	{
+		id = "Silver10",
+		kind = "catch",
+		rarity = "Silver",
+		count = 10,
+		text = "Catch {n} Silver fish",
+		reward = { coral = 250 },
+	},
+	{
 		id = "Golden3",
 		kind = "catch",
 		rarity = "Golden",
@@ -37,10 +45,11 @@ local pool: { Bounty } = {
 		reward = { coral = 350 },
 	},
 	{
-		id = "Golden8",
+		-- About 25 min of hunting, ~1 h casually (the 2026-10-18 rates; was 8)
+		id = "Golden5",
 		kind = "catch",
 		rarity = "Golden",
-		count = 8,
+		count = 5,
 		text = "Catch {n} Golden fish",
 		minLevel = 15,
 		reward = { coral = 700, shells = 20 },
@@ -54,10 +63,11 @@ local pool: { Bounty } = {
 		reward = { shells = 40 },
 	},
 	{
-		id = "Glowing3",
+		-- About 50 min of hunting (was 3)
+		id = "Glowing2",
 		kind = "catch",
 		rarity = "Glowing",
-		count = 3,
+		count = 2,
 		text = "Catch {n} Glowing fish",
 		minLevel = 20,
 		reward = { shells = 80, charms = { Lucky = 1 } },

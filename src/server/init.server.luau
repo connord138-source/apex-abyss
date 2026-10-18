@@ -70,7 +70,7 @@ DenService.start() -- den bases: levels, furniture, glow, trophy wall
 GardenService.start() -- the den's Coral Garden: AFK and offline coral and shells
 RewardsService.start() -- the daily login streak and the group perk
 TideService.start() -- the Tide Clock: the tide turning, the Prism Tide warning
-CatchService.start() -- rare catches: which fish are rare, the Catch Log, catch tracks, the Catch of the Week
+CatchService.start() -- rare catches: which fish are rare, the Catch Log, the skin goals, the Catch of the Week
 BountyService.start() -- daily bounties and the Bounty Chest
 LeaderboardService.start() -- weekly leaderboards and last week's titles
 WheelService.start() -- the Treasure Wheel: spins, the line, prizes, free spins

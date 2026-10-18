@@ -50,7 +50,7 @@ local list: { Tide } = {
 		weight = 2,
 		color = Color3.fromRGB(230, 60, 70),
 		tint = 0.14,
-		rarity = { Golden = 2, Glowing = 2, Crystal = 2 },
+		rarity = { Silver = 2, Golden = 2, Glowing = 2, Crystal = 2 },
 		haul = 1.25,
 		hunters = { speed = 1.2, aggro = 1.5 },
 		chum = true,
@@ -82,7 +82,7 @@ local list: { Tide } = {
 		weight = 0,
 		color = Color3.fromRGB(255, 120, 230),
 		tint = 0.1,
-		rarity = { Golden = 2, Glowing = 2, Crystal = 2, Prism = 1 },
+		rarity = { Silver = 2, Golden = 2, Glowing = 2, Crystal = 2, Prism = 1 },
 	},
 }
 

@@ -4,7 +4,7 @@
 -- original just with realistic fish reshades and the rarer they get the wilder they
 -- get"; `LINES` below): 4 Common realistic morphs (also sold by the Shade Dyer), 3
 -- Uncommon, 2 Rare, an Epic, a Legendary and a Mythic. A few skins fit every fish:
--- boss trophies, treasure, the catch-track skins (Config/Catch) and the Catch of the
+-- boss trophies, treasure, the catch skins (Config/Catch goals, every fish's) and the Catch of the
 -- Week's. Each fish unlocks its own, and an unlocked one never rolls again for it.
 -- `chance` is "1 in N" per roll; `refund` is the coral a duplicate turns into.
 -- Add new shades here (and a look in Shared/Cosmetics.luau if it needs effects).
@@ -66,9 +66,9 @@ export type Shade = {
 	treasure: string?, -- found only in this map tier's treasure (never in rolls)
 	-- Skin lines per fish (owner, 2026-10-10): the one fish this skin belongs to (set
 	-- from `LINES` below; nil = every fish can have it: trophies, treasure, the
-	-- catch-track and weekly skins)
+	-- catch and weekly skins)
 	species: string?,
-	catch: string?, -- earned on a fish's catch track for this Config/Catch rarity (never rolled)
+	catch: string?, -- earned for every fish by this Config/Catch rarity's goal (never rolled)
 	week: number?, -- the Catch of the Week skin of this week in the list (never rolled)
 	pass: number?, -- a Tide Pass skin of this season (Config/Pass; never rolled)
 	blurb: string,
@@ -150,7 +150,7 @@ local function skin(
 	}
 end
 
--- A skin every fish can earn (catch track, Catch of the Week, the Tide Pass), never rolled
+-- A skin every fish can earn (catch goals, Catch of the Week, the Tide Pass), never rolled
 local function earned(
 	id: string,
 	name: string,
@@ -1378,7 +1378,7 @@ local function fits(shadeId: string, speciesId: string): boolean
 end
 
 -- Whether a skin comes out of rolls (its fish's own; never trophies, treasure,
--- catch-track, weekly or Tide Pass skins)
+-- catch, weekly or Tide Pass skins)
 local function rollable(shade: Shade): boolean
 	return shade.chance > 0
 		and shade.species ~= nil

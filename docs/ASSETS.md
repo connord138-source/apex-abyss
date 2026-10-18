@@ -27,6 +27,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `shade_patch_v11` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch11`: WeekWave and WeekWreck on every fish, lighter for the water, each with a faint even glow map (2026-10-17, K1 of the round-2 report; 6 images a GLB) | the same folders; import after v10 |
 | `shade_patch_v12` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch12`: every skin on the Nibbler, Puffer, MorayEel and Angler (the whole eye kept, skins v12), Bumblebee and Lilac redesigned on the Nibbler, and WeekWreck ("Barnacled"), WeekWave, PassUndertow and PassRiptide redesigned on every fish (2026-10-17; 228 images: Nibbler 48, Puffer 46, MorayEel 49, Angler 63, Cuda 11, ReefShark 11) | the same folders; import after v11 |
 | `shade_patch_v13` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch13`: CatchGolden on every fish (polished: reflection bands, a semi-gloss) and X-Ray on the Cuda (an anatomical skeleton) (2026-10-18; 21 images: 3 a GLB, 6 on the Cuda) | the same folders; import after v12 |
+| `shade_patch_v14` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch14`: CatchSilver, the new Silver catch skin, on every fish (polished silver: reflection bands over mirror scales, steel-blue creases, a semi-gloss) (2026-10-18; 18 images: 3 a GLB) | the same folders; import after v13 |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
 | `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
@@ -360,6 +361,46 @@ Then in Studio (`ApexAbyss.rbxl`): File → Import 3D, one
 moderation), run `tools/studio/organize_shades.luau` in the Command Bar once they're
 all in, and save the place. Check: the Golden skin on any fish shows the shine running
 down it every 2.5 s; the Cuda in X-Ray shows its skeleton side-on.
+
+**Skins v14** (`shade_patch_v14`, in `assets/shades/patch14`; 2026-10-18): **Silver**
+(`CatchSilver`, Common), the skin of the new Silver catch rarity (Config/Catch), the
+commonest. It is Golden's polish in silver (`catch_silver`, made the way v13's Golden is)
+and works on every fish:
+
+- **Polished silver from back to belly**, read by its reflections: a bright streak along
+  the upper flank, a deep steel-blue horizon band under it, a cool bounce lower down.
+  That keeps it apart from the plain silvery prey (a dark back over a light belly) and
+  from the Cuda's Chrome (dark gunmetal with blue-violet streaks).
+- **Mirror scales** (`mirror_scales`): big overlapping scales laid round the body in its
+  own girth, rows nose to tail. Each scale's front lies under the scale ahead, so each
+  shows its free back edge. Each scale is a flat mirror tilted its own way, so the
+  reflection bands step from scale to scale, a few scales flash bright, and each scale
+  lightens toward its edge. There are no scales on the face or the fins.
+- **Steel-blue in the creases**: behind each scale's free edge, in the fish's own painted
+  creases, and in its pattern, engraved as Golden's is.
+- **Finish**: a brushed grain nose to tail, its own semi-gloss roughness (0.42, 0.32 in
+  the streak), an even metal of 0.25, and a faint glow map that is stronger in the streak
+  and on the flashing scales.
+
+It stays mid-toned and cool for the screen. Blue is above green and green above red
+everywhere, with Cr − Cb about −18 on average, so it has no cream or beige. The mean
+luminance is 0.54–0.63, about Golden's, and the brightest flash is a blue-white well
+under white. Through the `water=0.35` haze it reads light steel-blue with its bands; in
+studio light (`strength=0.65`) it reads polished silver. Every packed image scored
+0.005 or less on the classifier.
+
+The moving part is the game's: Config/Shades `FX` gives it SkinFx `sheen`, Golden's
+shine in a cool silver-white. The shine's colours come from the shade (`color`,
+`color2`, and `light` for the flare in a viewport, PreviewFx). Sheet:
+`assets/shades/previews/v14_CatchSilver.jpg`, with each fish's own look in the water,
+then Silver in studio light, then Silver in the water. What the patch holds and its
+screen are in tools/assets_manifest.json `shade_patch_v14`. Import it after v13.
+
+On the PC: `python tools/fetch_assets.py` (shade_patch_v14 → assets/shades/patch14).
+Screen each `assets/shades/patch14/<Fish>_ShadesPatch.glb` one at a time; each run
+must exit 0. Then File → Import 3D one GLB at a time, a few minutes apart, run
+`organize_shades.luau`, and save the place. Check: the Silver skin on any fish shows a
+cool silver shine running down it every 2.5 s.
 
 **FX particle textures** (`tools/shades/make_fx.py`, python3.11 + scipy):
 `assets/textures/fx_{swirl,mist,bubble,star,flame,spark}.png`, 512² RGBA, for the skins'

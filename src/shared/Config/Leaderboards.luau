@@ -16,7 +16,7 @@ local boards: { Board } = {
 		id = "RareCatches",
 		name = "Rare Catches",
 		unit = "pts",
-		blurb = "Golden 1 · Glowing 5 · Crystal 25 · Prism 100 · Catch of the Week +50",
+		blurb = "Silver 0.2 · Golden 1 · Glowing 5 · Crystal 25 · Prism 100 · Catch of the Week +50",
 		titles = { "Rarest Catch", "Top 10 Angler", "Top 100 Angler" },
 	},
 	{
