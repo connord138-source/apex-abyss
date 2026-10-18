@@ -2972,9 +2972,12 @@ def catch_golden(m):  # Golden (v13): polished gold, its own pattern engraved, r
     gold = mix(board(m, (0.96, 0.52, 0.0)), (1.0, 0.63, 0.02), smoothstep(0.1, 0.85, L))
     engraved = hard(smoothstep(0.4, 0.62, lines))
     # A fine brushed grain nose to tail (the smooth frame; it also breaks up the big
-    # smooth fields the classifier read as skin once JPEG-packed, 2026-10-11)
+    # smooth fields the classifier read as skin once JPEG-packed, 2026-10-11). v13's
+    # bands leave bigger even fields than v10's, so the grain is stronger and has a
+    # finer third octave: at v10's strength the Reef Shark's packed image scored 0.23
+    # (one tile, round its eye), with this 0.03
     gp = np.stack([sm.ex * 0.02, m.y * 3.0, sm.ez * 40], -1).astype(np.float32)
-    grain = value_noise(gp, 1.0, 410) * 0.6 + value_noise(gp, 2.3, 411) * 0.4
+    grain = value_noise(gp, 1.0, 410) * 0.45 + value_noise(gp, 2.3, 411) * 0.35 + value_noise(gp, 5.1, 412) * 0.2
     # The reflections, from which way the skin faces (both flanks alike): up the
     # flank the streak, round the middle the dark horizon, under it the bounce. Each
     # band's edge wanders a little with the grain, as on brushed metal
@@ -2993,7 +2996,7 @@ def catch_golden(m):  # Golden (v13): polished gold, its own pattern engraved, r
     gold = mix(gold, (1.0, 0.63, 0.04), streak * 0.9)
     gold = mix(gold, (1.0, 0.66, 0.08), core * 0.8)
     gold = mix(gold, (0.6, 0.24, 0.0), engraved * 0.7)
-    gold = gold * (0.9 + 0.2 * grain)[..., None]
+    gold = gold * (0.84 + 0.32 * grain)[..., None]
     gold = np.clip(gold, 0, 1)
     # A faint, even self-glow over it, stronger in the streak, less in the engraving
     # (the importer turns this into a mask on the colour map)

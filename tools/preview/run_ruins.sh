@@ -4,7 +4,9 @@
 # checks that a LV 100 fish gets through every swim line it registers.
 #   bash tools/preview/run_ruins.sh <out_dir>
 # PROPS=1 draws the hero props (ruins_glb, from assets/tripo/ruins) and the corals
-# in place of their part-built stand-ins. VIEWS=approach,avenue,... picks the cameras
+# in place of their part-built stand-ins. SCHOOLS=1 also lifts prey schools laid
+# through the city over its stones (Shared/Schools.settle) and checks no fish swims
+# inside one (ruins_schools.luau: K| lines). VIEWS=approach,avenue,... picks the cameras
 # (ruins_build.luau lists them); DUMP_ONLY=1 stops after the build and the checks
 # (read hub_parts.txt: C| counts, S| swim lines, [Ruins] the summary). Needs `luau`
 # (LUAU=...) and Blender's Python with numpy, scikit-image and Pillow (BPY=...,
@@ -35,7 +37,9 @@ chunk=$(mktemp --suffix=.luau)
 	module World $src/shared/Config/World.luau
 	module Dens $src/shared/Config/Dens.luau
 	module RuinsConfig $src/shared/Config/Ruins.luau
-	echo 'local Config = { World = World, Dens = Dens, Ruins = RuinsConfig }'
+	module Prey $src/shared/Config/Prey.luau
+	module Tuning $src/shared/Config/Tuning.luau
+	echo 'local Config = { World = World, Dens = Dens, Ruins = RuinsConfig, Prey = Prey, Tuning = Tuning }'
 	module Layout $src/shared/Layout.luau
 	module Seafloor $src/shared/Seafloor.luau
 	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Seafloor = Seafloor, Props = PropsStub } } }'
@@ -43,13 +47,19 @@ chunk=$(mktemp --suffix=.luau)
 	module Shelf $src/server/Shelf.luau
 	module Decor $src/server/Decor.luau
 	module Ruins $src/server/Ruins.luau
+	if [ -n "$SCHOOLS" ]; then
+		module Size $src/shared/Size.luau
+		module Schools $src/shared/Schools.luau
+	fi
 	cat ruins_build.luau
+	if [ -n "$SCHOOLS" ]; then cat ruins_schools.luau; fi
 } > "$chunk"
 $LUAU "$chunk" > "$OUT/hub_parts.txt" || { tail -5 "$OUT/hub_parts.txt"; rm "$chunk"; exit 1; }
 rm "$chunk"
 grep '^\[Ruins\]' "$OUT/hub_parts.txt" || true
 grep '^C|' "$OUT/hub_parts.txt" | sed 's/^C|/parts|collide|query|shadow: /' || true
 grep '^S|' "$OUT/hub_parts.txt" | sed 's/^S|/swim: /' || true
+grep '^K|' "$OUT/hub_parts.txt" | sed 's/^K|/schools: /' || true
 
 # The Terrain round the city (cave_render.py rasterizes it at BOUNDS, CELL)
 chunk=$(mktemp --suffix=.luau)

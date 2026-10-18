@@ -905,7 +905,7 @@ local function obelisk(
 	local seg = height / 3
 	local w = width
 	for k = 0, 2 do
-		w = width * (1 - 0.1 * k)
+		w = width * (1 - 0.06 * k)
 		stone(
 			parent,
 			"ObeliskShaft",
@@ -1059,7 +1059,7 @@ end
 -- A lamp pillar along the avenue: a squat obelisk with a glowing block under its
 -- pyramidion (every lamp glows; `lit` ones also cast light)
 local function lampPillar(parent: Instance, base: CFrame, lit: boolean)
-	obelisk(parent, base, 12, 2.6, lit, true)
+	obelisk(parent, base, 12, 4.4, lit, true)
 end
 
 -- ---------------------------------------------------------------------------
@@ -1175,12 +1175,9 @@ local function statueHead(parent: Instance, at: Vector3, pose: CFrame, scale: nu
 		)
 		glyphPanel(m, F * CFrame.new(0, H * 0.26, -D * 0.51), 3, 1, H * 0.06)
 	end)
-	-- moss and coral on whichever side faces up
-	local up = if (F * Vector3.new(W, 0, 0)).Y > (F * Vector3.new(-W, 0, 0)).Y then 1 else -1
-	for k = 1, 3 do
-		spot(CFrame.new(F * Vector3.new(up * W * 0.48, H * (0.3 - k * 0.18), D * 0.1)), scale * 0.12)
-	end
+	-- (coral grows round it on the sand: on the model's own surface it would float)
 	spot(CFrame.new(floorAt(F * Vector3.new(0, 0, D * 0.8))), 4, true)
+	spot(CFrame.new(floorAt(F * Vector3.new(0, H * 0.7, 0))), 4, true)
 	claim(CFrame.new(F.Position), scale * 0.6, scale * 0.6)
 end
 
@@ -1462,7 +1459,7 @@ local PERISTYLE: { Standing } = {
 	{ x = 32, z = -9, keep = 0 },
 	{ x = 32, z = 9, keep = 1 },
 	{ x = 32, z = 27, keep = 1 },
-	{ x = -32, z = 45, keep = 0.3 },
+	{ x = -32, z = 45, keep = 1 },
 	{ x = -14, z = 45, keep = 1, band = true },
 	{ x = 14, z = 45, keep = 1 },
 	{ x = 32, z = 45, keep = 0 },
@@ -1474,6 +1471,7 @@ local PERISTYLE_BEAMS: { Beam } = {
 	{ a = 1, b = 2, glyphs = -1 },
 	{ a = 1, b = 5 },
 	{ a = 5, b = 6 },
+	{ a = 13, b = 14 },
 	{ a = 14, b = 15 },
 	{ a = 11, b = 12 },
 }
@@ -1574,6 +1572,65 @@ local function greatTemple(parent: Instance, T0: CFrame)
 			architrave(m, a, b, 8.7, beam.glyphs)
 		end
 	end
+	-- The back pediment still stands over the back row's left part, its right end
+	-- broken off (a gable of two wedges on the architraves)
+	local back = tops[13]
+	if back then
+		local eaves = back.Y + 5.4 - T.Y -- the cornice's top, in T
+		local ridge = -9
+		local pitch = 12 / 27.5
+		wedge(
+			m,
+			"Pediment",
+			Vector3.new(8.7, 12, 27.5),
+			T * CFrame.new(ridge - 13.75, eaves + 6, 45) * CFrame.Angles(0, HALF, 0),
+			COLORS.marble,
+			true
+		)
+		-- the right half, broken off 15 studs out: a course under a shorter slope
+		local cut = 12 - pitch * 15
+		stone(
+			m,
+			"Pediment",
+			Vector3.new(15, cut, 8.7),
+			T * CFrame.new(ridge + 7.5, eaves + cut / 2, 45),
+			COLORS.marble,
+			SMOOTH
+		)
+		wedge(
+			m,
+			"Pediment",
+			Vector3.new(8.7, 12 - cut, 15),
+			T * CFrame.new(ridge + 7.5, eaves + cut + (12 - cut) / 2, 45) * CFrame.Angles(0, -HALF, 0),
+			COLORS.marble,
+			true
+		)
+		stone(
+			m,
+			"PedimentBreak",
+			Vector3.new(3, cut + 1.5, 8.2),
+			T * CFrame.new(ridge + 15.5, eaves + (cut + 1.5) / 2, 45) * CFrame.Angles(0, 0, 0.2),
+			COLORS.marble,
+			SMOOTH
+		)
+		glyphPanel(m, T * CFrame.new(-16, eaves + 3.4, 49.4) * CFrame.Angles(0, math.pi, 0), 4, 1, 1.8)
+		spot(T * CFrame.new(ridge - 1, eaves + 12, 45), 2.5)
+	end
+	-- Roof slabs that fell into the cella and against its right side
+	stone(
+		m,
+		"RoofSlab",
+		Vector3.new(16, 2, 26),
+		T * CFrame.new(-6, 26, 14) * CFrame.Angles(0.15, 0.3, 0.55),
+		COLORS.shade
+	)
+	stone(
+		m,
+		"RoofSlab",
+		Vector3.new(14, 2, 22),
+		T * CFrame.new(26, 24, 20) * CFrame.Angles(0.1, -0.2, -0.75),
+		COLORS.shade
+	)
 	-- Two columns fell off the platform: one rolled off the right side, one off the back
 	fallenColumn(
 		m,
@@ -2633,6 +2690,22 @@ local function coral(parent: Instance, at: CFrame, size: number)
 	})
 end
 
+-- A clump of kelp on the sand (the KelpClump prop over a slim stand-in); it
+-- doesn't collide
+local function seaGrass(parent: Instance, at: CFrame, height: number)
+	local stalk = trim(
+		parent,
+		"SeaGrass",
+		Vector3.new(1.2, height, 1.2),
+		at * CFrame.new(0, height / 2, 0),
+		pick(Decor.KELP)
+	)
+	Props.dress(stalk, "KelpClump", {
+		cframe = at * CFrame.new(0, height / 2, 0),
+		size = Vector3.new(height * 0.6, height, height * 0.6),
+	})
+end
+
 -- How near `p` comes to any swim line (studs)
 local function passDistance(p: Vector3): number
 	local best = math.huge
@@ -2680,9 +2753,7 @@ local function grow(parent: Instance)
 				Decor.sponges(folder, at, rng:NextInteger(3, 5), rng)
 				stats.parts += #folder:GetChildren() - before
 			elseif roll < 0.85 then
-				local before = #folder:GetChildren()
-				Decor.kelp(folder, at, rng:NextInteger(3, 4), rng:NextNumber(2.2, 3.4), rng)
-				stats.parts += #folder:GetChildren() - before
+				seaGrass(folder, at, rng:NextNumber(6, 11))
 			else
 				blob(
 					folder,

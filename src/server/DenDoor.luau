@@ -1016,22 +1016,22 @@ STYLES.CrystalGrotto = function(folder: Model, site: Site): Parts
 	local cyan, violet = Color3.fromRGB(110, 230, 255), Color3.fromRGB(176, 110, 236)
 	local glows: { Glow } = {}
 	-- Clusters round the arch, the shards leaning out from the opening
-	for k, deg in { 8, 38, 64, 116, 142, 172 } do
+	for k, deg in { 6, 28, 50, 130, 152, 174 } do
 		local a = math.rad(deg)
 		local base = frame
 			* CFrame.new(math.cos(a) * 14.2, math.sin(a) * 14.2, front + 0.6)
 			* CFrame.Angles(0, 0, a - math.pi / 2)
-		local count = rng:NextInteger(3, 5)
+		local count = rng:NextInteger(5, 7)
 		for s = 1, count do
 			local color = if (s + k) % 2 == 0 then cyan else violet
-			local length = rng:NextNumber(2.6, 5.8) * (if s == 1 then 1.2 else 1)
+			local length = rng:NextNumber(3.4, 7.2) * (if s == 1 then 1.25 else 1)
 			local core = shard(
 				folder,
 				base
 					* CFrame.new(rng:NextNumber(-1.2, 1.2), 0, rng:NextNumber(-0.8, 0.4))
 					* CFrame.Angles(rng:NextNumber(-0.5, 0.2), 0, rng:NextNumber(-0.5, 0.5)),
 				length,
-				length * 0.24,
+				length * 0.3,
 				color
 			)
 			if s == 1 then
@@ -1048,8 +1048,8 @@ STYLES.CrystalGrotto = function(folder: Model, site: Site): Parts
 	end
 	-- A bed of shards at each foot
 	for side = -1, 1, 2 do
-		for s = 1, 5 do
-			local length = rng:NextNumber(1.8, 4.6)
+		for s = 1, 7 do
+			local length = rng:NextNumber(2.4, 6)
 			local color = if s % 2 == 0 then cyan else violet
 			local core = shard(
 				folder,
@@ -1059,7 +1059,7 @@ STYLES.CrystalGrotto = function(folder: Model, site: Site): Parts
 						floor,
 						front - rng:NextNumber(0, 2.4)
 					)
-					* CFrame.Angles(rng:NextNumber(-0.35, 0.35), 0, side * rng:NextNumber(0.05, 0.5)),
+					* CFrame.Angles(rng:NextNumber(-0.35, 0.35), 0, -side * rng:NextNumber(0.05, 0.5)),
 				length,
 				length * 0.26,
 				color
