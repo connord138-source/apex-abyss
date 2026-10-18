@@ -1137,8 +1137,8 @@ owner picked all four ("All four please!").
     biggest, each row the species' biggest. A new record on a rare or trophy-sized
     fish (≥1.9× the species' mass) says NEW BIGGEST.
 - **Catch tracks (owner: "10 total unlocks a skin", per fish, per rarity):** rare
-  catches count on the fish you're swimming as; 100 Golden, 10 Glowing, 5 Crystal and 3
-  Prism catches unlock that rarity's skin for that fish. Those skins are never rolled.
+  catches count on the fish you're swimming as; 100 Golden, 100 Glowing, 100 Crystal
+  and 100 Prism catches (owner, 2026-10-18) unlock that rarity's skin for that fish. Those skins are never rolled.
   - **Earned skins stop at Epic** (owner, 2026-10-10: "we still don't want the most
     elite skins obtained that way that'll be rng and bosses/treasure chests"): Golden
     is Uncommon, Glowing Rare, Crystal and Prism Epic, and the weekly skins Epic.
@@ -1213,10 +1213,10 @@ created in Creator Hub, and a live game hides id-0 items.
 | **Den Expansion** | pass | 149 | 25 more things placed in the den, at any den level |
 | **Deep Garden** | pass | 129 | The Coral Garden grows 50% faster and holds 16 h instead of 8 |
 | **Second Chance** | product | 39 | Bought on the eaten screen: the Haul just lost comes back (once, within 3 min). Bought any other time: a Second Chance charm (hold up to 5) |
-| **Double Haul** Small / Big / Huge | product | 19 / 49 / 99 | Doubles the Haul just banked; the tier is the Haul's size (≤ 60 kg, ≤ 2.5 t, more) |
+| **Double Haul** Small / Big / Huge | product | 19 / 49 / 99 | Doubles the Haul just banked; the tier is the Haul's size (≤ 21 kg, ≤ 875 kg, more; ×0.35 with the 2026-10-18 Haul rate) |
 | **Server Frenzy** | product | 99 | ×2 growth for the whole server for 15 min, announced; buying again adds 15 min (up to 2 h ahead) |
 | **Shell Pouch** / **Shell Chest** | product | 49 / 199 | 100 / 600 shells (2 / 12 rolls). Paid random items: hidden where policy restricts them, with ODDS one tap away |
-| Double Haul (ad) | ad reward | — | A watched rewarded video doubles a Haul up to 60 kg |
+| Double Haul (ad) | ad reward | — | A watched rewarded video doubles a Haul up to 21 kg |
 | **Deep Pass** | product | 399 | This season's paid row of the Tide Pass (below): three skins, a title, three den pieces, far more coral, shells and spins, +20% pass XP. Bought from PASS, not the Shop |
 
 - **Double Haul:** offered on the bank screen after the tutorial when doubling would

@@ -359,8 +359,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `Workspace.World`, easing it out and in (`glintBlocked`, `glintVis`). `HuntService` takes a fish's rarity as it's
     eaten (`CatchService.take`) and fires `Events.caught`.
   - **Catch Log and catch tracks:** every prey × rarity with first-catch rewards, row
-    rewards and the Master Angler title; per fish, 100 Golden (owner, 2026-10-17; was
-    10) / 10 Glowing / 5 Crystal / 3 Prism catches unlock that rarity's skin for it (`data.catchLog`, `logRows`,
+    rewards and the Master Angler title; per fish, 100 catches of a rarity (owner,
+    2026-10-18: all 100; Golden was 10, then 100 on 10-17) unlock that rarity's skin for it (`data.catchLog`, `logRows`,
     `catchTracks`).
   - **Tide Clock** (`Config/Tides`, `Shared/Tides`, `TideService`, `TideController`):
     20-minute tides on Unix time, the same on every server, never one twice in a row:
@@ -577,7 +577,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     and every drawn predator (`PredatorController.drawn()`) wears a Highlight in
     `AlwaysOnTop` throbbing red → yellow at 2.5 Hz, with a red, drained
     ColorCorrection cast over the water; nearest first, within Roblox's cap of 31
-    Highlights. Client-only (positions replicate anyway); the HUD's ability bar
+    Highlights. Since 2026-10-18 it goes through the server (`Sensing`; see the
+    2026-10-18 owner batch: faster, a wider swallow, prey marked too); the HUD's ability bar
     shows the reveal in red, then the recharge.
   - **Skins v8 (depth):** v8 shipped a normal map of each skin's relief
     (`relief_normal`, blended over the fish's own at pack time). **The account was
@@ -900,7 +901,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     stalks at 14, and within 32 studs bursts at ~49 studs/s for 1.6 s (a tell
     started in the burst keeps the speed); it barely turns in a burst, is winded 3 s
     after (slow, no tell, no bite) and leaves a fish alone 25 s after 2 failed bursts.
-    The **Reef Shark** (`tracker`) cruises at 46 (was 24), keeps a chase to 240 studs
+    The **Reef Shark** (`tracker`) cruises at 44 (46 until the 2026-10-18 speed curve), keeps a chase to 240 studs
     and notices a fish under half health from twice as far; it turns wide, brakes
     weakly in its tell and won't follow into kelp. Both bite only a fish in front of
     the jaws (a sideways juke beats both), start the tell from their real braking
@@ -1019,6 +1020,105 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **The stand-in** for a skin not loaded is tinted 88% toward the shade (it looked
     like the plain fish). **Unlock notes** mark each condition met with ✓ and list
     what's left (`MenuController` `unlockNote`, FISH and the Index's goal).
+- **The 2026-10-18 owner batch (owner: "level up a lot slower", "a whale fall should
+  never fall right outside the kelp shallows", catch skins "100 eaten", "Tutorial ... a
+  full cycle", den "bigger", props "MUCH much better", "change the actual entrance to
+  our den", den shop "pics", "Sharks frenzy ... faster ... magnet ... highlight",
+  "perks ... and drawbacks", "how is a player supposed to use a kelp wrap", "animation
+  when they drop the haul off", "gold sheen", "X ray ... actual skeleton", "Wardrobe ui
+  needs to be stepped up entirely", "skins should also exactly match" the preview,
+  "Trail ... right in your face", "the fish isnt taking up more of the screen",
+  "Sunken ruins need an extreme update", "Megalodon ... seen from further out", "Speed
+  ... scales far too high", "so much more fish", "Visibility needs to be turned up ...
+  Think Subnautica", "we dont want to see the map barrier"; then "Go with all of your
+  recs, roll it into one"; built):**
+  - **Slower levelling** (`Config/Tuning` `growth`: `haulRate` 0.35, full rate below
+    LV 1 easing to it by LV 8, by the level the banked mass plus Haul would make):
+    one choke point, `HuntService.addHaul(kind)`: "food" (× rate, then ×2 Mass and
+    Frenzy: prey, forage, slick chunks, bait, predator and boss loot), "rated"
+    (whale share, kill and pod gains), "sized" (treasure, admin: no rate), "raw"
+    (chum, Second Chance). Pay that comes from the Haul uses its `worth` before the
+    rate (`Events.banked` 4th argument: Pass XP, map chance; bank coral 7 × √worth),
+    so a dive pays as before. `haulLengthCap` 1.5 (only the live size). Double Haul
+    tiers and the ad cap ×0.35 (21 kg / 875 kg). The creator owns ×2 Mass, so the
+    owner levels at double.
+  - **Whale Fall** never in the Kelp Shallows nor within 520 of the hub (`Config/Chum`
+    `whale.never`, `minRadius`); one fish takes at most `levels` 4 levels' worth from
+    one whale ("You're full of whale!", `WhaleFull` attribute; its chunks stay for
+    others).
+  - **Catch tracks 100 each** (Golden ~3,500 fish eaten, Glowing ~18,000, Crystal
+    ~90,000, Prism ~15,000 during Prism Tides).
+  - **Blood Sense frenzy** (server: `AbilityService` `Sensing`, `Perks.sense`): 7 s
+    of ×1.25 top speed (SpeedService allows it), ×2 swallow reach and suction (client
+    and server), and amber Highlights on the nearest edible prey within 120 after the
+    red players and predators (28 at most; `SchoolController.edibleNear`).
+  - **Speed curve flattened** (`Size.topSpeed`: the old curve to `swim.speedKnee`
+    raw 6, ~LV 33, then easing to `speedCap` 56): LV 100 cruise Nibbler ~49, 'Cuda
+    ~62, Puffer ~39 (were 83/104/67); crossing the 3,000-stud map ~60 s (Nibbler) /
+    ~50 s ('Cuda) cruising, ~33 s for a maxed 'Cuda chaining Torpedo; Strong Fins
+    +3% a level (was 4%); Reef Shark 44. The Megalodon's charge (75) now outruns
+    every fish.
+  - **Camera:** `growFraming` 1.0 and `growFov` 6 (a grown fish keeps its share of
+    the screen; the bank's growth sequence shows the growth).
+  - **Clearer, per-biome water** (`OceanController` depth grades for light and
+    density + `Config/Biomes` `water` per biome for haze, tint and offsets, blended
+    over ~90 studs): Kelp green-teal, Wreck grey-green, Reef turquoise, Open Blue clear
+    deep blue, Ruins teal-cyan, Vents warm murk, Trench creepy teal; shelf density
+    ~0.50–0.57 (was 0.64–0.68), deep ~0.55–0.62 (was 0.80–0.88), Trench dark 0.66.
+    **The map's edge never shows:** the water thickens to 0.72 over the last 380
+    studs inside the barrier, and the Horizon walls take the camera's haze colour every
+    frame. Megalodon `sight` 500 / 290, fight light 240, dread 680.
+  - **A fuller ocean:** 406 schools (was 113, ~4,100 fish), new zone shapes
+    (`spread`, `round` bait balls, `pathRadius`, `trench`); `SchoolController` builds
+    a school only near the camera (3 ms a frame), each fish drawn to 180 + 55 ×
+    length (≤ 520) and faded at the edge, ranges easing to 0.7× on slow devices
+    (`Workspace.Prey` attributes `Detail`/`Built`/`Drawn`; `tools/tests/run_density.sh`).
+    **Ambient life** (`AmbientLifeController`, `Config/Ambient`, client-only, seeded
+    per 96-stud cell on the shared clock): jellyfish, rays, crabs, turtles, reef-fish
+    clouds round coral, far whales and mantas in the Open Blue; all fade near a boss.
+    **New prey concepts** (8: Garibaldi, Wreck Cod, Parrotfish, Yellowfin Tuna,
+    Mahi-mahi, Lionfish, Ghost Shrimp, Lanternfish; `assets/tripo/prey_concepts/`)
+    wait for the owner's approval before 3D.
+  - **Tutorial: the full loop, nine steps** (`Config/Tutorial`, `TutorialService`
+    rewritten, `tutorial.v`): leave the hub, eat 10, 5 shells, fill the Haul
+    (`HAUL_LEVELS` 7 levels' worth), bank, spin the wheel (a spin granted), ROLL
+    (shells topped to 50), use a Kelp Wrap (one granted), open the INDEX (I key);
+    new `Events.spun/rolled/usedItem`, `TutorialSaw`.
+  - **Item bar** (`ItemBarController`): a slot per carried item left of the Haul card
+    (photo, count, key, status, cooldown); keys 1–4 (H still wraps), LB, tap; all
+    through `UseItem`.
+  - **Bank growth sequence** (`BankController`, `FishAnimator.showGrowth`): side-on
+    camera, the fish dips to its pre-dive size and pops to the new one, ring and
+    sparkles, a card "1.8 ft → 2.3 ft", levels and coral; ~3.7 s, skippable
+    (`Ui.releaseStage`).
+  - **Perks and drawbacks** per fish (`Config/Species` `perks`/`drawbacks`) in FISH
+    and the Index. **Daily panel** redrawn (streak flame, photo tiles, CLAIM on today,
+    gifts with a progress bar).
+  - **Wardrobe** (`src/client/Wardrobe.luau`): a big try-on stage (hover/D-pad tries
+    on), a photo card grid with tier, status, tags and a how-to-get on locked cards,
+    filters, counts, a details panel (how to get, effects in words, "Comes with a
+    trail:" for ribbon kinds, light in the dark) and WEAR / TAKE OFF / LOCKED with a
+    link; LB/RB tabs on a pad. `FishPreview` gained `dress` (no rebuild) and
+    `setTurn("sway"|"spin"|"still")`.
+  - **Skins v13** (`shade_patch_v13`, sha256 947f0900…, 6 GLBs, no normal maps,
+    highest classifier 0.03): Golden glossier with painted reflection bands plus a
+    `sheen` effect (a warm band running head to tail every 2.5 s with a riding light
+    and sparks; gold particles use Roblox's white sparkle, the cyan `fx` images had
+    turned them olive); X-Ray (the 'Cuda's) an anatomical skeleton. **Previews match
+    the game** (`PreviewFx`: glow ×1.6, the skin's light as a backdrop, 2D effect
+    sparkles, Golden's sweep). **Ribbons** sit on the tail fin's line (Prism,
+    Prismatic, Comet, Riptide) and, on your own fish, are cut short of the camera and
+    fade when seen end-on.
+  - **Dens:** rooms 1.22× (deck ~1.5×), capacities 24/48/80/125/180; things at real
+    scale (floor ×1.9, rugs 18–24 studs, wall lanterns small) and clusters built from
+    pieces (`cluster`, `DenItems.piece`: Anemone Garden, Tube Sponges, Shell Pile, …);
+    **doorway styles** (`Config/Dens` `doors`: Stone, Kelp Curtain, Coral Arch, Brass
+    Porthole, Whalebone Gate, Crystal Grotto, Abyssal Gate, Megalodon Jaws; coral and
+    den level or achievements; `data.den.door`/`doors`, `DenDoor` request); a **YOUR
+    DEN** ring, light column and tag only you see; den shop and tray **photos**
+    (`ItemPhoto`); the plaza exit hold 5 s. Weakest props for a Tripo batch: Driftwood
+    Table, Pearl Pedestal, Jellyfish Lamp, Banner, Sea Glass Lantern, Bubble Column,
+    Coral Lamp, Kelp Bed (concept boards first).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -1235,8 +1335,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   fightable"):** it roams the Open Blue's open water (`patrol.depth` 170–470 over the
   floor); the Open Blue's fish and Reef Sharks keep to 140–430, and its old 150–280
   stud pinnacles are 37–70 stud spires on the floor far below (`Shelf.luau`).
-  `Config/Bosses` `sight` (studs from its body): unseen beyond `far` 280, solid by
-  `near` 170 (`PredatorController` fades the body's transparency by camera distance,
+  `Config/Bosses` `sight` (studs from its body): unseen beyond `far` 500, solid by
+  `near` 290 (280/170 until 2026-10-18's clearer water; dread from 680) (`PredatorController` fades the body's transparency by camera distance,
   eased; tag, boss bar and NEARBY once it's 35% opaque). **A body is fully opaque or
   plainly fading, never a hair see-through** (owner, playtest 2026-10-10: "boss has
   holes and see through glitches"): the eased fade sat at 0.995 for the whole fight,
@@ -1382,9 +1482,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `data.den.layout`, kept out of the save template so Reconcile can't skip it).
   - **The levels:** Nook → Burrow 1,000 (a second great room runs back) → Hall
     12,000 (a shaft to a vaulted hall below) → Grotto 45,000 (wings, a deep back) →
-    Sanctum 150,000 (a second shaft to the deepest storey), holding 20/40/70/110/160
-    things (+25 Den Expansion). Deck: 3,056 / 6,416 / 17,384 / 25,712 / 46,432 square
-    studs (a 60 × 60 Nook, 39 studs tall; ~4× v2). `Config/Dens` `rooms` (bands across
+    Sanctum 150,000 (a second shaft to the deepest storey), holding 24/48/80/125/180
+    things (+25 Den Expansion). Rooms 1.22× wider and longer since 2026-10-18 (a 74 × 72
+    Nook, 39 studs tall; deck ~1.5× the 3,056 / 6,416 / 17,384 / 25,712 / 46,432 square
+    studs before; shafts z −70 / −110, r 10 / 11; pool z 14, r 9; old saves moved once,
+    `den.layout` 4, `DenSpace.grow`). `Config/Dens` `rooms` (bands across
     the den's axis), `storeys` (deck, floor, ceiling, `wall`: decks 1 / −54 / −114,
     floors −4 / −60 / −120 on 4-stud voxel lines, ceilings 40 / −12 / −68), `shafts`
     (Hall z −58 r 9, Sanctum z −90 r 10), `gardenSpots`, `pool` (z 12, r 8), `exit`.
@@ -1538,7 +1640,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   all the way down ... you shouldn't be able to see all depths at once ... similar to
   the underwater feel of Subnautica"; "the open blue is just a large black
   wasteland"):** `OceanController`'s grades thicken and darken the water with depth
-  (Atmosphere density 0.68 at the surface → 0.76 on the shelf → 0.88 on the deep floor
+  (superseded 2026-10-18 by clearer, per-biome water: see that owner batch; before it,
+  Atmosphere density 0.68 at the surface → 0.76 on the shelf → 0.88 on the deep floor
   and in the Trench, exposure down to −0.75; the Trench's black is the dark, above, plus classic fog with a `sight` per
   grade in case the Atmosphere ever goes), and the deep floor grade is a deep blue
   (the Mud material is blue-grey), never black; only the Trench's `dark` goes
@@ -1906,7 +2009,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     - `Events`: signals that services fire and the tutorial listens to.
     - `SpeciesService`: switch species in the safe zone with no Haul aboard (respawns
       you in your den); unlock with home-biome DNA plus coral.
-    - `TutorialService`: five steps. Finishing gives 50 shells and 500 coral and opens
+    - `TutorialService`: nine steps since 2026-10-18 (the full loop). Finishing gives 50 shells and 500 coral and opens
       species select (the 'Cuda is earned since 2026-10-17).
   - DNA drops: big prey always, small prey 25%, forage 4%, credited to the biome you
     ate in.
@@ -1928,7 +2031,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     exotic variants (they're part-built pieces on the mesh for now); caustics
     (needs a texture upload)
   - den items from bosses (jaw arch, Kraken-eye lantern) as Trophy Hunter buys
-  - The progression numbers are placeholders: one full dive banks about 16 levels.
+  - Progression was slowed 2026-10-18 (Haul rate 0.35): a Kelp dive at LV 1 banks
+    ~+10 levels, at LV 10 +5–7, a Reef dive at LV 25 +3–5 (rough model).
 
 ## Playtests
 
