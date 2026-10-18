@@ -1105,6 +1105,10 @@ end
 
 -- The server says a fish was eaten (by anyone) and when it comes back.
 local function onPreyEaten(index: number, backAt: number, eaterUserId: number)
+	if typeof(index) ~= "number" or Schools.fish[index] == nil or typeof(backAt) ~= "number" then
+		return
+	end
+	backAts[index] = backAt -- (kept for a school built later)
 	local visual = visuals[index]
 	if visual == nil then
 		return
@@ -1123,8 +1127,16 @@ local function onPreyEaten(index: number, backAt: number, eaterUserId: number)
 	end
 end
 
+-- How far this client draws (×, DETAIL_MIN..1): eased in while its frames run slow
+function SchoolController.detail(): number
+	return detail
+end
+
 function SchoolController.start()
-	build()
+	local made = Instance.new("Folder")
+	made.Name = "Prey"
+	made.Parent = workspace
+	folder = made -- (each school's fish are built as it comes near: step)
 	-- The schools' lifts over the rocks and reefs, as the server worked them out
 	-- (Schools.settle), so we draw every fish where the server checks it
 	local function loadLifts()
