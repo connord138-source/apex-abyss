@@ -1,0 +1,76 @@
+#!/bin/bash
+# Renders the Sunken Ruins as players see them: the Terrain (src/server/Shelf.luau,
+# voxelized round the city) plus every part src/server/Ruins.luau builds on it, and
+# checks that a LV 100 fish gets through every swim line it registers.
+#   bash tools/preview/run_ruins.sh <out_dir>
+# PROPS=1 draws the hero props (ruins_glb, from assets/tripo/ruins) and the corals
+# in place of their part-built stand-ins. VIEWS=approach,avenue,... picks the cameras
+# (ruins_build.luau lists them); DUMP_ONLY=1 stops after the build and the checks
+# (read hub_parts.txt: C| counts, S| swim lines, [Ruins] the summary). Needs `luau`
+# (LUAU=...) and Blender's Python with numpy, scikit-image and Pillow (BPY=...,
+# default python3.11). Cycles on the CPU: a view takes a minute or two.
+set -e
+cd "$(dirname "$0")"
+OUT=${1:-/tmp/ruins_preview}
+mkdir -p "$OUT"
+LUAU=${LUAU:-luau}
+src=../../src
+
+module() { # module <Name> <path>: wraps a ModuleScript as a local, with its requires resolved
+	echo "local $1 = (function()"
+	grep -v '^--!strict' "$2" \
+		| sed -E 's#require\((ReplicatedStorage\.[A-Za-z.]+)\)#(\1)#g' \
+		| sed -E 's#require\(script\.Parent\.Parent\.([A-Za-z]+)\)#\1#g' \
+		| sed -E 's#require\(script\.Parent\.([A-Za-z]+)\)#\1#g' \
+		| sed -E 's#^local Props = \(ReplicatedStorage\.Shared\.Props\)#local Props = PropsStub#'
+	echo "end)()"
+}
+
+chunk=$(mktemp --suffix=.luau)
+{
+	grep -v '^return true$' roblox_stub.luau
+	grep -v '^return true$' cave_stub.luau
+	grep -v '^return true$' parts_stub.luau
+	echo "USE_PROPS_ENV = $([ -n "$PROPS" ] && echo true || echo false)"
+	module World $src/shared/Config/World.luau
+	module Dens $src/shared/Config/Dens.luau
+	module RuinsConfig $src/shared/Config/Ruins.luau
+	echo 'local Config = { World = World, Dens = Dens, Ruins = RuinsConfig }'
+	module Layout $src/shared/Layout.luau
+	module Seafloor $src/shared/Seafloor.luau
+	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Seafloor = Seafloor, Props = PropsStub } } }'
+	module Cave $src/server/Cave.luau
+	module Shelf $src/server/Shelf.luau
+	module Decor $src/server/Decor.luau
+	module Ruins $src/server/Ruins.luau
+	cat ruins_build.luau
+} > "$chunk"
+$LUAU "$chunk" > "$OUT/hub_parts.txt" || { tail -5 "$OUT/hub_parts.txt"; rm "$chunk"; exit 1; }
+rm "$chunk"
+grep '^\[Ruins\]' "$OUT/hub_parts.txt" || true
+grep '^C|' "$OUT/hub_parts.txt" | sed 's/^C|/parts|collide|query|shadow: /' || true
+grep '^S|' "$OUT/hub_parts.txt" | sed 's/^S|/swim: /' || true
+
+# The Terrain round the city (cave_render.py rasterizes it at BOUNDS, CELL)
+chunk=$(mktemp --suffix=.luau)
+{
+	grep -v '^return true$' roblox_stub.luau
+	grep -v '^return true$' cave_stub.luau
+	module World $src/shared/Config/World.luau
+	module Dens $src/shared/Config/Dens.luau
+	module RuinsConfig $src/shared/Config/Ruins.luau
+	echo 'local Config = { World = World, Dens = Dens, Ruins = RuinsConfig }'
+	module Layout $src/shared/Layout.luau
+	module Seafloor $src/shared/Seafloor.luau
+	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Seafloor = Seafloor } } }'
+	module Cave $src/server/Cave.luau
+	module Shelf $src/server/Shelf.luau
+	echo 'dumpOps(Shelf.ops())'
+} > "$chunk"
+$LUAU "$chunk" > "$OUT/cave_ops.jsonl"
+rm "$chunk"
+[ -n "$DUMP_ONLY" ] && exit 0
+export BOUNDS=${BOUNDS:-900,1500,-474,-310,-260,330}
+export CELL=${CELL:-2}
+export FOG=${FOG:-170}
+EGL_PLATFORM=surfaceless ${BPY:-python3.11} render_hub.py -- "$OUT" 2>&1 | grep -E "wrote|Error|error|Traceback|^  " || true

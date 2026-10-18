@@ -23,10 +23,14 @@
 -- A live preview (FishPreview, one at a time) is stepped every frame by its owner; a
 -- card (CardPhoto, many) is set up once and its sparkles are tweens, so a grid of
 -- cards costs no script time per frame.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
-local Cosmetics = require(game:GetService("ReplicatedStorage").Shared.Cosmetics)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local ShadesConfig = require(ReplicatedStorage.Shared.Config.Shades)
+
+type Shade = ShadesConfig.Shade
 
 local PreviewFx = {}
 
@@ -75,7 +79,6 @@ local LOOKS: { [string]: Look } = {
 	pearls = { shape = "ring", size = 0.05, drift = 0.03, color = 1 },
 	foam = { shape = "ring", size = 0.03, drift = 0.03, color = 2 },
 	mist = { shape = "puff", size = 0.3, drift = 0.02, color = 1 },
-	wisps2 = { shape = "puff", size = 0.2, drift = 0.03, color = 2 },
 	ink = { shape = "puff", size = 0.28, drift = 0.01, color = 1 },
 	nebula = { shape = "puff", size = 0.34, drift = 0, color = 1 },
 	frost = { shape = "puff", size = 0.24, drift = -0.02, color = 2 },
@@ -115,12 +118,12 @@ end
 
 -- The skin's effect colours (SkinFx's): its effect colour, else its glow, sparkle or
 -- fin colour; and the second, else its belly
-local function colorsOf(shade: Config.Shade): (Color3, Color3)
+local function colorsOf(shade: Shade): (Color3, Color3)
 	return shade.fxColor or shade.glow or shade.sparkle or shade.fin, shade.fxColor2 or shade.belly
 end
 
 -- The light a skin casts (nil: none) and how strongly it shows behind the fish
-local function lightOf(shade: Config.Shade): (Color3?, number)
+local function lightOf(shade: Shade): (Color3?, number)
 	if shade.glow then
 		return shade.glow, 0.85
 	elseif shade.light then
@@ -136,7 +139,7 @@ local function lightOf(shade: Config.Shade): (Color3?, number)
 end
 
 -- The 2D looks a skin's effects get, in order, at most three
-local function looksOf(shade: Config.Shade): { { look: Look, color: Color3 } }
+local function looksOf(shade: Shade): { { look: Look, color: Color3 } }
 	local c, c2 = colorsOf(shade)
 	local kinds: { string } = {}
 	if shade.fx then
@@ -248,8 +251,6 @@ local function spot(rng: Random): (number, number)
 	return 0.5 + math.cos(a) * r * 0.34, 0.52 + math.sin(a) * r * 0.2
 end
 
-local cards: { [Handle]: boolean } = {}
-
 function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 	local live = options.live
 	local rng = Random.new()
@@ -304,12 +305,11 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 	layer.Parent = frame
 
 	local handle = {} :: Handle
-	local shade: Config.Shade? = nil
+	local shade: Shade? = nil
 	local skins: { SurfaceAppearance } = {}
 	local sprites: { Sprite } = {}
 	local tweens: { Tween } = {}
 	local glowAlpha = 0
-	local glowColor = Color3.new(1, 1, 1)
 	local sheen = false
 	local dim = 1 -- a card shown locked (its ImageColor3 darkened) shows none of this
 
@@ -342,9 +342,19 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 	end
 	table.insert(connections, frame:GetPropertyChangedSignal("ImageColor3"):Connect(readDim))
 
+	-- The frame's height in pixels (just parented, a frame may not be laid out yet:
+	-- its parent's, then a card's)
+	local function heightOf(): number
+		local height = frame.AbsoluteSize.Y
+		local holder = frame.Parent
+		if height < 10 and holder and holder:IsA("GuiObject") then
+			height = holder.AbsoluteSize.Y
+		end
+		return if height < 10 then 160 else height
+	end
+
 	local function sizeOf(look: Look): number
-		local height = math.max(frame.AbsoluteSize.Y, 60)
-		return math.max(look.size * height, 5)
+		return math.max(look.size * heightOf(), 5)
 	end
 
 	local function addSprite(look: Look, color: Color3, follow: boolean)
@@ -424,7 +434,6 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 		end
 		local light, strength = lightOf(current)
 		if light then
-			glowColor = light
 			glowAlpha = strength
 			frame.Ambient = baseAmbient:Lerp(light, 0.22 * strength)
 			if glow then
@@ -457,8 +466,7 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 		end
 		if sheen and live then
 			-- Stars riding the sweep
-			local c = colorsOf(current)
-			local _, c2 = colorsOf(current)
+			local c, c2 = colorsOf(current)
 			for i = 1, 5 do
 				addSprite(LOOKS.sheen, if i % 2 == 0 then c else c2, true)
 			end
@@ -499,7 +507,7 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 				frame.LightColor = baseLight
 			end
 		end
-		local height = math.max(frame.AbsoluteSize.Y, 60)
+		local height = heightOf()
 		for _, sprite in sprites do
 			local look = sprite.look
 			if sprite.follow then
@@ -535,7 +543,6 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 	end
 
 	function handle.destroy(_self: Handle)
-		cards[handle] = nil
 		clear()
 		for _, connection in connections do
 			connection:Disconnect()
@@ -553,9 +560,6 @@ function PreviewFx.new(frame: ViewportFrame, options: Options): Handle
 			handle:destroy()
 		end)
 	)
-	if not live then
-		cards[handle] = true
-	end
 	return handle
 end
 

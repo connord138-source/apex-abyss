@@ -381,7 +381,7 @@ def add_particles(f, meshes):
 # Imported models (Props.dress placements)
 # ---------------------------------------------------------------------------
 GLB_CACHE = {}
-PROP_DIRS = [os.path.join(REPO, "assets/tripo", d) for d in ("props", "vendors", "furniture", "whalefall")]
+PROP_DIRS = [os.path.join(REPO, "assets/tripo", d) for d in ("props", "vendors", "furniture", "whalefall", "ruins")]
 
 
 def glb(name):

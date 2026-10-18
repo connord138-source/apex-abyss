@@ -279,7 +279,7 @@ local function fan(parent: Instance, foot: CFrame, height: number, color: Color3
 	local disc = part(
 		parent,
 		"Fan",
-		Vector3.new(0.16, height, height),
+		Vector3.new(0.3, height, height),
 		foot * CFrame.new(0, height * 0.55, 0) * CFrame.Angles(0, math.rad(90), 0),
 		color
 	)

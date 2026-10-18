@@ -24,6 +24,11 @@ DIR = os.path.abspath(argv[0])
 WORLD = "--world" in argv
 CELL = 8.0 if WORLD else 2.0  # studs per voxel (Roblox uses 4; finer shows the shape better)
 BOUNDS = ((-1600, 1600), (-960, 130), (-1600, 1600)) if WORLD else ((-190, 190), (-34, 150), (-190, 190))
+# Another region (run_ruins.sh): BOUNDS=x0,x1,y0,y1,z0,z1 and CELL=<studs>
+if os.environ.get("BOUNDS"):
+    _b = [float(v) for v in os.environ["BOUNDS"].split(",")]
+    BOUNDS = ((_b[0], _b[1]), (_b[2], _b[3]), (_b[4], _b[5]))
+    CELL = float(os.environ.get("CELL", CELL))
 
 MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7}
 # Roughly Cave.COLORS and Shelf.COLORS, in linear-ish RGB
