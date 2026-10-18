@@ -993,6 +993,32 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     keeps TextScaled with non-breaking spaces (turning TextWrapped off turns
     TextScaled off, HB1). Leaving a den, the wash waits for the doorway's lantern
     lights and settles 0.6 s.
+- **The 2026-10-18 report's decisions (PC report `2026-10-18-pc.md`; Connor's standing
+  "go with all of your recs"; built):**
+  - **Leaving a den takes ~4.1 s** (was 1.3), the price of a lit plaza (PC fixes
+    9dcba3f, 76b770a): the camera turns behind the fish on a teleport (it kept the
+    den's heading, ~110° off), and the wash holds 3.4 s coming out on the plaza,
+    since Roblox first draws newly arrived Terrain at low detail (a dark blue
+    "wall" over the doorway's arch for 1.5–3.6 s) and can't report when it's done.
+  - **Effect skins shed only their effects** (`Cosmetics` `aura` returns for a
+    shade with `fx`): 13 of them still shed the old sparkle glints on top.
+  - **Lantern King** wears no effect crown (its painted gold spines are its crown;
+    the two read as two crowns): embers and glints. **Aurora** is two softer
+    curtains (brightness 1.15, more transparent; three at 1.6 read loud).
+  - **Trails:** your own fish's trail never reaches your camera (each emitter's and
+    ribbon's lifetime is cut to `BEHIND` 0.75 of the time the following camera
+    takes to reach where it was shed; Fire Wake's flames filled the screen from
+    behind). Fire Wake is orange (255, 120, 30) → red (210, 44, 14) with a brief
+    yellow core and no pinkish-grey end; Ink Cloud lighter and glowing more;
+    Stardust bigger.
+  - **Vents:** a thinner, lighter warm murk (density 0.68, haze (112, 62, 44)) so
+    the far floor's silhouette reads, a near-neutral tint (230, 222, 218) and a
+    less red fissure light (255, 138, 72) (Lilac read magenta-pink), and a heat haze
+    big enough to see (9 → 22 studs, 0.74). The plume seen straight down is end-on;
+    the WHALE FALL marker carries it (left as is).
+  - **The stand-in** for a skin not loaded is tinted 88% toward the shade (it looked
+    like the plain fish). **Unlock notes** mark each condition met with ✓ and list
+    what's left (`MenuController` `unlockNote`, FISH and the Index's goal).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -1925,7 +1951,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   briefs no longer ask the PC to**), `2026-10-15-pc.md` (whale model imported,
   bait cap, sheen off teeth, screen base; chunks inside the whale, reef coral
   through it, the wheel chip full width), `2026-10-15-pc-2.md` (chunks clear,
-  chips fit, the PC's level-sand fix; deep whales still faint at 70 studs);
+  chips fit, the PC's level-sand fix; deep whales still faint at 70 studs),
+  `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-18-pc.md` (SK4, the plume
+  marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
+  clients via Test → Clients and Servers);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

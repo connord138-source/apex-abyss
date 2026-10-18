@@ -340,21 +340,22 @@ function SkinFx.build(
 				ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 90, 255)),
 			})
 			-- Curtains standing over the back, waving: on a still fish the trailing
-			-- ribbons alone were thin streaks (playtest 2026-10-17)
-			for i, at in { 0.3, 0.5, 0.7 } do
+			-- ribbons alone were thin streaks (playtest 2026-10-17); two, softer, since
+			-- three at brightness 1.6 read "bold, verging on loud" (PC 2026-10-18)
+			for i, at in { 0.36, 0.62 } do
 				local a0 = Fx.attachment(core, "FxCurtain0")
 				local a1 = Fx.attachment(core, "FxCurtain1")
 				local beam = Fx.beam(
 					core,
 					a0,
 					a1,
-					L * 0.26,
-					L * 0.38,
+					L * 0.22,
+					L * 0.32,
 					curtain,
-					Fx.keys({ 0, 0.4, 0.2, 0.28, 0.65, 0.5, 1, 1 })
+					Fx.keys({ 0, 0.55, 0.2, 0.42, 0.65, 0.62, 1, 1 })
 				)
 				beam.Segments = 12
-				beam.Brightness = 1.6
+				beam.Brightness = 1.15
 				table.insert(live.curtains, { a0 = a0, a1 = a1, beam = beam, at = at, phase = i * 1.9 })
 			end
 			-- and ribbons streaming off them as it swims
@@ -367,9 +368,9 @@ function SkinFx.build(
 					0.3,
 					1.3,
 					curtain,
-					Fx.keys({ 0, 0.3, 0.5, 0.5, 1, 1 })
+					Fx.keys({ 0, 0.42, 0.5, 0.6, 1, 1 })
 				)
-				made.trail.Brightness = 1.4
+				made.trail.Brightness = 1.1
 			end
 		elseif kind == "currents" then
 			for _, side in { math.pi * 0.5, -math.pi * 0.5 } do

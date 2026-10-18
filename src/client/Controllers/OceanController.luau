@@ -137,13 +137,16 @@ local GRADES: { Grade } = {
 local VENTS_ID = "HydrothermalVents"
 local VENTS_GRADE: Grade = {
 	y = World.deep.ventsFloorY,
-	color = Color3.fromRGB(86, 52, 40),
-	decay = Color3.fromRGB(44, 24, 20),
-	density = 0.76,
-	tint = Color3.fromRGB(236, 216, 204),
+	-- (PC 2026-10-18: the far floor still dark at 100 studs, Lilac magenta-pink: a
+	-- thinner, lighter warm murk the floor's silhouette reads against, and a near
+	-- neutral tint, so the warm light alone carries the colour)
+	color = Color3.fromRGB(112, 62, 44),
+	decay = Color3.fromRGB(64, 32, 24),
+	density = 0.68,
+	tint = Color3.fromRGB(230, 222, 218),
 	brightness = 0.02,
 	saturation = -0.02,
-	exposure = -0.15,
+	exposure = -0.1,
 	sight = 240,
 }
 -- Studs over the deep floor: none of it from VENTS_FADE up, all of it from VENTS_FULL

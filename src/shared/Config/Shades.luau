@@ -1285,7 +1285,9 @@ local FX: { [string]: FxSet } = {
 	Thunder = { fx = { "arcs", "sparks" }, color = C(130, 190, 255), color2 = C(220, 235, 255) },
 	PufSunburst = { fx = { "sunburst", "gold" }, color = C(255, 196, 70), color2 = C(255, 236, 150) },
 	MorJade = { fx = { "swirls", "mist" }, color = C(80, 230, 150), color2 = C(170, 255, 200) },
-	AngLanternKing = { fx = { "crown", "embers" }, color = C(255, 200, 80), color2 = C(255, 150, 40) },
+	-- (no effect crown: the skin's painted gold spines are its crown, and the two
+	-- read as a second crown, PC 2026-10-18)
+	AngLanternKing = { fx = { "embers", "glints" }, color = C(255, 200, 80), color2 = C(255, 150, 40) },
 	DrownedPearl = { fx = { "pearls", "bubbles" }, color = C(225, 220, 255), color2 = C(190, 230, 255) },
 	-- Mythic
 	Prismatic = { fx = { "rainbowRim", "shimmer", "rainbow", "stardust" }, color = C(255, 255, 255) },

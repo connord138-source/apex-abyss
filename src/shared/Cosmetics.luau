@@ -897,6 +897,11 @@ end
 -- What drifts off a fish in the shade, scaled by its length (Config/Shades `aura`;
 -- glints by default when the shade has a sparkle color)
 local function aura(core: BasePart, shade: ShadesConfig.Shade, length: number)
+	-- (a skin with an effect set sheds only its effects: SkinFx; PC 2026-10-18 found
+	-- 13 of them shedding these glints on top)
+	if shade.fx then
+		return
+	end
 	local kind = shade.aura or (if shade.sparkle then "glints" else nil)
 	if kind == nil then
 		return
@@ -1166,8 +1171,10 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 	local forward = body:GetPivot().LookVector
 	-- Without its skin imported yet, a shade tints the texture (multiplies, so it can
 	-- only darken; the skin is the real look)
+	-- (closer to the shade's own colour: at 0.35 toward white the stand-in looked like
+	-- the plain fish, PC 2026-10-18)
 	local tint = if shade and skin == nil
-		then shade.back:Lerp(Color3.new(1, 1, 1), 0.35)
+		then shade.back:Lerp(Color3.new(1, 1, 1), 0.12)
 		else Color3.new(1, 1, 1)
 	local core: BasePart? = nil
 	local worn: { SurfaceAppearance } = {}

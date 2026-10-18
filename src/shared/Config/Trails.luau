@@ -48,8 +48,8 @@ local list: { Trail } = {
 		style = "ink",
 		-- Lit violet-indigo, not dark: dark ink was lost in the blue water (playtest
 		-- 2026-10-17). It glows `color2` as it's shed and deepens to `color`
-		color = C(96, 70, 205),
-		color2 = C(160, 130, 255),
+		color = C(118, 92, 232),
+		color2 = C(182, 158, 255),
 		blurb = "Glowing indigo ink billowing out behind you.",
 	},
 	{
@@ -57,8 +57,8 @@ local list: { Trail } = {
 		name = "Fire Wake",
 		tier = "Rare",
 		style = "flame",
-		color = C(255, 200, 70),
-		color2 = C(255, 80, 20),
+		color = C(255, 120, 30),
+		color2 = C(210, 44, 14),
 		blurb = "Flames licking off your tail. Underwater. Somehow.",
 	},
 	{

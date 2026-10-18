@@ -935,7 +935,7 @@ end
 -- basin (ten basins).
 local FISSURE_CORE = Color3.fromRGB(255, 150, 54)
 local FISSURE_RIM = Color3.fromRGB(150, 34, 14)
-local FISSURE_LIGHT = Color3.fromRGB(255, 124, 56)
+local FISSURE_LIGHT = Color3.fromRGB(255, 138, 72) -- (a little less red: Lilac read magenta-pink under it)
 local FISSURE = {
 	perRadius = 20, -- a basin gets one system per this many studs of its radius (4 to 6)
 	middle = 0.15, -- the first system's spot, × the radius from the basin's middle
@@ -1044,20 +1044,21 @@ local function heatHaze(parent: Instance)
 	haze.Name = "HeatHaze"
 	haze.Texture = "rbxasset://textures/particles/smoke_main.dds"
 	haze.Color = ColorSequence.new(Color3.fromRGB(255, 120, 60), Color3.fromRGB(160, 50, 30))
-	haze.LightEmission = 0.45
-	haze.LightInfluence = 0.2
+	-- (bigger and less faint: at 5-12 studs and 0.86 the PC saw no haze at all)
+	haze.LightEmission = 0.6
+	haze.LightInfluence = 0.1
 	haze.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 5),
-		NumberSequenceKeypoint.new(1, 12),
+		NumberSequenceKeypoint.new(0, 9),
+		NumberSequenceKeypoint.new(1, 22),
 	})
 	haze.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.25, 0.86),
-		NumberSequenceKeypoint.new(0.7, 0.9),
+		NumberSequenceKeypoint.new(0.25, 0.74),
+		NumberSequenceKeypoint.new(0.7, 0.82),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	haze.Lifetime = NumberRange.new(4, 7)
-	haze.Rate = 3
+	haze.Rate = 3.5
 	haze.Speed = NumberRange.new(0.6, 1.6)
 	haze.EmissionDirection = Enum.NormalId.Top
 	haze.SpreadAngle = Vector2.new(20, 20)

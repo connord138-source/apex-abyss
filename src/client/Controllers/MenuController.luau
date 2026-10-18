@@ -1112,6 +1112,41 @@ end
 
 -- The species menu: every playable fish, its level, stats and abilities; switch to
 -- one you own (in the safe zone) or unlock one with its biome's DNA and coral.
+-- A DNA unlock's three conditions, each marked ✓ once met (PC 2026-10-18: at LV 40
+-- it still said "Grow your Nibbler to LV 15 (it's LV 40)"), and whether all are
+local function unlockNote(rule: any, s: any): (string, boolean)
+	local biome = Config.Biomes.byId[rule.biome]
+	local biomeName = if biome then biome.name else "its home biome"
+	local have = (s.dna or {})[rule.biome] or 0
+	local need = rule.dna or 0
+	local price = rule.coral or 0
+	local starter = (s.speciesLevels or {})[Config.Species.STARTER] or 1
+	local parts: { string } = {}
+	local ready = true
+	if rule.level then
+		if starter >= rule.level then
+			table.insert(parts, `✓ Nibbler LV {rule.level}`)
+		else
+			ready = false
+			table.insert(parts, `grow your Nibbler to LV {rule.level} (LV {starter} now)`)
+		end
+	end
+	if have >= need then
+		table.insert(parts, `✓ {need} {biomeName} DNA`)
+	else
+		ready = false
+		table.insert(parts, `{need} {biomeName} DNA ({have} so far; it drops from fish there)`)
+	end
+	if coral() >= price then
+		table.insert(parts, `✓ {Ui.number(price)} coral`)
+	else
+		ready = false
+		table.insert(parts, `{Ui.number(price)} coral (you have {Ui.number(coral())})`)
+	end
+	local list = table.concat(parts, " · ")
+	return if ready then `Ready: {list}.` else `To unlock: {list}.`, ready
+end
+
 function MenuController.openSpecies()
 	open(
 		"Your Fish",
@@ -1244,16 +1279,9 @@ function MenuController.openSpecies()
 					action = "FINISH THE TUTORIAL"
 					note = "Finish the tutorial and this fish is yours."
 				elseif rule.kind == "dna" and rule.biome then
-					local biome = Config.Biomes.byId[rule.biome]
-					local have = (s.dna or {})[rule.biome] or 0
-					local need = rule.dna or 0
-					local price = rule.coral or 0
-					local starter = (s.speciesLevels or {})[Config.Species.STARTER] or 1
-					local grown = rule.level == nil or starter >= rule.level
-					note = `{if rule.level
-						then `Grow your Nibbler to LV {rule.level} (it's LV {starter}), then unlock with `
-						else "Unlock with "}{need} {biome.name} DNA (you have {have}) and {Ui.number(price)} coral. DNA drops from fish in the {biome.name}.`
-					if grown and have >= need and coral() >= price then
+					local ready
+					note, ready = unlockNote(rule, s)
+					if ready then
 						action, style = "UNLOCK", "gold"
 						onPress = function()
 							ClientState.request("UnlockSpecies", chosen)
@@ -1569,12 +1597,10 @@ local function nextGoals(s: any): { { title: string, text: string } }
 	local unlocked = s.unlocked or {}
 	local cuda = Config.Species.byId.Cuda
 	if not unlocked.Cuda and cuda.unlock.biome then
-		local have = (s.dna or {})[cuda.unlock.biome] or 0
+		local note, ready = unlockNote(cuda.unlock, s)
 		table.insert(goals, {
 			title = `Unlock the {cuda.name}`,
-			text = `Grow your Nibbler to LV {cuda.unlock.level or 1} (it's LV {nibbler}), collect {cuda.unlock.dna or 0} Kelp Shallows DNA ({have} so far) and have {Ui.number(
-				cuda.unlock.coral or 0
-			)} coral, then unlock it in FISH.`,
+			text = if ready then `{note} Unlock it in FISH.` else note,
 		})
 	end
 	local level = s.level or nibbler

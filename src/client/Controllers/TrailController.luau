@@ -12,6 +12,11 @@
 -- blue water (fire, ink, the rainbow) are drawn mostly blended rather than added: an
 -- added orange or red on blue water turns grey-blue or violet, the way Fire Wake
 -- went grey on a dash and the rainbow read teal to violet.
+--
+-- Seen from behind, your own fish's trail never reaches the camera (PC 2026-10-18:
+-- Fire Wake's flames came at the camera and filled the screen): while it sheds,
+-- each emitter's and ribbon's lifetime is cut to the time the camera takes to swim
+-- up to where it was shed (`BEHIND` of it).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -43,9 +48,12 @@ type Entry = {
 local TrailController = {}
 
 local entries: { [Model]: Entry } = {}
+local lifetimes: { [Instance]: NumberRange } = {} -- each emitter's and ribbon's own (pruned with its trail)
 local FAR = 320 -- studs from the camera past which nothing is shed
 local SIZE = 2 -- particles, × a skin's
 local WIDE = 1.4 -- ribbons, × their old width
+local BEHIND = 0.75 -- of the time the camera takes to reach a shed particle
+local SHORTEST = 0.12 -- seconds a particle or ribbon lives at the least
 
 local function lengthOf(character: Model): number
 	local length = character:GetAttribute("Length")
@@ -56,6 +64,12 @@ local function forget(character: Model)
 	local entry = entries[character]
 	if entry then
 		entries[character] = nil
+		for _, e in entry.emitters do
+			lifetimes[e] = nil
+		end
+		for _, ribbon in entry.ribbons do
+			lifetimes[ribbon] = nil
+		end
 		entry.holder:Destroy()
 		for _, made in entry.extras do
 			made:Destroy()
@@ -92,6 +106,7 @@ local function build(player: Player, character: Model)
 		if color then
 			e.Color = color
 		end
+		lifetimes[e] = e.Lifetime
 		e.Enabled = false
 		table.insert(emitters, e)
 		return e
@@ -110,6 +125,7 @@ local function build(player: Player, character: Model)
 		a1.Position = -across
 		a1.Parent = holder
 		local made = Fx.ribbon(holder, a0, a1, lifetime, color, Fx.keys({ 0, 0.15, 0.6, 0.5, 1, 1 }))
+		lifetimes[made] = NumberRange.new(lifetime)
 		made.Enabled = false
 		table.insert(ribbons, made)
 		return made
@@ -125,16 +141,18 @@ local function build(player: Player, character: Model)
 		emit("gold", 1)
 		emit("stardust", 1)
 	elseif style == "flame" then
-		-- Orange-red to the end of its life, fading out (never a smoke stage)
+		-- Orange-red to the end of its life, fading out (never a smoke stage): a
+		-- yellow core only at the start (it read yellow fading to pinkish-grey, PC
+		-- 2026-10-18), gone before it cools
 		local hot = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, c:Lerp(Color3.new(1, 1, 1), 0.35)),
-			ColorSequenceKeypoint.new(0.4, c),
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 196, 80)),
+			ColorSequenceKeypoint.new(0.18, c),
 			ColorSequenceKeypoint.new(1, c2),
 		})
-		local fire = emit("flame", 1.2, hot, 1.8)
-		fire.LightEmission = 0.45
+		local fire = emit("flame", 1.2, hot, 1.6)
+		fire.LightEmission = 0.4
 		fire.Brightness = 2.4
-		fire.Transparency = Fx.keys({ 0, 0.1, 0.5, 0.3, 1, 1 })
+		fire.Transparency = Fx.keys({ 0, 0.1, 0.4, 0.22, 0.75, 0.7, 1, 1 })
 		local sparks = emit("embers", 1.2)
 		sparks.LightEmission = 0.6
 	elseif style == "rainbow" then
@@ -173,8 +191,8 @@ local function build(player: Player, character: Model)
 			table.insert(arcs, { points = points, beams = beams })
 		end
 	elseif style == "stardust" then
-		emit("stardust", 2, nil, 2.2)
-		emit("nebula", 1.2, nil, 1.3)
+		emit("stardust", 2.6, nil, 2.7)
+		emit("nebula", 1.5, nil, 1.5)
 	elseif style == "frost" then
 		local made = band(0.14, 0.5, ColorSequence.new(c, c2))
 		made.LightEmission = 0.7
@@ -183,10 +201,11 @@ local function build(player: Player, character: Model)
 		emit("crystal", 1.2)
 	elseif style == "ink" then
 		-- A lit violet-indigo cloud: glowing at first, deepening as it spreads
-		local ink = emit("ink", 1.2, ColorSequence.new(c2, c), 1.6)
-		ink.LightEmission = 0.3
-		ink.LightInfluence = 0.25
-		ink.Transparency = Fx.keys({ 0, 1, 0.1, 0.2, 0.6, 0.4, 1, 1 })
+		-- (brighter and thicker again: "visible now but still faint", PC 2026-10-18)
+		local ink = emit("ink", 1.5, ColorSequence.new(c2, c), 1.9)
+		ink.LightEmission = 0.5
+		ink.LightInfluence = 0.15
+		ink.Transparency = Fx.keys({ 0, 1, 0.1, 0.1, 0.6, 0.3, 1, 1 })
 	end
 	entries[character] = {
 		player = player,
@@ -250,6 +269,19 @@ local function watch(player: Player)
 	end
 end
 
+-- An emitter's or ribbon's own lifetime, at most `most` seconds
+local function cut(made: Instance, most: number)
+	local own: NumberRange? = lifetimes[made]
+	if not own then
+		return
+	end
+	if made:IsA("ParticleEmitter") then
+		made.Lifetime = NumberRange.new(math.min(own.Min, most), math.min(own.Max, most))
+	elseif made:IsA("Trail") then
+		made.Lifetime = math.min(own.Max, most)
+	end
+end
+
 local function step()
 	local camera = Workspace.CurrentCamera
 	local now = os.clock()
@@ -270,18 +302,26 @@ local function step()
 		local relative = speed / math.max(Size.topSpeed(length), 1)
 		-- Faint from 60% of top speed, full on a dash (past top speed)
 		local k = math.clamp((relative - 0.6) / 0.6, 0, 1)
-		local near = camera == nil or (camera.CFrame.Position - entry.root.Position).Magnitude < FAR
-		local on = k > 0.02 and near
+		local away = if camera then (camera.CFrame.Position - entry.root.Position).Magnitude else 0
+		local on = k > 0.02 and away < FAR
+		-- Your own trail dies before the camera, following, reaches it
+		local most = if entry.player == Players.LocalPlayer and on
+			then math.max(away / math.max(speed, 1) * BEHIND, SHORTEST)
+			else math.huge
 		for _, e in entry.emitters do
 			e.Enabled = on
 			if on then
 				local base = e:GetAttribute("Rate")
 				-- (a fifth at the first, a fifth over its own rate on a dash)
 				e.Rate = (if typeof(base) == "number" then base else 6) * (0.2 + k)
+				cut(e, most)
 			end
 		end
 		for _, ribbon in entry.ribbons do
 			ribbon.Enabled = on
+			if on then
+				cut(ribbon, most)
+			end
 			if on and entry.flicker then
 				ribbon.Transparency = Fx.keys({ 0, if math.random() < 0.3 then 0.7 else 0.1, 1, 1 })
 			end
