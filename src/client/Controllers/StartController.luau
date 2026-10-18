@@ -439,7 +439,7 @@ function StartController.start()
 	device = (if Input.isTouch() then "touch" elseif Input.isGamepad() then "gamepad" else "keys") :: Device
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	up = true
-	Input.locked = true
+	Input.hold("start", true)
 	Input.cursorWanted = true
 	-- Chat and the player list stay out of the way until the dive
 	local hiddenCore: { Enum.CoreGuiType } = {}
@@ -1039,7 +1039,7 @@ function StartController.start()
 		-- The game shows through as the water clears
 		task.delay(0.35, function()
 			up = false
-			Input.locked = false
+			Input.hold("start", false)
 			Input.cursorWanted = false
 			for _, coreGui in hiddenCore do
 				pcall(function()

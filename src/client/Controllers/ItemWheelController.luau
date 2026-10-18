@@ -65,7 +65,6 @@ local openMode: "mouse" | "pad" | "touch" | nil = nil
 local hovered: number? = nil
 local keyDownAt: number? = nil -- G
 local padDownAt: number? = nil -- LB, until it turns into a hold
-local lockedBefore = false
 
 local function state(): any
 	return ClientState.current or {}
@@ -125,7 +124,7 @@ local function close()
 	if openMode == "mouse" and not MenuController.isOpen() then
 		Input.cursorWanted = false -- (a menu that just opened keeps it free)
 	elseif openMode == "pad" then
-		Input.locked = lockedBefore
+		Input.hold("itemWheel", false)
 	end
 	openMode = nil
 	keyDownAt = nil
@@ -154,8 +153,7 @@ local function open(mode: "mouse" | "pad" | "touch")
 	if mode == "mouse" then
 		Input.cursorWanted = true -- free the cursor to point and click
 	elseif mode == "pad" then
-		lockedBefore = Input.locked
-		Input.locked = true -- the sticks point at slots, not swim
+		Input.hold("itemWheel", true) -- the sticks point at slots, not swim
 	end
 	hovered = -1 -- (so the centre's text is set afresh)
 	setHovered(nil)

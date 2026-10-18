@@ -155,8 +155,7 @@ local function go(request: string, index: number?)
 			task.wait()
 		end
 		-- The place must be there (held still meanwhile); the words show if it takes a while
-		local wasLocked = Input.locked
-		Input.locked = true
+		Input.hold("den", true)
 		local since: number? = nil
 		local shown = false
 		local settle = if door then SETTLE_HUB else SETTLE
@@ -186,7 +185,7 @@ local function go(request: string, index: number?)
 			end
 			task.wait(0.05)
 		end
-		Input.locked = wasLocked
+		Input.hold("den", false)
 		Ui.tween(loading, 0.2, { TextTransparency = 1 })
 		Ui.tween(tipLabel, 0.2, { TextTransparency = 1 })
 		-- A frame for the camera to cut to the new place under the wash

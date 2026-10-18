@@ -46,7 +46,9 @@ local Input = {
 	cursorToggled = false,
 	-- (free: boolean) — the player freed or locked the cursor (the HUD's chip)
 	cursorChanged = Signal.new(),
-	-- Set while the start screen is up: the fish doesn't swim, look, bite or dash
+	-- Set while something holds the fish still (the start screen, the den's loading
+	-- wash, the bank's growth moment, the item wheel on a pad): it doesn't swim, look,
+	-- bite or dash. Read it; set it only through Input.hold
 	locked = false,
 	-- Set while Build mode is on: the mouse buttons and triggers place things
 	-- instead of biting and dashing (BuildController binds them)
@@ -58,6 +60,16 @@ local Input = {
 
 local ALT_TAP = 0.35 -- seconds: an Alt let go sooner than this toggles the cursor
 local altDownAt: number? = nil
+
+-- Who holds the fish still: `locked` is on while anyone does. Each holder lets go of
+-- its own hold only, so two that overlap can't leave a lock behind (PC 2026-10-19,
+-- TU1: banking on arrival in the den saved the loading wash's lock as "before" and
+-- put it back after the wash had let go, so the fish never swam again)
+local holds: { [string]: boolean } = {}
+function Input.hold(owner: string, on: boolean)
+	holds[owner] = if on then true else nil
+	Input.locked = next(holds) ~= nil
+end
 
 local touchLook = Vector2.zero
 local lookTouches: { [InputObject]: boolean } = {}

@@ -43,8 +43,7 @@ local FRAME_SHARE = 0.42 -- how much of the screen's width the grown fish takes
 
 local gui: ScreenGui
 local playing = 0 -- the sequence now playing (a newer one ends the old one)
-local active = false -- whether a sequence holds the fish still
-local lockedBefore = false -- Input.locked from before the first of them
+local active = false -- whether a sequence holds the fish still (Input.hold "bank")
 local lastPress = -math.huge -- os.clock() of the last key, click, tap or pad button
 
 local function ease(t: number): number
@@ -281,12 +280,9 @@ local function play(summary: { [string]: any })
 	local grows = not summary.doubled
 		or (shownMass ~= nil and math.abs(shownMass - (mass - amount)) <= math.max(shownMass, 1) * 1e-3)
 	Ui.holdStage(GROW_SECONDS + HOLD_AFTER + CAMERA_OUT + 0.3)
-	if grows and not active then
-		lockedBefore = Input.locked
-	end
 	if grows then
 		active = true
-		Input.locked = true -- the fish holds still for its moment
+		Input.hold("bank", true) -- the fish holds still for its moment
 	end
 	local root = SwimController.root() :: BasePart
 	local camera = workspace.CurrentCamera
@@ -403,7 +399,7 @@ local function play(summary: { [string]: any })
 	if mine == playing then
 		if active then
 			active = false
-			Input.locked = lockedBefore
+			Input.hold("bank", false)
 		end
 		-- The stage is free again once the camera's back (a skip frees it early)
 		Ui.releaseStage()
