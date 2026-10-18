@@ -1359,6 +1359,13 @@ local function build(index: number, styleId: string)
 	local curtain, backing, bubbles, shimmer, glow = pane(style, frame, Layout.DOOR_RADIUS, made.pane)
 	style:SetAttribute("Style", if STYLES[styleId] then styleId else "Stone")
 	style.Parent = door.model
+	-- The nameplate's top (local to the door's frame), so YOUR DEN sits over it on
+	-- every style (PC 2026-10-19, DN1: on the Megalodon Jaws it sat across the name)
+	local board = made.plaque.board
+	local den = door.model.Parent
+	if den then
+		den:SetAttribute("PlaqueTop", frame:PointToObjectSpace(board.Position).Y + board.Size.Y / 2)
+	end
 	door.style = style
 	door.styleId = styleId
 	door.built = {

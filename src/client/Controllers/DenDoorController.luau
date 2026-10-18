@@ -207,18 +207,25 @@ end
 local MARK = Color3.fromRGB(255, 204, 92)
 local MARK_RING = 7 -- the ring on the paving: its radius
 local MARK_OUT = 28 -- how far in front of the portal it lies (past the steps)
-local MARK_TAG_Y = 20.5 -- YOUR DEN, over the nameplate (local to the door's frame)
+-- YOUR DEN stands on a point just over the nameplate's top (the den's `PlaqueTop`,
+-- local to the door's frame; the Stone Arch's until it streams in), its arrow down
+-- onto it: centred on a fixed height, the tag sat across the name on the taller
+-- styles and, at its fixed pixel size, on every style from across the plaza (PC
+-- 2026-10-19, DN1)
+local MARK_TAG_TOP = 16.6
+local MARK_TAG_OVER = 1
 local markerFolder: Folder? = nil
 local markerIndex = 0
 local markerRing: { BasePart } = {}
 local markerBeam: Beam? = nil
 local markerTag: BillboardGui? = nil
+local markerAnchor: BasePart? = nil
 
 local function clearMarker()
 	if markerFolder then
 		markerFolder:Destroy()
 	end
-	markerFolder, markerBeam, markerTag = nil, nil, nil
+	markerFolder, markerBeam, markerTag, markerAnchor = nil, nil, nil, nil
 	table.clear(markerRing)
 	markerIndex = 0
 end
@@ -290,10 +297,12 @@ local function buildMarker(index: number)
 	beam.Parent = base
 	markerBeam = beam
 	-- YOUR DEN over the nameplate: thin text and a short line, breathing slowly
-	local anchor = piece("Tag", Vector3.one, frame * CFrame.new(0, MARK_TAG_Y, -12))
+	local anchor = piece("Tag", Vector3.one, frame * CFrame.new(0, MARK_TAG_TOP + MARK_TAG_OVER, -12))
 	anchor.Transparency = 1
+	markerAnchor = anchor
 	local tag = Instance.new("BillboardGui")
 	tag.Size = UDim2.fromOffset(180, 46)
+	tag.SizeOffset = Vector2.new(0, 0.5)
 	tag.AlwaysOnTop = true
 	tag.LightInfluence = 0
 	tag.MaxDistance = 420
@@ -358,6 +367,19 @@ local function updateMarker()
 			NumberSequenceKeypoint.new(0.5, 0.78 + 0.1 * wave),
 			NumberSequenceKeypoint.new(1, 1),
 		})
+	end
+	local anchor = markerAnchor
+	if anchor then
+		-- over this door's nameplate, whichever style built it
+		local world = workspace:FindFirstChild("World")
+		local hub = world and world:FindFirstChild("Hub")
+		local den = hub and hub:FindFirstChild(`Den{index}`)
+		local top = den and den:GetAttribute("PlaqueTop")
+		local y = (if typeof(top) == "number" then top else MARK_TAG_TOP) + MARK_TAG_OVER
+		local at = Layout.doorFrame(index) * CFrame.new(0, y, -12)
+		if (anchor.Position - at.Position).Magnitude > 0.05 then
+			anchor.CFrame = at
+		end
 	end
 	local tag = markerTag
 	if tag then
