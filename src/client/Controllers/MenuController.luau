@@ -1489,7 +1489,15 @@ end
 local function nextGoals(s: any): { { title: string, text: string } }
 	local goals: { { title: string, text: string } } = {}
 	local tutorial = s.tutorial
-	if typeof(tutorial) == "table" and not tutorial.done then
+	-- (opening this finishes the tutorial's last step, so that step doesn't show)
+	local tutorialStep = if typeof(tutorial) == "table"
+		then Config.Tutorial.steps[tutorial.step or 1]
+		else nil
+	if
+		typeof(tutorial) == "table"
+		and not tutorial.done
+		and (tutorialStep == nil or tutorialStep.event ~= "index")
+	then
 		table.insert(goals, {
 			title = "Finish the tutorial",
 			text = `Step {tutorial.step or 1} of {#Config.Tutorial.steps}: follow the card at the top left and the trail of lights.`,

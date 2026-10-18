@@ -152,9 +152,12 @@ local steps: { Step } = {
 }
 
 -- The Haul step's target: a Haul worth this many levels once banked, from the
--- fish's banked mass (~half of it; with the slower Haul gain of 2026-10-18 about a
--- minute of eating in the Kelp for a LV 1-3 fish, counting the Eat step's catch)
-local HAUL_LEVELS = 4
+-- fish's banked mass (1.05 kg for a LV 1 Nibbler, 1.3 kg at LV 3). With the Haul
+-- rate of 2026-10-18 (Tuning `growth`: full at LV 1, easing to ×0.35 by LV 8) the
+-- Eat step's 10 small fish make ~0.5-0.75 kg of it, so this is ~7-30 more bites in
+-- the Kelp (minnows count most), a minute or two; it must stay past what those 10
+-- give, or the step would be done before it shows
+local HAUL_LEVELS = 7
 local function haulTarget(banked: number): number
 	return math.max(banked, Tuning.size.startMass) * (Tuning.size.levelGrowth ^ HAUL_LEVELS - 1)
 end

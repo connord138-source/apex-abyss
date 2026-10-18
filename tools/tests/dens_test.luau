@@ -145,7 +145,10 @@ expect(ok(DenSpace.resting(1, placed, v(4, 1, 6))), "on the deck")
 expect(ok(DenSpace.resting(1, placed, v(4, top, 6))), "on the table's top")
 -- turned 90°, the table's 6-stud length runs along z
 expect(ok(DenSpace.resting(1, placed, v(4, top, 6 + tableItem.size.X / 2 - 1))), "along the turned table")
-expect(not ok(DenSpace.resting(1, placed, v(4 + tableItem.size.Z / 2 + 1, top, 6))), "past the turned table's width")
+expect(
+	not ok(DenSpace.resting(1, placed, v(4 + tableItem.size.Z / 2 + 1, top, 6))),
+	"past the turned table's width"
+)
 expect(not ok(DenSpace.resting(1, placed, v(4, 9, 6))), "floating over it")
 expect(not ok(DenSpace.resting(1, placed, v(4, top, 6), 1)), "not on the thing being moved")
 

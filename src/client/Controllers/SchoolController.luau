@@ -113,7 +113,8 @@ type Look = {
 type Proto = { model: Model?, mesh: MeshPart?, unitLength: number, extents: Vector3, flip: boolean }
 
 local visuals: { [number]: Visual } = {} -- prey index → its body, while its school is built
-local built: { [number]: boolean } = {} -- school index → its fish are built
+local built: { [number]: boolean } = {} -- school index → its fish are built (or being built)
+local nextFish: { [number]: number } = {} -- school index → its next fish to build, while part built
 local backAts: { [number]: number } = {} -- prey index → clock it's back after being eaten
 local protos: { [string]: Proto } = {}
 local folder: Folder? = nil
@@ -699,10 +700,18 @@ local function flush(now: number)
 end
 
 -- A school comes into reach: its fish get bodies, wearing what the server said
--- about them (eaten until, rarity)
-local function buildSchool(schoolIndex: number, now: number)
+-- about them (eaten until, rarity), as many as fit in this frame's budget (at least
+-- one); the rest next frame
+local function buildSchool(schoolIndex: number, now: number, started: number)
 	local school = Schools.list[schoolIndex]
-	for index = school.first, school.first + school.count - 1 do
+	local from = nextFish[schoolIndex] or school.first
+	built[schoolIndex] = true
+	nextFish[schoolIndex] = nil
+	for index = from, school.first + school.count - 1 do
+		if index > from and os.clock() - started > BUILD_BUDGET then
+			nextFish[schoolIndex] = index
+			return
+		end
 		local visual = makeVisual(index)
 		visuals[index] = visual
 		local back = backAts[index]
@@ -715,13 +724,13 @@ local function buildSchool(schoolIndex: number, now: number)
 			setLook(index, rarity)
 		end
 	end
-	built[schoolIndex] = true
 end
 
 -- A school far out of reach (or its tide over): its fish's bodies go
 local function releaseSchool(schoolIndex: number)
 	local school = Schools.list[schoolIndex]
 	built[schoolIndex] = nil
+	nextFish[schoolIndex] = nil
 	tideFade[schoolIndex] = nil
 	for index = school.first, school.first + school.count - 1 do
 		local visual = visuals[index]
@@ -787,8 +796,8 @@ local function step(dt: number)
 	-- How far this client can afford to draw: its frame time, smoothed over a couple
 	-- of seconds, eases the ranges in on a slow device and back out
 	smoothDt += (math.min(dt, 0.1) - smoothDt) * math.min(1, dt * 0.6)
-	local target = if smoothDt > SLOW_FRAME then DETAIL_MIN elseif smoothDt < FAST_FRAME then 1 else detail
-	detail += (target - detail) * math.min(1, dt * 0.3)
+	local wantDetail = if smoothDt > SLOW_FRAME then DETAIL_MIN elseif smoothDt < FAST_FRAME then 1 else detail
+	detail += (wantDetail - detail) * math.min(1, dt * 0.3)
 	-- Schools near enough are built (nearest first, a few milliseconds a frame), far
 	-- ones let go; only built ones are drawn
 	table.clear(wanted)
@@ -801,6 +810,9 @@ local function step(dt: number)
 				releaseSchool(schoolIndex)
 			else
 				table.insert(drawList, schoolIndex)
+				if nextFish[schoolIndex] then
+					table.insert(wanted, { index = schoolIndex, away = away }) -- (the rest of it)
+				end
 			end
 		elseif away <= reachHere and (school.tide == nil or school.tide == tideId) then
 			table.insert(wanted, { index = schoolIndex, away = away })
@@ -812,10 +824,13 @@ local function step(dt: number)
 		end)
 		local started = os.clock()
 		for _, entry in wanted do
-			buildSchool(entry.index, now)
-			table.insert(drawList, entry.index)
 			if os.clock() - started > BUILD_BUDGET then
 				break
+			end
+			local fresh = not built[entry.index]
+			buildSchool(entry.index, now, started)
+			if fresh then
+				table.insert(drawList, entry.index)
 			end
 		end
 	end
@@ -838,13 +853,19 @@ local function step(dt: number)
 		elseif tideFade[schoolIndex] then
 			tideFade[schoolIndex] = nil
 			for index = school.first, school.first + school.count - 1 do
-				visuals[index].fadeIn = 0 -- one caught mid-fade grows back
+				local visual = visuals[index]
+				if visual then
+					visual.fadeIn = 0 -- one caught mid-fade grows back
+				end
 			end
 		end
 		local schoolFrame = Schools.schoolFrame(schoolIndex, now)
 		for index = school.first, school.first + school.count - 1 do
 			local fish = Schools.fish[index]
 			local visual = visuals[index]
+			if visual == nil then
+				continue -- (still being built)
+			end
 			-- Respawned, or our eat wasn't confirmed: show it again
 			if visual.hidden and visual.suckFrom == nil then
 				if visual.pendingUntil > 0 and now > visual.pendingUntil then

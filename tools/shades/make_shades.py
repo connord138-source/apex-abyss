@@ -2983,19 +2983,27 @@ def catch_golden(m):  # Golden (v13): polished gold, its own pattern engraved, r
     core = smoothstep(0.5, 0.6, nz) * smoothstep(0.86, 0.74, nz)
     horizon = smoothstep(0.3, 0.16, nz) * smoothstep(-0.32, -0.12, nz)
     bounce = smoothstep(-0.42, -0.62, nz)
-    gold = mix(gold, (0.62, 0.27, 0.0), horizon * 0.62)
-    gold = mix(gold, (1.0, 0.72, 0.06), bounce * 0.55)
-    gold = mix(gold, (1.0, 0.80, 0.16), streak * 0.85)
-    gold = mix(gold, (1.0, 0.90, 0.36), core * 0.8)
+    # The highlights stay as orange as the gold's light end (green no more than 0.64
+    # of red): the haze adds the same teal to everything, so a highlight more yellow
+    # than the gold went lime through it (a first try at (1, 0.8, 0.16) did), and a
+    # shadow darker than amber went olive. The streak burns brighter by its glow
+    # (below), which keeps its hue
+    gold = mix(gold, (0.84, 0.40, 0.0), horizon * 0.45)
+    gold = mix(gold, (1.0, 0.60, 0.03), bounce * 0.4)
+    gold = mix(gold, (1.0, 0.63, 0.04), streak * 0.9)
+    gold = mix(gold, (1.0, 0.66, 0.08), core * 0.8)
     gold = mix(gold, (0.6, 0.24, 0.0), engraved * 0.7)
     gold = gold * (0.9 + 0.2 * grain)[..., None]
     gold = np.clip(gold, 0, 1)
     # A faint, even self-glow over it, stronger in the streak, less in the engraving
     # (the importer turns this into a mask on the colour map)
-    emit = gold * (0.5 * (1 - 0.4 * engraved) * (1 + 0.6 * streak))[..., None]
+    emit = gold * (0.5 * (1 - 0.4 * engraved) * (1 + 0.8 * streak + 0.4 * core))[..., None]
     # An even metal map, and little of it: metal reflects the water's blue through
-    # the gold's own colour, which comes out green (v10); the polish is the gloss
-    return done(m, gold, "gloss", emit=emit, metal=np.full(m.y.shape, 0.15, np.float32), detail=0.4)
+    # the gold's own colour, which comes out green (v10). The polish is a semi-gloss,
+    # glossier in the streak: a full gloss mirrored the teal water at the edges and
+    # went lime there too
+    rough = np.full(m.y.shape, 0.42, np.float32) - 0.1 * streak
+    return done(m, gold, "satin", emit=emit, metal=np.full(m.y.shape, 0.15, np.float32), rough=rough, detail=0.4)
 
 
 def catch_glowing(m):  # Glowing: deep navy, the fish's own lines softly glowing cyan-green

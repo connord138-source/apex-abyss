@@ -13,6 +13,13 @@
 -- streamed in ahead (`Prestream`), and after the move the wash stays up, as a
 -- loading screen with a tip, holding the fish still, until the place round the fish
 -- has really arrived (rock under it and round it, the doorway's model) or LOAD_MOST.
+--
+-- Your own doorway (owner, 2026-10-18: "once all the dens are used up too it would
+-- be hard to see ours without having to go through each name until we see ours"):
+-- only on your screen, a soft gold column of light rises from a glowing ring on the
+-- paving in front of it, and YOUR DEN floats over its nameplate (boxless, like the
+-- tutorial's markers), seen across the plaza. The doorway's style (Config/Dens
+-- `doors`, bought in the den menu) makes it stand out to everyone too.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -36,8 +43,10 @@ local LOAD_MOST = 25 -- seconds to wait for the place to stream in before cleari
 local SETTLE = 0.6 -- the place must be there this long (Terrain meshes after it arrives)
 -- Coming out on the plaza, longer: Roblox first draws the newly arrived hub Terrain
 -- coarse, which closes the doorway's arch over (a dark blue rock face, though rays
--- already pass), and meshes it finely only 1.5–3.6 s after arriving (PC 2026-10-18, LD2)
-local SETTLE_HUB = 3.4
+-- already pass), and meshes it finely only 1.5–3.6 s after arriving (PC 2026-10-18,
+-- LD2); 5 s since the owner's "needs to wait a touch longer for the map to fully
+-- develop" (2026-10-18), the words and a tip showing all the while
+local SETTLE_HUB = 5
 local PRESTREAM_REACH = 36 -- studs from a portal at which the far side is asked for
 local COOLDOWN = 1.2 -- after a move, before another portal takes the fish
 
@@ -151,6 +160,12 @@ local function go(request: string, index: number?)
 		local since: number? = nil
 		local shown = false
 		local settle = if door then SETTLE_HUB else SETTLE
+		-- Leaving takes a while: the words and the tip are up from the start
+		if door then
+			shown = true
+			Ui.tween(loading, 0.3, { TextTransparency = 0 })
+			Ui.tween(tipLabel, 0.3, { TextTransparency = 0.15 })
+		end
 		started = os.clock()
 		while os.clock() - started < LOAD_MOST do
 			if arrivedAt(door) then
@@ -189,7 +204,180 @@ local function go(request: string, index: number?)
 	end)
 end
 
+-- Your doorway's marker (built on this client only, in front of den `index`'s door)
+local MARK = Color3.fromRGB(255, 204, 92)
+local MARK_RING = 7 -- the ring on the paving: its radius
+local MARK_OUT = 28 -- how far in front of the portal it lies (past the steps)
+local MARK_TAG_Y = 20.5 -- YOUR DEN, over the nameplate (local to the door's frame)
+local markerFolder: Folder? = nil
+local markerIndex = 0
+local markerRing: { BasePart } = {}
+local markerBeam: Beam? = nil
+local markerTag: BillboardGui? = nil
+
+local function clearMarker()
+	if markerFolder then
+		markerFolder:Destroy()
+	end
+	markerFolder, markerBeam, markerTag = nil, nil, nil
+	table.clear(markerRing)
+	markerIndex = 0
+end
+
+local function buildMarker(index: number)
+	clearMarker()
+	markerIndex = index
+	local frame = Layout.doorFrame(index)
+	local hub = Config.World.hub
+	local folder = Instance.new("Folder")
+	folder.Name = "YourDenMarker"
+	local function piece(name: string, size: Vector3, cframe: CFrame): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Size = size
+		p.CFrame = cframe
+		p.Color = MARK
+		p.Material = Enum.Material.Neon
+		p.Parent = folder
+		return p
+	end
+	-- A ring of light on the paving in front of the steps
+	local ground = frame * CFrame.new(0, hub.paving - frame.Position.Y + 0.12, -MARK_OUT)
+	local level = CFrame.new(ground.Position) * (frame - frame.Position)
+	local count = 24
+	for k = 1, count do
+		local a = k / count * 2 * math.pi
+		local segment = piece(
+			"Ring",
+			Vector3.new(2 * MARK_RING * math.sin(math.pi / count) + 0.1, 0.12, 0.5),
+			level * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -MARK_RING)
+		)
+		segment.Transparency = 0.3
+		table.insert(markerRing, segment)
+	end
+	-- A soft column of light rising from it
+	local base = piece("Base", Vector3.one * 0.4, level)
+	base.Transparency = 1
+	local light = Instance.new("PointLight")
+	light.Color = MARK
+	light.Range = 22
+	light.Brightness = 1.2
+	light.Parent = base
+	local foot = Instance.new("Attachment")
+	foot.Parent = base
+	local top = Instance.new("Attachment")
+	top.Parent = base
+	top.Position = Vector3.new(0, 42, 0)
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = foot
+	beam.Attachment1 = top
+	beam.FaceCamera = true
+	beam.Width0 = MARK_RING * 1.5
+	beam.Width1 = 3
+	beam.Color = ColorSequence.new(MARK)
+	beam.LightEmission = 1
+	beam.LightInfluence = 0
+	beam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55),
+		NumberSequenceKeypoint.new(0.5, 0.8),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	beam.Segments = 1
+	beam.Parent = base
+	markerBeam = beam
+	-- YOUR DEN over the nameplate: thin text and a short line, breathing slowly
+	local anchor = piece("Tag", Vector3.one, frame * CFrame.new(0, MARK_TAG_Y, -12))
+	anchor.Transparency = 1
+	local tag = Instance.new("BillboardGui")
+	tag.Size = UDim2.fromOffset(180, 46)
+	tag.AlwaysOnTop = true
+	tag.LightInfluence = 0
+	tag.MaxDistance = 420
+	tag.Adornee = anchor
+	tag.Parent = anchor
+	local label = Ui.label(tag, "Text", "YOUR DEN", Ui.FONT_HEAVY, 18, MARK, UDim2.new(1, 0, 0, 24))
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(40, 26, 6)
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.3
+	stroke.Parent = label
+	local line = Instance.new("Frame")
+	line.Name = "Line"
+	line.BackgroundColor3 = MARK
+	line.BorderSizePixel = 0
+	line.AnchorPoint = Vector2.new(0.5, 0)
+	line.Position = UDim2.new(0.5, 0, 0, 27)
+	line.Size = UDim2.fromOffset(40, 2)
+	line.Parent = tag
+	local arrow = Ui.label(
+		tag,
+		"Arrow",
+		"▼",
+		Ui.FONT_HEAVY,
+		11,
+		MARK,
+		UDim2.new(1, 0, 0, 14),
+		UDim2.fromOffset(0, 31)
+	)
+	arrow.TextXAlignment = Enum.TextXAlignment.Center
+	markerTag = tag
+	folder.Parent = workspace
+	markerFolder = folder
+end
+
+-- Shows your doorway's marker while your fish is out of its den (and not in Build
+-- mode); YOUR DEN steps aside while the tutorial shows its own
+local function updateMarker()
+	local s = ClientState.current
+	local index = if s and typeof(s.denIndex) == "number" then s.denIndex else 0
+	local root = SwimController.root()
+	local out = root ~= nil and Layout.denAt(root.Position) == nil
+	if index <= 0 or not out then
+		if markerFolder then
+			clearMarker()
+		end
+		return
+	end
+	if markerIndex ~= index or markerFolder == nil or markerFolder.Parent == nil then
+		buildMarker(index)
+	end
+	-- breathing
+	local wave = 0.5 + 0.5 * math.sin(os.clock() * 2.2)
+	for _, segment in markerRing do
+		segment.Transparency = 0.15 + 0.4 * wave
+	end
+	local beam = markerBeam
+	if beam then
+		beam.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.45 + 0.2 * wave),
+			NumberSequenceKeypoint.new(0.5, 0.78 + 0.1 * wave),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+	end
+	local tag = markerTag
+	if tag then
+		local tutorial = workspace:FindFirstChild("TutorialMarkers")
+		tag.Enabled = not (tutorial and #tutorial:GetChildren() > 0)
+		local label = tag:FindFirstChild("Text") :: TextLabel?
+		if label then
+			label.TextTransparency = 0.05 + 0.3 * wave
+		end
+	end
+end
+
+local markerClock = 0
+
 local function step()
+	if os.clock() - markerClock > 0.05 then
+		markerClock = os.clock()
+		updateMarker()
+	end
 	if busy or Input.locked or os.clock() < coolUntil then
 		return
 	end

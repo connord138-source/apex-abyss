@@ -549,6 +549,17 @@ local function denItems(_admin: Player, targets: { Player }, count: any): string
 	return `{n} of every den thing into the Build tray for {#targets} player(s)`
 end
 
+-- Den: every doorway style owned (Config/Dens `doors`), to try them on the plaza
+local function denDoors(_admin: Player, targets: { Player }): string
+	local count = each(targets, function(player, data)
+		for _, style in Config.Dens.doors do
+			data.den.doors[style.id] = true
+		end
+		DenService.refresh(player)
+	end)
+	return `Every doorway style for {count} player(s) · pick one in the den menu's Doorway rows`
+end
+
 -- The Tide Clock: force a tide on every server client for 10 minutes ("" = the clock)
 local function forceTide(_admin: Player, _targets: { Player }, id: any): string
 	if id == "" then
@@ -745,6 +756,7 @@ AdminActions.byName = {
 	denLevel = denLevel :: Handler,
 	denItems = denItems :: Handler,
 	denOldSave = denOldSave :: Handler,
+	denDoors = denDoors :: Handler,
 	skinFailTest = skinFailTest :: Handler,
 	achievementsAll = achievementsAll :: Handler,
 	achievementsReset = achievementsReset :: Handler,

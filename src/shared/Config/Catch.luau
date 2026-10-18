@@ -131,8 +131,10 @@ return {
 	codes = codes,
 	-- Re-rolling fish nobody is near, so the sea keeps changing (and the tide's
 	-- odds reach the fish no one eats): every `seconds`, up to `perTick` fish more
-	-- than `clearance` studs from every player
-	rotate = { seconds = 5, perTick = 12, clearance = 260 },
+	-- than `clearance` studs from every player. 36 a tick since the sea went from
+	-- ~1,300 prey fish to ~4,100 (2026-10-18), so each is still re-rolled about every
+	-- 9 minutes
+	rotate = { seconds = 5, perTick = 36, clearance = 260 },
 	-- The Catch Log: coral for the first catch of each prey species at each rarity
 	-- ("Normal" too), and for catching every rarity of one species
 	firstCatch = { Normal = 25, Golden = 120, Glowing = 400, Crystal = 1500, Prism = 5000 },

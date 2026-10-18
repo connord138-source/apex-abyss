@@ -37,7 +37,7 @@ return {
 		-- level 1 to lvl 100. A lvl 100 cuda can make it across the map in like 5
 		-- seconds ... I do like how the bigger a fish is the easier they catch smaller
 		-- prey though"). A Nibbler: LV 1 20, LV 30 30, LV 60 41, LV 80 46, LV 100 49
-		-- (was 83), a full Haul at LV 100 51: ~61 s across the 3,000-stud map (was 36).
+		-- (was 83), a full Haul at LV 100 50: ~61 s across the 3,000-stud map (was 36).
 		-- Under the knee nothing changed; every size is still faster than any smaller.
 		speedKnee = 6,
 		speedCap = 56,

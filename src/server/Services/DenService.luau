@@ -138,7 +138,11 @@ local function growPlacements(den: DenRecord)
 				and item ~= nil
 				and oldY[other.uid] < oldY[placement.uid] - 0.05
 				and (best == nil or oldY[other.uid] > oldY[(best :: DenSpace.Placed).uid])
-				and DenSpace.resting(den.level, { other }, Vector3.new(placement.x, other.y + item.size.Y, placement.z)).ok
+				and DenSpace.resting(
+					den.level,
+					{ other },
+					Vector3.new(placement.x, other.y + item.size.Y, placement.z)
+				).ok
 			then
 				best = other
 			end
@@ -160,15 +164,18 @@ local function growPlacements(den: DenRecord)
 		if placement.y > DenSpace.storey(storey).deck + 0.3 then
 			continue
 		end
+		local onStorey: number = storey
 		local fits = function(x: number, z: number): boolean
-			return DenSpace.footprintOnDeck(den.level, storey, item, x, z, placement.r, 0.4)
+			return DenSpace.footprintOnDeck(den.level, onStorey, item, x, z, placement.r, 0.4)
 		end
 		if fits(placement.x, placement.z) then
 			continue
 		end
 		local found = false
 		for step = 1, 10 do
-			for _, way in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } } do
+			for _, way in
+				{ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } }
+			do
 				local x, z = placement.x + way[1] * step, placement.z + way[2] * step
 				if fits(x, z) then
 					placement.x, placement.z = snap(x), snap(z)
@@ -220,6 +227,13 @@ local function relayout(den: DenRecord)
 end
 
 local function migrate(den: DenRecord)
+	-- (a save from before the doorway styles)
+	if typeof(den.door) ~= "string" or Dens.doorsById[den.door] == nil then
+		den.door = "Stone"
+	end
+	if typeof(den.doors) ~= "table" then
+		den.doors = {}
+	end
 	relayout(den)
 	for id, has in den.owned do
 		if Dens.itemsById[id] and has == true then
@@ -313,6 +327,7 @@ function DenService.refresh(player: Player)
 		)
 		local level = Dens.levels[data.den.level] or Dens.levels[1]
 		WorldService.setDenLevel(den, level.name)
+		WorldService.setDenDoor(den, data.den.door)
 	end)
 end
 
@@ -616,6 +631,49 @@ local function floor(player: Player, floorId: any)
 	DenService.refresh(player)
 end
 
+-- Why a doorway style can't be bought yet (nil: it can)
+function DenService.doorLocked(data: DataService.PlayerData, style: DensConfig.Door): string?
+	if style.level and data.den.level < style.level then
+		local level = Dens.levels[style.level]
+		return `The {style.name} needs a {if level then level.name else "bigger"} den`
+	end
+	if style.achievement and data.achievements[style.achievement] ~= true then
+		local achievement = Config.Achievements.byId[style.achievement]
+		return `The {style.name} opens with {if achievement
+			then `{achievement.name}: {achievement.blurb}`
+			else "an achievement"}`
+	end
+	return nil
+end
+
+-- A doorway style for the den's front door on the plaza (owner, 2026-10-18): bought
+-- once with coral (at its den level, after its achievement), then worn or swapped
+local function door(player: Player, doorId: any)
+	local data = DataService.get(player)
+	local style = if typeof(doorId) == "string" then Dens.doorsById[doorId] else nil
+	if data == nil or style == nil then
+		return
+	end
+	local den = data.den
+	if typeof(den.doors) ~= "table" then
+		den.doors = {}
+	end
+	if style.price > 0 and den.doors[style.id] ~= true then
+		local locked = DenService.doorLocked(data, style)
+		if locked then
+			return fail(player, locked)
+		end
+		if not EconomyService.spendCoral(player, style.price) then
+			return fail(player, `Not enough coral ({style.price} needed)`)
+		end
+		den.doors[style.id] = true
+		Net.notify(player, `The {style.name} is on your den's doorway`, "good")
+	end
+	den.door = style.id
+	DataService.markDirty(player)
+	DenService.refresh(player)
+end
+
 -- Admin testing: the den at a level, and some of every thing in the tray
 function DenService.setLevel(player: Player, level: number)
 	local data = DataService.get(player)
@@ -797,6 +855,7 @@ function DenService.start()
 			evict(index)
 			DenBuilder.clear(index, true)
 			WorldService.setDenLevel(index, nil)
+			WorldService.setDenDoor(index, nil)
 		end)
 	end)
 	Events.trophies:connect(function(player: Player)
@@ -817,6 +876,7 @@ function DenService.start()
 	Net.onRequest("DenStore", store)
 	Net.onRequest("DenColor", color)
 	Net.onRequest("DenFloor", floor)
+	Net.onRequest("DenDoor", door)
 	Net.onRequest("EnterDen", enterDen)
 	Net.onRequest("LeaveDen", leaveDen)
 	Net.onRequest("Prestream", prestream)
