@@ -590,7 +590,7 @@ local function patch(parent: Instance, at: Vector3, normal: Vector3, size: numbe
 				frame
 					* CFrame.new(
 						size * rng:NextNumber(-0.3, 0.3),
-						size * 0.03,
+						size * 0.008,
 						size * across * rng:NextNumber(-0.2, 0.2)
 					),
 				other
