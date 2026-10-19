@@ -409,78 +409,6 @@ local up = Vector3.new(0, 1, 0)
 local function flat(v)
 	return Vector3.new(v.X, 0, v.Z).Unit
 end
--- The whole field: from straight over its middle (a map, no haze) and from high
--- over the drop-off's foot (a thinner haze than a fish sees, to show the layout)
-local FIELD = { -1560, -560, -572, -200, -1060, 1260 }
-local middle = Vector3.new(-1180, floorY, 60)
-view("map", middle + Vector3.new(0.01, 1150, 0), middle, 78, FIELD, 6, 6000)
-local inward = flat(-middle)
-view("aerial", middle + inward * 330 + up * 300, middle + inward * 40, 70, FIELD, 6, 520)
-local forge = plan.forge
-if forge then
-	local c = forge.center
-	local toHub = flat(-c)
-	local side = Vector3.new(-toHub.Z, 0, toHub.X)
-	-- From ~150 studs off, a fish's height up the causeway's side
-	view(
-		"forge",
-		c + toHub * 250 + side * 60 + up * 70,
-		c + up * (forge.height * 0.5),
-		60,
-		boxAround(c + toHub * 120, 260, floorY - 130, floorY + forge.height + 20),
-		3
-	)
-	view(
-		"crater",
-		c + toHub * 70 + side * 30 + up * (forge.height + 45),
-		c + up * (forge.height - 10),
-		55,
-		boxAround(c, 70, floorY + forge.height - 60, floorY + forge.height + 20),
-		2
-	)
-	-- Down the causeway toward the Forge
-	local causeway = plan.causeway
-	if causeway then
-		local far = causeway.to
-		view(
-			"causeway",
-			far + flat(far - c) * 30 + side * 14 + up * 22,
-			causeway.from + up * 20,
-			62,
-			boxAround((far + causeway.from) / 2, 140, floorY - 20, floorY + 120),
-			2
-		)
-	end
-end
--- A basin: the one with the brine pool, from over its rim
-local basins = Seafloor.ventBasins()
-local brine = plan.brine
-if brine then
-	local b = basins[brine.basin]
-	local center = Vector3.new(b.x, World.deep.ventsFloorY, b.z)
-	local out = flat(center)
-	view(
-		"basin",
-		center - out * (b.radius + 30) + up * 70,
-		brine.center + up * 4,
-		60,
-		boxAround(center, b.radius + 70, World.deep.ventsFloorY - 20, floorY + 60),
-		2
-	)
-end
-for index, terrace in plan.terraces do
-	local b = basins[terrace.basin]
-	local dir = Vector3.new(math.cos(terrace.heading), 0, math.sin(terrace.heading))
-	local wall = Vector3.new(b.x, floorY, b.z) + dir * b.radius
-	view(
-		`terraces{index}`,
-		wall - dir * 70 + up * -30 + Vector3.new(-dir.Z, 0, dir.X) * 20,
-		wall + up * -45,
-		58,
-		boxAround(wall, 80, World.deep.ventsFloorY - 10, floorY + 30),
-		2
-	)
-end
 -- A camera `distance` off `target` (flat), `rise` over it, from the first of 16
 -- headings (starting toward the hub) whose spot is in open water inside the map and
 -- whose line to the target clears the ground (Terrain) and every solid part
@@ -534,6 +462,80 @@ local function openView(target, look, distance, rise, clearance)
 	end
 	return target + toHub * distance + up * rise
 end
+-- The whole field: from straight over its middle (a map, no haze) and from high
+-- over the drop-off's foot (a thinner haze than a fish sees, to show the layout)
+local FIELD = { -1560, -560, -572, -200, -1060, 1260 }
+local middle = Vector3.new(-1180, floorY, 60)
+view("map", middle + Vector3.new(0.01, 1150, 0), middle, 78, FIELD, 6, 6000)
+local inward = flat(-middle)
+-- (looking out over the field from just past the drop-off's foot, high up, toward
+-- the Forge)
+local aim = if plan.forge then middle:Lerp(plan.forge.center, 0.45) else middle
+view("aerial", aim + flat(-aim) * 300 + up * 470, aim + up * 30, 66, FIELD, 6, 600)
+local forge = plan.forge
+if forge then
+	local c = forge.center
+	local toHub = flat(-c)
+	local side = Vector3.new(-toHub.Z, 0, toHub.X)
+	-- From ~150 studs off, a fish's height up the causeway's side
+	view(
+		"forge",
+		c + toHub * 250 + side * 60 + up * 70,
+		c + up * (forge.height * 0.5),
+		60,
+		boxAround(c + toHub * 120, 260, floorY - 130, floorY + forge.height + 20),
+		3
+	)
+	view(
+		"crater",
+		c + toHub * 70 + side * 30 + up * (forge.height + 45),
+		c + up * (forge.height - 10),
+		55,
+		boxAround(c, 70, floorY + forge.height - 60, floorY + forge.height + 20),
+		2
+	)
+	-- Down the causeway toward the Forge
+	local causeway = plan.causeway
+	if causeway then
+		local far = causeway.to
+		view(
+			"causeway",
+			far + flat(far - c) * 30 + side * 14 + up * 22,
+			causeway.from + up * 20,
+			62,
+			boxAround((far + causeway.from) / 2, 140, floorY - 20, floorY + 120),
+			2
+		)
+	end
+end
+-- A basin: the one with the brine pool, from over its rim
+local basins = Seafloor.ventBasins()
+local brine = plan.brine
+if brine then
+	local b = basins[brine.basin]
+	local center = Vector3.new(b.x, World.deep.ventsFloorY, b.z)
+	view(
+		"basin",
+		openView(brine.center, brine.center + up * 4, brine.radius + 55, 50, brine.radius * 0.5),
+		brine.center + up * 4,
+		60,
+		boxAround(center, b.radius + 70, World.deep.ventsFloorY - 20, floorY + 60),
+		2
+	)
+end
+for index, terrace in plan.terraces do
+	local b = basins[terrace.basin]
+	local dir = Vector3.new(math.cos(terrace.heading), 0, math.sin(terrace.heading))
+	local wall = Vector3.new(b.x, floorY, b.z) + dir * b.radius
+	view(
+		`terraces{index}`,
+		wall - dir * 70 + up * -30 + Vector3.new(-dir.Z, 0, dir.X) * 20,
+		wall + up * -45,
+		58,
+		boxAround(wall, 80, World.deep.ventsFloorY - 10, floorY + 30),
+		2
+	)
+end
 for index, smoker in plan.smokers do
 	local c = smoker.center
 	local tall = smoker.spires[1].height
@@ -551,7 +553,7 @@ for index, outcrop in plan.outcrops do
 	local c = outcrop.center
 	view(
 		`basalt{index}`,
-		openView(c, c + up * 8, 52, 26, outcrop.radius + 4),
+		c + outcrop.down * (outcrop.radius + 34) + up * 22,
 		c + up * 8,
 		60,
 		boxAround(c, 70, floorY - 20, floorY + 60),
@@ -578,7 +580,7 @@ for _, name in { "TubeWormForest", "TubeWorms" } do
 end
 if wormsAt then
 	local c = wormsAt
-	view("worms", openView(c, c + up * 2, 24, 8, 8), c + up * 2, 55, boxAround(c, 40, c.Y - 20, c.Y + 30), 1)
+	view("worms", openView(c, c + up * 2, 24, 8, 8), c + up * 2, 55, boxAround(c, 90, c.Y - 20, c.Y + 70), 1.5)
 end
 
 dumpParts(root)

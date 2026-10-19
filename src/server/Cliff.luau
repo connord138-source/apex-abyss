@@ -561,12 +561,8 @@ local function lying(at: Vector3, normal: Vector3): (CFrame, number)
 	if math.abs(normal.Y) < 0.7 then
 		local along = Vector3.yAxis:Cross(normal).Unit
 		local up = normal - along * normal:Dot(along)
-		return CFrame.fromMatrix(at, along, up.Unit, along:Cross(up.Unit)) * CFrame.Angles(
-			0,
-			rng:NextNumber(-0.15, 0.15),
-			0
-		),
-			rng:NextNumber(0.35, 0.55)
+		local frame = CFrame.fromMatrix(at, along, up.Unit, along:Cross(up.Unit))
+		return frame * CFrame.Angles(0, rng:NextNumber(-0.12, 0.12), 0), rng:NextNumber(0.3, 0.45)
 	end
 	return grow(at, normal, 0, rng:NextNumber(0, TAU)), rng:NextNumber(0.55, 0.9)
 end
@@ -855,8 +851,15 @@ local function place(parent: Instance, kind: string, at: Vector3, normal: Vector
 	if (kind == "blackCoral" or kind == "glassSponge" or kind == "glowTips") and look.deep == nil then
 		kind = "fan"
 	end
-	if kind == "patch" then
-		size *= 1.5 -- (crusts are cheap colour: big ones)
+	if kind == "patch" or kind == "barnacles" then
+		-- (a crust lies flat on a band's front or top; on a roll's shoulder or its
+		-- underside a flat patch would stand off the curve like a pill)
+		if normal.Y < -0.35 or (normal.Y > 0.35 and normal.Y < 0.8) then
+			return
+		end
+		if kind == "patch" then
+			size *= 1.5 -- (crusts are cheap colour: big ones)
+		end
 	end
 	BUILDERS[kind](parent, at, normal, size, look)
 	stats.pieces[kind] = (stats.pieces[kind] or 0) + 1
@@ -966,9 +969,9 @@ function Cliff.build(parent: Instance, layout: Shelf.Cliff, cast: Cast): Stats
 	deepFolder.Name = "Deep"
 	deepFolder.Parent = parent
 
-	-- The lip: reef patches of 3-5 pieces every 26-42 studs down onto the crest (some
+	-- The lip: reef patches of 3-5 pieces every 22-36 studs down onto the crest (some
 	-- reaching back onto the shelf's sand), and 2-3 on each reef head
-	walk({ 26, 42 }, 10, function(angle)
+	walk({ 22, 36 }, 10, function(angle)
 		local look, zone = shallowLook(angle)
 		local r0 = face + rng:NextNumber(-26, 10)
 		for _ = 1, rng:NextInteger(3, 5) do
@@ -1000,7 +1003,7 @@ function Cliff.build(parent: Instance, layout: Shelf.Cliff, cast: Cast): Stats
 
 	-- The crest's front and the wall's top ~60 studs: in at the rock; what faces up
 	-- gets top growth, what faces down (under the lip) hangs
-	walk({ 9, 15 }, 12, function(angle)
+	walk({ 8, 13 }, 12, function(angle)
 		local hit, normal = inward(angle, rng:NextNumber(-68, -8))
 		if hit == nil or normal == nil then
 			return

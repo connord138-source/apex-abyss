@@ -74,7 +74,9 @@ local COLORS = {
 	lavaRim = Color3.fromRGB(168, 38, 14),
 	raft = Color3.fromRGB(44, 34, 34),
 	minerals = { Color3.fromRGB(198, 142, 54), Color3.fromRGB(150, 66, 34), Color3.fromRGB(230, 208, 72) },
-	pool = Color3.fromRGB(255, 188, 80),
+	-- Rimstone: cream, ochre and rust, and the warm water standing on it
+	travertine = { Color3.fromRGB(204, 182, 136), Color3.fromRGB(184, 130, 72), Color3.fromRGB(150, 86, 50) },
+	terracePool = Color3.fromRGB(236, 146, 64),
 	tube = { Color3.fromRGB(126, 128, 124), Color3.fromRGB(112, 114, 112), Color3.fromRGB(138, 136, 128) },
 	plume = { Color3.fromRGB(196, 22, 38), Color3.fromRGB(176, 16, 34), Color3.fromRGB(214, 40, 48) },
 	mussel = {
@@ -87,7 +89,8 @@ local COLORS = {
 	clamLip = Color3.fromRGB(96, 88, 80),
 	brine = Color3.fromRGB(14, 22, 34),
 	brineGlow = Color3.fromRGB(34, 120, 130),
-	brineCrust = Color3.fromRGB(150, 146, 128),
+	brineCrust = Color3.fromRGB(176, 176, 166),
+	brineCrustDark = Color3.fromRGB(132, 130, 120),
 	throat = Color3.fromRGB(255, 120, 40),
 }
 local LIGHT = {
@@ -514,14 +517,22 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 	local steps = 30
 	for index, heading in f.runnels do
 		local top = if index == 1 then 0.97 else 0.9
+		-- (a ray straight down a steep groove lands now on its floor, now on its lip:
+		-- the heights are kept falling and evened out, so the lava runs in one line)
 		local points: { Vector3 } = {}
 		for k = 0, steps do
 			local t = top * (1 - k / steps)
 			local p = VentsPlan.runnelPoint(f, heading, t)
 			local hit = groundOf(p.X, p.Z)
-			if hit and math.abs(hit.Y - p.Y) < 12 then
-				table.insert(points, hit)
+			if hit and math.abs(hit.Y - p.Y) < 8 then
+				local last = points[#points]
+				local y = if last then math.min(hit.Y, last.Y - 0.3) else hit.Y
+				table.insert(points, Vector3.new(hit.X, y, hit.Z))
 			end
+		end
+		for k = 2, #points - 1 do
+			local a, b, d = points[k - 1], points[k], points[k + 1]
+			points[k] = Vector3.new(b.X, (a.Y + b.Y * 2 + d.Y) / 4, b.Z)
 		end
 		for k = 1, #points - 1 do
 			local along = (k - 1) / math.max(#points - 2, 1)
@@ -535,16 +546,20 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 		local pool = foot + out * 9
 		local poolY = groundY(pool.X, pool.Z, c.Y)
 		local radius = rng:NextNumber(5, 7)
-		glow(
+		-- (an oval, its long way across the flow: a box read as a slab)
+		local lavaPool = blob(
 			m,
 			"LavaPool",
-			Vector3.new(radius * 2.4, 0.5, radius * 1.6),
 			CFrame.lookAt(
-				Vector3.new(pool.X, poolY + 0.2, pool.Z),
-				Vector3.new(pool.X, poolY + 0.2, pool.Z) + out
+				Vector3.new(pool.X, poolY + 0.1, pool.Z),
+				Vector3.new(pool.X, poolY + 0.1, pool.Z) + out
 			),
+			Vector3.new(radius * 2.4, 0.7, radius * 1.6),
 			COLORS.lava
 		)
+		lavaPool.Material = NEON
+		lavaPool.CastShadow = false
+		stats.glow += 1
 		if index == 1 then
 			-- The spill: a light halfway down its runnel and one over its pool
 			local mid = points[math.max(1, math.floor(#points * 0.45))]
@@ -611,6 +626,52 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 			spread = 12,
 			lit = 0.6,
 		})
+	end
+	-- The shoulder cone: lava in its little crater (Shelf fills it with CrackedLava),
+	-- lit, breathing ash, and a tongue of lava over its outer lip
+	local shoulder = f.shoulder
+	if shoulder then
+		local s = shoulder.center
+		local top = s.Y + shoulder.height
+		local poolY = groundY(s.X, s.Z, top - shoulder.crater + 4)
+		if poolY > top or poolY < top - shoulder.crater - 2 then
+			poolY = top - shoulder.crater + 4
+		end
+		local pool = disc(m, "ShoulderLava", s, poolY + 0.3, shoulder.crater * 0.62, 0.4, COLORS.lava, false)
+		pool.Material = NEON
+		pool.CastShadow = false
+		stats.glow += 1
+		local vent = holder(m, "ShoulderGlow", CFrame.new(s.X, poolY + 6, s.Z), Vector3.new(6, 2, 6))
+		light(vent, LIGHT.lava, 45, 1.8)
+		embers(vent, 3)
+		emit(vent, "Ash", {
+			rate = 4,
+			life = { 8, 12 },
+			speed = { 4, 7 },
+			size = { 4, 12, 20 },
+			fade = { 0.4, 0.55 },
+			colors = { Color3.fromRGB(110, 62, 36), Color3.fromRGB(64, 56, 54) },
+			rise = 1,
+			spread = 12,
+			drag = 0.3,
+			glow = 0.1,
+			lit = 0.5,
+		})
+		-- (outward from the Forge, down its own flank)
+		local out = Vector3.new(s.X - c.X, 0, s.Z - c.Z).Unit
+		local points: { Vector3 } = {}
+		for k = 0, 8 do
+			local d = shoulder.crater * 0.8 + (shoulder.base - shoulder.crater) * k / 8
+			local hit = groundOf(s.X + out.X * d, s.Z + out.Z * d)
+			if hit then
+				table.insert(points, hit)
+			end
+		end
+		for k = 1, #points - 1 do
+			local width = 1.8 + 1.6 * (k - 1) / math.max(#points - 2, 1)
+			lavaStrip(m, points[k], points[k + 1], width, false)
+			lavaStrip(m, points[k], points[k + 1], width * 2.1, true)
+		end
 	end
 end
 
@@ -843,7 +904,46 @@ end
 -- Mineral terraces
 -- ---------------------------------------------------------------------------
 
-local TERRACE = { drop = 11, first = 3, lowest = 12, radius = { 7.5, 10.5 }, grow = 0.55 }
+-- A cascade of rimstone shelves down a basin wall: `drop` studs a step from `first`
+-- under the deep floor to `lowest` over the basin's, each `radius` (growing `grow` a
+-- step), meandering up to `drift` studs a step along the wall, and now and then a
+-- smaller shelf beside it half a step down (`side`)
+local TERRACE = { drop = 10, first = 3, lowest = 12, radius = { 7, 10 }, grow = 0.5, drift = 6, side = 0.45 }
+
+-- One rimstone shelf: a solid stone disc half sunk in the wall, a glowing pool on it
+-- and a raised, scalloped rim round its front; returns its front edge
+local function shelf(
+	m: Instance,
+	center: Vector3,
+	y: number,
+	radius: number,
+	inward: Vector3,
+	s: number
+): Vector3
+	local stone = COLORS.travertine[s % #COLORS.travertine + 1]
+	local rim = COLORS.travertine[(s + 1) % #COLORS.travertine + 1]
+	disc(m, "TerraceShelf", center, y, radius, 3, stone, true)
+	local pool = disc(m, "TerracePool", center, y + 0.45, radius - 0.9, 0.3, COLORS.terracePool, false)
+	pool.Material = NEON
+	pool.Transparency = 0.4
+	pool.CastShadow = false
+	stats.glow += 1
+	local facing = math.atan2(inward.Z, inward.X)
+	local lobes = if radius > 6 then 5 else 3
+	for k = 1, lobes do
+		local a = facing + (k - (lobes + 1) / 2) * (2.3 / lobes) + rng:NextNumber(-0.08, 0.08)
+		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+		local at = Vector3.new(center.X, y + 0.5, center.Z) + dir * (radius - 0.3)
+		blob(
+			m,
+			"TerraceRim",
+			CFrame.lookAt(at, at + Vector3.new(-dir.Z, 0, dir.X)),
+			Vector3.new(1.7, rng:NextNumber(1.6, 2), radius * 2.3 / lobes * 1.35),
+			rim
+		)
+	end
+	return Vector3.new(center.X, y, center.Z) + inward * radius
+end
 
 local function terraces(parent: Instance, plan: VentsPlan.Plan)
 	local basins = Seafloor.ventBasins()
@@ -856,57 +956,61 @@ local function terraces(parent: Instance, plan: VentsPlan.Plan)
 		local y = deep.floorY - TERRACE.first
 		local prev: { front: Vector3, radius: number }? = nil
 		local made, mid = 0, nil :: Vector3?
-		for s = 0, 9 do
+		local drift = 0
+		-- Whether a shelf there is clear of the schools in the basin and not buried
+		-- in the lip's rubble (the ground just in front stands over it)
+		local function fits(center: Vector3, top: number, radius: number): (boolean, boolean)
+			if top + 1.5 > VentsPlan.ceiling(center.X, center.Z, radius) then
+				return false, true
+			end
+			local front = center + inward * (radius * 0.6)
+			return groundY(front.X, front.Z, deep.ventsFloorY) <= top + 1, false
+		end
+		for s = 0, 11 do
 			if y < deep.ventsFloorY + TERRACE.lowest then
 				break
 			end
 			local radius = rng:NextNumber(TERRACE.radius[1], TERRACE.radius[2]) + s * TERRACE.grow
-			local wobble = (if s % 2 == 0 then 1 else -1) * rng:NextNumber(1.5, 3.5)
-			local wall = Vector3.new(basin.x, y, basin.z) + out * basin.radius + side * wobble
-			local center = wall + inward * (radius * 0.15)
-			-- Clear of the schools in the basin: none goes lower once one doesn't fit
-			if y + 1.5 > VentsPlan.ceiling(center.X, center.Z, radius) then
+			drift = math.clamp(drift + rng:NextNumber(-1, 1) * TERRACE.drift, -14, 14)
+			local wall = Vector3.new(basin.x, y, basin.z) + out * basin.radius + side * drift
+			local center = wall + inward * (radius * 0.2)
+			local ok, schools = fits(center, y, radius)
+			-- (none goes lower once a school is in the way)
+			if schools then
 				break
 			end
-			-- Buried in the lip's rubble: the ground just in front stands over it
-			local front = center + inward * (radius * 0.6)
-			local inFront = groundY(front.X, front.Z, deep.ventsFloorY)
-			if inFront > y + 1 then
+			if not ok then
 				y -= TERRACE.drop
 				continue
 			end
-			local band = COLORS.minerals[s % #COLORS.minerals + 1]
-			disc(m, "TerraceShelf", center, y, radius, 3, band, true)
-			disc(
-				m,
-				"TerraceLip",
-				center,
-				y + 0.9,
-				radius + 0.5,
-				1,
-				COLORS.minerals[(s + 2) % #COLORS.minerals + 1],
-				false
-			)
-			local pool = disc(m, "TerracePool", center, y + 1, radius - 1.1, 0.2, COLORS.pool, false)
-			pool.Material = NEON
-			pool.Transparency = 0.3
-			pool.CastShadow = false
-			stats.glow += 1
-			-- Flowstone draped from the step above
+			local front = shelf(m, center, y, radius, inward, s)
+			-- Flowstone draped from the shelf above: a smooth tongue over its rim
 			local last = prev
 			if last then
-				local from = last.front + Vector3.new(0, -1.5, 0)
-				local to = center + inward * (radius * 0.45) + Vector3.new(0, 0.4, 0)
+				local from = last.front + Vector3.new(0, -0.6, 0)
+				local to = center + inward * (radius * 0.55) + Vector3.new(0, 0.5, 0)
 				local span = to - from
-				trim(
+				blob(
 					m,
 					"Flowstone",
-					Vector3.new(last.radius * 1.1, 1.2, span.Magnitude),
 					CFrame.lookAt((from + to) / 2, to),
-					COLORS.minerals[(s + 1) % #COLORS.minerals + 1]
+					Vector3.new(last.radius * rng:NextNumber(0.7, 1), 1.5, span.Magnitude * 1.15),
+					COLORS.travertine[(s + 2) % #COLORS.travertine + 1]
 				)
 			end
-			prev = { front = center + inward * (radius * 1.05), radius = radius }
+			-- A smaller shelf beside it, half a step down
+			if rng:NextNumber() < TERRACE.side then
+				local small = radius * 0.6
+				local sideWay = if rng:NextNumber() < 0.5 then -1 else 1
+				local beside = center + side * (sideWay * (radius + small * 0.6)) + inward * (small * 0.1)
+				local top = y - TERRACE.drop * 0.5
+				local sideOk = fits(beside, top, small)
+				if sideOk and top > deep.ventsFloorY + TERRACE.lowest then
+					shelf(m, beside, top, small, inward, s + 1)
+					stats.steps += 1
+				end
+			end
+			prev = { front = front, radius = radius }
 			made += 1
 			stats.steps += 1
 			if made == 2 then
@@ -988,7 +1092,7 @@ local function worm(m: Instance, hit: Vector3, dir: Vector3, length: number, rad
 			m,
 			"Plume",
 			CFrame.lookAt(plume, plume + dir),
-			Vector3.new(radius * 2.7, radius * 2.7, 1.5 + radius),
+			Vector3.new(radius * 2.9, radius * 2.9, 1.6 + radius * 1.4),
 			pick(COLORS.plume)
 		)
 	end
@@ -1023,7 +1127,7 @@ local FOREST = { knots = 7, tallest = 11, shortest = 3, step = 3.5, level = 6 }
 -- The forests and their worms: a belt round the tallest smoker complex, the floor
 -- round a basin chimney (not in the brine pool's basin) and an arc of the brine
 -- pool's shore
-local FORESTS = { smoker = 120, chimney = 90, brine = 70 }
+local FORESTS = { smoker = 110, chimney = 80, brine = 60 }
 
 local function wormForest(
 	parent: Instance,
@@ -1096,17 +1200,36 @@ local function brinePool(parent: Instance, plan: VentsPlan.Plan)
 	under.Material = NEON
 	under.Transparency = 0.55
 	stats.glow += 1
-	for k = 1, 16 do
-		local a = k * TAU / 16 + rng:NextNumber(-0.1, 0.1)
-		local d = radius + rng:NextNumber(0.4, 1.4)
-		local at = Vector3.new(c.X + math.cos(a) * d, y + 0.3, c.Z + math.sin(a) * d)
+	-- A continuous shore of mineral crust (overlapping pieces round the rim), and
+	-- nodules of it scattered just past
+	local pieces = math.max(20, math.floor(TAU * radius / 6))
+	local spacing = TAU * radius / pieces
+	for k = 1, pieces do
+		local a = k * TAU / pieces + rng:NextNumber(-0.04, 0.04)
+		local d = radius + rng:NextNumber(0.2, 1)
+		local at = Vector3.new(c.X + math.cos(a) * d, y + 0.15, c.Z + math.sin(a) * d)
 		blob(
 			m,
 			"BrineCrust",
 			CFrame.lookAt(at, at + Vector3.new(-math.sin(a), 0, math.cos(a))),
-			Vector3.new(rng:NextNumber(2.5, 3.5), 0.9, rng:NextNumber(6, 9)),
-			COLORS.brineCrust
+			Vector3.new(rng:NextNumber(2, 3), rng:NextNumber(0.6, 0.9), spacing * rng:NextNumber(1.4, 1.7)),
+			if k % 3 == 0 then COLORS.brineCrustDark else COLORS.brineCrust
 		)
+	end
+	for _ = 1, math.floor(pieces / 2) do
+		local a = rng:NextNumber(0, TAU)
+		local d = radius + rng:NextNumber(1.5, 4.5)
+		local hit = groundOf(c.X + math.cos(a) * d, c.Z + math.sin(a) * d)
+		if hit and math.abs(hit.Y - y) < 2 then
+			local size = rng:NextNumber(1, 2.2)
+			blob(
+				m,
+				"BrineNodule",
+				CFrame.new(hit) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0),
+				Vector3.new(size * 1.4, size * 0.5, size),
+				COLORS.brineCrust
+			)
+		end
 	end
 	musselBed(m, Vector3.new(c.X, y, c.Z), radius + 1.5, radius + 6, 44)
 	local a = rng:NextNumber(0, TAU)
@@ -1116,11 +1239,11 @@ local function brinePool(parent: Instance, plan: VentsPlan.Plan)
 	local mist =
 		holder(m, "BrineMist", CFrame.new(c.X, y + 1.2, c.Z), Vector3.new(radius * 1.6, 1, radius * 1.6))
 	emit(mist, "Mist", {
-		rate = 4,
+		rate = 2.5,
 		life = { 8, 12 },
 		speed = { 0.3, 0.8 },
 		size = { 6, 10, 14 },
-		fade = { 0.85, 0.88 },
+		fade = { 0.88, 0.9 },
 		colors = { Color3.fromRGB(110, 150, 156), Color3.fromRGB(80, 110, 120) },
 		spread = 70,
 		drag = 0.6,
@@ -1190,7 +1313,7 @@ local function life(parent: Instance, plan: VentsPlan.Plan)
 	end
 	local clumps, beds = 0, 0
 	for _, chimney in order do
-		if clumps >= 9 then
+		if clumps >= 6 then
 			break
 		end
 		local foot = chimney.position
@@ -1294,6 +1417,14 @@ local function blockedAt(plan: VentsPlan.Plan, p: Vector3, reach: number): boole
 	local f = plan.forge
 	if f then
 		if flatDistance(p, f.center) < f.rim + reach + 4 and p.Y > f.center.Y + f.height * 0.6 then
+			return true
+		end
+		local shoulder = f.shoulder
+		if
+			shoulder
+			and flatDistance(p, shoulder.center) < shoulder.crater + reach + 3
+			and p.Y > shoulder.center.Y + shoulder.height * 0.6
+		then
 			return true
 		end
 		for _, heading in f.runnels do
@@ -1438,6 +1569,13 @@ function Vents.build(parent: Instance, plan: VentsPlan.Plan, ground: Ground): St
 	if f then
 		local r, angle = Seafloor.polar(f.center.X, f.center.Z)
 		where = `the Forge {f.height} studs tall at {math.floor(r)} studs, {math.floor(angle)}°`
+		local shoulder = f.shoulder
+		if shoulder then
+			local toward = math.atan2(-f.center.Z, -f.center.X)
+			local heading = math.atan2(shoulder.center.Z - f.center.Z, shoulder.center.X - f.center.X)
+			local off = math.deg(math.abs((heading - toward + math.pi) % TAU - math.pi))
+			where ..= ` with a {shoulder.height}-stud shoulder cone {math.floor(off)}° off the hub's side`
+		end
 	end
 	local spires = 0
 	for _, smoker in plan.smokers do

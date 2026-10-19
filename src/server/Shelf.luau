@@ -220,9 +220,10 @@ end
 --   * TALUS at the foot: rounded boulders on the deep floor (sandstone by the
 --     chutes, whose foot fans it), never past the foot into the Trench's canyon, the
 --     Ruins city's box or a Vents basin.
--- Nothing stands more than REACH studs out of the face or bites deeper than ~30
--- into it, so Shared/Seafloor's nominal drop-off and deep floor stay true. It draws
--- on its own Random: Shelf.ops burns the shared sequence's old draws.
+-- Nothing stands more than REACH studs out of the face (the caves' hollows bite ~40
+-- into the drum's 110-stud wall), so Shared/Seafloor's nominal drop-off and deep
+-- floor stay true. It draws on its own Random: Shelf.ops burns the shared
+-- sequence's old draws.
 -- ---------------------------------------------------------------------------
 local CHUTES = { 20, 55, 160, 200, 250, 292, 320, 340 } -- sand chutes down the cliff (degrees)
 local CHUTE_HALF = 40 -- half a chute's width (studs)
@@ -258,7 +259,7 @@ local function capsule(
 end
 
 -- The frame on the rim at `angle`, `r` from the hub and `y` up: x along the rim
--- (toward larger angles), y up, z inward (its look is outward)
+-- (toward larger angles), y up, z outward (its look is in toward the hub)
 local function rimFrame(angle: number, r: number, y: number): CFrame
 	local out = outward(angle)
 	local along = Vector3.yAxis:Cross(out) -- toward larger angles
@@ -413,23 +414,25 @@ local function dropOff(ops: { Op }, features: Features)
 		roll: number
 	)
 		local r = thick / 2
-		local front = math.clamp(out + wander(angle) * 0.5, 2, math.min(REACH, 3.8 * r - EMBED))
-		local frame = rimFrame(angle, FACE, y) * CFrame.Angles(0, 0, roll)
 		local half = math.max(length / 2 - r * 0.6, r * 0.3)
-		-- (the frame's z points into the face: a roll `d` studs out sits at z = -d)
+		-- (a straight roll's ends stand out of the curved face by its chord's sag)
+		local sag = half * half / (2 * FACE)
+		local front = math.clamp(out + wander(angle) * 0.5, 2, math.min(REACH - sag, 3.8 * r - EMBED))
+		local frame = rimFrame(angle, FACE, y) * CFrame.Angles(0, 0, roll)
+		-- (the frame's z points out of the face: a roll `d` studs out sits at z = d)
 		local rolls = { { d = front - r, half = half, open = false } }
 		if front - 2 * r > -EMBED then
 			-- (the back roll's ends hide behind the front roll's: no balls on them)
 			table.insert(rolls, { d = -EMBED + r, half = half * 0.86, open = true })
 		end
-		for _, roll in rolls do
+		for _, piece in rolls do
 			capsule(
 				ops,
 				material,
-				(frame * CFrame.new(-roll.half, 0, -roll.d)).Position,
-				(frame * CFrame.new(roll.half, 0, -roll.d)).Position,
+				(frame * CFrame.new(-piece.half, 0, piece.d)).Position,
+				(frame * CFrame.new(piece.half, 0, piece.d)).Position,
 				r,
-				roll.open
+				piece.open
 			)
 		end
 	end
@@ -442,13 +445,13 @@ local function dropOff(ops: { Op }, features: Features)
 			break
 		end
 		local angle = rimAngle(50)
-		local half = cr:NextNumber(14, 34)
+		local half = cr:NextNumber(18, 40)
 		local top = cr:NextNumber(-150, -64)
 		if not free(angle, half + 30, top, floor) then
 			continue
 		end
 		claim(angle, half + 10, top, floor)
-		table.insert(cliff.spurs, { angle = angle, half = half, top = top, extra = cr:NextNumber(8, 13) })
+		table.insert(cliff.spurs, { angle = angle, half = half, top = top, extra = cr:NextNumber(9, 15) })
 	end
 	claims = {} -- (the spurs only keep each other apart: the slots and caves cut into them)
 	local function spurOut(angle: number, y: number): number
@@ -466,7 +469,8 @@ local function dropOff(ops: { Op }, features: Features)
 
 	-- The strata, from under the lip down to the foot: bands 12-36 thick, most with
 	-- 4-10 stud grooves between them (a few merged with the next), each standing
-	-- 9-17 studs out of the face (the lower wall up to 5 more), as slabs 56-150 long.
+	-- 6-22 studs out of the face (the thick ones further, and the lower wall up to 4
+	-- more; a spur takes it to REACH), as slabs 56-150 long.
 	-- The first is the sandstone lip band right under the crest, unbroken, which the
 	-- undercut then bites away in places.
 	type Band = {
@@ -499,7 +503,7 @@ local function dropOff(ops: { Op }, features: Features)
 		table.insert(bands, {
 			y = level - thick / 2,
 			thick = thick,
-			out = cr:NextNumber(9, 17) + 5 * low,
+			out = cr:NextNumber(3, 9) + thick * 0.25 + 4 * low,
 			material = material,
 			erode = cr:NextNumber(0.03, 0.14),
 			-- (it swells, pinches and stands out more or less along the rim, in slow
@@ -661,7 +665,7 @@ local function dropOff(ops: { Op }, features: Features)
 	-- The crest: the reef's lip, rounded blocks along the rim (the inner ones over the
 	-- drum's step to the sand), then reef heads on it
 	for _, stretch in stretches(14) do
-		for _, row in { { r = -12, y = -12, size = { 12, 15 } }, { r = 7, y = -15, size = { 10, 14 } } } do
+		for _, row in { { r = -12, y = -12, size = { 12, 15 } }, { r = 6, y = -15, size = { 10, 14 } } } do
 			local angle = stretch[1]
 			while true do
 				local length = cr:NextNumber(46, 96)
@@ -674,7 +678,7 @@ local function dropOff(ops: { Op }, features: Features)
 				local radius = cr:NextNumber(row.size[1], row.size[2])
 				local frame = rimFrame(
 					middle,
-					FACE + row.r + wander(middle) * 0.6,
+					FACE + row.r + wander(middle) * 0.5,
 					row.y + cr:NextNumber(-2, 2)
 				) * CFrame.Angles(0, cr:NextNumber(-0.05, 0.05), cr:NextNumber(-0.04, 0.04))
 				local half = studs / 2 + radius * 0.2
@@ -870,6 +874,37 @@ local function forgeOps(ops: { Op }, forge: VentsPlan.Forge, vr: Random)
 				radius
 			)
 		end
+	end
+	-- A broken rim: crags round the summit (inside the lumps' allowance over the
+	-- cone, VentsPlan FORGE.lumps), none where it spills
+	for k = 1, 6 do
+		local heading = forge.runnels[1] + k * 2 * math.pi / 7 + vr:NextNumber(-0.2, 0.2)
+		local radius = vr:NextNumber(5, 8)
+		ball(ops, SLATE, onFlank(heading, 0.99, -radius * 0.2) + Vector3.new(0, -radius * 0.3, 0), radius)
+	end
+	-- The shoulder: a parasitic cone low on one flank, its own small crater glowing
+	local shoulder = forge.shoulder
+	if shoulder then
+		local s, sh = shoulder.center, shoulder.height
+		local rim = shoulder.base * 0.3
+		local layers = math.ceil(sh / 4)
+		for i = 0, layers - 1 do
+			local t0, t1 = i / layers, (i + 1) / layers
+			local bottom = if i == 0 then s.Y - 6 else s.Y + sh * t0 - 1
+			local top = s.Y + sh * t1 + 1
+			local radius = rim + (shoulder.base - rim) * (1 - (t0 + t1) / 2) ^ 1.35
+			cylinder(ops, BASALT, Vector3.new(s.X, (bottom + top) / 2, s.Z), radius, top - bottom)
+		end
+		for _ = 1, 2 do
+			ball(ops, AIR, Vector3.new(s.X, s.Y + sh + 2, s.Z), shoulder.crater)
+		end
+		cylinder(
+			ops,
+			LAVA,
+			Vector3.new(s.X, s.Y + sh + 2 - shoulder.crater + 2, s.Z),
+			shoulder.crater * 0.6,
+			5
+		)
 	end
 	-- The crater: a bowl in the summit (twice: an Air fill takes occupancy away rather
 	-- than clearing it), a lava lake in its floor and a notch where it spills over the

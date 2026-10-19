@@ -50,6 +50,9 @@ export type Forge = {
 	rim: number, -- the summit's radius (the crater's rim)
 	crater: number, -- the crater bowl's radius
 	runnels: { number }, -- the lava runnels' headings (radians from +X toward +Z)
+	-- A parasitic cone on its lower flank, breaking the silhouette: its middle on the
+	-- deep floor, its foot's radius, its summit over the floor and its crater's radius
+	shoulder: { center: Vector3, base: number, height: number, crater: number }?,
 }
 export type Column = {
 	at: Vector3, -- its middle on the floor (nominal)
@@ -58,7 +61,7 @@ export type Column = {
 	yaw: number,
 	group: string, -- "causeway" or "outcrop<n>"
 }
-export type Outcrop = { center: Vector3, radius: number }
+export type Outcrop = { center: Vector3, radius: number, down: Vector3 } -- (`down`: its low side)
 export type Terrace = { basin: number, heading: number }
 export type Brine = { center: Vector3, radius: number, basin: number }
 export type Mound = { center: Vector3, radius: number, height: number }
@@ -109,13 +112,13 @@ local CLEAR = 4
 -- else the one that stands tallest. SHAPE bends its flank (a flared foot, a steep
 -- top), LUMPS is how far its lumps stand proud of that cone.
 local FORGE_SIZES = {
-	{ base = 104, height = 176, rim = 36, crater = 24 },
-	{ base = 92, height = 160, rim = 32, crater = 21 },
-	{ base = 80, height = 140, rim = 28, crater = 19 },
+	{ base = 104, height = 176, rim = 32, crater = 23 },
+	{ base = 92, height = 160, rim = 29, crater = 21 },
+	{ base = 80, height = 140, rim = 26, crater = 18 },
 }
 local FORGE = {
 	fits = 0.9,
-	shape = 1.6,
+	shape = 1.35,
 	lumps = 10,
 	keepBasin = 30, -- studs clear of a basin's wall (its lip rubble stands ~26 off it)
 	keepChimney = 16,
@@ -128,6 +131,19 @@ local FORGE = {
 	radius = 1220,
 	swing = 1.5,
 	reach = 0.25,
+}
+-- The shoulder cone: its middle `out` of the Forge's foot radius from its middle, its
+-- foot `base` of it, `height` of the Forge's, and it must stand `proud` studs over
+-- the flank there
+local SHOULDER = {
+	out = 0.8,
+	base = 0.34,
+	height = 0.48,
+	proud = 14,
+	rim = 0.3,
+	crater = 0.2,
+	facing = math.rad(110), -- (off the hub's way: the far side)
+	back = 40,
 }
 -- The smoker complexes, tallest first: their tallest spire, how many spires and the
 -- radius they stand in
@@ -142,7 +158,9 @@ local OUTCROPS = {
 	{ height = 32, radius = 22 },
 	{ height = 26, radius = 19 },
 }
-local OUTCROP = { least = 14, apart = 180, size = 3.4 }
+-- (`edge`: studs inside the barrier their whole footprint keeps, out of the map
+-- edge's haze; `swing`: how far their low side may turn off the hub's way)
+local OUTCROP = { least = 14, apart = 180, size = 3.4, edge = 120, swing = 0.6 }
 -- The causeway: from the Forge's foot toward the hub
 local CAUSEWAY = { length = 150, high = 13, low = 4, rows = 5.4, size = 3.3 }
 -- Scattered Terrain: pillow-lava mound clusters, cracked crust patches, basalt ridges
@@ -461,8 +479,42 @@ local function placeForge(plan: Plan, taken: { Taken })
 	for k = 0, FORGE.runnels - 1 do
 		table.insert(forge.runnels, toward + 0.35 + k * 2 * math.pi / FORGE.runnels)
 	end
+	-- The shoulder: low on the flank between two runnels, where it stands tallest
+	-- clear of the flank and under every school (none if nowhere does), on a side a
+	-- fish from the hub sees if it can (`back`: studs of height the far side costs)
+	local best: { center: Vector3, base: number, height: number, crater: number }? = nil
+	local bestScore = -math.huge
+	local runnels = forge.runnels
+	for k, a in runnels do
+		local b = runnels[k % #runnels + 1]
+		local middle = a + ((b - a) % (2 * math.pi)) / 2
+		for _, swing in { 0, -0.3, 0.3 } do
+			local heading = middle + swing
+			local d = forge.base * SHOULDER.out
+			local center = forge.center + Vector3.new(math.cos(heading) * d, 0, math.sin(heading) * d)
+			local base = forge.base * SHOULDER.base
+			local flank = forge.height * forgeRise(forge.base, forge.rim, d)
+			local room = forgeRoom(center.X, center.Z, { base = base, rim = base * SHOULDER.rim })
+			local height = math.floor(math.min(forge.height * SHOULDER.height, room))
+			local away = math.abs((heading - toward + math.pi) % (2 * math.pi) - math.pi)
+			local score = height - (if away > SHOULDER.facing then SHOULDER.back else 0)
+			if height >= flank + SHOULDER.proud and score > bestScore then
+				best = { center = center, base = base, height = height, crater = base * SHOULDER.crater }
+				bestScore = score
+			end
+		end
+	end
+	forge.shoulder = best
+	if best == nil then
+		table.insert(plan.notes, "no room for the Forge's shoulder cone")
+	end
 	plan.forge = forge
-	table.insert(taken, { center = forge.center, radius = forge.base })
+	local reach = forge.base
+	local shoulder = forge.shoulder
+	if shoulder then
+		reach = math.max(reach, flatDistance(shoulder.center, forge.center) + shoulder.base)
+	end
+	table.insert(taken, { center = forge.center, radius = reach })
 end
 
 local function placeSmokers(plan: Plan, taken: { Taken }, rng: Random)
@@ -632,7 +684,7 @@ local function placeOutcrops(plan: Plan, taken: { Taken }, rng: Random)
 		local best: Vector3? = nil
 		local bestHeight, bestScore = 0, -math.huge
 		for angle = SECTOR[1], SECTOR[2], 2 do
-			for r = INNER + want.radius, OUTER - want.radius, 10 do
+			for r = INNER + want.radius, World.boundsRadius - OUTCROP.edge - want.radius, 10 do
 				local p = point(angle, r, deep.floorY)
 				if not inField(p.X, p.Z, want.radius) then
 					continue
@@ -676,17 +728,19 @@ local function placeOutcrops(plan: Plan, taken: { Taken }, rng: Random)
 			table.insert(plan.notes, `no room for basalt outcrop {index}`)
 			continue
 		end
-		table.insert(plan.outcrops, { center = center, radius = want.radius })
-		table.insert(placed, { center = center, radius = 0 })
-		table.insert(taken, { center = center, radius = want.radius })
-		-- Packed on a hex grid; terraces step down across it along `down`
+		-- Packed on a hex grid; terraces step down across it along `down`, its low side
+		-- toward the hub, so a fish arriving sees it climb away like a stair
 		local size = OUTCROP.size
 		local spacing = size * math.sqrt(3) + 0.25
 		local yaw = rng:NextNumber(0, math.pi / 3)
 		local axisA = Vector3.new(math.cos(yaw), 0, math.sin(yaw))
 		local axisB = Vector3.new(math.cos(yaw + math.pi / 3), 0, math.sin(yaw + math.pi / 3))
-		local downAngle = rng:NextNumber(0, 2 * math.pi)
+		local downAngle = math.atan2(World.hub.center.Z - center.Z, World.hub.center.X - center.X)
+			+ rng:NextNumber(-OUTCROP.swing, OUTCROP.swing)
 		local down = Vector3.new(math.cos(downAngle), 0, math.sin(downAngle))
+		table.insert(plan.outcrops, { center = center, radius = want.radius, down = down })
+		table.insert(placed, { center = center, radius = 0 })
+		table.insert(taken, { center = center, radius = want.radius })
 		local count = math.ceil(want.radius / spacing) + 1
 		for i = -count, count do
 			for j = -count, count do
