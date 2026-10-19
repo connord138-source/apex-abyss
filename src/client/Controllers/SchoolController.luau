@@ -115,7 +115,13 @@ type Look = {
 	rarity: string,
 	held: { [BasePart]: SurfaceAppearance },
 	saved: {
-		[BasePart]: { color: Color3, material: Enum.Material, reflectance: number, transparency: number },
+		[BasePart]: {
+			color: Color3,
+			material: Enum.Material,
+			reflectance: number,
+			transparency: number,
+			texture: string?,
+		},
 	},
 	extras: { Instance },
 	light: PointLight?,
@@ -760,6 +766,9 @@ local function clearLook(index: number, visual: Visual)
 		if not visual.hidden then
 			part.Transparency = saved.transparency
 		end
+		if saved.texture then
+			(part :: MeshPart).TextureID = saved.texture
+		end
 	end
 	for part, appearance in look.held do
 		appearance.Parent = part
@@ -786,16 +795,24 @@ local function setLook(index: number, rarityId: string?)
 		if part.Transparency >= 1 and not visual.hidden then
 			continue -- a part the model keeps hidden
 		end
+		-- Prey batch 2 is textured by its TextureID, not a SurfaceAppearance: held aside
+		-- too (PC 2026-10-19 round 2, SV3: a Silver Tuna or Mahi-mahi kept its whole
+		-- texture under the silver and barely read as rare)
+		local texture = if part:IsA("MeshPart") and part.TextureID ~= "" then part.TextureID else nil
 		look.saved[part] = {
 			color = part.Color,
 			material = part.Material,
 			reflectance = part.Reflectance,
 			transparency = if visual.hidden then 0 else part.Transparency,
+			texture = texture,
 		}
 		local appearance = part:FindFirstChildOfClass("SurfaceAppearance")
 		if appearance then
 			look.held[part] = appearance
 			appearance.Parent = nil
+		end
+		if texture then
+			(part :: MeshPart).TextureID = ""
 		end
 		part.Color = style.color
 		part.Material = style.material
