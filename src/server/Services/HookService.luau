@@ -16,8 +16,6 @@ local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
-local Progress = require(script.Parent.Parent.Progress)
-local DataService = require(script.Parent.DataService)
 local FishService = require(script.Parent.FishService)
 local HuntService = require(script.Parent.HuntService)
 local PodService = require(script.Parent.PodService)
@@ -31,7 +29,6 @@ local HookService = {}
 type Hook = {
 	id: number,
 	position: Vector3, -- where the bait hangs
-	mass: number,
 	taken: Player?,
 	hookedAt: number,
 	struggles: number,
@@ -156,11 +153,9 @@ local function drop(boat: Boat, now: number)
 		boat.nextAt = now + 8
 		return
 	end
-	local mid = (biome.minLevel + biome.maxLevel) / 2
 	boat.hook = {
 		id = nextHookId,
 		position = at,
-		mass = math.max(tune.minBait, tune.bait * Size.massForLevel(mid)),
 		taken = nil,
 		hookedAt = 0,
 		struggles = 0,
@@ -197,13 +192,11 @@ local function takeBait(player: Player, id: any)
 	if (hook.position - mouth).Magnitude > Size.reach(length) * 1.35 + 3 + slack then
 		return
 	end
-	-- At most a few levels' worth for the fish that takes it: a bait is sized by the
-	-- biome under the boat but hangs near the surface, in reach of any fish (PC
-	-- follow-up 2026-10-14: a LV 21 fish took a 4.6 t Trench bait and broke free)
-	local data = DataService.get(player)
-	local cap = if data then Progress.mass(data) * (Size.massForLevel(1 + tune.baitLevels) - 1) else 0
+	-- A share of the taker's own full Haul (Config/Hooks `baitHaul`): the same big meal
+	-- at every level, wherever the boat is (sized by the biome under it, a LV 21 fish
+	-- took a 4.6 t Trench bait, PC follow-up 2026-10-14)
 	local now = Timing.clock()
-	local added = HuntService.gain(player, math.min(hook.mass, math.max(tune.minBait, cap)))
+	local added = HuntService.hauls(player, tune.baitHaul)
 	hook.taken = player
 	hook.hookedAt = now
 	hookedBy[player] = hook

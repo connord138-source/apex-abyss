@@ -255,10 +255,9 @@ local function grant(
 		EconomyService.addShells(player, reward.amount or 0)
 		result.shells = reward.amount
 	elseif reward.kind == "haul" then
-		local level = Size.level(Progress.mass(data))
-		local mass = math.max(Size.massForLevel(level + (reward.levels or 1)) - Size.massForLevel(level), 2)
-		-- Sized in levels already: no Haul rate (×2 Mass and Frenzy still count)
-		result.haul = HuntService.feed(player, mass, "sized")
+		-- Full Hauls of the digger's own, on top of what it carries (×2 Mass and
+		-- Frenzy still count; Config/Treasure `hauls`)
+		result.haul = HuntService.hauls(player, reward.hauls or 1, "sized")
 	elseif reward.kind == "dna" then
 		HuntService.giveDna(player, siteOf(map), reward.amount or 0)
 		result.dna = reward.amount

@@ -2,9 +2,13 @@
 -- Number formatting for the HUD.
 local Format = {}
 
--- Mass: "0.3 kg", "12.4 kg", "340 kg", "1.2 t", "48 t".
+-- Mass: "0.35 kg", "1.2 kg", "340 kg", "1.2 t", "48 t".
 function Format.mass(kg: number): string
-	if kg < 10 then
+	-- (two places under a kilo: since the 2026-10-19 pace a full Haul is 0.16 kg at
+	-- LV 8 and 0.67 kg at LV 25, so a bank or a lost Haul reads "0.23 kg", not "0.2")
+	if kg < 1 then
+		return string.format("%.2f kg", kg)
+	elseif kg < 10 then
 		return string.format("%.1f kg", kg)
 	elseif kg < 1000 then
 		return string.format("%d kg", math.floor(kg + 0.5))

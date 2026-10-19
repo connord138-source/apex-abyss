@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local TutorialConfig = require(ReplicatedStorage.Shared.Config.Tutorial)
+local Size = require(ReplicatedStorage.Shared.Size)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
@@ -90,9 +91,12 @@ function TutorialService.complete(player: Player): boolean
 	return true
 end
 
--- The Haul step's target in kg, from the Nibbler's banked mass
+-- The Haul step's target in kg, from the Nibbler's banked mass: HAUL_LEVELS' worth,
+-- a full Haul for a new fish (Config/Tuning `growth` `cap`), or a full Haul if it's
+-- less (a fish that banked part of its first dive past LV 3), so the step can end
 local function haulTarget(data: DataService.PlayerData): number
-	return Tutorial.haulTarget(Progress.mass(data, Config.Species.STARTER))
+	local banked = Progress.mass(data, Config.Species.STARTER)
+	return math.min(Tutorial.haulTarget(banked), Size.haulCap(banked) * 0.999)
 end
 
 -- A step starting: hand over what it needs if the player has none (each only while

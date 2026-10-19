@@ -13,6 +13,7 @@
 #   SPECIES=Cuda ... (the fish; default Nibbler)
 #   MODE=probe ... (kg eaten a second at each level, for designing the curves)
 #   QUICK=1 ... (the new rules only, no old-rules check)
+#   STAY=OpenBlue ... (a player who keeps to one biome once its level opens it)
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 src="${SRC:-$here/../../src}"
@@ -49,6 +50,7 @@ return {
 	species = "${SPECIES:-Nibbler}",
 	mode = "${MODE:-progress}",
 	quick = ${QUICK:-0} == 1,
+	stay = "${STAY:-}",
 }
 LUA
 cd "$tmp" && "${LUAU:-luau}" progress_sim.luau

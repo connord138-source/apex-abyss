@@ -12,16 +12,13 @@ return {
 	between = { 20, 45 }, -- seconds drifting between lines
 	line = 70, -- seconds a line stays down untouched
 	depth = { 60, 300 }, -- the bait this far under the surface (and 20+ over the floor)
-	-- The bait's kg: this × the banked mass at the middle of the biome's level range
-	-- (0.4 until the PC overnight 2026-10-14: +73 kg for a LV 21 fish with ×2 Mass,
-	-- more than most fish, and breaking free keeps it all)
-	bait = 0.25,
-	minBait = 0.4,
-	-- ...but never more than this many levels' worth for the fish that takes it (a
-	-- bait hangs near the surface whatever the biome: a LV 21 fish took a 4.6 t
-	-- Trench bait, PC follow-up 2026-10-14). A fish at the biome's middle level gets
-	-- about 2 levels from `bait`, so the cap only bites on fish under the biome.
-	baitLevels = 3,
+	-- What the bait puts on the Haul: this share of the taker's own full Haul
+	-- (Shared/Size haulCap), so it's the same big meal at every level (a minute or two
+	-- of hunting) and stops at a full Haul. It was kg by the biome under the boat ×
+	-- the Haul rate, capped at 3 levels' worth, until the 2026-10-19 pace: a LV 21
+	-- fish took a 4.6 t Trench bait (PC follow-up 2026-10-14), and in kg × a rate that
+	-- climbs with level it would barely move a LV 10 Haul and fill a LV 90 one.
+	baitHaul = 0.5,
 	reel = 7, -- studs a second the line pulls a hooked fish up
 	hold = 9, -- seconds before a hooked fish is landed
 	struggleNeed = 10, -- mashes to break free

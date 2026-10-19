@@ -16,7 +16,10 @@ export type Reward = {
 	tier: string, -- Config/Tiers, for the reveal's colors
 	weight: number, -- relative odds within its map tier
 	amount: number?, -- coral, shells, DNA
-	levels: number?, -- haul: mass worth this many levels at the digger's level
+	-- haul: this many of the digger's full Hauls (Shared/Size haulCap), on top of what
+	-- it carries; the same share of a dive at every level (it was levels' worth until
+	-- the 2026-10-19 pace, when a Captain's 4 levels came to ~1.5 h of hunting at LV 90)
+	hauls: number?,
 	charm: string?, -- charm: Config/Shop charm id
 	shade: string?, -- shade: Config/Shades id (treasure-only shades)
 	minShadeTier: string?, -- shaderoll: the rarest tier guaranteed or better
@@ -58,15 +61,17 @@ local function shells(amount: number, weight: number): Reward
 	}
 end
 
-local function haul(levels: number, weight: number): Reward
+local function haul(hauls: number, weight: number): Reward
 	return {
-		id = `Haul{levels}`,
+		id = `Haul{hauls}`,
 		name = "Kelp Haul",
 		kind = "haul",
 		tier = "Rare",
 		weight = weight,
-		levels = levels,
-		blurb = `a Haul worth about {levels} levels, straight into your dive`,
+		hauls = hauls,
+		blurb = if hauls == 1
+			then "a full Haul, straight into your dive"
+			else `{hauls} full Hauls, straight into your dive`,
 	}
 end
 
@@ -146,7 +151,7 @@ local tiers: { MapTier } = {
 			coral(120, 48),
 			shells(15, 20),
 			wraps(3, 10),
-			haul(1.5, 12),
+			haul(1, 12),
 			dna(10, 7),
 			charm(3),
 		},
@@ -163,7 +168,7 @@ local tiers: { MapTier } = {
 			coral(320, 36),
 			shells(35, 18),
 			wraps(3, 8),
-			haul(2.5, 15),
+			haul(1.5, 15),
 			dna(25, 10),
 			charm(7),
 			shadeRoll("Rare", 6),
@@ -180,7 +185,7 @@ local tiers: { MapTier } = {
 		rewards = {
 			coral(900, 28),
 			shells(60, 14),
-			haul(4, 15),
+			haul(2.5, 15),
 			dna(50, 10),
 			charm(12),
 			shadeRoll("Epic", 15),

@@ -185,6 +185,12 @@ for _, def in Config.Biomes.list do
 end
 
 local function biomeFor(level: number): Biome
+	-- STAY=<biome id>: a player who keeps to one biome once its level opens it
+	for _, b in biomes do
+		if b.id == args.stay and level >= b.def.minLevel then
+			return b
+		end
+	end
 	local best: Biome = biomes[1]
 	local bestD = math.huge
 	for _, b in biomes do
@@ -262,8 +268,8 @@ local NEW: Rules = {
 	live = function(mass, haul)
 		return Size.liveMass(mass, haul)
 	end,
-	coral = function(worth, mass)
-		return Size.bankCoral(worth, mass)
+	coral = function(worth)
+		return Tuning.economy.bankCoral * math.sqrt(worth) -- (HuntService `bank`)
 	end,
 }
 
@@ -357,7 +363,16 @@ local function eat(h: Hunter, raw: number)
 end
 
 -- Swallows everything in reach along the mouth's way from a to b
-local function eatAlong(h: Hunter, length: number, ax: number, ay: number, az: number, bx: number, by: number, bz: number)
+local function eatAlong(
+	h: Hunter,
+	length: number,
+	ax: number,
+	ay: number,
+	az: number,
+	bx: number,
+	by: number,
+	bz: number
+)
 	local t = h.t
 	local limit = Size.raw(length) * Tuning.hunt.swallowRatio
 	local mx, mz = (ax + bx) / 2, (az + bz) / 2
@@ -385,7 +400,10 @@ local function eatAlong(h: Hunter, length: number, ax: number, ay: number, az: n
 						continue
 					end
 					local x, y, z = fishPos(i, t)
-					if segDist(x, y, z, ax, ay, az, bx, by, bz) <= (reachBase + fRad[i]) * Schools.EAT_PULLED then
+					if
+						segDist(x, y, z, ax, ay, az, bx, by, bz)
+						<= (reachBase + fRad[i]) * Schools.EAT_PULLED
+					then
 						h.eatenFish[i] = t + fBack[i]
 						eat(h, fMass[i] * Tuning.hunt.preyGain)
 					end
@@ -405,7 +423,10 @@ local function eatAlong(h: Hunter, length: number, ax: number, ay: number, az: n
 				continue
 			end
 			for _, g in here do
-				if (h.eatenFood[g] or 0) <= t and segDist(gX[g], gY[g], gZ[g], ax, ay, az, bx, by, bz) <= reach then
+				if
+					(h.eatenFood[g] or 0) <= t
+					and segDist(gX[g], gY[g], gZ[g], ax, ay, az, bx, by, bz) <= reach
+				then
 					h.eatenFood[g] = t + gBack[g]
 					eat(h, gMass[g])
 				end
@@ -583,16 +604,18 @@ end
 ---------------------------------------------------------------------------------
 -- Probing: kg eaten a second at each level, and the swim there and back
 ---------------------------------------------------------------------------------
-local PROBE_LEVELS = { 1, 4, 8, 10, 12, 15, 18, 21, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }
+local PROBE_LEVELS =
+	{ 1, 4, 8, 10, 12, 15, 18, 21, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }
+local DIVES = 6
 local function probe(every: boolean)
-	print(`PROBE ({species.name}): a hunter at each level, 4 minutes of hunting × 4 dives`)
+	print(`PROBE ({species.name}): a hunter at each level, 4 minutes of hunting × 6 dives`)
 	print("   LV  biome                 kg/s   ×mass/min  fish/s  out s  home s  fixed s")
 	local rows = {}
 	for _, level in PROBE_LEVELS do
 		local mass = Size.massForLevel(level)
 		local kg, secs, n, outs, homes, fixed = 0, 0, 0, 0, 0, 0
 		local b = biomeFor(level)
-		for k = 1, 4 do
+		for k = 1, DIVES do
 			local h = newHunter(PROBE, mass)
 			h.t = k * 977
 			local d = dive(h, b, 240) :: any
@@ -605,7 +628,7 @@ local function probe(every: boolean)
 			fixed += DEN_OUT + DEN_IN + BANK + 2 * HUB_LEG / indoor(h)
 		end
 		local rate = kg / math.max(secs, 1e-6)
-		table.insert(rows, { level = level, rate = rate, travel = (outs + homes + fixed) / 4 })
+		table.insert(rows, { level = level, rate = rate, travel = (outs + homes + fixed) / DIVES })
 		print(
 			string.format(
 				"  %3d  %-20s %7.3f  %8.3f  %6.2f  %5.0f  %6.0f  %7.0f",
@@ -614,9 +637,9 @@ local function probe(every: boolean)
 				rate,
 				rate * 60 / mass,
 				n / math.max(secs, 1e-6),
-				outs / 4,
-				homes / 4,
-				fixed / 4
+				outs / DIVES,
+				homes / DIVES,
+				fixed / DIVES
 			)
 		)
 	end
@@ -660,7 +683,8 @@ end
 ---------------------------------------------------------------------------------
 local BANDS = { { 1, 8 }, { 8, 15 }, { 15, 25 }, { 25, 40 }, { 40, 55 }, { 55, 70 }, { 70, 85 }, { 85, 100 } }
 local MILESTONES = { 8, 15, 25, 40, 55, 70, 85, 100 }
-local TARGET_HOURS = { [15] = "0.5–0.67", [25] = "1.5", [40] = "4", [55] = "7", [70] = "11", [85] = "16", [100] = "22" }
+local TARGET_HOURS =
+	{ [15] = "0.5–0.67", [25] = "1.5", [40] = "4", [55] = "7", [70] = "11", [85] = "16", [100] = "22" }
 
 local function progress(rules: Rules, maxHours: number)
 	local h = newHunter(rules, Size.massForLevel(1))
@@ -675,8 +699,12 @@ local function progress(rules: Rules, maxHours: number)
 			end
 		end
 	end
-	print(`\n{string.upper(rules.name)} ({species.name}, {#dives} dives, {string.format("%.1f", h.t / 3600)} h)`)
-	print("  band     dives  min/dive  (hunt + swim)  levels/dive  coral/min  XP/min (bank+catch)  kg/dive  fish/dive")
+	print(
+		`\n{string.upper(rules.name)} ({species.name}, {#dives} dives, {string.format("%.1f", h.t / 3600)} h)`
+	)
+	print(
+		"  band     dives  min/dive  (hunt + swim)  levels/dive  coral/min  XP/min (bank+catch)  kg/dive  fish/dive"
+	)
 	for _, band in BANDS do
 		local n, total, hunting, levels, coral, xpB, xpC, haul, ate = 0, 0, 0, 0, 0, 0, 0, 0, 0
 		for _, d in dives do
@@ -724,7 +752,11 @@ local function progress(rules: Rules, maxHours: number)
 			string.format(
 				"LV %d %s%s",
 				m,
-				if at then (if at < 3600 then string.format("%.0f min", at / 60) else string.format("%.1f h", at / 3600)) else "—",
+				if at
+					then (if at < 3600
+						then string.format("%.0f min", at / 60)
+						else string.format("%.1f h", at / 3600))
+					else "—",
 				if TARGET_HOURS[m] then ` ({TARGET_HOURS[m]} h)` else ""
 			)
 		)
@@ -740,7 +772,8 @@ end
 -- probed level, as Config/Tuning `growth` tables. Then run the progress to check.
 ---------------------------------------------------------------------------------
 -- Hours of active play to reach each level (2026-10-19 targets)
-local TARGETS = { { 8, 0.1 }, { 15, 0.58 }, { 25, 1.5 }, { 40, 4 }, { 55, 7 }, { 70, 11 }, { 85, 16 }, { 100, 22 } }
+local TARGETS =
+	{ { 8, 0.1 }, { 15, 0.58 }, { 25, 1.5 }, { 40, 4 }, { 55, 7 }, { 70, 11 }, { 85, 16 }, { 100, 22 } }
 -- Minutes of hunting a full Haul should take (the tutorial's first, then 2.5–4)
 local FILL = { { 1, 1.5 }, { 4, 2 }, { 8, 2.5 }, { 25, 3 }, { 40, 3.5 }, { 55, 4 }, { 100, 4 } }
 local TUTORIAL_LEVELS = 7 -- a full Haul below LV 4 (Config/Tutorial HAUL_LEVELS)
@@ -814,7 +847,7 @@ end
 
 print(`{NF} prey fish in {NS} schools; {#gX} bits of filler food; {species.name} at {CRUISE}× top speed`)
 if not args.quick then
-	local dives = progress(OLD, 3)
+	progress(OLD, 3)
 	-- The PC's PG1 dives (2026-10-19): a Kelp dive at LV 10 filled in 16 s (+12
 	-- levels), a Reef dive at LV 25 in 29 s
 	for _, check in { { 10, "KelpShallows" }, { 25, "CoralReef" } } do
@@ -839,6 +872,53 @@ if not args.quick then
 			)
 		)
 	end
-	local _ = dives
 end
-if args.mode ~= "old" then progress(NEW, 40) end
+if args.mode == "old" then
+	return
+end
+local dives, reached = progress(NEW, 40)
+
+-- The checks (the fish the targets are for: a Nibbler moving on with its level):
+-- each level within 15% of its target hours, and a full Haul taking 2–5 minutes of
+-- hunting past the tutorial
+if species.id ~= "Nibbler" or args.stay ~= "" then
+	return
+end
+local failures = 0
+local function check(ok: boolean, text: string)
+	if not ok then
+		failures += 1
+		print("FAIL: " .. text)
+	end
+end
+for _, target in TARGETS do
+	local level, hours = target[1], target[2]
+	local at = reached[level]
+	if level > 8 then
+		check(
+			at ~= nil and math.abs(at / 3600 - hours) <= hours * 0.15,
+			`LV {level} at {if at then string.format("%.2f", at / 3600) else "never"} h, not ~{hours} h`
+		)
+	end
+end
+for _, band in BANDS do
+	if band[1] < 8 then
+		continue
+	end
+	local n, hunting = 0, 0
+	for _, d in dives do
+		if d.level >= band[1] and d.level < band[2] then
+			n += 1
+			hunting += d.hunting
+		end
+	end
+	local minutes = hunting / 60 / math.max(n, 1)
+	check(
+		n > 0 and minutes >= 2 and minutes <= 5,
+		`LV {band[1]}–{band[2]}: a full Haul takes {string.format("%.1f", minutes)} min of hunting, not 2–5`
+	)
+end
+if failures > 0 then
+	error(`progress_sim: {failures} check(s) failed`)
+end
+print("progress_sim: OK")

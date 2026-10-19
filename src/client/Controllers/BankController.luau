@@ -130,6 +130,18 @@ end
 -- the fish), and the levels gained
 type Card = { frame: Frame, after: TextLabel, scale: UIScale }
 
+-- A bank short of a whole level (most of them since the 2026-10-19 pace: a full Haul
+-- is under a level past LV 8): how far into the next level the fish is now
+local function towardNext(summary: { [string]: any }): string
+	local mass, level = summary.mass, summary.level
+	if typeof(mass) ~= "number" or typeof(level) ~= "number" or level >= 100 then
+		return "Your fish keeps this size now"
+	end
+	local from, to = Size.massForLevel(level), Size.massForLevel(level + 1)
+	local share = math.clamp(math.floor((mass - from) / (to - from) * 100), 0, 99)
+	return `LV {level} · {share}% OF THE WAY TO LV {level + 1}`
+end
+
 local function card(summary: { [string]: any }, before: number): Card
 	local amount = typeof(summary.amount) == "number" and summary.amount or 0
 	local frame =
@@ -189,7 +201,7 @@ local function card(summary: { [string]: any }, before: number): Card
 		then `LEVEL {levelBefore} → {level} · +{gained} LEVEL{if gained == 1 then "" else "S"} · {string.upper(
 			tostring(summary.stage or "")
 		)}`
-		else "Your fish keeps this size now"
+		else towardNext(summary)
 	if typeof(summary.coral) == "number" and summary.coral > 0 then
 		line ..= `  ·  +{Ui.number(summary.coral)} coral`
 	end

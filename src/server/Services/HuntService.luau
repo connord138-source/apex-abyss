@@ -36,7 +36,6 @@ local swim = Config.Tuning.swim
 local economy = Config.Tuning.economy
 local hub = Config.World.hub
 local money = Config.Monetization.tuning
-local growthTune = Config.Tuning.growth
 
 export type Session = {
 	haul: number,
@@ -86,7 +85,7 @@ local function finite(value: any): boolean
 	return typeof(value) == "number" and value == value and math.abs(value) < math.huge
 end
 
--- The fish's live length (banked mass plus Haul, capped).
+-- The fish's live length (banked mass plus Haul).
 local function liveLength(player: Player): number?
 	local data = DataService.get(player)
 	local session = sessions[player]
@@ -141,59 +140,56 @@ local function mouthOf(root: BasePart, length: number): Vector3
 	return root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
 end
 
--- The share of a kg eaten that goes on the Haul at a level (Config/Tuning `growth`):
--- all of it up to `fullBelow`, easing down to `haulRate` by `easeTo`
-local function haulRateAt(level: number): number
-	local span = math.max(growthTune.easeTo - growthTune.fullBelow, 1)
-	local t = math.clamp((level - growthTune.fullBelow) / span, 0, 1)
-	return 1 - (1 - growthTune.haulRate) * t
-end
-
--- A fish's Haul rate now: at the level its banked mass plus its Haul would make, so
--- a new fish's first dive starts on the whole kg and eases down as it fills (by the
--- banked level alone, a long first dive took a LV 1 fish to ~LV 20)
+-- A fish's Haul rate (Config/Tuning `growth`, Shared/Size): the share of each kg
+-- eaten that goes on its Haul, by its banked level
 local function haulRate(player: Player): number
 	local data = DataService.get(player)
-	local session = sessions[player]
-	if data == nil then
-		return 1
-	end
-	return haulRateAt(Size.level(Progress.mass(data) + (if session then session.haul else 0)))
+	return if data then Size.haulRate(Progress.mass(data)) else 1
 end
 
--- How a gain counts (addHaul):
---   "food"  eaten food: × the fish's Haul rate, then ×2 Mass and Server Frenzy
---   "rated" took the Haul rate already (a whale's capped share, a share of a kill):
---           ×2 Mass and Server Frenzy only
---   "sized" sized in levels for this fish (a treasure's Haul, the admin's kg): ×2
---           Mass and Server Frenzy only, and worth what it is
---   "raw"   goes on as it is (a Haul given back, chum from a dead fish's Haul)
-export type Gain = "food" | "rated" | "sized" | "raw"
+-- How much a fish's full Haul holds (kg; Config/Tuning `growth` `cap`)
+local function fullHaul(player: Player): number
+	local data = DataService.get(player)
+	return if data then Size.haulCap(Progress.mass(data)) else 0
+end
+
+-- How a gain counts (addHaul). Everyday food stops at the full Haul (MAX SIZE);
+-- rewards and a Haul given back go on top:
+--   "food"    eaten food in kg: × the fish's Haul rate, then ×2 Mass and Server
+--             Frenzy (prey, filler food)
+--   "rated"   already in Haul (a share of a full Haul: bait, whale and slick chunks,
+--             predator loot; a share of a kill): ×2 Mass and Server Frenzy only
+--   "raw"     goes on as it is (chum from a dead fish's Haul, grown already)
+--   "sized"   a reward in Haul, past the full Haul (a boss's, a treasure's, the
+--             admin's kg): ×2 Mass and Server Frenzy, and worth what it is
+--   "restore" a Haul given back (a Second Chance): as it is, past the full Haul
+export type Gain = "food" | "rated" | "raw" | "sized" | "restore"
 
 -- Adds to a fish's Haul (see Gain; "food" when `how` is nil), and to its `worth` (the
--- Haul before the rate, what a bank pays from). Returns what was added.
+-- kg eaten it stands for, before the rate: what a bank pays from). Returns what was
+-- added (nothing once everyday food meets a full Haul).
 local function addHaul(player: Player, amount: number, how: Gain?): number
 	local session = sessions[player]
-	if session == nil or amount <= 0 then
+	local data = DataService.get(player)
+	if session == nil or data == nil or amount <= 0 then
 		return 0
 	end
-	local rate = haulRate(player)
+	local banked = Progress.mass(data)
+	local rate = Size.haulRate(banked)
 	local added = amount
-	if how ~= "raw" then
-		local growth = MonetizationService.growth(player)
-		if how == "rated" then
-			added *= growth
-			session.worth += added / rate
-		elseif how == "sized" then
-			added *= growth
-			session.worth += added
-		else
-			added *= rate * growth
-			session.worth += amount * growth
-		end
-	else
-		session.worth += added / rate
+	if how ~= "raw" and how ~= "restore" then
+		added *= MonetizationService.growth(player)
 	end
+	if how == nil or how == "food" then
+		added *= rate
+	end
+	if how ~= "sized" and how ~= "restore" then
+		added = math.min(added, math.max(Size.haulCap(banked) - session.haul, 0))
+	end
+	if added <= 0 then
+		return 0
+	end
+	session.worth += if how == "sized" then added else added / rate
 	session.haul += added
 	refreshSize(player)
 	return added
@@ -208,11 +204,11 @@ local function suctionOf(player: Player): number
 end
 
 -- A Haul lost to being eaten, for a Second Chance bought on the eaten screen.
--- Offered only for a Haul worth having, after the tutorial; only an offered Haul is
--- remembered, so a Second Chance bought from the Shop otherwise is a charm. Returns
--- the kg to offer, or nil.
+-- Offered only for a Haul worth having (`minShare` of a full Haul), after the
+-- tutorial; only an offered Haul is remembered, so a Second Chance bought from the
+-- Shop otherwise is a charm. Returns the kg to offer, or nil.
 local function rememberLost(data: DataService.PlayerData, lost: number): number?
-	local worth = lost > 0 and lost >= Progress.mass(data) * money.secondChance.minShare
+	local worth = lost > 0 and lost >= Size.haulCap(Progress.mass(data)) * money.secondChance.minShare
 	if not worth or not data.tutorial.done then
 		data.lostHaul = { amount = 0, at = 0 }
 		return nil
@@ -249,10 +245,10 @@ local function eatPlayer(victim: Player, eater: Player)
 	-- Eating much smaller players pays almost nothing, so farming new fish is pointless
 	local ratio = math.clamp(Size.ratio(victimLength, eaterLength) / hunt.swallowRatio, 0, 1)
 	local farm = math.max(ratio * ratio, 0.02)
-	-- The victim's Haul took its Haul rate as it was eaten; the share of its banked
-	-- mass is new food and takes the eater's (Config/Tuning `growth`)
+	-- Half its Haul, and a share of what a full Haul is for it (Config/Tuning `hunt`):
+	-- already in Haul, so no Haul rate; it stops at the eater's full Haul
 	local gain = (
-		lost * hunt.playerHaulShare + Progress.mass(victimData) * hunt.playerBaseShare * haulRate(eater)
+		lost * hunt.playerHaulShare + Size.haulCap(Progress.mass(victimData)) * hunt.playerBaseHauls
 	) * farm
 	EconomyService.earnCoral(eater, economy.eatPlayerCoral * farm)
 	local offer = if saved then nil else rememberLost(victimData, lost)
@@ -416,7 +412,7 @@ local function podmates(a: Player, b: Player): boolean
 	return typeof(pod) == "number" and pod ~= 0 and pod == b:GetAttribute("Pod")
 end
 
--- A fish's live mass (banked plus Haul, capped), for schooling
+-- A fish's live mass (banked plus Haul), for schooling
 local function liveMassOf(player: Player): number
 	local data = DataService.get(player)
 	local session = sessions[player]
@@ -593,10 +589,10 @@ local function bank(player: Player, session: Session, data: DataService.PlayerDa
 	session.worth = 0
 	local levelAfter = Size.level(record.mass)
 	local coral = EconomyService.earnCoral(player, economy.bankCoral * math.sqrt(worth))
-	-- Double Haul on the bank screen, when doubling is worth at least a level's share
-	local gain = math.log((record.mass + amount) / record.mass) / math.log(Config.Tuning.size.levelGrowth)
+	-- Double Haul on the bank screen, for a full or nearly full Haul (`minFull` of what
+	-- a full Haul held before this bank)
 	local offer = nil
-	if gain >= money.doubleHaul.minLevels and data.tutorial.done then
+	if amount >= Size.haulCap(record.mass - amount) * money.doubleHaul.minFull and data.tutorial.done then
 		local tier = money.doubleHaul.tiers[#money.doubleHaul.tiers]
 		for _, candidate in money.doubleHaul.tiers do
 			if amount <= candidate.maxKg then
@@ -687,8 +683,8 @@ function HuntService.mouth(player: Player): (Vector3?, number, number)
 end
 
 -- Adds food to a player's Haul (with the Feast Charm), as eating prey does: × the
--- Haul rate unless `how` says otherwise (Gain; "sized" for a reward sized in levels).
--- Returns the kg added (after the rate, ×2 Mass and Server Frenzy).
+-- Haul rate unless `how` says otherwise (Gain; "sized" for a reward in kg of Haul).
+-- Returns the kg added (after the rate, ×2 Mass and Server Frenzy and the full Haul).
 function HuntService.feed(player: Player, mass: number, how: Gain?): number
 	local data = DataService.get(player)
 	if data == nil then
@@ -698,24 +694,27 @@ function HuntService.feed(player: Player, mass: number, how: Gain?): number
 end
 
 -- The share of a kg eaten that goes on this player's Haul now (Config/Tuning
--- `growth`; ChumService sizes a whale's share with it)
+-- `growth`)
 function HuntService.haulRate(player: Player): number
 	return haulRate(player)
+end
+
+-- What a full Haul holds for this player's fish now (kg)
+function HuntService.fullHaul(player: Player): number
+	return fullHaul(player)
+end
+
+-- Adds `hauls` of this fish's full Haul (bait, whale chunks, slick chunks, predator
+-- loot: "rated", stopping at a full Haul; a boss's or a treasure's Haul: "sized", on
+-- top), so a bonus meal is worth the same share of a dive at every level. Returns
+-- the kg added.
+function HuntService.hauls(player: Player, hauls: number, how: Gain?): number
+	return addHaul(player, fullHaul(player) * hauls, how or "rated")
 end
 
 -- × a fish's prey reach (Blood Sense draws prey in from further), for ForageService
 function HuntService.suction(player: Player): number
 	return suctionOf(player)
-end
-
--- Haul worth `levels` levels at a player's banked mass (a cap on one big meal: a
--- whale's share, ChumService)
-function HuntService.levelsWorth(player: Player, levels: number): number
-	local data = DataService.get(player)
-	if data == nil then
-		return 0
-	end
-	return Progress.mass(data) * (Size.massForLevel(1 + levels) - 1)
 end
 
 -- Takes a share of a fish's Haul away (a fisherman landing it). Returns the kg taken.
@@ -731,10 +730,9 @@ function HuntService.takeHaul(player: Player, share: number): number
 	return taken
 end
 
--- Adds food that's already in Haul units, counted as `how` says (Gain: "food" by
--- default, the Haul rate then ×2 Mass and Server Frenzy; "rated" or "sized" without
--- the rate; "raw" as it is, for chum: a lost Haul that was grown already). Returns
--- the kg added.
+-- Adds food, counted as `how` says (Gain: "food" by default, kg eaten: the Haul rate
+-- then ×2 Mass and Server Frenzy; "rated" or "sized" already in Haul; "raw" as it
+-- is, for chum: a lost Haul that was grown already). Returns the kg added.
 function HuntService.gain(player: Player, amount: number, how: Gain?): number
 	return addHaul(player, amount, how)
 end
@@ -918,7 +916,7 @@ local function secondChance(player: Player, data: DataService.PlayerData)
 		data.lostHaul = { amount = 0, at = 0 }
 		local session = sessions[player]
 		if session and session.alive then
-			addHaul(player, amount, "raw")
+			addHaul(player, amount, "restore")
 		else
 			keptHaul[player] = (keptHaul[player] or 0) + amount -- back on the next spawn
 		end

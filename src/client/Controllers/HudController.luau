@@ -81,6 +81,43 @@ local function growthNow(): number
 	return (state().massMultiplier or 1) * (if typeof(frenzy) == "number" then frenzy else 1)
 end
 
+-- What `kg` eaten puts on the Haul now, as the server reckons it (HuntService
+-- `addHaul`): × the Haul rate (Config/Tuning `growth`), ×2 Mass and Server Frenzy,
+-- up to a full Haul. Nil once the Haul is full (MAX SIZE: food stops going on).
+local function haulGain(kg: number): number?
+	local s = state()
+	local mass = s.mass or 1
+	local room = Size.haulCap(mass) - (s.haul or 0)
+	if room <= 1e-9 then
+		return nil
+	end
+	return math.min(kg * Size.haulRate(mass) * growthNow(), room)
+end
+
+-- A Haul pop's amount: grams under a kilo (a sardine adds a gram or two at LV 10)
+local function popMass(kg: number): string
+	if kg < 0.01 then
+		return string.format("+%.1f g", kg * 1000)
+	elseif kg < 1 then
+		return string.format("+%d g", math.floor(kg * 1000 + 0.5))
+	elseif kg < 10 then
+		return string.format("+%.1f kg", kg)
+	end
+	return `+{Format.mass(kg)}`
+end
+
+-- The Haul card: what's on it against what a full one holds
+local function haulText(haul: number, full: number): string
+	if full < 1 then
+		return string.format("%.2f / %.2f kg", haul, full)
+	elseif full < 10 then
+		return string.format("%.1f / %.1f kg", haul, full)
+	elseif full < 1000 then
+		return string.format("%d / %d kg", math.floor(haul + 0.5), math.floor(full + 0.5))
+	end
+	return string.format("%.1f / %.1f t", haul / 1000, full / 1000)
+end
+
 local function buildLevelCard()
 	local card = Ui.panel(gui, "Level", UDim2.fromOffset(232, 70), UDim2.fromOffset(18, 66))
 	Ui.belowTopBar(gui, card, 66)
@@ -806,14 +843,15 @@ local function step(dt: number)
 	if haul == 0 and shownHaul < 0.05 then
 		shownHaul = 0
 	end
-	haulValue.Text = Format.mass(math.max(shownHaul, 0))
+	local mass = s.mass or 1
+	-- A full Haul (Shared/Size haulCap, the server's cap): the bar fills to it and MAX
+	-- SIZE shows there
+	local full = Size.haulCap(mass)
+	haulValue.Text = haulText(math.max(shownHaul, 0), full)
 	pulse, pulseVelocity = Spring.number(pulse, pulseVelocity, 1, 18, dt)
 	haulScale.Scale = math.max(pulse, 0.8)
 
-	local mass = s.mass or 1
-	local cap = Config.Tuning.size.haulLengthCap ^ 3
-	local live = Size.liveMass(mass, haul)
-	local wantGrowth = math.clamp((live - mass) / (mass * (cap - 1)), 0, 1)
+	local wantGrowth = math.clamp(haul / math.max(full, 1e-9), 0, 1)
 	growth, growthVelocity = Spring.number(growth, growthVelocity, wantGrowth, 9, dt)
 	haulFill.Size = UDim2.fromScale(math.clamp(growth, 0, 1), 1)
 
@@ -960,11 +998,23 @@ function HudController.start()
 	if ClientState.current then
 		onState(ClientState.current)
 	end
+	-- Pops show what goes on the Haul (haulGain), and FULL once it's full (a while
+	-- apart: eating on past MAX SIZE adds nothing until you bank)
+	local lastFull = 0
+	local function popFull(position: Vector3)
+		if os.clock() - lastFull > 1.5 then
+			lastFull = os.clock()
+			pop("FULL", Ui.color.muted, position)
+		end
+	end
 	SchoolController.ate:connect(function(_preyId: string, eaten: number, position: Vector3, rarity: string?)
 		-- A rare fish (Config/Catch) pops its rarity in its colour, with its bigger Haul
 		local rare = if rarity then Config.Catch.byId[rarity] else nil
-		local mass = eaten * growthNow() * (if rare then rare.haul else 1)
-		local amount = `+{if mass < 10 then string.format("%.1f", mass) else tostring(math.floor(mass))}`
+		local gain = haulGain(eaten * (if rare then rare.haul else 1))
+		if gain == nil and rare == nil then
+			return popFull(position)
+		end
+		local amount = if gain then popMass(gain) else "FULL"
 		pop(
 			if rare then `{string.upper(rare.name)} {amount}` else amount,
 			if rare then rare.color else Ui.color.haul,
@@ -972,15 +1022,19 @@ function HudController.start()
 		)
 	end)
 	ForageController.ate:connect(function(mass: number, position: Vector3)
-		pop(`+{string.format("%.2f", mass * growthNow())}`, Ui.color.haul, position)
+		local gain = haulGain(mass)
+		if gain == nil then
+			return popFull(position)
+		end
+		pop(popMass(gain), Ui.color.haul, position)
 	end)
-	ChumController.ate:connect(function(mass: number, position: Vector3)
-		local kg = mass * growthNow()
-		pop(
-			`CHUM +{if kg < 10 then string.format("%.1f", kg) else tostring(math.floor(kg))}`,
-			Ui.color.danger,
-			position
-		)
+	-- (a chunk's share is the server's: a dead fish's Haul, or a share of your own
+	-- full Haul for a slick's or a whale's)
+	ChumController.ate:connect(function(_mass: number, position: Vector3)
+		if haulGain(0) == nil then
+			return popFull(position)
+		end
+		pop("CHUM", Ui.color.danger, position)
 	end)
 	PredatorController.hit:connect(function(damage: number, position: Vector3)
 		pop(`-{math.floor(damage + 0.5)}`, Ui.color.danger, position)

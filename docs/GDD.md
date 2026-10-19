@@ -43,8 +43,9 @@ owner disliked "Molt" and this was the recommended replacement.*
   - your level sets the size you start each dive at
 - **A dive:**
   - Leave the hub and hunt. Everything you eat adds to your **Haul**, the mass you're
-    carrying, and the Haul grows you **live**, up to a cap above your starting size
-    (*tunable*, ~2×).
+    carrying, and the Haul grows you **live** up to a **full Haul** (MAX SIZE): 7
+    levels' worth for a new fish, then under a level (see Pacing below). Everyday
+    food stops going on there; you swim home and bank it.
   - HUD: "HAUL 12.4k — swim home to bank it".
 - **Banking:** swim back into **your own den** to bank the Haul, which turns into XP.
   The den's Haul Chamber upgrade raises the banking multiplier.
@@ -56,6 +57,74 @@ owner disliked "Molt" and this was the recommended replacement.*
 - **Why this model:** each dive becomes a tense "go deeper or head home?" decision,
   the hub always has a purpose, and PvP has real stakes without rage-quit wipes. It
   also gives Second Chance and Double Haul (§9) clear value.
+
+### Pacing (owner, 2026-10-18: "level up a lot slower"; retuned 2026-10-19)
+
+The PC measured the first slowdown (PG1, 2026-10-19): a full Haul was always +12
+levels, filled in 16–30 s, and the server never capped the Haul, only the size shown.
+
+- **Targets** (one fish, an active hunter, swimming home to bank included): the
+  tutorial ends at LV 8; LV 15 (the 'Cuda's gate) in ~35 min; 25 in ~1.5 h; 40 in
+  ~4 h; 55 in ~7 h; 70 in ~11 h; 85 in ~16 h; 100 in ~22 h. Each species levels on its
+  own.
+- **A dive** takes 2.5–4 minutes of hunting at a biome's own level plus about a minute
+  out, home and through the den, and banks about 0.75 of a level at LV 8–20, 0.45 at
+  25–40, 0.3 at 55–70 and 0.2 past 85. The bank card says how far into the next level
+  the fish is when a bank doesn't make one.
+- **How** (`Config/Tuning` `growth`, `Shared/Size` `haulRate` / `haulLevels` /
+  `haulCap`, both by the banked level):
+  - `rate`, the share of each kg eaten that goes on the Haul (prey, filler food):
+    0.068 at LV 1 (the tutorial's Haul step is a minute or so), ~0.002–0.005 from LV 8
+    to 50, climbing to 0.18 at LV 100. It climbs late because prey kg stop growing
+    with the fish: a LV 10 fish eats ~8× its own mass a minute, a LV 100 one ~0.03×.
+  - `cap`, the levels' worth a full Haul holds: 7 up to LV 3 (`Config/Tutorial`
+    HAUL_LEVELS: the first dive takes the Nibbler from LV 1 to 8), then 0.75 at LV 8
+    easing to 0.2 at LV 100. It is a real cap on the server (`HuntService` `addHaul`):
+    everyday food stops there and MAX SIZE shows.
+  - **Bonus meals are shares of the eater's own full Haul**, so they're worth the same
+    share of a dive at every level (in kg × a rate that climbs 50× with level they
+    would be nothing at LV 10 and a whole Haul at LV 90): bait ½ (`Config/Hooks`
+    `baitHaul`), a whale chunk ⅙ and at most 2 full Hauls from one whale
+    (`Config/Chum` `whale.chunkHaul`, `whale.hauls`), a Blood Tide slick chunk 1/30,
+    predator loot 0.3 (Barracuda) and 0.6 (Reef Shark) split by damage, a player kill
+    half its Haul plus a quarter of its full Haul (× how near its size was). All stop
+    at the full Haul.
+  - **Rewards go on top of a full Haul:** a boss's Haul (1.5 full Hauls plus the
+    damage share of another, `Config/Bosses` `hauls`, `haulsShare`), a treasure chest's
+    Kelp Haul (1 / 1.5 / 2.5 full Hauls by map tier), the admin's kg, a Second Chance
+    given back. Double Haul banks again on top.
+  - What a bank pays is unchanged: coral 7 × √(kg eaten), Tide Pass XP 2 a kg eaten
+    (20–300 a bank) plus 2 a fish; both reckoned from the kg eaten, before the rate.
+- **Measured** by `tools/tests/run_progress_sim.sh` (a hunter on the real school
+  layout and filler food, in the biome whose middle level is nearest its own, at 0.9×
+  top speed like the PC's PG1 bot; `MODE=design` turns the targets and fill times into
+  `growth` points; rerun it after changing `growth`, `Config/Prey`, `Config/Forage`,
+  the biomes' levels or the size and speed curves). The old rules in the same sim
+  matched PG1 (a Reef dive at LV 25 full in 32 s, +13.6 levels; PG1 29 s, +12):
+
+  | Band | Dives | Min a dive (hunt + swim) | Levels a dive | Coral a min | Pass XP a min | Before: min a dive, levels, coral, XP |
+  |---|---|---|---|---|---|---|
+  | 1–8 | 1 | 1.5–1.9 (0.8–1.4 + 0.6) | 7 | 14–18 | 84–98 | 0.9, 12, 18, 59 |
+  | 8–15 | 10 | 3.4 (2.6 + 0.8) | 0.74 | 15 | 106 | 1.5, 12.8, 24, 63 |
+  | 15–25 | 15 | 3.9 (2.9 + 1.0) | 0.67 | 24 | 133 | (skipped) |
+  | 25–40 | 33 | 4.6 (3.7 + 0.8) | 0.45 | 37 | 154 | 1.6, 12, 59, 239 |
+  | 40–55 | 38 | 4.6 (3.7 + 0.9) | 0.39 | 67 | 109 | 1.7, 12, 131, 208 |
+  | 55–70 | 49 | 4.7 (4.0 + 0.8) | 0.31 | 58 | 102 | 7.2, 12, 57, 91 |
+  | 70–85 | 60 | 5.1 (4.3 + 0.7) | 0.25 | 55 | 115 | 32.7, 12, 23, 71 |
+  | 85–100 | 72 | 5.0 (4.2 + 0.8) | 0.21 | 76 | 167 | 56.9, 7.3, 25, 147 |
+
+  Hours to LV 15 / 25 / 40 / 55 / 70 / 85 / 100: 0.6 / 1.6 / 4.1 / 7.0 / 10.8 / 15.9 /
+  21.9 (before: 2 min / 2 min / 6 min / 7 min / 15 min / 47 min / 2.7 h; the PC's
+  "10–20 minutes" to LV 100 came from LV 10 and 25 dives, but prey kg stop growing
+  with the fish past LV 50, so the old rules took ~2.7 h). The 'Cuda (×1.25 speed)
+  reaches LV 100 in ~18.6 h.
+- **Not even across biomes (open):** from LV ~45 the Open Blue's Yellowfin Tuna (35 kg,
+  tight schools of 8) and Mahi-mahi make it 3–5× richer in kg a second than the Ruins,
+  Vents and Trench (23–31 kg/s against 5–11), so a fish that stays there reaches LV
+  100 in ~13 h (`STAY=OpenBlue`). The pace above is for a fish that moves on with its
+  level. Fixes: lighter or fewer tuna (Config/Prey), or a per-biome share on the rate.
+- ×2 Mass and Server Frenzy double every gain, so a Haul fills in half the time; with
+  the swim home the same, a fish grows ~1.7× as fast an hour (it was ×2 a dive).
 
 ## 4. Eating rules
 
@@ -87,9 +156,10 @@ owner disliked "Molt" and this was the recommended replacement.*
 - **Chum (built 2026-10-14):** a fish that gets eaten (by a player or a creature)
   bursts 40% of its lost Haul into a cloud of 4–14 chunks that sink slowly where it
   died for 45 s. Any fish swallows a chunk by swimming into it, its kg straight onto
-  the Haul, so a kill sets off a frenzy; AI predators within 320 studs come for the
-  cloud too. During a Blood Tide, slicks of chum appear near players out in the
-  biomes and clouds linger longer. (`Config/Chum`, `ChumService`.)
+  the Haul (up to a full Haul), so a kill sets off a frenzy; AI predators within 320
+  studs come for the cloud too. During a Blood Tide, slicks of chum appear near
+  players out in the biomes (each chunk 1/30 of the eater's full Haul) and clouds
+  linger longer. (`Config/Chum`, `ChumService`.)
 - **Apex bounty (built 2026-10-14):** the heaviest fish in the server (LV 10+, two or
   more players) is the Apex: a gold ★ on everyone's map, a gold outline and an APEX
   line on its nametag. Its bounty starts at 500 coral and grows 150 a minute while it
@@ -100,7 +170,8 @@ owner disliked "Molt" and this was the recommended replacement.*
   moves to a fish 10% heavier. (`Config/Pvp` `apex`, `ApexService`.)
 - **Hooks from above (built 2026-10-14):** five boats drift over the sea, dark hulls
   against the surface, dropping a line every 20–45 s with a bait fish 60–300 studs
-  down. The bait is a big meal, but swallowing it hooks you: the line reels you up.
+  down. The bait is a big meal (half a full Haul, `baitHaul`), but swallowing it hooks
+  you: the line reels you up.
   Mash BITE or DASH (10 times, after at least 3 s on the line) to break free with the
   bait, or a podmate bites the line; landed after 9 s, the fisherman keeps 30% of your Haul. (`Config/Hooks`,
   `HookService`.)
@@ -448,7 +519,8 @@ map can uncover it. The map is in their inventory."
   start and the end of the hold.
 - **The chest** opens through the roll reveal, with that tier's loot on the reel.
   Weights per tier are in `Config/Treasure.luau`: coral hoards (120/320/900), shell
-  caches (15/35/60), a Kelp Haul worth 1.5/2.5/4 levels dumped straight into the dive,
+  caches (15/35/60), a Kelp Haul of 1/1.5/2.5 full Hauls dumped straight into the dive
+  on top of what you carry (levels' worth until the 2026-10-19 pace),
   a DNA vial for the biome dug in, a Lucky Charm, a Shade Roll (Rare+ from Weathered,
   Epic+ from Captain's), and only in Captain's chests the treasure-only shades
   **Sunken Gold** (Mythic) and **Drowned Pearl** (Legendary) at 3% each. Duplicates
@@ -922,9 +994,9 @@ The owner's "aggressive AI predators worth more" are the base the bosses stand o
 
 - **Barracuda** (9 studs, 140 hp, 3 alive, 220–400 studs out, 8–90 deep): fast, bites
   20% of max health every 2.2 s after a 0.9 s tell; ignores fish under a quarter of
-  its length unless they bite it. Loot 6 kg Haul, 3 DNA, 40 coral.
+  its length unless they bite it. Loot 0.3 of a full Haul, 3 DNA, 40 coral.
 - **Reef Shark** (14 studs, 320 hp, 2 alive, 300–420 out, 10–110 deep): slower, bites
-  30% every 2.8 s after a 1.1 s tell. Loot 18 kg, 6 DNA, 120 coral.
+  30% every 2.8 s after a 1.1 s tell. Loot 0.6 of a full Haul, 6 DNA, 120 coral.
 - **Behaviour:** roam waypoints in their band; hunt the biggest worthwhile fish in
   aggro range (not safe, not in the hub), leading it a little; inside bite reach the
   jaw flashes red for the tell (the target's screen says INCOMING), then the bite
@@ -1030,7 +1102,8 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   gills (60–80% along the body) and tail (0–22%) take double damage and fill a
   700-point stagger meter; full → 4 s stagger at triple damage (18 s cooldown), which
   breaks the mark. Rewards for everyone with ≥1% of the damage: Teeth 1 (+1 top three,
-  +1 killer), Haul 120 kg by share (min 10%), coral 5,000 by share (min 500), a Rare+
+  +1 killer), a Haul of 1.5 full Hauls plus the damage share of another, on top of a
+  full one (120 kg by share until 2026-10-19), coral 5,000 by share (min 500), a Rare+
   shade roll, the Megalodon Slayer title, a 1/15 (×2 for the top dealer) drop of the
   Ghost shade. The Trophy Hunter stall sells Ghost for 12 Teeth. On escape it heals
   and returns in 15 min.
@@ -1083,7 +1156,8 @@ Concept: `assets/concepts/GiantSquid.jpg`.
   floor, beak slam (1.3 s tell, 45%) and siphon blast (1 s tell, 15% + a shove in a
   cone), sinks away after 90 s. Soft spots: the eye and the tentacles (double
   damage, stagger meter 650). Rewards: Kraken Beaks (1, +1 top three, +1 killer),
-  120 kg Haul and 5,000 coral by share, a Rare+ shade roll, Kraken Slayer, a 1/15
+  the Megalodon's Haul (1.5 full Hauls + the share of another) and 5,000 coral by
+  share, a Rare+ shade roll, Kraken Slayer, a 1/15
   Abyss Ink drop; Abyss Ink costs 12 Beaks at the Trophy Hunter. The eight
   individual tentacles with their own health are not modelled yet: biting the
   tentacle zone is the soft spot, and bites free held fish.
@@ -1101,9 +1175,11 @@ Concept: `assets/concepts/GiantSquid.jpg`.
 - **Whale Fall (built 2026-10-14):** a world event about every 26 minutes, between the
   bosses. A minute's warning ("A WHALE FALL is coming down in the Coral Reef") and a W
   on every map; the carcass sinks 150 studs to the floor and feeds the whole server for
-  five minutes: 18 chunks round it, each growing back 14 s after it's eaten, sized by
-  the biome's level (a Trench whale is worth far more than a kelp one). AI predators
-  come for it too. (`Config/Chum` `whale`.)
+  five minutes: 18 chunks round it, each growing back 14 s after it's eaten. Each puts
+  a sixth of the eater's own full Haul on, and one fish takes at most two full Hauls
+  from one whale (fill up, bank, come back), so it's the same windfall at every level
+  (the chunks look bigger in deeper biomes). AI predators come for it too.
+  (`Config/Chum` `whale`.)
 
 ### The pull-back loop (owner, 2026-10-10; built)
 
@@ -1249,21 +1325,23 @@ created in Creator Hub, and a live game hides id-0 items.
 | **Den Expansion** | pass | 149 | 25 more things placed in the den, at any den level |
 | **Deep Garden** | pass | 129 | The Coral Garden grows 50% faster and holds 16 h instead of 8 |
 | **Second Chance** | product | 39 | Bought on the eaten screen: the Haul just lost comes back (once, within 3 min). Bought any other time: a Second Chance charm (hold up to 5) |
-| **Double Haul** Small / Big / Huge | product | 19 / 49 / 99 | Doubles the Haul just banked; the tier is the Haul's size (≤ 21 kg, ≤ 875 kg, more; ×0.35 with the 2026-10-18 Haul rate) |
+| **Double Haul** Small / Big / Huge | product | 19 / 49 / 99 | Doubles the Haul just banked; the tier is the Haul's size (≤ 0.6 kg, ≤ 12 kg, more: a full Haul up to ~LV 22, ~LV 58, past it) |
 | **Server Frenzy** | product | 99 | ×2 growth for the whole server for 15 min, announced; buying again adds 15 min (up to 2 h ahead) |
 | **Shell Pouch** / **Shell Chest** | product | 49 / 199 | 100 / 600 shells (2 / 12 rolls). Paid random items: hidden where policy restricts them, with ODDS one tap away |
-| Double Haul (ad) | ad reward | — | A watched rewarded video doubles a Haul up to 21 kg |
+| Double Haul (ad) | ad reward | — | A watched rewarded video doubles a Haul up to 0.6 kg |
 | **Deep Pass** | product | 399 | This season's paid row of the Tide Pass (below): three skins, a title, three den pieces, far more coral, shells and spins, +20% pass XP. Bought from PASS, not the Shop |
 
-- **Double Haul:** offered on the bank screen after the tutorial when doubling would
-  add at least 2 levels (a Haul of ~30% of your banked mass or more). One tap, WATCH
+- **Double Haul:** offered on the bank screen after the tutorial for a Haul of at
+  least 75% of a full one (`minFull`; one more dive's worth, 3–5 minutes of hunting,
+  since the 2026-10-19 pace). One tap, WATCH
   AD for small Hauls, SKIP; **no countdown**. It doubles the banked amount after ×2
   Mass and Server Frenzy. `lastHaul` (with its species) is in the save, so a late
   receipt doubles exactly that haul once, capped at the tier that was paid for; a
   second receipt for the same haul becomes a Second Chance charm (a purchase is never
   lost).
 - **Second Chance:** the eaten screen offers it (after the tutorial) when the lost
-  Haul is at least 25% of your banked mass. `lostHaul` is in the save.
+  Haul is at least half a full Haul (`minShare`; it was 25% of the banked mass, which
+  a full Haul is far under since 2026-10-19). `lostHaul` is in the save.
 - **Coral multipliers** (VIP 1.1, Premium 1.1, group 1.05) apply to coral earned from
   play (`EconomyService.earnCoral`: banking, eating players, predators, bosses, the
   Coral Garden), not to fixed rewards that show their amount (rolls, treasure, daily).

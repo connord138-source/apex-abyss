@@ -45,8 +45,9 @@ function Size.liveMass(banked: number, haul: number): number
 	return banked + math.max(haul, 0)
 end
 
--- A smooth level: `level` at the mass where that level starts, halfway to the next
--- halfway between (for the Haul's curves; Size.level is the whole level shown)
+-- A smooth level: exactly `level` at the mass where that level starts, `level` + 0.5
+-- halfway (by the log of the mass) to the next (for the Haul's curves; Size.level is
+-- the whole level shown)
 function Size.levelAt(mass: number): number
 	return math.clamp(math.log(math.max(mass, size.startMass)) / LOG_GROWTH + 1, 1, size.maxLevel)
 end
@@ -93,15 +94,6 @@ end
 -- Whether the Haul is full (MAX SIZE: swim home and bank it)
 function Size.isMaxed(banked: number, haul: number): boolean
 	return haul >= Size.haulCap(banked) * 0.9995
-end
-
--- Coral for banking a Haul (HuntService; here so the progression sim pays the same):
--- `worth` is the Haul before the Haul rate (the kg eaten). Linear in it, so a long
--- dive pays as much a minute as short ones did and banking often gains nothing, and
--- over the square root of the banked mass, so it grows with the fish without
--- running away late (Config/Tuning economy `bankCoral`)
-function Size.bankCoral(worth: number, banked: number): number
-	return Config.Tuning.economy.bankCoral * worth / math.sqrt(math.max(banked, size.startMass))
 end
 
 function Size.level(mass: number): number

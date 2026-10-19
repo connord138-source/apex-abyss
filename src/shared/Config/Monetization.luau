@@ -152,29 +152,33 @@ local Monetization = {
 		deepGarden = { rate = 1.5, hours = 16 },
 		-- Second Chance bought within this long of being eaten gives that Haul back
 		-- (a receipt can land late); otherwise it's a charm. After the tutorial, the
-		-- eaten screen offers it for a lost Haul of at least `minShare` of your banked
-		-- mass, and the Shop sells it while you hold fewer than `maxCharms`.
-		secondChance = { window = 180, minShare = 0.25, maxCharms = 5 },
+		-- eaten screen offers it for a lost Haul of at least `minShare` of a full Haul
+		-- (Shared/Size haulCap; it was a share of the banked mass until the Haul cap
+		-- of 2026-10-19 made a full Haul 2–8% of it), and the Shop sells it while you
+		-- hold fewer than `maxCharms`.
+		secondChance = { window = 180, minShare = 0.5, maxCharms = 5 },
 		-- Server Frenzy: each purchase adds `minutes` of ×`multiplier` growth for the
 		-- whole server, up to `maxMinutes` ahead.
 		serverFrenzy = { minutes = 15, maxMinutes = 120, multiplier = 2 },
 		shellPouch = 100,
 		shellChest = 600,
-		-- Double Haul on the bank screen (after the tutorial): offered when doubling
-		-- would add at least `minLevels` (2 ≈ a Haul of 30% of your mass), priced
-		-- by the Haul's size: up to `maxKg` per tier, the last tier takes the rest. A
+		-- Double Haul on the bank screen (after the tutorial): offered for a Haul of
+		-- at least `minFull` of a full one (Shared/Size haulCap: one more dive's worth,
+		-- ~3–5 minutes of hunting at any level since the 2026-10-19 pace), priced by
+		-- the Haul's size: up to `maxKg` per tier, the last tier takes the rest. A
 		-- haul banked again before the receipt lands is doubled up to its tier's cap.
 		-- The rewarded ad doubles Hauls up to `adMaxKg`.
 		doubleHaul = {
-			minLevels = 2,
+			minFull = 0.75,
 			tiers = {
-				-- (× 0.35 on 2026-10-18 with the Haul rate, so the same dives land in
-				-- the same tiers)
-				{ key = "DoubleHaulSmall", maxKg = 21 },
-				{ key = "DoubleHaulBig", maxKg = 875 },
+				-- A full Haul is ~0.6 kg at LV 22 and ~12 kg at LV 58, so the tiers
+				-- still split where they did: Small up to ~LV 22, Big to ~LV 58, Huge
+				-- past it (21 / 875 kg until the cap; the R$ prices are unchanged)
+				{ key = "DoubleHaulSmall", maxKg = 0.6 },
+				{ key = "DoubleHaulBig", maxKg = 12 },
 				{ key = "DoubleHaulHuge", maxKg = math.huge },
 			},
-			adMaxKg = 21,
+			adMaxKg = 0.6,
 		},
 		-- Free perks. Roblox Premium (owner, 2026-10-12; Creator Rewards pay for paying
 		-- players' time in the game): more coral, bigger playtime gifts, a free wheel

@@ -68,7 +68,10 @@ export type PredatorDef = {
 	depth: { number }, -- height above the local floor it roams in (min, max; Shared/Seafloor)
 	count: number, -- alive at once
 	respawn: number, -- seconds after a kill
-	loot: { haulKg: number, dna: number, coral: number },
+	-- A kill's loot, split by damage share (PredatorService): `hauls` in full Hauls of
+	-- each fish's own (Shared/Size haulCap, the same share of a dive at every level;
+	-- it was kg × the Haul rate until the 2026-10-19 pace), stopping at a full Haul
+	loot: { hauls: number, dna: number, coral: number },
 	back: Color3, -- part-body colors while the model is missing
 	belly: Color3,
 	style: Style?, -- how it hunts (nil = plain; bosses have none)
@@ -111,7 +114,7 @@ local list: { PredatorDef } = {
 		depth = { 8, 120 },
 		count = 4,
 		respawn = 90,
-		loot = { haulKg = 6, dna = 3, coral = 40 },
+		loot = { hauls = 0.3, dna = 3, coral = 40 }, -- (a solo kill ~1 min of hunting)
 		back = Color3.fromRGB(176, 192, 204),
 		belly = Color3.fromRGB(248, 250, 252),
 	},
@@ -155,7 +158,7 @@ local list: { PredatorDef } = {
 		depth = { 150, 430 }, -- open water, well off the floor (owner, 2026-10-09)
 		count = 4,
 		respawn = 150,
-		loot = { haulKg = 18, dna = 6, coral = 120 },
+		loot = { hauls = 0.6, dna = 6, coral = 120 }, -- (a solo kill ~2 min of hunting)
 		back = Color3.fromRGB(110, 124, 138),
 		belly = Color3.fromRGB(230, 236, 240),
 	},

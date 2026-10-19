@@ -109,6 +109,9 @@ sim.HuntService = {
 	feed = function()
 		return 0
 	end,
+	hauls = function()
+		return 0
+	end,
 	giveDna = noop,
 	mouth = function()
 		return nil, 0, 0

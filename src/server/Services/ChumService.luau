@@ -31,7 +31,7 @@ local World = Config.World
 local ChumService = {}
 
 -- What one fish has taken from one whale (Haul before ×2 Mass and Frenzy), and the
--- most it may (Config/Chum `whale.levels`)
+-- most it may (Config/Chum `whale.hauls` of its full Haul)
 type Fed = { taken: number, cap: number, told: boolean }
 
 type Entry = {
@@ -232,7 +232,11 @@ local function onEat(player: Player, batch: any)
 	-- The client's reach and suction (as forage), with room for the chunk's own size
 	local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * 1.35 + 1.6 + slack
 	local fed, fresh, whaleGain, count = 0, 0, 0, 0
-	local rate = HuntService.haulRate(player)
+	-- Whale and slick chunks are shares of the fish's own full Haul (Config/Chum
+	-- `chunkHaul`), so they're worth the same share of a dive at every level; a full
+	-- Haul takes no more (HuntService), so a whale's share only counts what fits
+	local full = HuntService.fullHaul(player)
+	local room = math.max(full - HuntService.haul(player), 0)
 	for _, pair in batch do
 		if typeof(pair) ~= "table" then
 			continue
@@ -251,19 +255,21 @@ local function onEat(player: Player, batch: any)
 		if math.min((here - mouth).Magnitude, (before - mouth).Magnitude) > reach then
 			continue
 		end
-		-- A whale feeds each fish only so much (Config/Chum `whale.levels`): a full fish
+		-- A whale feeds each fish only so much (Config/Chum `whale.hauls`): a full fish
 		-- leaves its chunks for the others
 		if entry.cloud.kind == "whale" then
 			local share = entry.fed[player]
 			if share == nil then
-				share = { taken = 0, cap = HuntService.levelsWorth(player, tune.whale.levels), told = false }
+				share = { taken = 0, cap = full * tune.whale.hauls, told = false }
 				entry.fed[player] = share
 			end
-			-- (in Haul after the Haul rate, before ×2 Mass and Frenzy)
-			local take = math.min(entry.cloud.chunks[index].m * rate, math.max(share.cap - share.taken, 0))
+			-- (in Haul, before ×2 Mass and Frenzy)
+			local take = math.min(full * tune.whale.chunkHaul, math.max(share.cap - share.taken, 0))
 			if take > 1e-6 then
-				share.taken += take
-				whaleGain += take
+				local fits = math.min(take, room)
+				room -= fits
+				share.taken += fits
+				whaleGain += fits
 			end
 			if share.cap - share.taken <= 1e-6 and not share.told then
 				share.told = true
@@ -284,11 +290,11 @@ local function onEat(player: Player, batch: any)
 		})
 		-- A dead fish's chum is Haul that was already grown (×2 Mass, Frenzy): it
 		-- goes back on as it is, so kills don't compound; slicks and whales are new food
-		-- (a whale's share took the Haul rate above)
+		-- (a whale's share was reckoned above)
 		if entry.cloud.kind == "chum" then
 			fed += entry.cloud.chunks[index].m
 		elseif entry.cloud.kind ~= "whale" then
-			fresh += entry.cloud.chunks[index].m
+			fresh += full * tune.slick.chunkHaul
 		end
 		count += 1
 	end
@@ -296,7 +302,7 @@ local function onEat(player: Player, batch: any)
 		HuntService.gain(player, fed, "raw")
 	end
 	if fresh > 0 then
-		HuntService.gain(player, fresh)
+		HuntService.gain(player, fresh, "rated")
 	end
 	if whaleGain > 0 then
 		HuntService.gain(player, whaleGain, "rated")

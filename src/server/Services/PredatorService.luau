@@ -641,7 +641,8 @@ local function payOut(predator: Predator, killer: Player?)
 		if data == nil then
 			continue
 		end
-		local gained = HuntService.feed(player, def.loot.haulKg * share)
+		-- (a share of the fish's own full Haul: Config/Predators `loot`)
+		local gained = HuntService.hauls(player, def.loot.hauls * share)
 		HuntService.giveDna(player, predator.position, math.max(1, math.floor(def.loot.dna * share + 0.5)))
 		EconomyService.earnCoral(player, def.loot.coral * share)
 		Events.ate:fire(player, 1)

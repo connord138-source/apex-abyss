@@ -127,8 +127,12 @@ export type BossDef = {
 		each: number, -- trophies for everyone with a share
 		topThree: number, -- extra for the top three damage dealers
 		killer: number, -- extra for the killing bite
-		haulKg: number, -- shared by damage share (at least minHaulShare each)
-		minHaulShare: number,
+		-- The Haul, in full Hauls of each fish's own (Shared/Size haulCap, so it's the
+		-- same share of a dive at every level): `hauls` for everyone with a share, plus
+		-- `haulsShare` × their damage share; it goes on top of a full Haul. (It was
+		-- 120 kg by share × the Haul rate until the 2026-10-19 pace.)
+		hauls: number,
+		haulsShare: number,
 		coral: number, -- the jackpot, by share
 		coralMin: number,
 		minShare: number, -- least damage share that counts
@@ -171,7 +175,7 @@ local megalodon: BossDef = {
 		depth = { 170, 470 },
 		count = 0, -- never spawned by the predator roster; BossService summons it
 		respawn = 0,
-		loot = { haulKg = 0, dna = 0, coral = 0 }, -- BossService pays the real rewards
+		loot = { hauls = 0, dna = 0, coral = 0 }, -- BossService pays the real rewards
 		back = Color3.fromRGB(58, 72, 92),
 		belly = Color3.fromRGB(214, 222, 230),
 	},
@@ -236,8 +240,8 @@ local megalodon: BossDef = {
 		each = 1,
 		topThree = 1,
 		killer = 1,
-		haulKg = 120,
-		minHaulShare = 0.1,
+		hauls = 1.5, -- (a solo kill 2.5 full Hauls, one of six even fighters ~1.7)
+		haulsShare = 1,
 		coral = 5000,
 		coralMin = 500,
 		minShare = 0.01,
@@ -281,7 +285,7 @@ local giantSquid: BossDef = {
 		depth = { 15, 260 },
 		count = 0,
 		respawn = 0,
-		loot = { haulKg = 0, dna = 0, coral = 0 },
+		loot = { hauls = 0, dna = 0, coral = 0 },
 		back = Color3.fromRGB(96, 34, 70),
 		belly = Color3.fromRGB(190, 140, 160),
 	},
@@ -338,8 +342,8 @@ local giantSquid: BossDef = {
 		each = 1,
 		topThree = 1,
 		killer = 1,
-		haulKg = 120,
-		minHaulShare = 0.1,
+		hauls = 1.5, -- (a solo kill 2.5 full Hauls, one of six even fighters ~1.7)
+		haulsShare = 1,
 		coral = 5000,
 		coralMin = 500,
 		minShare = 0.01,

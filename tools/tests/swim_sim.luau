@@ -498,7 +498,8 @@ for _, level in { 1, 10, 25, 40, 60, 80, 100 } do
 	print(line)
 end
 do
-	local full = Size.length(Size.massForLevel(100) * size.haulLengthCap ^ 3)
+	local banked = Size.massForLevel(100)
+	local full = Size.length(Size.liveMass(banked, Size.haulCap(banked)))
 	print(`LV 100 with a full Haul: {fmt(Size.topSpeed(full), 1)} (old {fmt(oldTop(full), 1)})`)
 end
 
@@ -507,7 +508,7 @@ end
 do
 	local last = 0
 	for level = 1, 100 do
-		for _, haul in { 1, 1.3, size.haulLengthCap } do
+		for _, haul in { 1, 1.3, 1.5 } do
 			local top = Size.topSpeed(Size.length(Size.massForLevel(level) * haul ^ 3))
 			if haul == 1 then
 				check(top > last, `LV {level}: no faster than LV {level - 1}`)

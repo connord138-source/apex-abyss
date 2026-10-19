@@ -177,29 +177,78 @@ return {
 		maxPitch = math.rad(80),
 	},
 
-	-- How fast eating grows you (owner, 2026-10-18: "You should level up a lot slower.
-	-- One 2 minute run with a whale fall gave me 32kg and it sent me from lvl 1 to
-	-- level 35"). Levels stay where they are (a fish's size, speed and every size
-	-- ratio come from its mass), so the food counts for less instead: every kg eaten
-	-- goes on the Haul × `haulRate` (HuntService `addHaul`: prey, forage, slick and
-	-- whale chunks, the new part of a player kill, predator and boss Hauls, bait).
-	-- A new fish gets it all (`fullBelow`), easing down to `haulRate` by `easeTo`, by
-	-- the level its banked mass plus its Haul would make (so a first dive eases off
-	-- as it fills: 10 small fish still take a LV 1 Nibbler to ~LV 7). Rewards sized
-	-- in levels (treasure Hauls) and chum (a Haul that was grown already) don't take
-	-- it, and what a bank pays (coral, Tide Pass XP, the treasure-map chance) is
-	-- reckoned from the Haul before it (HuntService Session `worth`), so a dive still
-	-- pays the same.
+	-- How fast eating grows you (owner, 2026-10-18: "You should level up a lot
+	-- slower"; retuned 2026-10-19 after the PC measured a full Haul at +12 levels in
+	-- 16 s and the Haul never capped on the server). Levels stay where they are (a
+	-- fish's size, speed and every size ratio come from its mass); instead each kg
+	-- eaten counts for little, and a dive holds a set amount. Both by the fish's
+	-- banked level (Shared/Size `haulRate`, `haulLevels`, `haulCap`), between the
+	-- points as straight lines (the rate's in log space):
+	-- * `rate`: the share of each kg eaten that goes on the Haul (HuntService
+	--   `addHaul` "food": prey and filler food). It follows how much a hunter can eat
+	--   at each level in the biome that suits it, so a full Haul takes 2.5–4 minutes
+	--   of hunting: prey kg stop growing with the fish past ~LV 50 (a LV 100 fish
+	--   eats ~0.03× its mass a minute, a LV 10 one ~8×), so it climbs late. The jumps
+	--   are biome changes (the Open Blue's tuna from LV ~45, the Ruins from 53, the
+	--   Vents from 68, the Trench from 83).
+	-- * `cap`: levels' worth a full Haul holds. Everyday food (prey, filler food,
+	--   chum, slicks, bait, whale chunks, kills, predator loot) stops going on there:
+	--   MAX SIZE, swim home and bank. Rewards (a boss's Haul, a treasure's, the admin's)
+	--   go on top, and a Second Chance gives back what was lost. 7 levels for a new
+	--   fish (the tutorial's Haul step, Config/Tutorial HAUL_LEVELS: LV 1 → 8), then
+	--   ~0.75 (the pace × a dive's minutes).
+	-- Measured by tools/tests/run_progress_sim.sh (MODE=design suggests the points
+	-- for the pace and fill it holds; rerun after changing these, Config/Prey,
+	-- Config/Forage, the biomes' levels or the size and speed curves): an active
+	-- hunter reaches LV 15 in ~35 min, 25 in ~1.5 h, 40 in ~4 h, 55 in ~7 h, 70 in
+	-- ~11 h, 85 in ~16 h and 100 in ~22 h of play.
+	-- What a bank pays (coral, Tide Pass XP, the map chance) is reckoned from the
+	-- Haul before the rate (HuntService Session `worth`: the kg eaten).
 	growth = {
-		rate = { { 1, 0.1 }, { 8, 0.01 }, { 100, 0.005 } } :: { { number } },
-		cap = { { 1, 7 }, { 8, 1 }, { 100, 0.5 } } :: { { number } },
+		rate = {
+			{ 1, 0.068 }, -- the tutorial: its Haul step takes a minute or two
+			{ 4, 0.042 },
+			{ 8, 0.0036 },
+			{ 12, 0.0046 },
+			{ 15, 0.0042 },
+			{ 20, 0.0033 },
+			{ 25, 0.0021 },
+			{ 30, 0.0019 },
+			{ 35, 0.0022 },
+			{ 40, 0.0027 },
+			{ 45, 0.0024 },
+			{ 50, 0.0017 }, -- (the Open Blue's tuna)
+			{ 55, 0.0073 },
+			{ 60, 0.01 },
+			{ 65, 0.011 },
+			{ 70, 0.025 },
+			{ 75, 0.038 },
+			{ 80, 0.055 },
+			{ 85, 0.046 }, -- (the Trench's schools)
+			{ 90, 0.07 },
+			{ 95, 0.11 },
+			{ 100, 0.18 },
+		} :: { { number } },
+		cap = {
+			{ 1, 7 },
+			{ 3, 7 },
+			{ 8, 0.75 },
+			{ 20, 0.7 },
+			{ 30, 0.45 },
+			{ 50, 0.38 },
+			{ 70, 0.27 },
+			{ 90, 0.21 },
+			{ 100, 0.2 },
+		} :: { { number } },
 	},
 
 	hunt = {
 		swallowRatio = 0.7, -- swallow anything shorter than this × your length
 		preyGain = 1, -- Haul per kg of prey eaten
-		playerHaulShare = 0.5, -- of an eaten player's Haul goes to the eater
-		playerBaseShare = 0.15, -- of an eaten player's banked mass goes to the eater
+		playerHaulShare = 0.5, -- of an eaten player's Haul goes to the eater...
+		-- ...plus this many of the eaten fish's full Hauls (Size.haulCap; it was 15% of
+		-- its banked mass × the Haul rate), × how near its size was (HuntService)
+		playerBaseHauls = 0.25,
 		mouthOffset = 0.5, -- the mouth sits this many lengths ahead of the center
 		reach = 0.42, -- eat reach around the mouth, in lengths (generous: eating should feel easy)
 		biteDamage = 24, -- a bite from an equal-sized fish
