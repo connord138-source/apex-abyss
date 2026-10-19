@@ -2816,7 +2816,9 @@ function MenuController.openDaily()
 				Vector2.new(if gift.big then 108 else 92, 124),
 				gift,
 				28,
-				44,
+				-- (four lines at 8 take ~44.4: at 44 the hour's 250 PASS XP was cut,
+				-- PC 2026-10-19 round 2, UI2)
+				46,
 				function()
 					ClientState.request("ClaimGift")
 				end
@@ -2828,7 +2830,7 @@ function MenuController.openDaily()
 				fit.MinTextSize = 8
 			end
 			tile.claim.Size = UDim2.new(1, -12, 0, 22)
-			tile.claim.Position = UDim2.new(0, 6, 1, -26)
+			tile.claim.Position = UDim2.new(0, 6, 1, -24)
 			tile.claim.TextSize = 13
 			giftTiles[i] = tile
 		end
