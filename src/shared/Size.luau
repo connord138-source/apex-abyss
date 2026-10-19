@@ -81,6 +81,13 @@ function Size.haulRate(banked: number): number
 	return curve(growth.rate, Size.levelAt(banked), true)
 end
 
+-- ...× this for food eaten in a biome whose top level (Config/Biomes `maxLevel`) the
+-- fish's `level` is past (Config/Tuning `growth` `overLevel`)...
+function Size.overLevel(level: number, maxLevel: number): number
+	local over = growth.overLevel
+	return math.clamp(1 - over.slope * (level - maxLevel), over.floor, 1)
+end
+
 -- ...how many levels' worth a full Haul holds...
 function Size.haulLevels(banked: number): number
 	return curve(growth.cap, Size.levelAt(banked), false)

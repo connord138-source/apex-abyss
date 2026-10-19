@@ -20,7 +20,7 @@ src="${SRC:-$here/../../src}"
 tmp="$(mktemp -d)"
 [[ -n "${KEEP:-}" ]] || trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/Config"
-for name in Tuning World Prey Biomes Forage Species Pass Rewards; do
+for name in Tuning World Prey Biomes Forage Species Pass Rewards Treasure; do
 	cp "$src/shared/Config/$name.luau" "$tmp/Config/"
 done
 cp "$src/shared/Size.luau" "$src/shared/Seafloor.luau" "$src/shared/Schools.luau" "$tmp/"
@@ -39,6 +39,7 @@ return {
 	Forage = require("@self/Forage"),
 	Species = require("@self/Species"),
 	Pass = require("@self/Pass"),
+	Treasure = require("@self/Treasure"),
 }
 LUA
 for f in "$tmp"/{Size,Seafloor,Schools,progress_sim}.luau; do

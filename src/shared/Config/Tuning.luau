@@ -240,6 +240,13 @@ return {
 			{ 90, 0.21 },
 			{ 100, 0.2 },
 		} :: { { number } },
+		-- Food in a biome below the fish counts for less (`rate` × this): past the
+		-- biome's top level (Config/Biomes `maxLevel`, the biome the fish is in) the
+		-- rate drops by `slope` a level, to no less than `floor`. So a fish keeps
+		-- moving deeper with its level: from LV ~45 the Open Blue's tuna gave 3–5× the
+		-- kg a second of the Ruins, Vents and Trench, and a fish that stayed there
+		-- reached LV 100 in ~13 h instead of ~22 (run_progress_sim.sh STAY=OpenBlue)
+		overLevel = { slope = 0.08, floor = 0.2 },
 	},
 
 	hunt = {

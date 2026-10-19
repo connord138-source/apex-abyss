@@ -26,6 +26,7 @@ local World = Config.World
 local PreyConfig = Config.Prey
 local ForageConfig = Config.Forage
 local PassXp = Config.Pass.xp
+local Drops = Config.Treasure.drops
 local G = Tuning.size.levelGrowth
 local DT = 0.25
 local CRUISE = 0.9
@@ -53,6 +54,7 @@ local NS, NF = #list, Schools.COUNT
 local sCx, sCy, sCz, sRad, sEll, sH, sW, sPh, sFirst, sCount, sBound =
 	{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
 local fS, fOx, fOy, fOz, fPh, fLen, fRaw, fRad, fMass, fBack = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+local fMap = {} -- the chance a treasure map drops from it (TreasureService, by its species' mass)
 for s, school in list do
 	sCx[s], sCy[s], sCz[s] = school.center.X, school.center.Y, school.center.Z
 	sRad[s], sEll[s], sH[s], sW[s], sPh[s] =
@@ -69,6 +71,7 @@ for i, f in fish do
 	fOx[i], fOy[i], fOz[i] = f.offset.X, f.offset.Y, f.offset.Z
 	fPh[i], fLen[i], fRaw[i], fRad[i], fMass[i] = f.phase, f.length, Size.raw(f.length), f.radius, f.mass
 	fBack[i] = PreyConfig.byId[f.prey].respawn
+	fMap[i] = math.min(PreyConfig.byId[f.prey].mass * Drops.preyPerKg, Drops.preyMax)
 end
 
 -- Schools.position, inlined (no lifts: the sim has no Terrain)
@@ -184,6 +187,24 @@ for _, def in Config.Biomes.list do
 	end
 end
 
+-- The biome a point is in (Shared/Biomes.at: a sector first, else the ring round the
+-- hub)
+local function biomeAt(x: number, z: number): Biome?
+	local r, angle = Seafloor.polar(x, z)
+	local fallback: Biome? = nil
+	for _, b in biomes do
+		local def = b.def
+		if r >= def.radiusFrom and r < def.radiusTo then
+			if def.angleFrom == 0 and def.angleTo == 360 then
+				fallback = fallback or b
+			elseif Seafloor.inSector(angle, def.angleFrom, def.angleTo) then
+				return b
+			end
+		end
+	end
+	return fallback
+end
+
 local function biomeFor(level: number): Biome
 	-- STAY=<biome id>: a player who keeps to one biome once its level opens it
 	for _, b in biomes do
@@ -227,7 +248,8 @@ end
 type Rules = {
 	name: string,
 	-- kg of Haul (and of worth) `raw` kg eaten gives a fish with this banked mass and Haul
-	add: (mass: number, haul: number, raw: number) -> (number, number),
+	-- (`maxLevel`: the top level of the biome it's eaten in, Config/Biomes)
+	add: (mass: number, haul: number, raw: number, maxLevel: number?) -> (number, number),
 	full: (mass: number, haul: number) -> boolean,
 	live: (mass: number, haul: number) -> number,
 	coral: (worth: number, mass: number) -> number,
@@ -257,8 +279,9 @@ local OLD: Rules = {
 -- Config/Tuning `growth` through Shared/Size, as HuntService `addHaul` does it
 local NEW: Rules = {
 	name = "after (Config/Tuning growth)",
-	add = function(mass, haul, raw)
+	add = function(mass, haul, raw, maxLevel)
 		local rate = Size.haulRate(mass)
+			* (if maxLevel then Size.overLevel(Size.level(mass), maxLevel) else 1)
 		local added = math.min(raw * rate, math.max(Size.haulCap(mass) - haul, 0))
 		return added, added / rate
 	end,
@@ -311,6 +334,7 @@ type Hunter = {
 	-- this dive
 	ate: number,
 	firstAte: number?,
+	maps: number, -- treasure maps expected from what it ate
 }
 
 local function newHunter(rules: Rules, mass: number): Hunter
@@ -327,6 +351,7 @@ local function newHunter(rules: Rules, mass: number): Hunter
 		rules = rules,
 		ate = 0,
 		firstAte = nil,
+		maps = 0,
 	}
 end
 
@@ -352,11 +377,13 @@ local function segDist(
 	return math.sqrt(qx * qx + qy * qy + qz * qz)
 end
 
-local function eat(h: Hunter, raw: number)
-	local added, worth = h.rules.add(h.mass, h.haul, raw)
+local function eat(h: Hunter, raw: number, map: number)
+	local b = biomeAt(h.x, h.z)
+	local added, worth = h.rules.add(h.mass, h.haul, raw, if b then b.def.maxLevel else nil)
 	h.haul += added
 	h.worth += worth
 	h.ate += 1
+	h.maps += map
 	if h.firstAte == nil then
 		h.firstAte = h.t
 	end
@@ -405,7 +432,7 @@ local function eatAlong(
 						<= (reachBase + fRad[i]) * Schools.EAT_PULLED
 					then
 						h.eatenFish[i] = t + fBack[i]
-						eat(h, fMass[i] * Tuning.hunt.preyGain)
+						eat(h, fMass[i] * Tuning.hunt.preyGain, fMap[i])
 					end
 				end
 			end
@@ -428,7 +455,7 @@ local function eatAlong(
 					and segDist(gX[g], gY[g], gZ[g], ax, ay, az, bx, by, bz) <= reach
 				then
 					h.eatenFood[g] = t + gBack[g]
-					eat(h, gMass[g])
+					eat(h, gMass[g], 0)
 				end
 			end
 		end
@@ -560,7 +587,7 @@ local function dive(h: Hunter, biome: Biome?, limit: number?): Dive
 	local level = Size.levelAt(h.mass)
 	biome = biome or biomeFor(Size.level(h.mass))
 	local b = biome :: Biome
-	h.haul, h.worth, h.ate, h.firstAte = 0, 0, 0, nil
+	h.haul, h.worth, h.ate, h.firstAte, h.maps = 0, 0, 0, nil, 0
 	-- Out: the wash, the plaza and the tunnel toward the biome
 	h.t += DEN_OUT + HUB_LEG / indoor(h)
 	local best, bestD = tunnels[1], math.huge
@@ -597,6 +624,8 @@ local function dive(h: Hunter, biome: Biome?, limit: number?): Dive
 		worth = h.worth,
 		haul = h.haul,
 		ate = h.ate,
+		-- treasure maps: from the prey it ate and the bank (TreasureService; none held)
+		maps = h.maps + (if h.worth >= Drops.bankMinMass then Drops.bank else 0),
 		out = firstAte - out,
 	} :: any
 end
@@ -703,10 +732,10 @@ local function progress(rules: Rules, maxHours: number)
 		`\n{string.upper(rules.name)} ({species.name}, {#dives} dives, {string.format("%.1f", h.t / 3600)} h)`
 	)
 	print(
-		"  band     dives  min/dive  (hunt + swim)  levels/dive  coral/min  XP/min (bank+catch)  kg/dive  fish/dive"
+		"  band     dives  min/dive  (hunt + swim)  levels/dive  coral/min  XP/min (bank+catch)  kg/dive  fish/dive  maps/h"
 	)
 	for _, band in BANDS do
-		local n, total, hunting, levels, coral, xpB, xpC, haul, ate = 0, 0, 0, 0, 0, 0, 0, 0, 0
+		local n, total, hunting, levels, coral, xpB, xpC, haul, ate, maps = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 		for _, d in dives do
 			if d.level >= band[1] and d.level < band[2] then
 				n += 1
@@ -718,6 +747,7 @@ local function progress(rules: Rules, maxHours: number)
 				xpC += d.xpCatch
 				haul += d.haul
 				ate += d.ate
+				maps += (d :: any).maps
 			end
 		end
 		if n == 0 then
@@ -727,7 +757,7 @@ local function progress(rules: Rules, maxHours: number)
 		local minutes = total / 60
 		print(
 			string.format(
-				"  %3d–%-3d  %5d  %7.1f  (%4.1f + %4.1f)  %10.2f  %9.0f  %6.0f (%3.0f + %3.0f)  %7.2f  %8.0f",
+				"  %3d–%-3d  %5d  %7.1f  (%4.1f + %4.1f)  %10.2f  %9.0f  %6.0f (%3.0f + %3.0f)  %7.2f  %8.0f  %6.1f",
 				band[1],
 				band[2],
 				n,
@@ -740,7 +770,8 @@ local function progress(rules: Rules, maxHours: number)
 				xpB / minutes,
 				xpC / minutes,
 				haul / n,
-				ate / n
+				ate / n,
+				maps / minutes * 60
 			)
 		)
 	end
