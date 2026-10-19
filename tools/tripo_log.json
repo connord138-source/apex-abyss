@@ -181,9 +181,19 @@
   "task_id": "d408d903-6ea8-40fd-844b-327e2f326070",
   "type": "generate_image"
  },
+ "den_props2/Banner": {
+  "status": "queued",
+  "task_id": "a6e7218f-1d71-4575-b9ed-d0b1c305c432",
+  "type": "image_to_model"
+ },
  "den_props2/BubbleColumn": {
   "status": "queued",
   "task_id": "1ba1fe09-a0a5-4302-9c24-9f7e81addd79",
+  "type": "image_to_model"
+ },
+ "den_props2/ConchGramophone": {
+  "status": "queued",
+  "task_id": "8c9a36ef-cd72-4a56-a988-69b3bd5ef539",
   "type": "image_to_model"
  },
  "den_props2/CoralLamp": {
@@ -202,7 +212,12 @@
   "type": "image_to_model"
  },
  "den_props2/JellyLamp": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "JellyLamp.glb",
+   "JellyLamp_preview.webp"
+  ],
+  "status": "success",
   "task_id": "c8a96eaf-36ef-4591-8b20-214479667c73",
   "type": "image_to_model"
  },
@@ -222,7 +237,12 @@
   "type": "image_to_model"
  },
  "den_props2/SeaGlassLantern": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "SeaGlassLantern.glb",
+   "SeaGlassLantern_preview.webp"
+  ],
+  "status": "success",
   "task_id": "db9e0356-9a6d-4b5b-bdd6-e022baa008d0",
   "type": "image_to_model"
  },
@@ -234,6 +254,11 @@
  "den_props2/SpongeSofa": {
   "status": "queued",
   "task_id": "922f3239-2937-4fc4-bfa3-43b2ff45c993",
+  "type": "image_to_model"
+ },
+ "den_props2/TreasureChart": {
+  "status": "queued",
+  "task_id": "68932837-41a4-4b56-9e8c-964bddeb26c4",
   "type": "image_to_model"
  },
  "den_props2_sheets/Banner": {
@@ -1172,7 +1197,11 @@
   "type": "generate_image"
  },
  "prey3_sheets/Oarfish": {
-  "status": "queued",
+  "credits": 5,
+  "files": [
+   "Oarfish.png"
+  ],
+  "status": "success",
   "task_id": "580fad7b-8b8f-454b-bfbb-5f96c375a466",
   "type": "generate_image"
  },
