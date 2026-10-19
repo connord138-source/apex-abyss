@@ -2378,7 +2378,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   through it, the wheel chip full width), `2026-10-15-pc-2.md` (chunks clear,
   chips fit, the PC's level-sand fix; deep whales still faint at 70 studs),
   `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-19-pc*.md` (pace, Ruins, prey batches,
-  den props; round 3's brief covers the world-and-life batch), `2026-10-18-pc.md` (SK4, the plume
+  den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
   clients via Test → Clients and Servers);
   briefs for the PC session sit beside them as `*-brief.md`).
