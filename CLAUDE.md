@@ -1155,7 +1155,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Sunfish, Coelacanth, Vent Eelpout, Gulper Eel, Oarfish; Driftwood Table, Kelp
     Bed, Pearl Pedestal, Bubble Column, Sponge Sofa, Shipwreck Bookshelf, Jellyfish
     Lamp, Sea Glass Lantern, Coral Lamp, Banner, Conch Gramophone, Treasure Chart)
-    wait for the owner's approval before 3D.
+    were approved by the owner on 2026-10-19 ("Approve all concepts"); prey sheet C
+    (the Kelp, Trench and Vents gaps) followed for approval.
   - **Tutorial: the full loop, nine steps** (`Config/Tutorial`, `TutorialService`
     rewritten, `tutorial.v`): leave the hub, eat 10, 5 shells, fill the Haul
     (`HAUL_LEVELS` 7 levels' worth), bank, spin the wheel (a spin granted), ROLL
@@ -2189,8 +2190,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (needs a texture upload)
   - den items from bosses (jaw arch, Kraken-eye lantern) as Trophy Hunter buys
   - Pacing retuned 2026-10-19 to ~22 h of active play to LV 100 (GDD §3 Pacing,
-    `run_progress_sim.sh`); a dive banks under a level past LV 8, so the owner may
-    want bigger dives on a shorter curve (one table in `Config/Tuning` `growth`).
+    `run_progress_sim.sh`); **the owner kept the 22 h curve** (2026-10-19), with dives
+    banking under a level past LV 8.
 
 ## Playtests
 
