@@ -6,7 +6,10 @@ same pose's parts. Run by run_ambient.sh.
     python3.11 ambient_render.py <poses.json> <out_dir> <fbx_dir> [Name ...]
 
 One sheet per creature, <out_dir>/<Name>.png: a row per moment (labelled), the top,
-side (head left) and three-quarter views, model left, stand-in right in each. Roblox
+side (head left) and three-quarter views, model left, stand-in right in each. The edible
+crab kinds (Config/Forage) share one sheet, CrabKinds.png: a row each, the model tinted
+or painted as the game does and carrying its extras (those on its body), the stand-in
+with all of them. Roblox
 axes (X right, Y up, -Z ahead) become Blender's the way rig_ambient.py's export does:
 (x, y, z) -> (-x, z, y), head at -Y, up +Z.
 """
@@ -128,6 +131,35 @@ def look_at(cam, eye: Vector, target: Vector, up: Vector):
     return r, u
 
 
+def tint_model(body, tint, paint):
+    """The game's SurfaceAppearance.Color (a multiply on the colour map) or a solid paint."""
+    for slot in body.material_slots:
+        mat = slot.material
+        if mat is None or not mat.use_nodes:
+            continue
+        nodes, links = mat.node_tree.nodes, mat.node_tree.links
+        bsdf = next((n for n in nodes if n.type == "BSDF_PRINCIPLED"), None)
+        if bsdf is None:
+            continue
+        base = bsdf.inputs["Base Color"]
+        if paint:
+            for link in list(base.links):
+                links.remove(link)
+            base.default_value = (*[to_linear(c) for c in paint], 1)
+        elif tint and base.links:
+            src = base.links[0].from_socket
+            mix = nodes.new("ShaderNodeMix")
+            mix.data_type = "RGBA"
+            mix.blend_type = "MULTIPLY"
+            mix.inputs["Factor"].default_value = 1.0
+            links.new(src, mix.inputs[6])
+            mix.inputs[7].default_value = (*[to_linear(c) for c in tint], 1)
+            links.new(mix.outputs[2], base)
+
+
+KIND_ROWS: list = []
+
+
 def render(creature: dict):
     name = creature["name"]
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -153,7 +185,7 @@ def render(creature: dict):
 
     # The model, if it's been rigged
     arm = body = None
-    path = os.path.join(FBX, f"{name}.fbx")
+    path = os.path.join(FBX, f"{creature.get('model', name)}.fbx")
     extent = 1.0
     if os.path.exists(path):
         bpy.ops.import_scene.fbx(filepath=path)
@@ -167,6 +199,7 @@ def render(creature: dict):
         # The measure: Roblox X is Blender X, Roblox Z is Blender Y
         extent = dims.x if creature["measure"] == "X" else dims.y
         arm_base = arm.matrix_world.copy()
+        tint_model(body, creature.get("tint"), creature.get("paint"))
     size = max(extent * 1.25, 0.5)
     cam_data = bpy.data.cameras.new("C")
     cam_data.type = "ORTHO"
@@ -187,7 +220,9 @@ def render(creature: dict):
                 qb = rot(q[1:])
                 rest = (arm_base.to_3x3().normalized() @ pb.bone.matrix_local.to_3x3()).normalized()
                 pb.matrix_basis = (rest.inverted() @ qb @ rest).to_4x4()
-        stand = build_stand_in(sample["parts"], look, extent, f"{name}_stand_{si}")
+        stand = build_stand_in(sample["parts"] + sample.get("extras", []), look, extent, f"{name}_stand_{si}")
+        carried = [p for p in sample.get("extras", []) if p.get("body")]
+        worn = build_stand_in(carried, look, extent, f"{name}_worn_{si}") if carried and arm is not None else None
         for vi, (eye_dir, up) in enumerate(
             (
                 (Vector((0, 0, 1)), Vector((0, -1, 0))),  # top, head up the picture
@@ -200,6 +235,8 @@ def render(creature: dict):
             if arm is not None:
                 arm.matrix_world = Matrix.Translation(-spread) @ lift_m @ arm_base
                 stand.matrix_world = Matrix.Translation(spread) @ lift_m
+                if worn is not None:
+                    worn.matrix_world = Matrix.Translation(-spread) @ lift_m
             else:
                 stand.matrix_world = lift_m
             cam_data.ortho_scale = extent * 2.45
@@ -208,8 +245,14 @@ def render(creature: dict):
             bpy.ops.render.render(write_still=True)
             tiles.append((si, vi, path_png))
         bpy.data.objects.remove(stand)
-    # The sheet
+        if worn is not None:
+            bpy.data.objects.remove(worn)
     from PIL import Image, ImageDraw
+
+    if creature.get("kindSheet"):
+        KIND_ROWS.append((creature["samples"][0]["label"], [p for _, _, p in tiles]))
+        return
+    # The sheet
 
     rows = len(creature["samples"])
     sheet = Image.new("RGB", (W * 3, (H + 22) * rows + 30), (24, 28, 32))
@@ -226,6 +269,21 @@ def render(creature: dict):
 
 
 for creature in data:
-    if ONLY and creature["name"] not in ONLY:
+    if ONLY and creature["name"] not in ONLY and not (creature.get("kindSheet") and "CrabKinds" in ONLY):
         continue
     render(creature)
+
+if KIND_ROWS:
+    from PIL import Image, ImageDraw
+
+    sheet = Image.new("RGB", (W * 3, (H + 22) * len(KIND_ROWS) + 30), (24, 28, 32))
+    draw = ImageDraw.Draw(sheet)
+    draw.text((8, 8), "Edible crabs (Config/Forage): the model as tinted or painted (left), the part-built crab (right); each to its own scale", fill=(230, 230, 230))
+    for ri, (label, paths) in enumerate(KIND_ROWS):
+        y = 30 + ri * (H + 22)
+        draw.text((8, y + 4), label, fill=(240, 220, 120))
+        for vi, p in enumerate(paths):
+            sheet.paste(Image.open(p).convert("RGB"), (vi * W, y + 22))
+            os.remove(p)
+    sheet.save(os.path.join(OUT, "CrabKinds.png"))
+    print("[ambient_render] wrote", os.path.join(OUT, "CrabKinds.png"))

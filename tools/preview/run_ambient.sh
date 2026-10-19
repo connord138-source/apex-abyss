@@ -16,9 +16,9 @@ shift || true
 mkdir -p "$out"
 tmp="$(mktemp -d)"
 [[ -n "${KEEP:-}" ]] || trap 'rm -rf "$tmp"' EXIT
-cp "$root/src/shared/AmbientRigs.luau" "$root/src/shared/Config/Ambient.luau" "$here/../tests/sim_rbx.luau" "$here/ambient_dump.luau" "$tmp/"
-header='local __rbx = require("./sim_rbx"); local Vector3, CFrame = __rbx.Vector3, __rbx.CFrame; local Color3 = { fromRGB = function(r, g, b) return { R = r / 255, G = g / 255, B = b / 255 } end }'
-for f in "$tmp/AmbientRigs.luau" "$tmp/Ambient.luau" "$tmp/ambient_dump.luau"; do
+cp "$root/src/shared/AmbientRigs.luau" "$root/src/shared/Config/Ambient.luau" "$root/src/shared/Config/Forage.luau" "$here/../tests/sim_rbx.luau" "$here/ambient_dump.luau" "$tmp/"
+header='local __rbx = require("./sim_rbx"); local Vector3, CFrame = __rbx.Vector3, __rbx.CFrame; local Color3 = { new = function(r, g, b) return { R = r, G = g, B = b, Lerp = function(a, o, k) return { R = a.R + (o.R - a.R) * k, G = a.G + (o.G - a.G) * k, B = a.B + (o.B - a.B) * k, Lerp = a.Lerp } end } end }; Color3.fromRGB = function(r, g, b) return Color3.new(r / 255, g / 255, b / 255) end'
+for f in "$tmp/AmbientRigs.luau" "$tmp/Ambient.luau" "$tmp/Forage.luau" "$tmp/ambient_dump.luau"; do
 	sed -i "1a $header" "$f"
 done
 (cd "$tmp" && "${LUAU:-luau}" ambient_dump.luau) > "$out/ambient_poses.json"

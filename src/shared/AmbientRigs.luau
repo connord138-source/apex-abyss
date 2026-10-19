@@ -20,7 +20,7 @@
 --   turtle    Shell; Neck > Head; FinL1 > FinL2 > FinL3 (and R); HindL1 > HindL2
 --             (and R); Tail
 --   whale     Body > Spine1 > Spine2 > Spine3 > Flukes; PecL1 > PecL2 (and R)
---   crab      Body; ClawL1 > ClawL2 (and R); LegL1, LegL2, LegL3 (and R)
+--   crab      Body; ClawL1 > ClawL2 (and R); LegL1, LegL2, LegL3 (and R); EyeL, EyeR
 local AmbientRigs = {}
 
 export type Pose = { [string]: CFrame }
@@ -35,6 +35,7 @@ export type Motion = {
 	rest: number, -- a stingray: 0 swimming .. 1 settled on the floor
 	settled: number, -- seconds since it last touched down (-1: it's swimming)
 	moving: boolean, -- a crab scuttling
+	alarm: number?, -- a crab: 0 .. 1, squaring up to a fish that can't eat it
 }
 
 -- A stand-in's joint: where it pivots at rest, unit size, and what it hangs from
@@ -312,37 +313,47 @@ function AmbientRigs.whale(m: Motion, out: Pose): CFrame
 	return CFrame.new(0, heave, 0) * CFrame.Angles(0, 0, -m.bank)
 end
 
--- Crab: scuttling, the legs lift and reach in a wave (the two sides out of step) and
--- the body bobs; resting, it tidies its claws, picks at the floor and lifts one now
--- and then.
+-- Crab: scuttling, the legs lift and reach in a wave (the two sides out of step), the
+-- claws held up and a little open and the body bobs; resting, it tidies its claws,
+-- picks at the floor and lifts one now and then, its eye stalks looking about.
+-- `alarm` (0 .. 1: a fish too small to eat it has come close) raises it on its legs,
+-- claws up, spread and snapping, eyes up.
 function AmbientRigs.crab(m: Motion, out: Pose): CFrame
 	local p = m.phase
-	local bob = 0
+	local alarm = m.alarm or 0
+	local up = math.max(if m.moving then 0.6 else 0, alarm)
 	for _, s in sides() do
 		local tag, side = s.tag, s.side
 		for k = 1, 3 do
 			local name = `Leg{tag}{k}`
 			if m.moving then
-				local g = m.t * 10 + k * 2.1 + (if side < 0 then 0 else math.pi) + p
-				local lift = math.max(0, math.sin(g)) * 0.45
-				out[name] = sweep(side, 0.22 * math.cos(g)) * raise(side, lift)
+				local g = m.t * 15 + k * 2.1 + (if side < 0 then 0 else math.pi) + p
+				local lift = math.max(0, math.sin(g)) * 0.42
+				out[name] = sweep(side, 0.2 * math.cos(g)) * raise(side, lift)
 			else
-				out[name] = raise(side, 0.03 * math.sin(m.t * 0.7 + k + p))
+				out[name] = raise(side, 0.03 * math.sin(m.t * 0.7 + k + p) - 0.1 * alarm)
 			end
 		end
-		-- Claws: picking at the floor in turns, a pinch now and then
+		-- Claws: at rest picking at the floor in turns and lifting one now and then;
+		-- up, spread and open while it scuttles or squares up to a fish
 		local pick = math.max(0, math.sin(m.t * 1.1 + p + (if side < 0 then 0 else 2.2))) ^ 3
 		local wave = math.max(0, math.sin(m.t * 0.23 + p * 3 + side)) ^ 12
-		local arm = if m.moving then 0.15 else 0.25 * pick + 0.6 * wave
-		out[`Claw{tag}1`] = raise(side, arm) * CFrame.Angles(0.3 * pick, 0, 0)
-		local pinch = math.max(0, math.sin(m.t * 3.1 + p * 2 + side)) ^ 6
-		out[`Claw{tag}2`] = CFrame.Angles(0, side * 0.35 * pinch, 0)
+		local pitch = 0.3 * pick * (1 - up) + 0.75 * up
+		local arm = (0.22 * pick + 0.55 * wave) * (1 - up) + 0.3 * up
+		out[`Claw{tag}1`] = sweep(side, 0.28 * up) * raise(side, arm) * CFrame.Angles(pitch, 0, 0)
+		local snap = math.max(0, math.sin(m.t * (3.1 + 6 * alarm) + p * 2 + side)) ^ 6
+		out[`Claw{tag}2`] = CFrame.Angles(0, side * (0.35 * snap + 0.25 * up), 0)
+		-- Eye stalks: looking about, straight up when alarmed
+		local calm = 1 - 0.7 * alarm
+		out[`Eye{tag}`] = CFrame.Angles(
+			(0.18 * math.sin(m.t * 0.6 + p + side) - 0.15 * alarm) * calm,
+			0,
+			side * 0.22 * math.sin(m.t * 0.37 + p * 2 + side) * calm
+		)
 	end
-	if m.moving then
-		bob = math.abs(math.sin(m.t * 10 + p)) * 0.02
-	end
+	local bob = if m.moving then math.abs(math.sin(m.t * 15 + p)) * 0.02 else 0
 	out.Body = CFrame.identity
-	return CFrame.new(0, bob, 0)
+	return CFrame.new(0, bob + 0.03 * alarm, 0) * CFrame.Angles(0.07 * alarm, 0, 0)
 end
 
 local POSERS: { [string]: (Motion, Pose) -> CFrame } = {
@@ -443,13 +454,12 @@ local function tri(
 	end
 	local list = if mirrored then sides() else { { side = -1, tag = "" } }
 	for _, s in list do
+		-- (on a mirrored piece every point goes to its side: a point on the middle line
+		-- stays there, a left-half point named without "{S}" is mirrored too)
 		local function at(n: string): Vector3
 			local p = points[(string.gsub(n, "{S}", ""))]
 			assert(p, n)
-			if string.find(n, "{S}", 1, true) then
-				return flip(p, s.side)
-			end
-			return p
+			return if mirrored then flip(p, s.side) else p
 		end
 		table.insert(b.pieces, {
 			joint = sided(jointName, s.tag),
@@ -549,174 +559,251 @@ local function mantaPlan(): Plan
 	return { joints = b.joints, pieces = b.pieces, measure = "X", floor = 0.03 }
 end
 
--- Stingray, unit disc width: a domed middle, each side's margin in three panels (one
--- per station), a long tail with its barb, eyes on top, the blue spots
+-- The height of the stand-in's top surface at (x, z): the plane of whichever of the
+-- named triangles (left half; the right is the mirror) holds that point, for setting
+-- spots on the skin
+local function surfaceY(points: { [string]: Vector3 }, tris: { { string } }, x: number, z: number): number
+	local ax = -math.abs(x)
+	for _, t in tris do
+		local a = points[(string.gsub(t[1], "{S}", ""))]
+		local b = points[(string.gsub(t[2], "{S}", ""))]
+		local c = points[(string.gsub(t[3], "{S}", ""))]
+		local a2, b2, c2 =
+			Vector3.new(-math.abs(a.X), a.Y, a.Z),
+			Vector3.new(-math.abs(b.X), b.Y, b.Z),
+			Vector3.new(-math.abs(c.X), c.Y, c.Z)
+		local d = (b2.Z - c2.Z) * (a2.X - c2.X) + (c2.X - b2.X) * (a2.Z - c2.Z)
+		if math.abs(d) > 1e-9 then
+			local u = ((b2.Z - c2.Z) * (ax - c2.X) + (c2.X - b2.X) * (z - c2.Z)) / d
+			local v = ((c2.Z - a2.Z) * (ax - c2.X) + (a2.X - c2.X) * (z - c2.Z)) / d
+			local w = 1 - u - v
+			if u >= -1e-6 and v >= -1e-6 and w >= -1e-6 then
+				return u * a2.Y + v * b2.Y + w * c2.Y
+			end
+		end
+	end
+	return 0
+end
+
+-- A block from `from` to `to` (a leg's segment, a claw's arm), `w` wide and `h` tall
+local function seg(
+	b: Builder,
+	jointName: string,
+	role: string,
+	from: Vector3,
+	to: Vector3,
+	w: number,
+	h: number
+)
+	local span = to - from
+	local up = if math.abs(span.Unit.Y) > 0.95 then Vector3.new(0, 0, -1) else Vector3.new(0, 1, 0)
+	part(
+		b,
+		jointName,
+		role,
+		"block",
+		Vector3.new(w, h, span.Magnitude),
+		CFrame.lookAt((from + to) / 2, to, up)
+	)
+end
+
+-- A row of triangles, each { a, b, c, joint, role }
+local function tris(b: Builder, points: { [string]: Vector3 }, list: { { string } }, thick: number?)
+	for _, t in list do
+		tri(b, points, t[4], t[5], { t[1], t[2], t[3] }, thick)
+	end
+end
+
+-- Stingray, unit disc width (span), its middle where the model's is (the disc from
+-- 0.8 ahead of it to 0.16 behind, the tail to 0.8): a faceted dome over a heart-shaped
+-- disc whose margin is in three stations a side (each two bones, inner and outer), a
+-- pale underside, eyes on the dome, blue spots, and a tapering tail with a blue stripe
+-- and its barb
 local function stingrayPlan(): Plan
 	local b = newBuilder()
 	joint(b, "Body", nil, V(0, 0, 0))
-	for _, st in { { name = "F", z = -0.26 }, { name = "M", z = 0.02 }, { name = "B", z = 0.27 } } do
+	for _, st in { { name = "F", z = -0.58 }, { name = "M", z = -0.3 }, { name = "B", z = -0.04 } } do
 		local name, z = st.name, st.z
-		joint(b, `Fin\{S}{name}1`, "Body", V(-0.16, 0, z))
-		joint(b, `Fin\{S}{name}2`, `Fin\{S}{name}1`, V(-0.33, 0, z))
+		joint(b, `Fin\{S}{name}1`, "Body", V(-0.17, 0.02, z))
+		joint(b, `Fin\{S}{name}2`, `Fin\{S}{name}1`, V(-0.33, 0.01, z))
 	end
-	joint(b, "Tail1", "Body", V(0, 0.005, 0.46))
-	joint(b, "Tail2", "Tail1", V(0, 0.005, 0.74))
-	joint(b, "Tail3", "Tail2", V(0, 0.005, 1.0))
+	joint(b, "Tail1", "Body", V(0, 0.03, 0.15))
+	joint(b, "Tail2", "Tail1", V(0, 0.03, 0.42))
+	joint(b, "Tail3", "Tail2", V(0, 0.03, 0.62))
 	local p: { [string]: Vector3 } = {
-		F0 = V(0, 0.008, -0.53),
-		C = V(0, 0.085, -0.02),
-		T0 = V(0, 0.03, 0.46),
-		I1 = V(-0.15, 0.035, -0.26),
-		I2 = V(-0.17, 0.04, 0.02),
-		I3 = V(-0.14, 0.035, 0.27),
-		P1 = V(-0.2, 0, -0.46),
-		P2 = V(-0.41, 0, -0.27),
-		P3 = V(-0.5, 0, 0.02),
-		P4 = V(-0.42, 0, 0.27),
-		P5 = V(-0.2, 0, 0.44),
+		N = V(0, 0.01, -0.8),
+		C = V(0, 0.1, -0.32),
+		T0 = V(0, 0.035, 0.15),
+		I1 = V(-0.14, 0.055, -0.58),
+		I2 = V(-0.19, 0.065, -0.3),
+		I3 = V(-0.15, 0.055, -0.02),
+		P1 = V(-0.2, 0.004, -0.74),
+		P2 = V(-0.39, 0, -0.57),
+		P3 = V(-0.5, 0, -0.32),
+		P4 = V(-0.46, 0, -0.05),
+		P5 = V(-0.24, 0.01, 0.13),
 	}
-	tri(b, p, "Body", "top", { "F0", "I1{S}", "C" })
-	tri(b, p, "Body", "top2", { "I1{S}", "I2{S}", "C" })
-	tri(b, p, "Body", "top", { "I2{S}", "I3{S}", "C" })
-	tri(b, p, "Body", "top2", { "I3{S}", "T0", "C" })
-	tri(b, p, "Fin{S}F1", "top2", { "F0", "P1{S}", "I1{S}" })
-	tri(b, p, "Fin{S}F1", "top", { "P1{S}", "P2{S}", "I1{S}" })
-	tri(b, p, "Fin{S}M1", "top2", { "I1{S}", "P2{S}", "I2{S}" })
-	tri(b, p, "Fin{S}M1", "top", { "P2{S}", "P3{S}", "I2{S}" })
-	tri(b, p, "Fin{S}M1", "top2", { "I2{S}", "P3{S}", "P4{S}" })
-	tri(b, p, "Fin{S}B1", "top", { "I2{S}", "P4{S}", "I3{S}" })
-	tri(b, p, "Fin{S}B1", "top2", { "I3{S}", "P4{S}", "P5{S}" })
-	tri(b, p, "Fin{S}B1", "top", { "I3{S}", "P5{S}", "T0" })
-	-- The underside (a pale slab under the middle), eyes, spots, the tail and barb
-	part(b, "Body", "belly", "block", V(0.36, 0.02, 0.86), CFrame.new(0, -0.012, -0.02))
-	part(b, "Body", "eye", "ball", V(0.04, 0.035, 0.04), CFrame.new(-0.075, 0.05, -0.3))
-	part(b, "Body", "eye", "ball", V(0.04, 0.035, 0.04), CFrame.new(0.075, 0.05, -0.3))
-	for _, spot in
-		{ V(-0.27, 0.02, -0.2), V(-0.36, 0.012, 0.06), V(-0.24, 0.026, 0.24), V(-0.3, 0.012, -0.05) }
-	do
-		local station = if spot.Z < -0.12 then "F" elseif spot.Z < 0.15 then "M" else "B"
+	local list = {
+		{ "N", "I1{S}", "C", "Body", "top" },
+		{ "I1{S}", "I2{S}", "C", "Body", "top2" },
+		{ "I2{S}", "I3{S}", "C", "Body", "top" },
+		{ "I3{S}", "T0", "C", "Body", "top2" },
+		{ "N", "P1{S}", "I1{S}", "Fin{S}F2", "top2" },
+		{ "I1{S}", "P1{S}", "P2{S}", "Fin{S}F2", "top" },
+		{ "I1{S}", "P2{S}", "I2{S}", "Fin{S}F1", "top2" },
+		{ "I2{S}", "P2{S}", "P3{S}", "Fin{S}M2", "top" },
+		{ "I2{S}", "P3{S}", "P4{S}", "Fin{S}M2", "top2" },
+		{ "I2{S}", "P4{S}", "I3{S}", "Fin{S}M1", "top" },
+		{ "I3{S}", "P4{S}", "P5{S}", "Fin{S}B2", "top2" },
+		{ "I3{S}", "P5{S}", "T0", "Fin{S}B1", "top" },
+	}
+	tris(b, p, list, 0.014)
+	-- The pale underside, a little inside the outline
+	part(b, "Body", "belly", "block", V(0.5, 0.025, 0.62), CFrame.new(0, -0.012, -0.31))
+	part(b, "Body", "belly", "block", V(0.22, 0.02, 0.16), CFrame.new(0, -0.01, -0.67))
+	-- Eyes up on the dome, behind the snout
+	for _, x in { -0.065, 0.065 } do
 		part(
 			b,
-			`Fin\{S}{station}1`,
-			"spot",
-			"cyl",
-			V(0.01, 0.06, 0.06),
-			CFrame.new(spot) * CFrame.Angles(0, 0, math.pi / 2)
+			"Body",
+			"eye",
+			"ball",
+			V(0.04, 0.03, 0.045),
+			CFrame.new(x, surfaceY(p, list, x, -0.5) + 0.012, -0.5)
 		)
 	end
-	part(b, "Tail1", "top", "block", V(0.06, 0.04, 0.3), CFrame.new(0, 0.01, 0.6))
-	part(b, "Tail2", "top", "block", V(0.04, 0.03, 0.28), CFrame.new(0, 0.01, 0.87))
-	part(b, "Tail2", "dark", "wedge", V(0.012, 0.04, 0.12), CFrame.new(0, 0.04, 0.84))
-	part(b, "Tail3", "spot", "block", V(0.022, 0.018, 0.26), CFrame.new(0, 0.01, 1.12))
-	return { joints = b.joints, pieces = b.pieces, measure = "X", floor = 0.02 }
+	-- Blue spots, flat on the skin wherever they fall (each on the panel under it)
+	local spots = {
+		{ -0.06, -0.38, "Body" },
+		{ -0.1, -0.16, "Body" },
+		{ -0.05, -0.02, "Body" },
+		{ -0.24, -0.62, "Fin{S}F2" },
+		{ -0.21, -0.47, "Fin{S}F1" },
+		{ -0.34, -0.5, "Fin{S}F2" },
+		{ -0.3, -0.33, "Fin{S}M2" },
+		{ -0.42, -0.25, "Fin{S}M2" },
+		{ -0.28, -0.14, "Fin{S}M1" },
+		{ -0.36, -0.06, "Fin{S}M2" },
+		{ -0.26, 0.05, "Fin{S}B2" },
+	}
+	for i, s in spots do
+		local x, z, j = s[1], s[2], s[3]
+		local d = if i % 3 == 0 then 0.055 else 0.04
+		local y = surfaceY(p, list, x, z) + 0.009
+		-- (a panel's spot is mirrored with its joint; one on the body is set on each side)
+		for _, at in if j == "Body" then { x, -x } else { x } do
+			part(b, j, "spot", "cyl", V(0.006, d, d), CFrame.new(at, y, z) * CFrame.Angles(0, 0, math.pi / 2))
+		end
+	end
+	-- The tail: tapering, a blue stripe along its top, the barb
+	part(b, "Tail1", "top", "block", V(0.075, 0.045, 0.28), CFrame.new(0, 0.03, 0.29))
+	part(b, "Tail1", "spot", "block", V(0.022, 0.012, 0.26), CFrame.new(0, 0.056, 0.29))
+	part(b, "Tail2", "top", "block", V(0.045, 0.032, 0.21), CFrame.new(0, 0.03, 0.52))
+	part(b, "Tail2", "spot", "block", V(0.016, 0.01, 0.2), CFrame.new(0, 0.048, 0.52))
+	part(b, "Tail2", "dark", "wedge", V(0.012, 0.035, 0.1), CFrame.new(0, 0.06, 0.5))
+	part(b, "Tail3", "top", "block", V(0.024, 0.02, 0.19), CFrame.new(0, 0.03, 0.715))
+	return { joints = b.joints, pieces = b.pieces, measure = "X", floor = 0.03 }
 end
 
--- Turtle, unit length (beak to tail): a faceted dome of scutes over a flat plastron, a
--- beaked head on a short neck, long paddle front flippers in three panels, short hind
--- flippers
+-- Turtle, unit length beak to tail, its middle where the model's is: a domed shell of
+-- scute plates (the central row and the side rows in two greens, a darker rim) over a
+-- flat pale plastron, a short neck and a beaked head, long tapering paddle front
+-- flippers in three panels swept a little back, short hind paddles, a stub of a tail
 local function turtlePlan(): Plan
 	local b = newBuilder()
 	joint(b, "Shell", nil, V(0, 0, 0))
-	joint(b, "Neck", "Shell", V(0, -0.02, -0.31))
-	joint(b, "Head", "Neck", V(0, -0.01, -0.39))
-	joint(b, "Fin{S}1", "Shell", V(-0.24, -0.04, -0.2))
-	joint(b, "Fin{S}2", "Fin{S}1", V(-0.36, -0.05, -0.19))
-	joint(b, "Fin{S}3", "Fin{S}2", V(-0.47, -0.06, -0.17))
-	joint(b, "Hind{S}1", "Shell", V(-0.16, -0.06, 0.31))
-	joint(b, "Hind{S}2", "Hind{S}1", V(-0.22, -0.07, 0.39))
-	joint(b, "Tail", "Shell", V(0, -0.05, 0.36))
+	joint(b, "Neck", "Shell", V(0, 0.0, -0.31))
+	joint(b, "Head", "Neck", V(0, 0.0, -0.39))
+	joint(b, "Fin{S}1", "Shell", V(-0.23, -0.02, -0.2))
+	joint(b, "Fin{S}2", "Fin{S}1", V(-0.37, -0.03, -0.21))
+	joint(b, "Fin{S}3", "Fin{S}2", V(-0.5, -0.04, -0.2))
+	joint(b, "Hind{S}1", "Shell", V(-0.15, -0.04, 0.3))
+	joint(b, "Hind{S}2", "Hind{S}1", V(-0.22, -0.05, 0.38))
+	joint(b, "Tail", "Shell", V(0, -0.03, 0.36))
 	local p: { [string]: Vector3 } = {
-		A = V(0, 0.165, 0.0),
-		M0 = V(0, 0.125, -0.21),
-		M1 = V(-0.18, 0.11, -0.08),
-		M2 = V(-0.17, 0.1, 0.16),
-		M3 = V(0, 0.1, 0.27),
-		E0 = V(0, 0.02, -0.33),
-		E1 = V(-0.25, 0.01, -0.2),
-		E2 = V(-0.31, 0, 0.03),
-		E3 = V(-0.25, 0, 0.25),
-		E4 = V(0, 0, 0.37),
-		-- (the flippers' tip panels)
-		F3a = V(-0.465, -0.058, -0.235),
-		F3b = V(-0.465, -0.058, -0.135),
-		F3c = V(-0.61, -0.07, -0.1),
-		H2a = V(-0.2, -0.068, 0.37),
-		H2b = V(-0.25, -0.068, 0.355),
-		H2c = V(-0.29, -0.075, 0.46),
+		A = V(0, 0.16, 0.02),
+		M0 = V(0, 0.13, -0.2),
+		M1 = V(-0.16, 0.12, -0.1),
+		M2 = V(-0.17, 0.11, 0.13),
+		M3 = V(0, 0.115, 0.25),
+		E0 = V(0, 0.03, -0.33),
+		E1 = V(-0.23, 0.03, -0.22),
+		E2 = V(-0.3, 0.02, 0.0),
+		E3 = V(-0.25, 0.01, 0.23),
+		E4 = V(0, 0.0, 0.37),
+		-- the front flipper's leading and trailing edges, and its tip
+		L0 = V(-0.22, -0.02, -0.25),
+		L1 = V(-0.37, -0.03, -0.265),
+		L2 = V(-0.5, -0.04, -0.24),
+		T = V(-0.63, -0.05, -0.12),
+		R0 = V(-0.22, -0.02, -0.14),
+		R1 = V(-0.37, -0.03, -0.165),
+		R2 = V(-0.5, -0.04, -0.165),
+		-- the hind paddle
+		H0 = V(-0.12, -0.04, 0.28),
+		H1 = V(-0.2, -0.045, 0.27),
+		H2 = V(-0.25, -0.05, 0.37),
+		H3 = V(-0.27, -0.055, 0.48),
+		H4 = V(-0.14, -0.045, 0.37),
 	}
-	tri(b, p, "Shell", "scute", { "A", "M0", "M1{S}" })
-	tri(b, p, "Shell", "scute2", { "A", "M1{S}", "M2{S}" })
-	tri(b, p, "Shell", "scute", { "A", "M2{S}", "M3" })
-	tri(b, p, "Shell", "rim", { "M0", "E0", "E1{S}" })
-	tri(b, p, "Shell", "scute2", { "M0", "E1{S}", "M1{S}" })
-	tri(b, p, "Shell", "rim", { "M1{S}", "E1{S}", "E2{S}" })
-	tri(b, p, "Shell", "scute", { "M1{S}", "E2{S}", "M2{S}" })
-	tri(b, p, "Shell", "rim", { "M2{S}", "E2{S}", "E3{S}" })
-	tri(b, p, "Shell", "scute2", { "M2{S}", "E3{S}", "M3" })
-	tri(b, p, "Shell", "rim", { "M3", "E3{S}", "E4" })
-	-- The plastron under it, the neck, a beaked head with eyes, flippers and tail
-	part(b, "Shell", "belly", "block", V(0.5, 0.06, 0.6), CFrame.new(0, -0.025, 0.02))
-	part(b, "Neck", "skin", "block", V(0.11, 0.08, 0.12), CFrame.new(0, -0.02, -0.34))
+	tris(b, p, {
+		{ "A", "M0", "M1{S}", "Shell", "scute" },
+		{ "A", "M1{S}", "M2{S}", "Shell", "scute2" },
+		{ "A", "M2{S}", "M3", "Shell", "scute" },
+		{ "M0", "E0", "E1{S}", "Shell", "rim" },
+		{ "M0", "E1{S}", "M1{S}", "Shell", "scute2" },
+		{ "M1{S}", "E1{S}", "E2{S}", "Shell", "rim" },
+		{ "M1{S}", "E2{S}", "M2{S}", "Shell", "scute" },
+		{ "M2{S}", "E2{S}", "E3{S}", "Shell", "rim" },
+		{ "M2{S}", "E3{S}", "M3", "Shell", "scute2" },
+		{ "M3", "E3{S}", "E4", "Shell", "rim" },
+	})
+	tris(b, p, {
+		{ "L0", "L1", "R0", "Fin{S}1", "skin" },
+		{ "L1", "R1", "R0", "Fin{S}1", "skin2" },
+		{ "L1", "L2", "R1", "Fin{S}2", "skin2" },
+		{ "L2", "R2", "R1", "Fin{S}2", "skin" },
+		{ "L2", "T", "R2", "Fin{S}3", "skin2" },
+		{ "H0", "H1", "H4", "Hind{S}1", "skin" },
+		{ "H1", "H2", "H4", "Hind{S}1", "skin2" },
+		{ "H2", "H3", "H4", "Hind{S}2", "skin" },
+	}, 0.022)
+	-- The plastron under it, the neck, a beaked head with eyes, the tail
+	part(b, "Shell", "belly", "block", V(0.44, 0.05, 0.54), CFrame.new(0, -0.02, 0.02))
 	part(
 		b,
-		"Head",
+		"Neck",
 		"skin",
 		"block",
-		V(0.12, 0.09, 0.11),
-		CFrame.new(0, 0.0, -0.43) * CFrame.Angles(0.12, 0, 0)
+		V(0.1, 0.075, 0.13),
+		CFrame.new(0, -0.005, -0.35) * CFrame.Angles(0.1, 0, 0)
 	)
+	part(b, "Head", "skin", "block", V(0.12, 0.08, 0.11), CFrame.new(0, 0.005, -0.435))
 	part(
 		b,
 		"Head",
 		"skin2",
 		"wedge",
-		V(0.1, 0.05, 0.06),
-		CFrame.new(0, 0.02, -0.505) * CFrame.Angles(0.15, 0, 0)
+		V(0.12, 0.035, 0.07),
+		CFrame.new(0, 0.062, -0.45) * CFrame.Angles(0, math.pi, 0)
 	)
 	part(
 		b,
 		"Head",
 		"beak",
 		"wedge",
-		V(0.075, 0.04, 0.04),
-		CFrame.new(0, -0.025, -0.5) * CFrame.Angles(math.pi, 0, 0)
+		V(0.08, 0.06, 0.05),
+		CFrame.new(0, -0.012, -0.513) * CFrame.Angles(0, math.pi, 0)
 	)
-	part(b, "Head", "eye", "ball", V(0.025, 0.025, 0.025), CFrame.new(-0.058, 0.012, -0.45))
-	part(b, "Head", "eye", "ball", V(0.025, 0.025, 0.025), CFrame.new(0.058, 0.012, -0.45))
-	-- (a flipper's panels lie along it, out and a little back from the shoulder)
-	part(
-		b,
-		"Fin{S}1",
-		"skin",
-		"block",
-		V(0.13, 0.025, 0.13),
-		CFrame.new(-0.3, -0.045, -0.195) * CFrame.Angles(0, -0.08, 0)
-	)
-	part(
-		b,
-		"Fin{S}2",
-		"skin2",
-		"block",
-		V(0.12, 0.022, 0.11),
-		CFrame.new(-0.415, -0.055, -0.18) * CFrame.Angles(0, -0.15, 0)
-	)
-	tri(b, p, "Fin{S}3", "skin", { "F3a", "F3b", "F3c" })
-	part(
-		b,
-		"Hind{S}1",
-		"skin",
-		"block",
-		V(0.08, 0.02, 0.09),
-		CFrame.new(-0.19, -0.065, 0.35) * CFrame.Angles(0, 0.6, 0)
-	)
-	tri(b, p, "Hind{S}2", "skin2", { "H2a", "H2b", "H2c" })
+	part(b, "Head", "eye", "ball", V(0.026, 0.026, 0.026), CFrame.new(-0.058, 0.02, -0.46))
+	part(b, "Head", "eye", "ball", V(0.026, 0.026, 0.026), CFrame.new(0.058, 0.02, -0.46))
 	part(
 		b,
 		"Tail",
 		"skin",
 		"wedge",
 		V(0.04, 0.03, 0.08),
-		CFrame.new(0, -0.05, 0.4) * CFrame.Angles(0, math.pi, 0)
+		CFrame.new(0, -0.03, 0.4) * CFrame.Angles(0, math.pi, 0)
 	)
 	return { joints = b.joints, pieces = b.pieces, measure = "Z", floor = 0.07 }
 end
@@ -786,66 +873,99 @@ local function whalePlan(): Plan
 	return { joints = b.joints, pieces = b.pieces, measure = "Z", floor = 0.1 }
 end
 
--- Crab, unit width across the legs: a ridged shell on a slab, three legs a side, two
--- claws (arm, palm and a dark-tipped finger), eyes on stalks
+-- The crab's shell (unit width across the legs, as the model): an apex over a rim of
+-- five points a side; what it carries sits on these facets (AmbientRigs.extras)
+local CRAB_SHELL: { [string]: Vector3 } = {
+	A = V(0, 0.27, 0.08),
+	E0 = V(0, 0.1, -0.16),
+	E1 = V(-0.25, 0.08, -0.12),
+	E2 = V(-0.37, 0.06, 0.05),
+	E3 = V(-0.29, 0.05, 0.26),
+	E4 = V(0, 0.07, 0.36),
+}
+local CRAB_FACETS = {
+	{ "A", "E0", "E1{S}", "Body", "top" },
+	{ "A", "E1{S}", "E2{S}", "Body", "top2" },
+	{ "A", "E2{S}", "E3{S}", "Body", "top" },
+	{ "A", "E3{S}", "E4", "Body", "top2" },
+}
+
+-- Crab, unit width across the legs, its middle where the model's is (feet 0.27 below
+-- it): a faceted shell domed over a pale underside, eye stalks, three jointed legs a
+-- side and two big claws (arm, palm and dark-tipped fingers)
 local function crabPlan(): Plan
 	local b = newBuilder()
 	joint(b, "Body", nil, V(0, 0, 0))
-	joint(b, "Claw{S}1", "Body", V(-0.2, 0.0, -0.17))
-	joint(b, "Claw{S}2", "Claw{S}1", V(-0.27, 0.02, -0.32))
-	joint(b, "Leg{S}1", "Body", V(-0.26, -0.01, -0.07))
-	joint(b, "Leg{S}2", "Body", V(-0.28, -0.01, 0.04))
-	joint(b, "Leg{S}3", "Body", V(-0.25, -0.01, 0.15))
-	part(b, "Body", "top", "block", V(0.58, 0.08, 0.42), CFrame.new(0, 0.07, 0.02))
-	part(b, "Body", "top2", "wedge", V(0.56, 0.08, 0.21), CFrame.new(0, 0.15, -0.085))
+	joint(b, "Claw{S}1", "Body", V(-0.19, 0.04, -0.1))
+	joint(b, "Claw{S}2", "Claw{S}1", V(-0.27, 0.03, -0.25))
+	joint(b, "Eye{S}", "Body", V(-0.08, 0.1, -0.14))
+	local legs = {
+		{ z = -0.02, knee = -0.07, foot = -0.13 },
+		{ z = 0.1, knee = 0.11, foot = 0.13 },
+		{ z = 0.22, knee = 0.29, foot = 0.37 },
+	}
+	for k, leg in legs do
+		joint(b, `Leg\{S}{k}`, "Body", V(-0.3, 0.04, leg.z))
+	end
+	tris(b, CRAB_SHELL, CRAB_FACETS, 0.03)
+	-- The underside, the mouth, a little spike at each front corner
+	part(b, "Body", "belly", "block", V(0.52, 0.1, 0.4), CFrame.new(0, 0.02, 0.1))
 	part(
 		b,
 		"Body",
-		"top2",
+		"dark",
 		"wedge",
-		V(0.56, 0.08, 0.21),
-		CFrame.new(0, 0.15, 0.125) * CFrame.Angles(0, math.pi, 0)
+		V(0.12, 0.06, 0.05),
+		CFrame.new(0, 0.05, -0.15) * CFrame.Angles(0, math.pi, 0)
 	)
-	part(b, "Body", "belly", "block", V(0.46, 0.04, 0.34), CFrame.new(0, 0.015, 0.03))
-	part(b, "Body", "eye", "ball", V(0.045, 0.045, 0.045), CFrame.new(-0.06, 0.2, -0.2))
-	part(b, "Body", "eye", "ball", V(0.045, 0.045, 0.045), CFrame.new(0.06, 0.2, -0.2))
-	for k, leg in { { -0.07, -0.35 }, { 0.04, 0.05 }, { 0.15, 0.45 } } do
-		local z, yaw = leg[1], leg[2]
-		local hip = V(-0.26 - (if k == 2 then 0.02 else 0), -0.01, z)
+	for _, side in { -1, 1 } do
 		part(
 			b,
-			`Leg\{S}{k}`,
-			"top",
-			"block",
-			V(0.28, 0.035, 0.045),
-			CFrame.new(hip) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(0, 0, 0.75) * CFrame.new(-0.12, 0, 0)
+			"Body",
+			"top2",
+			"wedge",
+			V(0.03, 0.04, 0.08),
+			CFrame.new(0.36 * side, 0.07, -0.03) * CFrame.Angles(0, math.rad(-60 * side), 0)
 		)
 	end
-	part(
-		b,
-		"Claw{S}1",
-		"top",
-		"block",
-		V(0.07, 0.06, 0.17),
-		CFrame.new(-0.235, 0.01, -0.245) * CFrame.Angles(0, 0.45, 0)
-	)
+	-- Eye stalks
+	part(b, "Eye{S}", "top", "block", V(0.026, 0.08, 0.026), CFrame.new(-0.08, 0.14, -0.15))
+	part(b, "Eye{S}", "eye", "ball", V(0.045, 0.045, 0.045), CFrame.new(-0.08, 0.185, -0.155))
+	-- Claws: an arm out and forward, a big palm, two dark-tipped fingers
+	seg(b, "Claw{S}1", "top", V(-0.19, 0.04, -0.1), V(-0.27, 0.03, -0.25), 0.075, 0.06)
 	part(
 		b,
 		"Claw{S}2",
 		"claw",
 		"block",
-		V(0.11, 0.09, 0.13),
-		CFrame.new(-0.29, 0.03, -0.37) * CFrame.Angles(0, 0.25, 0)
+		V(0.12, 0.1, 0.17),
+		CFrame.new(-0.28, 0.04, -0.33) * CFrame.Angles(0, -0.2, 0)
 	)
 	part(
 		b,
 		"Claw{S}2",
 		"dark",
 		"wedge",
-		V(0.05, 0.05, 0.09),
-		CFrame.new(-0.31, 0.03, -0.47) * CFrame.Angles(0, 0.25, 0)
+		V(0.06, 0.05, 0.1),
+		CFrame.new(-0.3, 0.02, -0.45) * CFrame.Angles(math.pi, -0.2, 0)
 	)
-	return { joints = b.joints, pieces = b.pieces, measure = "X", floor = 0.15 }
+	part(
+		b,
+		"Claw{S}2",
+		"dark",
+		"wedge",
+		V(0.045, 0.04, 0.08),
+		CFrame.new(-0.25, 0.075, -0.44) * CFrame.Angles(0, -0.2, 0)
+	)
+	-- Legs: up and out to the knee, down to the foot
+	for k, leg in legs do
+		local hip = V(-0.3, 0.04, leg.z)
+		local knee = V(-0.44, 0.1, leg.knee)
+		local foot = V(-0.53, -0.27, leg.foot)
+		seg(b, `Leg\{S}{k}`, "top", hip, knee, 0.05, 0.045)
+		seg(b, `Leg\{S}{k}`, "top2", knee, foot, 0.04, 0.035)
+	end
+	return { joints = b.joints, pieces = b.pieces, measure = "X", floor = 0.27 }
 end
 
 local plans: { [string]: Plan } = {}
@@ -871,6 +991,138 @@ function AmbientRigs.plan(rig: string): Plan
 	return made
 end
 
+-- What a crab carries on its shell (Config/Forage `extras`), unit width like the crab:
+-- built onto its "Body" (an imported crab's mesh, or the stand-in's shell; a stand-in
+-- also takes the pieces on its claws). "sponge": a decorator crab's garden of tube
+-- sponges, a ball sponge, a fan and weed; "barnacles": a stone crab's; "fuzz": a yeti
+-- crab's teal bristles (on the shell's front and, part-built, its claws); "spikes": a
+-- king crab's
+function AmbientRigs.extras(name: string): { Piece }
+	local b = newBuilder()
+	local function on(x: number, z: number): number
+		return surfaceY(CRAB_SHELL, CRAB_FACETS, x, z)
+	end
+	if name == "sponge" then
+		for _, s in { { -0.1, 0.12, 0.13, 0.06 }, { -0.04, 0.17, 0.09, 0.05 }, { 0.14, 0.22, 0.1, 0.05 } } do
+			local x, z, h, d = s[1], s[2], s[3], s[4]
+			part(
+				b,
+				"Body",
+				"extra",
+				"cyl",
+				V(h, d, d),
+				CFrame.new(x, on(x, z) + h * 0.4, z) * CFrame.Angles(0, 0, math.pi / 2)
+			)
+		end
+		part(b, "Body", "extra2", "ball", V(0.09, 0.09, 0.09), CFrame.new(0.1, on(0.1, 0.06) + 0.025, 0.06))
+		part(
+			b,
+			"Body",
+			"extra3",
+			"wedge",
+			V(0.015, 0.11, 0.08),
+			CFrame.new(-0.2, on(-0.2, 0.05) + 0.04, 0.05) * CFrame.Angles(0, 0.4, 0.25)
+		)
+		part(
+			b,
+			"Body",
+			"extra3",
+			"wedge",
+			V(0.015, 0.09, 0.07),
+			CFrame.new(0.22, on(0.22, 0.14) + 0.03, 0.14) * CFrame.Angles(0, -0.7, -0.3)
+		)
+		part(
+			b,
+			"Body",
+			"extra2",
+			"wedge",
+			V(0.012, 0.1, 0.1),
+			CFrame.new(0.02, on(0.02, 0.27) + 0.04, 0.27) * CFrame.Angles(0, 1.2, 0)
+		)
+	elseif name == "barnacles" then
+		for _, s in { { -0.12, 0.0 }, { 0.08, 0.1 }, { -0.04, 0.24 }, { 0.2, 0.2 }, { -0.22, 0.14 } } do
+			local x, z = s[1], s[2]
+			part(
+				b,
+				"Body",
+				"barnacle",
+				"cyl",
+				V(0.045, 0.06, 0.06),
+				CFrame.new(x, on(x, z) + 0.015, z) * CFrame.Angles(0, 0, math.pi / 2)
+			)
+			part(
+				b,
+				"Body",
+				"dark",
+				"cyl",
+				V(0.05, 0.022, 0.022),
+				CFrame.new(x, on(x, z) + 0.02, z) * CFrame.Angles(0, 0, math.pi / 2)
+			)
+		end
+	elseif name == "fuzz" then
+		for _, s in
+			{
+				{ -0.24, -0.11 },
+				{ -0.12, -0.15 },
+				{ 0.12, -0.15 },
+				{ 0.24, -0.11 },
+				{ -0.33, 0.04 },
+				{ 0.33, 0.04 },
+			}
+		do
+			local x, z = s[1], s[2]
+			part(
+				b,
+				"Body",
+				"bristle",
+				"wedge",
+				V(0.06, 0.05, 0.035),
+				CFrame.new(x, on(x, z) + 0.012, z) * CFrame.Angles(0, math.atan2(x, -z), 0)
+			)
+		end
+		part(
+			b,
+			"Claw{S}2",
+			"bristle",
+			"block",
+			V(0.13, 0.03, 0.15),
+			CFrame.new(-0.29, 0.03, -0.33) * CFrame.Angles(0, -0.2, 0)
+		)
+		part(
+			b,
+			"Claw{S}1",
+			"bristle",
+			"block",
+			V(0.08, 0.025, 0.12),
+			CFrame.new(-0.23, 0.04, -0.18) * CFrame.Angles(0, 0.45, 0)
+		)
+	elseif name == "spikes" then
+		for _, s in
+			{
+				{ 0, -0.06 },
+				{ -0.12, 0.02 },
+				{ 0.12, 0.02 },
+				{ -0.2, 0.16 },
+				{ 0.2, 0.16 },
+				{ 0, 0.22 },
+				{ -0.28, -0.04 },
+				{ 0.28, -0.04 },
+			}
+		do
+			local x, z = s[1], s[2]
+			part(
+				b,
+				"Body",
+				"spike",
+				"wedge",
+				V(0.045, 0.09, 0.06),
+				CFrame.new(x, on(x, z) + 0.035, z) * CFrame.Angles(0, math.atan2(x, -z), 0)
+			)
+		end
+	end
+	return b.pieces
+end
+
 -- Where each joint is posed, for a pose (forward kinematics from the rest positions):
 -- the joint's frame in the creature's own space, unit size
 function AmbientRigs.solve(plan: Plan, pose: Pose): { [string]: CFrame }
@@ -887,22 +1139,23 @@ function AmbientRigs.solve(plan: Plan, pose: Pose): { [string]: CFrame }
 	return frames
 end
 
--- Every piece's parts where a pose puts them: { shape, size, cframe, role } in the
--- creature's own space at `size` (the preview draws these; the game builds the same
--- parts once and moves them with Motor6Ds)
-function AmbientRigs.parts(
-	plan: Plan,
-	pose: Pose,
-	size: number
-): { { shape: string, size: Vector3, cframe: CFrame, role: string } }
+-- Every piece's parts where a pose puts them: { shape, size, cframe, role, joint } in
+-- the creature's own space at `size` (the preview draws these; the game builds the same
+-- parts once, at rest, and moves them with Motor6Ds). `pieces` (default the plan's own)
+-- can be other pieces on the same joints: what a crab carries (AmbientRigs.extras).
+export type Built = { shape: string, size: Vector3, cframe: CFrame, role: string, joint: string }
+function AmbientRigs.parts(plan: Plan, pose: Pose, size: number, pieces: { Piece }?): { Built }
 	local frames = AmbientRigs.solve(plan, pose)
 	local rest: { [string]: Vector3 } = {}
 	for _, j in plan.joints do
 		rest[j.name] = j.at
 	end
-	local out = {}
-	for _, piece in plan.pieces do
+	local out: { Built } = {}
+	for _, piece in pieces or plan.pieces do
 		local frame = frames[piece.joint]
+		if frame == nil then
+			continue -- (a piece for a joint this plan hasn't got)
+		end
 		-- (the joint's rest frame, undone, then its posed frame)
 		local local_ = CFrame.new(-rest[piece.joint])
 		if piece.shape == "tri" then
@@ -920,6 +1173,7 @@ function AmbientRigs.parts(
 					size = w.size * size,
 					cframe = CFrame.new(at.Position * size) * at.Rotation,
 					role = piece.role,
+					joint = piece.joint,
 				})
 			end
 		else
@@ -929,6 +1183,7 @@ function AmbientRigs.parts(
 				size = (piece.size :: Vector3) * size,
 				cframe = CFrame.new(at.Position * size) * at.Rotation,
 				role = piece.role,
+				joint = piece.joint,
 			})
 		end
 	end

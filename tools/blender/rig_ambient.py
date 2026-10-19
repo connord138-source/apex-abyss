@@ -22,7 +22,8 @@ names are what src/shared/AmbientRigs.luau poses, by name):
               front flippers), HindL1 > HindL2 and R, Tail
     whale     Root > Body > Spine1 > Spine2 > Spine3 > Flukes (a vertical stroke);
               PecL1 > PecL2 and R (the long pectorals)
-    crab      Root > Body > ClawL1 > ClawL2 and R; LegL1 .. LegL4 and R
+    crab      Root > Body > ClawL1 > ClawL2 and R; LegL1 .. LegL3 and R (the model has
+              three walking legs a side); EyeL, EyeR (the eye stalks)
 
 Weights are set from the body's own shape (how far out along a wing, flipper or leg a
 vertex sits, with a soft hand-over at each joint), then smoothed along the surface (the
@@ -501,6 +502,24 @@ def rig_crab() -> Rig:
             rim = smoothstep((outside + 0.06) / 0.12)
             rig.add(name, np.where(p["members"], rim, 0.0))
         log(tag, "claw", bool(claw), "legs", len(ordered), [p["count"] for p in ordered])
+        # The eye stalk: the most forward point high up near the middle on this side
+        # (the stalks stand just proud of the shell's front edge); everything within a
+        # short reach of its tip, ahead of the stalk's root, swivels with it
+        W = EXTENT[0]
+        limb = np.zeros(len(co), bool)
+        for p in pieces:
+            limb |= p["members"]
+        near_mid = (side == sgn) & (ax > 0.03 * W) & (ax < 0.14 * W) & (z > lo[2] + 0.72 * H) & (y < yc) & ~limb
+        if near_mid.any():
+            pts = co[near_mid]
+            tip = pts[np.argmin(pts[:, 1])]
+            root = tip + np.array([0.0, 0.045 * W, -0.05 * W])
+            reach = np.linalg.norm(co - tip, axis=1)
+            stalk = (side == sgn) & (reach < 0.06 * W) & (y < root[1] + 0.01 * W) & (z > root[2] - 0.01 * W) & ~limb
+            if stalk.sum() >= 8:
+                rig.bone(f"Eye{tag}", "Body", root, tip, sgn)
+                rig.add(f"Eye{tag}", np.where(stalk, smoothstep((root[1] - y) / (0.03 * W) + 0.3), 0.0))
+                log(tag, "eye stalk", tip.round(3), "vertices", int(stalk.sum()))
     taken = sum(rig.weights[i] for i, b_ in enumerate(rig.bones) if b_["name"] != "Body")
     rig.add("Body", np.clip(1 - taken, 0, 1))
     return rig

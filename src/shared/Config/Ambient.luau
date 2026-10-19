@@ -15,12 +15,13 @@
 --   ray     blue-spotted stingrays gliding low over the sand, now and then settling
 --           into it with a puff of sand and lifting off again
 --   manta   reef mantas flying slow loops over the reef and the wrecks
---   crab    crabs scuttling sideways on the floor, mostly on and beside rocks and wrecks
 --   turtle  green sea turtles rowing big slow loops over the shelf
 --   cloud   clouds of tiny reef fish hovering round coral heads (found near the camera)
 --   giant   a humpback or a giant manta passing far off through the Open Blue's haze
 --
--- The rays, mantas, crabs, turtles and giants are their imported models
+-- Crabs are food now (Config/Forage, drawn by ForageController with the same rig).
+--
+-- The rays, mantas, turtles and giants are their imported models
 -- (ReplicatedStorage.AmbientModels.<model>: tools/blender/rig_ambient.py, docs/ASSETS.md)
 -- or, until those are in, faceted part-built stand-ins; both are posed by
 -- Shared/AmbientRigs (`rig`), whose stand-ins take their colours from `look` (by role;
@@ -30,8 +31,8 @@ export type Kind = {
 	perCell: number, -- creatures a square, on average
 	range: number, -- studs from the camera it's drawn within
 	depth: { number }?, -- over the local floor (`floor` kinds sit on it)
-	size: { number }, -- studs: a jelly's bell, a ray's or manta's span, a crab's width
-	-- across its legs, a turtle's length beak to tail
+	size: { number }, -- studs: a jelly's bell, a ray's or manta's span, a turtle's
+	-- length beak to tail
 	speed: { number }?, -- studs/s
 	colors: { Color3 },
 	max: number, -- at most this many near the camera
@@ -83,8 +84,8 @@ local kinds: { [string]: Kind } = {
 		animate = 90,
 		tint = "top",
 		look = {
-			top = Color3.fromRGB(64, 104, 92),
-			top2 = Color3.fromRGB(56, 94, 84),
+			top = Color3.fromRGB(70, 100, 74),
+			top2 = Color3.fromRGB(62, 90, 66),
 			belly = Color3.fromRGB(118, 134, 148),
 			spot = Color3.fromRGB(40, 132, 255),
 			eye = Color3.fromRGB(18, 22, 28),
@@ -114,33 +115,6 @@ local kinds: { [string]: Kind } = {
 			eye = Color3.fromRGB(8, 10, 14),
 		},
 	},
-	crab = {
-		biomes = { "ShipwreckGraveyard", "CoralReef", "SunkenRuins", "KelpShallows" },
-		perCell = 2.5,
-		range = 100,
-		size = { 1.4, 3.2 },
-		speed = { 1.5, 3 },
-		-- (the stand-in's shell; an imported crab is its own scarlet, tinted toward these)
-		colors = {
-			Color3.fromRGB(196, 52, 40),
-			Color3.fromRGB(206, 92, 34),
-			Color3.fromRGB(128, 66, 48),
-			Color3.fromRGB(176, 40, 44),
-		},
-		max = 24,
-		rig = "crab",
-		model = "Crab",
-		animate = 40,
-		tint = "top",
-		look = {
-			top = Color3.fromRGB(196, 52, 40),
-			top2 = Color3.fromRGB(168, 40, 32),
-			claw = Color3.fromRGB(204, 58, 44),
-			belly = Color3.fromRGB(108, 110, 118),
-			dark = Color3.fromRGB(30, 30, 34),
-			eye = Color3.fromRGB(12, 12, 14),
-		},
-	},
 	turtle = {
 		biomes = { "KelpShallows", "CoralReef", "ShipwreckGraveyard" },
 		perCell = 0.22,
@@ -166,7 +140,7 @@ local kinds: { [string]: Kind } = {
 			belly = Color3.fromRGB(104, 112, 82),
 			skin = Color3.fromRGB(86, 100, 70),
 			skin2 = Color3.fromRGB(72, 86, 60),
-			beak = Color3.fromRGB(58, 62, 50),
+			beak = Color3.fromRGB(96, 102, 78),
 			eye = Color3.fromRGB(14, 16, 18),
 		},
 	},
