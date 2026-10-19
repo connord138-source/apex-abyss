@@ -1,0 +1,21 @@
+{
+ "jobs": [
+  {
+   "name": "PreySheetC",
+   "group": "prey_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/prey_concepts/RefPreyC.jpg",
+   "prompt": "Using the attached sheets only as a STYLE reference (chunky stylized low-poly 3D game models, visible flat facets like the bottom-left sheet, bold clean colors, small simple eyes with a dark pupil and a white glint, never googly or cartoon eyes; a touch more realistic than a toy), paint eight new prey fish, none of the reference fish, laid out like the top sheet: two rows of four small fish side by side with wide empty teal space between and around them, on one plain flat soft teal background, each whole in a three-quarter side view, head to the right. Top row, left to right: an opaleye, a chunky oval olive-green kelp fish with one or two small white spots on its back, pale blue-green eyes; a kelp bass, mottled olive-brown with pale olive blotches, a big wide mouth and a spiny dorsal fin; a blue tang, a flat royal-blue oval surgeonfish, a black palette-shaped marking along its side, a yellow tail; a lingcod, long and heavy, mottled grey-green, a huge mouth with small white teeth. Bottom row, left to right: a rattail grenadier, big blunt head and big eyes, the body tapering to a long thin rat-like tail, dark slate with faint ember-orange fin edges; a viperfish, slender black-navy, long glassy needle fangs, rows of glowing cyan dots along its belly; a hatchetfish, silver-blue, its body as tall as it is long and flat as a coin, a sharp axe-blade keel belly lined with glowing cyan dots, the tail on a thin stalk, big eyes looking upward; a humphead wrasse, big and blue-green with a tall forehead hump, thick blue-green lips and fine dark scribble markings on its face. Every open mouth is dark navy-grey inside, never red. No pink, red, peach, flesh or beige anywhere. The picture has no writing at all: no names, labels, numbers or captions; no ground or shadows."
+  },
+  {
+   "name": "PreySheetC_Hatchetfish",
+   "group": "prey_concepts",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey_concepts/RefPreyC_hatchet.jpg",
+   "note": "swapped into PreySheetC (the sheet's hatchetfish read as a plain oval fish)",
+   "prompt": "Using the attached sheet as the style reference (the same chunky low-poly look with visible flat facets, the same colors, soft light and small simple eyes with a dark pupil and a white glint), paint ONE marine hatchetfish alone in the middle of the same plain flat soft teal background, whole body in a three-quarter side view, head to the right, about the size of one fish on the sheet. A small deep-sea fish shaped like the head of a hatchet: its body much taller than it is long and flat as a coin, a high straight back, a deep sharp keel belly that drops down steeply behind the head like an axe blade, the body narrowing fast to a thin tail stalk with a small forked tail; mirror silver-blue sides with darker blue on the back, big tube eyes looking upward, a small upturned mouth closed, a row of glowing cyan dots along the keel edge of the belly. No pink, red, peach or beige. No text, no other fish, no ground or shadows."
+  }
+ ]
+}

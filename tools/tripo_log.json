@@ -181,6 +181,169 @@
   "task_id": "d408d903-6ea8-40fd-844b-327e2f326070",
   "type": "generate_image"
  },
+ "den_props2/BubbleColumn": {
+  "status": "queued",
+  "task_id": "1ba1fe09-a0a5-4302-9c24-9f7e81addd79",
+  "type": "image_to_model"
+ },
+ "den_props2/CoralLamp": {
+  "status": "queued",
+  "task_id": "c0f5c17f-e042-4d26-b7f2-226c9615ef35",
+  "type": "image_to_model"
+ },
+ "den_props2/DriftwoodTable": {
+  "credits": 30,
+  "files": [
+   "DriftwoodTable.glb",
+   "DriftwoodTable_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "35ad4270-bfc1-4a28-bda1-420d4b381319",
+  "type": "image_to_model"
+ },
+ "den_props2/JellyLamp": {
+  "status": "queued",
+  "task_id": "c8a96eaf-36ef-4591-8b20-214479667c73",
+  "type": "image_to_model"
+ },
+ "den_props2/KelpBed": {
+  "status": "queued",
+  "task_id": "8581f2d3-3342-4ac2-8ee7-013d07efa715",
+  "type": "image_to_model"
+ },
+ "den_props2/PearlPedestal": {
+  "credits": 30,
+  "files": [
+   "PearlPedestal.glb",
+   "PearlPedestal_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "66a47f0d-53d4-43f1-b148-d51b79704b21",
+  "type": "image_to_model"
+ },
+ "den_props2/SeaGlassLantern": {
+  "status": "queued",
+  "task_id": "db9e0356-9a6d-4b5b-bdd6-e022baa008d0",
+  "type": "image_to_model"
+ },
+ "den_props2/ShipwreckBookshelf": {
+  "status": "queued",
+  "task_id": "4a87d152-7ef9-4860-afb4-4524db9890ed",
+  "type": "image_to_model"
+ },
+ "den_props2/SpongeSofa": {
+  "status": "queued",
+  "task_id": "922f3239-2937-4fc4-bfa3-43b2ff45c993",
+  "type": "image_to_model"
+ },
+ "den_props2_sheets/Banner": {
+  "credits": 5,
+  "files": [
+   "Banner.png"
+  ],
+  "status": "success",
+  "task_id": "1dc2a1a8-efa4-488a-97a4-a70c3916ce09",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/BubbleColumn": {
+  "credits": 5,
+  "files": [
+   "BubbleColumn.png"
+  ],
+  "status": "success",
+  "task_id": "52fd37e7-831f-4df4-b460-ca3176f59976",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/ConchGramophone": {
+  "credits": 5,
+  "files": [
+   "ConchGramophone.png"
+  ],
+  "status": "success",
+  "task_id": "b8f9d762-ebea-45f0-ad8f-26bf31673576",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/CoralLamp": {
+  "credits": 5,
+  "files": [
+   "CoralLamp.png"
+  ],
+  "status": "success",
+  "task_id": "c6a3357e-e136-47a8-877b-ad47fa078119",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/DriftwoodTable": {
+  "credits": 5,
+  "files": [
+   "DriftwoodTable.png"
+  ],
+  "status": "success",
+  "task_id": "ec7174bc-d601-4805-967b-c7ba2460cc16",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/JellyLamp": {
+  "credits": 5,
+  "files": [
+   "JellyLamp.png"
+  ],
+  "status": "success",
+  "task_id": "6e20ea6c-c5b4-4de8-9697-2a0a991e9cf0",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/KelpBed": {
+  "credits": 5,
+  "files": [
+   "KelpBed.png"
+  ],
+  "status": "success",
+  "task_id": "3653fbf9-d122-4c8a-92dd-3d90f80d5b9d",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/PearlPedestal": {
+  "credits": 5,
+  "files": [
+   "PearlPedestal.png"
+  ],
+  "status": "success",
+  "task_id": "3aa1cb47-4936-4f2c-b71a-313e42505997",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/SeaGlassLantern": {
+  "credits": 5,
+  "files": [
+   "SeaGlassLantern.png"
+  ],
+  "status": "success",
+  "task_id": "d0f212ea-792f-4fc3-a00c-a4445a3eb55b",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/ShipwreckBookshelf": {
+  "credits": 5,
+  "files": [
+   "ShipwreckBookshelf.png"
+  ],
+  "status": "success",
+  "task_id": "cf3b7e19-85a8-4997-b4ff-0f7d907a15bd",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/SpongeSofa": {
+  "credits": 5,
+  "files": [
+   "SpongeSofa.png"
+  ],
+  "status": "success",
+  "task_id": "a2b14821-eb42-457e-9ef8-2f24d9aafa90",
+  "type": "generate_image"
+ },
+ "den_props2_sheets/TreasureChart": {
+  "credits": 5,
+  "files": [
+   "TreasureChart.png"
+  ],
+  "status": "success",
+  "task_id": "381f98fd-6ddb-4bbb-a312-6645b41b7701",
+  "type": "generate_image"
+ },
  "food/Shrimp": {
   "credits": 20,
   "files": [
@@ -981,6 +1144,74 @@
   "task_id": "8e4234ee-c1da-4645-859c-a3ae84b5799c",
   "type": "generate_image"
  },
+ "prey3_sheets/Butterflyfish": {
+  "credits": 5,
+  "files": [
+   "Butterflyfish.png"
+  ],
+  "status": "success",
+  "task_id": "b82a6bb1-1dcb-45bf-861e-91df72c3198c",
+  "type": "generate_image"
+ },
+ "prey3_sheets/Coelacanth": {
+  "credits": 5,
+  "files": [
+   "Coelacanth.png"
+  ],
+  "status": "success",
+  "task_id": "edb5d978-5fa1-4038-865e-8f9c0a376558",
+  "type": "generate_image"
+ },
+ "prey3_sheets/GulperEel": {
+  "credits": 5,
+  "files": [
+   "GulperEel.png"
+  ],
+  "status": "success",
+  "task_id": "0930f8a2-d6e5-4b22-9cce-c2bd6777fdb4",
+  "type": "generate_image"
+ },
+ "prey3_sheets/Oarfish": {
+  "status": "queued",
+  "task_id": "580fad7b-8b8f-454b-bfbb-5f96c375a466",
+  "type": "generate_image"
+ },
+ "prey3_sheets/OceanSunfish": {
+  "credits": 5,
+  "files": [
+   "OceanSunfish.png"
+  ],
+  "status": "success",
+  "task_id": "8997f93d-af04-42ec-a770-5845221db51d",
+  "type": "generate_image"
+ },
+ "prey3_sheets/Swordfish": {
+  "credits": 5,
+  "files": [
+   "Swordfish.png"
+  ],
+  "status": "success",
+  "task_id": "0e105546-044f-4259-8bc8-aff48f809b35",
+  "type": "generate_image"
+ },
+ "prey3_sheets/Triggerfish": {
+  "credits": 5,
+  "files": [
+   "Triggerfish.png"
+  ],
+  "status": "success",
+  "task_id": "2d3fa946-e0c0-426d-a981-f85a51df3fec",
+  "type": "generate_image"
+ },
+ "prey3_sheets/VentEelpout": {
+  "credits": 5,
+  "files": [
+   "VentEelpout.png"
+  ],
+  "status": "success",
+  "task_id": "46662f06-08e4-4e30-8c7c-5ae78f93785b",
+  "type": "generate_image"
+ },
  "prey_concepts/PreySheetA": {
   "credits": 10,
   "files": [
@@ -997,6 +1228,24 @@
   ],
   "status": "success",
   "task_id": "801b3f41-58c4-4f39-a1eb-601f9940440d",
+  "type": "generate_image"
+ },
+ "prey_concepts/PreySheetC": {
+  "credits": 10,
+  "files": [
+   "PreySheetC.png"
+  ],
+  "status": "success",
+  "task_id": "f3907493-7ed2-4945-ade4-1aad78e2cb6d",
+  "type": "generate_image"
+ },
+ "prey_concepts/PreySheetC_Hatchetfish": {
+  "credits": 5,
+  "files": [
+   "PreySheetC_Hatchetfish.png"
+  ],
+  "status": "success",
+  "task_id": "6435de42-1eb8-4496-afa9-259b7c953fb0",
   "type": "generate_image"
  },
  "props/Anemone": {
