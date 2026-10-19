@@ -554,22 +554,27 @@ local function anemone(parent: Instance, at: Vector3, normal: Vector3, size: num
 	)
 end
 
--- Encrusting coralline or a sponge crust: a flat patch lying on the rock, sometimes
--- a second, smaller one of another colour lapping over it. On the wall it runs along
--- the band it's on (a band is a roll lying round the rim, curved only up and down),
--- long and low, so its edges stay on the rock
-local function patch(parent: Instance, at: Vector3, normal: Vector3, size: number, look: Look)
-	local frame, across
+-- The frame of a crust lying on the rock at `at`, and how wide it is across for its
+-- length: on the wall it runs along the band it's on (a band is a roll lying round
+-- the rim, curved only up and down), long and low, so its edges stay on the rock
+local function lying(at: Vector3, normal: Vector3): (CFrame, number)
 	if math.abs(normal.Y) < 0.7 then
 		local along = Vector3.yAxis:Cross(normal).Unit
 		local up = normal - along * normal:Dot(along)
-		frame = CFrame.fromMatrix(at, along, up.Unit, along:Cross(up.Unit))
-			* CFrame.Angles(0, rng:NextNumber(-0.15, 0.15), 0)
-		across = rng:NextNumber(0.35, 0.55)
-	else
-		frame = grow(at, normal, 0, rng:NextNumber(0, TAU))
-		across = rng:NextNumber(0.55, 0.9)
+		return CFrame.fromMatrix(at, along, up.Unit, along:Cross(up.Unit)) * CFrame.Angles(
+			0,
+			rng:NextNumber(-0.15, 0.15),
+			0
+		),
+			rng:NextNumber(0.35, 0.55)
 	end
+	return grow(at, normal, 0, rng:NextNumber(0, TAU)), rng:NextNumber(0.55, 0.9)
+end
+
+-- Encrusting coralline or a sponge crust: a flat patch lying on the rock, sometimes
+-- a second, smaller one of another colour lapping over it
+local function patch(parent: Instance, at: Vector3, normal: Vector3, size: number, look: Look)
+	local frame, across = lying(at, normal)
 	local color = pick(look.colors)
 	-- (a thin disc pressed a little into the rock: where the rock curves away its edge
 	-- sinks in, so the patch reads as a stain of growth with a ragged edge, not a pill)
@@ -624,12 +629,22 @@ end
 
 -- A crust of barnacles: a dull patch with a few cones on it
 local function barnacles(parent: Instance, at: Vector3, normal: Vector3, size: number, look: Look)
-	local frame = grow(at, normal, 0, rng:NextNumber(0, TAU))
-	blob(parent, "Crust", Vector3.new(size, size * 0.12, size * 0.8), frame, pick(look.colors))
+	local frame, across = lying(at, normal)
+	blob(
+		parent,
+		"Crust",
+		Vector3.new(size, size * 0.08, size * across),
+		frame * CFrame.new(0, -size * 0.012, 0),
+		pick(look.colors)
+	)
 	for _ = 1, rng:NextInteger(1, 2) do
 		local d = size * rng:NextNumber(0.18, 0.28)
 		local spot = frame
-			* CFrame.new(rng:NextNumber(-0.32, 0.32) * size, d * 0.3, rng:NextNumber(-0.26, 0.26) * size)
+			* CFrame.new(
+				rng:NextNumber(-0.32, 0.32) * size,
+				d * 0.3,
+				rng:NextNumber(-0.3, 0.3) * size * across
+			)
 		part(
 			parent,
 			"Barnacle",

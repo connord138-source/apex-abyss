@@ -500,7 +500,7 @@ local function insideSolid(p)
 	end
 	return false
 end
-local function openView(target, look, distance, rise)
+local function openView(target, look, distance, rise, clearance)
 	local toHub = flat(-target)
 	-- (higher each round: a spot down in a basin may have open water only over its rim)
 	for round = 0, 5 do
@@ -515,11 +515,14 @@ local function openView(target, look, distance, rise)
 		local from = target + dir * distance + up * riseNow
 		local r = Seafloor.polar(from.X, from.Z)
 		local ok = r < World.boundsRadius - 20
+		-- (the line stops `clearance` short of the subject itself)
+		local span = (look - from).Magnitude
+		local share = math.max(0, (span - (clearance or 0)) / span)
 		for i = 0, 24 do
 			if not ok then
 				break
 			end
-			local q = from + (look - from) * (i / 24 * 0.9)
+			local q = from + (look - from) * (i / 24 * share)
 			if (groundAt(q.X, q.Z)).Y > q.Y - 3 or insideSolid(q) then
 				ok = false
 			end
@@ -537,7 +540,7 @@ for index, smoker in plan.smokers do
 	local look = c + up * (tall * 0.45)
 	view(
 		`smoker{index}`,
-		openView(c, look, tall * 0.7 + 40, tall * 0.35),
+		openView(c, look, tall * 0.7 + 40, tall * 0.35, smoker.radius + 8),
 		look,
 		58,
 		boxAround(c, tall * 0.7 + 70, c.Y - 20, c.Y + tall + 20),
@@ -548,7 +551,7 @@ for index, outcrop in plan.outcrops do
 	local c = outcrop.center
 	view(
 		`basalt{index}`,
-		openView(c, c + up * 8, 52, 26),
+		openView(c, c + up * 8, 52, 26, outcrop.radius + 4),
 		c + up * 8,
 		60,
 		boxAround(c, 70, floorY - 20, floorY + 60),
@@ -575,7 +578,7 @@ for _, name in { "TubeWormForest", "TubeWorms" } do
 end
 if wormsAt then
 	local c = wormsAt
-	view("worms", openView(c, c + up * 2, 24, 8), c + up * 2, 55, boxAround(c, 40, c.Y - 20, c.Y + 30), 1)
+	view("worms", openView(c, c + up * 2, 24, 8, 8), c + up * 2, 55, boxAround(c, 40, c.Y - 20, c.Y + 30), 1)
 end
 
 dumpParts(root)

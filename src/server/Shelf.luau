@@ -530,9 +530,10 @@ local function dropOff(ops: { Op }, features: Features)
 						local a = math.rad(middle)
 						y += dip(middle) + 2 * math.sin(a * band.k1 + band.phase) + cr:NextNumber(-0.6, 0.6)
 						thick *= 1 + 0.08 * math.sin(a * band.k2 + band.phase) + cr:NextNumber(-0.04, 0.04)
-						out += spurOut(middle, y)
-							+ 3.5 * math.sin(a * band.k1 + band.phase * 2)
-							+ cr:NextNumber(-0.8, 0.8)
+						out += spurOut(middle, y) + 3.5 * math.sin(a * band.k1 + band.phase * 2) + cr:NextNumber(
+							-0.8,
+							0.8
+						)
 						roll = cr:NextNumber(-0.012, 0.012)
 					end
 					slab(band.material, middle, studs + thick * 0.4, y, thick, math.max(out, 5), roll)

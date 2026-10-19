@@ -98,6 +98,10 @@ local LIGHT = {
 	crust = Color3.fromRGB(255, 112, 50),
 }
 
+-- The most parts the field builds: the small life (worms, shells) is left out past it
+-- (a field lays out at 2,100–2,700 over every seed tried)
+local PARTS_CAP = 2900
+
 local rng = Random.new(World.seed + 99)
 local groundOf: Ground = function(_x: number, _z: number): (Vector3?, Vector3?)
 	return nil, nil
@@ -734,10 +738,22 @@ local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 		for f = 1, flanges do
 			local at = foot.Y
 				+ h * (if flanges == 1 then 0.55 else ({ 0.42, 0.72 })[f] + rng:NextNumber(-0.05, 0.05))
-			local reach = r + rng:NextNumber(2, 3.2)
-			local center = Vector3.new(foot.X, 0, foot.Z)
-			disc(m, "Flange", center, at, reach, 1.6, pick(COLORS.basalt), false)
-			disc(m, "FlangeLip", center, at + 0.25, reach - 0.6, 0.4, pick(COLORS.minerals), false)
+			-- (rounded shelves, a little off round: a flat disc read as a plate)
+			local reach = r + rng:NextNumber(1.6, 2.8)
+			local turn = CFrame.Angles(
+				rng:NextNumber(-0.08, 0.08),
+				rng:NextNumber(0, TAU),
+				rng:NextNumber(-0.08, 0.08)
+			)
+			local center = CFrame.new(foot.X, at, foot.Z) * turn
+			blob(m, "Flange", center, Vector3.new(reach * 2, 2.6, reach * 1.8), pick(COLORS.basalt))
+			blob(
+				m,
+				"FlangeLip",
+				center + Vector3.new(0, 0.7, 0),
+				Vector3.new(reach * 1.85, 1.6, reach * 1.62),
+				pick(COLORS.minerals)
+			)
 			if rng:NextNumber() < 0.35 then
 				local a = rng:NextNumber(0, TAU)
 				local spot = Vector3.new(
@@ -922,6 +938,9 @@ local function musselBed(parent: Instance, center: Vector3, inner: number, outer
 		if hit == nil or math.abs(hit.Y - center.Y) > 2.5 then
 			continue
 		end
+		if stats.parts >= PARTS_CAP then
+			break
+		end
 		local s = rng:NextNumber(0.8, 1.3)
 		local yaw = rng:NextNumber(0, TAU)
 		if rng:NextNumber() < 0.2 then
@@ -957,6 +976,9 @@ end
 -- One giant tube worm standing out of the ground at `hit` along `dir`: a mid-grey
 -- tube and its crimson plume (now and then drawn in)
 local function worm(m: Instance, hit: Vector3, dir: Vector3, length: number, radius: number)
+	if stats.parts >= PARTS_CAP then
+		return
+	end
 	local foot = hit - dir * 0.4
 	local tip = foot + dir * length
 	rod(m, "Tube", foot, tip, radius, pick(COLORS.tube))
