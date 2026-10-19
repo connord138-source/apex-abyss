@@ -180,13 +180,22 @@ local function build(player: Player, character: Model)
 				points[i] = point
 				table.insert(extras, point)
 			end
+			-- A bright core and a wide faint glow round it on every segment (the arcs read
+			-- faint at 0.035 wide, PC 2026-10-19, TR3)
 			for i = 1, 3 do
-				local beam = Fx.beam(root, points[i], points[i + 1], L * 0.035, L * 0.035, bolt)
+				local beam = Fx.beam(root, points[i], points[i + 1], L * 0.05, L * 0.05, bolt)
 				beam.Name = "BoostArc"
-				beam.Brightness = 2.5
+				beam.Brightness = 4
 				beam.Enabled = false
-				beams[i] = beam
+				table.insert(beams, beam)
 				table.insert(extras, beam)
+				local glow = Fx.beam(root, points[i], points[i + 1], L * 0.16, L * 0.16, ColorSequence.new(c))
+				glow.Name = "BoostArc"
+				glow.Brightness = 2
+				glow.Transparency = NumberSequence.new(0.55)
+				glow.Enabled = false
+				table.insert(beams, glow)
+				table.insert(extras, glow)
 			end
 			table.insert(arcs, { points = points, beams = beams })
 		end
@@ -202,10 +211,11 @@ local function build(player: Player, character: Model)
 	elseif style == "ink" then
 		-- A lit violet-indigo cloud: glowing at first, deepening as it spreads
 		-- (brighter and thicker again: "visible now but still faint", PC 2026-10-18)
-		local ink = emit("ink", 1.5, ColorSequence.new(c2, c), 1.9)
-		ink.LightEmission = 0.5
-		ink.LightInfluence = 0.15
-		ink.Transparency = Fx.keys({ 0, 1, 0.1, 0.1, 0.6, 0.3, 1, 1 })
+		-- (and again: "glows violet round the fish, but dimly", PC 2026-10-19, TR3)
+		local ink = emit("ink", 2, ColorSequence.new(c2, c), 2.2)
+		ink.LightEmission = 0.75
+		ink.LightInfluence = 0.1
+		ink.Transparency = Fx.keys({ 0, 1, 0.1, 0.05, 0.6, 0.2, 1, 1 })
 	end
 	entries[character] = {
 		player = player,

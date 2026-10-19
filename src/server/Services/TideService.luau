@@ -17,13 +17,22 @@ local TideConfig = Config.Tides
 local TideService = {}
 
 local current = ""
+local currentEnds = 0
 local warnedFor = -1 -- the Prism Tide slot already warned about
 
 local function tick()
 	local unix = Timing.unix()
+	-- A forced tide (the admin panel) that has run its length goes back to the clock,
+	-- so nothing still names it
+	local forcedUntil = workspace:GetAttribute("TideOverrideUntil")
+	if typeof(forcedUntil) == "number" and unix >= forcedUntil then
+		workspace:SetAttribute("TideOverride", nil)
+		workspace:SetAttribute("TideOverrideUntil", nil)
+	end
 	local tide, _, endsAt = Tides.at(unix)
-	if tide.id ~= current then
+	if tide.id ~= current or endsAt ~= currentEnds then
 		current = tide.id
+		currentEnds = endsAt
 		workspace:SetAttribute("Tide", tide.id)
 		workspace:SetAttribute("TideEnds", endsAt)
 		Net.tideChanged(tide.id, endsAt)

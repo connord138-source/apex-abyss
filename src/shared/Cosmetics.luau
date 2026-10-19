@@ -1158,11 +1158,16 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 	local plan = body:GetAttribute("MeshPlan")
 	local planName = if typeof(plan) == "string" then plan else nil
 	local skin = if shade and not spectral then skinFor(planName, shade.id) else nil
+	-- A skin still loading: for those few seconds the fish is the shade's own colour,
+	-- flat (PC 2026-10-19, SK4b: the tinted texture can only darken, so an orange
+	-- Nibbler under Lilac read maroon)
+	local waiting = false
 	if skin and skinReady and not skinReady(skin) then
 		skin = nil
+		waiting = true
 	end
 	-- No shade (or a shade not imported yet): the fish's own look, white teeth and all
-	local natural = if skin == nil then skinFor(planName, "Natural") else nil
+	local natural = if skin == nil and not waiting then skinFor(planName, "Natural") else nil
 	if natural and skinReady and not skinReady(natural) then
 		natural = nil
 	end
@@ -1235,6 +1240,17 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 				part.TextureID = skin.Value
 			end
 			part.Color = Color3.new(1, 1, 1)
+			part.Material = Enum.Material.Plastic
+			part.Transparency = (shade :: ShadesConfig.Shade).transparency or 0
+		elseif waiting then
+			holdOwn(part, true)
+			if part.TextureID ~= "" then
+				if ownTexture == nil then
+					part:SetAttribute("OwnTexture", part.TextureID)
+				end
+				part.TextureID = ""
+			end
+			part.Color = (shade :: ShadesConfig.Shade).back
 			part.Material = Enum.Material.Plastic
 			part.Transparency = (shade :: ShadesConfig.Shade).transparency or 0
 		elseif natural and natural:IsA("SurfaceAppearance") then

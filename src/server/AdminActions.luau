@@ -560,7 +560,10 @@ local function denDoors(_admin: Player, targets: { Player }): string
 	return `Every doorway style for {count} player(s) · pick one in the den menu's Doorway rows`
 end
 
--- The Tide Clock: force a tide on every server client for 10 minutes ("" = the clock)
+-- The Tide Clock: force a tide on this server for one tide's length, starting now (so
+-- its opening boost runs as a real tide's does); "" = back to the clock. TideService
+-- clears the attributes when it ends (PC 2026-10-19: a forced tide lapsed after 10
+-- minutes while `TideOverride` still named it)
 local function forceTide(_admin: Player, _targets: { Player }, id: any): string
 	if id == "" then
 		workspace:SetAttribute("TideOverride", nil)
@@ -571,8 +574,9 @@ local function forceTide(_admin: Player, _targets: { Player }, id: any): string
 		return "Pick a tide"
 	end
 	workspace:SetAttribute("TideOverride", id)
-	workspace:SetAttribute("TideOverrideUntil", Timing.unix() + 600)
-	return `{Config.Tides.byId[id].name} for 10 minutes on this server`
+	local minutes = math.floor(Config.Tides.slotSeconds / 60 + 0.5)
+	workspace:SetAttribute("TideOverrideUntil", Timing.unix() + Config.Tides.slotSeconds)
+	return `{Config.Tides.byId[id].name} for {minutes} minutes on this server, from now`
 end
 
 -- Rare catches: the 10 prey fish nearest each target turn a rarity

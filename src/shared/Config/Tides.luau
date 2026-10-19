@@ -82,7 +82,7 @@ local list: { Tide } = {
 		weight = 0,
 		color = Color3.fromRGB(255, 120, 230),
 		tint = 0.1,
-		rarity = { Silver = 2, Golden = 2, Glowing = 2, Crystal = 2, Prism = 1 },
+		rarity = { Golden = 2, Glowing = 2, Crystal = 2, Prism = 1 },
 	},
 }
 

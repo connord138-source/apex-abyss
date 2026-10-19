@@ -138,13 +138,15 @@ local list: { Biome } = {
 		color = Color3.fromRGB(100, 170, 255),
 		deep = true,
 		-- Clear deep blue: open water the Megalodon is seen coming through
+		-- Clear deep blue, the clearest deep water (PC 2026-10-19, VI1: it read dark
+		-- navy at density 0.58, exposure −0.39)
 		water = {
-			haze = Color3.fromRGB(42, 100, 142),
-			decay = Color3.fromRGB(12, 48, 86),
+			haze = Color3.fromRGB(52, 122, 168),
+			decay = Color3.fromRGB(16, 60, 104),
 			tint = Color3.fromRGB(255, 255, 255),
-			density = -0.03,
-			exposure = 0.04,
-			saturation = 0,
+			density = -0.08,
+			exposure = 0.2,
+			saturation = 0.04,
 		},
 	},
 	{
@@ -160,13 +162,15 @@ local list: { Biome } = {
 		color = Color3.fromRGB(120, 240, 220),
 		deep = true,
 		-- Teal-cyan
+		-- (PC 2026-10-19, VI1: dark blue-teal at 0.61 / −0.47, so the city read only
+		-- to ~100 studs)
 		water = {
-			haze = Color3.fromRGB(38, 126, 138),
-			decay = Color3.fromRGB(10, 62, 74),
+			haze = Color3.fromRGB(44, 134, 146),
+			decay = Color3.fromRGB(12, 66, 78),
 			tint = Color3.fromRGB(255, 255, 255),
-			density = 0,
-			exposure = 0,
-			saturation = 0.02,
+			density = -0.05,
+			exposure = 0.14,
+			saturation = 0.03,
 		},
 	},
 	{

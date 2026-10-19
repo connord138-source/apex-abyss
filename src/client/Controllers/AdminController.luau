@@ -371,7 +371,7 @@ local function build()
 	for _, tide in Config.Tides.list do
 		table.insert(tides, { label = tide.name, value = tide.id })
 	end
-	pickRow("Force a tide (10 min, this server)", tides, "forceTide", "SET")
+	pickRow("Force a tide (one tide from now, this server)", tides, "forceTide", "SET")
 	local rarities: { { label: string, value: any } } = {}
 	for _, rarity in Config.Catch.rarities do
 		table.insert(rarities, { label = rarity.name, value = rarity.id })

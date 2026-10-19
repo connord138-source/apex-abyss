@@ -121,7 +121,8 @@ local rarities: { Rarity } = {
 		id = "Prism",
 		name = "Prism",
 		tier = "Mythic",
-		rate = 0.10,
+		-- (0.08, was 0.10: the PC's bot caught 4 in one tide, PC 2026-10-19, RT2)
+		rate = 0.08,
 		life = 300,
 		every = 10,
 		tide = "Prism",

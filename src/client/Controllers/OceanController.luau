@@ -287,7 +287,9 @@ end
 -- haze thickens toward EDGE_DENSITY over the last EDGE_RAMP studs inside the barrier,
 -- and from the barrier itself nothing past it reads. The Horizon walls take the
 -- water's own colour (`tintHorizon`), so where anything of them is left it is water.
-local EDGE_RAMP, EDGE_DENSITY = 380, 0.72
+-- (240, was 380: the Megalodon roams 1,000–1,440 out, and its fights sat in the
+-- edge's haze; PC 2026-10-19, MG1)
+local EDGE_RAMP, EDGE_DENSITY = 240, 0.72
 
 local function edgeAt(position: Vector3): number
 	local offset = position - CENTER
@@ -450,9 +452,9 @@ local function step(dt: number)
 	if atmo and atmo.Parent then
 		atmo.Color = blended.color
 		atmo.Decay = blended.decay
-		-- (a boss's fight light clears it by 12%: 22% when the deep water was 0.8 thick;
-		-- clearer still, a fight near the map's edge could see past it)
-		atmo.Density = blended.density * (1 - hubBlend * 0.25) * (1 - bossLight * 0.12)
+		-- (a boss's fight light clears it by 20%: the Megalodon at ~200 studs read as an
+		-- outline over haze, PC 2026-10-19; the map's edge is thickened after this)
+		atmo.Density = blended.density * (1 - hubBlend * 0.25) * (1 - bossLight * 0.2)
 	else
 		atmosphere = Lighting:FindFirstChild("OceanAtmosphere") :: Atmosphere?
 	end
