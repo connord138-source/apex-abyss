@@ -571,11 +571,13 @@ local function patch(parent: Instance, at: Vector3, normal: Vector3, size: numbe
 		across = rng:NextNumber(0.55, 0.9)
 	end
 	local color = pick(look.colors)
+	-- (a thin disc pressed a little into the rock: where the rock curves away its edge
+	-- sinks in, so the patch reads as a stain of growth with a ragged edge, not a pill)
 	blob(
 		parent,
 		"Crust",
-		Vector3.new(size, size * 0.1, size * across),
-		frame * CFrame.new(0, size * 0.01, 0),
+		Vector3.new(size, size * 0.07, size * across),
+		frame * CFrame.new(0, -size * 0.012, 0),
 		color
 	)
 	if rng:NextNumber() < 0.3 then
@@ -584,7 +586,7 @@ local function patch(parent: Instance, at: Vector3, normal: Vector3, size: numbe
 			blob(
 				parent,
 				"Crust",
-				Vector3.new(size * 0.55, size * 0.1, size * across * 0.7),
+				Vector3.new(size * 0.55, size * 0.07, size * across * 0.7),
 				frame
 					* CFrame.new(
 						size * rng:NextNumber(-0.3, 0.3),

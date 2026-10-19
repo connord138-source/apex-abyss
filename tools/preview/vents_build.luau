@@ -502,6 +502,9 @@ local function insideSolid(p)
 end
 local function openView(target, look, distance, rise)
 	local toHub = flat(-target)
+	-- (higher each round: a spot down in a basin may have open water only over its rim)
+	for round = 0, 5 do
+	local riseNow = rise + round * 30
 	for k = 0, 15 do
 		local turn = (if k % 2 == 0 then 1 else -1) * math.ceil(k / 2) * math.pi / 8
 		local dir = Vector3.new(
@@ -509,7 +512,7 @@ local function openView(target, look, distance, rise)
 			0,
 			toHub.X * math.sin(turn) + toHub.Z * math.cos(turn)
 		)
-		local from = target + dir * distance + up * rise
+		local from = target + dir * distance + up * riseNow
 		local r = Seafloor.polar(from.X, from.Z)
 		local ok = r < World.boundsRadius - 20
 		for i = 0, 24 do
@@ -524,6 +527,7 @@ local function openView(target, look, distance, rise)
 		if ok then
 			return from
 		end
+	end
 	end
 	return target + toHub * distance + up * rise
 end

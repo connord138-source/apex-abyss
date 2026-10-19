@@ -502,9 +502,11 @@ local function dropOff(ops: { Op }, features: Features)
 			out = cr:NextNumber(9, 17) + 5 * low,
 			material = material,
 			erode = cr:NextNumber(0.03, 0.14),
-			-- (it swells and pinches along the rim: waves of ~85-165 and ~40-70 studs)
-			k1 = cr:NextNumber(34, 66),
-			k2 = cr:NextNumber(80, 140),
+			-- (it swells, pinches and stands out more or less along the rim, in slow
+			-- waves of ~140-280 and ~90-190 studs, so neighbouring slabs differ little
+			-- and the band reads as one layer, its joints faint)
+			k1 = cr:NextNumber(20, 40),
+			k2 = cr:NextNumber(30, 60),
 			phase = cr:NextNumber(0, 6.28),
 		})
 		level -= thick + (if cr:NextNumber() < 0.15 then cr:NextNumber(1, 3) else cr:NextNumber(4, 10))
@@ -526,12 +528,12 @@ local function dropOff(ops: { Op }, features: Features)
 					local thick, out, roll = band.thick, band.out, 0
 					if index > 1 then
 						local a = math.rad(middle)
-						y += dip(middle) + 2 * math.sin(a * band.k1 + band.phase) + cr:NextNumber(-1, 1)
-						thick *= cr:NextNumber(0.9, 1.08)
-						out += spurOut(middle, y) + 3 * math.sin(a * band.k1 + band.phase * 2) + 2 * math.sin(
-							a * band.k2 + band.phase
-						) + cr:NextNumber(-1.2, 1.2)
-						roll = cr:NextNumber(-0.015, 0.015)
+						y += dip(middle) + 2 * math.sin(a * band.k1 + band.phase) + cr:NextNumber(-0.6, 0.6)
+						thick *= 1 + 0.08 * math.sin(a * band.k2 + band.phase) + cr:NextNumber(-0.04, 0.04)
+						out += spurOut(middle, y)
+							+ 3.5 * math.sin(a * band.k1 + band.phase * 2)
+							+ cr:NextNumber(-0.8, 0.8)
+						roll = cr:NextNumber(-0.012, 0.012)
 					end
 					slab(band.material, middle, studs + thick * 0.4, y, thick, math.max(out, 5), roll)
 				end
