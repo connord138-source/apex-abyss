@@ -56,6 +56,7 @@ local tipLine: TextLabel
 local markers: Folder
 local trail: Folder
 local shownStep = 0
+local shownDevice = "" -- the device its key caps were drawn for
 local shownMarker: string? = nil
 local wasDone: boolean? = nil
 local target: Vector3? = nil
@@ -418,6 +419,11 @@ local function celebrate()
 	end)
 end
 
+-- Which kind of controls this device shows
+local function device(): string
+	return if Input.isTouch() then "touch" elseif Input.isGamepad() then "pad" else "keys"
+end
+
 -- The key for a control on this device, or nil when it has none
 local function keyFor(control: TutorialConfig.Control): string?
 	if Input.isTouch() then
@@ -430,6 +436,7 @@ end
 
 -- Rebuilds the row of key caps for a step
 local function showControls(step: TutorialConfig.Step)
+	shownDevice = device()
 	capsRow:ClearAllChildren()
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -573,6 +580,14 @@ end
 -- Every frame: find or refresh the target, draw the trail, write the distance (or
 -- ring the HUD button a `point` step needs)
 local function step(_dt: number)
+	-- The device changed under a step: draw its keys again (PC 2026-10-19, TU1: on a
+	-- phone the card kept W A S D, MOUSE and the ALT tip, drawn while the simulator
+	-- still read as a keyboard; a pad picked up mid-step kept the keyboard's too)
+	local shown = Tutorial.steps[shownStep]
+	if shown and panel.Visible and device() ~= shownDevice then
+		showControls(shown)
+		tipLine.Text = cursorTip()
+	end
 	if pointKind ~= nil and panel.Visible then
 		hideTrail()
 		stepPoint()
