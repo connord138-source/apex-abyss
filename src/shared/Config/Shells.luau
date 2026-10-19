@@ -22,5 +22,7 @@ return {
 		Swordfish = { chance = 0.35, min = 1, max = 3 },
 		OceanSunfish = { chance = 0.5, min = 2, max = 4 },
 		Oarfish = { chance = 0.5, min = 2, max = 4 },
+		-- (the fourth batch's big one, 2026-10-19)
+		HumpheadWrasse = { chance = 0.3, min = 1, max = 3 },
 	} :: { [string]: { chance: number, min: number, max: number } },
 }

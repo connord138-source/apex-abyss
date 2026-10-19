@@ -1361,6 +1361,158 @@
   "task_id": "46662f06-08e4-4e30-8c7c-5ae78f93785b",
   "type": "generate_image"
  },
+ "prey4/BlueTang": {
+  "credits": 30,
+  "files": [
+   "BlueTang.glb",
+   "BlueTang_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "b9ef284c-6ed7-476c-ad2d-beef909c74f6",
+  "type": "image_to_model"
+ },
+ "prey4/Hatchetfish": {
+  "credits": 30,
+  "files": [
+   "Hatchetfish.glb",
+   "Hatchetfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "c71a1557-1744-4743-bdd3-1b9ed86c54a5",
+  "type": "image_to_model"
+ },
+ "prey4/HumpheadWrasse": {
+  "credits": 30,
+  "files": [
+   "HumpheadWrasse.glb",
+   "HumpheadWrasse_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "303f4d1b-3569-491e-b1d1-c9e85ece9002",
+  "type": "image_to_model"
+ },
+ "prey4/KelpBass": {
+  "credits": 30,
+  "files": [
+   "KelpBass.glb",
+   "KelpBass_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "4ebd3bd0-ab41-4232-95be-40e5db98b051",
+  "type": "image_to_model"
+ },
+ "prey4/Lingcod": {
+  "credits": 30,
+  "files": [
+   "Lingcod.glb",
+   "Lingcod_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "d06e50f2-e099-43cd-a809-ff9a88edeb59",
+  "type": "image_to_model"
+ },
+ "prey4/Opaleye": {
+  "credits": 30,
+  "files": [
+   "Opaleye.glb",
+   "Opaleye_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "4ba7263e-c81d-4bfc-b3bb-51351c7cf0d3",
+  "type": "image_to_model"
+ },
+ "prey4/Rattail": {
+  "credits": 30,
+  "files": [
+   "Rattail.glb",
+   "Rattail_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e96291dc-149b-446c-96e7-0d48081a6713",
+  "type": "image_to_model"
+ },
+ "prey4/Viperfish": {
+  "credits": 30,
+  "files": [
+   "Viperfish.glb",
+   "Viperfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f5939b53-505a-45f0-87a3-37b8fc3b22f1",
+  "type": "image_to_model"
+ },
+ "prey4_sheets/BlueTang": {
+  "credits": 5,
+  "files": [
+   "BlueTang.png"
+  ],
+  "status": "success",
+  "task_id": "1814cd24-cee3-4d40-b038-6dc68288d4ad",
+  "type": "generate_image"
+ },
+ "prey4_sheets/Hatchetfish": {
+  "credits": 5,
+  "files": [
+   "Hatchetfish.png"
+  ],
+  "status": "success",
+  "task_id": "0b7f642f-38b5-40fa-ac1d-c93e817145c2",
+  "type": "generate_image"
+ },
+ "prey4_sheets/HumpheadWrasse": {
+  "credits": 5,
+  "files": [
+   "HumpheadWrasse.png"
+  ],
+  "status": "success",
+  "task_id": "6db67148-8f9f-4ac4-a317-ecce0146db2f",
+  "type": "generate_image"
+ },
+ "prey4_sheets/KelpBass": {
+  "credits": 5,
+  "files": [
+   "KelpBass.png"
+  ],
+  "status": "success",
+  "task_id": "9e93c95b-371a-4e73-8e60-3e78bb9a5965",
+  "type": "generate_image"
+ },
+ "prey4_sheets/Lingcod": {
+  "credits": 5,
+  "files": [
+   "Lingcod.png"
+  ],
+  "status": "success",
+  "task_id": "861f0076-2c3f-4be0-96ba-e52fe08776c9",
+  "type": "generate_image"
+ },
+ "prey4_sheets/Opaleye": {
+  "credits": 5,
+  "files": [
+   "Opaleye.png"
+  ],
+  "status": "success",
+  "task_id": "744aa9c6-e99d-4647-a5f4-2a7445628594",
+  "type": "generate_image"
+ },
+ "prey4_sheets/Rattail": {
+  "credits": 5,
+  "files": [
+   "Rattail.png"
+  ],
+  "status": "success",
+  "task_id": "e4686b34-b5ee-4565-8140-f8053647a58a",
+  "type": "generate_image"
+ },
+ "prey4_sheets/Viperfish": {
+  "credits": 5,
+  "files": [
+   "Viperfish.png"
+  ],
+  "status": "success",
+  "task_id": "36f0996f-b6eb-4dc2-a3ae-5abdda392a13",
+  "type": "generate_image"
+ },
  "prey_concepts/PreySheetA": {
   "credits": 10,
   "files": [

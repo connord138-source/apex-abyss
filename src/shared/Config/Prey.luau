@@ -81,7 +81,7 @@ local list: { PreyDef } = {
 		-- 2026-10-10: "needs a lot more smaller fish ... far too scarce"; 14 schools
 		-- 20–120 up over the whole shelf were hard to find)
 		zones = {
-			{ band = { 150, 340 }, schools = 22, depth = { 4, 45 } },
+			{ band = { 150, 340 }, schools = 16, depth = { 4, 45 } }, -- (22 until the Opaleye and the Kelp Bass)
 			{ band = { 340, 560 }, schools = 12, depth = { 6, 80 } },
 			{ band = { 560, 830 }, schools = 8 },
 			-- (2026-10-18, "the ocean has a pretty empty feeling") loose clouds over the
@@ -110,7 +110,7 @@ local list: { PreyDef } = {
 		pathRadius = { 24, 44 },
 		depth = { 30, 160 },
 		zones = {
-			{ band = { 150, 420 }, schools = 12, depth = { 8, 70 } },
+			{ band = { 150, 420 }, schools = 8, depth = { 8, 70 } }, -- (12 until the Opaleye and the Kelp Bass)
 			{ band = { 420, 830 }, schools = 12 },
 			-- (2026-10-18) bait balls turning on the spot in the Open Blue's mid-water
 			-- and low over the reef, loose shoals out in the blue, and schools over the
@@ -183,8 +183,8 @@ local list: { PreyDef } = {
 			{ band = { 150, 830 }, schools = 12 }, -- (its old single band)
 			-- (2026-10-18) loose shoals over the wrecks and the reef, and in the Ruins
 			{ band = OUTER, angles = WRECKS, schools = 3, perSchool = 8, depth = { 6, 50 }, spread = 1.5 }, -- (6 before the Triggerfish)
-			{ band = OUTER, angles = REEF, schools = 10, perSchool = 8, depth = { 5, 45 } },
-			{ band = DEEP, angles = RUINS, schools = 9, perSchool = 7, depth = { 10, 80 } }, -- (12 before the Lionfish)
+			{ band = OUTER, angles = REEF, schools = 6, perSchool = 8, depth = { 5, 45 } }, -- (10 before the Blue Tang)
+			{ band = DEEP, angles = RUINS, schools = 7, perSchool = 7, depth = { 10, 80 } }, -- (12 before the Lionfish, 9 before the Humphead Wrasse)
 		} :: { Zone },
 		respawn = 12,
 		back = Color3.fromRGB(196, 120, 64),
@@ -217,10 +217,10 @@ local list: { PreyDef } = {
 				spread = 1.3,
 			},
 			-- (2026-10-19: Ruins 12, Vents 12 and Trench 5 until the Coelacanth, the Vent
-			-- Eelpout and the Gulper Eel took some over)
+			-- Eelpout and the Gulper Eel took some over; then Vents 6 until the Rattail, and
+			-- the Trench's canyon 3 until the Viperfish and the Hatchetfish)
 			{ band = DEEP, angles = RUINS, schools = 10, perSchool = 6, depth = { 20, 120 } },
-			{ band = DEEP, angles = VENTS, schools = 6, perSchool = 6, depth = { 30, 160 } },
-			{ band = TRENCH, trench = true, schools = 3, perSchool = 6, depth = { 30, 200 } },
+			{ band = DEEP, angles = VENTS, schools = 3, perSchool = 6, depth = { 30, 160 } },
 			{ band = DEEP, angles = { 70, 123 }, schools = 6, perSchool = 5, depth = { 20, 140 } }, -- the Trench's rim
 		} :: { Zone },
 		respawn = 15,
@@ -248,7 +248,7 @@ local list: { PreyDef } = {
 			{
 				band = OUTER,
 				angles = WRECKS,
-				schools = 6,
+				schools = 3, -- (6 before the Lingcod)
 				perSchool = 1,
 				depth = { 4, 32 },
 				pathRadius = { 12, 24 },
@@ -257,15 +257,15 @@ local list: { PreyDef } = {
 			{
 				band = DEEP,
 				angles = RUINS,
-				schools = 6, -- (10 before the Coelacanth)
+				schools = 3, -- (10 before the Coelacanth, 6 before the Humphead Wrasse)
 				perSchool = 1,
 				depth = { 6, 50 },
 				pathRadius = { 14, 28 },
 			},
 			{ band = DEEP, angles = OPEN_BLUE, schools = 6, perSchool = 3, depth = { 150, 400 } },
-			{ band = DEEP, angles = VENTS, schools = 12, perSchool = 2, depth = { 15, 90 } },
+			{ band = DEEP, angles = VENTS, schools = 6, perSchool = 2, depth = { 15, 90 } }, -- (12 before the Rattail)
 			{ band = DEEP, angles = { 70, 123 }, schools = 4, perSchool = 2, depth = { 15, 100 } }, -- the Trench's rim
-			{ band = TRENCH, trench = true, schools = 6, perSchool = 2, depth = { 20, 160 } },
+			{ band = TRENCH, trench = true, schools = 3, perSchool = 2, depth = { 20, 160 } }, -- (6 before the Viperfish)
 		} :: { Zone },
 		respawn = 20,
 		back = Color3.fromRGB(96, 92, 70),
@@ -686,6 +686,176 @@ local list: { PreyDef } = {
 		back = Color3.fromRGB(176, 190, 206),
 		belly = Color3.fromRGB(200, 210, 222),
 		slim = 0.09,
+	},
+	-- The fourth batch (owner approved the PreySheetC concepts, 2026-10-19), from the
+	-- docs/ASSETS.md prey4_fbx models: real natives for the kelp (they took schools from
+	-- its Minnows and Sardines), the reef, the wrecks and the Ruins, and more for the
+	-- Vents and the Trench, where they took over the borrowed Snappers and Groupers.
+	{
+		-- A chunky, round olive kelp fish with two white spots, browsing low among the
+		-- fronds in small groups
+		id = "Opaleye",
+		name = "Opaleye",
+		biome = "KelpShallows",
+		mass = 0.4, -- (swallowed from about LV 3: one of the five kinds a LV 5 fish eats here)
+		schools = 8,
+		perSchool = 5,
+		spread = 2.4,
+		speed = 5,
+		pathRadius = { 10, 22 },
+		depth = { 4, 30 },
+		zones = {
+			{ band = { 160, 470 }, schools = 8 },
+		} :: { Zone },
+		respawn = 10,
+		back = Color3.fromRGB(112, 120, 50),
+		belly = Color3.fromRGB(150, 158, 84),
+		slim = 0.5,
+	},
+	{
+		-- A big-mouthed, blotchy kelp bass hanging in pairs among the kelp: the top meal
+		-- of the shallows
+		id = "KelpBass",
+		name = "Kelp Bass",
+		biome = "KelpShallows",
+		mass = 0.8, -- (swallowed from about LV 10, the kelp's top)
+		schools = 5,
+		perSchool = 2,
+		spread = 2.4,
+		speed = 6,
+		pathRadius = { 14, 28 },
+		depth = { 8, 60 },
+		zones = {
+			{ band = { 180, 470 }, schools = 5 },
+		} :: { Zone },
+		respawn = 12,
+		back = Color3.fromRGB(100, 96, 54),
+		belly = Color3.fromRGB(160, 168, 116),
+		slim = 0.34,
+	},
+	{
+		-- Royal-blue tangs with yellow tails, flitting round the reef's coral in groups
+		id = "BlueTang",
+		name = "Blue Tang",
+		biome = "CoralReef",
+		mass = 1.5, -- (swallowed from about LV 16)
+		schools = 8,
+		perSchool = 5,
+		spread = 2.4,
+		speed = 6,
+		pathRadius = { 14, 28 },
+		depth = { 6, 45 },
+		zones = {
+			{ band = OUTER, angles = REEF, schools = 8 },
+		} :: { Zone },
+		respawn = 14,
+		back = Color3.fromRGB(34, 84, 222),
+		belly = Color3.fromRGB(60, 112, 232),
+		slim = 0.6,
+	},
+	{
+		-- A long, heavy, big-mouthed lingcod lying alone on the wrecks' sand
+		id = "Lingcod",
+		name = "Lingcod",
+		biome = "ShipwreckGraveyard",
+		mass = 3.2, -- (swallowed from about LV 23, the Wrecks' top)
+		schools = 6,
+		perSchool = 1,
+		spread = 1,
+		speed = 3,
+		pathRadius = { 14, 26 }, -- (wide and low, like the Coelacanth's)
+		depth = { 3, 18 },
+		zones = {
+			{ band = OUTER, angles = WRECKS, schools = 6 },
+		} :: { Zone },
+		respawn = 18,
+		back = Color3.fromRGB(100, 112, 94),
+		belly = Color3.fromRGB(170, 182, 164),
+		slim = 0.24,
+	},
+	{
+		-- Big-headed rattail grenadiers with ember-edged fins, nosing in threes along the
+		-- Vents' basin floors
+		id = "Rattail",
+		name = "Rattail",
+		biome = "HydrothermalVents",
+		mass = 6,
+		schools = 6,
+		perSchool = 3,
+		spread = 2.4,
+		speed = 3,
+		pathRadius = { 14, 26 }, -- (wide, like the Eelpout's)
+		depth = { 5, 24 },
+		zones = {
+			{ band = DEEP, vents = true, schools = 6 },
+		} :: { Zone },
+		respawn = 20,
+		back = Color3.fromRGB(86, 98, 118),
+		belly = Color3.fromRGB(118, 130, 148),
+		slim = 0.2,
+	},
+	{
+		-- Black viperfish with glassy fangs and rows of glowing cyan spots (SchoolController
+		-- GLOWS), hanging in threes in the Trench's dark water
+		id = "Viperfish",
+		name = "Viperfish",
+		biome = "AbyssalTrench",
+		mass = 1.8,
+		schools = 6,
+		perSchool = 3,
+		spread = 2.6,
+		speed = 4,
+		pathRadius = { 20, 40 },
+		depth = { 40, 260 },
+		zones = {
+			{ band = TRENCH, trench = true, schools = 6 },
+		} :: { Zone },
+		respawn = 18,
+		back = Color3.fromRGB(24, 32, 54),
+		belly = Color3.fromRGB(36, 48, 74),
+		slim = 0.16,
+	},
+	{
+		-- Little silver hatchetfish, tall as they're long, their keels lined with glowing
+		-- cyan dots (GLOWS), schooling high in the Trench's canyon
+		id = "Hatchetfish",
+		name = "Hatchetfish",
+		biome = "AbyssalTrench",
+		mass = 0.25,
+		schools = 4,
+		perSchool = 8,
+		spread = 2.4,
+		speed = 4,
+		pathRadius = { 16, 32 },
+		depth = { 30, 240 },
+		zones = {
+			{ band = TRENCH, trench = true, schools = 4 },
+		} :: { Zone },
+		respawn = 9,
+		back = Color3.fromRGB(42, 74, 132),
+		belly = Color3.fromRGB(168, 188, 212),
+		slim = 0.95,
+	},
+	{
+		-- Big, gentle blue-green humphead wrasse cruising alone among the Ruins' stones
+		id = "HumpheadWrasse",
+		name = "Humphead Wrasse",
+		biome = "SunkenRuins",
+		calm = true,
+		mass = 25, -- (swallowed from about LV 43)
+		schools = 4,
+		perSchool = 1,
+		spread = 1,
+		speed = 3,
+		pathRadius = { 18, 32 }, -- (a wide, low loop for a long fish)
+		depth = { 10, 50 },
+		zones = {
+			{ band = DEEP, angles = RUINS, schools = 4 },
+		} :: { Zone },
+		respawn = 30,
+		back = Color3.fromRGB(38, 148, 160),
+		belly = Color3.fromRGB(84, 182, 182),
+		slim = 0.45,
 	},
 }
 

@@ -6,8 +6,9 @@
 --   prey (rigged FBX: Minnow, Sardine, Wrasse, Snapper, Grouper, and the second batch
 --   Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp,
 --   Lanternfish, the third Butterflyfish, Triggerfish, Swordfish, OceanSunfish,
---   Coelacanth, VentEelpout, GulperEel, Oarfish; the Barracuda and ReefShark prey are
---   copies of the 'Cuda and Reef Shark species models)
+--   Coelacanth, VentEelpout, GulperEel, Oarfish, the fourth Opaleye, KelpBass, BlueTang,
+--   Lingcod, Rattail, Viperfish, Hatchetfish, HumpheadWrasse; the Barracuda and ReefShark
+--   prey are copies of the 'Cuda and Reef Shark species models)
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
 --   props, food and den furniture (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
@@ -31,6 +32,9 @@ local PREY = {
 	-- The third batch (prey3_fbx, 2026-10-19)
 	Butterflyfish = true, Triggerfish = true, Swordfish = true, OceanSunfish = true, Coelacanth = true,
 	VentEelpout = true, GulperEel = true, Oarfish = true,
+	-- The fourth batch (prey4_fbx, 2026-10-19)
+	Opaleye = true, KelpBass = true, BlueTang = true, Lingcod = true, Rattail = true, Viperfish = true,
+	Hatchetfish = true, HumpheadWrasse = true,
 }
 local PROPS = {
 	GiantKelp = true, KelpClump = true, BoulderRound = true, BoulderJagged = true,

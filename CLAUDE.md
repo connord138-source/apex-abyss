@@ -1193,7 +1193,21 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     cloth`. A smooth carved-stone colour map scored 0.62 until it got flecks. **Prey
     sheet C** (Opaleye, Kelp Bass, Blue Tang, Lingcod, Rattail, Viperfish,
     Hatchetfish, Humphead Wrasse; `tools/tripo_jobs_prey_concepts3.json`) was approved
-    by the owner on 2026-10-19 after a Tripo top-up (balance 705), for prey batch 4.
+    by the owner on 2026-10-19 after a Tripo top-up. **Prey batch 4** (`prey4_fbx`,
+    sha256 4197ef6c…, colour maps only, highest classifier 0.002): Opaleye (Kelp 0.4
+    kg), KelpBass (Kelp 0.8), BlueTang (Reef 1.5), Lingcod (Wrecks 3.2, lone), Rattail
+    (Vents 6), Viperfish (Trench 1.8) and Hatchetfish (Trench 0.25), both with
+    `GLOWS` (spots measured on the model's own texture dots through its UVs), and
+    HumpheadWrasse (Ruins 25, `calm`, drops shells). They took schools from the
+    Kelp's Minnows and Sardines, the Reef's and Ruins' Wrasse, lone Groupers and the
+    deep Snappers: ~3,950 fish in 492 schools; the LV 5 Kelp hunter keeps 5 species
+    (the Opaleye replaced the Wrasse). Pace held: LV 15/25/40/55/70/85/100 at
+    0.58/1.5/4.0/6.6/10.5/15.4/21.4 h; Crystal ~111 min a hunter. 31 prey species in
+    all. `prey_refs.py --batch C --fix` touches up model sheets (mouth linings,
+    spots, keel dots, gaze). **Moderation lesson:** Tripo can paint a hidden mouth's
+    inside plum even when the sheet's mouth is closed: check each new prey's colour
+    map for plum (red well over green, blue over green) and use `safe_colors.py
+    --plum`. Tripo balance 425 (2026-10-19).
   - **Tutorial: the full loop, nine steps** (`Config/Tutorial`, `TutorialService`
     rewritten, `tutorial.v`): leave the hub, eat 10, 5 shells, fill the Haul
     (`HAUL_LEVELS` 7 levels' worth), bank, spin the wheel (a spin granted), ROLL

@@ -16,6 +16,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `prey_fbx` | Minnow, Sardine, Wrasse, Snapper, Grouper (rigged FBX, 4 spine segments: their bones swim) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey2_fbx` | Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept; rigged FBX like `prey_fbx`, 4 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.025; see "The second prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey3_fbx` | Butterflyfish, Triggerfish, Swordfish, OceanSunfish, Coelacanth, VentEelpout, GulperEel, Oarfish (2026-10-19, the third prey batch from the approved PreySheetB concept; rigged FBX like `prey_fbx`: 4 spine segments, the Sunfish 2, the Eelpout 5, the Gulper Eel 6, the Oarfish 7; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.094; see "The third prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `prey4_fbx` | Opaleye, KelpBass, BlueTang, Lingcod, Rattail, Viperfish, Hatchetfish, HumpheadWrasse (2026-10-19, the fourth prey batch from the approved PreySheetC concept; rigged FBX like `prey_fbx`: 4 spine segments, the Lingcod 5, the Rattail and Viperfish 6, the Hatchetfish 2; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.002; see "The fourth prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
@@ -36,8 +37,8 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
 The Barracuda and Reef Shark predators (and prey schools) are the rigged 'Cuda and
 Reef Shark species models, copied into `PreyModels` by `organize_imports`. The Tripo
-balance is about 205 credits (2026-10-19, after the third prey batch and the den props'
-batch 2; `python tools/tripo.py balance`).
+balance is about 425 credits (2026-10-19, after the fourth prey batch;
+`python tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -213,6 +214,76 @@ and scalloped back edge, the Coelacanth's blotches and lobed fins, the Eelpout's
 head and ember specks, the Gulper's pouch mouth and whip tail, the Oarfish's red back
 fin, crest and streamers. None of them has `GLOWS` (the Eelpout's specks are painted
 on its texture).
+
+### The fourth prey batch (`prey4_fbx`, 2026-10-19)
+
+Eight prey from the approved concept sheet `assets/concepts/PreySheetC.jpg` (the
+working copy is `assets/tripo/prey_concepts/PreySheetC_grid.png`; its hatchetfish was
+redrawn on its own, `PreySheetC_Hatchetfish.png`): real natives for the kelp, the reef,
+the wrecks and the Ruins, and more for the deep (`Config/Prey`, ids as below): Opaleye
+and KelpBass (Kelp Shallows), BlueTang (Coral Reef), Lingcod (Shipwreck Graveyard),
+HumpheadWrasse (Sunken Ruins), Rattail (Hydrothermal Vents), Viperfish and Hatchetfish
+(Abyssal Trench).
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/`):
+
+1. `python3 tools/props/prey_refs.py --batch C`: each fish's crop of the sheet, mirrored
+   to face left, over the style strip (`assets/tripo/prey4_refs/`); the Hatchetfish's
+   from its own redraw (`sources`).
+2. `python tools/tripo.py run tools/tripo_jobs_prey4_sheets.json`: a clean side-on
+   model sheet each with a closed mouth (Nano Banana, 5 credits; 40 in all, no redos).
+   Three copied the style strip under the fish: `prey_refs.py --batch C --tops BlueTang
+   Lingcod Rattail`. Then `prey_refs.py --batch C --fix Opaleye KelpBass Lingcod
+   Viperfish Hatchetfish` touched five up (`FIXES`, -> `<Name>_fix.png`): the Opaleye's
+   back spots cut to two (the concept notes: one or two, not a speckle) and a stray
+   mark painted out; the Kelp Bass's, Lingcod's, Viperfish's and Hatchetfish's maroon
+   or pink-beige mouth lining to a navy-grey; the Hatchetfish's glowing dots moved from
+   the middle of its belly onto the keel's edge and its pupils turned to look up (Nano
+   Banana copied the reference's dots and gaze whatever the prompt said).
+3. `python tools/tripo.py run tools/tripo_jobs_prey4_models.json`: image_to_model
+   (30 credits each, 240; 280 in all).
+4. `tools/props/strip_normals.py` (one each), then `tools/props/safe_colors.py`
+   (skin-tone texels: Rattail 4.4%, its dull orange fin edges to a vivid ember orange;
+   pale: Kelp Bass 0.7%, Lingcod and Viperfish 0.1%; all to 0%), with `--vivid` for the
+   Blue Tang (its yellow tail stays lemon) and the new `--plum` for the Hatchetfish:
+   Tripo painted the inside of its mouth plum-maroon, (110, 43, 73), 17,000 texels,
+   though its sheet's mouth was closed; `--plum` turns plum, maroon and crimson-pink to
+   a navy-grey of the same brightness. Check every new prey's colour map for a plum
+   mouth (red well over green, blue over green) before rigging.
+5. `python3.11 tools/blender/rig_fish.py <safe>.glb assets/fbx/prey/<Id>.fbx --segments N`
+   with N = 4 (Opaleye, KelpBass, BlueTang, HumpheadWrasse), 5 (Lingcod), 6 (Rattail,
+   Viperfish: long and tapering) and 2 (Hatchetfish, a stiff disc like the Sunfish).
+   `tools/blender/fish_check.py`: every head on the left, no `--flip` needed.
+6. Each FBX embeds only its colour map (no ORM, no normal map; `fbx_strip_normals.py`
+   drops nothing). The eight embedded images were extracted and screened with
+   `screen_shades.py` and the classifier: exit 0, none flagged, highest 0.002
+   (Viperfish; the Hatchetfish 0.001 after `--plum`).
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `prey4_fbx` into `assets/fbx/prey/`, beside
+   the others).
+2. **File → Import 3D**, the eight new files in `assets/fbx/prey/`
+   (`"Opaleye.fbx" "KelpBass.fbx" "BlueTang.fbx" "Lingcod.fbx" "Rattail.fbx"
+   "Viperfish.fbx" "Hatchetfish.fbx" "HumpheadWrasse.fbx"`), rig on and textures on like
+   the first prey, **Import All**.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the eight
+   names), then **save the place**.
+
+Until a model is imported, the fish is the part-built ellipsoid with `SHAPES` extras:
+the Opaleye's two back spots and soft dorsal, the Kelp Bass's blotches, spiny dorsal and
+jaw, the Blue Tang's black palette marking and yellow tail, the Lingcod's dark blotches,
+long back fin and big jaw, the Rattail's big head, rat tail and ember fin edges, the
+Viperfish's fangs, the Hatchetfish's silver belly and tail stalk, the Humphead's forehead
+hump and lips. The Viperfish and the Hatchetfish wear `GLOWS` whether imported or not:
+Neon spots on the imported model's own painted rows (the Viperfish's two rows along its
+lower flank, the front two thirds of them, within 60 studs; the Hatchetfish's row along
+its keel's edge, chin to point, within 45), measured on the models (each colour map's
+cyan dots found on the mesh through its UVs, checked on a render with the spots on);
+the three nearest Viperfish carry the faint cyan light like the Lanternfish. On the
+part-built stand-in those spots sit inside the body, and `SHAPES` paints cyan dots on
+its outline instead. If a spot floats off or sinks into an imported fish, nudge `at`
+in `viperSpots` / `hatchetSpots` (x across, y up, z along, in half-extents of the box).
 
 ### The den props, batch 2 (`den_props2_glb`, 2026-10-19)
 

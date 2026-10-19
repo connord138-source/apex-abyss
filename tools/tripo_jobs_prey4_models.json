@@ -1,0 +1,52 @@
+{
+ "jobs": [
+  {
+   "name": "Opaleye",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/Opaleye_fix.png"
+  },
+  {
+   "name": "KelpBass",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/KelpBass_fix.png"
+  },
+  {
+   "name": "BlueTang",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/BlueTang_top.png"
+  },
+  {
+   "name": "Lingcod",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/Lingcod_fix.png"
+  },
+  {
+   "name": "Rattail",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/Rattail_top.png"
+  },
+  {
+   "name": "Viperfish",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/Viperfish_fix.png"
+  },
+  {
+   "name": "Hatchetfish",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/Hatchetfish_fix.png"
+  },
+  {
+   "name": "HumpheadWrasse",
+   "group": "prey4",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey4_sheets/HumpheadWrasse.png"
+  }
+ ]
+}
