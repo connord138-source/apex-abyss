@@ -1335,6 +1335,58 @@ STYLES.MegalodonJaws = function(folder: Model, site: Site): Parts
 	}
 end
 
+-- A nameplate set into the rock is moved out in front of it: the cavern wall leans
+-- out over the doorways, to ~4 studs in front of WALL_Z at the taller styles' plates
+-- (PC 2026-10-19, DN1: the Brass Porthole's, 1.6 out, showed only "NAIRE138'S"; the
+-- Whalebone's and the Megalodon Jaws' corners were in the rock). Once the Terrain
+-- answers rays (tried every half second for 10 s); never moved back.
+local function seatPlaque(frame: CFrame, plate: Decor.Plaque)
+	task.spawn(function()
+		local board = plate.board
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { workspace.Terrain }
+		local at = frame:PointToObjectSpace(board.Position)
+		local back = at.Z + board.Size.Z / 2 -- the board's back (local +z is into the wall)
+		local rock = math.huge
+		for _ = 1, 20 do
+			task.wait(0.5)
+			if board.Parent == nil then
+				return
+			end
+			for _, fx in { -0.5, -0.25, 0, 0.25, 0.5 } do
+				for _, fy in { -0.5, 0, 0.5 } do
+					local x, y = at.X + fx * board.Size.X, at.Y + fy * board.Size.Y
+					local hit = workspace:Raycast(
+						frame * Vector3.new(x, y, back - 30),
+						frame.LookVector * -40,
+						params
+					)
+					if hit then
+						rock = math.min(rock, frame:PointToObjectSpace(hit.Position).Z)
+					end
+				end
+			end
+			if rock < math.huge then
+				break
+			end
+		end
+		local shift = back - (rock - 0.15)
+		if rock == math.huge or shift <= 0 then
+			return
+		end
+		local out = frame.LookVector * shift
+		board.CFrame += out
+		for _, trim in plate.trims do
+			trim.CFrame += out
+		end
+		local face = plate.gui.Parent
+		if face and face:IsA("BasePart") then
+			face.CFrame += out
+		end
+	end)
+end
+
 -- Builds (or rebuilds) door `index`'s style
 local function build(index: number, styleId: string)
 	local door = doors[index]
@@ -1356,6 +1408,7 @@ local function build(index: number, styleId: string)
 		rng = Random.new(World.seed + index * 31),
 	}
 	local made = builder(style, site)
+	seatPlaque(frame, made.plaque)
 	local curtain, backing, bubbles, shimmer, glow = pane(style, frame, Layout.DOOR_RADIUS, made.pane)
 	style:SetAttribute("Style", if STYLES[styleId] then styleId else "Stone")
 	style.Parent = door.model
