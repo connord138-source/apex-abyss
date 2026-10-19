@@ -1,0 +1,68 @@
+{
+ "jobs": [
+  {
+   "name": "Opaleye",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/Opaleye.png",
+   "prompt": "The TOP of the attached image is the approved design of an OPALEYE; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A chunky, rounded opaleye: a deep, rounded OVAL body, taller and rounder than a bass, plain olive-green all over with a slightly darker back, just TWO small white spots high on its back and no other speckles, a short blunt rounded snout with a SMALL mouth, a rounded soft dorsal fin, olive fins and a short square tail (no pink, peach or beige anywhere). Its eye simple, a dark pupil in a pale opal blue-green iris with a tiny white glint, like the top design, never a googly cartoon eye. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its small mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "KelpBass",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/KelpBass.png",
+   "prompt": "The TOP of the attached image is the approved design of a KELP BASS; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A long, sturdy kelp bass with a big head: mottled olive-brown with large irregular pale olive-green blotches over its back and sides (olive, never beige or tan), a BIG wide jaw with the lower jaw jutting a little, a tall SPINY first dorsal fin of sharp spines joined by fin membrane, a soft second dorsal fin, olive fins and a square tail (no pink, peach or beige anywhere). Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its big mouth CLOSED, lips shut, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "BlueTang",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/BlueTang.png",
+   "prompt": "The TOP of the attached image is the approved design of a BLUE TANG; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A blue tang surgeonfish: a flat oval body in vivid royal blue, a bold black palette-shaped marking sweeping along its upper side from behind the eye to the tail, royal-blue dorsal and anal fins edged black, a vivid lemon-yellow pectoral fin and a vivid lemon-yellow tail fin edged black, a small pointed snout with a tiny mouth (no white, pink or peach anywhere). Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Lingcod",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/Lingcod.png",
+   "prompt": "The TOP of the attached image is the approved design of a LINGCOD; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A long, heavy, big-headed lingcod: mottled grey-green with dark olive-brown spots and blotches all over, a huge wide jaw, a long spiny dorsal fin running down the back, big fan-shaped pectoral fins and a square tail (no pink, peach, beige or red anywhere). Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its huge mouth CLOSED, lips shut along the long jaw line, only the tips of a few small white teeth peeking out, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Rattail",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/Rattail.png",
+   "prompt": "The TOP of the attached image is the approved design of a RATTAIL GRENADIER; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A deep-sea rattail grenadier: a big blunt rounded head with a short pointed snout over a small mouth, a short tall triangular first dorsal fin, the body tapering straight back into a very long, thin, pointed rat-like tail with a low fin along its top and bottom edges, dark slate-grey skin with faint darker facets, every fin edged with a thin line of vivid ember-orange (orange, never pink; no peach or beige anywhere). Its eye big and round but simple, a dark pupil in a blue-grey iris with a tiny white glint, like the top design, never a googly cartoon eye. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Viperfish",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/Viperfish.png",
+   "prompt": "The TOP of the attached image is the approved design of a VIPERFISH; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A slender deep-sea viperfish: a long, straight, black-navy body with faint dark blue facets, a big head with a long lower jaw, long glassy needle fangs overlapping OUTSIDE the closed jaws, one row of small glowing cyan dots along the belly from the throat to the tail and a second row just above it, a small dorsal fin, small pelvic and anal fins and a forked tail (no pink, red, maroon or peach anywhere). Its eye simple, a dark pupil in a glowing teal iris with a tiny white glint, like the top design, never a googly cartoon eye. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its jaws CLOSED with the fangs showing outside them, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Hatchetfish",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/Hatchetfish.png",
+   "prompt": "The TOP of the attached image is the approved design of a MARINE HATCHETFISH; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A small deep-sea hatchetfish shaped like the head of a hatchet: its body much TALLER than it is long and flat as a coin, a high straight back, a deep sharp keel belly dropping steeply behind the head like an axe blade, the body narrowing fast to a thin tail stalk with a small forked tail, mirror silver-blue sides with a darker navy-blue back, a small upturned mouth, and a row of glowing cyan dots running right along the lower EDGE of the keel, the belly's bottom rim (no dots on its side; no pink, red, peach or beige anywhere). Its eyes big round tube eyes high on the head, looking UPWARD, simple, a dark pupil with a tiny white glint, never googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), mouth closed, every fin spread and fully visible, the whole body in frame. Plain flat soft teal background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "HumpheadWrasse",
+   "group": "prey4_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/prey4_refs/HumpheadWrasse.png",
+   "prompt": "The TOP of the attached image is the approved design of a HUMPHEAD WRASSE; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A big, heavy humphead (Napoleon) wrasse: a deep oval body, blue-green to teal, fine dark wavy scribble lines on its face and faint darker scale lines along its sides, a tall rounded bulging forehead hump above the eyes, thick fleshy blue-green lips, a long soft dorsal fin, broad rounded pectoral fins and a rounded fan tail (no pink, peach or beige anywhere). Its eye small and simple with a dark pupil and a tiny white glint, like the top design, never big googly cartoon eyes. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's left, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its thick lips CLOSED, every fin spread and fully visible, the whole body in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  }
+ ]
+}

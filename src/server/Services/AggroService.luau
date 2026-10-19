@@ -55,6 +55,10 @@ local function pickFish(root: BasePart, length: number, now: number): number?
 			if Size.ratio(fish.length, length) < aggro.ratio or (fishReadyAt[index] or 0) > now then
 				continue
 			end
+			local def = Config.Prey.byId[fish.prey]
+			if def and def.calm then
+				continue
+			end
 			if HuntService.preyEaten(index, now) then
 				continue
 			end

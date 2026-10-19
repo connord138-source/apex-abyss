@@ -1,0 +1,100 @@
+{
+ "jobs": [
+  {
+   "name": "DriftwoodTable",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/DriftwoodTable.png",
+   "prompt": "The attached image is the approved design of a driftwood table for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A long sturdy table: a thick top of three weathered grey-brown driftwood planks on two chunky crossed driftwood trestle legs (an X at each end) joined by a stretcher; on the top a small blue mussel-shell bowl heaped with cool white pearls and a sea-glass jar candle glowing teal. Grey-brown driftwood, blue shell, cool white pearls, teal glass. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "KelpBed",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/KelpBed.png",
+   "prompt": "The attached image is the approved design of a kelp bed for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A cosy bed: a low oval frame woven from thick twisted ropes of olive-brown kelp over driftwood posts, with a woven lattice headboard at one end; a plump moss-green mattress, two plump teal pillows against the headboard, and a darker moss-green kelp blanket folded back at the foot. Olive-brown kelp rope (not tan or beige), moss greens, teal. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "PearlPedestal",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/PearlPedestal.png",
+   "prompt": "The attached image is the approved design of a pearl pedestal for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A tall pedestal: a carved grey stone column with vertical flutes and a scrolled capital on a square stepped plinth; on top an open blue-violet clam shell cradling one big glowing pearl, cool white with a faint teal sheen. Cool grey stone, blue-violet shell. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "BubbleColumn",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/BubbleColumn.png",
+   "prompt": "The attached image is the approved design of a bubble fountain for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A bubble fountain set on the floor: a low ring of big rounded grey stones patched with green moss, stacked two high, round a round bronze vent grate with thick slats in the middle. Draw it without any bubbles. Grey stone, moss green, warm bronze. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "SpongeSofa",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/SpongeSofa.png",
+   "prompt": "The attached image is the approved design of a sponge sofa for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A three-seat sofa: a chunky frame of grey-brown driftwood with slatted arms and a low back rail, three plump deep teal seat cushions and three back cushions of stitched kelp cloth with patches, a round vivid orange sea-sponge bolster against each arm, and a vivid orange scallop shell capping each back corner. Grey-brown driftwood, deep teal, vivid saturated orange (not peach or pale). The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "ShipwreckBookshelf",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/ShipwreckBookshelf.png",
+   "prompt": "The attached image is the approved design of a shipwreck bookshelf for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A tall narrow bookcase built from curved dark brown ship's hull planks, its sides bowed like a hull, a round brass porthole set in one side, a flat back that stands against a wall; four shelves full of chunky books with plain spines in red, navy, green and brown, glass bottles and a little sprig of vivid red coral. Dark wood, brass, deep red, navy, green. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "JellyLamp",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/JellyLamp.png",
+   "prompt": "The attached image is the approved design of a jellyfish ceiling lamp for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A ceiling lamp: a round brass ceiling plate with three thin brass chains of different lengths hanging from it, each holding a glowing golden-amber frosted-glass jellyfish bell with short frilly arms in the same deep amber gold. Brass and a deep amber-gold glow (not peach or pale). The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "SeaGlassLantern",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/SeaGlassLantern.png",
+   "prompt": "The attached image is the approved design of a small sea glass wall lantern for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A small wall lantern: a dark wooden wall plate with iron bolts, a curled dark iron scroll bracket reaching out from it, and hanging from the bracket's ring a dark iron lantern cage with a peaked cap, its panes chunky frosted sea glass in teal, cobalt blue and sea green, glowing softly. Dark iron, dark wood, teal, cobalt, sea green. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "CoralLamp",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/CoralLamp.png",
+   "prompt": "The attached image is the approved design of a coral floor lamp for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A floor lamp: a branching deep orange coral trunk standing on a round grey rock base, under a wide fan-coral shade of three ridged fans in deep saturated orange-red, glowing warm from inside. Grey rock and deep vivid orange (not peach, salmon or pale). The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "Banner",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/Banner.png",
+   "prompt": "The attached image is the approved design of a wall banner for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A tall wall banner: deep teal cloth with a swallowtail foot, a gold trim border and a gold emblem of a fish leaping over a wave, hung on a short grey-brown driftwood pole by a dark brown rope loop. Deep teal, gold, grey-brown driftwood, dark brown rope. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "ConchGramophone",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/ConchGramophone.png",
+   "prompt": "The attached image is the approved design of a conch gramophone for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A gramophone: a square dark wood cabinet with brass corner caps and a winding crank on its side, a black record with a red label on the turntable, a curved brass tone arm, and its big horn a spiral conch shell, cool grey-white with bold dark rust-brown spiral bands, its flared bell deep vivid orange inside. Dark wood, brass, cool grey-white (not cream), rust brown, deep orange. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  },
+  {
+   "name": "TreasureChart",
+   "group": "den_props2_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/den_props2_refs/TreasureChart.png",
+   "prompt": "The attached image is the approved design of a framed sea chart for a fish's undersea home in a game. Redraw it as ONE clean model sheet for 3D conversion: the same object with the same shape, proportions, colors, materials and details as the design, in chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. A framed sea chart for the wall: a thick carved grey-brown driftwood frame with dark brown rope wrapped round its corners, holding a chart of a muted teal-blue sea with green islands with grey-brown shores, a dotted path, a red X and a compass star, with no letters; the chart's margin pale blue-grey (not cream or beige). Turned a little to the side so the frame's thickness shows. The object alone, whole and complete, large and centered, filling most of the frame, in a three-quarter view from slightly above, every part visible, nothing cropped. Plain flat pale grey background, no ground shadow, no floor, no wall, no water, no bubbles, no other objects, no text, letters, numbers or watermark."
+  }
+ ]
+}

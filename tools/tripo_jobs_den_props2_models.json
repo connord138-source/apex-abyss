@@ -1,0 +1,76 @@
+{
+ "jobs": [
+  {
+   "name": "DriftwoodTable",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/DriftwoodTable.png"
+  },
+  {
+   "name": "KelpBed",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/KelpBed.png"
+  },
+  {
+   "name": "PearlPedestal",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/PearlPedestal.png"
+  },
+  {
+   "name": "BubbleColumn",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/BubbleColumn.png"
+  },
+  {
+   "name": "SpongeSofa",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/SpongeSofa.png"
+  },
+  {
+   "name": "ShipwreckBookshelf",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/ShipwreckBookshelf.png"
+  },
+  {
+   "name": "JellyLamp",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/JellyLamp.png"
+  },
+  {
+   "name": "SeaGlassLantern",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/SeaGlassLantern.png"
+  },
+  {
+   "name": "CoralLamp",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/CoralLamp.png"
+  },
+  {
+   "name": "Banner",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/Banner.png"
+  },
+  {
+   "name": "ConchGramophone",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/ConchGramophone.png"
+  },
+  {
+   "name": "TreasureChart",
+   "group": "den_props2",
+   "type": "image_to_model",
+   "image": "assets/tripo/den_props2_sheets/TreasureChart.png"
+  }
+ ]
+}

@@ -306,7 +306,9 @@ end
 -- and the lift stored every LIFT_STEP; a lift rises and falls at most SLOPE studs
 -- per stud along the loop.
 local CELL = 4 -- Shared/Ground's cell
-local CLEAR_STUDS = 1.5
+-- (2 since 2026-10-19: 1.5 left a low Lionfish on a tight loop, pitched nose-down, a
+-- fifth of a stud into a rock in run_schools.sh once the third prey batch moved it)
+local CLEAR_STUDS = 2
 local CLEAR_LENGTHS = 0.6
 local FINE_STEP = 2
 local LIFT_STEP = 6

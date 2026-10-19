@@ -286,8 +286,9 @@ local function makePart(parent: Instance, color: Color3, shape: "Ellipsoid" | "F
 end
 
 -- Part-built extras on some prey, each an ellipsoid riding on the fish (moved with its
--- body). SHAPES give the second prey batch (Config/Prey, 2026-10-18) a look of its own
--- while its model isn't imported: a belly, bands, fins on the part body. GLOWS are
+-- body). SHAPES give the second to fourth prey batches (Config/Prey, 2026-10-18/19) a
+-- look of their own while their models aren't imported: a belly, bands, fins on the
+-- part body. GLOWS are
 -- the glowing bits every body wears, imported or not: the Lanternfish's light spots and
 -- the Ghost Shrimp's teal tips (Neon parts; never a see-through body, which sorts
 -- badly). `at` is a place on the body in its half-extents (x across, y up, z along:
@@ -301,6 +302,15 @@ type Glow = { near: number, color: Color3, light: boolean, spots: { ExtraSpec } 
 local LANTERN = Color3.fromRGB(90, 236, 255)
 local SHRIMP_TIP = Color3.fromRGB(60, 240, 214)
 local CHARCOAL = Color3.fromRGB(52, 44, 44)
+local DARK_BAND = Color3.fromRGB(36, 34, 48) -- the Butterflyfish's eye band and eyespot
+local BLOTCH = Color3.fromRGB(214, 226, 234) -- the Coelacanth's pale blotches
+local EMBER = Color3.fromRGB(250, 120, 40) -- the Vent Eelpout's specks
+local OAR_RED = Color3.fromRGB(200, 32, 38) -- the Oarfish's fins (a true red, as its model)
+local VIPER_GLOW = Color3.fromRGB(96, 232, 244) -- the Viperfish's light spots
+local HATCHET_GLOW = Color3.fromRGB(84, 242, 232) -- the Hatchetfish's keel dots
+local SPOT_WHITE = Color3.fromRGB(226, 236, 232) -- the Opaleye's two back spots
+local TANG_YELLOW = Color3.fromRGB(250, 212, 28)
+local EMBER_EDGE = Color3.fromRGB(232, 110, 36) -- the Rattail's fin edges (orange, never pink)
 local GLOW_LIGHTS = 3
 local GLOW_LIGHT_RANGE = 7
 local GLOW_LIGHT_BRIGHTNESS = 0.7
@@ -316,8 +326,56 @@ for _, z in { -0.34, -0.04, 0.26, 0.52 } do
 	end
 end
 
+-- The fourth batch's glowing rows, measured on the imported models (the cyan dots of
+-- their colour maps, found on the mesh through its UVs, and checked on a render with
+-- these balls on): the Viperfish's two rows along its lower flank, the front two
+-- thirds of them (behind that the spine wave swings the body off the spots), and the
+-- Hatchetfish's row along its keel's edge, chin to the keel's point. Both sides each.
+-- On the part-built stand-in they sit inside the body (its SHAPES paint the rows).
+local viperSpots: { ExtraSpec } = {}
+for _, spot in
+	{
+		{ 0.45, -0.6, -0.42 },
+		{ 0.44, -0.565, -0.25 },
+		{ 0.4, -0.55, -0.09 },
+		{ 0.36, -0.52, 0.07 },
+		{ 0.29, -0.495, 0.21 }, -- the belly row
+		{ 0.59, -0.374, -0.43 },
+		{ 0.59, -0.355, -0.26 },
+		{ 0.537, -0.364, -0.105 },
+		{ 0.49, -0.36, 0.05 },
+		{ 0.43, -0.34, 0.19 }, -- the flank row
+	}
+do
+	for _, side in { -1, 1 } do
+		table.insert(
+			viperSpots,
+			{ at = Vector3.new(side * spot[1], spot[2], spot[3]), ball = 0.03, color = VIPER_GLOW }
+		)
+	end
+end
+local hatchetSpots: { ExtraSpec } = {}
+for _, spot in
+	{
+		{ 0.176, -0.297, -0.54 },
+		{ 0.174, -0.479, -0.38 },
+		{ 0.14, -0.633, -0.22 },
+		{ 0.143, -0.751, -0.06 },
+		{ 0.127, -0.878, 0.09 },
+	}
+do
+	for _, side in { -1, 1 } do
+		table.insert(
+			hatchetSpots,
+			{ at = Vector3.new(side * spot[1], spot[2], spot[3]), ball = 0.04, color = HATCHET_GLOW }
+		)
+	end
+end
+
 local GLOWS: { [string]: Glow } = {
 	Lanternfish = { near = 60, color = LANTERN, light = true, spots = lanternSpots },
+	Viperfish = { near = 60, color = VIPER_GLOW, light = true, spots = viperSpots },
+	Hatchetfish = { near = 45, color = HATCHET_GLOW, light = false, spots = hatchetSpots },
 	GhostShrimp = {
 		near = 45,
 		color = SHRIMP_TIP,
@@ -427,6 +485,324 @@ local SHAPES: { [string]: { ExtraSpec } } = {
 			at = Vector3.new(0, -0.35, 0),
 			size = Vector3.new(0.85, 0.6, 0.85),
 			color = Color3.fromRGB(58, 80, 122),
+		},
+	},
+	-- The third batch (Config/Prey, 2026-10-19)
+	Butterflyfish = {
+		-- the dark band through the eye, the eyespot near the tail, the pointed snout
+		{
+			at = Vector3.new(0, 0.05, -0.5),
+			size = Vector3.new(1.04, 1.04, 0.14),
+			color = DARK_BAND,
+			hug = true,
+		},
+		{ at = Vector3.new(0.8, 0.45, 0.45), ball = 0.07, color = DARK_BAND, hug = true },
+		{ at = Vector3.new(-0.8, 0.45, 0.45), ball = 0.07, color = DARK_BAND, hug = true },
+		{
+			at = Vector3.new(0, -0.1, -1),
+			size = Vector3.new(0.18, 0.16, 0.25),
+			color = Color3.fromRGB(240, 196, 30),
+		},
+		{
+			at = Vector3.new(0, 0.85, 0.2),
+			size = Vector3.new(0.1, 0.45, 0.7),
+			color = Color3.fromRGB(226, 172, 20),
+		},
+	},
+	Triggerfish = {
+		-- the white-spotted belly, the yellow net on the back, the orange beak
+		{
+			at = Vector3.new(0, -0.4, 0.05),
+			size = Vector3.new(0.85, 0.5, 0.8),
+			color = Color3.fromRGB(226, 230, 236),
+		},
+		{
+			at = Vector3.new(0, 0.5, 0.05),
+			size = Vector3.new(0.75, 0.35, 0.5),
+			color = Color3.fromRGB(214, 186, 40),
+		},
+		{
+			at = Vector3.new(0, -0.05, -0.98),
+			size = Vector3.new(0.3, 0.25, 0.14),
+			color = Color3.fromRGB(244, 120, 24),
+		},
+		{
+			at = Vector3.new(0, 1, -0.15),
+			size = Vector3.new(0.08, 0.35, 0.2),
+			color = Color3.fromRGB(28, 36, 72),
+		},
+	},
+	Swordfish = {
+		-- the silver belly, the sword and the tall dorsal fin
+		{
+			at = Vector3.new(0, -0.35, 0),
+			size = Vector3.new(0.85, 0.6, 0.9),
+			color = Color3.fromRGB(200, 210, 222),
+		},
+		{
+			at = Vector3.new(0, 0, -1.45),
+			size = Vector3.new(0.12, 0.12, 0.5),
+			color = Color3.fromRGB(96, 88, 150),
+		},
+		{
+			at = Vector3.new(0, 1.5, -0.3),
+			size = Vector3.new(0.08, 1.3, 0.25),
+			color = Color3.fromRGB(58, 50, 128),
+		},
+	},
+	OceanSunfish = {
+		-- the paler belly, one tall fin up and one down, the scalloped back edge
+		{
+			at = Vector3.new(0, -0.3, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(176, 188, 196),
+		},
+		{
+			at = Vector3.new(0, 1.35, 0.5),
+			size = Vector3.new(0.1, 0.9, 0.25),
+			color = Color3.fromRGB(112, 124, 136),
+		},
+		{
+			at = Vector3.new(0, -1.35, 0.5),
+			size = Vector3.new(0.1, 0.9, 0.25),
+			color = Color3.fromRGB(112, 124, 136),
+		},
+		{
+			at = Vector3.new(0, 0, 0.95),
+			size = Vector3.new(0.3, 0.85, 0.12),
+			color = Color3.fromRGB(150, 162, 172),
+		},
+	},
+	Coelacanth = {
+		-- white blotches, fleshy lobed fins, the second dorsal on its stalk
+		{ at = Vector3.new(0.85, 0.25, -0.15), ball = 0.06, color = BLOTCH, hug = true },
+		{ at = Vector3.new(-0.85, 0.25, -0.15), ball = 0.06, color = BLOTCH, hug = true },
+		{ at = Vector3.new(0.85, -0.1, 0.3), ball = 0.07, color = BLOTCH, hug = true },
+		{ at = Vector3.new(-0.85, -0.1, 0.3), ball = 0.07, color = BLOTCH, hug = true },
+		{
+			at = Vector3.new(0.75, -0.55, -0.3),
+			size = Vector3.new(0.3, 0.3, 0.3),
+			color = Color3.fromRGB(44, 72, 98),
+		},
+		{
+			at = Vector3.new(-0.75, -0.55, -0.3),
+			size = Vector3.new(0.3, 0.3, 0.3),
+			color = Color3.fromRGB(44, 72, 98),
+		},
+		{
+			at = Vector3.new(0, 0.95, 0.4),
+			size = Vector3.new(0.1, 0.5, 0.3),
+			color = Color3.fromRGB(44, 72, 98),
+		},
+	},
+	VentEelpout = {
+		-- the big blunt head, the long soft back fin, a few ember-orange specks
+		{
+			at = Vector3.new(0, 0.05, -0.6),
+			size = Vector3.new(1.1, 1.1, 0.5),
+			color = Color3.fromRGB(64, 60, 64),
+		},
+		{
+			at = Vector3.new(0, 0.85, 0.3),
+			size = Vector3.new(0.08, 0.3, 0.9),
+			color = Color3.fromRGB(74, 70, 74),
+		},
+		{ at = Vector3.new(0.85, 0.2, -0.1), ball = 0.04, color = EMBER, hug = true },
+		{ at = Vector3.new(-0.85, 0.2, -0.1), ball = 0.04, color = EMBER, hug = true },
+		{ at = Vector3.new(0.85, -0.1, 0.35), ball = 0.04, color = EMBER, hug = true },
+		{ at = Vector3.new(-0.85, -0.1, 0.35), ball = 0.04, color = EMBER, hug = true },
+	},
+	GulperEel = {
+		-- the huge pouch mouth, its dark inside, the whip tail
+		{
+			at = Vector3.new(0, -0.1, -0.7),
+			size = Vector3.new(1.4, 1.6, 0.55),
+			color = Color3.fromRGB(26, 24, 30),
+		},
+		{
+			at = Vector3.new(0, -0.25, -1),
+			size = Vector3.new(0.9, 0.9, 0.1),
+			color = Color3.fromRGB(54, 30, 44),
+		},
+		{
+			at = Vector3.new(0, 0, 1.4),
+			size = Vector3.new(0.12, 0.15, 0.8),
+			color = Color3.fromRGB(22, 22, 28),
+		},
+	},
+	Oarfish = {
+		-- the red fin along the whole back, the crest of rays, the streamers below
+		{
+			at = Vector3.new(0, 1.1, 0.05),
+			size = Vector3.new(0.08, 0.5, 0.95),
+			color = OAR_RED,
+		},
+		{
+			at = Vector3.new(0, 2, -0.85),
+			size = Vector3.new(0.06, 1.8, 0.12),
+			color = OAR_RED,
+		},
+		{
+			at = Vector3.new(0, -1.6, -0.55),
+			size = Vector3.new(0.05, 0.35, 0.5),
+			color = OAR_RED,
+		},
+	},
+	-- The fourth batch (Config/Prey, 2026-10-19)
+	Opaleye = {
+		-- its two white spots high on the back, the rounded soft dorsal fin
+		{ at = Vector3.new(0.55, 0.72, -0.2), ball = 0.045, color = SPOT_WHITE, hug = true },
+		{ at = Vector3.new(-0.55, 0.72, -0.2), ball = 0.045, color = SPOT_WHITE, hug = true },
+		{ at = Vector3.new(0.55, 0.72, 0.05), ball = 0.045, color = SPOT_WHITE, hug = true },
+		{ at = Vector3.new(-0.55, 0.72, 0.05), ball = 0.045, color = SPOT_WHITE, hug = true },
+		{
+			at = Vector3.new(0, 0.9, 0.15),
+			size = Vector3.new(0.1, 0.45, 0.75),
+			color = Color3.fromRGB(96, 104, 42),
+		},
+	},
+	KelpBass = {
+		-- the paler belly, pale olive blotches, the spiny first dorsal, the big jaw
+		{
+			at = Vector3.new(0, -0.35, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(160, 168, 116),
+		},
+		{ at = Vector3.new(0.85, 0.2, -0.1), ball = 0.09, color = Color3.fromRGB(150, 160, 98), hug = true },
+		{ at = Vector3.new(-0.85, 0.2, -0.1), ball = 0.09, color = Color3.fromRGB(150, 160, 98), hug = true },
+		{ at = Vector3.new(0.85, 0.15, 0.3), ball = 0.08, color = Color3.fromRGB(150, 160, 98), hug = true },
+		{ at = Vector3.new(-0.85, 0.15, 0.3), ball = 0.08, color = Color3.fromRGB(150, 160, 98), hug = true },
+		{
+			at = Vector3.new(0, 1, -0.15),
+			size = Vector3.new(0.08, 0.5, 0.45),
+			color = Color3.fromRGB(84, 80, 44),
+		},
+		{
+			at = Vector3.new(0, -0.15, -0.95),
+			size = Vector3.new(0.5, 0.3, 0.14),
+			color = Color3.fromRGB(44, 48, 60),
+		},
+	},
+	BlueTang = {
+		-- the black palette marking, the yellow tail and pectoral fins
+		{
+			at = Vector3.new(0, 0.3, 0.05),
+			size = Vector3.new(1.04, 0.32, 0.75),
+			color = Color3.fromRGB(18, 24, 52),
+			hug = true,
+		},
+		{
+			at = Vector3.new(0, 0, 1.05),
+			size = Vector3.new(0.08, 0.55, 0.22),
+			color = TANG_YELLOW,
+		},
+		{ at = Vector3.new(0.85, -0.15, -0.2), ball = 0.07, color = TANG_YELLOW, hug = true },
+		{ at = Vector3.new(-0.85, -0.15, -0.2), ball = 0.07, color = TANG_YELLOW, hug = true },
+	},
+	Lingcod = {
+		-- the pale belly, dark blotches, the long spiny back fin, the huge jaw
+		{
+			at = Vector3.new(0, -0.35, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(170, 182, 164),
+		},
+		{ at = Vector3.new(0.85, 0.3, -0.2), ball = 0.06, color = Color3.fromRGB(70, 76, 56), hug = true },
+		{ at = Vector3.new(-0.85, 0.3, -0.2), ball = 0.06, color = Color3.fromRGB(70, 76, 56), hug = true },
+		{ at = Vector3.new(0.85, 0.2, 0.25), ball = 0.06, color = Color3.fromRGB(70, 76, 56), hug = true },
+		{ at = Vector3.new(-0.85, 0.2, 0.25), ball = 0.06, color = Color3.fromRGB(70, 76, 56), hug = true },
+		{
+			at = Vector3.new(0, 0.95, 0.1),
+			size = Vector3.new(0.08, 0.35, 0.85),
+			color = Color3.fromRGB(84, 94, 74),
+		},
+		{
+			at = Vector3.new(0, -0.1, -0.85),
+			size = Vector3.new(0.75, 0.55, 0.35),
+			color = Color3.fromRGB(110, 122, 102),
+		},
+	},
+	Rattail = {
+		-- the big blunt head, the long thin rat tail, ember-orange fin edges
+		{
+			at = Vector3.new(0, 0.05, -0.6),
+			size = Vector3.new(1.15, 1.15, 0.5),
+			color = Color3.fromRGB(92, 104, 124),
+		},
+		{
+			at = Vector3.new(0, 0, 1.35),
+			size = Vector3.new(0.12, 0.14, 0.9),
+			color = Color3.fromRGB(86, 98, 118),
+		},
+		{
+			at = Vector3.new(0, 1.1, -0.3),
+			size = Vector3.new(0.08, 0.6, 0.22),
+			color = Color3.fromRGB(80, 90, 108),
+		},
+		{
+			at = Vector3.new(0, 0.95, 0.45),
+			size = Vector3.new(0.06, 0.12, 0.8),
+			color = EMBER_EDGE,
+		},
+		{
+			at = Vector3.new(0, -0.95, 0.45),
+			size = Vector3.new(0.06, 0.12, 0.8),
+			color = EMBER_EDGE,
+		},
+	},
+	Viperfish = {
+		-- the glassy fangs, its rows of cyan spots (the GLOWS sit inside a part body)
+		{
+			at = Vector3.new(0, -0.2, -1),
+			size = Vector3.new(0.35, 0.5, 0.08),
+			color = Color3.fromRGB(214, 228, 236),
+		},
+		{
+			at = Vector3.new(0, 0.95, 0.1),
+			size = Vector3.new(0.08, 0.45, 0.25),
+			color = Color3.fromRGB(56, 84, 110),
+		},
+		{ at = Vector3.new(0.85, -0.45, -0.3), ball = 0.025, color = VIPER_GLOW, hug = true },
+		{ at = Vector3.new(-0.85, -0.45, -0.3), ball = 0.025, color = VIPER_GLOW, hug = true },
+		{ at = Vector3.new(0.85, -0.45, 0), ball = 0.025, color = VIPER_GLOW, hug = true },
+		{ at = Vector3.new(-0.85, -0.45, 0), ball = 0.025, color = VIPER_GLOW, hug = true },
+		{ at = Vector3.new(0.85, -0.45, 0.3), ball = 0.025, color = VIPER_GLOW, hug = true },
+		{ at = Vector3.new(-0.85, -0.45, 0.3), ball = 0.025, color = VIPER_GLOW, hug = true },
+	},
+	Hatchetfish = {
+		-- the silver belly under the navy back, the keel's row of cyan dots, the tail stalk
+		{
+			at = Vector3.new(0, -0.3, 0),
+			size = Vector3.new(0.9, 0.65, 0.85),
+			color = Color3.fromRGB(168, 188, 212),
+		},
+		{
+			at = Vector3.new(0, 0, 1.1),
+			size = Vector3.new(0.12, 0.22, 0.3),
+			color = Color3.fromRGB(150, 170, 196),
+		},
+		{ at = Vector3.new(0.6, -0.72, -0.3), ball = 0.04, color = HATCHET_GLOW, hug = true },
+		{ at = Vector3.new(-0.6, -0.72, -0.3), ball = 0.04, color = HATCHET_GLOW, hug = true },
+		{ at = Vector3.new(0.6, -0.78, 0), ball = 0.04, color = HATCHET_GLOW, hug = true },
+		{ at = Vector3.new(-0.6, -0.78, 0), ball = 0.04, color = HATCHET_GLOW, hug = true },
+		{ at = Vector3.new(0.6, -0.72, 0.3), ball = 0.04, color = HATCHET_GLOW, hug = true },
+		{ at = Vector3.new(-0.6, -0.72, 0.3), ball = 0.04, color = HATCHET_GLOW, hug = true },
+	},
+	HumpheadWrasse = {
+		-- the tall forehead hump, the thick lips, the paler belly
+		{
+			at = Vector3.new(0, -0.3, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(84, 182, 182),
+		},
+		{
+			at = Vector3.new(0, 0.7, -0.62),
+			size = Vector3.new(0.75, 0.55, 0.4),
+			color = Color3.fromRGB(44, 140, 174),
+		},
+		{
+			at = Vector3.new(0, -0.2, -1),
+			size = Vector3.new(0.42, 0.32, 0.14),
+			color = Color3.fromRGB(60, 170, 182),
 		},
 	},
 }

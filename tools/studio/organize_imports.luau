@@ -5,8 +5,10 @@
 --       -> ReplicatedStorage.FishModels.<SpeciesId>   (a Model holding the skinned MeshPart)
 --   prey (rigged FBX: Minnow, Sardine, Wrasse, Snapper, Grouper, and the second batch
 --   Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp,
---   Lanternfish; the Barracuda and ReefShark prey are copies of the 'Cuda and Reef
---   Shark species models)
+--   Lanternfish, the third Butterflyfish, Triggerfish, Swordfish, OceanSunfish,
+--   Coelacanth, VentEelpout, GulperEel, Oarfish, the fourth Opaleye, KelpBass, BlueTang,
+--   Lingcod, Rattail, Viperfish, Hatchetfish, HumpheadWrasse; the Barracuda and ReefShark
+--   prey are copies of the 'Cuda and Reef Shark species models)
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
 --   props, food and den furniture (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
@@ -27,6 +29,12 @@ local PREY = {
 	-- The second batch (prey2_fbx, 2026-10-18)
 	Garibaldi = true, WreckCod = true, Parrotfish = true, YellowfinTuna = true, MahiMahi = true,
 	Lionfish = true, GhostShrimp = true, Lanternfish = true,
+	-- The third batch (prey3_fbx, 2026-10-19)
+	Butterflyfish = true, Triggerfish = true, Swordfish = true, OceanSunfish = true, Coelacanth = true,
+	VentEelpout = true, GulperEel = true, Oarfish = true,
+	-- The fourth batch (prey4_fbx, 2026-10-19)
+	Opaleye = true, KelpBass = true, BlueTang = true, Lingcod = true, Rattail = true, Viperfish = true,
+	Hatchetfish = true, HumpheadWrasse = true,
 }
 local PROPS = {
 	GiantKelp = true, KelpClump = true, BoulderRound = true, BoulderJagged = true,
@@ -47,7 +55,15 @@ local PROPS = {
 	TreasurePile = true, TubeWormPlanter = true, VentCauldron = true, VoidThrone = true,
 	-- The Sunken Ruins' hero props (ruins_glb; Ruins.luau fits them over their stand-ins)
 	RuinHead = true, RuinHand = true, RuinGuardian = true, RuinUrn = true, RuinCapital = true, RuinStele = true,
+	-- Den props, batch 2 (den_props2_glb; Config/Dens items of the same names)
+	DriftwoodTable = true, KelpBed = true, PearlPedestal = true, BubbleColumn = true, SpongeSofa = true,
+	ShipwreckBookshelf = true, JellyLamp = true, SeaGlassLantern = true, CoralLamp = true, Banner = true,
+	ConchGramophone = true, TreasureChart = true,
 }
+-- Props whose colour map's alpha lets the MeshPart's own Color through (the banner's
+-- cloth takes the den's glow): their SurfaceAppearance must be in Overlay mode, which
+-- only a plugin or this Command Bar can set (a game script can't)
+local OVERLAY = { Banner = true }
 
 local function folder(name: string): Folder
 	local existing = ReplicatedStorage:FindFirstChild(name)
@@ -142,6 +158,19 @@ for speciesName, preyName in { Cuda = "Barracuda", ReefShark = "ReefShark" } do
 	if species and species:IsA("Model") and (existing == nil or not existing:IsA("Model")) then
 		replaceIn(folder("PreyModels"), preyName, species:Clone())
 		moved += 1
+	end
+end
+-- Overlay props (imported now or before): their texture's low alpha shows the part's Color
+local worldProps = ReplicatedStorage:FindFirstChild("WorldProps")
+for name in OVERLAY do
+	local prop = worldProps and worldProps:FindFirstChild(name)
+	for _, descendant in if prop then prop:GetDescendants() else {} do
+		if descendant:IsA("SurfaceAppearance") then
+			local ok, err = pcall(function()
+				(descendant :: any).AlphaMode = Enum.AlphaMode.Overlay
+			end)
+			print(`[organize_imports] {name}: AlphaMode Overlay {if ok then "set" else `failed ({err})`}`)
+		end
 	end
 end
 print(`[organize_imports] moved {moved} model(s) into ReplicatedStorage`)

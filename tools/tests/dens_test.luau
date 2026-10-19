@@ -149,7 +149,7 @@ expect(
 	not ok(DenSpace.resting(1, placed, v(4 + tableItem.size.Z / 2 + 1, top, 6))),
 	"past the turned table's width"
 )
-expect(not ok(DenSpace.resting(1, placed, v(4, 9, 6))), "floating over it")
+expect(not ok(DenSpace.resting(1, placed, v(4, top + 2, 6))), "floating over it")
 expect(not ok(DenSpace.resting(1, placed, v(4, top, 6), 1)), "not on the thing being moved")
 
 -- Settling: a stack whose base goes away comes down onto the deck, in order
@@ -317,6 +317,52 @@ expect(
 	Dens.itemsById.SeaGlassLantern.size.Y < Dens.itemsById.DriftwoodTable.size.Y,
 	"a wall lantern smaller than a table"
 )
+
+-- The den props of batch 2 (2026-10-19) at their real sizes: a bed and a sofa fit the
+-- Nook either way round, the bookshelf stands backed onto the Nook's side wall, the
+-- wall things hang at a fish's height and stay small, the jellies hang from its vault
+do
+	local deck = DenSpace.storey(1).deck
+	local nookX = Dens.roomsById.Nook.x
+	for _, id in { "KelpBed", "SpongeSofa", "DriftwoodTable", "ConchGramophone" } do
+		local item = Dens.itemsById[id]
+		for _, r in { 0, 90 } do
+			expect(
+				ok(DenSpace.check(1, item, "floor", v(-12, deck, -10)))
+					and DenSpace.footprintOnDeck(1, 1, item, -12, -10, r, 0.42),
+				`{id} in the Nook (turned {r})`
+			)
+		end
+	end
+	local shelf = Dens.itemsById.ShipwreckBookshelf
+	-- (the deck's 2-stud tiles stop a stud short of the wall)
+	local backed = nookX - 1 - shelf.size.Z / 2
+	expect(
+		ok(DenSpace.check(1, shelf, "floor", v(backed, deck, -6)))
+			and DenSpace.footprintOnDeck(1, 1, shelf, backed, -6, 90, 0.42),
+		"the bookshelf backed onto the Nook's side wall"
+	)
+	for _, id in { "SeaGlassLantern", "Banner", "TreasureChart" } do
+		local item = Dens.itemsById[id]
+		expect(ok(DenSpace.check(1, item, "wall", v(nookX + 0.5, 10, -6))), `{id} on the Nook wall`)
+		expect(
+			item.size.Y <= 13 and math.min(item.size.X, item.size.Z) <= 1.6,
+			`{id}: a wall thing stays slim`
+		)
+	end
+	expect(Dens.itemsById.SeaGlassLantern.size.Y <= 6, "the sea glass lantern stays a small lantern")
+	expect(
+		ok(DenSpace.check(1, Dens.itemsById.JellyLamp, "ceiling", v(0, 30, -10))),
+		"the jellyfish lamp under the Nook's vault"
+	)
+	for _, id in { "SpongeSofa", "ShipwreckBookshelf", "ConchGramophone", "TreasureChart" } do
+		local item = Dens.itemsById[id]
+		expect(
+			item ~= nil and item.set == nil and item.price > 0,
+			`{id}: bought in the den shop from the start`
+		)
+	end
+end
 
 -- Doorway styles: Stone is free, each one's level and achievement exist
 expect(Dens.doorsById.Stone ~= nil and Dens.doorsById.Stone.price == 0, "the Stone Arch is free")

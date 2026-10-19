@@ -1,0 +1,52 @@
+{
+ "jobs": [
+  {
+   "name": "Butterflyfish",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/Butterflyfish.png"
+  },
+  {
+   "name": "Triggerfish",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/Triggerfish.png"
+  },
+  {
+   "name": "Swordfish",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/Swordfish_top.png"
+  },
+  {
+   "name": "OceanSunfish",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/OceanSunfish_top.png"
+  },
+  {
+   "name": "Coelacanth",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/Coelacanth_top.png"
+  },
+  {
+   "name": "VentEelpout",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/VentEelpout_top.png"
+  },
+  {
+   "name": "GulperEel",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/GulperEel_top.png"
+  },
+  {
+   "name": "Oarfish",
+   "group": "prey3",
+   "type": "image_to_model",
+   "image": "assets/tripo/prey3_sheets/Oarfish_top.png"
+  }
+ ]
+}

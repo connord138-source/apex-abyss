@@ -15,12 +15,15 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `species_fbx` | Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged FBX) | `ReplicatedStorage.FishModels.<SpeciesId>` |
 | `prey_fbx` | Minnow, Sardine, Wrasse, Snapper, Grouper (rigged FBX, 4 spine segments: their bones swim) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey2_fbx` | Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept; rigged FBX like `prey_fbx`, 4 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.025; see "The second prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `prey3_fbx` | Butterflyfish, Triggerfish, Swordfish, OceanSunfish, Coelacanth, VentEelpout, GulperEel, Oarfish (2026-10-19, the third prey batch from the approved PreySheetB concept; rigged FBX like `prey_fbx`: 4 spine segments, the Sunfish 2, the Eelpout 5, the Gulper Eel 6, the Oarfish 7; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.094; see "The third prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `prey4_fbx` | Opaleye, KelpBass, BlueTang, Lingcod, Rattail, Viperfish, Hatchetfish, HumpheadWrasse (2026-10-19, the fourth prey batch from the approved PreySheetC concept; rigged FBX like `prey_fbx`: 4 spine segments, the Lingcod 5, the Rattail and Viperfish 6, the Hatchetfish 2; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.002; see "The fourth prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
 | `whalefall_glb` | WhaleFall (GLB; the Whale Fall's carcass, 2026-10-15; lengthwise along its Z, head at +Z in the GLB; normal map stripped, colours made safe, screened) | `ReplicatedStorage.WorldProps.WhaleFall` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`; v2 colors made safe by `tools/props/safe_colors.py` and screened 2026-10-11) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `furniture_glb` | the 38 den furniture pieces of batch 1, `furniture/<Name>.glb` (GLB; cut off `assets/concepts/Furn*.jpg` by `tools/props/furniture_crops.py`, Tripo image_to_model; normal maps taken out by `tools/props/strip_normals.py`, colors made safe by `safe_colors.py`, all 76 images screened 2026-10-13; front faces +X) | `ReplicatedStorage.WorldProps.<Name>` |
+| `den_props2_glb` | the 12 den props of batch 2, `den_props2/<Name>.glb`: DriftwoodTable, KelpBed, PearlPedestal, BubbleColumn, SpongeSofa, ShipwreckBookshelf, JellyLamp, SeaGlassLantern, CoralLamp, Banner, ConchGramophone, TreasureChart (GLB; 2026-10-19, from `assets/concepts/DenPropsA.jpg` / `DenPropsB.jpg`; normal maps stripped, squared up and recoloured by `tools/props/den_props2_prep.py`, colours made safe, all 24 images screened, highest 0.115; see "The den props, batch 2" below) | `ReplicatedStorage.WorldProps.<Name>` |
 | `ruins_glb` | RuinHead, RuinHand, RuinGuardian, RuinUrn, RuinCapital, RuinStele, `props/<Name>.glb` (GLB; the Sunken Ruins' hero props, 2026-10-18, Tripo text_to_model from `tools/tripo_jobs_ruins_props.json` in the BiomeSunkenRuins concept's marble; normal maps stripped, colours made safe, all 12 images screened, highest 0.056; the head and the stele face +X, the guardian +Z) | `ReplicatedStorage.WorldProps.<Name>` |
 | `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
 | `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
@@ -34,8 +37,8 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
 The Barracuda and Reef Shark predators (and prey schools) are the rigged 'Cuda and
 Reef Shark species models, copied into `PreyModels` by `organize_imports`. The Tripo
-balance is about 950 credits (2026-10-18, after the second prey batch; `python
-tools/tripo.py balance`).
+balance is about 425 credits (2026-10-19, after the fourth prey batch;
+`python tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -149,6 +152,203 @@ and antennae (within 45), never a see-through body (`GLOWS`); the three nearest
 Lanternfish carry a faint cyan PointLight (range 7). The spots sit on the body's
 outline from its bounding box, so if they float off or sink into an imported
 Lanternfish, nudge `at` in `GLOWS` (x across, y up, z along the body, in half-extents).
+
+### The third prey batch (`prey3_fbx`, 2026-10-19)
+
+Eight prey from the approved concept sheet `assets/concepts/PreySheetB.jpg` (the
+working copy is `assets/tripo/prey_concepts/PreySheetB_grid.png`), natives for the
+reef, the wrecks and the deep biomes (`Config/Prey`, ids as below): Butterflyfish
+(Coral Reef), Triggerfish (Shipwreck Graveyard), Swordfish and OceanSunfish (Open
+Blue), Coelacanth (Sunken Ruins), VentEelpout (Hydrothermal Vents), GulperEel and
+Oarfish (Abyssal Trench).
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/`):
+
+1. `python3 tools/props/prey_refs.py --batch B`: each fish's crop of the sheet, mirrored
+   to face left (the sheet's fish face right), large, over the style strip
+   (`assets/tripo/prey3_refs/`). The Oarfish's and the Gulper Eel's tails curl on the
+   concept, and Nano Banana copied the curl twice however the prompt asked for a
+   straight body, so their references are straightened (`BATCHES["B"]["straighten"]`:
+   the curl cut off and the body's last stretch run on straight, tapering).
+2. `python tools/tripo.py run tools/tripo_jobs_prey3_sheets.json`: a clean side-on
+   model sheet each (Nano Banana, 5 credits; 60 with the two redos). Six copied the
+   style strip under the fish; `prey_refs.py --batch B --tops <Names>` cut them above it.
+3. `python tools/tripo.py run tools/tripo_jobs_prey3_models.json`: image_to_model
+   (30 credits each, 240; 300 in all).
+4. `tools/props/strip_normals.py` (one each), then `tools/props/safe_colors.py`
+   (skin-tone texels: Butterflyfish 31.1%, VentEelpout 3.9%, Triggerfish 2.8%, Oarfish
+   1.3%, all to 0%). Two new options: `--vivid` for the Butterflyfish (its pale lemon
+   turned grey-white under the bright rule; yellows get more chroma instead) and
+   `--crimson` for the Oarfish (its orange-red fins over the pale blue-silver body
+   scored **0.99** on the classifier with no skin tone in them; a truer red, a little
+   darker, scored 0.03). Watch for this on any new pale fish with orange-red parts.
+5. `python3.11 tools/blender/rig_fish.py <safe>.glb assets/fbx/prey/<Id>.fbx --segments N`
+   with N = 4 (Butterflyfish, Triggerfish, Swordfish, Coelacanth), 2 (OceanSunfish, a
+   stiff disc), 5 (VentEelpout), 6 (GulperEel) and 7 with `--head 0.14` for the Oarfish
+   (`--head` is new: the share of the length the stiff Head bone takes, 0.28 by default;
+   the Oarfish's head is small, so more of its ribbon waves). `SchoolController` waves
+   however many `SpineN` bones a rig has. `tools/blender/fish_check.py`: every head on
+   the left, once the Swordfish and the OceanSunfish were rigged again with `--flip`
+   (the deep-end guess took the thin sword and the Sunfish's round head for tails; their
+   tail fin and scalloped back edge are the deeper ends).
+6. Each FBX embeds only its colour map (no ORM, no normal map; `fbx_strip_normals.py`
+   drops nothing). The eight embedded images were extracted and screened with
+   `screen_shades.py` and the classifier: exit 0, none flagged, highest 0.094
+   (Triggerfish; Oarfish 0.036).
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `prey3_fbx` into `assets/fbx/prey/`, beside
+   the others).
+2. **File → Import 3D**, the eight new files in `assets/fbx/prey/`
+   (`"Butterflyfish.fbx" "Triggerfish.fbx" "Swordfish.fbx" "OceanSunfish.fbx"
+   "Coelacanth.fbx" "VentEelpout.fbx" "GulperEel.fbx" "Oarfish.fbx"`), rig on and
+   textures on like the first prey, **Import All**.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the eight
+   names), then **save the place**.
+
+Until a model is imported, the fish is the part-built ellipsoid with `SHAPES` extras:
+the Butterflyfish's eye band, eyespots and snout, the Triggerfish's white belly, yellow
+back and orange beak, the Swordfish's sword and tall dorsal, the Sunfish's tall fins
+and scalloped back edge, the Coelacanth's blotches and lobed fins, the Eelpout's big
+head and ember specks, the Gulper's pouch mouth and whip tail, the Oarfish's red back
+fin, crest and streamers. None of them has `GLOWS` (the Eelpout's specks are painted
+on its texture).
+
+### The fourth prey batch (`prey4_fbx`, 2026-10-19)
+
+Eight prey from the approved concept sheet `assets/concepts/PreySheetC.jpg` (the
+working copy is `assets/tripo/prey_concepts/PreySheetC_grid.png`; its hatchetfish was
+redrawn on its own, `PreySheetC_Hatchetfish.png`): real natives for the kelp, the reef,
+the wrecks and the Ruins, and more for the deep (`Config/Prey`, ids as below): Opaleye
+and KelpBass (Kelp Shallows), BlueTang (Coral Reef), Lingcod (Shipwreck Graveyard),
+HumpheadWrasse (Sunken Ruins), Rattail (Hydrothermal Vents), Viperfish and Hatchetfish
+(Abyssal Trench).
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/`):
+
+1. `python3 tools/props/prey_refs.py --batch C`: each fish's crop of the sheet, mirrored
+   to face left, over the style strip (`assets/tripo/prey4_refs/`); the Hatchetfish's
+   from its own redraw (`sources`).
+2. `python tools/tripo.py run tools/tripo_jobs_prey4_sheets.json`: a clean side-on
+   model sheet each with a closed mouth (Nano Banana, 5 credits; 40 in all, no redos).
+   Three copied the style strip under the fish: `prey_refs.py --batch C --tops BlueTang
+   Lingcod Rattail`. Then `prey_refs.py --batch C --fix Opaleye KelpBass Lingcod
+   Viperfish Hatchetfish` touched five up (`FIXES`, -> `<Name>_fix.png`): the Opaleye's
+   back spots cut to two (the concept notes: one or two, not a speckle) and a stray
+   mark painted out; the Kelp Bass's, Lingcod's, Viperfish's and Hatchetfish's maroon
+   or pink-beige mouth lining to a navy-grey; the Hatchetfish's glowing dots moved from
+   the middle of its belly onto the keel's edge and its pupils turned to look up (Nano
+   Banana copied the reference's dots and gaze whatever the prompt said).
+3. `python tools/tripo.py run tools/tripo_jobs_prey4_models.json`: image_to_model
+   (30 credits each, 240; 280 in all).
+4. `tools/props/strip_normals.py` (one each), then `tools/props/safe_colors.py`
+   (skin-tone texels: Rattail 4.4%, its dull orange fin edges to a vivid ember orange;
+   pale: Kelp Bass 0.7%, Lingcod and Viperfish 0.1%; all to 0%), with `--vivid` for the
+   Blue Tang (its yellow tail stays lemon) and the new `--plum` for the Hatchetfish:
+   Tripo painted the inside of its mouth plum-maroon, (110, 43, 73), 17,000 texels,
+   though its sheet's mouth was closed; `--plum` turns plum, maroon and crimson-pink to
+   a navy-grey of the same brightness. Check every new prey's colour map for a plum
+   mouth (red well over green, blue over green) before rigging.
+5. `python3.11 tools/blender/rig_fish.py <safe>.glb assets/fbx/prey/<Id>.fbx --segments N`
+   with N = 4 (Opaleye, KelpBass, BlueTang, HumpheadWrasse), 5 (Lingcod), 6 (Rattail,
+   Viperfish: long and tapering) and 2 (Hatchetfish, a stiff disc like the Sunfish).
+   `tools/blender/fish_check.py`: every head on the left, no `--flip` needed.
+6. Each FBX embeds only its colour map (no ORM, no normal map; `fbx_strip_normals.py`
+   drops nothing). The eight embedded images were extracted and screened with
+   `screen_shades.py` and the classifier: exit 0, none flagged, highest 0.002
+   (Viperfish; the Hatchetfish 0.001 after `--plum`).
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `prey4_fbx` into `assets/fbx/prey/`, beside
+   the others).
+2. **File → Import 3D**, the eight new files in `assets/fbx/prey/`
+   (`"Opaleye.fbx" "KelpBass.fbx" "BlueTang.fbx" "Lingcod.fbx" "Rattail.fbx"
+   "Viperfish.fbx" "Hatchetfish.fbx" "HumpheadWrasse.fbx"`), rig on and textures on like
+   the first prey, **Import All**.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the eight
+   names), then **save the place**.
+
+Until a model is imported, the fish is the part-built ellipsoid with `SHAPES` extras:
+the Opaleye's two back spots and soft dorsal, the Kelp Bass's blotches, spiny dorsal and
+jaw, the Blue Tang's black palette marking and yellow tail, the Lingcod's dark blotches,
+long back fin and big jaw, the Rattail's big head, rat tail and ember fin edges, the
+Viperfish's fangs, the Hatchetfish's silver belly and tail stalk, the Humphead's forehead
+hump and lips. The Viperfish and the Hatchetfish wear `GLOWS` whether imported or not:
+Neon spots on the imported model's own painted rows (the Viperfish's two rows along its
+lower flank, the front two thirds of them, within 60 studs; the Hatchetfish's row along
+its keel's edge, chin to point, within 45), measured on the models (each colour map's
+cyan dots found on the mesh through its UVs, checked on a render with the spots on);
+the three nearest Viperfish carry the faint cyan light like the Lanternfish. On the
+part-built stand-in those spots sit inside the body, and `SHAPES` paints cyan dots on
+its outline instead. If a spot floats off or sinks into an imported fish, nudge `at`
+in `viperSpots` / `hatchetSpots` (x across, y up, z along, in half-extents of the box).
+
+### The den props, batch 2 (`den_props2_glb`, 2026-10-19)
+
+The owner asked for the buyable den props to be "MUCH much better" and approved two
+boards, `assets/concepts/DenPropsA.jpg` (Driftwood Table, Kelp Bed, Pearl Pedestal,
+Bubble Column, Sponge Sofa, Shipwreck Bookshelf) and `DenPropsB.jpg` (Jellyfish Lamp,
+Sea Glass Lantern, Coral Lamp, Banner, Conch Gramophone, Treasure Chart). The eight
+first pieces keep their ids in `Config/Dens` (placed copies in saves stay) and the four
+new ones (SpongeSofa, ShipwreckBookshelf, ConchGramophone, TreasureChart) are bought in
+the den shop from the start. Each item's `prop` is its own id.
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/` and
+`assets/glb/`):
+
+1. `python3.11 tools/props/den_props2_refs.py`: each piece cut off its board on the
+   board's own teal, large (`assets/tripo/den_props2_refs/`).
+2. `python tools/tripo.py run tools/tripo_jobs_den_props2_sheets.json`: a clean
+   three-quarter model sheet each (Nano Banana, 5 credits), then
+   `python tools/tripo.py run tools/tripo_jobs_den_props2_models.json` (image_to_model,
+   30 credits). 420 credits in all, no redos.
+3. `tools/props/strip_normals.py assets/tripo/den_props2/*.glb --out assets/glb/den_props2_nonormals`.
+4. `python3.11 tools/props/den_props2_prep.py prep assets/glb/den_props2_nonormals/*.glb --out assets/glb/den_props2_prep`:
+   names each scene, node and mesh after the piece; squares three up in plan, baked
+   into the vertices (TreasureChart +31 degrees: Tripo kept the concept's turn, and a
+   wall thing must lie flat on the rock; PearlPedestal -9, KelpBed -5); recolours four
+   (the jellyfish bells' pale tan to amber gold, the coral lamp's salmon fans to deep
+   orange, the bed's tan rope to olive kelp rope, the table's warm patches to
+   driftwood grey: `safe_colors.py` alone made the rope copper and the table's top
+   blotchy orange); and sprinkles flecks over the pedestal's grey stone, whose colour
+   map scored 0.62 on the classifier without them (the toon materials' lesson).
+5. `tools/props/safe_colors.py assets/glb/den_props2_prep/*.glb --out assets/glb/den_props2_safe`
+   (skin-tone texels to 0.0% on every map; the gramophone horn's cream to cool white).
+6. `python3.11 tools/props/den_props2_prep.py cloth assets/glb/den_props2_safe/Banner.glb --out assets/glb/den_props2_cloth`:
+   the banner's colour map becomes a 1024 RGBA PNG whose teal cloth is alpha 0.2 (its
+   colours untouched). The 12 GLBs (Banner from step 6) are the bundle.
+7. Screened: every image extracted (Color and ORM, 24) and run through
+   `screen_shades.py` with the classifier: exit 0, none flagged, highest 0.115
+   (PearlPedestal ORM; colour maps at most 0.021).
+
+Facing in the GLB: +Z for most (`front` unset), -Z for DriftwoodTable (`front = 180`),
++X for ShipwreckBookshelf, SeaGlassLantern, Banner and TreasureChart (`front = 90`). The
+boxes in `Config/Dens` are each model's own proportions at its size, so a wall thing
+sits on the rock with no gap. Until a model is imported, `Shared/DenItems` builds a
+part-built stand-in of the same design (`STAND_INS`), so the den shop's photos, Build
+mode's ghost and the placed thing look like the concept either way.
+
+The banner's cloth follows the den's glow: `DenItems` colours its MeshPart in the glow
+and leaves the texture untinted, and the SurfaceAppearance in **Overlay** mode shows
+that colour where the colour map's alpha is low. Only a plugin or the Command Bar can
+set `AlphaMode`, so `organize_imports.luau` sets it on `WorldProps.Banner` (it prints
+`Banner: AlphaMode Overlay set`). If the cloth shows see-through, the importer left it
+in Transparency mode; run the script again.
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `den_props2_glb` into `assets/glb/den_props2/`).
+2. **File → Import 3D**, the 12 files in `assets/glb/den_props2/` (no rig), **Import
+   All**. A row named "Scene" gets its file name first.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the 12
+   names, files them in `ReplicatedStorage.WorldProps` and sets the banner's Overlay
+   mode), then **save the place**.
+4. Check the facing in a den (Build mode, or the den shop's photos): every piece's front
+   toward you in its photo; the lantern, banner and chart flat on the rock, standing
+   out from it; the bookshelf's back against the wall when snapped. A piece facing the
+   wrong way is its `front` in `Config/Dens` (90 for a GLB facing +X, 180 for -Z).
 
 ## Shade skins (tools/shades)
 
