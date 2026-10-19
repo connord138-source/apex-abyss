@@ -14,11 +14,6 @@ return {
 		lengthKnee = 6,
 		lengthCap = 17,
 		startMass = 1, -- a brand-new fish (2 studs long)
-		-- A dive grows you live up to this many times your banked length; the Haul
-		-- keeps counting past it, but you have to bank to grow further. 1.5 (was 1.75,
-		-- owner 2026-10-18: level up slower): MAX SIZE comes at ~12 levels' worth of
-		-- Haul (was ~16), so the HUD asks for a bank sooner
-		haulLengthCap = 1.5,
 		levelGrowth = 1.108, -- banked mass ×this per level (level 100 ≈ 26,000× start)
 		maxLevel = 100,
 		stages = {
@@ -196,9 +191,8 @@ return {
 	-- reckoned from the Haul before it (HuntService Session `worth`), so a dive still
 	-- pays the same.
 	growth = {
-		haulRate = 0.35,
-		fullBelow = 1, -- levels up to this one take the whole kg
-		easeTo = 8, -- ...easing (linearly by level) to `haulRate` here
+		rate = { { 1, 0.1 }, { 8, 0.01 }, { 100, 0.005 } } :: { { number } },
+		cap = { { 1, 7 }, { 8, 1 }, { 100, 0.5 } } :: { { number } },
 	},
 
 	hunt = {

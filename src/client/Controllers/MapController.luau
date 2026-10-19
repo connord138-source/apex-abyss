@@ -29,6 +29,7 @@ local SwimController = require(script.Parent.SwimController)
 local MapController = {}
 
 local gui: ScreenGui
+local windowGui: ScreenGui -- the full map, over the HUD like a menu window
 local mini: MapDraw.Map
 local miniHolder: Frame
 local full: MapDraw.Map? = nil
@@ -182,7 +183,8 @@ local function openFull()
 		return
 	end
 	MenuController.close()
-	local window = Ui.window(gui, "Map", "The sea, north up · you are the arrow", Vector2.new(820, 560))
+	local window =
+		Ui.window(windowGui, "Map", "The sea, north up · you are the arrow", Vector2.new(820, 560))
 	fullWindow = window
 	window.close.Activated:Connect(closeFull)
 	Input.cursorWanted = true
@@ -321,6 +323,9 @@ end
 function MapController.start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	gui = Ui.screen("Map", playerGui, 6)
+	-- The full map draws at the menus' level, over the HUD: on the minimap's layer the
+	-- DAILY ! and SHOP buttons beside the wallet drew over its title (PC 2026-10-19)
+	windowGui = Ui.screen("MapWindow", playerGui, 10)
 	local touch = Input.isTouch()
 	local size = if touch then MINI_SIZE_PHONE else MINI_SIZE
 	miniHolder = Ui.panel(
@@ -390,7 +395,9 @@ function MapController.start()
 	button.Parent = miniHolder
 	button.Activated:Connect(openFull)
 	ContextActionService:BindAction("ApexMap", function(_, inputState)
-		if inputState ~= Enum.UserInputState.Begin or Input.locked then
+		-- (not over Build mode's editor: the full map no longer sits on the minimap's
+		-- layer, which the editor hides)
+		if inputState ~= Enum.UserInputState.Begin or Input.locked or Input.editing then
 			return Enum.ContextActionResult.Pass
 		end
 		openFull()

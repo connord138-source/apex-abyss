@@ -402,6 +402,26 @@ must exit 0. Then File → Import 3D one GLB at a time, a few minutes apart, run
 `organize_shades.luau`, and save the place. Check: the Silver skin on any fish shows a
 cool silver shine running down it every 2.5 s.
 
+**Skins v14.1** (`shade_patch_v14_1`, in `assets/shades/patch14_1`; 2026-10-19): the
+Anglerfish's Silver only. On the PC (playtest SV1) it read "very bright, almost glowing
+pale blue-white": the Angler is a dark fish whose lure lamp is always lit
+(LampController `lure`), and v14's faint body glow was most of its atlas. `catch_silver`
+now takes its tones from `SILVER`, with a fish's own in `SILVER_FISH`. The Angler's
+silver is a step darker (mean luminance 0.54, was 0.60), its horizon band, scale
+creases, painted creases and engraving are deeper, and its body has no glow. Its glow
+map holds only the lure, as in every Angler skin. In the `water=0.35` preview it now
+reads as mid-toned polished silver, a little under the other five, which are unchanged.
+In studio light the bands still step and the streak still shines. Sheet:
+`assets/shades/previews/v14_1_Angler_silver.jpg` (v14.1 against v14, in the water and
+in studio light, then the other five fish's Silver in the water). The screen is in the
+manifest. Import it after v14.
+
+On the PC: `python tools/fetch_assets.py` (shade_patch_v14_1 →
+assets/shades/patch14_1), then
+`python tools/shades/screen_shades.py assets/shades/patch14_1/Angler_ShadesPatch.glb`
+(must exit 0). Then File → Import 3D that one GLB, run `organize_shades.luau`, and save
+the place.
+
 **FX particle textures** (`tools/shades/make_fx.py`, python3.11 + scipy):
 `assets/textures/fx_{swirl,mist,bubble,star,flame,spark}.png`, 512² RGBA, for the skins'
 in-game particles (the swirls over Undertow, mist, bubbles, glints, flames, sparks). Like

@@ -616,9 +616,12 @@ local function buildThumbstick()
 	knob.BackgroundTransparency = 0.35
 	Ui.corner(knob, UDim.new(1, 0))
 	knob.Parent = ring
-	-- Resting spot, faded, so new players see where to put their thumb (low enough
-	-- to clear the tutorial panel once the top-left column moves below the top bar)
-	local rest = UDim2.new(0, 110, 1, -90)
+	-- Resting spot, faded, so new players see where to put their thumb: low in the
+	-- corner, its knob under the tutorial card's keys once the top-left column moves
+	-- below the top bar (PC 2026-10-19: at 90 up the ring lay over the card's
+	-- distance line; on a phone that line now sits at the card's top,
+	-- TutorialController `layoutCard`)
+	local rest = UDim2.new(0, 100, 1, -74)
 	ring.Position = rest
 	ring.BackgroundTransparency = 0.75
 

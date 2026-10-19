@@ -40,66 +40,81 @@ local function stinger(tier: string): string
 	return if tier == "Uncommon" then "RollCommon" else `Roll{tier}`
 end
 
--- A big centred line or two for a skin unlock or the Catch of the Week
-local function banner(kicker: string, title: string, sub: string, color: Color3)
-	local held = Ui.stageWait()
-	if held > 0 then
-		task.delay(held + 0.2, banner, kicker, title, sub, color)
-		return
-	end
-	local old = gui:FindFirstChild("CatchBanner")
-	if old then
-		old:Destroy()
-	end
-	Ui.clearTideBanner()
-	local holder = Instance.new("Frame")
-	holder.Name = "CatchBanner"
-	holder.AnchorPoint = Vector2.new(0.5, 0)
-	local height = gui.AbsoluteSize.Y / Ui.scaleOf(gui)
-	holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.24, Ui.topBottom() + 70))
-	holder.Size = UDim2.fromOffset(680, 84)
-	holder.BackgroundTransparency = 1
-	local labels = {
-		Ui.label(holder, "Kicker", kicker, Ui.FONT_BOLD, 16, color, UDim2.new(1, 0, 0, 20)),
-		Ui.label(
-			holder,
-			"Title",
-			title,
-			Ui.FONT_HEAVY,
-			38,
-			Ui.color.text,
-			UDim2.new(1, 0, 0, 42),
-			UDim2.fromOffset(0, 20)
-		),
-		Ui.label(
-			holder,
-			"Sub",
-			sub,
-			Ui.FONT_BOLD,
-			17,
-			Ui.color.muted,
-			UDim2.new(1, 0, 0, 22),
-			UDim2.fromOffset(0, 64)
-		),
-	}
-	for _, label in labels do
-		label.TextXAlignment = Enum.TextXAlignment.Center
-		label.TextTransparency = 1
-		label.TextStrokeTransparency = 1
-	end
-	holder.Parent = gui
-	for _, label in labels do
-		Ui.tween(label, 0.45, { TextTransparency = 0, TextStrokeTransparency = 0.5 })
-	end
-	task.delay(4.5, function()
-		if holder.Parent == nil then
-			return
+-- A big centred line or two for a skin unlock, an achievement or the Catch of the
+-- Week. It takes its turn on the middle of the screen (Ui.stageBanner): two at once
+-- (an achievement and a skin), TUTORIAL COMPLETE or the bank's growth sequence go
+-- one after another (PC 2026-10-19, UN1: SKIN UNLOCKED drew over TUTORIAL
+-- COMPLETE). Its sound plays as it shows.
+local BANNER_SECONDS = 4.5
+local BANNER_FADE = 0.75
+local function banner(
+	kicker: string,
+	title: string,
+	sub: string,
+	color: Color3,
+	sound: string?,
+	volume: number?
+)
+	Ui.stageBanner("catch", BANNER_SECONDS, BANNER_FADE, function()
+		local old = gui:FindFirstChild("CatchBanner")
+		if old then
+			old:Destroy()
 		end
+		Ui.clearTideBanner()
+		if sound then
+			Sfx.play(sound, { volume = volume or 0.7 })
+		end
+		local holder = Instance.new("Frame")
+		holder.Name = "CatchBanner"
+		holder.AnchorPoint = Vector2.new(0.5, 0)
+		local height = gui.AbsoluteSize.Y / Ui.scaleOf(gui)
+		holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.24, Ui.topBottom() + 70))
+		holder.Size = UDim2.fromOffset(680, 84)
+		holder.BackgroundTransparency = 1
+		local labels = {
+			Ui.label(holder, "Kicker", kicker, Ui.FONT_BOLD, 16, color, UDim2.new(1, 0, 0, 20)),
+			Ui.label(
+				holder,
+				"Title",
+				title,
+				Ui.FONT_HEAVY,
+				38,
+				Ui.color.text,
+				UDim2.new(1, 0, 0, 42),
+				UDim2.fromOffset(0, 20)
+			),
+			Ui.label(
+				holder,
+				"Sub",
+				sub,
+				Ui.FONT_BOLD,
+				17,
+				Ui.color.muted,
+				UDim2.new(1, 0, 0, 22),
+				UDim2.fromOffset(0, 64)
+			),
+		}
 		for _, label in labels do
-			Ui.tween(label, 0.7, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			label.TextXAlignment = Enum.TextXAlignment.Center
+			label.TextTransparency = 1
+			label.TextStrokeTransparency = 1
 		end
-		task.wait(0.75)
-		holder:Destroy()
+		holder.Parent = gui
+		for _, label in labels do
+			Ui.tween(label, 0.45, { TextTransparency = 0, TextStrokeTransparency = 0.5 })
+		end
+		return function(quick: boolean)
+			if holder.Parent == nil then
+				return
+			end
+			local seconds = if quick then 0.2 else BANNER_FADE - 0.05
+			for _, label in labels do
+				Ui.tween(label, seconds, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			end
+			task.delay(seconds + 0.05, function()
+				holder:Destroy()
+			end)
+		end
 	end)
 end
 
@@ -163,16 +178,15 @@ local function onCaught(summary: { [string]: any })
 		HudController.toast(`TITLE EARNED · {summary.title}`, "rare")
 	end
 	if typeof(summary.skin) == "string" and rare then
-		Sfx.play("LevelUp", { volume = 0.7 })
 		banner(
 			"SKIN UNLOCKED · FOR EVERY FISH",
 			`{string.upper(shadeName(summary.skin))} SKIN`,
 			`{rare.unlock.each} {rare.name} from each of {rare.unlock.species} species · wear it on any fish in the WARDROBE`,
-			rare.color
+			rare.color,
+			"LevelUp"
 		)
 	end
 	if typeof(summary.weeklyCoral) == "number" then
-		Sfx.play("RollLegendary", { volume = 0.6 })
 		local got = `+{Format.number(summary.weeklyCoral)} coral, {summary.weeklyShells or 0} shells`
 		if typeof(summary.weeklySpins) == "number" and summary.weeklySpins > 0 then
 			got ..= `, {summary.weeklySpins} wheel spins`
@@ -184,7 +198,9 @@ local function onCaught(summary: { [string]: any })
 			"CATCH OF THE WEEK",
 			`{string.upper(if rare then rare.name else "")} {string.upper(prey)}`,
 			got,
-			if rare then rare.color else Ui.color.haul
+			if rare then rare.color else Ui.color.haul,
+			"RollLegendary",
+			0.6
 		)
 	end
 end
@@ -195,12 +211,12 @@ local function onAchievement(summary: { [string]: any })
 		return
 	end
 	local tier = Config.Tiers.byId[tostring(summary.tier)]
-	Sfx.play("LevelUp", { volume = 0.7 })
 	banner(
 		"ACHIEVEMENT",
 		string.upper(summary.name),
 		`{summary.blurb} · the {summary.set} set is open in your den menu`,
-		if tier then tier.color else Ui.color.haul
+		if tier then tier.color else Ui.color.haul,
+		"LevelUp"
 	)
 end
 

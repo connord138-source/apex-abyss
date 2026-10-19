@@ -72,6 +72,19 @@ local TRAIL_NEAR = 14 -- studs: the trail goes out this close to the target
 local TRAIL_SPAN = 90 -- studs: the trail reaches this far ahead at most
 local SEARCH_RANGE = 420 -- studs: how far the guide looks for food or a shell
 local PANEL_HEIGHT = 194
+local PANEL_HEIGHT_TOUCH = 174 -- no cursor tip on a phone
+
+-- A step done the moment it began (the Haul already full from the steps before:
+-- PC 2026-10-19, TU1) would flash past unseen, so the card still shows it, done,
+-- with a line saying what happened, before the next one
+local INSTANT = 1 -- seconds: a step done this soon after its card showed
+local RECAP_SECONDS = 2.5
+local liveStep = 0 -- the server's step, as last seen
+local liveShownAt: number? = nil -- when the card began showing it (nil: not yet)
+local recaps: { number } = {} -- steps waiting to be shown done
+local recapStep: number? = nil -- the step the card shows done right now
+local recapUntil = 0
+local shownRecap = false -- the card shows `shownStep` done
 
 -- A floating label in the world, visible through walls: thin text and a short
 -- line, breathing slowly (owner, 2026-10-08: the old chips were "a flashing blue
@@ -364,58 +377,59 @@ local function drawTrail(from: Vector3, to: Vector3, t: number)
 end
 
 local function celebrate()
-	-- A big moment on the stage (the bank's growth sequence, a roll's reveal) goes
-	-- first; they once drew on top of each other
-	local waited = task.wait(0.3)
-	while Ui.stageWait() > 0 and waited < 8 do
-		waited += task.wait(0.1)
-	end
 	-- The last step opens the INDEX: the banner waits until it's read and closed
-	waited = 0
+	local waited = task.wait(0.3)
 	while MenuController.isOpen() and waited < 90 do
 		waited += task.wait(0.2)
 	end
-	Ui.clearTideBanner()
-	local holder = Instance.new("Frame")
-	holder.Name = "TutorialBanner"
-	holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.fromScale(0.5, 0.32)
-	holder.Size = UDim2.fromOffset(700, 110)
-	holder.BackgroundTransparency = 1
-	local scale = Instance.new("UIScale")
-	scale.Scale = 0.6
-	scale.Parent = holder
-	local title = Ui.label(
-		holder,
-		"Title",
-		"TUTORIAL COMPLETE",
-		Ui.FONT_HEAVY,
-		46,
-		Ui.color.haul,
-		UDim2.new(1, 0, 0, 52)
-	)
-	title.TextXAlignment = Enum.TextXAlignment.Center
-	title.TextStrokeTransparency = 0.5
-	local cuda = Config.Species.byId.Cuda
-	local sub = Ui.label(
-		holder,
-		"Sub",
-		`INDEX shows what's next · Nibbler LV {cuda.unlock.level or 15} unlocks the {cuda.name}`,
-		Ui.FONT_BOLD,
-		20,
-		Ui.color.text,
-		UDim2.new(1, 0, 0, 26),
-		UDim2.fromOffset(0, 58)
-	)
-	sub.TextXAlignment = Enum.TextXAlignment.Center
-	sub.TextStrokeTransparency = 0.6
-	holder.Parent = gui
-	Ui.tween(scale, 0.5, { Scale = 1 }, Enum.EasingStyle.Back)
-	task.delay(5, function()
-		Ui.tween(title, 0.6, { TextTransparency = 1, TextStrokeTransparency = 1 })
-		Ui.tween(sub, 0.6, { TextTransparency = 1, TextStrokeTransparency = 1 })
-		task.wait(0.65)
-		holder:Destroy()
+	-- Then it takes its turn on the middle of the screen: after the bank's growth
+	-- sequence or a skin unlock already up, and one that comes in meanwhile waits for
+	-- it (they drew on top of each other, PC 2026-10-19, UN1)
+	Ui.stageBanner("tutorial", 5, 0.65, function()
+		Ui.clearTideBanner()
+		local holder = Instance.new("Frame")
+		holder.Name = "TutorialBanner"
+		holder.AnchorPoint = Vector2.new(0.5, 0.5)
+		holder.Position = UDim2.fromScale(0.5, 0.32)
+		holder.Size = UDim2.fromOffset(700, 110)
+		holder.BackgroundTransparency = 1
+		local scale = Instance.new("UIScale")
+		scale.Scale = 0.6
+		scale.Parent = holder
+		local title = Ui.label(
+			holder,
+			"Title",
+			"TUTORIAL COMPLETE",
+			Ui.FONT_HEAVY,
+			46,
+			Ui.color.haul,
+			UDim2.new(1, 0, 0, 52)
+		)
+		title.TextXAlignment = Enum.TextXAlignment.Center
+		title.TextStrokeTransparency = 0.5
+		local cuda = Config.Species.byId.Cuda
+		local sub = Ui.label(
+			holder,
+			"Sub",
+			`INDEX shows what's next · Nibbler LV {cuda.unlock.level or 15} unlocks the {cuda.name}`,
+			Ui.FONT_BOLD,
+			20,
+			Ui.color.text,
+			UDim2.new(1, 0, 0, 26),
+			UDim2.fromOffset(0, 58)
+		)
+		sub.TextXAlignment = Enum.TextXAlignment.Center
+		sub.TextStrokeTransparency = 0.6
+		holder.Parent = gui
+		Ui.tween(scale, 0.5, { Scale = 1 }, Enum.EasingStyle.Back)
+		return function(quick: boolean)
+			local seconds = if quick then 0.2 else 0.6
+			Ui.tween(title, seconds, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			Ui.tween(sub, seconds, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			task.delay(seconds + 0.05, function()
+				holder:Destroy()
+			end)
+		end
 	end)
 end
 
@@ -434,9 +448,25 @@ local function keyFor(control: TutorialConfig.Control): string?
 	return control.keys
 end
 
--- Rebuilds the row of key caps for a step
+-- The card's rows for this device. On a phone the guide line (the distance to the
+-- step's target) sits right under the header, clear of the swim stick's resting
+-- ring at the screen's lower left, which lay over it (PC 2026-10-19: "21 ft to the
+-- nearest exit"); the cursor tip is for a mouse, so a phone's card is shorter.
+local function layoutCard()
+	local touch = shownDevice == "touch"
+	local guideY = if touch then 30 else 143
+	panel.Size = UDim2.fromOffset(300, if touch then PANEL_HEIGHT_TOUCH else PANEL_HEIGHT)
+	stepText.Position = UDim2.fromOffset(14, if touch then 48 else 28)
+	capsRow.Position = UDim2.fromOffset(14, if touch then 108 else 88)
+	guideArrow.Position = UDim2.fromOffset(23, guideY + 8)
+	guideLine.Position = UDim2.fromOffset(36, guideY)
+	tipLine.Visible = not touch
+end
+
+-- Rebuilds the row of key caps for a step (and the card's rows for the device)
 local function showControls(step: TutorialConfig.Step)
 	shownDevice = device()
+	layoutCard()
 	capsRow:ClearAllChildren()
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -487,6 +517,102 @@ local function cursorTip(): string
 	return "Tap ALT to free the cursor for buttons and menus · ALT again to swim"
 end
 
+-- The card turns to another step (or to a step shown done): a little bounce so it's
+-- noticed, and its keys; the trail or ring only for the step being played
+local function newCard(index: number, step: TutorialConfig.Step, done: boolean)
+	if shownStep ~= 0 then
+		local bounce = panel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+		bounce.Parent = panel
+		bounce.Scale = 1.08
+		Ui.tween(bounce, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+		Sfx.play("Banner", { volume = 0.3 })
+	end
+	shownStep = index
+	shownRecap = done
+	showControls(step)
+	tipLine.Text = cursorTip()
+	guideKind = if done then nil else step.guide
+	pointKind = if done then nil else step.point
+	clearPoint()
+	target = nil
+	nextSearch = 0
+end
+
+-- What a step done the moment it began says on the card
+local function recapNote(step: TutorialConfig.Step, s: { [string]: any }): string
+	if step.event == "haul" then
+		if s.maxed then
+			return "Your Haul is full: that's all you can carry. Swim home to bank it!"
+		elseif (s.haul or 0) > 0 then
+			return "Your Haul is big enough already. Swim home to bank it!"
+		end
+	elseif step.event == "banked" then
+		return "Banked! That Haul is yours for good now"
+	end
+	return "Done already! On to the next step"
+end
+
+-- The card for a step done the moment it began: its number, DONE, a full bar and
+-- what happened
+local function drawRecap(index: number, s: { [string]: any })
+	local step = Tutorial.steps[index]
+	if step == nil then
+		return
+	end
+	if shownStep ~= index or not shownRecap then
+		newCard(index, step, true)
+	end
+	header.Text = `TUTORIAL · STEP {index} OF {#Tutorial.steps}`
+	stepText.Text = recapNote(step, s)
+	stepText.TextColor3 = Ui.color.haul
+	countText.Text = "DONE ✓"
+	countText.TextColor3 = Ui.color.safe
+	Ui.tween(fill, 0.35, { Size = UDim2.fromScale(1, 1) })
+end
+
+-- The card for the step being played
+local function drawLive(s: { [string]: any })
+	local tutorial = s.tutorial
+	local index = if typeof(tutorial) == "table" then tutorial.step else nil
+	local step = if typeof(index) == "number" then Tutorial.steps[index] else nil
+	if step == nil or typeof(tutorial) ~= "table" then
+		return
+	end
+	if shownStep ~= index or shownRecap then
+		newCard(index, step, false)
+		liveShownAt = os.clock()
+	end
+	header.Text = `TUTORIAL · STEP {index} OF {#Tutorial.steps}`
+	stepText.Text = step.text
+	stepText.TextColor3 = Ui.color.text
+	countText.TextColor3 = Ui.color.muted
+	local progress = math.min(tutorial.progress or 0, step.goal)
+	if step.event == "haul" then
+		-- The Haul against its target, in kg (the server counts it in percent)
+		local haulTarget = TutorialConfig.haulTarget(s.mass or 1)
+		countText.Text = `{Format.mass(math.min(s.haul or 0, haulTarget))} / {Format.mass(haulTarget)}`
+	else
+		countText.Text = if step.goal > 1 then `{progress} / {step.goal}` else ""
+	end
+	Ui.tween(fill, 0.35, { Size = UDim2.fromScale(progress / step.goal, 1) })
+end
+
+-- The card: a step shown done while any wait their turn, else the live step
+local function render(s: { [string]: any })
+	if recapStep == nil and #recaps > 0 then
+		recapStep = table.remove(recaps, 1)
+		recapUntil = os.clock() + RECAP_SECONDS
+	end
+	local done = recapStep
+	if done then
+		drawRecap(done, s)
+	else
+		drawLive(s)
+	end
+	local live = Tutorial.steps[liveStep]
+	showMarkers(if live then live.marker else nil, s)
+end
+
 local function onState(s: { [string]: any })
 	local tutorial = s.tutorial
 	if typeof(tutorial) ~= "table" then
@@ -494,6 +620,8 @@ local function onState(s: { [string]: any })
 	end
 	if tutorial.done then
 		panel.Visible = false
+		table.clear(recaps)
+		recapStep = nil
 		showMarkers(nil, s)
 		guideKind = nil
 		pointKind = nil
@@ -507,41 +635,30 @@ local function onState(s: { [string]: any })
 		return
 	end
 	wasDone = false
-	local step = Tutorial.steps[tutorial.step]
-	if step == nil then
+	local index = tutorial.step
+	if typeof(index) ~= "number" or Tutorial.steps[index] == nil then
 		return
 	end
-	panel.Visible = true
-	header.Text = `TUTORIAL · STEP {tutorial.step} OF {#Tutorial.steps}`
-	stepText.Text = step.text
-	local progress = math.min(tutorial.progress or 0, step.goal)
-	if step.event == "haul" then
-		-- The Haul against its target, in kg (the server counts it in percent)
-		local haulTarget = TutorialConfig.haulTarget(s.mass or 1)
-		countText.Text = `{Format.mass(math.min(s.haul or 0, haulTarget))} / {Format.mass(haulTarget)}`
-	else
-		countText.Text = if step.goal > 1 then `{progress} / {step.goal}` else ""
-	end
-	Ui.tween(fill, 0.35, { Size = UDim2.fromScale(progress / step.goal, 1) })
-	if tutorial.step ~= shownStep then
-		-- A new step: a little bounce so it's noticed, and its keys
-		if shownStep ~= 0 then
-			local bounce = panel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-			bounce.Parent = panel
-			bounce.Scale = 1.08
-			Ui.tween(bounce, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
-			Sfx.play("Banner", { volume = 0.3 })
+	if liveStep ~= 0 and index > liveStep then
+		-- Moved on: the step on the card if it was up under a second (or never got
+		-- its turn), and any step never shown, are shown done first
+		local shownAt = liveShownAt
+		if shownAt == nil or os.clock() - shownAt < INSTANT then
+			table.insert(recaps, liveStep)
 		end
-		shownStep = tutorial.step
-		showControls(step)
-		tipLine.Text = cursorTip()
-		guideKind = step.guide
-		pointKind = step.point
-		clearPoint()
-		target = nil
-		nextSearch = 0
+		for skipped = liveStep + 1, index - 1 do
+			table.insert(recaps, skipped)
+		end
+		liveShownAt = nil
+	elseif index < liveStep then
+		-- Sent back (the Haul lost on the way home): straight there
+		table.clear(recaps)
+		recapStep = nil
+		liveShownAt = nil
 	end
-	showMarkers(step.marker, s)
+	liveStep = index
+	panel.Visible = true
+	render(s)
 end
 
 -- What the guide line says on a `point` step
@@ -580,6 +697,14 @@ end
 -- Every frame: find or refresh the target, draw the trail, write the distance (or
 -- ring the HUD button a `point` step needs)
 local function step(_dt: number)
+	-- A step shown done has had its moment: the next one done, or the live step
+	if recapStep ~= nil and os.clock() >= recapUntil then
+		recapStep = nil
+		local s = ClientState.current
+		if s and panel.Visible then
+			render(s)
+		end
+	end
 	-- The device changed under a step: draw its keys again (PC 2026-10-19, TU1: on a
 	-- phone the card kept W A S D, MOUSE and the ALT tip, drawn while the simulator
 	-- still read as a keyboard; a pad picked up mid-step kept the keyboard's too)

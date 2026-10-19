@@ -6,8 +6,8 @@ local Config = require(script.Parent.Config)
 local size = Config.Tuning.size
 local swim = Config.Tuning.swim
 local hunt = Config.Tuning.hunt
+local growth = Config.Tuning.growth
 
-local MASS_CAP = size.haulLengthCap ^ 3 -- length cap → mass cap
 local LOG_GROWTH = math.log(size.levelGrowth)
 
 local Size = {}
@@ -38,13 +38,70 @@ function Size.raw(length: number): number
 	return KNEE - span * math.log(1 - t)
 end
 
--- The mass a dive actually shows: banked mass plus the Haul, up to the cap.
+-- The mass a dive shows: banked mass plus the Haul. Food stops going on at the Haul's
+-- cap (Size.haulCap, HuntService `addHaul`), so this is at most a full Haul past the
+-- banked mass, plus any reward carried on top (a boss's Haul, a treasure's).
 function Size.liveMass(banked: number, haul: number): number
-	return math.min(banked + haul, banked * MASS_CAP)
+	return banked + math.max(haul, 0)
 end
 
+-- A smooth level: `level` at the mass where that level starts, halfway to the next
+-- halfway between (for the Haul's curves; Size.level is the whole level shown)
+function Size.levelAt(mass: number): number
+	return math.clamp(math.log(math.max(mass, size.startMass)) / LOG_GROWTH + 1, 1, size.maxLevel)
+end
+
+-- A curve of { level, value } points (Config/Tuning `growth`) read at `level`: a
+-- straight line between points (in log space when `log`, for values that span
+-- decades), the end values past either end
+local function curve(points: { { number } }, level: number, log: boolean): number
+	local first, last = points[1], points[#points]
+	if level <= first[1] then
+		return first[2]
+	elseif level >= last[1] then
+		return last[2]
+	end
+	for i = 2, #points do
+		local a, b = points[i - 1], points[i]
+		if level <= b[1] then
+			local t = (level - a[1]) / math.max(b[1] - a[1], 1e-9)
+			if log then
+				return math.exp(math.log(a[2]) + (math.log(b[2]) - math.log(a[2])) * t)
+			end
+			return a[2] + (b[2] - a[2]) * t
+		end
+	end
+	return last[2]
+end
+
+-- The Haul (Config/Tuning `growth`), both by the fish's banked mass: the share of
+-- each kg eaten that goes on it...
+function Size.haulRate(banked: number): number
+	return curve(growth.rate, Size.levelAt(banked), true)
+end
+
+-- ...how many levels' worth a full Haul holds...
+function Size.haulLevels(banked: number): number
+	return curve(growth.cap, Size.levelAt(banked), false)
+end
+
+-- ...and that in kg: everyday food stops going on here (MAX SIZE)
+function Size.haulCap(banked: number): number
+	return math.max(banked, size.startMass) * (size.levelGrowth ^ Size.haulLevels(banked) - 1)
+end
+
+-- Whether the Haul is full (MAX SIZE: swim home and bank it)
 function Size.isMaxed(banked: number, haul: number): boolean
-	return banked + haul >= banked * MASS_CAP
+	return haul >= Size.haulCap(banked) * 0.9995
+end
+
+-- Coral for banking a Haul (HuntService; here so the progression sim pays the same):
+-- `worth` is the Haul before the Haul rate (the kg eaten). Linear in it, so a long
+-- dive pays as much a minute as short ones did and banking often gains nothing, and
+-- over the square root of the banked mass, so it grows with the fish without
+-- running away late (Config/Tuning economy `bankCoral`)
+function Size.bankCoral(worth: number, banked: number): number
+	return Config.Tuning.economy.bankCoral * worth / math.sqrt(math.max(banked, size.startMass))
 end
 
 function Size.level(mass: number): number

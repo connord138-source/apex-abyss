@@ -319,8 +319,11 @@ end
 -- Centre banners share the middle of the screen, so they take turns (playtest
 -- 2026-10-10: TUTORIAL COMPLETE and a tide's banner drew on top of each other).
 -- Whether a player's own banner (the tutorial's end, a skin unlock, the Catch of
--- the Week) is up: the tide's banner waits for it.
+-- the Week) is up, or anything holds the stage (below): the tide's banner waits.
 function Ui.centreBannerUp(): boolean
+	if Ui.stageWait() > 0 then
+		return true
+	end
 	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
 	if playerGui == nil then
 		return false
@@ -336,18 +339,106 @@ end
 -- A player's own banner takes the spot from a tide's (the tide stays on its chip)
 -- The middle of the screen is one stage: a big moment (the bank celebration) holds
 -- it, and a banner that comes in meanwhile waits its turn (PC overnight 2026-10-14:
--- an achievement banner drew on top of the bank celebration)
-local stageHeldUntil = 0
-function Ui.holdStage(seconds: number)
-	stageHeldUntil = math.max(stageHeldUntil, os.clock() + seconds)
+-- an achievement banner drew on top of the bank celebration). Each holder has its
+-- own hold, so freeing one (the bank's, skipped) leaves a banner's alone; banners
+-- hold it too while they're up and queue for it in order (Ui.stageBanner; PC
+-- 2026-10-19: SKIN UNLOCKED drew over TUTORIAL COMPLETE, since neither held it).
+type StageHold = { untilAt: number, since: number }
+local holds: { [string]: StageHold } = {}
+local MOMENT = "moment" -- the holder that doesn't name itself: the bank's sequence
+
+-- Holds the stage for `seconds` more (a holder already holding it keeps its start)
+function Ui.holdStage(seconds: number, owner: string?)
+	local key = owner or MOMENT
+	local now = os.clock()
+	local hold = holds[key]
+	if hold and hold.untilAt > now then
+		hold.untilAt = math.max(hold.untilAt, now + seconds)
+	else
+		holds[key] = { untilAt = now + seconds, since = now }
+	end
 end
 -- Seconds until the stage is free (0 when it is)
 function Ui.stageWait(): number
-	return math.max(0, stageHeldUntil - os.clock())
+	local now = os.clock()
+	local left = 0
+	for _, hold in holds do
+		left = math.max(left, hold.untilAt - now)
+	end
+	return left
 end
--- Frees the stage now (the bank's growth sequence, skipped)
-function Ui.releaseStage()
-	stageHeldUntil = os.clock()
+-- Frees a holder's hold now (the bank's growth sequence, skipped)
+function Ui.releaseStage(owner: string?)
+	holds[owner or MOMENT] = nil
+end
+-- Whether another holder took the stage after `since` without waiting its turn (the
+-- bank's sequence does): a banner up then steps aside and comes back after it
+function Ui.stageTakenFrom(owner: string, since: number): boolean
+	local now = os.clock()
+	for key, hold in holds do
+		if key ~= owner and hold.untilAt > now and hold.since > since then
+			return true
+		end
+	end
+	return false
+end
+
+-- Banners waiting for the stage, first come first served
+local stageQueue: { number } = {}
+local stageTickets = 0
+-- Waits (yielding) until the stage is free and every banner queued before this one
+-- has had its turn, then holds it for `seconds`; returns when it took it. `front`
+-- puts it first in the line (a banner that stepped aside). After `patience` seconds
+-- (30) it goes on anyway.
+function Ui.takeStage(owner: string, seconds: number, front: boolean?, patience: number?): number
+	stageTickets += 1
+	local ticket = stageTickets
+	if front then
+		table.insert(stageQueue, 1, ticket)
+	else
+		table.insert(stageQueue, ticket)
+	end
+	local waited = 0
+	local limit = patience or 30
+	while (stageQueue[1] ~= ticket or Ui.stageWait() > 0) and waited < limit do
+		waited += task.wait(0.1)
+	end
+	local index = table.find(stageQueue, ticket)
+	if index then
+		table.remove(stageQueue, index)
+	end
+	Ui.holdStage(seconds, owner)
+	return os.clock()
+end
+
+-- A centre banner on the stage: it waits its turn (Ui.takeStage), then `show()`
+-- builds it and returns a function that takes it down (`quick` when it steps
+-- aside). It stays `seconds`, then has `fade` seconds to fade before the next one;
+-- if a big moment takes the stage meanwhile (the bank's growth sequence holds it
+-- without queueing) it steps aside at once and comes back first after. Doesn't
+-- yield.
+function Ui.stageBanner(owner: string, seconds: number, fade: number, show: () -> (quick: boolean) -> ())
+	task.spawn(function()
+		local front = false
+		for _ = 1, 3 do
+			local since = Ui.takeStage(owner, seconds + fade + 0.1, front)
+			local hide = show()
+			local stepped = false
+			while os.clock() - since < seconds do
+				if Ui.stageTakenFrom(owner, since) then
+					stepped = true
+					break
+				end
+				task.wait(0.1)
+			end
+			hide(stepped)
+			if not stepped then
+				return -- (its hold runs out as it finishes fading)
+			end
+			Ui.releaseStage(owner)
+			front = true
+		end
+	end)
 end
 
 function Ui.clearTideBanner()

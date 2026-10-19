@@ -2772,11 +2772,14 @@ function MenuController.openDaily()
 			14,
 			Ui.color.muted,
 			UDim2.new(1, 0, 0, 16),
-			UDim2.fromOffset(0, 214)
+			UDim2.fromOffset(0, 212)
 		)
 		footer.TextXAlignment = Enum.TextXAlignment.Center
-		-- Playtime gifts (owner, 2026-10-12): a ladder for minutes played today
-		local giftHeader = Ui.heading(content, "GiftHeader", "Playtime gifts", 236)
+		-- Playtime gifts (owner, 2026-10-12): a ladder for minutes played today. Each
+		-- tile lists its rewards one to a line (PC 2026-10-19: on a phone "2,000 CORAL ·
+		-- WEATHERED MAP ·" was cut off at the smallest size), so the strip sits a
+		-- little higher and its tiles are taller, with a slimmer CLAIM.
+		local giftHeader = Ui.heading(content, "GiftHeader", "Playtime gifts", 232)
 		giftHeader.TextColor3 = Ui.color.haul
 		local giftState = Ui.label(
 			content,
@@ -2786,16 +2789,16 @@ function MenuController.openDaily()
 			12,
 			Ui.color.text,
 			UDim2.fromOffset(300, 16),
-			UDim2.new(1, -300, 0, 236)
+			UDim2.new(1, -300, 0, 232)
 		)
 		giftState.TextXAlignment = Enum.TextXAlignment.Right
 		local _, giftFill =
-			Ui.bar(content, "GiftProgress", UDim2.new(1, 0, 0, 5), UDim2.fromOffset(0, 258), Ui.color.haul)
+			Ui.bar(content, "GiftProgress", UDim2.new(1, 0, 0, 5), UDim2.fromOffset(0, 254), Ui.color.haul)
 		local gifts = Instance.new("Frame")
 		gifts.Name = "Gifts"
 		gifts.BackgroundTransparency = 1
-		gifts.Position = UDim2.fromOffset(0, 268)
-		gifts.Size = UDim2.new(1, 0, 0, 112)
+		gifts.Position = UDim2.fromOffset(0, 262)
+		gifts.Size = UDim2.new(1, 0, 0, 124)
 		gifts.Parent = content
 		local giftLayout = Instance.new("UIListLayout")
 		giftLayout.FillDirection = Enum.FillDirection.Horizontal
@@ -2810,18 +2813,23 @@ function MenuController.openDaily()
 				gifts,
 				`Gift{i}`,
 				i,
-				Vector2.new(if gift.big then 108 else 92, 112),
+				Vector2.new(if gift.big then 108 else 92, 124),
 				gift,
 				28,
-				22,
+				44,
 				function()
 					ClientState.request("ClaimGift")
 				end
 			)
+			-- Up to four lines (the hour's gift), shrinking no smaller than 8
 			local fit = tile.body:FindFirstChild("Fit")
 			if fit and fit:IsA("UITextSizeConstraint") then
 				fit.MaxTextSize = 10
+				fit.MinTextSize = 8
 			end
+			tile.claim.Size = UDim2.new(1, -12, 0, 22)
+			tile.claim.Position = UDim2.new(0, 6, 1, -26)
+			tile.claim.TextSize = 13
 			giftTiles[i] = tile
 		end
 		-- Premium's perks, for those without it (never a wall: the gifts come anyway)
@@ -2830,7 +2838,7 @@ function MenuController.openDaily()
 			"Premium",
 			"GET PREMIUM",
 			UDim2.fromOffset(150, 32),
-			UDim2.new(1, -150, 0, 388),
+			UDim2.new(1, -150, 0, 390),
 			"secondary"
 		)
 		premiumButton.TextSize = 13
@@ -2843,7 +2851,7 @@ function MenuController.openDaily()
 			12,
 			Ui.color.muted,
 			UDim2.new(1, -166, 0, 32),
-			UDim2.fromOffset(0, 388)
+			UDim2.fromOffset(0, 390)
 		)
 		premiumNote.TextXAlignment = Enum.TextXAlignment.Right
 		premiumNote.TextWrapped = true
@@ -2919,7 +2927,7 @@ function MenuController.openDaily()
 				local ready = not done and i <= unlockedCount
 				local nextOne = not done and not ready and i == unlockedCount + 1
 				tile.head.Text = `{gift.minutes} MIN`
-				tile.body.Text = table.concat(Reward.lines(gift, bonus), " · ")
+				tile.body.Text = table.concat(Reward.lines(gift, bonus), "\n")
 				tile.foot.Text = if done
 					then "CLAIMED"
 					elseif nextOne and typeof(pt.nextAt) == "number" then clockText(pt.nextAt - now)
