@@ -72,10 +72,11 @@ local kinds: { [string]: Kind } = {
 		depth = { 1.5, 4 },
 		size = { 4.5, 9 },
 		speed = { 3, 6 },
+		-- (a part-built ray's back, as the model's olive green: its pick of these)
 		colors = {
-			Color3.fromRGB(64, 104, 92), -- olive-teal
-			Color3.fromRGB(58, 96, 104), -- sea green
-			Color3.fromRGB(72, 98, 80), -- olive
+			Color3.fromRGB(70, 100, 74), -- olive green
+			Color3.fromRGB(62, 96, 82), -- sea green
+			Color3.fromRGB(78, 100, 66), -- olive
 		},
 		max = 10,
 		rig = "stingray",

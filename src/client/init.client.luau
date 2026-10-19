@@ -88,7 +88,7 @@ BubbleController.start() -- bubbles off every fish's mouth as it swims
 TrailController.start() -- boost trails off every fish's tail (Config/Trails)
 KelpController.start() -- kelp near the camera sways in the current
 PlanktonController.start() -- glowing plankton in the deepest water, wakes through it
-AmbientLifeController.start() -- jellies, rays, crabs, turtles, reef-fish clouds and far-off giants
+AmbientLifeController.start() -- jellies, rays, mantas, turtles, reef-fish clouds and far-off giants
 HuntController.start()
 SchoolController.start()
 ChumController.start() -- chum clouds, Blood Tide slicks and the Whale Fall: drawn and eaten here

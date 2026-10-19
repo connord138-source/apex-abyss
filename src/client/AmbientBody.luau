@@ -69,7 +69,11 @@ local function protoOf(name: string): Proto?
 	end
 	local folder = ReplicatedStorage:FindFirstChild("AmbientModels")
 	local template = folder and folder:FindFirstChild(name)
-	if template == nil or not template:IsA("Model") or template:FindFirstChildWhichIsA("Bone", true) == nil then
+	if
+		template == nil
+		or not template:IsA("Model")
+		or template:FindFirstChildWhichIsA("Bone", true) == nil
+	then
 		return nil
 	end
 	local clone = template:Clone()
@@ -242,7 +246,13 @@ end
 
 -- The part-built stand-in at `size`: each joint's first piece is its anchor (an
 -- invisible one if it has none), hung from its parent's by a Motor6D at the joint
-local function standIn(rig: string, size: number, look: { [string]: Color3 }, options: Options, parent: Instance): Body
+local function standIn(
+	rig: string,
+	size: number,
+	look: { [string]: Color3 },
+	options: Options,
+	parent: Instance
+): Body
 	local plan = AmbientRigs.plan(rig)
 	local model = Instance.new("Model")
 	model.Name = rig
@@ -252,14 +262,16 @@ local function standIn(rig: string, size: number, look: { [string]: Color3 }, op
 	for _, built in AmbientRigs.parts(plan, {}, size) do
 		local piece = newPart(built.shape, built.size, built.cframe, look[built.role] or WHITE, model)
 		table.insert(parts, piece)
-		if anchors[built.joint] == nil then
+		local known: BasePart? = anchors[built.joint]
+		if known == nil then
 			anchors[built.joint] = piece
 		else
 			table.insert(loose, { part = piece, joint = built.joint })
 		end
 	end
 	for _, j in plan.joints do
-		if anchors[j.name] == nil then
+		local known: BasePart? = anchors[j.name]
+		if known == nil then
 			local hidden = newPart("block", Vector3.one * 0.05, CFrame.new(j.at * size), WHITE, model)
 			hidden.Transparency = 1
 			anchors[j.name] = hidden

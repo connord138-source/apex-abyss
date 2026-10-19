@@ -126,24 +126,50 @@ for s = 1, NS do
 end
 
 -- The filler food (ForageService puts it on open floor at start; here spread evenly
--- over each band's area, on the nominal floor)
-local gX, gY, gZ, gMass, gBack = {}, {}, {}, {}, {}
+-- over each band's area, on the nominal floor). A crab (Config/Forage `crab`) is laid
+-- out over its biome's sector, stands its size × CRAB_HEIGHT over the floor, is in
+-- reach CRAB_RADIUS of its size further out, and only a fish that can swallow its
+-- size eats it (`gRaw`); its scuttle is left out (it's eaten where it sits)
+local gX, gY, gZ, gMass, gBack, gRaw, gPad = {}, {}, {}, {}, {}, {}, {}
 local FCELL = 40
 local fcells: { [number]: { number } } = {}
+local crabCount = 0
+local crabRng = Random.new(20261019 + 77)
 for _, def in ForageConfig.list do
 	if def.mass <= 0 then
 		continue
 	end
 	for _, band in def.bands do
+		local from, to, angleFrom, span = band.from or 140, band.to or 830, 0, 360
+		local biome = if band.biome then Config.Biomes.byId[band.biome] else nil
+		if biome then
+			from = math.max(biome.radiusFrom, band.from or 0, 215)
+			to = math.min(biome.radiusTo, band.to or math.huge)
+			angleFrom = biome.angleFrom
+			span = (biome.angleTo - biome.angleFrom) % 360
+			if span == 0 then
+				span = 360
+			end
+		end
+		-- (crabs draw on their own sequence, so everything else is laid out as before)
+		local draw = if def.size then crabRng else rng
 		for _ = 1, band.count do
-			local r = math.sqrt(rng:NextNumber() * (band.to ^ 2 - band.from ^ 2) + band.from ^ 2)
-			local angle = rng:NextNumber() * 2 * math.pi
+			local r = math.sqrt(draw:NextNumber() * (to ^ 2 - from ^ 2) + from ^ 2)
+			local angle = if biome
+				then math.rad(angleFrom + draw:NextNumber() * span)
+				else draw:NextNumber() * 2 * math.pi
 			local x, z = math.cos(angle) * r, math.sin(angle) * r
+			local size = def.size
 			table.insert(gX, x)
-			table.insert(gY, Seafloor.y(x, z) + 0.6)
+			table.insert(gY, Seafloor.y(x, z) + (if size then size * ForageConfig.CRAB_HEIGHT else 0.6))
 			table.insert(gZ, z)
 			table.insert(gMass, def.mass)
 			table.insert(gBack, def.respawn)
+			table.insert(gRaw, if size then Size.raw(size) else 0)
+			table.insert(gPad, if size then size * ForageConfig.CRAB_RADIUS else 0)
+			if size then
+				crabCount += 1
+			end
 			local k = key(math.floor(x / FCELL), math.floor(z / FCELL))
 			fcells[k] = fcells[k] or {}
 			table.insert(fcells[k], #gX)
@@ -469,9 +495,9 @@ local function eatAlong(
 			end
 		end
 	end
-	-- Filler food on the floor
+	-- Filler food on the floor (a crab only if it can swallow it: `limit`)
 	local reach = (Size.reach(length) * FORAGE_REACH + FORAGE_BONUS) * FORAGE_PULLED
-	if math.min(ay, by) - Seafloor.y(mx, mz) > reach + 2 then
+	if math.min(ay, by) - Seafloor.y(mx, mz) > reach + 6 then
 		return
 	end
 	for cx = math.floor((mx - half - reach) / FCELL), math.floor((mx + half + reach) / FCELL) do
@@ -483,7 +509,8 @@ local function eatAlong(
 			for _, g in here do
 				if
 					(h.eatenFood[g] or 0) <= t
-					and segDist(gX[g], gY[g], gZ[g], ax, ay, az, bx, by, bz) <= reach
+					and gRaw[g] < limit
+					and segDist(gX[g], gY[g], gZ[g], ax, ay, az, bx, by, bz) <= reach + gPad[g]
 				then
 					h.eatenFood[g] = t + gBack[g]
 					eat(h, gMass[g], 0)
@@ -523,7 +550,7 @@ local function pick(h: Hunter, biome: Biome, length: number): Target?
 				continue
 			end
 			for _, g in here do
-				if (h.eatenFood[g] or 0) <= t then
+				if (h.eatenFood[g] or 0) <= t and gRaw[g] < limit then
 					local d = math.sqrt((gX[g] - h.x) ^ 2 + (gY[g] - h.y) ^ 2 + (gZ[g] - h.z) ^ 2)
 					local score = gMass[g] / (d + 40)
 					if score > bestScore then
@@ -913,7 +940,9 @@ elseif args.mode == "design" then
 	return
 end
 
-print(`{NF} prey fish in {NS} schools; {#gX} bits of filler food; {species.name} at {CRUISE}× top speed`)
+print(
+	`{NF} prey fish in {NS} schools; {#gX} bits of filler food ({crabCount} crabs); {species.name} at {CRUISE}× top speed`
+)
 if not args.quick then
 	progress(OLD, 3)
 	-- The PC's PG1 dives (2026-10-19): a Kelp dive at LV 10 filled in 16 s (+12

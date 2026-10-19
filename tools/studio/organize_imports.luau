@@ -12,6 +12,10 @@
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
 --   props, food and den furniture (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
+--   sea life (rigged FBX, ambient_fbx: Turtle, Manta, Stingray, Humpback, Crab)
+--       -> ReplicatedStorage.AmbientModels.<Name>     (a Model with bones; each is given a
+--          SurfaceAppearance from its texture, so the game can tint it: the edible crab
+--          kinds are the one Crab tinted, Config/Forage)
 -- Studio names a GLB import "Scene" when its root node is unnamed: set its Name to
 -- its file name in the Import Preview before importing. A species import must be
 -- rigged (have Bones), so a stray static copy of the same name isn't filed as one.
@@ -36,6 +40,9 @@ local PREY = {
 	Opaleye = true, KelpBass = true, BlueTang = true, Lingcod = true, Rattail = true, Viperfish = true,
 	Hatchetfish = true, HumpheadWrasse = true,
 }
+-- The sea life (ambient_fbx, 2026-10-19), read by AmbientLifeController and the
+-- edible crabs (ForageController)
+local AMBIENT = { Turtle = true, Manta = true, Stingray = true, Humpback = true, Crab = true }
 local PROPS = {
 	GiantKelp = true, KelpClump = true, BoulderRound = true, BoulderJagged = true,
 	BrainCoral = true, FanCoral = true, StaghornCoral = true, TubeSponge = true, Anemone = true,
@@ -140,6 +147,10 @@ for _, item in workspace:GetChildren() do
 				item:Destroy()
 			end
 			moved += 1
+		elseif AMBIENT[name] and rigged then
+			replaceIn(folder("AmbientModels"), name, item)
+			print(`[organize_imports] {name}: rigged sea life`)
+			moved += 1
 		elseif PROPS[name] then
 			replaceIn(folder("WorldProps"), name, item)
 			moved += 1
@@ -167,6 +178,27 @@ for speciesName, preyName in { Cuda = "Barracuda", ReefShark = "ReefShark" } do
 	if species and species:IsA("Model") and (existing == nil or not existing:IsA("Model")) then
 		replaceIn(folder("PreyModels"), preyName, species:Clone())
 		moved += 1
+	end
+end
+-- Sea life textured by a TextureID gets a SurfaceAppearance with that texture instead
+-- (imported now or before): SurfaceAppearance.Color tints it in game, which a TextureID
+-- can't take, and only a plugin or this Command Bar can set a ColorMap
+local ambientModels = ReplicatedStorage:FindFirstChild("AmbientModels")
+for name in AMBIENT do
+	local model = ambientModels and ambientModels:FindFirstChild(name)
+	for _, descendant in if model then model:GetDescendants() else {} do
+		if descendant:IsA("MeshPart") and descendant.TextureID ~= "" and descendant:FindFirstChildOfClass("SurfaceAppearance") == nil then
+			local texture = descendant.TextureID
+			local appearance = Instance.new("SurfaceAppearance")
+			local ok, err = pcall(function()
+				(appearance :: any).ColorMap = texture
+			end)
+			if ok then
+				appearance.Parent = descendant
+				descendant.TextureID = ""
+			end
+			print(`[organize_imports] {name}: SurfaceAppearance from its texture {if ok then "made" else `failed ({err})`}`)
+		end
 	end
 end
 -- Overlay props (imported now or before): their texture's low alpha shows the part's Color

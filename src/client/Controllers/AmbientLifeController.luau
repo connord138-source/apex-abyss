@@ -1,10 +1,22 @@
 --!strict
 -- Sea life that isn't food (owner, 2026-10-18: "We still need so much more fish too. I
 -- feel like the ocean has a pretty empty feeling"; "Think Subnautica"): jellyfish
--- drifting in the deep water, rays gliding over the sand, crabs scuttling round rocks
--- and wrecks, turtles cruising the shelf, clouds of tiny reef fish over the coral
--- heads, and whales and mantas passing far off through the Open Blue's haze
--- (Config/Ambient). Client-only and part-built: nothing replicates, nothing is eaten.
+-- drifting in the deep water, stingrays gliding over the sand and settling into it,
+-- mantas flying slow loops over the reef and the wrecks, turtles rowing over the shelf,
+-- clouds of tiny reef fish over the coral heads, and whales and mantas passing far off
+-- through the Open Blue's haze (Config/Ambient). Client-only: nothing replicates,
+-- nothing is eaten (the crabs are food now: Config/Forage, ForageController).
+--
+-- The rays, mantas, turtles and giants are their imported models
+-- (ReplicatedStorage.AmbientModels) or, until those are in, faceted part-built stand-ins
+-- (owner, 2026-10-19: "the sea turtles and manta rays/stingrays need to be dialed up
+-- they're essentially just circles put together"); both are AmbientBody, posed by
+-- Shared/AmbientRigs: the manta's slow, powerful flap with its wingtips lagging, the
+-- stingray's ripple along its disc edge, the turtle's sweeping front-flipper strokes and
+-- glide with its hind flippers as rudders and its head bobbing, the humpback's
+-- pectorals and fluke stroke; all bank into their turns. Joints move every frame within
+-- a kind's `animate` range, every other frame out to twice that, and hold their pose
+-- beyond; at most Config/Ambient `jointBudget` joint turns a frame, nearest first.
 --
 -- The sea is cut into squares (Config/Ambient `CELL`); a square's creatures come from a
 -- seed of its position and move on the shared clock, so a place always holds the same
@@ -12,31 +24,39 @@
 -- a few a refresh), and each creature fades in and out at the edge of its range
 -- (LocalTransparencyModifier), so nothing pops. Its ranges shrink with the prey
 -- schools' on a slow device (SchoolController.detail). Near a world boss everything
--- fades away, and the giants hide while one is up.
+-- fades away, and the giants hide while one is up. The folder `Workspace.AmbientLife`
+-- carries a readout for play tests: how many of each are built, and `PoseMs` / `Joints`
+-- (the posing's cost a frame, averaged over a second).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local AmbientRigs = require(ReplicatedStorage.Shared.AmbientRigs)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Ground = require(ReplicatedStorage.Shared.Ground)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Timing = require(ReplicatedStorage.Shared.Timing)
+local AmbientBody = require(script.Parent.Parent.AmbientBody)
 local BossController = require(script.Parent.BossController)
 local SchoolController = require(script.Parent.SchoolController)
 
 local Ambient = Config.Ambient
 local World = Config.World
 local KINDS = Ambient.kinds
+type Kind = typeof(KINDS.ray)
 local CELL = Ambient.CELL
--- The kinds laid out by square, and a salt each for their seeds
-local SQUARE_KINDS = { "jelly", "ray", "crab", "turtle" }
-local SALT: { [string]: number } = { jelly = 1, ray = 2, crab = 3, turtle = 4, cloud = 5, giant = 6 }
+-- The kinds laid out by square, and a salt each for their seeds (the crab's 3 stays
+-- retired, so the others' squares hold what they did)
+local SQUARE_KINDS = { "jelly", "ray", "manta", "turtle" }
+local SALT: { [string]: number } = { jelly = 1, ray = 2, turtle = 4, cloud = 5, giant = 6, manta = 7 }
 local HUB_CLEAR = 210 -- studs from the hub's middle: its seamount, no life laid out
 local FADE_SHARE = 0.2 -- the last share of a range a creature fades over
 local REFRESH = 0.4 -- seconds between looks at which squares should be built
 local SPAWN_BUDGET = 0.002 -- seconds a refresh may spend building squares
 local NEAR_DETAIL = 90 -- studs: closer than this, jellies pulse and trail their tentacles
 local WHITE = Color3.new(1, 1, 1)
+local SAND = Color3.fromRGB(176, 170, 152)
+local TAU = 2 * math.pi
 
 type Creature = {
 	kind: string,
@@ -50,10 +70,8 @@ type Creature = {
 	ellipse: number,
 	angular: number, -- radians/s round its loop (sign = direction)
 	phase: number,
-	lifts: { number }?, -- ground heights round its loop (rays, turtles) or along its walk (crabs)
-	yaw: number,
-	walk: number, -- a crab's walk, studs
-	cycle: number, -- a crab's walk cycle, seconds
+	lifts: { number }?, -- heights round its loop it swims at (rays, mantas, turtles)
+	ground: { number }?, -- the ground's heights round its loop (rays settle onto it)
 	pulse: number, -- a jelly's beats a second
 	bellMesh: SpecialMesh?,
 	rimMesh: SpecialMesh?,
@@ -64,7 +82,14 @@ type Creature = {
 	from: Vector3?, -- a giant's line
 	to: Vector3?,
 	giant: string?, -- "whale" | "manta"
-	still: boolean, -- a crab at rest, already posed there (left alone until it moves)
+	body: AmbientBody.Body?, -- a ray's, manta's, turtle's or giant's
+	beat: number, -- seconds a flap, stroke or ripple
+	cycle: number, -- a stingray's day (Config/Ambient `settle`)
+	restFor: number,
+	settled: number, -- how settled it was last frame (0 .. 1)
+	puff: ParticleEmitter?,
+	posedAt: number, -- when its joints last moved
+	motion: AmbientRigs.Motion,
 }
 
 local AmbientLifeController = {}
@@ -73,7 +98,6 @@ local folder: Folder
 local creatures: { [Creature]: boolean } = {}
 local squares: { [number]: { Creature } } = {} -- square key → its creatures (maybe none)
 local squareAt: { [number]: Vector2 } = {} -- square key → its middle
-local retryAt: { [number]: number } = {} -- square key → when to try a square whose ground wasn't in
 local counts: { [string]: number } = {}
 local clouds: { [number]: Creature } = {} -- coral square key → its cloud
 local giants: { [number]: Creature } = {} -- lane → its giant this pass
@@ -81,10 +105,10 @@ local giantSlot: { [number]: number } = {}
 local nextRefresh = 0
 local nextScan = 0
 local bossFade = 0
+local frameCount = 0
+local poseTime, poseFrames, jointsPosed = 0, 0, 0
 local moveParts: { BasePart } = {}
 local moveFrames: { CFrame } = {}
-local rayParams: RaycastParams? = nil
-local rayParamsAt = -math.huge
 local coralParams: OverlapParams? = nil
 
 local function inList(list: { string }, id: string): boolean
@@ -135,9 +159,7 @@ local function newCreature(kind: string, key: number, home: Vector3, size: numbe
 		angular = 0,
 		phase = phase,
 		lifts = nil,
-		yaw = 0,
-		walk = 0,
-		cycle = 1,
+		ground = nil,
 		pulse = 1,
 		bellMesh = nil,
 		rimMesh = nil,
@@ -148,13 +170,33 @@ local function newCreature(kind: string, key: number, home: Vector3, size: numbe
 		from = nil,
 		to = nil,
 		giant = nil,
-		still = false,
+		body = nil,
+		beat = 1,
+		cycle = 1,
+		restFor = 0,
+		settled = 0,
+		puff = nil,
+		posedAt = -math.huge,
+		motion = {
+			t = 0,
+			phase = phase,
+			period = 1,
+			bank = 0,
+			turn = 0,
+			rest = 0,
+			settled = -1,
+			moving = true,
+		},
 	}
 end
 
 -- Out of sight to start with: it fades in as it comes into range
 local function setFade(creature: Creature, fade: number)
 	creature.fade = fade
+	local body = creature.body
+	if body then
+		AmbientBody.fade(body, fade)
+	end
 	for _, piece in creature.parts do
 		piece.LocalTransparencyModifier = fade
 	end
@@ -183,50 +225,24 @@ local function remove(creature: Creature)
 	creature.model:Destroy()
 end
 
--- The solid world under a point (the Terrain and the biomes' rock, coral, wrecks,
--- ruins and vents), rebuilt now and then as the world streams in
-local function groundRay(): RaycastParams
-	local now = os.clock()
-	local made = rayParams
-	if made and now - rayParamsAt < 5 then
-		return made
-	end
-	local include: { Instance } = { workspace.Terrain }
-	local world = workspace:FindFirstChild("World")
-	local biomes = world and world:FindFirstChild("Biomes")
-	if biomes then
-		for _, name in { "Rocks", "Coral", "Wrecks", "Ruins", "Vents" } do
-			local found = biomes:FindFirstChild(name)
-			if found then
-				table.insert(include, found)
-			end
-		end
-	end
-	local fresh = RaycastParams.new()
-	fresh.FilterType = Enum.RaycastFilterType.Include
-	fresh.FilterDescendantsInstances = include
-	fresh.RespectCanCollide = true
-	rayParams = fresh
-	rayParamsAt = now
-	return fresh
-end
-
-local function castDown(x: number, z: number): RaycastResult?
-	local floor = Seafloor.y(x, z)
-	local from = Vector3.new(x, World.surfaceY - 2, z)
-	return workspace:Raycast(from, Vector3.new(0, floor - World.surfaceY - 60, 0), groundRay())
-end
-
--- Ground heights round a loop (for things that glide or cruise over it): `count`
--- samples of the real ground plus `clear`, eased so a rise is a ramp, never a step
-local function loopLifts(creature: Creature, count: number, clear: number, slope: number): { number }
+-- Heights round a loop (for things that glide or cruise over it): `count` samples of
+-- the real ground plus `clear`, eased so a rise is a ramp, never a step; and the raw
+-- ground under each
+local function loopLifts(
+	creature: Creature,
+	count: number,
+	clear: number,
+	slope: number
+): ({ number }, { number })
 	local lifts = table.create(count, 0)
+	local ground = table.create(count, 0)
 	local home = creature.home
 	for k = 1, count do
-		local a = (k - 1) / count * 2 * math.pi
+		local a = (k - 1) / count * TAU
 		local x = home.X + math.cos(a) * creature.radius
 		local z = home.Z + math.sin(a) * creature.radius * creature.ellipse
-		lifts[k] = Ground.y(x, z) + clear
+		ground[k] = Ground.y(x, z)
+		lifts[k] = ground[k] + clear
 	end
 	local spacing = math.pi * creature.radius * (1 + creature.ellipse) / count
 	for _ = 1, 2 do
@@ -239,29 +255,44 @@ local function loopLifts(creature: Creature, count: number, clear: number, slope
 			lifts[here] = math.max(lifts[here], lifts[after] - slope * spacing)
 		end
 	end
-	return lifts
+	return lifts, ground
 end
 
 local function liftAt(lifts: { number }, a: number): number
 	local count = #lifts
-	local u = ((a / (2 * math.pi)) % 1) * count
+	local u = ((a / TAU) % 1) * count
 	local i = math.floor(u)
 	local low = lifts[i % count + 1]
 	local high = lifts[(i + 1) % count + 1]
 	return low + (high - low) * (u - i)
 end
 
--- Where a creature on a loop is at time t, and which way it's going
-local function onLoop(creature: Creature, t: number): (Vector3, Vector3, number)
-	local a = creature.phase + creature.angular * t
+-- Where a creature is at angle `a` round its loop (at its swimming height)
+local function loopAt(creature: Creature, a: number): Vector3
 	local r = creature.radius
 	local home = creature.home
-	local x = home.X + math.cos(a) * r
-	local z = home.Z + math.sin(a) * r * creature.ellipse
 	local y = if creature.lifts then liftAt(creature.lifts, a) else home.Y
-	local heading = Vector3.new(-math.sin(a) * r, 0, math.cos(a) * r * creature.ellipse)
-		* math.sign(creature.angular)
-	return Vector3.new(x, y, z), heading, a
+	return Vector3.new(home.X + math.cos(a) * r, y, home.Z + math.sin(a) * r * creature.ellipse)
+end
+
+-- Its frame at angle `a` (looking along its path, up and down with it) and how hard
+-- it's turning: + right, radians a second
+local function loopFrame(creature: Creature, a: number, yOffset: number): (CFrame, number)
+	local step = 0.04 * math.sign(creature.angular)
+	local here = loopAt(creature, a)
+	local ahead = loopAt(creature, a + step)
+	local after = loopAt(creature, a + 2 * step)
+	local d1, d2 = ahead - here, after - ahead
+	local yaw1 = math.atan2(-d1.X, -d1.Z)
+	local yaw2 = math.atan2(-d2.X, -d2.Z)
+	local dyaw = (yaw2 - yaw1 + math.pi) % TAU - math.pi
+	-- (yaw grows turning left; the loop's angle runs at `angular` radians a second)
+	local rate = -dyaw / math.abs(step) * math.abs(creature.angular)
+	local at = here + Vector3.new(0, yOffset, 0)
+	local flat = Vector3.new(d1.X, 0, d1.Z).Magnitude
+	local climb = math.clamp(d1.Y / math.max(flat, 1e-3), -0.35, 0.35)
+	local look = Vector3.new(d1.X, climb * flat, d1.Z)
+	return CFrame.lookAt(at, at + look), rate
 end
 
 ----------------------------------------------------------------------------------
@@ -389,307 +420,190 @@ local function poseJelly(creature: Creature, t: number, at: Vector3, away: numbe
 end
 
 ----------------------------------------------------------------------------------
--- Rays: a flat body and two wings that flap slowly, a whip of a tail; they glide a
--- couple of studs over the ground on a lazy loop.
+-- Rays, mantas and turtles: their bodies (Shared/AmbientRigs), each on a loop of its own
 
-local function makeRay(rng: Random, key: number, x: number, z: number, _floor: number): Creature?
-	local kind = KINDS.ray
-	local span = rng:NextNumber(kind.size[1], kind.size[2])
-	local creature = newCreature("ray", key, Vector3.new(x, 0, z), span, rng:NextNumber(0, 2 * math.pi))
-	creature.radius = rng:NextNumber(16, 38)
-	creature.ellipse = rng:NextNumber(0.5, 1)
-	local speed = kind.speed or { 4, 4 }
-	creature.angular = rng:NextNumber(speed[1], speed[2])
-		/ creature.radius
-		* (if rng:NextNumber() < 0.5 then -1 else 1)
-	local depth = kind.depth or { 2, 3 }
-	local clear = rng:NextNumber(depth[1], depth[2])
-	local color = kind.colors[rng:NextInteger(1, #kind.colors)]
-	creature.lifts = loopLifts(creature, 18, clear + span * 0.05, 0.35)
-	local model = creature.model
-	local belly = color:Lerp(WHITE, 0.25)
-	local body =
-		part(model, Vector3.new(span * 0.36, span * 0.1, span * 0.5), color, Enum.Material.SmoothPlastic, 0)
-	local left =
-		part(model, Vector3.new(span * 0.5, span * 0.06, span * 0.36), color, Enum.Material.SmoothPlastic, 0)
-	local right =
-		part(model, Vector3.new(span * 0.5, span * 0.06, span * 0.36), color, Enum.Material.SmoothPlastic, 0)
-	local tail = part(
-		model,
-		Vector3.new(span * 0.035, span * 0.035, span * 0.65),
-		belly,
-		Enum.Material.SmoothPlastic,
-		0
-	)
-	add(creature, { body, left, right, tail })
-	return creature
+local function bodyOf(creature: Creature, kind: Kind, rig: string)
+	local look = kind.look or {}
+	if kind.tint and kind.look then
+		-- (a stand-in's main colour is this creature's pick of `colors`)
+		local picked = table.clone(kind.look)
+		picked[kind.tint] = kind.colors[(creature.key + math.floor(creature.phase * 7)) % #kind.colors + 1]
+		look = picked
+	end
+	creature.body = AmbientBody.new(rig, creature.size, look, { model = kind.model }, creature.model)
 end
 
-local function poseRay(creature: Creature, t: number)
-	local span = creature.size
-	local p = creature.phase
-	local at, heading = onLoop(creature, t)
-	at += Vector3.new(0, math.sin(t * 0.8 + p) * 0.3, 0)
-	local frame = CFrame.lookAt(at, at + heading) * CFrame.Angles(0, 0, -math.sign(creature.angular) * 0.12)
-	local flap = math.sin(t * 1.4 + p) * 0.3
-	table.insert(moveParts, creature.parts[1])
-	table.insert(moveFrames, frame)
-	table.insert(moveParts, creature.parts[2])
-	table.insert(
-		moveFrames,
-		frame * CFrame.new(-span * 0.1, 0, 0) * CFrame.Angles(0, -0.3, flap) * CFrame.new(-span * 0.24, 0, 0)
-	)
-	table.insert(moveParts, creature.parts[3])
-	table.insert(
-		moveFrames,
-		frame * CFrame.new(span * 0.1, 0, 0) * CFrame.Angles(0, 0.3, -flap) * CFrame.new(span * 0.24, 0, 0)
-	)
-	table.insert(moveParts, creature.parts[4])
-	table.insert(
-		moveFrames,
-		frame
-			* CFrame.new(0, 0, span * 0.22)
-			* CFrame.Angles(0, math.sin(t * 1.2 + p) * 0.25, 0)
-			* CFrame.new(0, 0, span * 0.32)
-	)
+local function beatOf(rng: Random, kind: Kind): number
+	local beat = kind.beat or { 2, 3 }
+	return rng:NextNumber(beat[1], beat[2])
 end
 
-----------------------------------------------------------------------------------
--- Crabs: a shell, a dark fringe of legs and two claws; they scuttle sideways a few
--- studs, wait, and scuttle back, mostly on and beside rocks, coral and wrecks.
-
--- "retry": the ground there hasn't streamed in yet
-local function makeCrab(rng: Random, key: number, x: number, z: number, _floor: number): (Creature?, boolean)
-	local kind = KINDS.crab
-	-- Every draw first, so the square comes out the same whatever the rays find
-	local spots: { Vector2 } = {}
-	for _ = 1, 4 do
-		table.insert(spots, Vector2.new(x + rng:NextNumber(-14, 14), z + rng:NextNumber(-14, 14)))
-	end
-	local onSand = rng:NextNumber() < 0.35
-	local size = rng:NextNumber(kind.size[1], kind.size[2])
-	local yaw = rng:NextNumber(0, 2 * math.pi)
-	local walk = rng:NextNumber(2, 6)
-	local cycle = rng:NextNumber(5, 11)
-	local phase = rng:NextNumber(0, 20)
-	local color = kind.colors[rng:NextInteger(1, #kind.colors)]
-	local chosen: RaycastResult? = nil
-	local sand: RaycastResult? = nil
-	local missed = 0
-	for _, spot in spots do
-		local hit = castDown(spot.X, spot.Y)
-		if hit == nil then
-			missed += 1
-			continue
-		end
-		local rocky = hit.Instance ~= workspace.Terrain
-			or hit.Material == Enum.Material.Rock
-			or hit.Material == Enum.Material.Basalt
-			or hit.Material == Enum.Material.Slate
-			or hit.Material == Enum.Material.Limestone
-		if rocky and hit.Normal.Y > 0.55 then
-			chosen = hit
-			break
-		elseif hit.Normal.Y > 0.7 then
-			sand = sand or hit
-		end
-	end
-	if chosen == nil and missed == #spots then
-		return nil, true
-	end
-	if chosen == nil and onSand then
-		chosen = sand
-	end
-	if chosen == nil then
-		return nil, false
-	end
-	local hit = chosen :: RaycastResult
-	local creature = newCreature("crab", key, hit.Position, size, phase)
-	creature.yaw = yaw
-	creature.walk = walk
-	creature.cycle = cycle
-	-- The ground along its walk (it keeps to the spot's height where a ray misses)
-	local side = Vector3.new(math.cos(yaw), 0, -math.sin(yaw))
-	local lifts: { number } = {}
-	for k = 0, 4 do
-		local along = hit.Position + side * (k / 4 - 0.5) * walk
-		local under = castDown(along.X, along.Z)
-		local y = if under and math.abs(under.Position.Y - hit.Position.Y) < walk
-			then under.Position.Y
-			else hit.Position.Y
-		table.insert(lifts, y)
-	end
-	creature.lifts = lifts
-	local model = creature.model
-	local shell =
-		part(model, Vector3.new(size, size * 0.42, size * 0.75), color, Enum.Material.SmoothPlastic, 0)
-	local legs = part(
-		model,
-		Vector3.new(size * 1.6, size * 0.12, size * 0.9),
-		color:Lerp(Color3.new(0, 0, 0), 0.45),
-		Enum.Material.SmoothPlastic,
-		0
-	)
-	local claw = color:Lerp(Color3.new(0, 0, 0), 0.15)
-	local left =
-		part(model, Vector3.new(size * 0.32, size * 0.22, size * 0.34), claw, Enum.Material.SmoothPlastic, 0)
-	local right =
-		part(model, Vector3.new(size * 0.32, size * 0.22, size * 0.34), claw, Enum.Material.SmoothPlastic, 0)
-	add(creature, { shell, legs, left, right })
-	return creature, false
-end
-
--- How far along its walk a crab is (0..1) and whether it's moving
-local function crabStep(creature: Creature, t: number): (number, boolean)
-	local u = ((t + creature.phase) % creature.cycle) / creature.cycle
-	local function ease(x: number): number
-		return x * x * (3 - 2 * x)
-	end
-	if u < 0.15 then
-		return ease(u / 0.15), true
-	elseif u < 0.5 then
-		return 1, false
-	elseif u < 0.65 then
-		return 1 - ease((u - 0.5) / 0.15), true
-	end
-	return 0, false
-end
-
-local function crabAt(creature: Creature, t: number): Vector3
-	local s = crabStep(creature, t)
-	local side = Vector3.new(math.cos(creature.yaw), 0, -math.sin(creature.yaw))
-	local at = creature.home + side * (s - 0.5) * creature.walk
-	local lifts = creature.lifts
-	if lifts then
-		local u = s * (#lifts - 1)
-		local i = math.clamp(math.floor(u), 0, #lifts - 2)
-		local y = lifts[i + 1] + (lifts[i + 2] - lifts[i + 1]) * (u - i)
-		at = Vector3.new(at.X, y, at.Z)
-	end
-	return at
-end
-
-local function poseCrab(creature: Creature, t: number, at: Vector3)
-	local size = creature.size
-	local p = creature.phase
-	local _, moving = crabStep(creature, t)
-	-- (resting, it stays put: nothing to move until it scuttles again)
-	if not moving and creature.still then
-		return
-	end
-	creature.still = not moving
-	local bob = if moving then math.abs(math.sin(t * 22 + p)) * size * 0.06 else 0
-	local frame = CFrame.new(at + Vector3.new(0, size * 0.3 + bob, 0)) * CFrame.Angles(0, creature.yaw, 0)
-	local jitter = if moving then math.sin(t * 30 + p) * 0.12 else 0
-	table.insert(moveParts, creature.parts[1])
-	table.insert(moveFrames, frame)
-	table.insert(moveParts, creature.parts[2])
-	table.insert(moveFrames, frame * CFrame.new(0, -size * 0.14, 0) * CFrame.Angles(0, jitter, 0))
-	for k, sign in { -1, 1 } do
-		local raise = if moving then math.sin(t * 9 + p + sign) * size * 0.06 else 0
-		table.insert(moveParts, creature.parts[2 + k])
-		table.insert(
-			moveFrames,
-			frame
-				* CFrame.new(sign * size * 0.42, size * 0.04 + raise, -size * 0.48)
-				* CFrame.Angles(0, sign * 0.4, 0)
-		)
-	end
-end
-
-----------------------------------------------------------------------------------
--- Turtles: a domed shell, a head and four flippers, the front pair rowing; they
--- cruise big slow loops well over the shelf.
-
-local function makeTurtle(rng: Random, key: number, x: number, z: number, _floor: number): Creature?
-	local kind = KINDS.turtle
-	local size = rng:NextNumber(kind.size[1], kind.size[2])
-	local creature = newCreature("turtle", key, Vector3.new(x, 0, z), size, rng:NextNumber(0, 2 * math.pi))
-	creature.radius = rng:NextNumber(40, 80)
+local function onLoopSetup(creature: Creature, rng: Random, kind: Kind, radius: { number })
+	creature.radius = rng:NextNumber(radius[1], radius[2])
 	creature.ellipse = rng:NextNumber(0.55, 1)
 	local speed = kind.speed or { 4, 4 }
 	creature.angular = rng:NextNumber(speed[1], speed[2])
 		/ creature.radius
 		* (if rng:NextNumber() < 0.5 then -1 else 1)
-	local depth = kind.depth or { 20, 40 }
+end
+
+-- A stingray gliding low over the sand on a lazy loop, now and then easing down into
+-- it in a puff of sand and lying there a while
+local function makeRay(rng: Random, key: number, x: number, z: number, _floor: number): Creature?
+	local kind = KINDS.ray
+	local span = rng:NextNumber(kind.size[1], kind.size[2])
+	local creature = newCreature("ray", key, Vector3.new(x, 0, z), span, rng:NextNumber(0, TAU))
+	onLoopSetup(creature, rng, kind, { 16, 38 })
+	local depth = kind.depth or { 2, 3 }
 	local clear = rng:NextNumber(depth[1], depth[2])
-	local color = kind.colors[rng:NextInteger(1, #kind.colors)]
-	creature.lifts = loopLifts(creature, 24, clear, 0.3)
-	local model = creature.model
-	local skin = color:Lerp(Color3.fromRGB(120, 140, 100), 0.6)
-	local shell =
-		part(model, Vector3.new(size * 0.8, size * 0.3, size), color, Enum.Material.SmoothPlastic, 0)
-	local dome = part(
-		model,
-		Vector3.new(size * 0.62, size * 0.3, size * 0.78),
-		color:Lerp(Color3.new(0, 0, 0), 0.25),
-		Enum.Material.SmoothPlastic,
-		0
-	)
-	local head =
-		part(model, Vector3.new(size * 0.24, size * 0.2, size * 0.3), skin, Enum.Material.SmoothPlastic, 0)
-	local pieces: { BasePart } = { shell, dome, head }
-	for _ = 1, 2 do
-		table.insert(
-			pieces,
-			part(
-				model,
-				Vector3.new(size * 0.75, size * 0.06, size * 0.26),
-				skin,
-				Enum.Material.SmoothPlastic,
-				0
-			)
-		)
-	end
-	for _ = 1, 2 do
-		table.insert(
-			pieces,
-			part(
-				model,
-				Vector3.new(size * 0.3, size * 0.05, size * 0.2),
-				skin,
-				Enum.Material.SmoothPlastic,
-				0
-			)
-		)
-	end
-	add(creature, pieces)
+	creature.beat = beatOf(rng, kind)
+	local settle = Ambient.settle
+	creature.cycle = rng:NextNumber(settle.cycle[1], settle.cycle[2])
+	creature.restFor = rng:NextNumber(settle.rest[1], settle.rest[2])
+	creature.lifts, creature.ground = loopLifts(creature, 18, clear + span * 0.05, 0.35)
+	bodyOf(creature, kind, "stingray")
+	local body = creature.body :: AmbientBody.Body
+	-- A puff of sand as it lands and lifts off
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = body.root
+	local puff = Instance.new("ParticleEmitter")
+	puff.Rate = 0
+	puff.Color = ColorSequence.new(SAND)
+	puff.LightInfluence = 1
+	puff.Lifetime = NumberRange.new(1.4, 2.4)
+	puff.Speed = NumberRange.new(span * 0.25, span * 0.55)
+	puff.SpreadAngle = Vector2.new(80, 80)
+	puff.EmissionDirection = Enum.NormalId.Top
+	puff.Drag = 3
+	puff.Acceleration = Vector3.new(0, -0.4, 0)
+	puff.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, span * 0.12),
+		NumberSequenceKeypoint.new(1, span * 0.4),
+	})
+	puff.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	puff.Parent = attachment
+	creature.puff = puff
+	add(creature, {})
 	return creature
 end
 
-local function poseTurtle(creature: Creature, t: number)
-	local size = creature.size
-	local p = creature.phase
-	local at, heading = onLoop(creature, t)
-	local stroke = math.sin(t * 1.3 + p)
-	at += Vector3.new(0, stroke * size * 0.08, 0)
-	local frame = CFrame.lookAt(at, at + heading)
-		* CFrame.Angles(stroke * 0.05, 0, -math.sign(creature.angular) * 0.1)
-	local parts = creature.parts
-	table.insert(moveParts, parts[1])
-	table.insert(moveFrames, frame)
-	table.insert(moveParts, parts[2])
-	table.insert(moveFrames, frame * CFrame.new(0, size * 0.1, 0))
-	table.insert(moveParts, parts[3])
-	table.insert(moveFrames, frame * CFrame.new(0, size * 0.02, -size * 0.6))
-	for k, sign in { -1, 1 } do
-		table.insert(moveParts, parts[3 + k])
-		table.insert(
-			moveFrames,
-			frame
-				* CFrame.new(sign * size * 0.3, -size * 0.02, -size * 0.22)
-				* CFrame.Angles(0, sign * 0.5, sign * stroke * 0.5)
-				* CFrame.new(sign * size * 0.3, 0, 0)
-		)
-		table.insert(moveParts, parts[5 + k])
-		table.insert(
-			moveFrames,
-			frame
-				* CFrame.new(sign * size * 0.25, -size * 0.04, size * 0.42)
-				* CFrame.Angles(0, -sign * 0.6, -sign * stroke * 0.2)
-				* CFrame.new(sign * size * 0.1, 0, 0)
+-- Where a ray is now, its frame, and how settled it is (it banks into its loop's turns
+-- while gliding; settled it lies flat on the ground)
+local function rayFrame(creature: Creature, t: number): (CFrame, number, number, number)
+	local settle = Ambient.settle
+	local covered, settled, since =
+		AmbientRigs.rayTravel(t, creature.cycle, creature.restFor, settle.ease, creature.phase)
+	local a = creature.phase + creature.angular * covered
+	local frame, rate = loopFrame(creature, a, math.sin(t * 0.8 + creature.phase) * 0.3 * (1 - settled))
+	if settled > 0 and creature.ground then
+		local body = creature.body
+		local rest = liftAt(creature.ground :: { number }, a) + (if body then body.floor else 0)
+		local y = frame.Position.Y + (rest - frame.Position.Y) * settled
+		frame = CFrame.new(frame.Position.X, y, frame.Position.Z) * frame.Rotation
+		frame = frame:Lerp(
+			CFrame.new(frame.Position) * CFrame.Angles(0, select(2, frame:ToOrientation()), 0),
+			settled
 		)
 	end
+	return frame, rate * (1 - settled), settled, since
+end
+
+-- A manta flying slow loops well over the reef and the wrecks
+local function makeManta(rng: Random, key: number, x: number, z: number, _floor: number): Creature?
+	local kind = KINDS.manta
+	local span = rng:NextNumber(kind.size[1], kind.size[2])
+	local creature = newCreature("manta", key, Vector3.new(x, 0, z), span, rng:NextNumber(0, TAU))
+	onLoopSetup(creature, rng, kind, { 45, 90 })
+	local depth = kind.depth or { 25, 60 }
+	creature.beat = beatOf(rng, kind)
+	creature.lifts = (loopLifts(creature, 24, rng:NextNumber(depth[1], depth[2]), 0.3))
+	bodyOf(creature, kind, "manta")
+	add(creature, {})
+	return creature
+end
+
+-- A turtle rowing big slow loops over the shelf: each stroke surges it on, then it glides
+local function makeTurtle(rng: Random, key: number, x: number, z: number, _floor: number): Creature?
+	local kind = KINDS.turtle
+	local size = rng:NextNumber(kind.size[1], kind.size[2])
+	local creature = newCreature("turtle", key, Vector3.new(x, 0, z), size, rng:NextNumber(0, TAU))
+	onLoopSetup(creature, rng, kind, { 40, 80 })
+	local depth = kind.depth or { 20, 40 }
+	creature.beat = beatOf(rng, kind)
+	creature.lifts = (loopLifts(creature, 24, rng:NextNumber(depth[1], depth[2]), 0.3))
+	bodyOf(creature, kind, "turtle")
+	add(creature, {})
+	return creature
+end
+
+-- Where a loop creature is now: its frame and turn rate
+local function cruiseFrame(creature: Creature, t: number): (CFrame, number)
+	local covered = if creature.kind == "turtle"
+		then AmbientRigs.turtleTravel(t, creature.beat, creature.phase)
+		else t
+	local a = creature.phase + creature.angular * covered
+	local bob = if creature.kind == "manta" then 0 else math.sin(t * 0.5 + creature.phase) * 0.6
+	return loopFrame(creature, a, bob)
+end
+
+----------------------------------------------------------------------------------
+-- Giants: a humpback or a manta crossing the Open Blue on a long line, seen far off
+-- through the haze
+
+local function giantLine(lane: number, slot: number): (string, Vector3, Vector3, number)
+	local rng = Random.new(seedOf(lane, slot, SALT.giant))
+	local kind = KINDS.giant
+	local which = if rng:NextNumber() < 0.55 then "whale" else "manta"
+	local length = rng:NextNumber(kind.size[1], kind.size[2])
+	local r = rng:NextNumber(1050, 1350)
+	local angle = math.rad(rng:NextNumber(234, 306))
+	local x, z = math.cos(angle) * r, math.sin(angle) * r
+	-- Roughly across the sector (along the circle), so it stays in the Open Blue
+	local heading = angle + math.pi / 2 + rng:NextNumber(-0.5, 0.5)
+	local floor = Seafloor.y(x, z)
+	local y = math.min(floor + rng:NextNumber(150, 360), World.surfaceY - 60)
+	local half = Ambient.giants.lane / 2
+	local direction = Vector3.new(math.cos(heading), 0, math.sin(heading))
+	local middle = Vector3.new(x, y, z)
+	local function inside(point: Vector3): Vector3
+		local flat = Vector2.new(point.X, point.Z)
+		if flat.Magnitude > 1460 then
+			flat = flat.Unit * 1460
+		end
+		return Vector3.new(flat.X, point.Y, flat.Y)
+	end
+	local from = inside(middle - direction * half)
+	local to = inside(middle + direction * half + Vector3.new(0, rng:NextNumber(-40, 40), 0))
+	if rng:NextNumber() < 0.5 then
+		from, to = to, from
+	end
+	return which, from, to, if which == "whale" then length else length * 0.42
+end
+
+local function makeGiant(lane: number, slot: number): Creature
+	local which, from, to, size = giantLine(lane, slot)
+	local creature = newCreature("giant", lane, from, size, (lane * 1.7) % TAU)
+	creature.giant = which
+	creature.from = from
+	creature.to = to
+	local settings = if which == "whale" then Ambient.giants.whale else Ambient.giants.manta
+	local rng = Random.new(seedOf(lane, slot, SALT.giant + 1))
+	creature.beat = rng:NextNumber(settings.beat[1], settings.beat[2])
+	creature.body =
+		AmbientBody.new(settings.rig, size, settings.look, { model = settings.model }, creature.model)
+	add(creature, {})
+	return creature
+end
+
+local function giantAt(creature: Creature, t: number): (Vector3, number)
+	local period = Ambient.giants.period
+	local lane = creature.key
+	local u = ((t + lane * period / Ambient.giants.lanes) % period) / period
+	local from, to = creature.from :: Vector3, creature.to :: Vector3
+	return from:Lerp(to, u) + Vector3.new(0, math.sin(u * TAU) * 12, 0), u
 end
 
 ----------------------------------------------------------------------------------
@@ -750,142 +664,6 @@ local function poseCloud(creature: Creature, t: number)
 end
 
 ----------------------------------------------------------------------------------
--- Giants: a whale or a manta crossing the Open Blue on a long line, seen far off
--- through the haze (part-built: never close enough to look at).
-
-local function giantLine(lane: number, slot: number): (string, Vector3, Vector3, number)
-	local rng = Random.new(seedOf(lane, slot, SALT.giant))
-	local kind = KINDS.giant
-	local which = if rng:NextNumber() < 0.55 then "whale" else "manta"
-	local length = rng:NextNumber(kind.size[1], kind.size[2])
-	local r = rng:NextNumber(1050, 1350)
-	local angle = math.rad(rng:NextNumber(234, 306))
-	local x, z = math.cos(angle) * r, math.sin(angle) * r
-	-- Roughly across the sector (along the circle), so it stays in the Open Blue
-	local heading = angle + math.pi / 2 + rng:NextNumber(-0.5, 0.5)
-	local floor = Seafloor.y(x, z)
-	local y = math.min(floor + rng:NextNumber(150, 360), World.surfaceY - 60)
-	local half = Ambient.giants.lane / 2
-	local direction = Vector3.new(math.cos(heading), 0, math.sin(heading))
-	local middle = Vector3.new(x, y, z)
-	local function inside(point: Vector3): Vector3
-		local flat = Vector2.new(point.X, point.Z)
-		if flat.Magnitude > 1460 then
-			flat = flat.Unit * 1460
-		end
-		return Vector3.new(flat.X, point.Y, flat.Y)
-	end
-	local from = inside(middle - direction * half)
-	local to = inside(middle + direction * half + Vector3.new(0, rng:NextNumber(-40, 40), 0))
-	if rng:NextNumber() < 0.5 then
-		from, to = to, from
-	end
-	return which, from, to, if which == "whale" then length else length * 0.42
-end
-
-local function makeGiant(lane: number, slot: number): Creature
-	local which, from, to, size = giantLine(lane, slot)
-	local kind = KINDS.giant
-	local creature = newCreature("giant", lane, from, size, (lane * 1.7) % (2 * math.pi))
-	creature.giant = which
-	creature.from = from
-	creature.to = to
-	local model = creature.model
-	local pieces: { BasePart } = {}
-	if which == "whale" then
-		local color = kind.colors[1]
-		local L = size
-		for _, shape in
-			{
-				Vector3.new(L * 0.2, L * 0.2, L * 0.62), -- body
-				Vector3.new(L * 0.17, L * 0.15, L * 0.3), -- head
-				Vector3.new(L * 0.11, L * 0.1, L * 0.4), -- tail stock
-				Vector3.new(L * 0.3, L * 0.025, L * 0.08), -- flippers
-				Vector3.new(L * 0.3, L * 0.025, L * 0.08),
-				Vector3.new(L * 0.17, L * 0.02, L * 0.09), -- flukes
-				Vector3.new(L * 0.17, L * 0.02, L * 0.09),
-			}
-		do
-			table.insert(pieces, part(model, shape, color, Enum.Material.SmoothPlastic, 0))
-		end
-	else
-		local color = kind.colors[2]
-		local W = size
-		for _, shape in
-			{
-				Vector3.new(W * 0.3, W * 0.07, W * 0.38), -- body
-				Vector3.new(W * 0.45, W * 0.04, W * 0.3), -- wings
-				Vector3.new(W * 0.45, W * 0.04, W * 0.3),
-				Vector3.new(W * 0.05, W * 0.03, W * 0.12), -- horns
-				Vector3.new(W * 0.05, W * 0.03, W * 0.12),
-				Vector3.new(W * 0.02, W * 0.02, W * 0.5), -- tail
-			}
-		do
-			table.insert(pieces, part(model, shape, color, Enum.Material.SmoothPlastic, 0))
-		end
-	end
-	add(creature, pieces)
-	return creature
-end
-
-local function giantAt(creature: Creature, t: number): (Vector3, number)
-	local period = Ambient.giants.period
-	local lane = creature.key
-	local u = ((t + lane * period / Ambient.giants.lanes) % period) / period
-	local from, to = creature.from :: Vector3, creature.to :: Vector3
-	return from:Lerp(to, u) + Vector3.new(0, math.sin(u * math.pi * 2) * 12, 0), u
-end
-
-local function poseGiant(creature: Creature, t: number, at: Vector3)
-	local from, to = creature.from :: Vector3, creature.to :: Vector3
-	local frame = CFrame.lookAt(at, at + (to - from))
-	local parts = creature.parts
-	local p = creature.phase
-	if creature.giant == "whale" then
-		local L = creature.size
-		local beat = math.sin(t * 0.55 + p)
-		local frames = {
-			frame * CFrame.Angles(beat * 0.02, 0, 0),
-			frame * CFrame.new(0, -L * 0.01, -L * 0.38),
-			frame
-				* CFrame.new(0, 0, L * 0.36)
-				* CFrame.Angles(beat * 0.08, 0, 0)
-				* CFrame.new(0, 0, L * 0.08),
-			frame
-				* CFrame.new(-L * 0.1, -L * 0.07, -L * 0.14)
-				* CFrame.Angles(0, 0.5, -0.3 + beat * 0.08)
-				* CFrame.new(-L * 0.14, 0, 0),
-			frame
-				* CFrame.new(L * 0.1, -L * 0.07, -L * 0.14)
-				* CFrame.Angles(0, -0.5, 0.3 - beat * 0.08)
-				* CFrame.new(L * 0.14, 0, 0),
-		}
-		local tail = frame * CFrame.new(0, 0, L * 0.5) * CFrame.Angles(beat * 0.3, 0, 0)
-		table.insert(frames, tail * CFrame.Angles(0, -0.45, 0) * CFrame.new(-L * 0.07, 0, L * 0.03))
-		table.insert(frames, tail * CFrame.Angles(0, 0.45, 0) * CFrame.new(L * 0.07, 0, L * 0.03))
-		for i, piece in parts do
-			table.insert(moveParts, piece)
-			table.insert(moveFrames, frames[i])
-		end
-	else
-		local W = creature.size
-		local flap = math.sin(t * 0.6 + p) * 0.45
-		local frames = {
-			frame,
-			frame * CFrame.new(-W * 0.12, 0, 0) * CFrame.Angles(0, -0.25, flap) * CFrame.new(-W * 0.2, 0, 0),
-			frame * CFrame.new(W * 0.12, 0, 0) * CFrame.Angles(0, 0.25, -flap) * CFrame.new(W * 0.2, 0, 0),
-			frame * CFrame.new(-W * 0.08, 0, -W * 0.22),
-			frame * CFrame.new(W * 0.08, 0, -W * 0.22),
-			frame * CFrame.new(0, 0, W * 0.4),
-		}
-		for i, piece in parts do
-			table.insert(moveParts, piece)
-			table.insert(moveFrames, frames[i])
-		end
-	end
-end
-
-----------------------------------------------------------------------------------
 -- Building and letting go
 
 type Maker = (Random, number, number, number, number) -> Creature?
@@ -893,11 +671,12 @@ type Maker = (Random, number, number, number, number) -> Creature?
 local makers: { [string]: Maker } = {
 	jelly = makeJelly,
 	ray = makeRay,
+	manta = makeManta,
 	turtle = makeTurtle,
 }
 
--- One square's creatures of one kind (from its seed), or nil to try it again later
-local function buildSquare(id: string, key: number, cx: number, cz: number): { Creature }?
+-- One square's creatures of one kind (from its seed)
+local function buildSquare(id: string, key: number, cx: number, cz: number): { Creature }
 	local kind = KINDS[id]
 	local rng = Random.new(seedOf(cx, cz, SALT[id]))
 	local whole = math.floor(kind.perCell)
@@ -914,22 +693,9 @@ local function buildSquare(id: string, key: number, cx: number, cz: number): { C
 		if biome == nil or not inList(kind.biomes, biome.id) then
 			continue
 		end
-		if id == "crab" then
-			local crab, retry = makeCrab(own, key, x, z, floor)
-			if retry then
-				for _, creature in made do
-					remove(creature)
-				end
-				return nil
-			end
-			if crab then
-				table.insert(made, crab)
-			end
-		else
-			local creature = makers[id](own, key, x, z, floor)
-			if creature then
-				table.insert(made, creature)
-			end
+		local creature = makers[id](own, key, x, z, floor)
+		if creature then
+			table.insert(made, creature)
 		end
 	end
 	return made
@@ -948,7 +714,7 @@ end
 
 -- Which squares should be built for the camera now: new ones built nearest first
 -- (within a budget), far ones let go
-local function refreshSquares(camera: Vector3, scale: number, now: number)
+local function refreshSquares(camera: Vector3, scale: number)
 	local wanted: { { key: number, id: string, cx: number, cz: number, away: number } } = {}
 	for index, id in SQUARE_KINDS do
 		local kind = KINDS[id]
@@ -958,7 +724,7 @@ local function refreshSquares(camera: Vector3, scale: number, now: number)
 				local middle = Vector2.new((cx + 0.5) * CELL, (cz + 0.5) * CELL)
 				local away = (middle - Vector2.new(camera.X, camera.Z)).Magnitude
 				local key = index * 100_000_000 + (cx + 5000) * 10_000 + (cz + 5000)
-				if away <= reach and squares[key] == nil and (retryAt[key] or 0) <= now then
+				if away <= reach and squares[key] == nil then
 					table.insert(wanted, { key = key, id = id, cx = cx, cz = cz, away = away })
 				end
 			end
@@ -987,14 +753,8 @@ local function refreshSquares(camera: Vector3, scale: number, now: number)
 		if (counts[entry.id] or 0) >= KINDS[entry.id].max then
 			continue
 		end
-		local made = buildSquare(entry.id, entry.key, entry.cx, entry.cz)
-		if made == nil then
-			retryAt[entry.key] = now + 2 -- (its ground isn't in yet)
-		else
-			retryAt[entry.key] = nil
-			squares[entry.key] = made
-			squareAt[entry.key] = Vector2.new((entry.cx + 0.5) * CELL, (entry.cz + 0.5) * CELL)
-		end
+		squares[entry.key] = buildSquare(entry.id, entry.key, entry.cx, entry.cz)
+		squareAt[entry.key] = Vector2.new((entry.cx + 0.5) * CELL, (entry.cz + 0.5) * CELL)
 	end
 end
 
@@ -1079,22 +839,39 @@ end
 
 ----------------------------------------------------------------------------------
 
+-- A creature's frame this moment (rays, mantas, turtles, giants), how hard it's
+-- turning, and for a ray how settled it is and how long it has lain there
+local function frameOf(creature: Creature, t: number): (CFrame, number, number, number)
+	local kind = creature.kind
+	if kind == "ray" then
+		return rayFrame(creature, t)
+	elseif kind == "giant" then
+		local at = giantAt(creature, t)
+		local from, to = creature.from :: Vector3, creature.to :: Vector3
+		return CFrame.lookAt(at, at + (to - from)), 0, 0, -1
+	end
+	local frame, rate = cruiseFrame(creature, t)
+	return frame, rate, 0, -1
+end
+
 local function centerOf(creature: Creature, t: number): Vector3
 	local kind = creature.kind
 	if kind == "jelly" then
 		return jellyAt(creature, t)
-	elseif kind == "crab" then
-		return crabAt(creature, t)
 	elseif kind == "cloud" then
 		return creature.home
 	elseif kind == "giant" then
 		return (giantAt(creature, t))
 	end
-	return (onLoop(creature, t))
+	return (frameOf(creature, t)).Position
 end
+
+type Posing = { creature: Creature, away: number, frame: CFrame, rate: number, settled: number, since: number }
+local posing: { Posing } = {}
 
 local function step(dt: number)
 	local now = Timing.clock()
+	frameCount += 1
 	local camera = workspace.CurrentCamera.CFrame.Position
 	local scale = SchoolController.detail()
 	-- Near a world boss everything fades away (and the giants hide while one is up)
@@ -1104,29 +881,45 @@ local function step(dt: number)
 	bossFade = math.clamp(bossFade + (if nearBoss then dt else -dt) / 1.5, 0, 1)
 	if now >= nextRefresh then
 		nextRefresh = now + REFRESH
-		refreshSquares(camera, scale, now)
+		refreshSquares(camera, scale)
 		refreshGiants(camera, now, bossUp)
 	end
 	if now >= nextScan then
 		nextScan = now + Ambient.cloudScan
 		refreshClouds(camera, scale)
-		-- (a readout on the folder for play tests: how many of each are built)
+		-- (a readout on the folder for play tests: how many of each are built, and what
+		-- posing them cost a frame over the last second)
 		for id in KINDS do
 			folder:SetAttribute(id, counts[id] or 0)
 		end
+		if poseFrames > 0 then
+			folder:SetAttribute("PoseMs", math.floor(poseTime / poseFrames * 1e5) / 100)
+			folder:SetAttribute("Joints", math.floor(jointsPosed / poseFrames + 0.5))
+		end
+		poseTime, poseFrames, jointsPosed = 0, 0, 0
 	end
+	local started = os.clock()
 	table.clear(moveParts)
 	table.clear(moveFrames)
+	table.clear(posing)
 	for creature in creatures do
 		local kind = KINDS[creature.kind]
-		local at = centerOf(creature, now)
+		local isGiant = creature.kind == "giant"
+		local range = if isGiant then kind.range else kind.range * scale
+		local frame, rate, settled, since = CFrame.identity, 0, 0, -1
+		local at: Vector3
+		if creature.body then
+			frame, rate, settled, since = frameOf(creature, now)
+			at = frame.Position
+		else
+			at = centerOf(creature, now)
+		end
 		local away = (at - camera).Magnitude
-		local range = if creature.kind == "giant" then kind.range else kind.range * scale
 		local fade = 0
 		if away > range * (1 - FADE_SHARE) then
 			fade = (away - range * (1 - FADE_SHARE)) / (range * FADE_SHARE)
 		end
-		if creature.kind == "giant" then
+		if isGiant then
 			-- never close, and in and out at the ends of its line
 			local near = Ambient.giants.near
 			fade = math.max(fade, 1 - (away - near) / 50)
@@ -1139,27 +932,73 @@ local function step(dt: number)
 			setFade(creature, fade)
 		end
 		if fade >= 1 then
-			creature.still = false -- (posed afresh when it's back in range)
 			continue
 		end
 		local id = creature.kind
 		if id == "jelly" then
 			poseJelly(creature, now, at, away)
-		elseif id == "ray" then
-			poseRay(creature, now)
-		elseif id == "crab" then
-			poseCrab(creature, now, at)
-		elseif id == "turtle" then
-			poseTurtle(creature, now)
 		elseif id == "cloud" then
 			poseCloud(creature, now)
-		elseif id == "giant" then
-			poseGiant(creature, now, at)
+		elseif creature.body then
+			table.insert(posing, {
+				creature = creature,
+				away = away,
+				frame = frame,
+				rate = rate,
+				settled = settled,
+				since = since,
+			})
 		end
 	end
+	-- The bodies: joints nearest first within the budget, every one moved
+	table.sort(posing, function(a, b)
+		return a.away < b.away
+	end)
+	local budget = Ambient.jointBudget
+	for _, entry in posing do
+		local creature = entry.creature
+		local body = creature.body :: AmbientBody.Body
+		local kind = KINDS[creature.kind]
+		local animate = (kind.animate or 120) * scale
+		local due = entry.away <= animate
+			or (entry.away <= animate * 2 and (frameCount + creature.key) % 2 == 0)
+		if due and budget >= body.joints then
+			budget -= body.joints
+			local motion = creature.motion
+			motion.t = now
+			motion.period = creature.beat
+			-- Banking into its turn (a turn rate of ~0.5 rad/s is a hard one)
+			motion.turn = math.clamp(entry.rate / 0.5, -1, 1)
+			motion.bank = math.clamp(entry.rate * 0.7, -0.45, 0.45)
+			motion.rest = entry.settled
+			motion.settled = entry.since
+			AmbientBody.pose(body, motion)
+			creature.posedAt = now
+		end
+		-- A puff of sand as a ray beds down or lifts off (near the camera)
+		local puff = creature.puff
+		if puff then
+			local was = creature.settled
+			if
+				entry.away < Ambient.settle.puffRange
+				and (
+					(was < 0.85 and entry.settled >= 0.85)
+					or (was > 0.15 and entry.settled <= 0.15 and was > entry.settled)
+				)
+			then
+				puff:Emit(14)
+			end
+			creature.settled = entry.settled
+		end
+		table.insert(moveParts, body.root)
+		table.insert(moveFrames, AmbientBody.frame(body, entry.frame))
+	end
+	jointsPosed += Ambient.jointBudget - budget
 	if #moveParts > 0 then
 		workspace:BulkMoveTo(moveParts, moveFrames, Enum.BulkMoveMode.FireCFrameChanged)
 	end
+	poseTime += os.clock() - started
+	poseFrames += 1
 end
 
 function AmbientLifeController.start()

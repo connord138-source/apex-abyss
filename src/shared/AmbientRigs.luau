@@ -452,7 +452,7 @@ local function tri(
 			mirrored = true
 		end
 	end
-	local list = if mirrored then sides() else { { side = -1, tag = "" } }
+	local list: { { side: number, tag: string } } = if mirrored then sides() else { { side = -1, tag = "" } }
 	for _, s in list do
 		-- (on a mirrored piece every point goes to its side: a point on the middle line
 		-- stays there, a left-half point named without "{S}" is mirrored too)
@@ -673,25 +673,26 @@ local function stingrayPlan(): Plan
 		)
 	end
 	-- Blue spots, flat on the skin wherever they fall (each on the panel under it)
-	local spots = {
-		{ -0.06, -0.38, "Body" },
-		{ -0.1, -0.16, "Body" },
-		{ -0.05, -0.02, "Body" },
-		{ -0.24, -0.62, "Fin{S}F2" },
-		{ -0.21, -0.47, "Fin{S}F1" },
-		{ -0.34, -0.5, "Fin{S}F2" },
-		{ -0.3, -0.33, "Fin{S}M2" },
-		{ -0.42, -0.25, "Fin{S}M2" },
-		{ -0.28, -0.14, "Fin{S}M1" },
-		{ -0.36, -0.06, "Fin{S}M2" },
-		{ -0.26, 0.05, "Fin{S}B2" },
+	local spots: { { x: number, z: number, joint: string } } = {
+		{ x = -0.06, z = -0.38, joint = "Body" },
+		{ x = -0.1, z = -0.16, joint = "Body" },
+		{ x = -0.05, z = -0.02, joint = "Body" },
+		{ x = -0.24, z = -0.62, joint = "Fin{S}F2" },
+		{ x = -0.21, z = -0.47, joint = "Fin{S}F1" },
+		{ x = -0.34, z = -0.5, joint = "Fin{S}F2" },
+		{ x = -0.3, z = -0.33, joint = "Fin{S}M2" },
+		{ x = -0.42, z = -0.25, joint = "Fin{S}M2" },
+		{ x = -0.28, z = -0.14, joint = "Fin{S}M1" },
+		{ x = -0.36, z = -0.06, joint = "Fin{S}M2" },
+		{ x = -0.26, z = 0.05, joint = "Fin{S}B2" },
 	}
-	for i, s in spots do
-		local x, z, j = s[1], s[2], s[3]
+	for i, spot in spots do
+		local x, z, j = spot.x, spot.z, spot.joint
 		local d = if i % 3 == 0 then 0.055 else 0.04
 		local y = surfaceY(p, list, x, z) + 0.009
 		-- (a panel's spot is mirrored with its joint; one on the body is set on each side)
-		for _, at in if j == "Body" then { x, -x } else { x } do
+		local places: { number } = if j == "Body" then { x, -x } else { x }
+		for _, at in places do
 			part(b, j, "spot", "cyl", V(0.006, d, d), CFrame.new(at, y, z) * CFrame.Angles(0, 0, math.pi / 2))
 		end
 	end
@@ -1152,10 +1153,11 @@ function AmbientRigs.parts(plan: Plan, pose: Pose, size: number, pieces: { Piece
 	end
 	local out: { Built } = {}
 	for _, piece in pieces or plan.pieces do
-		local frame = frames[piece.joint]
-		if frame == nil then
+		local found: CFrame? = frames[piece.joint]
+		if found == nil then
 			continue -- (a piece for a joint this plan hasn't got)
 		end
+		local frame = found :: CFrame
 		-- (the joint's rest frame, undone, then its posed frame)
 		local local_ = CFrame.new(-rest[piece.joint])
 		if piece.shape == "tri" then

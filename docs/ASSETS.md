@@ -17,6 +17,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `prey2_fbx` | Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept; rigged FBX like `prey_fbx`, 4 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.025; see "The second prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey3_fbx` | Butterflyfish, Triggerfish, Swordfish, OceanSunfish, Coelacanth, VentEelpout, GulperEel, Oarfish (2026-10-19, the third prey batch from the approved PreySheetB concept; rigged FBX like `prey_fbx`: 4 spine segments, the Sunfish 2, the Eelpout 5, the Gulper Eel 6, the Oarfish 7; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.094; see "The third prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey4_fbx` | Opaleye, KelpBass, BlueTang, Lingcod, Rattail, Viperfish, Hatchetfish, HumpheadWrasse (2026-10-19, the fourth prey batch from the approved PreySheetC concept; rigged FBX like `prey_fbx`: 4 spine segments, the Lingcod 5, the Rattail and Viperfish 6, the Hatchetfish 2; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.002; see "The fourth prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `ambient_fbx` | `ambient/<Name>.fbx`: Turtle, Manta, Stingray, Humpback, Crab (2026-10-19, the sea life; rigged by `tools/blender/rig_ambient.py`: flippers, wings, disc edges, flukes, legs and claws; normal maps stripped, colours made safe, the 5 embedded colour maps screened, highest 0.006; see "Sea life" below) | `ReplicatedStorage.AmbientModels.<Name>` |
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
@@ -284,6 +285,45 @@ the three nearest Viperfish carry the faint cyan light like the Lanternfish. On 
 part-built stand-in those spots sit inside the body, and `SHAPES` paints cyan dots on
 its outline instead. If a spot floats off or sinks into an imported fish, nudge `at`
 in `viperSpots` / `hatchetSpots` (x across, y up, z along, in half-extents of the box).
+
+### Sea life (`ambient_fbx`, 2026-10-19)
+
+The owner: "the sea turtles and manta rays/stingrays need to be dialed up they're
+essentially just circles put together", then "Crabs were another animal that needs more
+detail like the turtles. Crabs should be edible too". Five Tripo models (sheets
+`tools/tripo_jobs_ambient_sheets.json` from `tools/props/ambient_refs.py`, then
+image_to_model, `tools/tripo_jobs_ambient_models.json`; outputs in the gitignored
+`assets/tripo/ambient/`): an olive-green sea turtle, a dark manta with cephalic fins, a
+teal-green blue-spotted stingray, a pale blue-grey humpback and a scarlet crab.
+
+1. `tools/props/strip_normals.py assets/tripo/ambient/*.glb --out assets/glb/ambient_nonormals`
+   (one each), then `tools/props/safe_colors.py ... --out assets/glb/ambient_safe`
+   (skin tone: the Crab's orange-red edges 2.0%; pale: the Stingray's eye whites 0.1%;
+   both to 0%). The humpback's pale grey and the manta's pale marks are cool and
+   mid-toned and stay. No mouth is plum (the crab's red-over-green-and-blue texels are
+   its deep crimson shell creases, a true red).
+2. `python3.11 tools/blender/rig_ambient.py assets/glb/ambient_safe/<Name>.glb assets/fbx/ambient/<Name>.fbx [--weights <png>]`:
+   a skeleton per kind, named for `src/shared/AmbientRigs.luau` (the turtle's rigid
+   Shell, Neck, Head, three-bone front flippers, two-bone hind flippers, Tail; the
+   manta's three-bone wings, cephalic fins and tail; the stingray's two bones at three
+   stations along each disc edge and a three-bone tail; the humpback's spine to its
+   flukes and two-bone pectorals; the crab's arms and claws, three legs a side (the
+   model has three walking legs a side) and eye stalks). Head at -Y in Blender, so -Z
+   in Roblox like every rigged fish.
+3. `bash tools/preview/run_ambient.sh <dir>` (with `LUAU=`): every creature posed
+   through its motion in Blender, the model beside its part-built stand-in, plus
+   `CrabKinds.png` (each edible crab kind tinted or painted, carrying its extras).
+4. Each FBX embeds only its colour map (`fbx_strip_normals.py` drops nothing); the five
+   images were screened with `screen_shades.py` and the classifier: exit 0, none
+   flagged, highest 0.006 (Turtle; Crab 0.002, Stingray 0.001, Manta and Humpback 0.000).
+
+Import on the PC: `python tools/fetch_assets.py` (fetches `ambient_fbx` into
+`assets/fbx/ambient/`), **File → Import 3D** the five files with the rig and textures on,
+**Import All**, paste `tools/studio/organize_imports.luau` into the Command Bar (it files
+them into `ReplicatedStorage.AmbientModels` and gives a model textured by a TextureID a
+SurfaceAppearance instead, so the game can tint the crab per kind), then **save the
+place**. Until then every creature is its part-built stand-in (`AmbientRigs` plans,
+built by `src/client/AmbientBody.luau`).
 
 ### Jaws and fins (`boss_fbx`, `species_fbx`, 2026-10-19)
 

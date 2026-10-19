@@ -49,12 +49,18 @@ local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
+-- A blend of two colours (plain arithmetic, so the luau CLI's shims can load this file)
+local function mix(a: Color3, b: Color3, k: number): Color3
+	return Color3.new(a.R + (b.R - a.R) * k, a.G + (b.G - a.G) * k, a.B + (b.B - a.B) * k)
+end
+
 -- A part-built crab's colours: shell, its facets, claws, underside (Shared/AmbientRigs roles)
 local function shell(top: Color3, claw: Color3?, belly: Color3?): { [string]: Color3 }
+	local black, white = Color3.new(0, 0, 0), Color3.new(1, 1, 1)
 	return {
 		top = top,
-		top2 = top:Lerp(Color3.new(0, 0, 0), 0.18),
-		claw = claw or top:Lerp(Color3.new(1, 1, 1), 0.06),
+		top2 = mix(top, black, 0.18),
+		claw = claw or mix(top, white, 0.06),
 		belly = belly or rgb(150, 156, 166),
 		dark = rgb(34, 34, 40),
 		eye = rgb(12, 12, 14),
@@ -63,7 +69,7 @@ local function shell(top: Color3, claw: Color3?, belly: Color3?): { [string]: Co
 		extra3 = rgb(64, 150, 92),
 		barnacle = rgb(134, 140, 146),
 		bristle = rgb(110, 176, 168),
-		spike = top:Lerp(Color3.new(0, 0, 0), 0.4),
+		spike = mix(top, black, 0.4),
 	}
 end
 
@@ -135,7 +141,13 @@ local list: { ForageDef } = {
 		size = 1.8, -- (swallowed from LV 8)
 		scuttle = 4,
 		speed = 3,
-		crab = { tint = rgb(190, 150, 135), look = shell(rgb(150, 40, 32)), range = 120, animate = 44, near = 0.8 },
+		crab = {
+			tint = rgb(190, 150, 135),
+			look = shell(rgb(150, 40, 32)),
+			range = 120,
+			animate = 44,
+			near = 0.8,
+		},
 	},
 	{
 		id = "DecoratorCrab",
@@ -196,9 +208,9 @@ local list: { ForageDef } = {
 	{
 		id = "KingCrab",
 		name = "King Crab",
-		mass = 35,
-		bands = { { biome = "AbyssalTrench", count = 45 } },
-		respawn = 70,
+		mass = 12,
+		bands = { { biome = "AbyssalTrench", count = 30 } },
+		respawn = 120,
 		color = rgb(184, 40, 34),
 		accent = rgb(120, 24, 22),
 		hops = false,
@@ -228,6 +240,9 @@ return {
 	-- A crab is in reach of a mouth this share of its size out from its middle (its
 	-- legs; ForageController and ForageService allow the same)
 	CRAB_RADIUS = 0.35,
+	-- ...and its middle stands this share of its size over the floor (the model's and
+	-- the part-built crab's feet are 0.27 of their width under their middles)
+	CRAB_HEIGHT = 0.27,
 	-- Eat reach for filler food: × the fish's normal reach, plus studs. Single shrimp
 	-- and starfish were too fiddly for a new fish (re-test 2026-10-06).
 	REACH_SCALE = 1.6,

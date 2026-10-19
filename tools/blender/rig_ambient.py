@@ -5,7 +5,7 @@ humpback and the crab) for AmbientLifeController, and exports FBX.
 
 The plan (PLANS, by the file's stem unless --plan names it) gives the kind and the turn
 about the vertical that puts the head at -Y (Tripo set each model down axis-aligned but
-facing its own way; tools/blender/ambient_check.py renders the result). Like
+facing its own way; tools/preview/run_ambient.sh renders the rigged result posed). Like
 rig_fish.py, the head ends at Blender -Y and the FBX export turns that into -Z in
 Roblox, Y up: a rigged Model faces -Z and the game never turns it.
 
