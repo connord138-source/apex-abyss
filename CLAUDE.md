@@ -1198,6 +1198,54 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     plankton mats, seeps, light shafts moved). The map chart was regenerated
     (`assets/textures/map_chart.png`, needs a re-upload). Preview:
     `bash tools/preview/run_ruins.sh`.
+- **The 2026-10-19 report's decisions (PC report `2026-10-19-pc.md`; Connor's standing
+  "go with all of your recs"; built on `claude/world`):**
+  - **Pacing:** see "Pace (2026-10-19)" below (the Haul cap in levels, the rate by
+    level, rewards past the cap, bonus meals as shares of a full Haul).
+  - **Ruins head:** `RuinHead`'s GLB is an upright bust (face +X, crown +Y, neck −Y;
+    box = depth, height, width); it had lain inside a pediment half, which hid its
+    face. It lies on the back of its skull at T0 (−46, −121), face 40° up gazing down
+    the way, crown across it (`statueHead(gaze, crown)` → `CFrame.lookAt`), `HEAD_SINK`
+    0.52; `HEAD_TURN` settles its facing in one place. Outlying ruins that can't find
+    room retry looser (`LOOSER`: 0.85× then 0.7× spacing), and the `[Ruins]` line
+    names hero props as models and stand-ins and any ruin left out. The preview's hero
+    count (47) differs from the game's (~40–42): its stand-in `Random` isn't Roblox's.
+    Close-ups: `PROPS=1 VIEWS=headway,headtop,headgaze,hand,capital bash
+    tools/preview/run_ruins.sh` (reads `assets/glb/props`).
+  - **Forced tides** last one tide from the moment they're set (opening boost and all)
+    and TideService clears `TideOverride` when one ends (it lapsed at 10 min while
+    still named). **Prism** rate 0.08 (was 0.10) and no Silver boost in the Prism Tide
+    (the sim: ~1.8 a tide).
+  - **Water:** the Open Blue clear deep blue (biome water density −0.08, exposure
+    +0.2; it read dark navy at 0.58 / −0.39) and the Ruins clearer (−0.05 / +0.14);
+    the map-edge haze ramp 240 studs (was 380: the Megalodon fights 1,000–1,440 out),
+    and a boss's fight light thins the water 20% (was 12%).
+  - **Stand-in** (a skin still loading): the fish flat in the shade's `back` colour,
+    texture held aside (`Cosmetics` `waiting`); a multiplied tint can only darken
+    (an orange Nibbler read maroon under Lilac). A shade not imported still tints.
+  - **Silver:** **skins v14.1** (`shade_patch_v14_1`, sha256 0b518607…, highest
+    classifier 0.021): the Angler's Silver only, a step darker with deeper bands and
+    a lure-only glow map (`catch_silver` colours from `SILVER`, a fish's own from
+    `SILVER_FISH`); import after v14. **Silver prey** (`SchoolController`): a
+    SmoothPlastic whiter cool silver (Foil, a metal, showed the dark water), its own
+    light over its back (`SilverLight`, range length × 1.8) and a staggered mirror
+    flash every 1.25–2 s (`silverFlash`: colour to white, light 1.5 → 6, Neon white at
+    the peak past `SILVER_NEAR` 24 studs, the glint swelling). A light inside a body
+    lights none of its own skin: put a body's own light outside it.
+  - **UI:** stage holds are per holder (`Ui.holdStage(s, owner?)`,
+    `Ui.releaseStage(owner?)`); every centre banner goes through
+    `Ui.stageBanner(owner, seconds, fade, show)` (waits its turn, holds the stage,
+    steps aside for the bank sequence and comes back); `Ui.centreBannerUp()` is true
+    while anything holds the stage. Not on it yet: BiomeController's biome title,
+    TideController (waits up to 8 s), GardenController's WELCOME BACK. The full map is
+    its own ScreenGui `MapWindow` at DisplayOrder 10 (the HUD drew over its title); M
+    does nothing in Build mode. On phones the tutorial card's distance line sits under
+    its header (`layoutCard`, 174 tall) and the idle stick ring rests at (100, H−74);
+    a step done within 1 s of showing (or never shown) shows DONE for 2.5 s with a
+    line saying what happened (`recapNote`). Daily gift tiles list one reward a line.
+  - **Trails:** Ink Cloud brighter and thicker; Storm's arcs wider, each with a glow.
+  - Left as is: Lilac reads warm in the Vents (warm light on violet); the school
+    lift takes ~1 s at server start (446 schools).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
