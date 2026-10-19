@@ -92,6 +92,10 @@ export type Item = {
 	rug: string?, -- a rug's shape ("round", "oval", "square"); its top-down art is Config/Textures `rug<id>`
 	front: number?, -- degrees its imported prop is turned to face out (Tripo props face +X: 90)
 	cluster: Cluster?, -- built of many pieces (a garden, a pile, a cluster): Shared/DenItems
+	-- With `glow`: its prop's texture lets the den's glow through where its alpha is low
+	-- (the banner's cloth, SurfaceAppearance Overlay), so its MeshParts are colored, not
+	-- the whole texture tinted
+	overlay: boolean?,
 }
 
 -- A thing built of many pieces (owner, 2026-10-18: "An anemone garden is literally
@@ -242,43 +246,33 @@ local REEF = {
 }
 
 local items: { Item } = {
+	-- Batch 2 of the den props (owner, 2026-10-19: "MUCH much better"; boards
+	-- assets/concepts/DenPropsA.jpg and DenPropsB.jpg): the eight first pieces kept
+	-- their ids (placed copies stay) and became Tripo models (`den_props2_glb`, the
+	-- prop of the same name; part-built stand-ins of the same designs until it's
+	-- imported, Shared/DenItems), with four new ones beside them. Sizes are the
+	-- models' own proportions at a real scale; lights carry `lamp`.
 	{
 		id = "CoralLamp",
 		name = "Coral Lamp",
 		price = 250,
 		kinds = { "floor" },
-		size = Vector3.new(7, 10, 6),
-		color = Color3.fromRGB(255, 146, 110),
-		glow = true,
-		cluster = {
-			kinds = { "Staghorn", "Staghorn", "Rock" },
-			count = 3,
-			bed = "rock",
-			colors = {
-				Color3.fromRGB(255, 146, 110),
-				Color3.fromRGB(255, 120, 140),
-				Color3.fromRGB(255, 196, 120),
-			},
-			glow = true,
-			spread = 0.45,
-		},
-		blurb = "Branching coral, its tips glowing in your den's light",
+		size = Vector3.new(5.2, 12, 5.6),
+		prop = "CoralLamp",
+		color = Color3.fromRGB(240, 112, 48),
+		lamp = Color3.fromRGB(255, 160, 90),
+		blurb = "A branching coral trunk under a glowing fan-coral shade",
 	},
 	{
 		id = "KelpBed",
 		name = "Kelp Bed",
 		price = 180,
 		kinds = { "floor" },
-		size = Vector3.new(14, 7, 10),
-		color = Color3.fromRGB(78, 116, 52),
-		cluster = {
-			kinds = { "Blade", "Blade", "Blade", "Kelp", "Blade", "Blade" },
-			count = 16,
-			bed = "kelp",
-			colors = { Color3.fromRGB(64, 150, 74), Color3.fromRGB(96, 178, 70), Color3.fromRGB(46, 128, 84) },
-			spread = 0.85,
-		},
-		blurb = "A soft heap of kelp to settle into",
+		-- (its headboard at the back, so snapping backs it onto a wall)
+		size = Vector3.new(12.4, 6.2, 16),
+		prop = "KelpBed",
+		color = Color3.fromRGB(98, 142, 62),
+		blurb = "A woven kelp-rope bed with a moss mattress and teal pillows",
 	},
 	{
 		id = "KelpRug",
@@ -374,19 +368,53 @@ local items: { Item } = {
 		name = "Driftwood Table",
 		price = 350,
 		kinds = { "floor" },
-		size = Vector3.new(13, 6.5, 7.5),
-		color = Color3.fromRGB(110, 86, 60),
-		blurb = "A slab of driftwood on two stones",
+		size = Vector3.new(14, 7.2, 7.1),
+		prop = "DriftwoodTable",
+		front = 180,
+		color = Color3.fromRGB(134, 128, 116),
+		blurb = "Driftwood planks on crossed trestles, a bowl of pearls and a jar candle on top",
+	},
+	{
+		id = "SpongeSofa",
+		name = "Sponge Sofa",
+		price = 750,
+		kinds = { "floor" },
+		size = Vector3.new(17, 9.3, 8),
+		prop = "SpongeSofa",
+		color = Color3.fromRGB(56, 160, 166),
+		blurb = "Three teal kelp-cloth seats on driftwood, with sponge bolsters and scallop shells",
+	},
+	{
+		id = "ShipwreckBookshelf",
+		name = "Shipwreck Bookshelf",
+		price = 800,
+		kinds = { "floor" },
+		size = Vector3.new(9.4, 15, 6.4),
+		prop = "ShipwreckBookshelf",
+		front = 90,
+		color = Color3.fromRGB(72, 58, 48),
+		blurb = "Bowed hull planks with a brass porthole, full of books and bottles · backs onto a wall",
 	},
 	{
 		id = "PearlPedestal",
 		name = "Pearl Pedestal",
 		price = 900,
 		kinds = { "floor" },
-		size = Vector3.new(5, 10, 5),
-		color = Color3.fromRGB(236, 236, 240),
-		glow = true,
-		blurb = "A great pearl in an open clam on a stone column, lit from within",
+		size = Vector3.new(3.2, 11, 3.3),
+		prop = "PearlPedestal",
+		color = Color3.fromRGB(150, 146, 220),
+		lamp = Color3.fromRGB(200, 226, 255),
+		blurb = "A great pearl in an open clam on a fluted stone column, glowing softly",
+	},
+	{
+		id = "ConchGramophone",
+		name = "Conch Gramophone",
+		price = 1100,
+		kinds = { "floor" },
+		size = Vector3.new(4.9, 8.5, 6.5),
+		prop = "ConchGramophone",
+		color = Color3.fromRGB(196, 150, 64),
+		blurb = "A record player on a brass-cornered cabinet, its horn a great spiral conch",
 	},
 	{
 		id = "DecorChest",
@@ -403,10 +431,11 @@ local items: { Item } = {
 		name = "Bubble Column",
 		price = 500,
 		kinds = { "floor" },
-		size = Vector3.new(5, 2, 5),
-		color = Color3.fromRGB(200, 240, 255),
+		size = Vector3.new(7, 2.3, 7),
+		prop = "BubbleColumn",
+		color = Color3.fromRGB(150, 150, 140),
 		bubbles = true,
-		blurb = "A vent in a ring of stones, bubbling up to the ceiling",
+		blurb = "A bronze vent in a ring of mossy stones, bubbling up to the ceiling",
 	},
 	{
 		id = "CrystalShard",
@@ -429,21 +458,23 @@ local items: { Item } = {
 		name = "Sea Glass Lantern",
 		price = 400,
 		kinds = { "wall" },
-		size = Vector3.new(2.4, 3.6, 2.4),
-		prop = "Lantern",
-		color = Color3.fromRGB(120, 255, 230),
-		glow = true,
-		blurb = "A small lantern of sea glass on the wall",
+		size = Vector3.new(1.5, 5, 3.2),
+		prop = "SeaGlassLantern",
+		front = 90,
+		color = Color3.fromRGB(90, 196, 220),
+		lamp = Color3.fromRGB(120, 236, 220),
+		blurb = "A small iron lantern of sea glass on a scrolled bracket",
 	},
 	{
 		id = "JellyLamp",
 		name = "Jellyfish Lamp",
 		price = 650,
 		kinds = { "ceiling" },
-		size = Vector3.new(5, 8, 5),
-		color = Color3.fromRGB(200, 170, 255),
-		glow = true,
-		blurb = "A glowing jelly hanging from the ceiling",
+		size = Vector3.new(4.1, 9, 4.7),
+		prop = "JellyLamp",
+		color = Color3.fromRGB(236, 170, 56),
+		lamp = Color3.fromRGB(255, 190, 100),
+		blurb = "Three glowing amber jellyfish on brass chains",
 	},
 	{
 		id = "SeaFan",
@@ -460,10 +491,24 @@ local items: { Item } = {
 		name = "Banner",
 		price = 400,
 		kinds = { "wall" },
-		size = Vector3.new(6, 12, 0.4),
-		color = Color3.fromRGB(46, 170, 214),
+		size = Vector3.new(7.4, 13, 1.2),
+		prop = "Banner",
+		front = 90,
+		color = Color3.fromRGB(46, 150, 150),
 		glow = true,
-		blurb = "A tall hanging banner in your glow color",
+		overlay = true,
+		blurb = "A swallowtail banner with a gold fish, its cloth in your glow color",
+	},
+	{
+		id = "TreasureChart",
+		name = "Treasure Chart",
+		price = 450,
+		kinds = { "wall" },
+		size = Vector3.new(9, 7.3, 1.5),
+		prop = "TreasureChart",
+		front = 90,
+		color = Color3.fromRGB(124, 170, 172),
+		blurb = "A sea chart with a red X, in a rope-bound driftwood frame",
 	},
 	-- Kelp Cottage (Kelp Shallows): cosy driftwood and woven kelp
 	{
