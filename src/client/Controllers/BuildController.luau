@@ -1722,7 +1722,14 @@ function BuildController.startController()
 	end
 	MenuController.startBuild = BuildController.start
 	ContextActionService:BindAction("ApexBuild", function(_, inputState)
-		if inputState ~= Enum.UserInputState.Begin or Input.locked or MenuController.isOpen() then
+		-- (nor under the full map: B in the den started Build mode beneath it, PC
+		-- 2026-10-19 round 2, UI3)
+		if
+			inputState ~= Enum.UserInputState.Begin
+			or Input.locked
+			or MenuController.isOpen()
+			or MapController.isOpen()
+		then
 			return Enum.ContextActionResult.Pass
 		end
 		if not active and not insideOwnDen() then
