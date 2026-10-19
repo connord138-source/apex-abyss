@@ -61,8 +61,10 @@ def pose_about(pb, axis, degrees):
     pb.matrix = Matrix.Translation(pivot) @ Matrix.Rotation(math.radians(degrees), 4, axis) @ Matrix.Translation(-pivot) @ rest
 
 
-hinge = arm.matrix_world @ jaw.bone.head_local if jaw else Vector((0, -0.3 * length, -0.08 * length))
-focus = Vector((0, hinge.y - 0.06 * length, hinge.z))
+# The front fifth of the fish, at the mouth's height
+front = min((body.matrix_world @ Vector(c)).y for c in body.bound_box)
+hinge = arm.matrix_world @ jaw.bone.head_local if jaw else Vector((0, front + 0.15 * length, -0.08 * length))
+focus = Vector((0, front + 0.16 * length, hinge.z + 0.03 * length))
 cam = bpy.data.cameras.new("Cam")
 cam.type = "ORTHO"
 cam.ortho_scale = length * 0.42

@@ -197,8 +197,7 @@ def find_mouth():
     bvh = BVHTree.FromPolygons(verts, [p.vertices[:] for p in body.data.polygons])
     bottom = co[:, 2].min() - length
     up = Vector((0, 0, 1))
-    line = []
-    misses = 0
+    found_at = []
     for frac in np.arange(0.0, 0.32, 0.005):
         y = y_min + frac * length
         found = []
@@ -220,15 +219,20 @@ def find_mouth():
         if found:
             floor = float(np.mean([f for f, _ in found]))
             roof = float(np.mean([r for _, r in found]))
-            line.append((y, (floor + roof) / 2, roof - floor))
-            misses = 0
-        elif line:
-            misses += 1
-            if misses > 3:  # past the mouth's corner (a gill slit further back isn't it)
-                break
-    if len(line) < 3:
+            found_at.append((y, (floor + roof) / 2, roof - floor))
+    # Runs of stations (a few misses allowed: teeth fill the cavity here and there);
+    # the mouth is the run holding the most open water (a nostril pit or a gill slit
+    # is a short, thin one)
+    runs = []
+    for entry in found_at:
+        if runs and entry[0] - runs[-1][-1][0] <= 0.025 * length:
+            runs[-1].append(entry)
+        else:
+            runs.append([entry])
+    runs = [r for r in runs if len(r) >= 3]
+    if not runs:
         return None
-    return line
+    return max(runs, key=lambda r: sum(g for _, _, g in r))
 
 
 # ---------- bones ----------
