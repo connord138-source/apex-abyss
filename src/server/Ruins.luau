@@ -9,8 +9,8 @@
 --     columns (some whole under their architraves, some snapped, two fallen and
 --     rolled off the platform), its pediment fallen in front, and a cella with a
 --     doorway, windows and glyph panels round a cold glowing brazier and the broken
---     legs of the god's statue. Its head lies toppled by the steps; a giant hand
---     rises out of the sand at the corner.
+--     legs of the god's statue. Its head lies toppled near the avenue's end, face to
+--     the sky; a giant hand rises out of the sand at the corner.
 --   * The PROCESSIONAL AVENUE to it: paved, lined with columns standing, broken and
 --     fallen across it, four sea-dragon guardians and glowing lamp obelisks, entered
 --     through a triple-arched GATEWAY by the drop-off's foot, with an obelisk
@@ -57,6 +57,7 @@ export type Stats = {
 	emitters: number,
 	props: number,
 	standins: number,
+	heroes: { [string]: number }, -- placements by prop name (models and stand-ins)
 	tidied: number,
 }
 type Spot = { at: CFrame, size: number, foot: boolean }
@@ -83,8 +84,20 @@ end
 local city = CFrame.identity
 local spots: { Spot } = {}
 local footprints: { Footprint } = {}
-local stats: Stats =
-	{ parts = 0, solid = 0, glow = 0, lights = 0, emitters = 0, props = 0, standins = 0, tidied = 0 }
+local function freshStats(): Stats
+	return {
+		parts = 0,
+		solid = 0,
+		glow = 0,
+		lights = 0,
+		emitters = 0,
+		props = 0,
+		standins = 0,
+		heroes = {},
+		tidied = 0,
+	}
+end
+local stats: Stats = freshStats()
 
 -- ---------------------------------------------------------------------------
 -- Parts
@@ -735,7 +748,7 @@ local function wall(parent: Instance, frame: CFrame, o: WallOpts)
 				table.insert(cuts, { op.y, op.y + op.h })
 			end
 		end
-		table.sort(cuts, function(a, b)
+		table.sort(cuts, function(a: { number }, b: { number }): boolean
 			return a[1] < b[1]
 		end)
 		local y = -1.5
@@ -1093,8 +1106,12 @@ local function hero(parent: Instance, name: string, box: CFrame, size: Vector3, 
 	else
 		stats.standins += 1
 	end
+	stats.heroes[name] = (stats.heroes[name] or 0) + 1
 	return holder
 end
+
+-- The hero props, in the order the [Ruins] line counts them
+local HERO_NAMES = { "RuinHead", "RuinHand", "RuinGuardian", "RuinUrn", "RuinCapital", "RuinStele" }
 
 -- How far a box (`frame`, `size`) reaches below its middle
 local function halfHeight(frame: CFrame, size: Vector3): number
@@ -1103,16 +1120,34 @@ local function halfHeight(frame: CFrame, size: Vector3): number
 		+ math.abs(frame.LookVector.Y) * size.Z / 2
 end
 
--- The colossal statue's head, toppled: `pose` is turned (its look is where the face
--- looks, its up the top of the head) and stood on the ground at `at`, sunk `sink`
--- of its height. Stand-in: a boxy carved head with a wave-band crown, closed eyes,
--- a chipped nose, the neck's break.
-local function statueHead(parent: Instance, at: Vector3, pose: CFrame, scale: number)
+-- The head's model stands upright in its GLB: face +X, crown +Y, the neck's flat
+-- break at -Y, 0.605 deep (X) by 0.627 wide (Z). The importer turns it half round
+-- (face -X) and GLB_FRONT puts the face on F's look, the crown on F's up, so its box
+-- is F * GLB_FRONT, (depth, height, width), and the stand-in is built on F.
+-- HEAD_TURN turns the model alone about its crown, so its facing is settled in one
+-- place: 0 as the importer is known to work (the keepers and the guardians face the
+-- way this math says). Seen from above: the face up, gazing down the avenue, is 0;
+-- the face up but gazing at the temple is -HALF; the back of the head up is math.pi;
+-- an ear up with the face in the sand is HALF. The crown lies across the way, so an
+-- import a quarter turn off would still leave the face to the sky.
+local HEAD_TURN = 0
+-- The carved head is round: in its pose its lowest point is about 0.69 of its box's
+-- reach under its middle, so this sinks it about two studs into the sand
+local HEAD_SINK = 0.52
+
+-- The colossal statue's head, toppled on the back of its skull: its face looks along
+-- `gaze`, the top of its head points along `crown` (squared to the gaze), and it lies
+-- on the ground at `at`, sunk HEAD_SINK of its box's reach. Stand-in: a boxy carved
+-- head with a wave-band crown, closed eyes, a chipped nose, the neck's break.
+local function statueHead(parent: Instance, at: Vector3, gaze: Vector3, crown: Vector3, scale: number)
 	local W, H, D = 0.627 * scale, scale, 0.605 * scale
-	local turned = pose.Rotation
+	local turned = CFrame.lookAt(Vector3.zero, gaze, crown)
 	local reach = halfHeight(turned, Vector3.new(W, H, D))
-	local F = CFrame.new(floorAt(at) + Vector3.new(0, reach * 0.82, 0)) * turned
-	hero(parent, "RuinHead", F * GLB_FRONT, Vector3.new(D, H, W), function(m: Model)
+	local F = CFrame.new(floorAt(at) + Vector3.new(0, reach * HEAD_SINK, 0)) * turned
+	-- (a quarter turn swaps the model's depth and width in its own axes)
+	local quarter = math.abs(math.cos(HEAD_TURN)) < 0.5
+	local box = if quarter then Vector3.new(W, H, D) else Vector3.new(D, H, W)
+	hero(parent, "RuinHead", F * GLB_FRONT * CFrame.Angles(0, HEAD_TURN, 0), box, function(m: Model)
 		local c = COLORS.marble
 		stone(m, "Neck", Vector3.new(W * 0.62, H * 0.2, D * 0.66), F * CFrame.new(0, -H * 0.39, D * 0.06), c)
 		stone(m, "Skull", Vector3.new(W * 0.9, H * 0.6, D * 0.84), F * CFrame.new(0, H * 0.01, D * 0.06), c)
@@ -1175,9 +1210,12 @@ local function statueHead(parent: Instance, at: Vector3, pose: CFrame, scale: nu
 		)
 		glyphPanel(m, F * CFrame.new(0, H * 0.26, -D * 0.51), 3, 1, H * 0.06)
 	end)
-	-- (coral grows round it on the sand: on the model's own surface it would float)
-	spot(CFrame.new(floorAt(F * Vector3.new(0, 0, D * 0.8))), 4, true)
-	spot(CFrame.new(floorAt(F * Vector3.new(0, H * 0.7, 0))), 4, true)
+	-- (coral grows round it on the sand, behind the skull and past the neck's break:
+	-- on the model's own surface it would float)
+	local back = Vector3.new(-gaze.X, 0, -gaze.Z).Unit
+	local neck = Vector3.new(-crown.X, 0, -crown.Z).Unit
+	spot(CFrame.new(floorAt(at + back * D * 1.1)), 4, true)
+	spot(CFrame.new(floorAt(at + neck * H * 0.75)), 4, true)
 	claim(CFrame.new(F.Position), scale * 0.6, scale * 0.6)
 end
 
@@ -1896,11 +1934,18 @@ local function avenue(parent: Instance, T0: CFrame)
 	for side = -1, 1, 2 do
 		lampPillar(m, siteAt(T0, side * 17, -100, 0), side == -1)
 	end
-	-- The head lies toppled at the avenue's end, face turned to the sky and the way
+	-- The head lies toppled on the back of its skull outside the left colonnade near
+	-- the avenue's end, between a fallen column and the pediment's halves (it used to
+	-- lie inside one, its face pressed against it: the PC saw no face, 2026-10-19), its
+	-- crown toward the way and dipped into the sand, its face turned up to the sky and
+	-- gazing down the way toward the gateway
+	local headTurn = T0.Rotation * CFrame.Angles(0, math.rad(-20), 0)
+	local gazeUp, crownDip = math.rad(40), math.rad(10)
 	statueHead(
 		m,
-		T0 * Vector3.new(-36, 0, -94),
-		T0.Rotation * CFrame.Angles(0, -0.6, 0) * CFrame.Angles(0, 0, 1.2) * CFrame.Angles(-0.3, 0, 0),
+		T0 * Vector3.new(-46, 0, -121),
+		headTurn:VectorToWorldSpace(Vector3.new(0, math.sin(gazeUp), -math.cos(gazeUp))),
+		headTurn:VectorToWorldSpace(Vector3.new(math.cos(crownDip), -math.sin(crownDip), 0)),
 		26
 	)
 	-- and the hand rises from the sand by the platform's front-right corner
@@ -2538,15 +2583,20 @@ local OUT_RADIUS: { [string]: number } = {
 
 -- Whether the ground round a spot is level enough to build on (not a mound or a
 -- chute's foot)
-local function level(x: number, z: number, radius: number): boolean
-	local low, high = math.huge, -math.huge
+local function level(x: number, z: number, radius: number, rise: number): boolean
+	local low: number, high: number = math.huge, -math.huge
 	for k = 0, 6 do
 		local a = k * TAU / 7
 		local r = if k == 0 then 0 else radius
 		local y = groundY(x + math.cos(a) * r, z + math.sin(a) * r)
-		low, high = math.min(low, y), math.max(high, y)
+		if y < low then
+			low = y
+		end
+		if y > high then
+			high = y
+		end
 	end
-	return high - low < 4
+	return high - low < rise
 end
 
 local function inBox(p: Vector3, pad: number): boolean
@@ -2555,36 +2605,70 @@ local function inBox(p: Vector3, pad: number): boolean
 	return q.X > box.x[1] - pad and q.X < box.x[2] + pad and q.Z > box.z[1] - pad and q.Z < box.z[2] + pad
 end
 
-local function outlying(parent: Instance)
+-- The tries for an outlying ruin's spot: 80 at the full spacing and a 4-stud rise
+-- over its ground, then 80 more at each looser step (playtest 2026-10-19: in game one
+-- of the 15 found no spot in its 80 tries and was left out)
+local SPOT_TRIES = 80
+local LOOSER: { { apart: number, rise: number } } = {
+	{ apart = 1, rise = 4 },
+	{ apart = 0.85, rise = 5 },
+	{ apart = 0.7, rise = 6 },
+}
+
+-- Places the outlying ruins; returns how many stand, and notes on any that had to
+-- stand closer than `apart` or found no spot at all (with why the tries failed)
+local function outlying(parent: Instance): (number, { string }, { string })
 	local spec = Layout.outlying
 	local placeRng = Random.new(World.seed + 62)
 	local placed: { Vector3 } = {}
+	local closer: { string } = {}
+	local skipped: { string } = {}
 	local span = (spec.angles[2] - spec.angles[1]) % 360
 	for index = 1, spec.count do
 		local kind = OUTLYING[(index - 1) % #OUTLYING + 1]
 		local size = OUT_RADIUS[kind]
 		local found: Vector3? = nil
-		for _ = 1, 80 do
-			local angle = math.rad(spec.angles[1] + placeRng:NextNumber(0, span))
-			local r = placeRng:NextNumber(spec.radii[1] + size, spec.radii[2] - size)
-			local p = World.hub.center + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
-			if inBox(p, size + spec.margin) then
-				continue
-			end
-			local near = false
-			for _, other in placed do
-				if (Vector3.new(other.X, 0, other.Z) - Vector3.new(p.X, 0, p.Z)).Magnitude < spec.apart then
-					near = true
-					break
+		local inCity, tooNear, notLevel = 0, 0, 0
+		for step, rules in LOOSER do
+			for _ = 1, SPOT_TRIES do
+				local angle = math.rad(spec.angles[1] + placeRng:NextNumber(0, span))
+				local r = placeRng:NextNumber(spec.radii[1] + size, spec.radii[2] - size)
+				local p = World.hub.center + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
+				if inBox(p, size + spec.margin) then
+					inCity += 1
+					continue
 				end
+				local near = false
+				for _, other in placed do
+					local apart = (Vector3.new(other.X, 0, other.Z) - Vector3.new(p.X, 0, p.Z)).Magnitude
+					if apart < spec.apart * rules.apart then
+						near = true
+						break
+					end
+				end
+				if near then
+					tooNear += 1
+					continue
+				end
+				if not level(p.X, p.Z, size, rules.rise) then
+					notLevel += 1
+					continue
+				end
+				found = p
+				break
 			end
-			if near or not level(p.X, p.Z, size) then
-				continue
+			if found then
+				if step > 1 then
+					table.insert(closer, `{kind} {index} (step {step})`)
+				end
+				break
 			end
-			found = p
-			break
 		end
 		if found == nil then
+			table.insert(
+				skipped,
+				`{kind} {index} (no spot in {#LOOSER * SPOT_TRIES} tries: {inCity} in the city's box, {tooNear} too near another ruin, {notLevel} on uneven ground)`
+			)
 			continue
 		end
 		table.insert(placed, found)
@@ -2615,7 +2699,7 @@ local function outlying(parent: Instance)
 		end
 		garden(O * Vector3.new(0, 0, size * 0.9), size * 0.5, 4)
 	end
-	return #placed
+	return #placed, closer, skipped
 end
 
 -- Rounded boulders between the ruins (the BoulderRound prop over a ball)
@@ -2865,7 +2949,7 @@ function Ruins.build(parent: Instance, ground: Ground): Stats
 	table.clear(spots)
 	table.clear(footprints)
 	table.clear(Ruins.passes)
-	stats = { parts = 0, solid = 0, glow = 0, lights = 0, emitters = 0, props = 0, standins = 0, tidied = 0 }
+	stats = freshStats()
 	local out = Vector3.new(math.cos(math.rad(Layout.angle)), 0, math.sin(math.rad(Layout.angle)))
 	local origin = World.hub.center + out * Layout.radius + Vector3.new(0, World.deep.floorY, 0)
 	city = CFrame.fromMatrix(origin, out, Vector3.yAxis, out:Cross(Vector3.yAxis))
@@ -2879,16 +2963,38 @@ function Ruins.build(parent: Instance, ground: Ground): Stats
 	court(parent)
 	quarter(parent)
 	between(parent)
-	local placed = outlying(parent)
+	local placed, closer, skipped = outlying(parent)
 	boulders(model(parent, "Boulders"))
 	grow(parent)
 	shafts(parent, T0)
 	if parent.Parent then
 		stats.tidied = tidy(parent.Parent :: Instance)
 	end
+	-- Every hero placement shows, as its model or its stand-in: none is ever dropped
+	-- on its own. How many there are follows the seeded outlying ruins (3 to 5 steles
+	-- round each shrine, a stele or a brazier in each round shrine, a capital at the
+	-- end of each fallen column), so the preview's stand-in Random counts differently
+	local byName: { string } = {}
+	for _, name in HERO_NAMES do
+		table.insert(byName, `{string.lower(string.sub(name, 5))} {stats.heroes[name] or 0}`)
+	end
 	print(
-		`[Ruins] the city and {placed} outlying ruins: {stats.parts} parts ({stats.solid} solid, {stats.glow} glowing), {stats.lights} lights, {stats.emitters} emitters, {stats.props} hero props ({stats.standins} part-built stand-ins); {stats.tidied} seeps and plankton cleared`
+		`[Ruins] the city and {placed} of {Layout.outlying.count} outlying ruins: {stats.parts} parts ({stats.solid} solid, {stats.glow} glowing), {stats.lights} lights, {stats.emitters} emitters, {stats.props + stats.standins} hero props placed ({stats.props} models, {stats.standins} part-built stand-ins: {table.concat(
+			byName,
+			", "
+		)}); {stats.tidied} seeps and plankton cleared`
 	)
+	if #closer > 0 then
+		print(
+			`[Ruins] outlying ruins standing closer than {Layout.outlying.apart} studs to another, for want of room: {table.concat(
+				closer,
+				", "
+			)}`
+		)
+	end
+	if #skipped > 0 then
+		print(`[Ruins] outlying ruins left out (and their hero props): {table.concat(skipped, "; ")}`)
+	end
 	return stats
 end
 

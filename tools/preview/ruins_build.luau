@@ -194,11 +194,64 @@ view("approach", Vector3.new(-305, 22, 10), Vector3.new(-60, 30, 0), 70)
 view("avenue", Vector3.new(-205, 15, -8), Vector3.new(-40, 26, 2), 70)
 view("temple", Vector3.new(-150, 42, -95), Vector3.new(0, 24, 0), 70)
 view("cella", Vector3.new(-72, 34, 14), Vector3.new(10, 26, -2), 72)
-view("head", Vector3.new(-128, 16, 4), Vector3.new(-88, 8, 40), 70)
+view("head", Vector3.new(-170, 18, 6), Vector3.new(-127, 6, 46), 70)
 view("court", Vector3.new(-118, 34, -84), Vector3.new(-118, -10, -150), 72)
 view("theatre", Vector3.new(-140, 28, 78), Vector3.new(-140, 4, 172), 72)
 view("quarter", Vector3.new(30, 32, -70), Vector3.new(160, 10, 30), 72)
 view("aerial", Vector3.new(-330, 260, -300), Vector3.new(-40, -10, 20), 58)
+-- Close-ups of the hero props found by their placements (whatever their spot): the
+-- toppled head from down the avenue, from straight above and along its gaze, the
+-- city's giant hand and the capital nearest the head. With PROPS=1 they show the GLBs placed as Props.dress places
+-- them (render_hub.py add_prop: the importer's half turn, the box's own axes)
+local up = Vector3.new(0, 1, 0)
+local across = out:Cross(up) -- the city's z
+local function at(name, pick)
+	local best, bestD = nil, math.huge
+	for _, r in PROP_PLACEMENTS do
+		if r.name == name then
+			local d = pick(r.cframe.p)
+			if d < bestD then
+				best, bestD = r, d
+			end
+		end
+	end
+	return best
+end
+local function worldView(name, a, b, fov)
+	print(string.format("V|%s|%.2f,%.2f,%.2f|%.2f,%.2f,%.2f|%.1f", name, a.X, a.Y, a.Z, b.X, b.Y, b.Z, fov))
+end
+local head = at("RuinHead", function()
+	return 0
+end)
+if head then
+	local c = head.cframe.p
+	-- the face's direction: the box's -X (GLB_FRONT turned the GLB's +X face, which
+	-- the importer turned half round, onto -X of the box's own axes)
+	local face = -head.cframe.RightVector
+	print(
+		string.format("H|RuinHead|%.1f,%.1f,%.1f|face %.2f,%.2f,%.2f", c.X, c.Y, c.Z, face.X, face.Y, face.Z)
+	)
+	-- (from the avenue's middle, where a fish swims up it)
+	local axis = across * across:Dot(origin - c)
+	worldView("headway", c + axis - out * 70 + up * 12, c, 45)
+	worldView("headtop", c + up * 62 - out * 6, c, 50)
+	worldView("headgaze", c + face * 44, c, 50)
+end
+local hand = at("RuinHand", function(p)
+	return (p - origin).Magnitude
+end)
+if hand then
+	local c = hand.cframe.p
+	worldView("hand", c - out * 40 - across * 22 + up * 14, c, 55)
+end
+local capital = at("RuinCapital", function(p)
+	return if head then (p - head.cframe.p).Magnitude else 0
+end)
+if capital then
+	local c = capital.cframe.p
+	worldView("capital", c - out * 18 + across * 14 + up * 12, c, 50)
+end
+
 -- The outlying ruins: where each is (O| lines) and a camera on it from the hub's side
 -- (render them with BOUNDS round it: their spots here follow the stub's Random, not
 -- the game's)

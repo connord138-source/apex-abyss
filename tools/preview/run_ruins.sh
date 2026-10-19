@@ -3,8 +3,12 @@
 # voxelized round the city) plus every part src/server/Ruins.luau builds on it, and
 # checks that a LV 100 fish gets through every swim line it registers.
 #   bash tools/preview/run_ruins.sh <out_dir>
-# PROPS=1 draws the hero props (ruins_glb, from assets/tripo/ruins) and the corals
-# in place of their part-built stand-ins. SCHOOLS=1 also lifts prey schools laid
+# PROPS=1 draws the hero props (ruins_glb: assets/glb/props once fetch_assets.py has
+# run, else assets/tripo/ruins) and the corals in place of their part-built stand-ins,
+# placed as Props.dress places them (the importer's half turn, the box's own axes).
+# VIEWS=headway,headtop,headgaze,hand,capital are close-ups found by the placements
+# (the H| line gives the head's middle and the way its face looks; BOUNDS=960,1280,
+# -474,-330,-140,220 keeps the Terrain to them). SCHOOLS=1 also lifts prey schools laid
 # through the city over its stones (Shared/Schools.settle) and checks no fish swims
 # inside one (ruins_schools.luau: K| lines). VIEWS=approach,avenue,... picks the cameras
 # (ruins_build.luau lists them); DUMP_ONLY=1 stops after the build and the checks

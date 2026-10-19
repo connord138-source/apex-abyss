@@ -1345,7 +1345,7 @@ local function seatPlaque(frame: CFrame, plate: Decor.Plaque)
 		local board = plate.board
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Include
-		params.FilterDescendantsInstances = { workspace.Terrain }
+		params.FilterDescendantsInstances = { workspace.Terrain :: Instance }
 		local at = frame:PointToObjectSpace(board.Position)
 		local back = at.Z + board.Size.Z / 2 -- the board's back (local +z is into the wall)
 		local rock = math.huge

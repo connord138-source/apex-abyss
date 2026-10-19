@@ -55,7 +55,8 @@ return {
 	},
 	-- Smaller ruins over the rest of the biome (gateways, colonnades, houses,
 	-- obelisks, round shrines, a colossus's feet, glyph steles), each `apart` from
-	-- the others and clear of the city
+	-- the others and clear of the city (a little closer, on a little rougher ground,
+	-- when there's no room: Ruins.luau LOOSER; the [Ruins] line names any)
 	outlying = { count = 15, angles = { 322, 62 }, radii = { 1010, 1440 }, apart = 170, margin = 60 },
 	boulders = 34,
 	-- How much of the stones grows coral, sponges, anemones, moss and sea grass
