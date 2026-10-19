@@ -248,6 +248,8 @@ rbx.workspace = {
 	end,
 }
 
+-- Every Heartbeat callback a service connected, run in order by `rbx.heartbeat`
+rbx.heartbeats = {} :: { (number) -> () }
 rbx.heartbeat = nil :: ((number) -> ())?
 rbx.game = {
 	GetService = function(_, name: string)
@@ -255,7 +257,12 @@ rbx.game = {
 			return {
 				Heartbeat = {
 					Connect = function(_, f)
-						rbx.heartbeat = f
+						table.insert(rbx.heartbeats, f)
+						rbx.heartbeat = function(dt: number)
+							for _, callback in rbx.heartbeats do
+								callback(dt)
+							end
+						end
 						return {}
 					end,
 				},

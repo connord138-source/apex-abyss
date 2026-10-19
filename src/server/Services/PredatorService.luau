@@ -77,6 +77,17 @@ export type Predator = {
 	-- An ambusher's failed bursts on each fish, and the fish it has given up on (until)
 	fails: { [Player]: number },
 	ignore: { [Player]: number },
+	-- Its last strike (or feint) and how far it swerves off as it carries through: it
+	-- comes round once `carry` has passed
+	strikeAt: number,
+	veer: number,
+	-- How it opens a hunt on the fish it has (`approachFor`): "circle" (until
+	-- `approachUntil`, round `orbit` ±1), "under" or "direct"; and a feint left to use
+	approach: string,
+	approachFor: Player?,
+	approachUntil: number,
+	orbit: number,
+	feintLeft: boolean,
 }
 
 local PredatorService = {
@@ -261,6 +272,12 @@ local function spawn(predator: Predator, at: Vector3?)
 	predator.stunUntil = 0
 	predator.fails = {}
 	predator.ignore = {}
+	predator.strikeAt = -math.huge
+	predator.veer = 0
+	predator.approach = "direct"
+	predator.approachFor = nil
+	predator.approachUntil = 0
+	predator.feintLeft = false
 	Net.predatorEvent("spawned", predator.index, {
 		id = predator.def.id,
 		x = predator.position.X,
@@ -483,15 +500,30 @@ local function preferredGap(predator: Predator): number
 	return math.max(def.depth[1] * 0.6, 5) + def.length * BODY_HALF
 end
 
+-- A boss's body when its def has none (Config/Predators `Swim`)
+local BOSS_SWIM: PredatorsConfig.Swim = {
+	turnAtSpeed = 0.7,
+	comeTurn = 2.2,
+	accel = 1.3,
+	brake = 1,
+	carry = 0.5,
+	glide = 0.15,
+	beat = 3,
+}
+
 -- Moves a predator toward a desired velocity and keeps it in the water column.
 -- A plain predator swims like a fish (owner, 2026-10-13: "Their tracking should also
 -- be more fluid and realistic"): it turns its body toward where it wants to go,
 -- easing into the turn and turning slower at speed, and swims along its heading,
 -- speeding up briskly and slowing gently, so it sweeps round in arcs instead of
--- sliding sideways at a target. A boss (`custom`) keeps the direct velocity model its
--- charges, jets and breaches were tuned on. Both read the real ground ahead and
--- climb over it, and never sink into it.
-local function steer(predator: Predator, desired: Vector3, dt: number, turnRate: number?)
+-- sliding sideways at a target. A boss (`custom`) swims the same way with its own
+-- heavier body (Config/Bosses `swim`; it slid sideways on a direct velocity model
+-- until 2026-10-19, owner: "his actual movements are very stiff"): momentum, a
+-- turning circle that widens with speed, a surge when a move asks for one. `direct`
+-- is for the moves that throw the whole body (a breach's crash, a squid drawing back
+-- to jet): the velocity goes where the move says and the body follows as it can.
+-- Both read the real ground ahead and climb over it, and never sink into it.
+local function steer(predator: Predator, desired: Vector3, dt: number, turnRate: number?, direct: boolean?)
 	local def = predator.def
 	-- Climb over the ground ahead before reaching it
 	local _, ahead = groundAround(predator, predator.position, predator.velocity)
@@ -500,12 +532,35 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		local climb = math.min((want - predator.position.Y) * 1.6, def.speed * 0.9)
 		desired = Vector3.new(desired.X, math.max(desired.Y, climb), desired.Z)
 	end
-	if predator.custom then
-		predator.velocity = predator.velocity:Lerp(desired, 1 - math.exp(-dt * 2.2))
+	if predator.custom and direct then
+		predator.velocity = predator.velocity:Lerp(desired, 1 - math.exp(-dt * 5))
 		if predator.velocity.Magnitude > 0.5 then
 			predator.heading =
 				rotateToward(predator.heading, predator.velocity, (turnRate or def.turnRate) * dt)
 		end
+	elseif predator.custom then
+		local body = def.swim or BOSS_SWIM
+		local wantSpeed = desired.Magnitude
+		local wantDirection = if wantSpeed > 1e-3 then desired / wantSpeed else predator.heading
+		local speedNow = math.max(predator.velocity:Dot(predator.heading), 0)
+		-- Turns hardest nearly still (a pivot), widest flat out
+		local fullSpeed = math.clamp(speedNow / math.max(def.speed, 1), 0, 1)
+		local keep = 1.4 + (body.turnAtSpeed - 1.4) * fullSpeed
+		local rate = (turnRate or def.turnRate) * keep
+		local angle = math.acos(math.clamp(predator.heading:Dot(wantDirection), -1, 1))
+		local turn = math.min(rate * dt, angle * (1 - math.exp(-dt * 6)))
+		predator.heading = rotateToward(predator.heading, wantDirection, turn)
+		-- Speeds up on its strokes (a surge when a move asks for far more), coasts down,
+		-- and slows through a hard turn
+		-- (in a tell it flares its fins and holds off, so the warning is a fair one: it
+		-- had coasted half-way to the fish while its eyes flashed)
+		local goal = wantSpeed * (1 - 0.3 * math.clamp(angle / math.pi, 0, 1))
+		local change = if goal > speedNow
+			then def.speed * body.accel * (if goal > def.speed * 1.4 then 2.5 else 1)
+			else def.speed * body.brake * (if predator.mode == "windup" then 2.5 else 1)
+		local speed = speedNow + math.clamp(goal - speedNow, -change * dt, change * dt)
+		-- (its bulk carries a little way on through a turn: no slide, no snap)
+		predator.velocity = predator.velocity:Lerp(predator.heading * speed, 1 - math.exp(-dt * 4))
 	else
 		local wantSpeed = desired.Magnitude
 		local wantDirection = if wantSpeed > 1e-3 then desired / wantSpeed else predator.heading
@@ -707,6 +762,8 @@ local function winded(predator: Predator, failed: boolean, now: number)
 	predator.burstUntil = 0
 	predator.mode = "recover"
 	predator.modeUntil = now + (style.winded or 3)
+	predator.strikeAt = now
+	predator.veer = 0
 	local victim = predator.target
 	if victim == nil then
 		return
@@ -724,9 +781,68 @@ local function winded(predator: Predator, failed: boolean, now: number)
 	end
 end
 
+-- How far out it likes to start a run at a fish: room to reach speed and open its jaw
+local function runInOf(def: Def): number
+	return def.length * 1.5 + def.speed * def.telegraph * 0.8
+end
+
+-- A way to swim that takes it round `center` at `radius` (out when it's inside, in
+-- when it's outside, toward the centre's depth), circling `spin` (+1 / -1; nil: the
+-- way it's already going, its peel side to break a tie)
+local function orbitWay(predator: Predator, center: Vector3, radius: number, spin: number?): Vector3
+	local away = predator.position - center
+	local flat = Vector3.new(away.X, 0, away.Z)
+	local r = flat.Magnitude
+	local radial = if r > 1e-3 then flat / r else Vector3.new(predator.heading.X, 0, predator.heading.Z).Unit
+	local tangent = Vector3.new(-radial.Z, 0, radial.X)
+	local turn = spin or (if predator.heading:Dot(tangent) + 0.3 * predator.peel >= 0 then 1 else -1)
+	local pull = math.clamp((radius - r) / math.max(radius, 1), -1, 1) * 1.6
+	local rise = math.clamp((center.Y - predator.position.Y) / math.max(radius, 1), -0.6, 0.6)
+	local way = tangent * turn + radial * pull + Vector3.yAxis * rise
+	return if way.Magnitude > 1e-3 then way.Unit else predator.heading
+end
+
+-- Burst and glide (owner, 2026-10-19: "his actual movements are very stiff"): × its
+-- pace at `now`, a few strong strokes then a coast, over a `beat`-second cycle of its
+-- own phase. Averages 1 (the strokes' 45% of the cycle carry the coast).
+local function rhythm(predator: Predator, now: number, glide: number, beat: number): number
+	local t = (now / math.max(beat, 0.5) + predator.index * 0.37) % 1
+	local stroke = if t < 0.45 then math.sin(t / 0.45 * math.pi) else 0
+	return math.clamp(1 + glide * (stroke * 3.5 - 1), 1 - glide, 1 + 1.6 * glide)
+end
+
+-- How it opens a hunt on a fish it has just taken (Config/Predators `circle`, `under`,
+-- `feint`): circling in, up from below, or straight in
+local function chooseApproach(predator: Predator, now: number)
+	local style = styleOf(predator.def)
+	local roll = rng:NextNumber()
+	local circle, under = style.circle or 0, style.under or 0
+	if roll < circle then
+		predator.approach = "circle"
+		predator.approachUntil = now + (style.circleSeconds or 2.5)
+		predator.orbit = if rng:NextNumber() < 0.5 then -1 else 1
+	elseif roll < circle + under then
+		predator.approach = "under"
+	else
+		predator.approach = "direct"
+	end
+	predator.feintLeft = rng:NextNumber() < (style.feint or 0)
+end
+
+-- Off it goes after a strike, a feint or a fish inside its turning circle: it carries
+-- through `carry` s (swerving `veer` radians to its `peel` side), then comes round
+local function startRecover(predator: Predator, now: number, seconds: number, carried: boolean, veer: number?)
+	predator.mode = "recover"
+	predator.modeUntil = now + seconds
+	predator.strikeAt = if carried then now else now - (styleOf(predator.def).carry or 0.4)
+	predator.veer = veer or 0
+	predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
+end
+
 local function simulate(predator: Predator, dt: number, now: number)
 	local def = predator.def
 	local style = styleOf(def)
+	local turnRate: number? = nil
 	if predator.mode == "dead" then
 		if now >= predator.respawnAt then
 			spawn(predator)
@@ -754,8 +870,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 			if style.kind == "ambush" and predator.burstUntil > 0 then
 				winded(predator, true, now)
 			elseif predator.mode == "windup" then
-				predator.mode = "recover"
-				predator.modeUntil = now + 1
+				startRecover(predator, now, 1, true)
 			end
 			predator.target = nil
 		end
@@ -765,6 +880,11 @@ local function simulate(predator: Predator, dt: number, now: number)
 				predator.target = pickTarget(predator, now)
 			end
 			predator.mode = if predator.target then "hunt" else "roam"
+		end
+		-- A fish it has just taken: how it'll come in
+		if predator.target and predator.target ~= predator.approachFor then
+			predator.approachFor = predator.target
+			chooseApproach(predator, now)
 		end
 	end
 
@@ -799,15 +919,50 @@ local function simulate(predator: Predator, dt: number, now: number)
 		desired = (weave:VectorToWorldSpace(toWaypoint) + Vector3.yAxis * math.sin(phase * 0.6) * 0.08).Unit
 			* speed
 			* (style.roam or Predators.roamSpeed)
-			* (0.85 + 0.15 * math.sin(phase * 0.5))
+			* rhythm(predator, now, math.max(style.glide or 0.2, 0.2), style.beat or 2.6)
 	elseif predator.mode == "recover" then
-		-- Peels off to one side and loops round for another pass (an ambusher out of
-		-- breath, slowly)
-		local away = CFrame.fromAxisAngle(Vector3.yAxis, -predator.peel * 0.7)
-		desired = (away:VectorToWorldSpace(predator.heading) + Vector3.yAxis * 0.15).Unit
-			* def.speed
-			* (style.recover or 0.8)
-		if now >= predator.modeUntil then
+		-- After a strike it carries on through, then comes round hard (owner,
+		-- 2026-10-19: "If he misses the player he just slowly turns around and goes at
+		-- them again. It needs to feel like a real predator"): a fast banked turn onto
+		-- a loop round the fish, a run-in's length out on the side it peeled to, until
+		-- its bite is ready, then it turns in for a fresh pass from a new angle. (Aimed
+		-- straight back it arrived before its bite was ready, or too fast to pull up,
+		-- and circled the fish inside its own turning circle.) An ambusher out of breath
+		-- glides round its loop slowly, facing in. With no fish it peels off and loops
+		-- away.
+		local root = targetRoot(predator)
+		local since = now - predator.strikeAt
+		local ready = now >= predator.modeUntil
+		local winded = style.kind == "ambush" and not ready
+		local facingFish, flatGap = 1, math.huge
+		local runIn = runInOf(def)
+		if root == nil or predator.target == nil then
+			local away = CFrame.fromAxisAngle(Vector3.yAxis, -predator.peel * 0.7)
+			desired = (away:VectorToWorldSpace(predator.heading) + Vector3.yAxis * 0.15).Unit
+				* def.speed
+				* (style.recover or 0.8)
+		elseif since < (style.carry or 0.4) then
+			local off = CFrame.fromAxisAngle(Vector3.yAxis, -predator.peel * predator.veer)
+			desired = off:VectorToWorldSpace(predator.heading)
+				* def.speed
+				* (if winded then style.recover or 0.8 else 1)
+		else
+			local toFish = root.Position - predator.position
+			flatGap = Vector3.new(toFish.X, 0, toFish.Z).Magnitude
+			facingFish = if toFish.Magnitude > 1e-3 then predator.heading:Dot(toFish.Unit) else 1
+			-- (it turns in inside the loop, so it's lined up before it runs in)
+			local way = if ready and flatGap >= runIn * 0.6
+				then toFish.Unit
+				else orbitWay(predator, root.Position, runIn, nil)
+			desired = way * def.speed * (style.comePace or 0.8)
+			turnRate = def.turnRate * (style.comeTurn or 2)
+		end
+		-- Hunts again once its bite is ready and it's round with room to run in (or
+		-- it has had long enough)
+		if
+			ready and (root == nil or (flatGap >= runIn * 0.5 and facingFish >= 0.85))
+			or now >= predator.modeUntil + 3
+		then
 			predator.mode = if predator.target then "hunt" else "roam"
 		end
 	else
@@ -886,13 +1041,51 @@ local function simulate(predator: Predator, dt: number, now: number)
 						local floor = style.slowsToTurn or 0.35
 						pace *= floor + (1 - floor) * math.clamp((facing - 0.2) / 0.7, 0, 1)
 					end
-					desired = direction * pace
+					-- How it comes in on a fish that isn't running (chosen as it took the
+					-- fish, Config/Predators `circle`, `under`): circling round it and
+					-- tightening, or stalking up from below it for a lunge; never into a tell
+					-- while it's circling (its jaws aren't on the fish)
+					local way = direction
+					local circling = false
+					local calm = not bursting and fleeing < speed * 0.3
+					if calm and predator.approach == "circle" and now < predator.approachUntil then
+						local runIn = runInOf(def)
+						local out = Vector3.new(predator.position.X - aim.X, 0, predator.position.Z - aim.Z)
+						if out.Magnitude > runIn * 0.9 then
+							-- (round it, the loop tightening to a run-in's length as time runs out)
+							circling = true
+							local left = (predator.approachUntil - now) / (style.circleSeconds or 2.5)
+							local radius = math.max(runIn, out.Magnitude * (0.8 + 0.15 * left))
+							way = orbitWay(predator, aim, radius, predator.orbit)
+						end
+					elseif calm and predator.approach == "under" and gap > engage * 1.3 then
+						local depth = math.min(style.underDepth or 20, (gap - engage * 1.3) * 0.5)
+						local below = aim - Vector3.yAxis * depth
+						below = Vector3.new(below.X, math.max(below.Y, aimFloor), below.Z)
+						local toBelow = below - mouth
+						way = if toBelow.Magnitude > 1e-3 then toBelow.Unit else direction
+					end
+					-- Burst and glide while it cruises in (a straight chase is flat out)
+					if calm and gap > engage * 2.5 then
+						pace *= rhythm(predator, now, style.glide or 0, style.beat or 2.5)
+					end
+					desired = way * pace
 					-- A fish close beside or behind it is inside its turning circle (it only
-					-- circles it): it swims on out and comes round for another pass
+					-- circles it): it swims on out and comes round hard for another pass
 					if not bursting and gap < def.length * 2 and facing < 0.2 then
-						predator.mode = "recover"
-						predator.modeUntil = now + 1
-						predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
+						startRecover(predator, now, 1, false)
+					elseif
+						-- A feint (once a hunt, `feint`): it swerves off a run at a fish that
+						-- isn't running, no tell, and comes round again
+						calm
+						and predator.feintLeft
+						and predator.mode == "hunt"
+						and gap < engage * 2.2
+						and gap > engage * 1.3
+						and facing > 0.85
+					then
+						predator.feintLeft = false
+						startRecover(predator, now, 1.4, true, 0.9)
 					end
 					local sees = false
 					if ambush and not bursting then
@@ -910,10 +1103,18 @@ local function simulate(predator: Predator, dt: number, now: number)
 						end
 					elseif
 						predator.mode == "hunt"
+						and not circling
 						and gap <= engage
 						and facing >= (style.tellFacing or strike.facing)
 					then
-						sees = Ground.sees(mouth, root.Position, fishLength * 0.3)
+						if gap < engage * 0.7 and fleeing < speed * 0.3 then
+							-- Lined up only once it's far too close and fast to pull up: it
+							-- swims on past and comes round for a proper run (a tell from
+							-- here only overshot the fish)
+							startRecover(predator, now, 0.5, false)
+						else
+							sees = Ground.sees(mouth, root.Position, fishLength * 0.3)
+						end
 					end
 					if sees then
 						predator.mode = "windup"
@@ -957,15 +1158,19 @@ local function simulate(predator: Predator, dt: number, now: number)
 							predator.index,
 							{ hit = hit, x = mouth.X, y = mouth.Y, z = mouth.Z }
 						)
-						-- The strike carries it on through, and it peels off to one side
+						-- The strike carries it on through, and it peels off to one side and
+						-- comes round
 						predator.velocity += predator.heading * def.speed * 0.5
-						predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
 						if ambush then
+							predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
 							winded(predator, not hit, now)
 						else
-							predator.mode = "recover"
-							predator.modeUntil = now
-								+ (if hit then def.biteCooldown else def.biteCooldown * 0.6)
+							startRecover(
+								predator,
+								now,
+								if hit then def.biteCooldown else def.biteCooldown * 0.6,
+								true
+							)
 						end
 						-- A puffed fish's spines: the biter takes recoil and flinches
 						if puffed then
@@ -982,7 +1187,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 	if modeOf(predator) == "dead" then
 		return
 	end
-	steer(predator, desired, dt)
+	steer(predator, desired, dt, turnRate)
 end
 
 local function stream(now: number)
@@ -1095,6 +1300,13 @@ local function make(def: Def, custom: boolean?): Predator
 		stunUntil = 0,
 		fails = {},
 		ignore = {},
+		strikeAt = -math.huge,
+		veer = 0,
+		approach = "direct",
+		approachFor = nil,
+		approachUntil = 0,
+		orbit = 1,
+		feintLeft = false,
 	}
 	nextIndex += 1
 	predators[predator.index] = predator
@@ -1168,6 +1380,8 @@ PredatorService.pickTarget = pickTarget
 PredatorService.targetRoot = targetRoot
 PredatorService.steer = steer
 PredatorService.mouthOf = mouthOf
+PredatorService.rhythm = rhythm
+PredatorService.orbitWay = orbitWay
 PredatorService.rotateToward = rotateToward
 
 function PredatorService.start()

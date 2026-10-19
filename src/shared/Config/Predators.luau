@@ -46,6 +46,43 @@ export type Style = {
 	blood: number?, -- × aggroRange on a fish under `bloodBelow` of its health
 	bloodBelow: number?,
 	kelpShy: boolean?, -- too big for a kelp forest: a fish in one is out of its reach
+	-- Coming round after a strike (owner, 2026-10-19: "If he misses the player he just
+	-- slowly turns around and goes at them again"): it carries through `carry` s at
+	-- speed, then turns back hard (× `comeTurn` its turn rate) at `comePace` × speed,
+	-- aimed `comeWide` body lengths beside the fish on the side it peeled to, so each
+	-- pass comes in from a new angle
+	carry: number?,
+	comeTurn: number?,
+	comePace: number?,
+	comeWide: number?,
+	-- How it opens a hunt on a fish that isn't running (owner: "It needs to feel like a
+	-- real predator"): circling in and tightening (`circle`: the chance, for up to
+	-- `circleSeconds`), or stalking up from below (`under`: the chance, `underDepth`
+	-- studs under the fish at the most), else straight in. A `feint` (the chance, once
+	-- a hunt) swerves off a run without a tell and comes round again.
+	circle: number?,
+	circleSeconds: number?,
+	under: number?,
+	underDepth: number?,
+	feint: number?,
+	-- Burst and glide (owner: "his actual movements are very stiff"): its pace swings
+	-- ± `glide` over a `beat`-second cycle of a few strong strokes and a coast
+	glide: number?,
+	beat: number?,
+}
+
+-- How a boss's body moves (Config/Bosses `predator.swim`): it swims along its heading
+-- with momentum like any fish (PredatorService.steer), only bigger and heavier
+export type Swim = {
+	turnAtSpeed: number, -- × turn rate it keeps at full speed (1.4 when slow)
+	comeTurn: number, -- × turn rate in a burst-turn: a fish well off its nose, or coming round after a miss
+	accel: number, -- × speed per second it speeds up by (× 2.5 when a move asks for a surge)
+	brake: number, -- × speed per second it slows by (× 2.5 in a tell)
+	carry: number, -- seconds it carries through after a strike before it comes round
+	glide: number, -- the burst-and-glide swing in pace (±)
+	beat: number, -- seconds a burst-and-glide cycle takes
+	circle: { number }?, -- radius it circles a fish at while its bite cools (start, closest)
+	under: number?, -- studs under a far fish it comes up from (a lunge from below)
 }
 
 export type PredatorDef = {
@@ -75,6 +112,7 @@ export type PredatorDef = {
 	back: Color3, -- part-body colors while the model is missing
 	belly: Color3,
 	style: Style?, -- how it hunts (nil = plain; bosses have none)
+	swim: Swim?, -- a boss's body (nil = the plain fish model)
 }
 
 local list: { PredatorDef } = {
@@ -104,6 +142,14 @@ local list: { PredatorDef } = {
 			winded = 3,
 			giveUp = 2,
 			forget = 25,
+			-- Out of breath, it still swings round to face the fish (a glide and a hard
+			-- C-turn), so it can burst again the moment it has its wind
+			carry = 0.35,
+			comeTurn = 2.6,
+			comePace = 0.45,
+			comeWide = 0.3,
+			glide = 0.3,
+			beat = 2.6,
 		},
 		biteReach = 3,
 		biteFraction = 0.2,
@@ -147,6 +193,19 @@ local list: { PredatorDef } = {
 			blood = 2,
 			bloodBelow = 0.5,
 			kelpShy = true,
+			-- A missed pass: carries through, then a fast banked loop back in from the
+			-- side (~2 s, was a ~4.5 s crawl round at its cruising turn rate)
+			carry = 0.45,
+			comeTurn = 2.4,
+			comePace = 0.8,
+			comeWide = 0.7,
+			circle = 0.4,
+			circleSeconds = 2.6,
+			under = 0.35,
+			underDepth = 28,
+			feint = 0.2,
+			glide = 0.1,
+			beat = 2.2,
 		},
 		biteReach = 4,
 		biteFraction = 0.3,

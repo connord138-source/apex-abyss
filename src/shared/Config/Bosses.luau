@@ -161,16 +161,18 @@ local megalodon: BossDef = {
 		name = "Megalodon",
 		model = "Megalodon",
 		tag = "APEX PREDATOR",
-		length = 130,
+		-- Larger (owner, 2026-10-19: "he could definitely be made larger"; was 130):
+		-- every reach and radius below grew with it (×1.35)
+		length = 175,
 		health = 6000,
 		speed = 34,
 		turnRate = 0.9,
-		aggroRange = 200,
-		biteReach = 16,
+		aggroRange = 240,
+		biteReach = 21.5,
 		biteFraction = 0.55,
 		biteCooldown = 4,
 		telegraph = 1.2,
-		ignoreBelow = 0.035, -- a Fry (2–3 studs) is too small to bother with
+		ignoreBelow = 0.026, -- a fish under ~4.5 studs is too small to bother with (0.035 at 130 long)
 		band = { 1000, 1440 },
 		depth = { 170, 470 },
 		count = 0, -- never spawned by the predator roster; BossService summons it
@@ -178,22 +180,38 @@ local megalodon: BossDef = {
 		loot = { hauls = 0, dna = 0, coral = 0 }, -- BossService pays the real rewards
 		back = Color3.fromRGB(58, 72, 92),
 		belly = Color3.fromRGB(214, 222, 230),
+		-- Heavy and menacing, never a robot (owner, 2026-10-19: "It needs to feel like a
+		-- real predator"): it cruises on slow strokes and long glides, surges into a
+		-- charge, carries through a miss and banks round hard (~2 s for 180°, was a
+		-- ~5 s crawl), circles a fish while its bite cools, and comes up at a far one
+		-- from below
+		swim = {
+			turnAtSpeed = 0.7,
+			comeTurn = 2.5,
+			accel = 1.3,
+			brake = 1.0,
+			carry = 0.6,
+			glide = 0.2,
+			beat = 3.6,
+			circle = { 270, 170 },
+			under = 70,
+		},
 	},
 	rigged = true,
 	kit = "shark",
 	shark = {
-		bite = { fraction = 0.55, reach = 16, telegraph = 1.2, cooldown = 4, trigger = 32 },
+		bite = { fraction = 0.55, reach = 21.5, telegraph = 1.2, cooldown = 4, trigger = 43 },
 		charge = {
 			fraction = 0.35,
 			telegraph = 1.2,
 			seconds = 2.2,
 			speedMul = 2.2,
-			radius = 20,
+			radius = 27,
 			cooldown = 9,
-			minRange = 50,
-			maxRange = 220,
+			minRange = 65,
+			maxRange = 280,
 		},
-		sweep = { fraction = 0.2, telegraph = 1, radius = 58, behindMin = 3, push = 60, cooldown = 12 },
+		sweep = { fraction = 0.2, telegraph = 1, radius = 78, behindMin = 3, push = 60, cooldown = 12 },
 		mark = {
 			seconds = 8,
 			cooldown = 24,
@@ -206,8 +224,8 @@ local megalodon: BossDef = {
 		breachEvery = 13,
 		breach = {
 			fraction = 0.3,
-			radius = 62,
-			band = 20,
+			radius = 84,
+			band = 27,
 			telegraph = 2.2,
 			rocket = 1.3,
 			crash = 0.9,
@@ -252,13 +270,13 @@ local megalodon: BossDef = {
 	},
 	-- Felt before it's seen: the dread (and SOMETHING CIRCLES IN THE BLUE, while it's
 	-- unseen) starts well outside the fade-in (460 until `sight` grew, 2026-10-18)
-	dread = { range = 680, shakeRange = 70, warning = "SOMETHING CIRCLES IN THE BLUE" },
+	dread = { range = 760, shakeRange = 95, warning = "SOMETHING CIRCLES IN THE BLUE" },
 	-- Seen from further out in the clearer Open Blue (owner, 2026-10-18: "Megalodon
 	-- should be able to be seen from further out"; was 280 / 170 / 190): it starts to
 	-- show at 500 and is solid by 290, the haze carrying the rest of the emergence,
 	-- and the body is never part see-through while it's in plain view (playtest
-	-- 2026-10-10)
-	sight = { far = 500, near = 290, light = 240 },
+	-- 2026-10-10). The bigger body (175, 2026-10-19) shows from a little further.
+	sight = { far = 560, near = 330, light = 300 },
 	event = { interval = 1800, warning = 120, studioInterval = 240, escapeDelay = 900 },
 }
 
@@ -288,6 +306,16 @@ local giantSquid: BossDef = {
 		loot = { hauls = 0, dna = 0, coral = 0 },
 		back = Color3.fromRGB(96, 34, 70),
 		belly = Color3.fromRGB(190, 140, 160),
+		-- Pulses along mantle first, quick to swing round (its arms do the reaching)
+		swim = {
+			turnAtSpeed = 0.8,
+			comeTurn = 2.2,
+			accel = 1.6,
+			brake = 1.4,
+			carry = 0.4,
+			glide = 0.3,
+			beat = 2.0,
+		},
 	},
 	rigged = true,
 	kit = "squid",

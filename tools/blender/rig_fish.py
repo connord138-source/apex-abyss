@@ -26,9 +26,13 @@ lower jaw. The jaw's weights are a harmonic field solved along the welded surfac
 hand-over runs round the corners of the mouth and through the throat, every tooth
 goes with the gum it grows from, and nothing tears. Needs scipy.
 
-`--fins` adds FinL and FinR (children of Head... of the spine bone they sit on) for
-the pectoral fins: the blades that stand out past the body's flank in its front
-half, below its middle. FishAnimator and PredatorController tilt them.
+`--fins` adds FinL and FinR (children of the spine bone each grows from) for the
+pectoral fins: the blades that stand out past the body's flank in its front half,
+below its middle, weighted the same way (1 on the outer blade, 0 on the flank).
+FinL is the fish's left (Blender +X, Roblox -X). PredatorController angles them.
+Clean on the Megalodon's broad pectorals; the Reef Shark's long swept-back ones
+kinked and pulled its gill slits out under a tilt (2026-10-19), so the species
+models carry --jaw only. Check every rig with tools/blender/jaw_check.py.
 
 Both only add weight to new bones: the spine's weights are scaled, never moved, and
 the mesh, its UVs and its textures are exported exactly as before.
@@ -299,6 +303,69 @@ if JAW:
         )
 
 
+# ---------- the pectoral fins: which blades stand out past the flank ----------
+fin_plans = []  # (name, root, tip, weight per vertex)
+if FINS:
+    weld, at, lap = welded()
+    ax, ay, az = at[:, 0], at[:, 1], at[:, 2]
+    # The body's own half-width and middle height along its length, from its upper
+    # half (no pectoral fin there; the dorsal fin is thin)
+    slices = 60
+    edges = np.linspace(y_min, y_max, slices + 1)
+    core = np.full(slices, np.nan)
+    middle = np.full(slices, np.nan)
+    for k in range(slices):
+        inside = (co[:, 1] >= edges[k]) & (co[:, 1] <= edges[k + 1])
+        if inside.sum() < 6:
+            continue
+        zs = co[inside, 2]
+        middle[k] = float(np.median(zs))
+        upper = inside & (co[:, 2] >= middle[k])
+        core[k] = float(np.abs(co[upper if upper.any() else inside, 0]).max())
+    centres_y = (edges[:-1] + edges[1:]) / 2
+    ok = ~np.isnan(core)
+    core_at = np.interp(ay, centres_y[ok], core[ok])
+    middle_at = np.interp(ay, centres_y[ok], middle[ok])
+    out = np.abs(ax) - core_at
+    front = (ay > y_min + 0.12 * length) & (ay < y_min + 0.6 * length) & (az < middle_at + 0.02 * length)
+    for name, side in (("FinL", 1.0), ("FinR", -1.0)):
+        # (Blender +X is the fish's left once exported: Roblox -X)
+        mine = front & (ax * side > 0) & (out > 0)
+        if not mine.any():
+            log(name, "no pectoral fin found")
+            continue
+        reach = float(out[mine].max())
+        if reach < 0.03 * length:
+            log(name, "no pectoral fin found (nothing stands out past the flank)")
+            continue
+        tip_index = int(np.argmax(np.where(mine, out, -np.inf)))
+        tip_y = float(ay[tip_index])
+        sure = mine & (out > 0.3 * reach) & (np.abs(ay - tip_y) < 0.15 * length)
+        flank = (np.abs(ax) < core_at * 0.95) | (az > middle_at + 0.02 * length) | (np.abs(ay - tip_y) > 0.22 * length)
+        # (and the flank's own relief round the fin's root: gill slits stood out as a
+        # spike when they went partly with the fin)
+        flank |= (out < 0.015 * length) & (az > middle_at - 0.04 * length)
+        flank |= ax * side <= 0
+        flank &= ~sure
+        field = harmonic(lap, sure | flank, np.where(sure, 1.0, 0.0))
+        weight = smooth01((field - 0.1) / 0.75)
+        joint = (field > 0.3) & (field < 0.7)
+        if not joint.any():
+            joint = sure
+        root = at[joint].mean(axis=0)
+        fin_plans.append((name, tuple(map(float, root)), tuple(map(float, at[tip_index])), weight[weld]))
+        log(
+            name,
+            "pectoral at",
+            round((tip_y - y_min) / length, 3),
+            "of the length, reaching",
+            round(reach / length, 3),
+            "past the flank ·",
+            int((weight > 0.5).sum()),
+            "welded vertices",
+        )
+
+
 bpy.ops.object.armature_add(enter_editmode=True, location=(0, 0, 0))
 arm = bpy.context.active_object
 arm.name = "Armature"
@@ -330,6 +397,10 @@ for i, name in enumerate(names):
 if jaw is not None:
     # Hinged at the corner of the mouth, pointing to the chin
     bone("Jaw", jaw[0], jaw[1], "Head")
+for name, root, tip, _ in fin_plans:
+    # On the spine bone it grows from, pointing out to its tip
+    carrier = next((n for n in names if segments[n][0] <= root[1] <= segments[n][1]), "Head")
+    bone(name, root, tip, carrier)
 bpy.ops.object.mode_set(mode="OBJECT")
 
 # ---------- skinning: two nearest stations along the body, smooth hand-over ----------
@@ -373,6 +444,9 @@ extra = []
 if jaw is not None:
     hand_to("Jaw", jaw[2])
     extra.append("Jaw")
+for name, _, _, weight in fin_plans:
+    hand_to(name, weight)
+    extra.append(name)
 
 mod = body.modifiers.new("Armature", "ARMATURE")
 mod.object = arm

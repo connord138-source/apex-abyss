@@ -48,6 +48,7 @@ type Attack = {
 	target: Player?,
 	aim: Vector3, -- a locked direction (charges)
 	hit: { [Player]: boolean }, -- fish already hurt by this attack
+	struckAt: number, -- when it struck (it carries through, then comes round)
 }
 
 type Grab = {
@@ -83,6 +84,11 @@ type Boss = {
 	waypointUntil: number,
 	homeUntil: number, -- heading back home after a chase led it out
 	spawnedAt: number,
+	-- How this tick's move swims (set by the attack it's in): a turn rate in place of
+	-- its own, and whether the move throws its whole body (PredatorService.steer)
+	turn: number?,
+	direct: boolean,
+	orbit: number, -- which way round it circles a fish (+1 / -1)
 }
 
 type Fish = { player: Player, root: BasePart, length: number }
@@ -291,7 +297,28 @@ local function startAttack(
 		target = target,
 		aim = boss.predator.heading,
 		hit = {},
+		struckAt = math.huge,
 	}
+end
+
+-- Its turn rate in a burst-turn: a fish well off its nose, lining up for a strike,
+-- or coming round after one (Config/Bosses `swim.comeTurn`)
+local function hardTurn(boss: Boss): number
+	local body = boss.def.predator.swim
+	return boss.def.predator.turnRate * (if body then body.comeTurn else 2)
+end
+
+-- After a strike: it carries on through at speed (its bulk won't stop), then banks
+-- round hard toward its fish for the next pass (owner, 2026-10-19: "If he misses the
+-- player he just slowly turns around and goes at them again")
+local function comeRound(boss: Boss, attack: Attack, now: number, direction: Vector3, speed: number): Vector3
+	local predator = boss.predator
+	local body = boss.def.predator.swim
+	if now - attack.struckAt < (if body then body.carry else 0.5) then
+		return predator.heading * speed
+	end
+	boss.turn = hardTurn(boss)
+	return direction * speed * 0.75
 end
 
 local function targetOf(boss: Boss): (BasePart?, number)
@@ -351,7 +378,9 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 	if attack.kind == "bite" then
 		if attack.stage == "tell" then
 			predator.mode = "windup"
+			-- (it swings its head onto the fish as its jaws open)
 			desired = direction * speed * 0.35
+			boss.turn = hardTurn(boss) * 0.8
 			if now >= attack.endsAt then
 				local hit = false
 				if root then
@@ -370,11 +399,12 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 				Net.predatorEvent("bite", index, { hit = hit, x = mouth.X, y = mouth.Y, z = mouth.Z })
 				attack.stage = "recover"
 				attack.endsAt = now + 1.2
+				attack.struckAt = now
 				boss.cooldowns.bite = now + shark.bite.cooldown
 			end
 		else
 			predator.mode = "recover"
-			desired = predator.heading * speed * 0.5
+			desired = comeRound(boss, attack, now, direction, speed)
 			if now >= attack.endsAt then
 				boss.attack = nil
 			end
@@ -385,8 +415,9 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 		local radius = if lunge then shark.charge.radius * 0.8 else shark.charge.radius
 		if attack.stage == "tell" then
 			predator.mode = "windup"
-			-- Eyes flash: it slows and lines up on the fish
+			-- Eyes flash: it slows and swings round onto the fish, coiling
 			desired = direction * speed * 0.15
+			boss.turn = hardTurn(boss)
 			if now >= attack.endsAt then
 				attack.aim = if root
 					then ((root.Position + root.AssemblyLinearVelocity * 0.4) - predator.position).Unit
@@ -397,16 +428,26 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 			end
 		elseif attack.stage == "go" then
 			predator.mode = "hunt"
+			-- An explosive surge along the line it locked (a little steering, no more)
 			desired = attack.aim * speed * (if lunge then 2 else shark.charge.speedMul)
+			boss.turn = 1.4
 			strike(boss, attack, fraction, now, function(fish)
 				local distance = alongBody(predator, fish.root.Position)
 				return distance <= radius + fish.length * 0.4
 			end, function(_)
 				return attack.aim * 30
 			end)
-			if now >= attack.endsAt then
+			-- Gone past its fish (dodged): it stops driving on and comes round (it had
+			-- run on to the clock, 100 studs past, before it turned)
+			local past = false
+			if root and not lunge and now - (attack.endsAt - shark.charge.seconds) > 0.6 then
+				local back = root.Position - predator.position
+				past = predator.heading:Dot(back.Unit) < -0.3 and alongBody(predator, root.Position) > radius + 20
+			end
+			if now >= attack.endsAt or past then
 				attack.stage = "recover"
 				attack.endsAt = now + (if lunge then 0.5 else 1.5)
+				attack.struckAt = now
 				if not lunge then
 					boss.cooldowns.charge = now + shark.charge.cooldown
 				end
@@ -418,7 +459,7 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 			end
 		else
 			predator.mode = "recover"
-			desired = predator.heading * speed * 0.4
+			desired = comeRound(boss, attack, now, direction, speed)
 			if now >= attack.endsAt then
 				boss.attack = nil
 			end
@@ -446,11 +487,12 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 				)
 				attack.stage = "recover"
 				attack.endsAt = now + 0.8
+				attack.struckAt = now
 				boss.cooldowns.sweep = now + shark.sweep.cooldown
 			end
 		else
 			predator.mode = "recover"
-			desired = predator.heading * speed * 0.4
+			desired = comeRound(boss, attack, now, direction, speed)
 			if now >= attack.endsAt then
 				boss.attack = nil
 			end
@@ -459,10 +501,16 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 		local breach = shark.breach
 		if attack.stage == "tell" then
 			predator.mode = "windup"
-			-- It sinks, gathering itself
+			-- It sinks, gathering itself, then swings its nose up for the rocket (a
+			-- breach reads as one: down, round, up)
 			local flat = Vector3.new(predator.heading.X, 0, predator.heading.Z)
-			desired = Vector3.new(0, -speed * 0.5, 0)
-				+ (if flat.Magnitude > 1e-3 then flat.Unit else Vector3.xAxis) * speed * 0.2
+			local forward = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.xAxis
+			if attack.endsAt - now > breach.telegraph * 0.45 then
+				desired = Vector3.new(0, -speed * 0.5, 0) + forward * speed * 0.2
+			else
+				desired = Vector3.new(0, speed * 0.25, 0) + forward * speed * 0.05
+				boss.turn = 2.6
+			end
 			if now >= attack.endsAt then
 				attack.stage = "rocket"
 				attack.endsAt = now + breach.rocket
@@ -471,6 +519,7 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 		elseif attack.stage == "rocket" then
 			predator.mode = "hunt"
 			desired = Vector3.new(0, speed * 2.6, 0)
+			boss.turn = 2.6
 			if now >= attack.endsAt then
 				attack.stage = "crash"
 				attack.endsAt = now + breach.crash
@@ -478,7 +527,10 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 			end
 		elseif attack.stage == "crash" then
 			predator.mode = "hunt"
+			-- It falls back, its body tipping over as it goes
 			desired = Vector3.new(0, -speed * 3.2, 0)
+			boss.turn = 2.2
+			boss.direct = true
 			if now >= attack.endsAt then
 				local center = predator.position
 				strike(boss, attack, breach.fraction, now, function(fish)
@@ -567,6 +619,7 @@ local function runSquid(boss: Boss, attack: Attack, now: number, root: BasePart?
 		if attack.stage == "tell" then
 			predator.mode = "windup"
 			desired = direction * speed * 0.3
+			boss.turn = hardTurn(boss) * 0.8
 			if now >= attack.endsAt then
 				local target = attack.target :: Player
 				local session = HuntService.sessions()[target]
@@ -627,7 +680,9 @@ local function runSquid(boss: Boss, attack: Attack, now: number, root: BasePart?
 	elseif attack.kind == "jet" then
 		if attack.stage == "tell" then
 			predator.mode = "windup"
+			-- (it draws back, arms gathering, before it shoots off)
 			desired = -predator.heading * speed * 0.3
+			boss.direct = true
 			if now >= attack.endsAt then
 				jetTo(boss, now)
 				boss.attack = nil
@@ -663,6 +718,7 @@ local function runSquid(boss: Boss, attack: Attack, now: number, root: BasePart?
 		if attack.stage == "tell" then
 			predator.mode = "windup"
 			desired = direction * speed * 0.4
+			boss.turn = hardTurn(boss) * 0.8
 			if now >= attack.endsAt then
 				local hit = false
 				if root then
@@ -693,6 +749,7 @@ local function runSquid(boss: Boss, attack: Attack, now: number, root: BasePart?
 		if attack.stage == "tell" then
 			predator.mode = "windup"
 			desired = direction * speed * 0.2
+			boss.turn = hardTurn(boss) * 0.8
 			if now >= attack.endsAt then
 				local origin = beak
 				local heading = predator.heading
@@ -1078,6 +1135,9 @@ local function summon(def: BossDef, now: number)
 		waypointUntil = now + 15,
 		homeUntil = 0,
 		spawnedAt = now,
+		turn = nil,
+		direct = false,
+		orbit = if rng:NextNumber() < 0.5 then -1 else 1,
 	}
 	warned = false
 	Net.notifyAll(`THE {string.upper(def.name)} RISES`, "bad")
@@ -1167,9 +1227,13 @@ local function chooseShark(boss: Boss, now: number)
 		)
 		return
 	end
+	-- (measured to where its jaws will be once it has swung round onto the fish: from
+	-- a circle its head swings most of a body length closer as it lines up, and a
+	-- charge begun 20 studs off couldn't be dodged)
+	local lined = (root.Position - predator.position).Magnitude - predator.def.length * 0.45
 	if
 		(cooldowns.charge or 0) <= now
-		and distance >= shark.charge.minRange
+		and math.min(distance, lined) >= shark.charge.minRange
 		and distance <= shark.charge.maxRange
 	then
 		startAttack(boss, "charge", "tell", shark.charge.telegraph, target, now)
@@ -1408,18 +1472,17 @@ local function tick(boss: Boss, dt: number, now: number)
 
 	local stunned = boss.staggeredUntil > now or boss.exhaustedUntil > now
 	local speed = speedOf(boss)
+	local body = def.predator.swim
 	local desired: Vector3
-	local turnRate: number? = nil
 	local attack = boss.attack
+	boss.turn = nil
+	boss.direct = false
 	if stunned then
 		predator.mode = "recover"
 		desired = predator.velocity * 0.05
 		boss.attack = nil
 	elseif attack then
 		desired = runAttack(boss, attack, now)
-		if attack.stage == "go" and (attack.kind == "charge" or attack.kind == "lunge") then
-			turnRate = 6 -- locked on
-		end
 	else
 		if now >= boss.nextAttackAt then
 			chooseAttack(boss, now)
@@ -1437,23 +1500,66 @@ local function tick(boss: Boss, dt: number, now: number)
 			else
 				desired = offset.Unit * speed * 0.4
 			end
+			if body then
+				desired *= PredatorService.rhythm(predator, now, body.glide, body.beat)
+			end
 			predator.mode = "hunt"
 		elseif root then
+			-- Hunting like a real predator (owner, 2026-10-19: "It needs to feel like a
+			-- real predator and needs to look the part"): it comes up at a far fish
+			-- from below, circles a near one while its bite cools (tightening), turns
+			-- in once it's ready, and swings hard onto a fish well off its nose instead
+			-- of crawling round; strong strokes and glides on the way in
 			local lead = root.Position + root.AssemblyLinearVelocity * 0.3
 			local anchor = if def.kit == "squid" then beakOf(predator) else PredatorService.mouthOf(predator)
 			local toward = lead - anchor
+			local gap = toward.Magnitude
+			local way = if gap > 1e-3 then toward.Unit else predator.heading
 			-- A squid holding fish hovers near them instead of ramming
 			local holding = def.kit == "squid" and grabCount(boss) > 0
 			local shark = def.shark
 			local chase = if mark and shark then shark.mark.speedMul elseif holding then 0.25 else 1
-			desired = (if toward.Magnitude > 1e-3 then toward.Unit else predator.heading) * speed * chase
+			local pace = speed * chase
+			if shark and mark == nil and body then
+				local cooling = (boss.cooldowns.bite or 0) - now
+				local circle = body.circle
+				local under = body.under
+				local fromMiddle = Vector3.new(lead.X - predator.position.X, 0, lead.Z - predator.position.Z)
+				if circle and cooling > 0 and fromMiddle.Magnitude < circle[1] * 1.5 then
+					local left = math.clamp(cooling / shark.bite.cooldown, 0, 1)
+					way = PredatorService.orbitWay(predator, lead, circle[2] + (circle[1] - circle[2]) * left, boss.orbit)
+					pace = speed * 0.85
+				elseif under and gap > (if circle then circle[1] * 1.3 else 300) then
+					local below = lead - Vector3.yAxis * under
+					local floor = Seafloor.y(below.X, below.Z) + def.predator.depth[1] * 0.6
+					below = Vector3.new(below.X, math.max(below.Y, floor), below.Z)
+					local toBelow = below - anchor
+					way = if toBelow.Magnitude > 1e-3 then toBelow.Unit else way
+				end
+				if gap > shark.bite.trigger * 3 then
+					pace *= PredatorService.rhythm(predator, now, body.glide, body.beat)
+					-- (and it powers back in on a fish its bite is ready for)
+					if cooling <= 0 and predator.heading:Dot(way) > 0.8 then
+						pace *= 1.2
+					end
+				end
+			end
+			-- A fish well off its nose: a burst-turn, hard and slowing, then a surge
+			if predator.heading:Dot(way) < 0.6 then
+				boss.turn = hardTurn(boss)
+				pace *= 0.75
+			end
+			desired = way * pace
 			predator.mode = "hunt"
 		else
 			if (boss.waypoint - predator.position).Magnitude < 15 or now > boss.waypointUntil then
 				boss.waypoint = patrolPoint(def, depthBand(boss))
 				boss.waypointUntil = now + 15
 			end
-			desired = (boss.waypoint - predator.position).Unit * speed * 0.55
+			desired = (boss.waypoint - predator.position).Unit
+				* speed
+				* 0.55
+				* (if body then PredatorService.rhythm(predator, now, body.glide, body.beat) else 1)
 			predator.mode = "roam"
 		end
 		-- The squid keeps to its depth band: deep while it lurks, high in its mantle
@@ -1475,7 +1581,7 @@ local function tick(boss: Boss, dt: number, now: number)
 			end
 		end
 	end
-	PredatorService.steer(predator, desired, dt, turnRate)
+	PredatorService.steer(predator, desired, dt, boss.turn, boss.direct)
 end
 
 -- Summons a boss now (Studio testing, and the event clock).

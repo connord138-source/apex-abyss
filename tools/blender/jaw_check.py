@@ -2,11 +2,12 @@
 open, so a bad hand-over (a torn lip, a cheek dragged down, a tooth left behind)
 shows before the model goes to Studio.
 
-    <bpy python> tools/blender/jaw_check.py <in.fbx> <out.png> [--angles -12,0,28] [--view side|three]
+    <bpy python> tools/blender/jaw_check.py <in.fbx> <out.png> [--angles -12,0,28] [--view side|three|front]
 
 Each angle (degrees; positive opens) is one picture of the head, side-on from +X with
 the head on the LEFT (`--view three`: from the front three-quarters, below the eye
-line, looking into the mouth). The frames are tiled left to right into one PNG.
+line, looking into the mouth; `--view front`: the whole fish head-on from a little
+below). The frames are tiled left to right into one PNG.
 With `--fins` in the rig, a last frame tilts the pectoral fins down 25°.
 """
 import math
@@ -72,6 +73,11 @@ co = bpy.data.objects.new("Cam", cam)
 scene.collection.objects.link(co)
 if VIEW == "three":
     direction = Vector((0.75, -1.0, -0.12)).normalized()
+elif VIEW == "front":
+    # The whole fish head-on, a little from below: the fins' tilt reads best here
+    direction = Vector((0.0, -1.0, -0.25)).normalized()
+    focus = (body.matrix_world @ (0.125 * sum((Vector(c) for c in body.bound_box), Vector())))
+    cam.ortho_scale = length * 0.75
 else:
     direction = Vector((1, 0, 0))
 co.location = focus + direction * length * 3
@@ -94,7 +100,7 @@ for i, (kind, angle) in enumerate(shots):
             # Each fin's trailing edge tips down (about the body's long axis, the left
             # fin one way and the right the other)
             side = 1 if (arm.matrix_world @ pb.bone.head_local).x > 0 else -1
-            pose_about(pb, along, -side * angle)
+            pose_about(pb, along, side * angle)
     bpy.context.view_layer.update()
     path = os.path.join(tmp, f"{i}.png")
     scene.render.filepath = path

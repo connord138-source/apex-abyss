@@ -3,6 +3,9 @@
 -- from different directions. The fish sits still, cruises slowly, flees in a straight
 -- line, jukes sideways or loops back when it sees the attack coming, Dashes during
 -- the tell, hides behind rock, burrows, puffs up, or gets the predator stunned.
+-- After every miss it also times the come-round (owner, 2026-10-19: "If he misses the
+-- player he just slowly turns around and goes at them again"): how long until the
+-- predator points back at the fish (`round`) and until its next attack (`again`).
 local rbx = require("./sim_rbx")
 local Vector3 = rbx.Vector3
 local sim = require("./sim_services")
@@ -95,6 +98,8 @@ type Result = {
 	stunned: number,
 	fraction: number, -- the share of max health the last hit took
 	recoil: number, -- the predator's health lost to recoil (share of its max)
+	rounds: { number }, -- seconds from each miss until it faces the fish again (within ~37°)
+	agains: { number }, -- seconds from each miss until its next tell or burst at the fish
 }
 
 local function run(
@@ -115,6 +120,8 @@ local function run(
 		stunned = 0,
 		fraction = 0,
 		recoil = 0,
+		rounds = {},
+		agains = {},
 	}
 	local firsts = {}
 	for trial = 1, TRIALS do
@@ -157,6 +164,8 @@ local function run(
 		local seen = 0
 		local first = nil
 		local healthBefore = predator.health
+		local missAt: number? = nil -- the last miss, until it has come round
+		local againFrom: number? = nil -- the last miss, until its next attack
 		for _ = 1, math.floor(SECONDS / DT) do
 			sim.now += DT
 			local t = sim.now - 1000 * trial
@@ -223,10 +232,22 @@ local function run(
 			root.Position = history[1].position
 			root.AssemblyLinearVelocity = history[1].velocity
 			heartbeat(DT)
+			-- Round again after a miss: pointed back at the fish
+			if missAt then
+				local toFish = position - predator.position
+				if toFish.Magnitude > 1e-3 and predator.heading:Dot(toFish.Unit) >= 0.8 and sim.now - missAt > 0.2 then
+					table.insert(result.rounds, sim.now - missAt)
+					missAt = nil
+				end
+			end
 			local last = #sim.events
 			for i = seen + 1, last do
 				local event = sim.events[i]
 				local mine = event.payload.target == player.UserId
+				if againFrom and mine and (event.kind == "windup" or event.kind == "burst") then
+					table.insert(result.agains, sim.now - againFrom)
+					againFrom = nil
+				end
 				if (event.kind == "windup" or (early == "burst" and event.kind == "burst")) and mine then
 					if event.kind == "windup" then
 						result.tells += 1
@@ -245,6 +266,8 @@ local function run(
 					if event.payload.hit then
 						result.hits += 1
 						first = first or t
+					else
+						missAt, againFrom = sim.now, sim.now
 					end
 				elseif event.kind == "lost" then
 					result.lost += 1
@@ -272,10 +295,27 @@ local function run(
 	return result
 end
 
+local function median(list: { number }): number
+	if #list == 0 then
+		return 0
+	end
+	local sorted = table.clone(list)
+	table.sort(sorted)
+	return sorted[math.ceil(#sorted / 2)]
+end
+
+local function most(list: { number }): number
+	local top = 0
+	for _, value in list do
+		top = math.max(top, value)
+	end
+	return top
+end
+
 local function show(id: string, fish: Fish, where: string, behaviour: string, r: Result, early: string?)
 	print(
 		string.format(
-			"%-9s %-7s LV%-3d %4.1f/s %-6s %-11s caught %2d/%d  bites %3d hits %3d (%3.0f%% of tells)  %4.1f hits/min  first %4.1f s",
+			"%-9s %-7s LV%-3d %4.1f/s %-6s %-11s caught %2d/%d  bites %3d hits %3d (%3.0f%% of tells)  %4.1f hits/min  first %4.1f s%s",
 			id,
 			fish.species,
 			fish.level,
@@ -288,7 +328,16 @@ local function show(id: string, fish: Fish, where: string, behaviour: string, r:
 			r.hits,
 			if r.tells > 0 then r.hits / r.tells * 100 else 0,
 			r.hits / TRIALS / (SECONDS / 60),
-			r.first
+			r.first,
+			if #r.rounds > 0
+				then string.format(
+					"  · after a miss: round %.1f s (most %.1f), again %.1f s (most %.1f)",
+					median(r.rounds),
+					most(r.rounds),
+					median(r.agains),
+					most(r.agains)
+				)
+				else ""
 		)
 	)
 end
@@ -347,6 +396,12 @@ expect(
 	"Barracuda: gives a fish up after a few failed bursts"
 )
 expect(rate(juke) <= 0.3, "Barracuda: a sideways juke beats most of its strikes")
+-- Out of breath after a missed burst it still glides round to face the fish, and
+-- bursts again once it has its wind
+expect(
+	#dodge.rounds > 0 and median(dodge.rounds) <= 3.5,
+	"Barracuda: faces the fish again within a few seconds of a miss"
+)
 case("Barracuda", n25, "water", water, "loop", 30)
 case("Barracuda", n25, "water", water, "juke", 30, "burst")
 case("Barracuda", n25, "water", water, "loop", 30, "burst")
@@ -401,7 +456,17 @@ expect(sCuda.caught <= TRIALS * 0.25, "Reef Shark: a LV 45 'Cuda outruns it")
 case("ReefShark", m45, "water", blueWater, "flee", 50)
 case("ReefShark", p45, "water", blueWater, "flee", 50)
 local sJuke = case("ReefShark", n45, "water", blueWater, "juke", 50)
+-- A missed strike: it carries through, banks round fast and runs in again from a new
+-- angle (a juke then a dash away, or a loop back past it)
+expect(
+	#sJuke.rounds > 0 and median(sJuke.rounds) <= 3 and most(sJuke.rounds) <= 5,
+	"Reef Shark: comes round within a few seconds of a miss"
+)
 local sLoop = case("ReefShark", n45, "water", blueWater, "loop", 50)
+expect(
+	#sLoop.rounds > 0 and median(sLoop.rounds) <= 3 and most(sLoop.rounds) <= 5,
+	"Reef Shark: comes round within a few seconds of a missed pass"
+)
 case("ReefShark", m45, "water", blueWater, "loop", 50)
 local sLoopEarly = case("ReefShark", n45, "water", blueWater, "loop", 50, "close")
 expect(rate(sLoopEarly) <= 0.5, "Reef Shark: a tight turn as it closes makes it overshoot")

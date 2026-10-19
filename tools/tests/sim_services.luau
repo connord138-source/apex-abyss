@@ -16,6 +16,7 @@ local sim = {
 	characters = {} :: { [any]: { character: any, root: any } },
 	events = {} :: { { kind: string, index: number, payload: any, at: number } },
 	hits = {} :: { { player: any, fraction: number, at: number } },
+	shoves = {} :: { { player: any, push: Vector3, at: number } },
 }
 
 local function noop() end
@@ -53,6 +54,9 @@ sim.Timing = {
 	now = function()
 		return sim.now
 	end,
+	isStudio = function()
+		return false
+	end,
 }
 sim.Events = setmetatable({}, {
 	__index = function()
@@ -72,10 +76,27 @@ sim.Net = {
 	predatorState = noop,
 	onRequest = noop,
 	notify = noop,
+	-- (the world bosses: boss_sim.luau)
+	notifyAll = noop,
+	bossState = noop,
+	bossStateTo = noop,
+	bossReward = noop,
+	shove = function(player: any, push: Vector3)
+		table.insert(sim.shoves, { player = player, push = push, at = sim.now })
+	end,
 }
 sim.Progress = {
 	species = function()
 		return { stats = { bite = 1 } }
+	end,
+	shades = function()
+		return {}
+	end,
+	speciesId = function()
+		return "Nibbler"
+	end,
+	grantShade = function()
+		return true
 	end,
 }
 sim.ChumService = {
@@ -85,11 +106,14 @@ sim.ChumService = {
 }
 sim.DataService = {
 	releasing = signal(),
+	loaded = signal(),
 	get = function()
 		return {}
 	end,
+	markDirty = noop,
+	save = noop,
 }
-sim.EconomyService = { earnCoral = noop }
+sim.EconomyService = { earnCoral = noop, addCoral = noop }
 sim.FishService = {
 	character = function(player: any)
 		local entry = sim.characters[player]
@@ -111,6 +135,9 @@ sim.HuntService = {
 	end,
 	hauls = function()
 		return 0
+	end,
+	shown = function(_player: any, kg: number)
+		return kg
 	end,
 	giveDna = noop,
 	mouth = function()
