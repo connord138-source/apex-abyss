@@ -67,7 +67,11 @@ local altDownAt: number? = nil
 -- put it back after the wash had let go, so the fish never swam again)
 local holds: { [string]: boolean } = {}
 function Input.hold(owner: string, on: boolean)
-	holds[owner] = if on then true else nil
+	if on then
+		holds[owner] = true
+	else
+		holds[owner] = nil
+	end
 	Input.locked = next(holds) ~= nil
 end
 
