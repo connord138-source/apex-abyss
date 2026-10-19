@@ -1,6 +1,6 @@
 """Rigs a Tripo fish GLB with a spine for the procedural swim, and exports an FBX.
 
-    <bpy python> tools/blender/rig_fish.py <in.glb> <out.fbx> [--flip] [--segments N] [--head F]
+    <bpy python> tools/blender/rig_fish.py <in.glb> <out.fbx> [--flip] [--segments N] [--head F] [--jaw] [--fins]
     <bpy python> tools/blender/rig_fish.py <in.glb> <out.glb> --static   (squared up, no rig)
 
 The fish is squared up (its long axis becomes the body axis), the head end is found
@@ -15,6 +15,23 @@ and swing the head and tail. Fins and the lure follow whatever bone they sit on.
 Blender imports glTF as Z-up; the export bakes the conversion back to Y-up (Roblox),
 with the fish facing -Z, the way FishBuilder's part bodies face. `--flip` swaps the
 head guess when it's wrong (check tools/blender/fish_check.py's renders).
+
+`--jaw` adds a Jaw bone (a child of Head) hinged at the corner of the mouth, so the
+lower jaw opens and snaps (owner, 2026-10-19: the Megalodon's "mouth doesn't move").
+The mouth is found from the mesh itself: rays cast up through the head find the
+cavity between the lower jaw and the palate (Tripo models the mouth a little open),
+its back end is the hinge, and the vertices under the cavity's middle line are the
+lower jaw. The jaw's weights are a harmonic field solved along the welded surface
+(1 on the chin, 0 on the snout, the cheeks and everything behind the hinge), so the
+hand-over runs round the corners of the mouth and through the throat, every tooth
+goes with the gum it grows from, and nothing tears. Needs scipy.
+
+`--fins` adds FinL and FinR (children of Head... of the spine bone they sit on) for
+the pectoral fins: the blades that stand out past the body's flank in its front
+half, below its middle. FishAnimator and PredatorController tilt them.
+
+Both only add weight to new bones: the spine's weights are scaled, never moved, and
+the mesh, its UVs and its textures are exported exactly as before.
 """
 import math
 import sys
@@ -33,6 +50,9 @@ STATIC = "--static" in argv
 # --head F: the share of the length the stiff Head bone covers (default 0.28). A long
 # ribbon body with a small head (the Oarfish) takes less, so more of it waves.
 HEAD = float(argv[argv.index("--head") + 1]) if "--head" in argv else 0.28
+# --jaw: a Jaw bone for the lower jaw; --fins: FinL/FinR for the pectoral fins
+JAW = "--jaw" in argv
+FINS = "--fins" in argv
 
 
 def log(*args):
@@ -119,6 +139,98 @@ if STATIC:
     log("wrote static", OUT_PATH)
     sys.exit(0)
 
+# ---------- the welded surface (for the jaw's and fins' harmonic weights) ----------
+def welded():
+    """Each vertex's index on the welded surface (UV seams split Tripo's vertices),
+    the welded positions, and the graph Laplacian over its edges (1/length weights)."""
+    from scipy.sparse import coo_matrix, diags
+
+    key = np.round(co / (length * 1e-5)).astype(np.int64)
+    _, weld = np.unique(key, axis=0, return_inverse=True)
+    weld = weld.ravel()
+    n = int(weld.max()) + 1
+    at = np.zeros((n, 3))
+    at[weld] = co
+    pairs = set()
+    for p in body.data.polygons:
+        vs = [int(weld[i]) for i in p.vertices]
+        for a, b in zip(vs, vs[1:] + vs[:1]):
+            if a != b:
+                pairs.add((min(a, b), max(a, b)))
+    pairs = np.array(sorted(pairs))
+    lengths = np.linalg.norm(at[pairs[:, 0]] - at[pairs[:, 1]], axis=1)
+    w = 1.0 / np.maximum(lengths, length * 1e-4)
+    rows = np.concatenate([pairs[:, 0], pairs[:, 1]])
+    cols = np.concatenate([pairs[:, 1], pairs[:, 0]])
+    W = coo_matrix((np.concatenate([w, w]), (rows, cols)), shape=(n, n)).tocsr()
+    lap = diags(np.asarray(W.sum(axis=1)).ravel()) - W
+    return weld, at, lap.tocsr()
+
+
+def harmonic(lap, fixed, values):
+    """Solves the Laplace equation on the surface: `fixed` (bool per welded vertex)
+    hold `values`, every other vertex takes the average of its neighbours."""
+    from scipy.sparse.linalg import spsolve
+
+    free = ~fixed
+    out = np.array(values, dtype=float)
+    if free.any():
+        A = lap[free][:, free]
+        b = -lap[free][:, fixed] @ out[fixed]
+        out[free] = spsolve(A.tocsc(), b)
+    return np.clip(out, 0.0, 1.0)
+
+
+def smooth01(t):
+    t = np.clip(t, 0.0, 1.0)
+    return t * t * (3 - 2 * t)
+
+
+def find_mouth():
+    """The mouth from the mesh: rays cast straight up through the head at the
+    midline find the cavity between the lower jaw's top and the palate (four or more
+    crossings where the head is solid has two). Returns the cavity's middle line
+    [(y, z, gap)] front to back, or None when there's no mouth to open."""
+    from mathutils.bvhtree import BVHTree
+
+    verts = [v.co.copy() for v in body.data.vertices]
+    bvh = BVHTree.FromPolygons(verts, [p.vertices[:] for p in body.data.polygons])
+    bottom = co[:, 2].min() - length
+    up = Vector((0, 0, 1))
+    line = []
+    misses = 0
+    for frac in np.arange(0.0, 0.32, 0.005):
+        y = y_min + frac * length
+        found = []
+        for x in (0.0, 0.012 * length, -0.012 * length):
+            hits = []
+            origin = Vector((x, y, bottom))
+            for _ in range(16):
+                loc, _n, _i, _d = bvh.ray_cast(origin, up, 4 * length)
+                if loc is None:
+                    break
+                hits.append(loc.z)
+                origin = loc + up * (length * 1e-5)
+            if len(hits) >= 4:
+                # Air between the first solid (the lower jaw) and the last (the snout):
+                # the lowest air's floor to the highest air's roof (teeth may split it)
+                floor, roof = hits[1], hits[-2]
+                if roof - floor > length * 0.002:
+                    found.append((floor, roof))
+        if found:
+            floor = float(np.mean([f for f, _ in found]))
+            roof = float(np.mean([r for _, r in found]))
+            line.append((y, (floor + roof) / 2, roof - floor))
+            misses = 0
+        elif line:
+            misses += 1
+            if misses > 3:  # past the mouth's corner (a gill slit further back isn't it)
+                break
+    if len(line) < 3:
+        return None
+    return line
+
+
 # ---------- bones ----------
 # Spine stations head -> tail along Y (head at y_min). The head bone covers the front
 # 28% (HEAD), the tail bone the last 14% (the fin), spine segments share the middle.
@@ -133,6 +245,54 @@ names = ["Head"] + [f"Spine{i}" for i in range(1, SEGMENTS + 1)] + ["Tail"]
 def mid_z(lo, hi):
     band = co[(co[:, 1] >= min(lo, hi)) & (co[:, 1] <= max(lo, hi))]
     return float((band[:, 2].max() + band[:, 2].min()) / 2) if len(band) else 0.0
+
+
+# ---------- the jaw: where it hinges, and how much of each vertex it carries ----------
+jaw = None  # (hinge, tip, weight per vertex)
+if JAW:
+    mouth = find_mouth()
+    if mouth is None:
+        log("no mouth cavity found: no Jaw bone")
+    else:
+        my = np.array([m[0] for m in mouth])
+        mz = np.array([m[1] for m in mouth])
+        mg = np.array([m[2] for m in mouth])
+        # The line a touch smoothed (teeth make the cavity's edges jumpy)
+        if len(mz) >= 5:
+            mz = np.convolve(np.pad(mz, 2, mode="edge"), np.ones(5) / 5, mode="valid")
+        y_front, y_back = float(my[0]), float(my[-1])
+        span = max(y_back - y_front, length * 0.02)
+        hinge = (0.0, y_back + 0.01 * length, float(mz[-1]))
+        tip = (0.0, y_front, float(mz[0]))
+        weld, at, lap = welded()
+        ay, az = at[:, 1], at[:, 2]
+        line = np.interp(ay, my, mz)
+        gap = max(float(np.median(mg)), length * 0.004)
+        band = max(0.3 * gap, length * 0.006)
+        # Sure of these: the chin and the jaw's front two thirds under the line are
+        # the jaw; the snout, the cheeks over the line and everything a little way
+        # behind the hinge are the head. The rest (the lips, the corners of the mouth,
+        # its floor and the throat) is solved.
+        chin = (az < line - band) & (ay < y_back - 0.35 * span) & (ay > y_front - 0.15 * length)
+        skull = (az > line + band) | (ay > hinge[1] + 0.06 * length)
+        skull &= ~chin
+        field = harmonic(lap, chin | skull, np.where(chin, 1.0, 0.0))
+        # Rigid where it's nearly all jaw or all head, a soft hand-over between
+        weight = smooth01((field - 0.15) / 0.7)
+        jaw = (hinge, tip, weight[weld])
+        log(
+            "mouth from",
+            round((y_front - y_min) / length, 3),
+            "to",
+            round((y_back - y_min) / length, 3),
+            "of the length, gap",
+            round(gap / length, 4),
+            "· jaw carries",
+            int((weight > 0.5).sum()),
+            "of",
+            len(weight),
+            "welded vertices",
+        )
 
 
 bpy.ops.object.armature_add(enter_editmode=True, location=(0, 0, 0))
@@ -163,6 +323,9 @@ for i, name in enumerate(names):
     bone(name, (0, a, z), (0, b, z), parent, connect=(i > 0))
     segments[name] = (a, b)
     parent = name
+if jaw is not None:
+    # Hinged at the corner of the mouth, pointing to the chin
+    bone("Jaw", jaw[0], jaw[1], "Head")
 bpy.ops.object.mode_set(mode="OBJECT")
 
 # ---------- skinning: two nearest stations along the body, smooth hand-over ----------
@@ -188,6 +351,25 @@ for i in range(len(co)):
     if w > 0.001:
         groups[order[k]].add([i], float(w), "REPLACE")
 
+
+def hand_to(name, share):
+    """Gives bone `name` `share` (0..1 per vertex) of each vertex, scaling the
+    weights it had down to make room."""
+    group = body.vertex_groups.new(name=name)
+    for i, v in enumerate(body.data.vertices):
+        s = float(share[i])
+        if s <= 0.001:
+            continue
+        for g in v.groups:
+            g.weight *= 1 - s
+        group.add([i], s, "REPLACE")
+
+
+extra = []
+if jaw is not None:
+    hand_to("Jaw", jaw[2])
+    extra.append("Jaw")
+
 mod = body.modifiers.new("Armature", "ARMATURE")
 mod.object = arm
 body.parent = arm
@@ -212,4 +394,4 @@ bpy.ops.export_scene.fbx(
     path_mode="COPY",
     embed_textures=True,
 )
-log("wrote", OUT_PATH, "bones", ", ".join(["Root"] + names))
+log("wrote", OUT_PATH, "bones", ", ".join(["Root"] + names + extra))

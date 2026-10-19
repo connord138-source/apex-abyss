@@ -27,6 +27,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Cave = require(script.Parent.Cave)
+local VentsPlan = require(script.Parent.VentsPlan)
 
 local World = Config.World
 local shelf = World.shelf
@@ -36,11 +37,32 @@ local Ruins = Config.Ruins
 
 type Op = Cave.Op
 
+export type CliffLedge = {
+	top: Vector3, -- the middle of its top
+	angle: number, -- degrees round the hub
+	length: number, -- along the rim (studs)
+	depth: number, -- how far it stands out of the face
+}
+export type Cliff = {
+	face: number, -- the drum's face (studs from the hub)
+	reach: number, -- the furthest the wall stands out of it
+	chutes: { number }, -- the chutes (degrees) and half their width (studs)
+	chuteHalf: number,
+	ledges: { CliffLedge },
+	heads: { { position: Vector3, radius: number } }, -- reef heads on the crest
+	undercuts: { { number } }, -- angle runs where the lip overhangs
+	caves: { { position: Vector3, radius: number } }, -- cave mouths (their middle)
+	buttresses: { { angle: number, top: number, width: number } },
+	columns: { { angle: number, top: number, bottom: number } }, -- fluted column groups
+}
+
 export type Features = {
 	chimneys: { { position: Vector3, height: number } },
 	pinnacles: { Vector3 },
 	chutes: { number }, -- angles (degrees)
 	reefRocks: { { center: Vector3, radius: number } }, -- heads and ridges the corals grow on
+	cliff: Cliff?, -- the drop-off's wall (Cliff.luau dresses it)
+	vents: VentsPlan.Plan?, -- the Vents' field between the basins (Vents.luau dresses it)
 }
 
 local Shelf = {}
@@ -172,6 +194,722 @@ local function sectorAngle(rng: Random, from: number, to: number): number
 	return (from + rng:NextNumber(0, if span == 0 then 360 else span)) % 360
 end
 
+-- ---------------------------------------------------------------------------
+-- The drop-off (owner, 2026-10-19: "The cliff edge needs to be dialed up more and
+-- should have coral etc on it. Right now it's just bulbous spheres off the edge.
+-- Now that we can see more it needs to look better"): a layered reef wall, toon
+-- rounded, on the shelf's drum (its face FACE from the hub's centre), in place of
+-- the balls that were stuck on and bitten out of it. From the top down:
+--   * the CREST: two chained rows of rounded rock along the rim, the shelf's sand
+--     running onto them, with reef heads on it: the reef's lip. In runs it overhangs
+--     an UNDERCUT (an air band under it, the wall-dive notch); elsewhere a thick
+--     sandstone lip band holds it up;
+--   * the STRATA: bands of rock, slate and sandstone (capsules chained round the rim,
+--     Cave.pebble's shape) standing a few studs out of the face over recessed
+--     grooves, dipping together round the shelf and broken into runs by erosion;
+--   * LEDGES: wide shelves at several depths (Cave.pebble slabs) where Cliff.luau
+--     grows coral gardens;
+--   * BUTTRESSES standing out of the face to its foot (some bored through with a
+--     swim-through), FLUTED COLUMNS (tall narrow capsules in groups), CREVICES (tall
+--     air slots) and CAVES bitten into the face;
+--   * TALUS at the foot: rounded boulders on the deep floor (sandstone by the
+--     chutes, whose foot fans it), never past the foot into the Trench's canyon, the
+--     Ruins city's box or a Vents basin.
+-- Nothing stands more than REACH studs out of the face or bites deeper than ~30
+-- into it, so Shared/Seafloor's nominal drop-off and deep floor stay true. It draws
+-- on its own Random: Shelf.ops burns the shared sequence's old draws.
+-- ---------------------------------------------------------------------------
+local CHUTES = { 20, 55, 160, 200, 250, 292, 320, 340 } -- sand chutes down the cliff (degrees)
+local CHUTE_HALF = 40 -- half a chute's width (studs)
+local FACE = shelf.radius + 40 -- the drum's face: the wall everything below stands on
+local REACH = 25 -- the furthest anything stands out of the face (studs)
+local CLIFF_SEED = 19 -- the drop-off's own Random: World.seed + this
+local SEGMENT = 110 -- studs per capsule along the rim (a chord sags under 2 studs)
+
+local function axisFrame(center: Vector3, axis: Vector3): CFrame
+	local reference = if math.abs(axis.Y) > 0.9 then Vector3.xAxis else Vector3.yAxis
+	local right = reference:Cross(axis).Unit
+	return CFrame.fromMatrix(center, right, axis, right:Cross(axis))
+end
+
+-- A capsule from `a` to `b` (Cave.pebble's piece): a cylinder and, unless `open`, a
+-- ball at each end
+local function capsule(
+	ops: { Op },
+	material: Enum.Material,
+	a: Vector3,
+	b: Vector3,
+	radius: number,
+	open: boolean?
+)
+	local span = b - a
+	local center = (a + b) / 2
+	cylinder(ops, material, center, radius, span.Magnitude, axisFrame(center, span.Unit))
+	if not open then
+		ball(ops, material, a, radius)
+		ball(ops, material, b, radius)
+	end
+end
+
+-- The frame on the rim at `angle`, `r` from the hub and `y` up: x along the rim
+-- (toward larger angles), y up, z inward (its look is outward)
+local function rimFrame(angle: number, r: number, y: number): CFrame
+	local out = outward(angle)
+	local along = Vector3.yAxis:Cross(out) -- toward larger angles
+	return CFrame.fromMatrix(at(angle, r, y), along, Vector3.yAxis, along:Cross(Vector3.yAxis))
+end
+
+local function angleGap(a: number, b: number): number
+	return math.abs(((a - b + 180) % 360) - 180)
+end
+
+-- Whether `angle` is within `studs` of a chute's edge (measured on the face)
+local function nearChute(angle: number, studs: number): boolean
+	for _, chute in CHUTES do
+		if math.rad(angleGap(angle, chute)) * FACE < CHUTE_HALF + studs then
+			return true
+		end
+	end
+	return false
+end
+
+-- The rim's free stretches between the chutes, `margin` studs clear of each:
+-- { from, to } in degrees, `to` > `from` (it may pass 360)
+local function stretches(margin: number): { { number } }
+	local pad = math.deg((CHUTE_HALF + margin) / FACE)
+	local list = {}
+	for i, chute in CHUTES do
+		local nextChute = CHUTES[i % #CHUTES + 1] + (if i == #CHUTES then 360 else 0)
+		if nextChute - pad > chute + pad then
+			table.insert(list, { chute + pad, nextChute - pad })
+		end
+	end
+	return list
+end
+
+-- Each free stretch cut into runs `lengths` studs long with `gaps` between them
+local function runs(cr: Random, margin: number, lengths: { number }, gaps: { number }): { { number } }
+	local list = {}
+	for _, stretch in stretches(margin) do
+		local angle = stretch[1] + math.deg(cr:NextNumber(0, gaps[2]) / FACE)
+		while angle < stretch[2] do
+			local stop = math.min(angle + math.deg(cr:NextNumber(lengths[1], lengths[2]) / FACE), stretch[2])
+			if math.rad(stop - angle) * FACE >= lengths[1] * 0.4 then
+				table.insert(list, { angle, stop })
+			end
+			angle = stop + math.deg(cr:NextNumber(gaps[1], gaps[2]) / FACE)
+		end
+	end
+	return list
+end
+
+-- A row of rounded rock round the rim from `from` to `to` degrees: capsules chained
+-- along the curve (`radius` round, `r(angle)` from the hub, `y(angle)` up), a ball
+-- at each end of the row; ~SEGMENT studs a capsule
+local function rimRow(
+	ops: { Op },
+	material: Enum.Material,
+	from: number,
+	to: number,
+	r: (number) -> number,
+	y: (number) -> number,
+	radius: number
+)
+	local count = math.max(1, math.ceil(math.rad(to - from) * FACE / SEGMENT))
+	local last = at(from, r(from), y(from))
+	ball(ops, material, last, radius)
+	for k = 1, count do
+		local angle = from + (to - from) * k / count
+		local point = at(angle, r(angle), y(angle))
+		-- (a little long, so the chain has no notch on the outside of each joint)
+		local span = point - last
+		local stretch = span.Unit * radius * 0.25
+		capsule(ops, material, last - stretch, point + stretch, radius, true)
+		last = point
+	end
+	ball(ops, material, last, radius)
+end
+
+local function dropOff(ops: { Op }, features: Features)
+	local cr = Random.new(World.seed + CLIFF_SEED)
+	local floor = deep.floorY
+	local city = ruinsFrame(floor)
+	local cliff: Cliff = {
+		face = FACE,
+		reach = REACH,
+		chutes = CHUTES,
+		chuteHalf = CHUTE_HALF,
+		ledges = {},
+		heads = {},
+		undercuts = {},
+		caves = {},
+		buttresses = {},
+		columns = {},
+	}
+	features.cliff = cliff
+
+	-- The wall wanders a little in plan (bays and bulges, ±7 studs) and every band
+	-- dips together round the shelf (±11 studs), so the rim is no perfect circle and
+	-- the layers read as one rock
+	local p1, p2, p3, p4 =
+		cr:NextNumber(0, 6.28), cr:NextNumber(0, 6.28), cr:NextNumber(0, 6.28), cr:NextNumber(0, 6.28)
+	local function wander(angle: number): number
+		local a = math.rad(angle)
+		return 4 * math.sin(a * 9 + p1) + 3 * math.sin(a * 4 + p2)
+	end
+	local function dip(angle: number): number
+		local a = math.rad(angle)
+		return 7 * math.sin(a * 5 + p3) + 4 * math.sin(a * 11 + p4)
+	end
+
+	-- What stands where (an angle span and heights), so features don't pile up
+	local claims: { { angle: number, half: number, top: number, bottom: number } } = {}
+	local function free(angle: number, halfStuds: number, top: number, bottom: number): boolean
+		for _, c in claims do
+			local apart = math.rad(angleGap(angle, c.angle)) * FACE
+			if apart < halfStuds + c.half and top > c.bottom and bottom < c.top then
+				return false
+			end
+		end
+		return true
+	end
+	local function claim(angle: number, halfStuds: number, top: number, bottom: number)
+		table.insert(claims, { angle = angle, half = halfStuds, top = top, bottom = bottom })
+	end
+	local function inTrenchSector(angle: number, pad: number): boolean
+		return Seafloor.inSector(angle, trench.angles[1] - pad, trench.angles[2] + pad)
+	end
+	-- A free spot round the rim (`margin` studs clear of the chutes)
+	local function rimAngle(margin: number): number
+		for _ = 1, 30 do
+			local angle = cr:NextNumber(0, 360)
+			if not nearChute(angle, margin) then
+				return angle
+			end
+		end
+		return 0 -- (never: the chutes take a twentieth of the rim)
+	end
+
+	-- The strata, from under the lip down to the foot: bands 12-28 thick with 9-16
+	-- stud grooves between them, each standing 12-18 studs out of the face, in runs
+	-- of 220-760 studs with eroded gaps. A band is two rows of capsules chained round
+	-- the rim, the front one standing out and the other behind it in the rock, so a
+	-- thin band is flat on top and a thick one a fat rounded roll. The first is the
+	-- sandstone lip band right under the crest, unbroken, which the undercut then
+	-- bites away in places.
+	local bands: { { y: number, thick: number, out: number, material: Enum.Material } } = {
+		{ y = -42, thick = 26, out = 12, material = SANDSTONE },
+	}
+	local palette = { SANDSTONE, SLATE, ROCK }
+	local level = -60
+	local last = SANDSTONE
+	while true do
+		local thick = cr:NextNumber(12, 28)
+		if level - thick < floor + 24 then
+			break
+		end
+		local material = palette[cr:NextInteger(1, #palette)]
+		if material == last then
+			material = palette[(table.find(palette, material) :: number) % #palette + 1]
+		end
+		last = material
+		table.insert(
+			bands,
+			{ y = level - thick / 2, thick = thick, out = cr:NextNumber(12, 18), material = material }
+		)
+		level -= thick + cr:NextNumber(9, 16)
+	end
+	for index, band in bands do
+		local spans = if index == 1 then stretches(14) else runs(cr, 14, { 220, 760 }, { 12, 40 })
+		for _, span in spans do
+			local out = if index == 1 then band.out else band.out + cr:NextNumber(-2, 2)
+			local radius = band.thick / 2
+			local behind = if band.thick >= 20 then radius else band.thick * 0.55
+			for _, middle in { FACE + out - radius, FACE + out - radius - behind } do
+				rimRow(ops, band.material, span[1], span[2], function(angle)
+					return middle + wander(angle) * 0.5
+				end, function(angle)
+					return band.y + (if index == 1 then 0 else dip(angle))
+				end, radius)
+			end
+		end
+	end
+
+	-- The undercut: an air band under the crest in runs (about half the rim), cut
+	-- twice (one Air fill over fresh rock leaves some occupancy behind, DenCarve)
+	for _, span in runs(cr, 30, { 140, 460 }, { 140, 520 }) do
+		table.insert(cliff.undercuts, span)
+		for _ = 1, 2 do
+			rimRow(ops, AIR, span[1], span[2], function(angle)
+				return FACE + 2 + wander(angle) * 0.5
+			end, function()
+				return -43
+			end, 16)
+		end
+	end
+
+	-- Crevices: tall air slots up the face, through the bands
+	for _ = 1, 22 do
+		local angle = rimAngle(30)
+		local top = cr:NextNumber(-230, -70)
+		local bottom = math.max(top - cr:NextNumber(90, 230), floor + 12)
+		local radius = cr:NextNumber(7, 10)
+		if not free(angle, radius + 10, top + radius, bottom - radius) then
+			continue
+		end
+		claim(angle, radius + 6, top + radius, bottom - radius)
+		local r = FACE + 2 + wander(angle) * 0.5
+		for _ = 1, 2 do
+			capsule(ops, AIR, at(angle, r, bottom), at(angle, r, top), radius)
+		end
+	end
+
+	-- Caves bitten into the face: a mouth and a darker hollow behind it
+	for _ = 1, 12 do
+		local angle = rimAngle(40)
+		local y = cr:NextNumber(floor + 50, -110)
+		local radius = cr:NextNumber(16, 26)
+		if not free(angle, radius + 8, y + radius, y - radius) then
+			continue
+		end
+		claim(angle, radius + 4, y + radius, y - radius)
+		local mouth = at(angle, FACE - 2, y)
+		for _ = 1, 2 do
+			ball(ops, AIR, mouth, radius)
+			ball(ops, AIR, at(angle, FACE - radius * 0.9, y - radius * 0.15), radius * 0.62)
+		end
+		table.insert(cliff.caves, { position = mouth, radius = radius })
+	end
+
+	-- Buttresses: tall rounded spurs standing out of the face from high on the wall
+	-- to its foot, a broader flare at the bottom; the undercut runs keep them below
+	-- the lip. Some are bored through along the face: a swim-through a LV 100 fish
+	-- fits (radius 11; a fish's collider is at most 6.8, the Puffer's 8.5).
+	for _ = 1, 26 do
+		local angle = rimAngle(60)
+		if inTrenchSector(angle, 10) then
+			continue
+		end
+		local width = cr:NextNumber(30, 48)
+		local depth = cr:NextNumber(24, 32)
+		local front = cr:NextNumber(15, 20)
+		local undercut = false
+		for _, span in cliff.undercuts do
+			if Seafloor.inSector(angle, span[1] - 3, span[2] + 3) then
+				undercut = true
+			end
+		end
+		local top = if undercut then cr:NextNumber(-110, -66) else cr:NextNumber(-90, -34)
+		local bottom = floor - 6
+		if not free(angle, width / 2 + 6, top, bottom) then
+			continue
+		end
+		claim(angle, width / 2, top, bottom)
+		local r = FACE + front - depth / 2
+		local height = top - bottom
+		local material = if cr:NextNumber() < 0.7 then ROCK else SLATE
+		Cave.pebble(ops, material, rimFrame(angle, r, (top + bottom) / 2), Vector3.new(width, height, depth))
+		Cave.pebble(
+			ops,
+			material,
+			rimFrame(angle, FACE + front + 4 - depth * 0.65, floor + 18),
+			Vector3.new(width * 1.5, 56, depth * 1.3)
+		)
+		if cr:NextNumber() < 0.35 and height > 140 then
+			local y = cr:NextNumber(bottom + 50, top - 40)
+			local frame = rimFrame(angle, FACE + 7, y)
+			for _ = 1, 2 do
+				capsule(
+					ops,
+					AIR,
+					(frame * CFrame.new(-width / 2 - 18, 0, 0)).Position,
+					(frame * CFrame.new(width / 2 + 18, 0, 0)).Position,
+					11,
+					true
+				)
+			end
+		end
+		table.insert(cliff.buttresses, { angle = angle, top = top, width = width })
+	end
+
+	-- Fluted columns: 3-6 tall narrow capsules side by side, standing on the floor
+	-- or on a band partway up (organ pipes)
+	for _ = 1, 16 do
+		local angle = rimAngle(50)
+		local foot = cr:NextNumber() < 0.6
+		if foot and inTrenchSector(angle, 10) then
+			continue
+		end
+		local radius = cr:NextNumber(4.5, 7)
+		local count = cr:NextInteger(3, 6)
+		local bottom = if foot then floor - 4 else bands[cr:NextInteger(3, #bands)].y
+		local tall = if foot then cr:NextNumber(90, 200) else cr:NextNumber(40, 100)
+		local half = radius * 1.7 * count / 2
+		if not free(angle, half + 4, bottom + tall, bottom) then
+			continue
+		end
+		claim(angle, half, bottom + tall, bottom)
+		local frame = rimFrame(angle, FACE + radius + 1, 0)
+		for k = 1, count do
+			local x = (k - (count + 1) / 2) * radius * 1.7
+			local height = tall * cr:NextNumber(0.6, 1)
+			local base = frame * Vector3.new(x, bottom, 0)
+			capsule(
+				ops,
+				if cr:NextNumber() < 0.5 then ROCK else SLATE,
+				base,
+				base + Vector3.new(0, height, 0),
+				radius * cr:NextNumber(0.85, 1.1)
+			)
+		end
+		table.insert(cliff.columns, { angle = angle, top = bottom + tall, bottom = bottom })
+	end
+
+	-- Ledges: wide shelves along a band (its top a little over it), 60-110 long,
+	-- standing 18-23 out of the face, for the coral gardens
+	for _ = 1, 60 do
+		if #cliff.ledges >= 44 then
+			break
+		end
+		local band = bands[cr:NextInteger(3, #bands)]
+		local length = cr:NextNumber(60, 110)
+		local angle = rimAngle(length / 2 + 20)
+		local depth = cr:NextNumber(18, 23)
+		local y = band.y + dip(angle) + band.thick / 2 - 3
+		if not free(angle, length / 2 + 10, y + 20, y - 14) then
+			continue
+		end
+		claim(angle, length / 2, y + 20, y - 14)
+		local slab = 13
+		local thickness = 26
+		local r = FACE + depth - thickness / 2
+		Cave.pebble(
+			ops,
+			band.material,
+			rimFrame(angle, r, y - slab / 2),
+			Vector3.new(length, slab, thickness)
+		)
+		table.insert(cliff.ledges, { top = at(angle, r, y), angle = angle, length = length, depth = depth })
+	end
+
+	-- The crest: the reef's lip, two rows along the rim (the inner one over the
+	-- drum's step to the sand), then reef heads on it
+	for _, span in stretches(14) do
+		rimRow(ops, ROCK, span[1], span[2], function(angle)
+			return FACE - 12 + wander(angle) * 0.4
+		end, function()
+			return -12
+		end, 14)
+		rimRow(ops, ROCK, span[1], span[2], function(angle)
+			return FACE + 6 + wander(angle) * 0.8
+		end, function()
+			return -14
+		end, 13)
+	end
+	for _ = 1, 34 do
+		local angle = rimAngle(30)
+		local size = Vector3.new(cr:NextNumber(22, 40), cr:NextNumber(14, 22), cr:NextNumber(18, 28))
+		local r = FACE + cr:NextNumber(-10, 2)
+		local frame = rimFrame(angle, r, cr:NextNumber(-2, 3))
+			* CFrame.Angles(cr:NextNumber(-0.15, 0.15), cr:NextNumber(-0.5, 0.5), cr:NextNumber(-0.15, 0.15))
+		Cave.pebble(ops, if cr:NextNumber() < 0.75 then ROCK else SANDSTONE, frame, size)
+		table.insert(
+			cliff.heads,
+			{ position = frame.Position + Vector3.new(0, size.Y / 2, 0), radius = size.X / 2 }
+		)
+	end
+
+	-- Talus at the foot: rounded boulders on the deep floor, most near the face,
+	-- sandstone and smaller by a chute, where its sand fans out
+	local made = 0
+	for _ = 1, 260 do
+		if made >= 96 then
+			break
+		end
+		local angle = cr:NextNumber(0, 360)
+		local away = 6 + 84 * cr:NextNumber() ^ 2
+		local size = Vector3.new(cr:NextNumber(12, 32), cr:NextNumber(9, 20), cr:NextNumber(12, 28))
+			* (1.15 - away / 120)
+		local r = FACE + away + size.X * 0.3
+		local spot = at(angle, r, 0)
+		if
+			nearChute(angle, 8)
+			or inTrenchSector(angle, 8)
+			or Seafloor.inTrench(spot.X, spot.Z, 40)
+			or inCity(city, spot, size.Magnitude / 2 + 20)
+		then
+			continue
+		end
+		local basin = false
+		for _, b in Seafloor.ventBasins() do
+			if math.sqrt((spot.X - b.x) ^ 2 + (spot.Z - b.z) ^ 2) < b.radius + 30 + size.X then
+				basin = true
+			end
+		end
+		if basin then
+			continue
+		end
+		local byChute = nearChute(angle, 110)
+		local material = if byChute then SANDSTONE elseif cr:NextNumber() < 0.75 then ROCK else SLATE
+		if byChute then
+			size *= 0.75
+		end
+		Cave.pebble(
+			ops,
+			material,
+			CFrame.new(at(angle, r, floor - size.Y * 0.3))
+				* CFrame.Angles(
+					cr:NextNumber(-0.35, 0.35),
+					cr:NextNumber(0, 6.28),
+					cr:NextNumber(-0.35, 0.35)
+				),
+			size
+		)
+		made += 1
+	end
+	-- The chutes' sand fans out either side of each one's foot
+	for _, chute in CHUTES do
+		for side = -1, 1, 2 do
+			local angle = chute + side * math.deg((CHUTE_HALF + 18) / FACE)
+			ball(ops, SAND, at(angle, FACE + 46, floor - 26), 36)
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- The Hydrothermal Vents' field (owner, 2026-10-19: "The vents part of the map needs
+-- more substance too"): the Terrain VentsPlan lays out between the basins, which
+-- Vents.luau dresses with parts. It draws on its own Random (World.seed + 98), so
+-- the shared sequence is untouched, and every top stays under VentsPlan.ceiling (no
+-- prey school is carried up its side).
+--   * THE FORGE: a volcano of stacked basalt rings with lumps and buttresses on its
+--     flanks, a crater bowl holding a lava lake, a notch where it spills, and lava
+--     runnels in grooves down to aprons of lava at its foot;
+--   * the smoker complexes' SPIRES: tapering and knobbly, with flanges and a hot lip,
+--     on low mounds;
+--   * PILLOW LAVA (rounded basalt pillows with lava glowing between them), CRACKED
+--     CRUST patches flush with the floor and long low BASALT RIDGES.
+-- ---------------------------------------------------------------------------
+
+-- A cylinder from `a` to `b`
+local function ventRod(ops: { Op }, material: Enum.Material, a: Vector3, b: Vector3, radius: number)
+	local span = b - a
+	local axis = span.Unit
+	local reference = if math.abs(axis.Y) > 0.9 then Vector3.xAxis else Vector3.yAxis
+	local right = reference:Cross(axis).Unit
+	local center = (a + b) / 2
+	cylinder(
+		ops,
+		material,
+		center,
+		radius,
+		span.Magnitude,
+		CFrame.fromMatrix(center, right, axis, right:Cross(axis))
+	)
+end
+
+local function forgeOps(ops: { Op }, forge: VentsPlan.Forge, vr: Random)
+	local c, height = forge.center, forge.height
+	local function onFlank(heading: number, t: number, inset: number): Vector3
+		local r = VentsPlan.forgeRadius(forge, t) - inset
+		return c + Vector3.new(math.cos(heading) * r, height * t, math.sin(heading) * r)
+	end
+	local function nearRunnel(heading: number, margin: number): boolean
+		for _, runnel in forge.runnels do
+			if math.abs((heading - runnel + math.pi) % (2 * math.pi) - math.pi) < margin then
+				return true
+			end
+		end
+		return false
+	end
+	-- The body: rings stacked up the cone, each a little narrower (Terrain rounds the
+	-- steps off)
+	local layers = math.ceil(height / 7)
+	for i = 0, layers - 1 do
+		local t0, t1 = i / layers, (i + 1) / layers
+		local bottom = if i == 0 then c.Y - 8 else c.Y + height * t0 - 1
+		local top = c.Y + height * t1 + 1
+		cylinder(
+			ops,
+			BASALT,
+			Vector3.new(c.X, (bottom + top) / 2, c.Z),
+			VentsPlan.forgeRadius(forge, (t0 + t1) / 2),
+			top - bottom
+		)
+	end
+	-- Lumps on the flanks (fewer and smaller up high), clear of the runnels' grooves
+	for _ = 1, 40 do
+		local t = vr:NextNumber() ^ 1.3 * 0.86
+		local heading = vr:NextNumber(0, 2 * math.pi)
+		local radius = (16 - 8 * t) * vr:NextNumber(0.8, 1.2)
+		if not nearRunnel(heading, 0.42) then
+			ball(
+				ops,
+				if vr:NextNumber() < 0.25 then SLATE else BASALT,
+				onFlank(heading, t, radius * 0.45),
+				radius
+			)
+		end
+	end
+	-- Buttresses down the flanks between the runnels, and a few more
+	local headings: { number } = {}
+	for k, runnel in forge.runnels do
+		local nextRunnel = forge.runnels[k % #forge.runnels + 1]
+		table.insert(headings, runnel + ((nextRunnel - runnel) % (2 * math.pi)) / 2)
+	end
+	for _ = 1, 3 do
+		local heading = vr:NextNumber(0, 2 * math.pi)
+		if not nearRunnel(heading, 0.5) then
+			table.insert(headings, heading)
+		end
+	end
+	for _, heading in headings do
+		local radius = vr:NextNumber(8, 12)
+		local low = onFlank(heading, 0.03, radius * 0.5)
+		local high = onFlank(heading + vr:NextNumber(-0.08, 0.08), vr:NextNumber(0.5, 0.68), radius * 0.6)
+		ventRod(ops, BASALT, low, high, radius)
+		ball(ops, BASALT, low, radius * 1.15)
+		ball(ops, BASALT, high, radius)
+	end
+	-- Lumps round the foot, half buried, between the runnels
+	for _ = 1, 12 do
+		local heading = vr:NextNumber(0, 2 * math.pi)
+		local radius = vr:NextNumber(8, 14)
+		local r = forge.base + vr:NextNumber(-4, 4)
+		if not nearRunnel(heading, 0.3) then
+			ball(
+				ops,
+				BASALT,
+				c + Vector3.new(math.cos(heading) * r, -radius * 0.35, math.sin(heading) * r),
+				radius
+			)
+		end
+	end
+	-- The crater: a bowl in the summit (twice: an Air fill takes occupancy away rather
+	-- than clearing it), a lava lake in its floor and a notch where it spills over the
+	-- rim down the first runnel
+	local summit = c.Y + height
+	for _ = 1, 2 do
+		ball(ops, AIR, Vector3.new(c.X, summit + 4, c.Z), forge.crater)
+	end
+	local bowl = summit + 4 - forge.crater
+	cylinder(ops, LAVA, Vector3.new(c.X, bowl + 0.5, c.Z), forge.crater * 0.62, 9)
+	local spill = forge.runnels[1]
+	for _ = 1, 2 do
+		ball(ops, AIR, onFlank(spill, 0.985, 2) + Vector3.new(0, -4, 0), 10)
+	end
+	-- The runnels: a groove down the flank with lava in its bottom, to an apron of
+	-- lava at the foot
+	local segments = 18
+	for index, heading in forge.runnels do
+		local top = if index == 1 then 0.97 else 0.9
+		for k = 0, segments - 1 do
+			local a = VentsPlan.runnelPoint(forge, heading, top * (1 - k / segments))
+			local b = VentsPlan.runnelPoint(forge, heading, top * (1 - (k + 1) / segments))
+			local outA = Vector3.new(a.X - c.X, 0, a.Z - c.Z).Unit
+			local outB = Vector3.new(b.X - c.X, 0, b.Z - c.Z).Unit
+			for _ = 1, 2 do
+				ventRod(ops, AIR, a + outA * 0.5, b + outB * 0.5, 4.5)
+			end
+			ventRod(ops, LAVA, a - outA * 2.2, b - outB * 2.2, 3)
+		end
+		local foot = VentsPlan.runnelPoint(forge, heading, 0)
+		local apron = foot + Vector3.new(foot.X - c.X, 0, foot.Z - c.Z).Unit * 9
+		cylinder(ops, LAVA, Vector3.new(apron.X, c.Y - 2, apron.Z), vr:NextNumber(11, 14), 4)
+	end
+end
+
+-- One smoker spire: tapering drums along its (nearly upright) axis with a bulge at
+-- each joint, knobs, flanges, and a rounded lip with hot crust in it
+local function spireOps(ops: { Op }, spire: VentsPlan.Spire, vr: Random)
+	local axis, foot, h = spire.tilt, spire.foot, spire.height
+	local function along(d: number): Vector3
+		return foot + axis * d
+	end
+	local function radiusAt(d: number): number
+		return spire.radius * (1 - 0.5 * math.clamp(d / h, 0, 1))
+	end
+	ball(ops, BASALT, foot - Vector3.new(0, spire.radius * 0.7, 0), spire.radius * 1.5)
+	local sections = 4
+	for s = 0, sections - 1 do
+		local d0, d1 = h * s / sections, h * (s + 1) / sections
+		ventRod(ops, BASALT, along(d0 - (if s == 0 then 4 else 1)), along(d1 + 1), radiusAt((d0 + d1) / 2))
+		if s > 0 then
+			ball(ops, BASALT, along(d0), radiusAt(d0) * 1.08)
+		end
+	end
+	for _ = 1, math.floor(h / 14) + 2 do
+		local d = vr:NextNumber(0.1, 0.9) * h
+		local a = vr:NextNumber(0, 2 * math.pi)
+		local r = radiusAt(d)
+		ball(
+			ops,
+			BASALT,
+			along(d) + Vector3.new(math.cos(a), 0, math.sin(a)) * (r * 0.85),
+			vr:NextNumber(2.5, 4.5) + r * 0.15
+		)
+	end
+	for _, d in spire.flanges do
+		cylinder(ops, BASALT, along(d), radiusAt(d) + vr:NextNumber(4, 6), 4)
+	end
+	local lip = radiusAt(h)
+	ball(ops, BASALT, along(h - 1), lip + 1.2)
+	ball(ops, LAVA, along(h + 0.5), math.max(lip * 0.75, 3.5))
+end
+
+local function ventsField(ops: { Op }, plan: VentsPlan.Plan)
+	local vr = Random.new(World.seed + 98)
+	for _, ridge in plan.ridges do
+		Cave.pebble(ops, BASALT, ridge.cframe, ridge.size)
+	end
+	for _, mound in plan.mounds do
+		local main = mound.height / 1.35
+		ball(ops, BASALT, mound.center + Vector3.new(0, main * 0.35, 0), main)
+		local count = vr:NextInteger(4, 7)
+		for k = 1, count do
+			local a = k / count * 2 * math.pi + vr:NextNumber(-0.4, 0.4)
+			local d = vr:NextNumber(0.45, 1) * mound.radius
+			local r = main * vr:NextNumber(0.5, 0.8)
+			ball(ops, BASALT, mound.center + Vector3.new(math.cos(a) * d, r * 0.3, math.sin(a) * d), r)
+			-- Lava glowing in the seam to the next pillow
+			if vr:NextNumber() < 0.55 then
+				local seam = a + math.pi / count
+				ball(
+					ops,
+					LAVA,
+					mound.center + Vector3.new(math.cos(seam) * d * 0.7, 1.5, math.sin(seam) * d * 0.7),
+					vr:NextNumber(3.5, 4.5)
+				)
+			end
+		end
+	end
+	for _, crust in plan.crusts do
+		local c = crust.center
+		cylinder(ops, LAVA, Vector3.new(c.X, c.Y - 2, c.Z), crust.radius, 4)
+		for _ = 1, vr:NextInteger(2, 3) do
+			local a = vr:NextNumber(0, 2 * math.pi)
+			local d = crust.radius * vr:NextNumber(0.8, 1.25)
+			cylinder(
+				ops,
+				LAVA,
+				Vector3.new(c.X + math.cos(a) * d, c.Y - 2, c.Z + math.sin(a) * d),
+				crust.radius * vr:NextNumber(0.25, 0.45),
+				4
+			)
+		end
+	end
+	local forge = plan.forge
+	if forge then
+		forgeOps(ops, forge, vr)
+	end
+	for _, smoker in plan.smokers do
+		ball(ops, BASALT, smoker.center - Vector3.new(0, smoker.radius * 0.6, 0), smoker.radius * 0.85)
+		for _, spire in smoker.spires do
+			spireOps(ops, spire, vr)
+		end
+	end
+end
+
 function Shelf.ops(): ({ Op }, Features)
 	local ops: { Op } = {}
 	local rng = Random.new(World.seed + 7)
@@ -220,52 +958,29 @@ function Shelf.ops(): ({ Op }, Features)
 	)
 	cylinder(ops, SAND, Vector3.new(0, -16, 0), shelf.radius + 20, 32)
 
-	-- The drop-off: the rim bulges and bays so it isn't a perfect circle, then
-	-- notches bitten out of the cliff, buttresses bulging from it, and sandstone
-	-- ledges clinging to it
-	for _ = 1, 16 do
-		local angle = rng:NextNumber(0, 360)
-		local radius = rng:NextNumber(60, 100)
-		ball(ops, ROCK, at(angle, rim - 10, -radius * 0.9), radius)
-		ball(ops, SAND, at(angle, rim - 30, -radius * 0.95 + 8), radius * 0.8)
+	-- The drop-off (owner, 2026-10-19: "The cliff edge needs to be dialed up more and
+	-- should have coral etc on it. Right now it's just bulbous spheres off the edge"):
+	-- a layered reef wall (dropOff, above), on its own Random. The shared sequence
+	-- still takes the draws the old drop-off took (16 rim bulges, 12 bites, 140
+	-- notches, 110 face boulders, 40 ledges), so everything after it (the dunes,
+	-- outcrops, reef heads, ridges, arches, the Trench, the Vents, the Ruins' mounds
+	-- and the Open Blue) keeps its place.
+	for _ = 1, 16 * 2 do
+		rng:NextNumber()
 	end
 	for _ = 1, 12 do
 		local angle = rng:NextNumber(0, 360)
-		if Seafloor.inSector(angle, trench.angles[1] - 15, trench.angles[2] + 15) then
-			continue
+		if not Seafloor.inSector(angle, trench.angles[1] - 15, trench.angles[2] + 15) then
+			rng:NextNumber()
+			rng:NextNumber()
 		end
-		ball(ops, AIR, at(angle, rim + 40, rng:NextNumber(-200, -60)), rng:NextNumber(50, 75))
 	end
-	for _ = 1, 140 do
-		local angle = rng:NextNumber(0, 360)
-		ball(
-			ops,
-			AIR,
-			at(angle, rim + rng:NextNumber(-8, 26), rng:NextNumber(-380, -14)),
-			rng:NextNumber(18, 44)
-		)
+	for _ = 1, 140 * 4 + 110 * 4 + 40 * 4 do
+		rng:NextNumber()
 	end
-	for _ = 1, 110 do
-		local angle = rng:NextNumber(0, 360)
-		ball(
-			ops,
-			ROCK,
-			at(angle, rim - 8 + rng:NextNumber(0, 40), rng:NextNumber(-410, -36)),
-			rng:NextNumber(14, 40)
-		)
-	end
-	for _ = 1, 40 do
-		local angle = rng:NextNumber(0, 360)
-		cylinder(
-			ops,
-			SANDSTONE,
-			at(angle, rim + 6 + rng:NextNumber(0, 24), rng:NextNumber(-360, -30)),
-			rng:NextNumber(18, 38),
-			8
-		)
-	end
+	dropOff(ops, features)
 	-- Sand chutes down the cliff (never through the trench's sector)
-	for _, angle in { 20, 55, 160, 200, 250, 292, 320, 340 } do
+	for _, angle in CHUTES do
 		local top = at(angle, shelf.radius - 10, -2)
 		local foot = at(angle, deepInner + 110, floor + 2)
 		local run = foot - top
@@ -471,6 +1186,15 @@ function Shelf.ops(): ({ Op }, Features)
 		ball(ops, LAVA, Vector3.new(x, base + height, z), rng:NextNumber(4, 8))
 		table.insert(features.chimneys, { position = Vector3.new(x, base, z), height = height })
 	end
+	-- The field between the basins (owner, 2026-10-19: "The vents part of the map needs
+	-- more substance too"): the Forge, black-smoker spires, pillow lava, crust and
+	-- basalt ridges, laid out round the chimneys above by VentsPlan and dressed by
+	-- Vents.luau (ventsField: its own Random)
+	local field = VentsPlan.make(features.chimneys)
+	field.opsFrom = #ops + 1
+	ventsField(ops, field)
+	field.opsTo = #ops
+	features.vents = field
 
 	-- The Sunken Ruins' ground: buried sandstone mounds out in the biome (none under
 	-- the city), then the city's sand plain, its drifts and the courtyard's pit
@@ -521,11 +1245,24 @@ function Shelf.ops(): ({ Op }, Features)
 		table.insert(features.pinnacles, base + Vector3.new(0, height, 0))
 	end
 
-	-- Debris that slid off the Wreck's side of the shelf
+	-- Debris that slid off the Wreck's side of the shelf: rounded boulders like the
+	-- drop-off's talus (they were balls; the turn of each comes from its own Random)
+	local tumble = Random.new(World.seed + CLIFF_SEED + 1)
 	for _ = 1, 30 do
 		local angle = sectorAngle(rng, 135, 225)
 		local r = rng:NextNumber(deepInner + 10, deepInner + 130)
-		ball(ops, ROCK, at(angle, r, floor - 4), rng:NextNumber(10, 28))
+		local radius = rng:NextNumber(10, 28)
+		Cave.pebble(
+			ops,
+			if tumble:NextNumber() < 0.7 then ROCK else SLATE,
+			CFrame.new(at(angle, r, floor - 4 + radius * 0.45))
+				* CFrame.Angles(
+					tumble:NextNumber(-0.3, 0.3),
+					tumble:NextNumber(0, 6.28),
+					tumble:NextNumber(-0.3, 0.3)
+				),
+			Vector3.new(radius * 2.1, radius * 1.1, radius * 1.7)
+		)
 	end
 
 	return ops, features

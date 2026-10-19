@@ -22,6 +22,7 @@ local Ui = require(script.Parent.Parent.Ui)
 local Sfx = require(script.Parent.Parent.Sfx)
 local CameraController = require(script.Parent.CameraController)
 local OceanController = require(script.Parent.OceanController)
+local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
 
 -- A creature's body radius as a share of its length, for biting it and for bumping
@@ -960,7 +961,10 @@ local function step(dt: number)
 		end
 		-- The tag: hidden inside a blood cloud (sonar only), and until a boss has faded
 		-- most of the way in; else the status line
-		visual.tag.Enabled = not visual.hidden and visual.bloodUntil <= now and visual.presence > 0.5
+		visual.tag.Enabled = not visual.hidden
+			and visual.bloodUntil <= now
+			and visual.presence > 0.5
+			and not StartController.isUp() -- (the start screen's shots: no tags over them)
 		if visual.staggerUntil > now then
 			visual.status.Text = "STAGGERED · BITE IT"
 			visual.status.TextColor3 = Ui.color.haul

@@ -12,7 +12,7 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local Ui = require(script.Parent.Parent.Ui)
 local Sfx = require(script.Parent.Parent.Sfx)
 local OceanController = require(script.Parent.OceanController)
-local Config = require(ReplicatedStorage.Shared.Config)
+local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
 
 local BiomeController = {}
@@ -150,10 +150,9 @@ local function step()
 	end
 	local biome = Biomes.at(root.Position)
 	local inHub = biome == nil
-	-- The dark of a dark biome, once you're down in it
-	OceanController.setDark(
-		if biome and biome.dark and root.Position.Y < Config.World.deep.floorY + 40 then 1 else 0
-	)
+	-- The dark of a dark biome, once you're down in it (or where the start screen's
+	-- shot is: its camera is far from the fish, which waits in its den)
+	OceanController.setDark(Biomes.darkAt(StartController.viewpoint() or root.Position))
 	if wasInHub and not inHub then
 		leftHubAt = os.clock()
 	end

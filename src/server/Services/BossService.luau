@@ -877,7 +877,9 @@ local function rewards(boss: Boss, killer: Player?)
 		}
 		-- The Haul (carry it home): full Hauls of the fish's own, on top of what it
 		-- carries ("sized": ×2 Mass and Server Frenzy count, the full Haul doesn't)
-		summary.haul = HuntService.hauls(player, reward.hauls + reward.haulsShare * share, "sized")
+		-- (shown as food: HuntService.shown)
+		summary.haul =
+			HuntService.shown(player, HuntService.hauls(player, reward.hauls + reward.haulsShare * share, "sized"))
 		-- The coral jackpot
 		local coral = math.floor(math.max(reward.coral * share, reward.coralMin) + 0.5)
 		summary.coral = EconomyService.earnCoral(player, coral)

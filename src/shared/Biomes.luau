@@ -45,4 +45,12 @@ function Biomes.tooLow(biome: Biome, level: number): boolean
 	return level + Config.Biomes.warnSlack < biome.minLevel
 end
 
+-- The dark at `position` (1 down in a dark biome, below its rim; else 0): what
+-- OceanController.setDark is given for where the view is (BiomeController, and the
+-- start screen's shots)
+function Biomes.darkAt(position: Vector3): number
+	local biome = Biomes.at(position)
+	return if biome and biome.dark and position.Y < Config.World.deep.floorY + 40 then 1 else 0
+end
+
 return Biomes

@@ -1,0 +1,441 @@
+--!strict
+-- The start screen's documentary shots (Config/Start): which school a shot can frame,
+-- where its camera goes at any moment, and whether that path stays in open water.
+-- Everything here is a pure function of the shared clock and the world's config, so
+-- the client (StartController, raycasting the real world), the server (StartService:
+-- is this school the shot's, where to stream) and the cloud preview
+-- (tools/preview/run_start.sh, raycasting the Terrain's fill ops) agree.
+--
+-- A shot's subject is its school's middle (Schools.schoolFrame, lifted over the
+-- ground like every client draws it), averaged over a moment either side so the
+-- camera never jitters on the loop's figure-eight. The camera sits in a frame fixed
+-- for the whole shot (along the school's travel, or toward a landmark), so it never
+-- swings round with the loop: it travels with the school by `follow` and pans to
+-- keep it framed, pushing in a little as the shot goes on. `plan` tries the shot's
+-- variants (either side, higher, closer) until one keeps the camera in open water
+-- for the whole shot and the time it may run over (`cast`: a ray against the world,
+-- the distance to what it hit or nil).
+local Config = require(script.Parent.Config)
+local Schools = require(script.Parent.Schools)
+local Seafloor = require(script.Parent.Seafloor)
+
+local World = Config.World
+local Start = Config.Start
+
+export type Shot = typeof(Config.Start.shots[1])
+export type Cast = (origin: Vector3, direction: Vector3) -> number?
+
+export type Plan = {
+	shot: number,
+	school: number,
+	t0: number, -- shared-clock time the shot starts
+	seconds: number,
+	span: number, -- seconds it was checked for (its length and how long it may run over)
+	style: string,
+	side: number, -- +1 / -1: which side of the school the camera keeps
+	distance: number,
+	height: number,
+	rise: number,
+	push: number,
+	follow: number,
+	sweep: number,
+	fov: number,
+	floor: number,
+	window: number,
+	forward: Vector3, -- the shot's fixed frame: along the school's travel or toward the landmark
+	right: Vector3,
+	anchor: Vector3, -- the subject at t0
+	landmark: Vector3?,
+	variant: number,
+	fails: number, -- checks the path failed (0 for a plan `plan` returns)
+}
+
+local StartShots = {}
+
+local UP = Vector3.new(0, 1, 0)
+local SURFACE_KEEP = 12 -- studs the camera keeps under the surface
+local EDGE_KEEP = 170 -- studs from the map's edge (the water thickens past 240: OceanController)
+local PAD = 1.5 -- studs past the camera a ray must also find clear (the near plane)
+local STEP = 0.5 -- seconds between the path's checks
+local SIDE_RAY = 3 -- studs of open water round the camera
+
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+local function unit(v: Vector3, fallback: Vector3): Vector3
+	local m = v.Magnitude
+	if m < 1e-6 then
+		return fallback
+	end
+	return v / m
+end
+
+local function smooth(u: number): number
+	u = math.clamp(u, 0, 1)
+	return u * u * (3 - 2 * u)
+end
+
+local function polar(position: Vector3): (number, number)
+	return Seafloor.polar(position.X, position.Z)
+end
+
+-- Whether `angle` lies in the sector `from` → `to` (clockwise), `margin` degrees in
+-- from both ends
+local function inSector(angle: number, from: number, to: number, margin: number): boolean
+	local span = (to - from) % 360
+	if span == 0 then
+		return true
+	end
+	if span <= 2 * margin then
+		return false
+	end
+	return (angle - from - margin) % 360 < span - 2 * margin
+end
+
+-- The shot's place: its biome's sector and radii (narrowed by the shot's own), a
+-- margin in from every edge so the camera stays in that biome's water
+function StartShots.inPlace(shot: Shot, position: Vector3): boolean
+	local biome = Config.Biomes.byId[shot.biome]
+	if biome == nil then
+		return false
+	end
+	local r, angle = polar(position)
+	local margin = 40
+	local low, high = biome.radiusFrom, math.min(biome.radiusTo, World.boundsRadius - EDGE_KEEP)
+	if shot.radii then
+		low, high = math.max(low, shot.radii[1]), math.min(high, shot.radii[2])
+	end
+	if r < low + margin or r > high - margin then
+		return false
+	end
+	local degrees = math.deg(margin / math.max(r, 1))
+	if not inSector(angle, biome.angleFrom, biome.angleTo, degrees) then
+		return false
+	end
+	if shot.angles and not inSector(angle, shot.angles[1], shot.angles[2], degrees) then
+		return false
+	end
+	-- (the Trench's canyon is its own place: other biomes' shots keep off it)
+	if shot.biome ~= "AbyssalTrench" and Seafloor.inTrench(position.X, position.Z, 30) then
+		return false
+	end
+	return true
+end
+
+-- The great temple's middle, a little over its platform (Config/Ruins: the city's
+-- middle stands `radius` out at `angle`, on the deep floor)
+local function templeAt(): Vector3
+	local ruins = Config.Ruins
+	local a = math.rad(ruins.angle)
+	return World.hub.center
+		+ Vector3.new(math.cos(a) * ruins.radius, World.deep.floorY + 24, math.sin(a) * ruins.radius)
+end
+
+-- What stands behind a shot's school, or nil (a wreck is found by the client, once
+-- the area is in, and handed to `plan`)
+function StartShots.landmark(shot: Shot, school: number): Vector3?
+	local center = Schools.list[school].center
+	if shot.landmark == "temple" then
+		return templeAt()
+	elseif shot.landmark == "basin" then
+		local best: { x: number, z: number, radius: number }? = nil
+		local bestDistance = math.huge
+		for _, basin in Seafloor.ventBasins() do
+			local d = math.sqrt((basin.x - center.X) ^ 2 + (basin.z - center.Z) ^ 2)
+			if d < bestDistance then
+				best, bestDistance = basin, d
+			end
+		end
+		if best == nil or bestDistance < 25 or bestDistance > best.radius + 60 then
+			return nil -- (right over its middle: no "beyond" to look toward)
+		end
+		return Vector3.new(best.x, World.deep.ventsFloorY + 30, best.z)
+	elseif shot.landmark == "canyon" then
+		-- Further along the canyon's line, toward its middle so it stays inside it
+		local trench = World.trench
+		local r = polar(center)
+		local middle = (trench.radii[1] + trench.radii[2]) / 2
+		local along = math.clamp(r + (if r < middle then 170 else -170), trench.radii[1], trench.radii[2])
+		local x, z = Seafloor.trenchPoint(along, 0)
+		return Vector3.new(x, center.Y, z)
+	end
+	return nil
+end
+
+-- Whether school `index` can be shot `shot`'s subject (the server checks a request
+-- with this): one of its prey, out every tide, in its place
+function StartShots.fits(shot: Shot, index: number): boolean
+	local school = Schools.list[index]
+	if school == nil or school.tide ~= nil or table.find(shot.prey, school.prey) == nil then
+		return false
+	end
+	return StartShots.inPlace(shot, school.center)
+end
+
+-- Every school shot `shot` can frame, its first prey's first (then the next prey's).
+-- A temple shot takes the schools within `within` of its temple first, nearest first,
+-- whatever their prey, then the rest (its temple is lost in the haze from further).
+function StartShots.candidates(shot: Shot): { number }
+	local found: { { index: number, rank: number, key: number } } = {}
+	local temple = if shot.landmark == "temple" then templeAt() else nil
+	local within = shot.within or 330
+	for index, school in Schools.list do
+		local rank = table.find(shot.prey, school.prey)
+		if rank and StartShots.fits(shot, index) then
+			local key = index
+			if temple then
+				key = (flat(school.center) - flat(temple)).Magnitude
+				if key <= within then
+					rank = 0
+				end
+			end
+			table.insert(found, { index = index, rank = rank, key = key })
+		end
+	end
+	table.sort(found, function(a, b)
+		if a.rank ~= b.rank then
+			return a.rank < b.rank
+		end
+		return a.key < b.key
+	end)
+	local list: { number } = {}
+	for _, entry in found do
+		table.insert(list, entry.index)
+	end
+	return list
+end
+
+-- The school's width (studs): its spread both ways plus one of its fish
+function StartShots.width(index: number): number
+	local school = Schools.list[index]
+	local total = 0
+	for i = school.first, school.first + school.count - 1 do
+		total += Schools.fish[i].length
+	end
+	return 2 * school.spread + total / math.max(school.count, 1)
+end
+
+-- Its fish's average length (studs)
+function StartShots.fishLength(index: number): number
+	local school = Schools.list[index]
+	local total = 0
+	for i = school.first, school.first + school.count - 1 do
+		total += Schools.fish[i].length
+	end
+	return total / math.max(school.count, 1)
+end
+
+-- The subject at time t: the school's middle, averaged over `window` seconds either
+-- side (weights 1-2-3-2-1)
+local WEIGHTS = { { -1, 1 }, { -0.5, 2 }, { 0, 3 }, { 0.5, 2 }, { 1, 1 } }
+function StartShots.subject(index: number, t: number, window: number): Vector3
+	local sum = Vector3.new(0, 0, 0)
+	for _, w in WEIGHTS do
+		sum += Schools.schoolFrame(index, t + w[1] * window).Position * w[2]
+	end
+	return sum / 9
+end
+
+-- Where the streaming goes for a shot (the server asks for these): the school, and
+-- its landmark when that's near enough to be in the picture
+function StartShots.streamPoints(shot: Shot, index: number, t: number): { Vector3 }
+	local here = Schools.schoolFrame(index, t).Position
+	local points = { here }
+	local landmark = StartShots.landmark(shot, index)
+	if landmark and (landmark - here).Magnitude < 420 then
+		table.insert(points, landmark)
+	end
+	return points
+end
+
+-- Whether the ground should be in reach under the school once its area has streamed
+-- in (a mid-water school in the Open Blue has nothing under it for hundreds of studs)
+function StartShots.groundNear(index: number): (boolean, number)
+	local center = Schools.list[index].center
+	local over = center.Y - Seafloor.y(center.X, center.Z)
+	return over < 160, over
+end
+
+-- The lower third: the featured fish's name, then its place and levels
+function StartShots.caption(shot: Shot, index: number): (string, string)
+	local school = Schools.list[index]
+	local prey = Config.Prey.byId[school.prey]
+	local biome = Config.Biomes.byId[shot.biome]
+	local name = if prey then prey.name else school.prey
+	local place = if biome then `{biome.name}  ·  LV {biome.minLevel}–{biome.maxLevel}` else shot.biome
+	return name, place
+end
+
+-- The camera at shared-clock time t: its frame (looking at the subject), the subject
+-- and the lens
+function StartShots.view(plan: Plan, t: number): (CFrame, Vector3, number)
+	local s = t - plan.t0
+	local e = smooth(s / plan.seconds)
+	local subject = StartShots.subject(plan.school, t, plan.window)
+	local base = plan.anchor:Lerp(subject, plan.follow)
+	local d = plan.distance * (1 - plan.push * e)
+	local f, r, side = plan.forward, plan.right, plan.side
+	local h = plan.height
+	local offset: Vector3
+	local look = subject
+	if plan.style == "lead" and plan.landmark == nil then
+		offset = f * (0.95 * d) + r * (side * 0.42 * d)
+	elseif plan.style == "glide" then
+		offset = f * ((-0.9 + 1.5 * e) * d) + r * (side * 0.75 * d)
+		look = subject + f * (0.15 * d)
+	elseif plan.style == "orbit" then
+		-- round the school from its home side: opposite the landmark, else beside it
+		local home = if plan.landmark then -f else r * side
+		local across = UP:Cross(home)
+		local a = side * plan.sweep * (e - 0.5)
+		offset = (home * math.cos(a) + across * math.sin(a)) * d
+	elseif plan.style == "rise" then
+		h = plan.height + (plan.rise - plan.height) * e
+		offset = r * (side * 0.8 * d) - f * (0.3 * d)
+	elseif plan.landmark then
+		-- behind the school, the landmark beyond it (a little to one side)
+		offset = -f * (0.94 * d) + r * (side * 0.34 * d)
+	else -- track
+		offset = r * (side * d) - f * (0.2 * d)
+		look = subject + f * (0.12 * d)
+	end
+	local position = base + offset + UP * (h * d)
+	-- Over the nominal floor and under the surface
+	local floorY = Seafloor.y(position.X, position.Z) + plan.floor
+	position =
+		Vector3.new(position.X, math.clamp(position.Y, floorY, World.surfaceY - SURFACE_KEEP), position.Z)
+	local toward = look - position
+	if toward.Magnitude < 0.5 then
+		look = position + f
+	elseif math.abs(toward.Unit.Y) > 0.97 then
+		look = position + unit(flat(toward), f) + Vector3.new(0, if toward.Y > 0 then 4 else -4, 0)
+	end
+	return CFrame.lookAt(position, look), subject, plan.fov
+end
+
+-- How many of a plan's checks fail over its whole span: the subject can see the
+-- camera (and a little past it), the camera's own travel is clear, there's open water
+-- under it (`floor`) and round it, and it keeps off the map's edge
+function StartShots.check(plan: Plan, cast: Cast): number
+	local fails = 0
+	local previous: Vector3? = nil
+	local s = 0
+	while s <= plan.span + 1e-6 do
+		local frame, subject = StartShots.view(plan, plan.t0 + s)
+		local p = frame.Position
+		local toCamera = p - subject
+		local length = toCamera.Magnitude
+		if length > 0.5 and cast(subject, toCamera.Unit * (length + PAD)) then
+			fails += 1
+		end
+		if previous then
+			local move = p - (previous :: Vector3)
+			if move.Magnitude > 0.05 and cast(previous :: Vector3, move.Unit * (move.Magnitude + PAD)) then
+				fails += 1
+			end
+		end
+		if cast(p, Vector3.new(0, -plan.floor, 0)) then
+			fails += 1
+		end
+		local sideways = frame.RightVector
+		if cast(p, sideways * SIDE_RAY) or cast(p, -sideways * SIDE_RAY) or cast(p, UP * SIDE_RAY) then
+			fails += 1
+		end
+		if polar(p) > World.boundsRadius - EDGE_KEEP + 40 then
+			fails += 1
+		end
+		previous = p
+		s += STEP
+	end
+	return fails
+end
+
+-- A camera path for shot `shotIndex` on school `school` from shared-clock time `t0`
+-- that stays in open water (or nil, with the least bad try). `side` is the side to
+-- try first (+1 / -1); `landmark` overrides the shot's own (a wreck the client found).
+function StartShots.plan(
+	shotIndex: number,
+	school: number,
+	t0: number,
+	cast: Cast,
+	side: number?,
+	landmark: Vector3?
+): (Plan?, Plan?)
+	local shot = Start.shots[shotIndex]
+	local timing = Start.timing
+	local seconds = timing.seconds
+	local window = timing.window
+	local width = StartShots.width(school)
+	-- Close enough that its fish read (`lengths` of them at most), never inside the
+	-- school's own spread
+	local fishLength = StartShots.fishLength(school)
+	local spread = Schools.list[school].spread
+	local distance = math.min(width * (shot.frame or 1), fishLength * (shot.lengths or 7))
+	distance = math.clamp(distance, math.max(shot.near or 10, spread + fishLength * 1.5), shot.far or 60)
+	local mark = landmark or StartShots.landmark(shot, school)
+	local anchor = StartShots.subject(school, t0, window)
+	local forward: Vector3
+	if mark and flat(mark - anchor).Magnitude > distance * 1.2 then
+		forward = unit(flat(mark - anchor), Vector3.new(1, 0, 0))
+	else
+		mark = nil
+		local travel = flat(StartShots.subject(school, t0 + seconds, window) - anchor)
+		if travel.Magnitude < width * 0.3 then
+			local frame = Schools.schoolFrame(school, t0 + seconds / 2)
+			travel = flat(frame.LookVector)
+		end
+		forward = unit(travel, Vector3.new(1, 0, 0))
+	end
+	local right = forward:Cross(UP)
+	local first = if side and side < 0 then -1 else 1
+	-- Either side; then higher; then closer; then both
+	local variants = {
+		{ first, 0, 1 },
+		{ -first, 0, 1 },
+		{ first, 0.35, 1 },
+		{ -first, 0.35, 1 },
+		{ first, 0, 0.72 },
+		{ -first, 0, 0.72 },
+		{ first, 0.35, 0.72 },
+		{ -first, 0.35, 0.72 },
+	}
+	local best: Plan? = nil
+	for number, variant in variants do
+		local height = (shot.height or 0.2) + variant[2]
+		local plan: Plan = {
+			shot = shotIndex,
+			school = school,
+			t0 = t0,
+			seconds = seconds,
+			span = seconds + timing.extend,
+			style = shot.style,
+			side = variant[1],
+			distance = distance * variant[3],
+			height = height,
+			rise = (shot.rise or height) + variant[2],
+			push = shot.push or 0.1,
+			follow = shot.follow or 0.7,
+			sweep = shot.sweep or 0.6,
+			fov = shot.fov or 56,
+			floor = shot.floor or 6,
+			window = window,
+			forward = forward,
+			right = right,
+			anchor = anchor,
+			landmark = mark,
+			variant = number,
+			fails = 0,
+		}
+		plan.fails = StartShots.check(plan, cast)
+		if plan.fails == 0 then
+			return plan, plan
+		end
+		if best == nil or plan.fails < (best :: Plan).fails then
+			best = plan
+		end
+	end
+	return nil, best
+end
+
+return StartShots

@@ -10,21 +10,39 @@
 -- camera are built, and each creature fades in and out at the edge of its `range`.
 --
 -- Kinds (`biomes` are Config/Biomes ids; `depth` is studs over the local floor):
---   jelly   drifting jellyfish: a pale bell, a Neon rim and trailing glowing tentacles
---   ray     rays gliding low over the sand
+--   jelly   drifting jellyfish: a pale bell with a frilled glowing margin, frilly oral
+--           arms and fine glowing tentacles that trail as it swims
+--   ray     blue-spotted stingrays gliding low over the sand, now and then settling
+--           into it with a puff of sand and lifting off again
+--   manta   reef mantas flying slow loops over the reef and the wrecks
 --   crab    crabs scuttling sideways on the floor, mostly on and beside rocks and wrecks
---   turtle  sea turtles cruising the shelf
+--   turtle  green sea turtles rowing big slow loops over the shelf
 --   cloud   clouds of tiny reef fish hovering round coral heads (found near the camera)
---   giant   a whale or a manta passing far off through the Open Blue's haze
+--   giant   a humpback or a giant manta passing far off through the Open Blue's haze
+--
+-- The rays, mantas, crabs, turtles and giants are their imported models
+-- (ReplicatedStorage.AmbientModels.<model>: tools/blender/rig_ambient.py, docs/ASSETS.md)
+-- or, until those are in, faceted part-built stand-ins; both are posed by
+-- Shared/AmbientRigs (`rig`), whose stand-ins take their colours from `look` (by role;
+-- `colors` are each creature's pick for its main role, `tint`).
 export type Kind = {
 	biomes: { string },
 	perCell: number, -- creatures a square, on average
 	range: number, -- studs from the camera it's drawn within
 	depth: { number }?, -- over the local floor (`floor` kinds sit on it)
-	size: { number }, -- studs (a jelly's bell, a ray's span, a crab's width, a turtle's shell)
+	size: { number }, -- studs: a jelly's bell, a ray's or manta's span, a crab's width
+	-- across its legs, a turtle's length beak to tail
 	speed: { number }?, -- studs/s
 	colors: { Color3 },
 	max: number, -- at most this many near the camera
+	rig: string?, -- Shared/AmbientRigs: its skeleton, motion and stand-in
+	model: string?, -- ReplicatedStorage.AmbientModels.<model>
+	beat: { number }?, -- seconds a flap, stroke or ripple (each creature its own)
+	-- Studs from the camera within which its joints move every frame (to twice that,
+	-- every other frame; past that they hold their last pose)
+	animate: number?,
+	look: { [string]: Color3 }?, -- the stand-in's colours by role
+	tint: string?, -- the role `colors` picks for
 }
 
 local CELL = 96
@@ -54,39 +72,103 @@ local kinds: { [string]: Kind } = {
 		size = { 4.5, 9 },
 		speed = { 3, 6 },
 		colors = {
-			Color3.fromRGB(104, 108, 92), -- sand-grey stingray
-			Color3.fromRGB(38, 50, 72), -- navy eagle ray
-			Color3.fromRGB(82, 92, 104), -- slate
+			Color3.fromRGB(64, 104, 92), -- olive-teal
+			Color3.fromRGB(58, 96, 104), -- sea green
+			Color3.fromRGB(72, 98, 80), -- olive
 		},
 		max = 10,
+		rig = "stingray",
+		model = "Stingray",
+		beat = { 1.3, 1.9 },
+		animate = 90,
+		tint = "top",
+		look = {
+			top = Color3.fromRGB(64, 104, 92),
+			top2 = Color3.fromRGB(56, 94, 84),
+			belly = Color3.fromRGB(118, 134, 148),
+			spot = Color3.fromRGB(40, 132, 255),
+			eye = Color3.fromRGB(18, 22, 28),
+			dark = Color3.fromRGB(38, 46, 54),
+		},
+	},
+	manta = {
+		biomes = { "CoralReef", "ShipwreckGraveyard" },
+		perCell = 0.05,
+		range = 320,
+		depth = { 22, 70 },
+		size = { 9, 15 },
+		speed = { 4, 6.5 },
+		colors = { Color3.fromRGB(30, 38, 52) },
+		max = 3,
+		rig = "manta",
+		model = "Manta",
+		beat = { 3.4, 4.4 },
+		animate = 320,
+		tint = "top",
+		look = {
+			top = Color3.fromRGB(30, 38, 52),
+			top2 = Color3.fromRGB(25, 32, 45),
+			patch = Color3.fromRGB(88, 106, 126),
+			belly = Color3.fromRGB(98, 112, 130),
+			dark = Color3.fromRGB(19, 23, 31),
+			eye = Color3.fromRGB(8, 10, 14),
+		},
 	},
 	crab = {
 		biomes = { "ShipwreckGraveyard", "CoralReef", "SunkenRuins", "KelpShallows" },
 		perCell = 2.5,
 		range = 100,
-		size = { 0.9, 2.1 },
+		size = { 1.4, 3.2 },
 		speed = { 1.5, 3 },
+		-- (the stand-in's shell; an imported crab is its own scarlet, tinted toward these)
 		colors = {
-			Color3.fromRGB(196, 72, 38),
-			Color3.fromRGB(214, 112, 34),
-			Color3.fromRGB(118, 70, 46),
-			Color3.fromRGB(86, 78, 140),
+			Color3.fromRGB(196, 52, 40),
+			Color3.fromRGB(206, 92, 34),
+			Color3.fromRGB(128, 66, 48),
+			Color3.fromRGB(176, 40, 44),
 		},
 		max = 24,
+		rig = "crab",
+		model = "Crab",
+		animate = 40,
+		tint = "top",
+		look = {
+			top = Color3.fromRGB(196, 52, 40),
+			top2 = Color3.fromRGB(168, 40, 32),
+			claw = Color3.fromRGB(204, 58, 44),
+			belly = Color3.fromRGB(108, 110, 118),
+			dark = Color3.fromRGB(30, 30, 34),
+			eye = Color3.fromRGB(12, 12, 14),
+		},
 	},
 	turtle = {
 		biomes = { "KelpShallows", "CoralReef", "ShipwreckGraveyard" },
 		perCell = 0.22,
 		range = 230,
 		depth = { 14, 70 },
-		size = { 3.5, 6 },
+		size = { 5, 8.5 },
 		speed = { 3, 4.5 },
 		colors = {
-			Color3.fromRGB(96, 90, 52),
+			Color3.fromRGB(86, 96, 52),
 			Color3.fromRGB(78, 92, 58),
-			Color3.fromRGB(104, 80, 50),
+			Color3.fromRGB(96, 88, 54),
 		},
 		max = 6,
+		rig = "turtle",
+		model = "Turtle",
+		beat = { 3.6, 4.6 },
+		animate = 140,
+		tint = "scute",
+		look = {
+			scute = Color3.fromRGB(86, 96, 52),
+			scute2 = Color3.fromRGB(72, 82, 44),
+			rim = Color3.fromRGB(60, 66, 38),
+			belly = Color3.fromRGB(104, 112, 82),
+			skin = Color3.fromRGB(86, 100, 70),
+			skin2 = Color3.fromRGB(72, 86, 60),
+			beak = Color3.fromRGB(58, 62, 50),
+			eye = Color3.fromRGB(14, 16, 18),
+		},
 	},
 	cloud = {
 		biomes = { "CoralReef", "ShipwreckGraveyard", "KelpShallows", "SunkenRuins" },
@@ -106,13 +188,14 @@ local kinds: { [string]: Kind } = {
 		biomes = { "OpenBlue" },
 		perCell = 0, -- (lanes across the Open Blue, below)
 		range = 460,
-		size = { 55, 80 }, -- a whale's length (a manta's span is a third of it)
+		size = { 55, 80 }, -- a whale's length (a manta's span is 0.42 of it)
 		speed = { 5, 8 },
 		colors = {
 			Color3.fromRGB(44, 58, 76), -- whale
 			Color3.fromRGB(30, 36, 48), -- manta
 		},
 		max = 3,
+		animate = 1000, -- (only ever three, and big: always moving)
 	},
 }
 
@@ -128,7 +211,43 @@ return {
 	-- studs long over `period` seconds (the same on every client), seen only past
 	-- `near` (part-built shapes, read as silhouettes in the haze: the Open Blue's
 	-- water shows ~280 studs, Config/Bosses `sight`)
-	giants = { lanes = 5, period = 170, lane = 1100, near = 140 },
+	giants = {
+		lanes = 5,
+		period = 170,
+		lane = 1100,
+		near = 140,
+		-- The two giants' models, rigs, beats and stand-in looks
+		whale = {
+			rig = "whale",
+			model = "Humpback",
+			beat = { 6.5, 8.5 },
+			look = {
+				top = Color3.fromRGB(56, 72, 94),
+				top2 = Color3.fromRGB(50, 66, 88),
+				belly = Color3.fromRGB(108, 126, 146),
+				belly2 = Color3.fromRGB(96, 114, 134),
+			},
+		},
+		manta = {
+			rig = "manta",
+			model = "Manta",
+			beat = { 4.8, 6 },
+			look = {
+				top = Color3.fromRGB(30, 38, 52),
+				top2 = Color3.fromRGB(25, 32, 45),
+				patch = Color3.fromRGB(80, 98, 118),
+				belly = Color3.fromRGB(92, 106, 124),
+				dark = Color3.fromRGB(19, 23, 31),
+				eye = Color3.fromRGB(8, 10, 14),
+			},
+		},
+	},
+	-- A stingray's day (AmbientRigs.rayTravel): every `cycle` seconds it eases down onto
+	-- the sand over `ease` s, lies `rest` s, and lifts off again; a puff of sand rises
+	-- as it lands and as it leaves, within `puffRange` studs of the camera
+	settle = { cycle = { 28, 44 }, rest = { 5, 9 }, ease = 2.4, puffRange = 110 },
+	-- Joint turns written a frame at most, over every creature (bones and stand-ins)
+	jointBudget = 380,
 	-- Everything fades away while a world boss is up within `bossClear` studs, and the
 	-- giants hide while one is up anywhere (the Megalodon owns the Open Blue's dread and
 	-- comes out of the blue the same way; the squid's ink is its own)

@@ -1,0 +1,1174 @@
+--!strict
+-- The Hydrothermal Vents' field, dressed (owner, 2026-10-19: "The vents part of the
+-- map needs more substance too"): parts on the ground VentsPlan laid out and
+-- Shelf.luau sculpted between the basins, so the whole sector reads as a working
+-- hydrothermal field with places to go, not a mud plain with holes in it.
+--
+--   * THE FORGE: a lava lake glowing in its crater with dark crust rafting on it,
+--     lava running down its runnels (bright cores over deep-red rims, laid on the
+--     real flank by raycast) to pools at its foot, fumaroles steaming on its flanks,
+--     and a column of ash rising some 300 studs from the crater in three stretches
+--     (lit orange low, murky grey high, so it carries in the deep blue over the
+--     vents' murk), with embers;
+--   * BLACK SMOKERS: a glowing throat on every spire (on its real top), a tall
+--     billowing black plume, heat shimmer, small side throats on the flanges,
+--     sulfide crust (ochre, rust, sulfur) on them, a light at each complex;
+--   * COLUMNAR BASALT: hex columns (three blocks turned 60°, dark basalt with
+--     lighter tops) in two terraced outcrops and the causeway from the Forge's foot
+--     toward the hub;
+--   * MINERAL TERRACES: sulfide shelves stepping down two basin walls, each holding a
+--     shimmering warm pool, flowstone draped between them;
+--   * THE BRINE POOL: a dark glassy lake on a basin floor with a faint teal glow
+--     under it, a crust and mussel shoreline and mist rolling over it;
+--   * TUBE WORMS (mid-grey tubes, crimson plumes) and MUSSEL and CLAM BEDS round the
+--     smokers, the chimneys and the brine pool;
+--   * a glow over the two biggest crust patches, and embers and mineral flecks
+--     drifting over the field.
+--
+-- Rock (columns, terrace shelves) is solid and lives under Workspace.World.Biomes.Vents,
+-- where Shared/Ground looks: predators climb over it, no shell or dig site lands in
+-- it, and every top stays under VentsPlan.ceiling, so no prey school is lifted over
+-- it. Decor neither collides, takes rays nor fires Touched. Everything is anchored,
+-- SmoothPlastic, Neon or (the brine) Glass: never a toon-overridden material.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
+local VentsPlan = require(script.Parent.VentsPlan)
+
+local World = Config.World
+local deep = World.deep
+
+local Vents = {}
+
+export type Ground = (x: number, z: number) -> (Vector3?, Vector3?)
+export type Stats = {
+	parts: number,
+	solid: number,
+	glow: number,
+	lights: number,
+	emitters: number,
+	columns: number,
+	steps: number,
+	worms: number,
+	mussels: number,
+	clumps: number,
+	beds: number,
+	tidied: number,
+}
+
+local TAU = 2 * math.pi
+local HALF = math.pi / 2
+local SMOOTH = Enum.Material.SmoothPlastic
+local NEON = Enum.Material.Neon
+local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
+local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+
+local COLORS = {
+	basalt = { Color3.fromRGB(46, 48, 56), Color3.fromRGB(54, 56, 64), Color3.fromRGB(40, 42, 50) },
+	basaltTop = { Color3.fromRGB(88, 90, 98), Color3.fromRGB(100, 100, 106), Color3.fromRGB(80, 84, 94) },
+	lava = Color3.fromRGB(255, 156, 56),
+	lavaHot = Color3.fromRGB(255, 214, 118),
+	lavaRim = Color3.fromRGB(168, 38, 14),
+	raft = Color3.fromRGB(44, 34, 34),
+	minerals = { Color3.fromRGB(198, 142, 54), Color3.fromRGB(150, 66, 34), Color3.fromRGB(230, 208, 72) },
+	pool = Color3.fromRGB(255, 188, 80),
+	tube = { Color3.fromRGB(126, 128, 124), Color3.fromRGB(112, 114, 112), Color3.fromRGB(138, 136, 128) },
+	plume = { Color3.fromRGB(196, 22, 38), Color3.fromRGB(176, 16, 34), Color3.fromRGB(214, 40, 48) },
+	mussel = {
+		Color3.fromRGB(34, 38, 56),
+		Color3.fromRGB(28, 32, 46),
+		Color3.fromRGB(40, 46, 66),
+		Color3.fromRGB(74, 58, 40),
+	},
+	clam = Color3.fromRGB(200, 194, 176),
+	clamLip = Color3.fromRGB(96, 88, 80),
+	brine = Color3.fromRGB(14, 22, 34),
+	brineGlow = Color3.fromRGB(34, 120, 130),
+	brineCrust = Color3.fromRGB(150, 146, 128),
+	throat = Color3.fromRGB(255, 120, 40),
+}
+local LIGHT = {
+	lava = Color3.fromRGB(255, 132, 60),
+	smoker = Color3.fromRGB(255, 140, 64),
+	terrace = Color3.fromRGB(255, 200, 104),
+	brine = Color3.fromRGB(70, 200, 210),
+	crust = Color3.fromRGB(255, 112, 50),
+}
+
+local rng = Random.new(World.seed + 99)
+local groundOf: Ground = function(_x: number, _z: number): (Vector3?, Vector3?)
+	return nil, nil
+end
+local function freshStats(): Stats
+	return {
+		parts = 0,
+		solid = 0,
+		glow = 0,
+		lights = 0,
+		emitters = 0,
+		columns = 0,
+		steps = 0,
+		worms = 0,
+		mussels = 0,
+		clumps = 0,
+		beds = 0,
+		tidied = 0,
+	}
+end
+local stats: Stats = freshStats()
+
+local function pick(list: { Color3 }): Color3
+	return list[rng:NextInteger(1, #list)]
+end
+
+-- ---------------------------------------------------------------------------
+-- Parts
+-- ---------------------------------------------------------------------------
+
+local function setup(p: BasePart, name: string, size: Vector3, cframe: CFrame, color: Color3, solid: boolean)
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = color
+	p.Material = SMOOTH
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.CanTouch = false
+	p.CanCollide = solid
+	p.CanQuery = solid
+	p.CastShadow = solid
+	stats.parts += 1
+	if solid then
+		stats.solid += 1
+	end
+end
+
+local function rock(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3): Part
+	local p = Instance.new("Part")
+	setup(p, name, size, cframe, color, true)
+	p.Parent = parent
+	return p
+end
+
+local function trim(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3): Part
+	local p = Instance.new("Part")
+	setup(p, name, size, cframe, color, false)
+	p.Parent = parent
+	return p
+end
+
+local function glow(
+	parent: Instance,
+	name: string,
+	size: Vector3,
+	cframe: CFrame,
+	color: Color3,
+	transparency: number?
+): Part
+	local p = trim(parent, name, size, cframe, color)
+	p.Material = NEON
+	p.Transparency = transparency or 0
+	stats.glow += 1
+	return p
+end
+
+-- A rounded lump filling `size` (a sphere mesh on a decor block)
+local function blob(parent: Instance, name: string, cframe: CFrame, size: Vector3, color: Color3): Part
+	local p = trim(parent, name, size, cframe, color)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
+-- A flat disc lying level, its top at `top`
+local function disc(
+	parent: Instance,
+	name: string,
+	center: Vector3,
+	top: number,
+	radius: number,
+	thickness: number,
+	color: Color3,
+	solid: boolean
+): Part
+	local p = Instance.new("Part")
+	setup(
+		p,
+		name,
+		Vector3.new(thickness, radius * 2, radius * 2),
+		CFrame.new(center.X, top - thickness / 2, center.Z) * CFrame.Angles(0, 0, HALF),
+		color,
+		solid
+	)
+	p.Shape = Enum.PartType.Cylinder
+	p.Parent = parent
+	return p
+end
+
+-- A cylinder from `a` to `b`
+local function rod(
+	parent: Instance,
+	name: string,
+	a: Vector3,
+	b: Vector3,
+	radius: number,
+	color: Color3
+): Part
+	local p = trim(
+		parent,
+		name,
+		Vector3.new((b - a).Magnitude, radius * 2, radius * 2),
+		CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, HALF, 0),
+		color
+	)
+	p.Shape = Enum.PartType.Cylinder
+	return p
+end
+
+-- An invisible part that holds lights and emitters (`size` is the box particles
+-- leave from)
+local function holder(parent: Instance, name: string, cframe: CFrame, size: Vector3): Part
+	local p = trim(parent, name, size, cframe, Color3.new(1, 1, 1))
+	p.Transparency = 1
+	p.CastShadow = false
+	return p
+end
+
+local function light(part: BasePart, color: Color3, range: number, brightness: number)
+	local made = Instance.new("PointLight")
+	made.Color = color
+	made.Range = range
+	made.Brightness = brightness
+	made.Shadows = false
+	made.Parent = part
+	stats.lights += 1
+end
+
+local function model(parent: Instance, name: string): Model
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = parent
+	return m
+end
+
+local function groundY(x: number, z: number, fallback: number): number
+	local hit = groundOf(x, z)
+	return if hit then hit.Y else fallback
+end
+
+-- ---------------------------------------------------------------------------
+-- Particles
+-- ---------------------------------------------------------------------------
+
+type Puff = {
+	rate: number,
+	life: { number },
+	speed: { number },
+	size: { number }, -- at birth, halfway, at the end
+	fade: { number }, -- transparency at birth, at 60%
+	colors: { Color3 }, -- birth to end
+	rise: number?,
+	drift: Vector3?,
+	spread: number?,
+	drag: number?,
+	glow: number?, -- LightEmission
+	lit: number?, -- LightInfluence
+	texture: string?,
+}
+
+local function emit(part: BasePart, name: string, puff: Puff): ParticleEmitter
+	local e = Instance.new("ParticleEmitter")
+	e.Name = name
+	e.Texture = puff.texture or SMOKE
+	e.Rate = puff.rate
+	e.Lifetime = NumberRange.new(puff.life[1], puff.life[2])
+	e.Speed = NumberRange.new(puff.speed[1], puff.speed[2])
+	e.EmissionDirection = Enum.NormalId.Top
+	local spread = puff.spread or 12
+	e.SpreadAngle = Vector2.new(spread, spread)
+	e.Acceleration = (puff.drift or Vector3.zero) + Vector3.new(0, puff.rise or 0, 0)
+	e.Drag = puff.drag or 0.4
+	e.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, puff.size[1]),
+		NumberSequenceKeypoint.new(0.5, puff.size[2]),
+		NumberSequenceKeypoint.new(1, puff.size[3]),
+	})
+	e.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, puff.fade[1]),
+		NumberSequenceKeypoint.new(0.6, puff.fade[2]),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	if #puff.colors == 1 then
+		e.Color = ColorSequence.new(puff.colors[1])
+	elseif #puff.colors == 2 then
+		e.Color = ColorSequence.new(puff.colors[1], puff.colors[2])
+	else
+		e.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, puff.colors[1]),
+			ColorSequenceKeypoint.new(0.4, puff.colors[2]),
+			ColorSequenceKeypoint.new(1, puff.colors[3]),
+		})
+	end
+	e.LightEmission = puff.glow or 0
+	e.LightInfluence = puff.lit or 0.4
+	e.Rotation = NumberRange.new(0, 360)
+	e.RotSpeed = NumberRange.new(-14, 14)
+	e.Parent = part
+	stats.emitters += 1
+	return e
+end
+
+-- A black smoker's plume at its throat (`scale` by the spire)
+local function blackSmoke(part: BasePart, scale: number)
+	emit(part, "BlackSmoke", {
+		rate = 6 + 8 * scale,
+		life = { 6, 9 },
+		speed = { 7, 11 },
+		size = { 2.5 * scale + 1, 9 * scale + 2, 18 * scale + 3 },
+		fade = { 0.2, 0.45 },
+		colors = { Color3.fromRGB(30, 26, 30), Color3.fromRGB(18, 16, 20) },
+		rise = 2,
+		spread = 10,
+		drag = 0.45,
+		lit = 0.4,
+	})
+end
+
+-- The plume carried on higher up, slower and wider, drifting
+local function blackSmokeHigh(part: BasePart)
+	emit(part, "BlackSmokeHigh", {
+		rate = 5,
+		life = { 10, 14 },
+		speed = { 3, 5 },
+		size = { 14, 28, 40 },
+		fade = { 0.45, 0.62 },
+		colors = { Color3.fromRGB(40, 34, 34), Color3.fromRGB(30, 28, 32) },
+		rise = 0.8,
+		drift = Vector3.new(0.5, 0, 0.3),
+		spread = 16,
+		drag = 0.3,
+		lit = 0.5,
+	})
+end
+
+local function shimmer(part: BasePart, size: number)
+	emit(part, "HeatShimmer", {
+		rate = 5,
+		life = { 1.2, 2 },
+		speed = { 2, 4 },
+		size = { size * 0.4, size, size * 1.3 },
+		fade = { 0.8, 0.86 },
+		colors = { Color3.fromRGB(255, 150, 90), Color3.fromRGB(200, 90, 50) },
+		spread = 18,
+		glow = 0.5,
+		lit = 0.1,
+	})
+end
+
+local function embers(part: BasePart, rate: number)
+	emit(part, "Embers", {
+		rate = rate,
+		life = { 3, 6 },
+		speed = { 2, 5 },
+		size = { 0.25, 0.45, 0 },
+		fade = { 0.1, 0.35 },
+		colors = { Color3.fromRGB(255, 196, 96), Color3.fromRGB(255, 84, 30) },
+		rise = 0.8,
+		spread = 30,
+		glow = 1,
+		lit = 0,
+		texture = SPARKLE,
+	})
+end
+
+-- ---------------------------------------------------------------------------
+-- The Forge
+-- ---------------------------------------------------------------------------
+
+-- A glowing strip of lava from `a` to `b`, lying along the ground between them
+local function lavaStrip(parent: Instance, a: Vector3, b: Vector3, width: number, rim: boolean)
+	local span = b - a
+	local frame = CFrame.lookAt((a + b) / 2, b)
+	local lift = frame.UpVector * (if rim then 0.2 else 0.35)
+	glow(
+		parent,
+		if rim then "LavaRim" else "Lava",
+		Vector3.new(width, if rim then 0.5 else 0.6, span.Magnitude + width * 0.6),
+		frame + lift,
+		if rim then COLORS.lavaRim else COLORS.lava
+	)
+end
+
+local function forge(parent: Instance, plan: VentsPlan.Plan)
+	local f = plan.forge
+	if f == nil then
+		return
+	end
+	local m = model(parent, "Forge")
+	local c = f.center
+	local summit = c.Y + f.height
+	-- The lava lake: the crater's floor (Shelf fills it with CrackedLava), lit up
+	local lakeY = groundY(c.X, c.Z, summit - f.crater + 9)
+	if lakeY > summit - 2 or lakeY < summit - f.crater - 6 then
+		lakeY = summit + 9 - f.crater
+	end
+	local lake = disc(m, "LavaLake", c, lakeY + 0.3, f.crater * 0.6, 0.4, COLORS.lava, false)
+	lake.Material = NEON
+	lake.CastShadow = false
+	stats.glow += 1
+	local core = disc(m, "LavaLakeCore", c, lakeY + 0.4, f.crater * 0.22, 0.2, COLORS.lavaHot, false)
+	core.Material = NEON
+	stats.glow += 1
+	for _ = 1, 5 do
+		local a, d = rng:NextNumber(0, TAU), rng:NextNumber(0.25, 0.5) * f.crater
+		local size = rng:NextNumber(2.5, 5)
+		blob(
+			m,
+			"CrustRaft",
+			CFrame.new(c.X + math.cos(a) * d, lakeY + 0.45, c.Z + math.sin(a) * d)
+				* CFrame.Angles(0, rng:NextNumber(0, TAU), 0),
+			Vector3.new(size * 1.4, 0.6, size),
+			COLORS.raft
+		)
+	end
+	local crater =
+		holder(m, "CraterGlow", CFrame.new(c.X, lakeY + 8, c.Z), Vector3.new(f.crater, 2, f.crater))
+	light(crater, LIGHT.lava, 60, 3.2)
+	embers(crater, 8)
+	-- The ash column, in three stretches up to ~300 studs over the crater
+	local ash1 = holder(
+		m,
+		"AshColumn",
+		CFrame.new(c.X, lakeY + 4, c.Z),
+		Vector3.new(f.crater * 0.8, 2, f.crater * 0.8)
+	)
+	emit(ash1, "Ash", {
+		rate = 10,
+		life = { 10, 14 },
+		speed = { 6, 9 },
+		size = { 6, 18, 30 },
+		fade = { 0.35, 0.5 },
+		colors = { Color3.fromRGB(120, 64, 34), Color3.fromRGB(70, 58, 54), Color3.fromRGB(56, 52, 52) },
+		rise = 1.2,
+		spread = 14,
+		drag = 0.25,
+		glow = 0.12,
+		lit = 0.5,
+	})
+	local ash2 = holder(m, "AshColumn", CFrame.new(c.X, summit + 80, c.Z), Vector3.new(24, 6, 24))
+	emit(ash2, "Ash", {
+		rate = 6,
+		life = { 14, 18 },
+		speed = { 4, 6 },
+		size = { 20, 40, 56 },
+		fade = { 0.5, 0.62 },
+		colors = { Color3.fromRGB(74, 66, 62), Color3.fromRGB(78, 74, 72) },
+		rise = 0.8,
+		drift = Vector3.new(0.4, 0, 0.2),
+		spread = 18,
+		drag = 0.25,
+		lit = 0.6,
+	})
+	local ash3 = holder(m, "AshColumn", CFrame.new(c.X + 10, summit + 160, c.Z + 5), Vector3.new(40, 8, 40))
+	emit(ash3, "Ash", {
+		rate = 4,
+		life = { 16, 22 },
+		speed = { 3, 5 },
+		size = { 36, 64, 90 },
+		fade = { 0.58, 0.7 },
+		colors = { Color3.fromRGB(96, 92, 90), Color3.fromRGB(88, 90, 96) },
+		rise = 0.5,
+		drift = Vector3.new(0.6, 0, 0.3),
+		spread = 22,
+		drag = 0.2,
+		lit = 0.7,
+	})
+	-- The runnels: lava laid down the real flank (by raycast down each step of the
+	-- line Shelf grooved), a pool at each one's foot
+	local steps = 30
+	for index, heading in f.runnels do
+		local top = if index == 1 then 0.97 else 0.9
+		local points: { Vector3 } = {}
+		for k = 0, steps do
+			local t = top * (1 - k / steps)
+			local p = VentsPlan.runnelPoint(f, heading, t)
+			local hit = groundOf(p.X, p.Z)
+			if hit and math.abs(hit.Y - p.Y) < 12 then
+				table.insert(points, hit)
+			end
+		end
+		for k = 1, #points - 1 do
+			local along = (k - 1) / math.max(#points - 2, 1)
+			local width = 2.6 - 0.9 * along
+			lavaStrip(m, points[k], points[k + 1], width, false)
+			lavaStrip(m, points[k], points[k + 1], width * 2.4, true)
+		end
+		local foot = VentsPlan.runnelPoint(f, heading, 0)
+		local out = Vector3.new(foot.X - c.X, 0, foot.Z - c.Z).Unit
+		local pool = foot + out * 9
+		local poolY = groundY(pool.X, pool.Z, c.Y)
+		local radius = rng:NextNumber(5, 7)
+		glow(
+			m,
+			"LavaPool",
+			Vector3.new(radius * 2.4, 0.5, radius * 1.6),
+			CFrame.lookAt(
+				Vector3.new(pool.X, poolY + 0.2, pool.Z),
+				Vector3.new(pool.X, poolY + 0.2, pool.Z) + out
+			),
+			COLORS.lava
+		)
+		if index == 1 then
+			-- The spill: a light halfway down its runnel and one over its pool
+			local mid = points[math.max(1, math.floor(#points * 0.45))]
+			if mid then
+				local spot =
+					holder(m, "RunnelGlow", CFrame.new(mid + out * 6 + Vector3.new(0, 4, 0)), Vector3.one)
+				light(spot, LIGHT.lava, 60, 2)
+			end
+			local poolGlow = holder(
+				m,
+				"PoolGlow",
+				CFrame.new(pool.X, poolY + 5, pool.Z),
+				Vector3.new(radius * 2, 1, radius * 2)
+			)
+			light(poolGlow, LIGHT.lava, 50, 2.2)
+			embers(poolGlow, 3)
+		end
+	end
+	-- Fumaroles steaming on the flanks, between the runnels
+	local made = 0
+	for _ = 1, 12 do
+		if made >= 4 then
+			break
+		end
+		local heading = rng:NextNumber(0, TAU)
+		local clear = true
+		for _, runnel in f.runnels do
+			if math.abs((heading - runnel + math.pi) % TAU - math.pi) < 0.5 then
+				clear = false
+			end
+		end
+		local t = rng:NextNumber(0.25, 0.7)
+		local r = VentsPlan.forgeRadius(f, t)
+		local hit = groundOf(c.X + math.cos(heading) * r, c.Z + math.sin(heading) * r)
+		if not clear or hit == nil or math.abs(hit.Y - (c.Y + f.height * t)) > 14 then
+			continue
+		end
+		made += 1
+		glow(
+			m,
+			"Fumarole",
+			Vector3.new(2.2, 0.8, 2.2),
+			CFrame.new(hit + Vector3.new(0, 0.2, 0)),
+			COLORS.throat
+		)
+		local vent = holder(m, "Fumarole", CFrame.new(hit + Vector3.new(0, 1, 0)), Vector3.new(2, 1, 2))
+		emit(vent, "Steam", {
+			rate = 5,
+			life = { 4, 6 },
+			speed = { 3, 5 },
+			size = { 1.5, 5, 9 },
+			fade = { 0.55, 0.7 },
+			colors = { Color3.fromRGB(196, 186, 172), Color3.fromRGB(150, 146, 142) },
+			rise = 1.5,
+			spread = 12,
+			lit = 0.6,
+		})
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Black smokers
+-- ---------------------------------------------------------------------------
+
+local function smokers(parent: Instance, plan: VentsPlan.Plan)
+	for index, smoker in plan.smokers do
+		local m = model(parent, `Smokers{index}`)
+		for k, spire in smoker.spires do
+			local h = spire.height
+			local function along(d: number): Vector3
+				return spire.foot + spire.tilt * d
+			end
+			local function radiusAt(d: number): number
+				return spire.radius * (1 - 0.5 * math.clamp(d / h, 0, 1))
+			end
+			-- The throat on its real top (the lip Shelf rounded off)
+			local top = along(h)
+			local hit = groundOf(top.X, top.Z)
+			if hit == nil or math.abs(hit.Y - top.Y) > 10 then
+				hit = top + Vector3.new(0, 2, 0)
+			end
+			assert(hit)
+			local scale = math.clamp(h / 140, 0.3, 1)
+			glow(
+				m,
+				"Throat",
+				Vector3.one * (2.6 + 3 * scale),
+				CFrame.new(hit + Vector3.new(0, 0.6, 0)),
+				COLORS.throat
+			).Shape =
+				Enum.PartType.Ball
+			local mouth = holder(
+				m,
+				"Plume",
+				CFrame.new(hit + Vector3.new(0, 2.5, 0)),
+				Vector3.new(2, 1, 2) * (1 + scale)
+			)
+			blackSmoke(mouth, scale)
+			shimmer(mouth, 3 + 4 * scale)
+			if k == 1 then
+				light(mouth, LIGHT.smoker, 55, 2.4)
+				embers(mouth, 3)
+			end
+			if h >= 60 then
+				local high =
+					holder(m, "PlumeHigh", CFrame.new(hit + Vector3.new(4, 55, 2)), Vector3.new(10, 4, 10))
+				blackSmokeHigh(high)
+			end
+			-- Sulfide crust on its flanges, and now and then a small throat breathing
+			-- out at a flange's edge
+			for _, d in spire.flanges do
+				local center = along(d)
+				local reach = radiusAt(d) + 3.5
+				for _ = 1, rng:NextInteger(3, 5) do
+					local a = rng:NextNumber(0, TAU)
+					local spot = center
+						+ Vector3.new(math.cos(a), 0, math.sin(a)) * (reach * rng:NextNumber(0.75, 1))
+					local onTop = groundOf(spot.X, spot.Z)
+					if onTop and math.abs(onTop.Y - (center.Y + 2)) < 4 then
+						local size = rng:NextNumber(1.6, 3.2)
+						blob(
+							m,
+							"Sulfide",
+							CFrame.new(onTop) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0),
+							Vector3.new(size * 1.5, size * 0.55, size),
+							pick(COLORS.minerals)
+						)
+					end
+				end
+				if rng:NextNumber() < 0.6 then
+					local a = rng:NextNumber(0, TAU)
+					local spot = center + Vector3.new(math.cos(a), 0, math.sin(a)) * (reach - 0.5)
+					local onTop = groundOf(spot.X, spot.Z)
+					if onTop and math.abs(onTop.Y - (center.Y + 2)) < 4 then
+						glow(
+							m,
+							"SideThroat",
+							Vector3.one * 1.6,
+							CFrame.new(onTop + Vector3.new(0, 0.3, 0)),
+							COLORS.throat
+						).Shape =
+							Enum.PartType.Ball
+						local side =
+							holder(m, "SidePlume", CFrame.new(onTop + Vector3.new(0, 1.2, 0)), Vector3.one)
+						blackSmoke(side, 0.2)
+					end
+				end
+			end
+			-- Sulfur staining down its flank
+			for _ = 1, 3 do
+				local d = rng:NextNumber(0.15, 0.85) * h
+				local a = rng:NextNumber(0, TAU)
+				local out = Vector3.new(math.cos(a), 0, math.sin(a))
+				local r = radiusAt(d)
+				blob(
+					m,
+					"Stain",
+					CFrame.lookAt(along(d) + out * (r * 0.92), along(d) + out * (r + 4)),
+					Vector3.new(r * 0.7, r * 0.9, 1.2),
+					pick(COLORS.minerals)
+				)
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Columnar basalt
+-- ---------------------------------------------------------------------------
+
+local CAP = 0.9 -- the lighter top's thickness
+
+-- A hex column: three blocks turned 60° apart make the hexagon (`size` its corner
+-- radius; its flats face `yaw` and every 60° from it, so columns on VentsPlan's grid
+-- meet flat to flat), the top a lighter band; it stands to the height the plan gave
+-- (never higher: VentsPlan.ceiling), its foot sunk under the lowest ground beneath it
+local function column(parent: Instance, c: VentsPlan.Column)
+	local width = c.size * math.sqrt(3)
+	local top = c.at.Y + c.height
+	local low = groundY(c.at.X, c.at.Z, c.at.Y)
+	for k = 0, 2 do
+		local a = c.yaw + math.pi / 6 + k * TAU / 3
+		low = math.min(low, groundY(c.at.X + math.cos(a) * c.size, c.at.Z + math.sin(a) * c.size, low))
+	end
+	if top < low + 1.5 then
+		return
+	end
+	local bottom = low - 1.5
+	local body = top - CAP - bottom
+	local color, topColor = pick(COLORS.basalt), pick(COLORS.basaltTop)
+	for k = 0, 2 do
+		local turn = CFrame.Angles(0, -(c.yaw + math.pi / 6 + k * math.pi / 3), 0)
+		rock(
+			parent,
+			"Basalt",
+			Vector3.new(c.size, body, width),
+			CFrame.new(c.at.X, bottom + body / 2, c.at.Z) * turn,
+			color
+		)
+		rock(
+			parent,
+			"BasaltTop",
+			Vector3.new(c.size, CAP, width),
+			CFrame.new(c.at.X, top - CAP / 2, c.at.Z) * turn,
+			topColor
+		)
+	end
+	stats.columns += 1
+end
+
+local function basalt(parent: Instance, plan: VentsPlan.Plan)
+	local groups: { [string]: Model } = {}
+	for _, c in plan.columns do
+		local existing = groups[c.group]
+		local m = if existing
+			then existing
+			else model(parent, if c.group == "causeway" then "Causeway" else "BasaltOutcrop")
+		groups[c.group] = m
+		column(m, c)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Mineral terraces
+-- ---------------------------------------------------------------------------
+
+local TERRACE = { drop = 11, first = 3, lowest = 12, radius = { 7.5, 10.5 }, grow = 0.55 }
+
+local function terraces(parent: Instance, plan: VentsPlan.Plan)
+	local basins = Seafloor.ventBasins()
+	for index, terrace in plan.terraces do
+		local basin = basins[terrace.basin]
+		local m = model(parent, `Terraces{index}`)
+		local out = Vector3.new(math.cos(terrace.heading), 0, math.sin(terrace.heading))
+		local inward = -out
+		local side = Vector3.new(-out.Z, 0, out.X)
+		local y = deep.floorY - TERRACE.first
+		local prev: { front: Vector3, radius: number }? = nil
+		local made, mid = 0, nil :: Vector3?
+		for s = 0, 9 do
+			if y < deep.ventsFloorY + TERRACE.lowest then
+				break
+			end
+			local radius = rng:NextNumber(TERRACE.radius[1], TERRACE.radius[2]) + s * TERRACE.grow
+			local wobble = (if s % 2 == 0 then 1 else -1) * rng:NextNumber(1.5, 3.5)
+			local wall = Vector3.new(basin.x, y, basin.z) + out * basin.radius + side * wobble
+			local center = wall + inward * (radius * 0.15)
+			-- Clear of the schools in the basin: none goes lower once one doesn't fit
+			if y + 1.5 > VentsPlan.ceiling(center.X, center.Z, radius) then
+				break
+			end
+			-- Buried in the lip's rubble: the ground just in front stands over it
+			local front = center + inward * (radius * 0.6)
+			local inFront = groundY(front.X, front.Z, deep.ventsFloorY)
+			if inFront > y + 1 then
+				y -= TERRACE.drop
+				continue
+			end
+			local band = COLORS.minerals[s % #COLORS.minerals + 1]
+			disc(m, "TerraceShelf", center, y, radius, 3, band, true)
+			disc(
+				m,
+				"TerraceLip",
+				center,
+				y + 0.9,
+				radius + 0.5,
+				1,
+				COLORS.minerals[(s + 2) % #COLORS.minerals + 1],
+				false
+			)
+			local pool = disc(m, "TerracePool", center, y + 1, radius - 1.1, 0.2, COLORS.pool, false)
+			pool.Material = NEON
+			pool.Transparency = 0.3
+			pool.CastShadow = false
+			stats.glow += 1
+			-- Flowstone draped from the step above
+			local last = prev
+			if last then
+				local from = last.front + Vector3.new(0, -1.5, 0)
+				local to = center + inward * (radius * 0.45) + Vector3.new(0, 0.4, 0)
+				local span = to - from
+				trim(
+					m,
+					"Flowstone",
+					Vector3.new(last.radius * 1.1, 1.2, span.Magnitude),
+					CFrame.lookAt((from + to) / 2, to),
+					COLORS.minerals[(s + 1) % #COLORS.minerals + 1]
+				)
+			end
+			prev = { front = center + inward * (radius * 1.05), radius = radius }
+			made += 1
+			stats.steps += 1
+			if made == 2 then
+				mid = center + inward * (radius + 6)
+			end
+			y -= TERRACE.drop
+		end
+		local glowAt = mid
+		if glowAt then
+			local spot = holder(m, "TerraceGlow", CFrame.new(glowAt), Vector3.new(6, 6, 6))
+			light(spot, LIGHT.terrace, 40, 1.6)
+			shimmer(spot, 5)
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- The brine pool, tube worms and mussels
+-- ---------------------------------------------------------------------------
+
+local function musselBed(parent: Instance, center: Vector3, inner: number, outer: number, count: number)
+	local m = model(parent, "MusselBed")
+	stats.beds += 1
+	for _ = 1, count do
+		local a = rng:NextNumber(0, TAU)
+		local d = inner + (outer - inner) * rng:NextNumber() ^ 0.7
+		local x, z = center.X + math.cos(a) * d, center.Z + math.sin(a) * d
+		local hit = groundOf(x, z)
+		if hit == nil or math.abs(hit.Y - center.Y) > 2.5 then
+			continue
+		end
+		local s = rng:NextNumber(0.8, 1.3)
+		local yaw = rng:NextNumber(0, TAU)
+		if rng:NextNumber() < 0.2 then
+			blob(
+				m,
+				"Clam",
+				CFrame.new(hit + Vector3.new(0, 0.35 * s, 0))
+					* CFrame.Angles(0, yaw, rng:NextNumber(-0.2, 0.2)),
+				Vector3.new(2, 0.8, 1.4) * s,
+				COLORS.clam
+			)
+			blob(
+				m,
+				"ClamLip",
+				CFrame.new(hit + Vector3.new(0, 0.36 * s, 0)) * CFrame.Angles(0, yaw, 0),
+				Vector3.new(2.06, 0.18, 1) * s,
+				COLORS.clamLip
+			)
+		else
+			blob(
+				m,
+				"Mussel",
+				CFrame.new(hit + Vector3.new(0, 0.25 * s, 0))
+					* CFrame.Angles(rng:NextNumber(-0.3, 0.3), yaw, rng:NextNumber(-0.5, 0.5)),
+				Vector3.new(1.7, 0.6, 0.85) * s,
+				pick(COLORS.mussel)
+			)
+		end
+		stats.mussels += 1
+	end
+end
+
+-- A clump of giant tube worms: mid-grey tubes (tallest in the middle, leaning out)
+-- with crimson plumes at their tips; a few have drawn theirs in
+local function wormClump(parent: Instance, center: Vector3, count: number, spread: number)
+	local m = model(parent, "TubeWorms")
+	stats.clumps += 1
+	for _ = 1, count do
+		local a = rng:NextNumber(0, TAU)
+		local d = spread * math.sqrt(rng:NextNumber())
+		local hit = groundOf(center.X + math.cos(a) * d, center.Z + math.sin(a) * d)
+		if hit == nil or math.abs(hit.Y - center.Y) > 3 then
+			continue
+		end
+		local length = rng:NextNumber(2.5, 8.5) * (1 - 0.45 * d / spread)
+		local lean = rng:NextNumber(0, 0.28) * (0.4 + d / spread)
+		local dir = Vector3.new(math.cos(a) * math.sin(lean), math.cos(lean), math.sin(a) * math.sin(lean))
+		local radius = rng:NextNumber(0.28, 0.46)
+		local foot = hit - dir * 0.4
+		local tip = foot + dir * length
+		rod(m, "Tube", foot, tip, radius, pick(COLORS.tube))
+		if rng:NextNumber() < 0.85 then
+			local plume = tip + dir * 0.5
+			blob(
+				m,
+				"Plume",
+				CFrame.lookAt(plume, plume + dir),
+				Vector3.new(radius * 2.7, radius * 2.7, 1.5 + radius),
+				pick(COLORS.plume)
+			)
+		end
+		stats.worms += 1
+	end
+end
+
+local function brinePool(parent: Instance, plan: VentsPlan.Plan)
+	local brine = plan.brine
+	if brine == nil then
+		return
+	end
+	local m = model(parent, "BrinePool")
+	local c, radius = brine.center, brine.radius
+	-- Level with the highest of its floor, so no edge is buried
+	local y = groundY(c.X, c.Z, c.Y)
+	for k = 0, 7 do
+		local a = k * TAU / 8
+		y = math.max(y, groundY(c.X + math.cos(a) * radius * 0.85, c.Z + math.sin(a) * radius * 0.85, y))
+	end
+	local surface = disc(m, "Brine", c, y + 0.35, radius, 0.6, COLORS.brine, false)
+	surface.Material = Enum.Material.Glass
+	surface.Transparency = 0.15
+	surface.Reflectance = 0.3
+	surface.CastShadow = false
+	local under = disc(m, "BrineGlow", c, y + 0.05, radius - 1.5, 0.2, COLORS.brineGlow, false)
+	under.Material = NEON
+	under.Transparency = 0.55
+	stats.glow += 1
+	for k = 1, 16 do
+		local a = k * TAU / 16 + rng:NextNumber(-0.1, 0.1)
+		local d = radius + rng:NextNumber(0.4, 1.4)
+		local at = Vector3.new(c.X + math.cos(a) * d, y + 0.3, c.Z + math.sin(a) * d)
+		blob(
+			m,
+			"BrineCrust",
+			CFrame.lookAt(at, at + Vector3.new(-math.sin(a), 0, math.cos(a))),
+			Vector3.new(rng:NextNumber(2.5, 3.5), 0.9, rng:NextNumber(6, 9)),
+			COLORS.brineCrust
+		)
+	end
+	musselBed(m, Vector3.new(c.X, y, c.Z), radius + 1.5, radius + 6, 44)
+	local a = rng:NextNumber(0, TAU)
+	wormClump(m, Vector3.new(c.X + math.cos(a) * (radius + 9), y, c.Z + math.sin(a) * (radius + 9)), 22, 5)
+	local mist =
+		holder(m, "BrineMist", CFrame.new(c.X, y + 1.2, c.Z), Vector3.new(radius * 1.6, 1, radius * 1.6))
+	emit(mist, "Mist", {
+		rate = 4,
+		life = { 8, 12 },
+		speed = { 0.3, 0.8 },
+		size = { 6, 10, 14 },
+		fade = { 0.85, 0.88 },
+		colors = { Color3.fromRGB(110, 150, 156), Color3.fromRGB(80, 110, 120) },
+		spread = 70,
+		drag = 0.6,
+		glow = 0.2,
+		lit = 0.5,
+	})
+	local glowAt = holder(m, "BrineLight", CFrame.new(c.X, y + 5, c.Z), Vector3.one)
+	light(glowAt, LIGHT.brine, 40, 0.9)
+end
+
+-- Tube worms and mussel beds round the smokers and some of the chimneys
+local function life(parent: Instance, plan: VentsPlan.Plan)
+	local m = model(parent, "VentLife")
+	for _, smoker in plan.smokers do
+		for k = 1, math.min(2, #smoker.spires) do
+			local spire = smoker.spires[if k == 1 then 1 else rng:NextInteger(2, #smoker.spires)]
+			local a = rng:NextNumber(0, TAU)
+			local at = spire.foot
+				+ Vector3.new(math.cos(a), 0, math.sin(a)) * (spire.radius + rng:NextNumber(4, 7))
+			wormClump(m, at, rng:NextInteger(22, 30), rng:NextNumber(4.5, 6.5))
+			if k == 1 then
+				local b = a + math.pi + rng:NextNumber(-0.6, 0.6)
+				local bed = spire.foot + Vector3.new(math.cos(b), 0, math.sin(b)) * (spire.radius + 6)
+				musselBed(m, bed, 0, 7, 24)
+			end
+		end
+	end
+	-- The chimneys, every other one or so, skipping any whose foot isn't open floor
+	local order = table.clone(plan.chimneys)
+	for i = #order, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		order[i], order[j] = order[j], order[i]
+	end
+	local clumps, beds = 0, 0
+	for _, chimney in order do
+		if clumps >= 9 then
+			break
+		end
+		local foot = chimney.position
+		local a = rng:NextNumber(0, TAU)
+		local at = foot + Vector3.new(math.cos(a), 0, math.sin(a)) * rng:NextNumber(12, 15)
+		local hit = groundOf(at.X, at.Z)
+		if hit == nil or math.abs(hit.Y - foot.Y) > 3 then
+			continue
+		end
+		wormClump(m, hit, rng:NextInteger(18, 26), rng:NextNumber(4, 5.5))
+		clumps += 1
+		if beds < 6 then
+			local b = a + math.pi + rng:NextNumber(-0.5, 0.5)
+			local bed = foot + Vector3.new(math.cos(b), 0, math.sin(b)) * 14
+			musselBed(m, Vector3.new(bed.X, foot.Y, bed.Z), 0, 5, 16)
+			beds += 1
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Glows and the drifting water
+-- ---------------------------------------------------------------------------
+
+local function atmosphere(parent: Instance, plan: VentsPlan.Plan)
+	local m = model(parent, "VentAir")
+	for _, at in plan.glows do
+		local y = groundY(at.X, at.Z, at.Y)
+		local spot = holder(m, "CrustGlow", CFrame.new(at.X, y + 4, at.Z), Vector3.new(16, 1, 16))
+		light(spot, LIGHT.crust, 42, 1.5)
+		emit(spot, "HeatHaze", {
+			rate = 3,
+			life = { 4, 7 },
+			speed = { 0.6, 1.6 },
+			size = { 9, 16, 22 },
+			fade = { 0.76, 0.82 },
+			colors = { Color3.fromRGB(255, 120, 60), Color3.fromRGB(160, 50, 30) },
+			rise = 0.3,
+			spread = 20,
+			drag = 0.5,
+			glow = 0.6,
+			lit = 0.1,
+		})
+	end
+	-- Embers and mineral flecks drifting over the field: round the landmarks
+	local spots: { Vector3 } = {}
+	for _, smoker in plan.smokers do
+		table.insert(spots, smoker.center)
+	end
+	for _, outcrop in plan.outcrops do
+		table.insert(spots, outcrop.center)
+	end
+	local f = plan.forge
+	if f then
+		table.insert(spots, f.center + Vector3.new(0, f.height * 0.4, 0))
+	end
+	for _, at in spots do
+		local drift = holder(m, "Drift", CFrame.new(at + Vector3.new(0, 30, 0)), Vector3.new(120, 40, 120))
+		emit(drift, "Flecks", {
+			rate = 6,
+			life = { 10, 16 },
+			speed = { 0.4, 1.2 },
+			size = { 0.15, 0.3, 0.1 },
+			fade = { 0.3, 0.5 },
+			colors = { Color3.fromRGB(232, 214, 120), Color3.fromRGB(150, 226, 196) },
+			drift = Vector3.new(0.25, 0.1, -0.15),
+			spread = 180,
+			drag = 0.2,
+			glow = 0.4,
+			lit = 0.3,
+			texture = SPARKLE,
+		})
+		embers(drift, 1.5)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+
+-- Dressing scattered over the biome by raycast on the Terrain alone can land inside
+-- a basalt column (plankton mats), and the brine pool covers a basin's fissures: they go
+local function tidy(parent: Instance, plan: VentsPlan.Plan): number
+	local removed = 0
+	local BIN = 16
+	local bins: { [number]: { VentsPlan.Column }? } = {}
+	local function key(x: number, z: number): number
+		return (math.floor(x / BIN) + 1000) * 4096 + (math.floor(z / BIN) + 1000)
+	end
+	for _, c in plan.columns do
+		local k = key(c.at.X, c.at.Z)
+		local list: { VentsPlan.Column } = bins[k] or {}
+		bins[k] = list
+		table.insert(list, c)
+	end
+	local function inColumn(p: Vector3): boolean
+		for dx = -1, 1 do
+			for dz = -1, 1 do
+				local list = bins[key(p.X + dx * BIN, p.Z + dz * BIN)]
+				if list == nil then
+					continue
+				end
+				for _, c in list do
+					if
+						(p.X - c.at.X) ^ 2 + (p.Z - c.at.Z) ^ 2 < (c.size + 0.8) ^ 2
+						and p.Y < c.at.Y + c.height + 1
+					then
+						return true
+					end
+				end
+			end
+		end
+		return false
+	end
+	local biomes = parent.Parent
+	local mats = if biomes then biomes:FindFirstChild("PlanktonMats") else nil
+	if mats then
+		for _, dot in mats:GetChildren() do
+			if dot:IsA("BasePart") and inColumn(dot.Position) then
+				dot:Destroy()
+				removed += 1
+			end
+		end
+	end
+	local brine = plan.brine
+	if brine then
+		for _, crack in parent:GetChildren() do
+			if crack.Name ~= "Fissure" then
+				continue
+			end
+			for _, piece in crack:GetChildren() do
+				if piece:IsA("BasePart") then
+					local d = Vector2.new(
+						piece.Position.X - brine.center.X,
+						piece.Position.Z - brine.center.Z
+					).Magnitude
+					if d < brine.radius + 1.5 then
+						piece:Destroy()
+						removed += 1
+					end
+				end
+			end
+		end
+	end
+	return removed
+end
+
+-- Dresses the field `plan` (VentsPlan, from Shelf.ops) into `parent`
+-- (Workspace.World.Biomes.Vents: where Shared/Ground looks for solid dressing) on
+-- the Terrain `ground` answers for (a ray down: the top and its normal, or nil).
+-- Call it after the other biomes' dressing: it clears plankton out of its columns
+-- and the fissures under the brine pool.
+function Vents.build(parent: Instance, plan: VentsPlan.Plan, ground: Ground): Stats
+	rng = Random.new(World.seed + 99)
+	groundOf = ground
+	stats = freshStats()
+	forge(parent, plan)
+	smokers(parent, plan)
+	basalt(parent, plan)
+	terraces(parent, plan)
+	brinePool(parent, plan)
+	life(parent, plan)
+	atmosphere(parent, plan)
+	stats.tidied = tidy(parent, plan)
+	local f = plan.forge
+	local where = "no Forge"
+	if f then
+		local r, angle = Seafloor.polar(f.center.X, f.center.Z)
+		where = `the Forge {f.height} studs tall at {math.floor(r)} studs, {math.floor(angle)}°`
+	end
+	local spires = 0
+	for _, smoker in plan.smokers do
+		spires += #smoker.spires
+	end
+	print(
+		`[Vents] {where}; {#plan.smokers} smoker complexes ({spires} spires), {stats.columns} basalt columns, {stats.steps} terrace steps, {if plan.brine
+			then "a"
+			else "no"} brine pool, {stats.clumps} tube-worm clumps ({stats.worms} worms), {stats.beds} mussel beds ({stats.mussels} shells); {stats.parts} parts ({stats.solid} solid, {stats.glow} glowing), {stats.lights} lights, {stats.emitters} emitters; {stats.tidied} plankton and fissure pieces cleared; {plan.opsTo - plan.opsFrom + 1} Terrain ops`
+	)
+	for _, note in plan.notes do
+		print(`[Vents] {note}`)
+	end
+	return stats
+end
+
+return Vents

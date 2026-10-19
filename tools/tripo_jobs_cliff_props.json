@@ -1,0 +1,32 @@
+{
+  "jobs": [
+    {
+      "name": "PlateCoral",
+      "group": "cliff",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a cluster of wide flat plate corals, three broad thin round shelves stacked in overlapping tiers like shelf fungus, each plate with a scalloped rim and a bumpy polyp-textured top, all growing out sideways from one short knobbly dark rock stub at the back, so the plates jut forward horizontally as if from a cliff wall. Bold teal-green plates with bright lime-yellow rims and darker blue-green undersides; the rock stub dark slate blue-grey. Chunky faceted. A single object, centered, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, pink, peach, beige, cream, white, skin, flesh, orange"
+    },
+    {
+      "name": "BarrelSponge",
+      "group": "cliff",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a giant barrel sponge, a tall thick-walled vase with a wide open top and a deep hollow inside, its outer wall covered in chunky vertical ridges and knobbly bumps, a slightly flared rim, sitting on a small rocky foot. Deep violet-purple with darker indigo grooves and a brighter violet rim; the inside of the hollow dark navy; the foot dark slate. Chunky faceted. A single object, standing upright, centered, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, pink, peach, beige, cream, white, skin, flesh, orange, brown"
+    },
+    {
+      "name": "SeaWhips",
+      "group": "cliff",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a clump of tall thin sea whip corals, about nine long slender round rods rising from one small rock base, gently curving and fanning outward, a few forked once near the top, each tapering to a rounded tip. Vivid lemon-yellow whips with darker mustard bases, on a dark slate blue-grey rock base. Chunky faceted. A single object, standing upright, centered, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, pink, peach, beige, cream, white, skin, flesh, orange"
+    },
+    {
+      "name": "LaceFan",
+      "group": "cliff",
+      "type": "text_to_model",
+      "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions: a broad flat sea fan coral (a gorgonian), a wide fan-shaped lattice of branching twigs forming one thin flat net, slightly wavy, much wider and taller than it is thick, rising from a short thick stalk on a small rock base. Deep royal purple branches with brighter violet edges; the stalk and base dark slate blue-grey. Chunky faceted. A single object, standing upright, centered, no scene, no text.",
+      "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, multiple objects, text, pink, peach, beige, cream, white, skin, flesh, orange, tree, leaves"
+    }
+  ]
+}

@@ -416,8 +416,21 @@ local function gradeAt(y: number): Grade
 	return GRADES[#GRADES]
 end
 
+-- Set by `snap`: the next frame takes the look where the camera is at once
+local snapping = false
+
 local function step(dt: number)
 	local position = workspace.CurrentCamera.CFrame.Position
+	if snapping then
+		-- A cut (the start screen's shots, its dive into the den): no easing across it
+		snapping = false
+		current = nil
+		hubBlend, hubVelocity = if Layout.inHub(position) then 1 else 0, 0
+		dark, darkVelocity = darkTarget * (1 - reveal), 0
+		water, waterVelocity = darkTarget, 0
+		tide, tideVelocity = tideTarget * (1 - hubBlend), 0
+		tideDim, tideDimVelocity = tideDimTarget * (1 - hubBlend), 0
+	end
 	-- A den is graded like the hub whatever storey you're on (its interior sits
 	-- at the hub's height, far outside the map: Layout.denOrigin), with no biome's
 	-- water and no edge
@@ -556,6 +569,12 @@ local function step(dt: number)
 		-- toward its shade), the dark's included
 		tintHorizon(haze.Decay:Lerp(haze.Color, 0.4), os.clock())
 	end
+end
+
+-- The camera has cut somewhere else (the start screen's shots): the next frame
+-- takes that place's water, light and dark at once instead of easing into them
+function OceanController.snap()
+	snapping = true
 end
 
 -- Whether the camera is in a dark biome (0..1; BiomeController sets it) and

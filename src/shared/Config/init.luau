@@ -40,4 +40,5 @@ return {
 	Trails = require(script.Trails),
 	Ruins = require(script.Ruins),
 	Ambient = require(script.Ambient),
+	Start = require(script.Start),
 }

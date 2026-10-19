@@ -33,6 +33,7 @@ local Sfx = require(script.Parent.Parent.Sfx)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
 local Wardrobe = require(script.Parent.Parent.Wardrobe)
+local StartController = require(script.Parent.StartController)
 
 local Shop = Config.Shop
 local Tiers = Config.Tiers
@@ -4654,8 +4655,12 @@ local function updateHint(root: BasePart?)
 	nearVendor = best
 	local show = best ~= nil and current == nil
 	local touch = Input.isTouch()
-	-- (away from the pool the den's E works without a chip)
-	hintGui.Enabled = show and not touch and (best ~= "__den" or denSpot ~= nil)
+	-- (away from the pool the den's E works without a chip; and none over the start
+	-- screen's shots: the fish waits at its pool, and the chip is always on top)
+	hintGui.Enabled = show
+		and not touch
+		and (best ~= "__den" or denSpot ~= nil)
+		and not StartController.isUp()
 	shopButton.Visible = show and touch and not MenuController.stallButtonHidden
 	if show and best then
 		local label = if best == "__den"

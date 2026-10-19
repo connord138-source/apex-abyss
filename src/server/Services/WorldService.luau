@@ -21,6 +21,7 @@ local Ruins = require(script.Parent.Parent.Ruins)
 local Props = require(ReplicatedStorage.Shared.Props)
 local TreasureWheel = require(script.Parent.Parent.TreasureWheel)
 local Shelf = require(script.Parent.Parent.Shelf)
+local Vents = require(script.Parent.Parent.Vents)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 
 local World = Config.World
@@ -1415,6 +1416,16 @@ local function buildBiomes(parent: Instance)
 	-- parts (Ruins.luau, Config/Ruins); last, so it clears the seeps and plankton the
 	-- loops above scattered into its stones
 	Ruins.build(ruins, groundAt)
+
+	-- The Hydrothermal Vents' field (owner, 2026-10-19: "The vents part of the map
+	-- needs more substance too"): the Forge, black smokers, basalt columns, mineral
+	-- terraces, the brine pool, tube worms and mussels on the ground VentsPlan laid
+	-- out (Vents.luau); after the scatter above, so it clears plankton out of its
+	-- columns and the fissures under the brine pool
+	local field = features.vents
+	if field then
+		Vents.build(vents, field, groundAt)
+	end
 end
 
 local denOwnerNames: { [number]: string? } = {}

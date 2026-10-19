@@ -1,0 +1,52 @@
+{
+ "jobs": [
+  {
+   "name": "Turtle",
+   "group": "ambient_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/ambient_refs/Style.png",
+   "prompt": "The attached image is only a board of the game's approved art STYLE: copy its style (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, simple eyes), never its fish, poses or camera, and do not draw any of them. Draw ONE clean model sheet for 3D conversion of a GREEN SEA TURTLE, a touch more realistic in proportion than a toy: a broad, gently domed oval shell built of distinct large faceted SCUTES (five down the middle, four along each side, a ring of small scutes round the rim), each scute deep olive-green with a darker olive-brown center and thin dark seams between them; a rounded head covered in big polygonal scales with a short hooked BEAK, a short neck; two long, flat, paddle-shaped front flippers and two short rounded hind flippers, all covered in distinct polygonal scales, dark olive-green outlined by thin mid olive-grey seams; the skin and the underside a mid-toned olive-grey-green (never cream, yellow, tan, beige, pink or peach anywhere); a short pointed tail. Its eye small and simple, a dark pupil with a tiny glint, never a googly cartoon eye; its beak closed. The turtle alone, large and centered, filling most of the frame, seen in a three-quarter view from above and from the front-left so the top of the shell, the head and all four flippers show, held flat and level in a neutral pose with all four flippers spread straight out to the sides, flat and fully visible, none tucked under the shell or overlapping. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Manta",
+   "group": "ambient_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/ambient_refs/Style.png",
+   "prompt": "The attached image is only a board of the game's approved art STYLE: copy its style (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, simple eyes), never its fish, poses or camera, and do not draw any of them. Draw ONE clean model sheet for 3D conversion of a giant MANTA RAY, a touch more realistic in proportion than a toy: a broad, flat diamond-shaped body with long, wide TRIANGULAR wings that taper to pointed tips, their leading edges swept a little back; two horn-like CEPHALIC FINS, flat lobes rolled into curls, projecting forward on either side of a wide closed mouth on the front edge of the head; small simple eyes on the sides of the head just behind the cephalic fins, a dark pupil with a tiny glint; small pelvic fins and a short, thin whip tail behind them. The top dark charcoal-navy with two big mid-toned blue-grey shoulder patches shaped like chevrons behind the head (mid-toned, never white); the underside a mid cool blue-grey with a few dark spots (never white, cream, beige, pink or peach anywhere); the closed mouth dark charcoal. The manta alone, large and centered, filling most of the frame, seen in a three-quarter view from above and from the front, held flat and level in a neutral pose, both wings spread straight out to the sides, flat and fully visible (not flapping, not curled), the whole manta and its tail in frame. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Stingray",
+   "group": "ambient_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/ambient_refs/Style.png",
+   "prompt": "The attached image is only a board of the game's approved art STYLE: copy its style (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, simple eyes), never its fish, poses or camera, and do not draw any of them. Draw ONE clean model sheet for 3D conversion of a BLUE-SPOTTED RIBBONTAIL STINGRAY, a touch more realistic in proportion than a toy: a flat, rounded oval DISC a little longer than it is wide, with a thin smooth rounded edge all round and a gentle raised hump down its middle; a long, thick, tapering TAIL about as long as the disc, held straight out behind, with one slender dark serrated BARB on top of it near the middle and a vivid blue stripe along each side of it; two small raised eyes on top near the front with dark pupils and a tiny glint, simple, never googly. The top of the disc a rich olive-teal green covered in many round, bright electric-blue spots; the underside a mid cool grey-blue (never white, cream, beige, sand, tan, pink or peach anywhere). The ray alone, large and centered, filling most of the frame, seen in a three-quarter view from above and from the front, held flat and level in a neutral pose (no ripple, no curl), the whole disc and the whole tail in frame. Plain flat pale grey background, no ground shadow, no sand, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Humpback",
+   "group": "ambient_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/ambient_refs/Humpback.png",
+   "prompt": "The TOP of the attached image is the approved design of a HUMPBACK WHALE, shown dead on the sea floor; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the whale ALIVE and WHOLE as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, the same long chunky faceted body, slate blue-grey back and cool mid blue-grey grooved throat and belly as the design (mid-toned, never white), knobbly bumps on the head, a small dorsal fin, a few clusters of grey barnacles on the chin and the flippers. NO bite marks, no ribs, no wounds, no hollow, no blood, no red, pink or peach anywhere. Its eye OPEN, small and simple, dark with a tiny glint; its mouth closed. The whale alone, large and centered, filling the frame lengthwise, upright and level as if swimming but in a neutral straight pose (no bend, no curl), its two long pectoral flippers held straight out to the sides and a little down, clear of the body, its wide tail flukes flat and level behind it, seen in a three-quarter side view a little from above, head to the viewer's left, the whole whale in frame. Plain flat pale grey background, no ground, no sand, no shadow, no water, no other creatures, no text, no watermark."
+  },
+  {
+   "name": "Crab",
+   "group": "ambient_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/ambient_refs/Style.png",
+   "prompt": "The attached image is only a board of the game's approved art STYLE: copy its style (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, simple eyes), never its fish, poses or camera, and do not draw any of them. Draw ONE clean model sheet for 3D conversion of a REEF CRAB, a touch more realistic in proportion than a toy: a wide, rounded faceted carapace a little wider than it is long with a few raised bumps; two short eye stalks on its front edge, small dark simple eyes with a tiny glint; two big chunky CLAWS held forward with their pincers a little open; four pairs of jointed walking legs spread wide and evenly out to the sides, each leg three segments with a pointed tip. The shell and legs a vivid scarlet red (a true red, never orange, pink or peach) with darker crimson facets, the claws scarlet with charcoal-black pincer tips, the underside a mid slate grey (never white, cream, beige or tan). The crab alone, large and centered, filling most of the frame, seen in a three-quarter view from above and from the front, standing level in a neutral pose, every leg and both claws spread out clear of the body and of each other, fully visible. Plain flat pale grey background, no ground shadow, no sand, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "MantaB",
+   "group": "ambient_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/ambient_refs/Style.png",
+   "prompt": "The attached image is only a board of the game's approved art STYLE: copy its style (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, simple eyes), never its fish, poses or camera, and do not draw any of them. Draw ONE clean model sheet for 3D conversion of a giant MANTA RAY, a touch more realistic in proportion than a toy: a broad, flat diamond-shaped body with long, wide TRIANGULAR wings that taper to pointed tips, their leading edges swept a little back; two flat horn-like CEPHALIC FINS, one each side of the head, rolled into neat curls and pointing straight forward; between them a wide MOUTH that is CLOSED, just a straight dark slit along the front edge of the head, lips shut; small simple eyes on the sides of the head just behind the cephalic fins, a dark pupil with a tiny glint; small pelvic fins and a short, thin whip tail held straight out behind. The top dark charcoal-navy with two big mid-toned blue-grey chevron patches on the shoulders (mid-toned, never white); the underside a mid cool blue-grey with a few dark spots (never white, cream, beige, pink or peach anywhere). The manta alone, large and centered, filling most of the frame, seen mostly from ABOVE, at a steep three-quarter angle from the front, so both wings, both cephalic fins and the tail all show; held flat and level in a neutral pose, both wings spread straight out to the sides, flat and fully visible (not flapping, not curled). Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  }
+ ]
+}

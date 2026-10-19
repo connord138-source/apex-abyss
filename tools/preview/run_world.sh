@@ -23,14 +23,36 @@ chunk=$(mktemp --suffix=.luau)
 	echo 'local Ruins = (function()'
 	grep -v '^--!strict' ../../src/shared/Config/Ruins.luau
 	echo 'end)()'
-	echo 'local Config = { World = World, Dens = Dens, Ruins = Ruins }'
+	# (Prey and Tuning: VentsPlan reads the prey schools through Shared/Schools)
+	echo 'local Prey = (function()'
+	grep -v '^--!strict' ../../src/shared/Config/Prey.luau
+	echo 'end)()'
+	echo 'local Tuning = (function()'
+	grep -v '^--!strict' ../../src/shared/Config/Tuning.luau
+	echo 'end)()'
+	echo 'local Config = { World = World, Dens = Dens, Ruins = Ruins, Prey = Prey, Tuning = Tuning }'
 	echo 'local Layout = (function()'
 	grep -v '^--!strict' ../../src/shared/Layout.luau | sed 's#require(script.Parent.Config)#Config#'
 	echo 'end)()'
 	echo 'local Seafloor = (function()'
 	grep -v '^--!strict' ../../src/shared/Seafloor.luau | sed 's#require(script.Parent.Config)#Config#'
 	echo 'end)()'
+	echo 'local Size = (function()'
+	grep -v '^--!strict' ../../src/shared/Size.luau | sed 's#require(script.Parent.Config)#Config#'
+	echo 'end)()'
+	echo 'local Schools = (function()'
+	grep -v '^--!strict' ../../src/shared/Schools.luau \
+		| sed 's#require(script.Parent.Config)#Config#' \
+		| sed 's#require(script.Parent.Seafloor)#Seafloor#' \
+		| sed 's#require(script.Parent.Size)#Size#'
+	echo 'end)()'
 	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Seafloor = Seafloor } } }'
+	echo 'local VentsPlan = (function()'
+	grep -v '^--!strict' ../../src/server/VentsPlan.luau \
+		| sed 's#require(ReplicatedStorage.Shared.Config)#Config#' \
+		| sed 's#require(ReplicatedStorage.Shared.Schools)#Schools#' \
+		| sed 's#require(ReplicatedStorage.Shared.Seafloor)#Seafloor#'
+	echo 'end)()'
 	echo 'local Cave = (function()'
 	grep -v '^--!strict' ../../src/server/Cave.luau \
 		| sed 's#require(ReplicatedStorage.Shared.Config)#Config#' \
@@ -40,7 +62,8 @@ chunk=$(mktemp --suffix=.luau)
 	grep -v '^--!strict' ../../src/server/Shelf.luau \
 		| sed 's#require(ReplicatedStorage.Shared.Config)#Config#' \
 		| sed 's#require(ReplicatedStorage.Shared.Seafloor)#Seafloor#' \
-		| sed 's#require(script.Parent.Cave)#Cave#'
+		| sed 's#require(script.Parent.Cave)#Cave#' \
+		| sed 's#require(script.Parent.VentsPlan)#VentsPlan#'
 	echo 'end)()'
 	echo 'local ops = Shelf.ops()'
 	echo 'for _, op in Cave.ops() do table.insert(ops, op) end'

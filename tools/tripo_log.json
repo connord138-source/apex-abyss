@@ -1,4 +1,108 @@
 {
+ "ambient/Crab": {
+  "credits": 30,
+  "files": [
+   "Crab.glb",
+   "Crab_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "b81f6a0f-48ea-46b8-94a9-92b1f85214c2",
+  "type": "image_to_model"
+ },
+ "ambient/Humpback": {
+  "credits": 30,
+  "files": [
+   "Humpback.glb",
+   "Humpback_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f6743a91-ef23-4d41-a075-3f5a442c66e2",
+  "type": "image_to_model"
+ },
+ "ambient/Manta": {
+  "credits": 30,
+  "files": [
+   "Manta.glb",
+   "Manta_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "8113c4a3-387b-4d62-93c0-762fc6681a07",
+  "type": "image_to_model"
+ },
+ "ambient/Stingray": {
+  "credits": 30,
+  "files": [
+   "Stingray.glb",
+   "Stingray_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "dfcedd4d-2454-4186-bc9c-a2cee8184112",
+  "type": "image_to_model"
+ },
+ "ambient/Turtle": {
+  "credits": 30,
+  "files": [
+   "Turtle.glb",
+   "Turtle_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "179d1c59-6ca5-4ac2-9538-516b4b652f6a",
+  "type": "image_to_model"
+ },
+ "ambient_sheets/Crab": {
+  "credits": 5,
+  "files": [
+   "Crab.png"
+  ],
+  "status": "success",
+  "task_id": "54fde8f4-bfa1-48de-b55b-0aabbf25298f",
+  "type": "generate_image"
+ },
+ "ambient_sheets/Humpback": {
+  "credits": 5,
+  "files": [
+   "Humpback.png"
+  ],
+  "status": "success",
+  "task_id": "b75c1843-95cc-48d2-ab89-2cc76579d69d",
+  "type": "generate_image"
+ },
+ "ambient_sheets/Manta": {
+  "credits": 5,
+  "files": [
+   "Manta.png"
+  ],
+  "status": "success",
+  "task_id": "d9dbb132-ca61-4f14-9970-3e5a2a38d768",
+  "type": "generate_image"
+ },
+ "ambient_sheets/MantaB": {
+  "credits": 5,
+  "files": [
+   "MantaB.png"
+  ],
+  "status": "success",
+  "task_id": "2c7d492f-2386-4b11-bee1-89e852934b96",
+  "type": "generate_image"
+ },
+ "ambient_sheets/Stingray": {
+  "credits": 5,
+  "files": [
+   "Stingray.png"
+  ],
+  "status": "success",
+  "task_id": "f7c6b15a-c6bc-4581-a601-60c8701816cd",
+  "type": "generate_image"
+ },
+ "ambient_sheets/Turtle": {
+  "credits": 5,
+  "files": [
+   "Turtle.png"
+  ],
+  "status": "success",
+  "task_id": "dc6a527a-c95f-4401-81f3-9cb074639b0d",
+  "type": "generate_image"
+ },
  "bosses/GiantSquid": {
   "credits": 30,
   "files": [
@@ -18,6 +122,46 @@
   "status": "success",
   "task_id": "f541e926-f11d-41fb-ad33-6b68a1648359",
   "type": "image_to_model"
+ },
+ "cliff/BarrelSponge": {
+  "credits": 20,
+  "files": [
+   "BarrelSponge.glb",
+   "BarrelSponge_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f3529336-e3ff-4253-8495-f01798bb2921",
+  "type": "text_to_model"
+ },
+ "cliff/LaceFan": {
+  "credits": 20,
+  "files": [
+   "LaceFan.glb",
+   "LaceFan_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "730b8e65-3787-495d-a4c2-d96d823ea4fc",
+  "type": "text_to_model"
+ },
+ "cliff/PlateCoral": {
+  "credits": 20,
+  "files": [
+   "PlateCoral.glb",
+   "PlateCoral_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "dca0c3df-93c6-4d16-b3a6-679c71dc7735",
+  "type": "text_to_model"
+ },
+ "cliff/SeaWhips": {
+  "credits": 20,
+  "files": [
+   "SeaWhips.glb",
+   "SeaWhips_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "bdbb1e9f-f6d1-4611-9752-cf68b61f5eea",
+  "type": "text_to_model"
  },
  "concepts/BiomeAbyssalTrench": {
   "credits": 10,

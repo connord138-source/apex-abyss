@@ -10,6 +10,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Ui = require(script.Parent.Parent.Ui)
 local HuntController = require(script.Parent.HuntController)
+local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
 
 local NametagController = {}
@@ -116,8 +117,9 @@ local function step()
 		tag.status.TextStrokeTransparency = if apex then 0.15 else 0.7
 		tag.gui.Size = UDim2.fromOffset(if apex then 300 else 200, if apex then 50 else 44)
 		tag.gui.MaxDistance = if apex then 900 else 220
-		-- A Moray hiding in a burrow shows no name (Config/Abilities Burrow)
-		tag.gui.Enabled = character:GetAttribute("Burrowed") ~= true
+		-- A Moray hiding in a burrow shows no name (Config/Abilities Burrow), and none
+		-- shows over the start screen's shots
+		tag.gui.Enabled = character:GetAttribute("Burrowed") ~= true and not StartController.isUp()
 	end
 end
 

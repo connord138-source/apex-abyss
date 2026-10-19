@@ -45,6 +45,7 @@ local candidateSince = 0
 local boss = 0
 local bossId: string? = nil
 local rng = Random.new()
+local held: string? = nil -- a list played wherever the camera is (the start screen's)
 
 local function level(): number
 	if muted then
@@ -74,6 +75,9 @@ end
 
 -- Which list belongs where the camera is now
 local function wanted(): string
+	if held then
+		return held
+	end
 	if boss >= BOSS_ON and bossId and Music.bosses[bossId] then
 		return Music.bosses[bossId]
 	end
@@ -204,6 +208,12 @@ end
 function MusicController.setBoss(amount: number, id: string?)
 	boss = math.clamp(amount, 0, 1)
 	bossId = id
+end
+
+-- Plays `list` wherever the camera goes until it's let go (nil): the start screen's
+-- shots cut round the sea every few seconds, and the music stays the hub's meanwhile
+function MusicController.hold(list: string?)
+	held = list
 end
 
 -- Music off or on for this session

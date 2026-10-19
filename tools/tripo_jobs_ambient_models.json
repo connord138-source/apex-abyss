@@ -1,0 +1,9 @@
+{
+ "jobs": [
+  {"name": "Turtle", "group": "ambient", "type": "image_to_model", "image": "assets/tripo/ambient_sheets/Turtle.png"},
+  {"name": "Manta", "group": "ambient", "type": "image_to_model", "image": "assets/tripo/ambient_sheets/MantaB.png"},
+  {"name": "Stingray", "group": "ambient", "type": "image_to_model", "image": "assets/tripo/ambient_sheets/Stingray.png"},
+  {"name": "Humpback", "group": "ambient", "type": "image_to_model", "image": "assets/tripo/ambient_sheets/Humpback_fix.png"},
+  {"name": "Crab", "group": "ambient", "type": "image_to_model", "image": "assets/tripo/ambient_sheets/Crab.png"}
+ ]
+}

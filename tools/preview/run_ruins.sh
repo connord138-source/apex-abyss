@@ -47,14 +47,15 @@ chunk=$(mktemp --suffix=.luau)
 	module Layout $src/shared/Layout.luau
 	module Seafloor $src/shared/Seafloor.luau
 	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Seafloor = Seafloor, Props = PropsStub } } }'
+	# (Shelf lays the Vents' field out round the prey schools: VentsPlan reads Schools)
+	module Size $src/shared/Size.luau
+	module Schools $src/shared/Schools.luau
+	echo 'SERVICES.ReplicatedStorage.Shared.Schools = Schools'
+	module VentsPlan $src/server/VentsPlan.luau
 	module Cave $src/server/Cave.luau
 	module Shelf $src/server/Shelf.luau
 	module Decor $src/server/Decor.luau
 	module Ruins $src/server/Ruins.luau
-	if [ -n "$SCHOOLS" ]; then
-		module Size $src/shared/Size.luau
-		module Schools $src/shared/Schools.luau
-	fi
 	cat ruins_build.luau
 	if [ -n "$SCHOOLS" ]; then cat ruins_schools.luau; fi
 } > "$chunk"
@@ -73,10 +74,15 @@ chunk=$(mktemp --suffix=.luau)
 	module World $src/shared/Config/World.luau
 	module Dens $src/shared/Config/Dens.luau
 	module RuinsConfig $src/shared/Config/Ruins.luau
-	echo 'local Config = { World = World, Dens = Dens, Ruins = RuinsConfig }'
+	module Prey $src/shared/Config/Prey.luau
+	module Tuning $src/shared/Config/Tuning.luau
+	echo 'local Config = { World = World, Dens = Dens, Ruins = RuinsConfig, Prey = Prey, Tuning = Tuning }'
 	module Layout $src/shared/Layout.luau
 	module Seafloor $src/shared/Seafloor.luau
-	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Seafloor = Seafloor } } }'
+	module Size $src/shared/Size.luau
+	module Schools $src/shared/Schools.luau
+	echo 'SERVICES = { ReplicatedStorage = { Shared = { Config = Config, Layout = Layout, Seafloor = Seafloor, Schools = Schools } } }'
+	module VentsPlan $src/server/VentsPlan.luau
 	module Cave $src/server/Cave.luau
 	module Shelf $src/server/Shelf.luau
 	echo 'dumpOps(Shelf.ops())'

@@ -62,6 +62,13 @@ TOON = {
 }
 AMBIENT = (0.085, 0.12, 0.15)  # Lighting.Ambient's flat fill (linear), lifted to read
 FOG_COLOR = (34, 104, 128)
+# Another biome's water (run_vents.sh): FOG_COLOR=r,g,b (sRGB 0-255), AMBIENT=r,g,b
+# (linear) and SUN=<energy> (default 3)
+if os.environ.get("FOG_COLOR"):
+    FOG_COLOR = tuple(int(v) for v in os.environ["FOG_COLOR"].split(","))
+if os.environ.get("AMBIENT"):
+    AMBIENT = tuple(float(v) for v in os.environ["AMBIENT"].split(","))
+SUN = float(os.environ.get("SUN", "3.0"))
 FONTS = {
     "lucky": os.path.join(REPO, "tools/marketing/fonts/LuckiestGuy-Regular.ttf"),
     "black": "/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf",
@@ -384,7 +391,7 @@ GLB_CACHE = {}
 # The shipped bundles first (fetch_assets.py unpacks them into assets/glb/props), then
 # the raw Tripo outputs (the same geometry)
 PROP_DIRS = [os.path.join(REPO, "assets/glb/props")] + [
-    os.path.join(REPO, "assets/tripo", d) for d in ("props", "vendors", "furniture", "whalefall", "ruins")
+    os.path.join(REPO, "assets/tripo", d) for d in ("props", "vendors", "furniture", "whalefall", "ruins", "cliff")
 ]
 
 
@@ -788,11 +795,14 @@ def setup_scene():
     bg.inputs["Color"].default_value = (*lin(FOG_COLOR), 1)
     bg.inputs["Strength"].default_value = 0.6
     sun = bpy.data.lights.new("Sun", "SUN")  # straight down through the oculus (ClockTime 12)
-    sun.energy = 3.0
+    sun.energy = SUN
     sun.color = (0.85, 0.96, 1.0)
     sun.angle = math.radians(3)
     so = bpy.data.objects.new("Sun", sun)
     so.rotation_euler = (math.radians(4), math.radians(3), 0)
+    if os.environ.get("SUN_DIR"):  # the way the light travels, in Roblox axes (run_cliff.sh: in from the open water)
+        travel = M @ vec(os.environ["SUN_DIR"])
+        so.rotation_euler = travel.to_track_quat("-Z", "Y").to_euler()
     scene.collection.objects.link(so)
     return scene
 
