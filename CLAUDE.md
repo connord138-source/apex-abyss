@@ -1348,6 +1348,23 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Trails:** Ink Cloud brighter and thicker; Storm's arcs wider, each with a glow.
   - Left as is: Lilac reads warm in the Vents (warm light on violet); the school
     lift takes ~1 s at server start (446 schools).
+- **The 2026-10-19 round-2 report's decisions (PC report `2026-10-19-pc-2.md`, PC
+  fixes 42bd411 and 3e91542 merged into `claude/world`):**
+  - **DP3:** a ceiling-only thing (the Jellyfish Lamp) aimed at the floor or a wall
+    rises to the vault above (`BuildController` `findSpot`; the editor view never
+    looks up).
+  - **PR7, kept:** a fish's sway is its length but never more studs than its speed
+    (`Schools.fishFrame`; the Ocean Sunfish and Oarfish slid tail first a third of
+    the time). `progress_sim.luau`'s inlined path follows it.
+  - **The slower Kelp fill** (155 s at LV 10 after batch 4) is moot: the Haul is food
+    since "Pace (2026-10-19b)".
+  - **The Sunfish bends less** (fewer bones, the same wave strength): left as is; a
+    sunfish barely bends.
+  - **The Banner on Gold and Violet:** the cloth is the glow made deeper and richer
+    (`DenItems` `clothOf`: saturation ×1.15 + 0.1, value ×0.62; Gold (158, 117, 26),
+    Violet (96, 39, 158)), so the gold emblem and trim stand out on every glow and
+    Violet no longer reads lilac; the part-built stand-in matches.
+  - Still owed: SP2 (needs two players in a pod).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

@@ -90,7 +90,8 @@ local function fishPos(i: number, t: number): (number, number, number)
 	local rm = math.sqrt(rx * rx + rz * rz)
 	rx, rz = rx / rm, rz / rm
 	local ux, uy, uz = -rz * ly, rz * lx - rx * lz, rx * ly
-	local p, L = fPh[i], fLen[i]
+	-- (the sway: its length, never more studs than its speed, as Schools.fishFrame)
+	local p, L = fPh[i], math.min(fLen[i], math.abs(w) * r)
 	local ox = fOx[i] + math.sin(t * 1.3 + p) * 0.5 * L
 	local oy = fOy[i] + math.sin(t * 1.9 + p * 2) * 0.35 * L
 	local oz = fOz[i] + math.sin(t * 0.9 + p) * 0.6 * L

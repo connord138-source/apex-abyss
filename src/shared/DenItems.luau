@@ -121,6 +121,14 @@ local function darker(color: Color3, by: number): Color3
 	return color:Lerp(Color3.new(0, 0, 0), by)
 end
 
+-- A banner's cloth in the den's glow: deeper and richer than the glow itself, so the
+-- gold emblem and trim stand out on every glow (PC 2026-10-19 round 2: on Gold they
+-- vanished into the cloth, and Violet read lilac)
+local function clothOf(glow: Color3): Color3
+	local h, sat, v = glow:ToHSV()
+	return Color3.fromHSV(h, math.min(1, sat * 1.15 + 0.1), v * 0.62)
+end
+
 -- A fixed number from a string (a thing's id seeds its pieces)
 local function seedOf(text: string): number
 	local h = 5381
@@ -683,9 +691,10 @@ local function dressed(model: Model, item: DensConfig.Item, box: CFrame, color: 
 		end
 		local prop = Props.dress(stand, item.prop, { cframe = fit, size = size })
 		if prop and item.overlay then
+			local cloth = clothOf(color)
 			for _, descendant in prop:GetDescendants() do
 				if descendant:IsA("MeshPart") then
-					descendant.Color = color
+					descendant.Color = cloth
 				end
 			end
 		elseif prop and item.glow then
@@ -1452,7 +1461,8 @@ end
 
 -- A swallowtail banner in the den's glow on a driftwood pole: gold trim and a gold
 -- fish leaping a wave
-STAND_INS.Banner = function(model, item, color)
+STAND_INS.Banner = function(model, item, glow)
+	local color = clothOf(glow)
 	local size = item.size
 	local depth = -size.Z * 0.55
 	rod(model, "Pole", CFrame.new(0, size.Y * 0.42, depth), size.X, 0.28, DRIFT, "X")
