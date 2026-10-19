@@ -109,7 +109,8 @@ local function onCaught(summary: { [string]: any })
 	end
 	local prey = preyName(summary.prey)
 	local rare = if typeof(summary.rarity) == "string" then CatchConfig.byId[summary.rarity] else nil
-	if rare then
+	-- (`unlockOnly`: a skin goal met with no catch, the admin's catch add: the banner only)
+	if rare and summary.unlockOnly ~= true then
 		local tier = Config.Tiers.byId[rare.tier]
 		Sfx.play(stinger(rare.tier), { volume = 0.45 })
 		local text = `{string.upper(rare.name)} {string.upper(prey)}`

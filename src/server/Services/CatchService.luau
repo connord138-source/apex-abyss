@@ -251,6 +251,14 @@ function CatchService.addCatches(
 	end
 	local got = checkGoals(data)
 	DataService.markDirty(player)
+	-- The goal-met banner, as a real catch shows it (PC 2026-10-19, UN1: the admin add
+	-- unlocked the skin with no banner); no catch toast with it
+	if table.find(got, def.skin) then
+		Net.caught(
+			player,
+			{ prey = targets[#targets], rarity = rarityId, skin = def.skin, unlockOnly = true }
+		)
+	end
 	local done, _, met = Catch.goal(data.catchLog, rarityId)
 	return `{player.DisplayName}: +{count} {rarityId} on {#targets} species · {done}/{def.unlock.species} species at {def.unlock.each}{if met
 		then " · goal met"
