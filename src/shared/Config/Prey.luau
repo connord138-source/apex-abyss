@@ -49,6 +49,14 @@ export type PreyDef = {
 	back: Color3,
 	belly: Color3,
 	slim: number, -- body height / length (0.2 = eel-thin, 0.4 = deep-bodied)
+	-- Longer than its mass makes it, × this (owner, 2026-10-19: "The smallest fish like
+	-- minnows etc need to be slightly larger. They're a hard target and they're small.
+	-- I think making them larger will make the scene fuller when it shows them in
+	-- schools"): drawn, swallowed and hit that long (Shared/Schools `length`, `radius`),
+	-- its kg the same and its school no wider, so it reads fuller. Kept under the
+	-- swallow ratio of the level that hunts it (a LV 1 fish still eats Minnows, a LV 5
+	-- one most Garibaldi)
+	look: number?,
 	-- Never turns on a smaller fish (AggroService): a drifter like the Ocean Sunfish
 	-- chasing anyone down would be silly
 	calm: boolean?,
@@ -71,6 +79,7 @@ local list: { PreyDef } = {
 		name = "Minnow",
 		biome = "KelpShallows",
 		mass = 0.1,
+		look = 1.25,
 		schools = 14,
 		perSchool = 14,
 		spread = 3.2,
@@ -103,6 +112,7 @@ local list: { PreyDef } = {
 		name = "Sardine",
 		biome = "KelpShallows",
 		mass = 0.3,
+		look = 1.15,
 		schools = 14,
 		perSchool = 10,
 		spread = 3,
@@ -348,6 +358,7 @@ local list: { PreyDef } = {
 		name = "Garibaldi",
 		biome = "KelpShallows",
 		mass = 0.4, -- (a LV 5 fish can swallow most of them)
+		look = 1.08,
 		schools = 8,
 		perSchool = 5,
 		spread = 2.6,
@@ -471,6 +482,7 @@ local list: { PreyDef } = {
 		name = "Ghost Shrimp",
 		biome = "HydrothermalVents",
 		mass = 0.2,
+		look = 1.2,
 		schools = 8,
 		perSchool = 26,
 		spread = 2.2,
@@ -501,6 +513,7 @@ local list: { PreyDef } = {
 		name = "Lanternfish",
 		biome = "AbyssalTrench",
 		mass = 0.5,
+		look = 1.12,
 		schools = 10,
 		perSchool = 18,
 		spread = 2.6,
@@ -698,6 +711,7 @@ local list: { PreyDef } = {
 		name = "Opaleye",
 		biome = "KelpShallows",
 		mass = 0.4, -- (swallowed from about LV 3: one of the five kinds a LV 5 fish eats here)
+		look = 1.08,
 		schools = 8,
 		perSchool = 5,
 		spread = 2.4,
@@ -822,6 +836,7 @@ local list: { PreyDef } = {
 		name = "Hatchetfish",
 		biome = "AbyssalTrench",
 		mass = 0.25,
+		look = 1.2,
 		schools = 4,
 		perSchool = 8,
 		spread = 2.4,

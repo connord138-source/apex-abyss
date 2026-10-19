@@ -192,8 +192,10 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 				offset *= spread
 			end
 			local size = sizeOf()
-			-- (its own mass's length, so a trophy eases like any other fish)
-			local own = Size.length(prey.mass * size ^ 3)
+			-- (its own mass's length, so a trophy eases like any other fish; × the
+			-- species' `look`: the smallest are drawn and caught longer, the school
+			-- no wider)
+			local own = Size.length(prey.mass * size ^ 3) * (prey.look or 1)
 			local keep = if k <= core
 				then 1
 				else 1 - (1 - THIN_LAST) * (k - core) / math.max(perSchool - core, 1)

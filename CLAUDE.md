@@ -1111,6 +1111,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     fill the Haul twice as fast. **Treasure maps from prey** are capped at
     `drops.preyPerHour` 7 a player (an allowance holding `preyBurst` 2;
     `TreasureService`). `haulLengthCap` is retired.
+  - **The smallest prey are longer (owner, 2026-10-19: "The smallest fish like minnows
+    etc need to be slightly larger. They're a hard target and they're small. I think
+    making them larger will make the scene fuller"):** `Config/Prey` `look` × the
+    length from mass (Minnow 1.25, Sardine 1.15, Ghost Shrimp and Hatchetfish 1.2,
+    Lanternfish 1.12, Garibaldi and Opaleye 1.08; `Shared/Schools` `length` and the eat
+    `radius` follow, so they're drawn, hit and swallowed that long), their kg and their
+    schools' spread unchanged, so schools read fuller and nothing moved. Kept under
+    the swallow ratio of the level that hunts them: a LV 1 fish still eats every
+    normal Minnow, the LV 5 Kelp hunter keeps its 5 species (run_catch_sim), the
+    tutorial's Haul is 23 fish (run_progress_sim).
   - **Whale Fall** never in the Kelp Shallows nor within 520 of the hub (`Config/Chum`
     `whale.never`, `minRadius`); one fish takes at most 2 full Hauls from
     one whale (since 2026-10-19; was 4 levels' worth) ("You're full of whale!", `WhaleFull` attribute; its chunks stay for

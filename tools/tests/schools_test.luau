@@ -168,7 +168,7 @@ expect((Schools.position(1, 5) - Schools.position(1, 5)).Magnitude == 0, "loads 
 for _, case in { { 2, "Minnow" }, { 4, "Sardine" }, { 8, "Wrasse" }, { 12, "Snapper" } } do
 	local length, preyId = case[1], case[2]
 	local prey = Config.Prey.byId[preyId]
-	local radius = Size.length(prey.mass) * 0.3
+	local radius = Size.length(prey.mass) * (prey.look or 1) * 0.3
 	local old = Size.reach(length) + radius
 	local reach = Schools.eatReach(length, radius)
 	local furthest = reach * Schools.EAT_PULLED
