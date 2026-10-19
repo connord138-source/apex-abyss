@@ -182,22 +182,42 @@
   "type": "generate_image"
  },
  "den_props2/Banner": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "Banner.glb",
+   "Banner_preview.webp"
+  ],
+  "status": "success",
   "task_id": "a6e7218f-1d71-4575-b9ed-d0b1c305c432",
   "type": "image_to_model"
  },
  "den_props2/BubbleColumn": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "BubbleColumn.glb",
+   "BubbleColumn_preview.webp"
+  ],
+  "status": "success",
   "task_id": "1ba1fe09-a0a5-4302-9c24-9f7e81addd79",
   "type": "image_to_model"
  },
  "den_props2/ConchGramophone": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "ConchGramophone.glb",
+   "ConchGramophone_preview.webp"
+  ],
+  "status": "success",
   "task_id": "8c9a36ef-cd72-4a56-a988-69b3bd5ef539",
   "type": "image_to_model"
  },
  "den_props2/CoralLamp": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "CoralLamp.glb",
+   "CoralLamp_preview.webp"
+  ],
+  "status": "success",
   "task_id": "c0f5c17f-e042-4d26-b7f2-226c9615ef35",
   "type": "image_to_model"
  },
@@ -222,7 +242,12 @@
   "type": "image_to_model"
  },
  "den_props2/KelpBed": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "KelpBed.glb",
+   "KelpBed_preview.webp"
+  ],
+  "status": "success",
   "task_id": "8581f2d3-3342-4ac2-8ee7-013d07efa715",
   "type": "image_to_model"
  },
@@ -247,17 +272,32 @@
   "type": "image_to_model"
  },
  "den_props2/ShipwreckBookshelf": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "ShipwreckBookshelf.glb",
+   "ShipwreckBookshelf_preview.webp"
+  ],
+  "status": "success",
   "task_id": "4a87d152-7ef9-4860-afb4-4524db9890ed",
   "type": "image_to_model"
  },
  "den_props2/SpongeSofa": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "SpongeSofa.glb",
+   "SpongeSofa_preview.webp"
+  ],
+  "status": "success",
   "task_id": "922f3239-2937-4fc4-bfa3-43b2ff45c993",
   "type": "image_to_model"
  },
  "den_props2/TreasureChart": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "TreasureChart.glb",
+   "TreasureChart_preview.webp"
+  ],
+  "status": "success",
   "task_id": "68932837-41a4-4b56-9e8c-964bddeb26c4",
   "type": "image_to_model"
  },
@@ -1169,6 +1209,86 @@
   "task_id": "8e4234ee-c1da-4645-859c-a3ae84b5799c",
   "type": "generate_image"
  },
+ "prey3/Butterflyfish": {
+  "credits": 30,
+  "files": [
+   "Butterflyfish.glb",
+   "Butterflyfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "60e00bcb-f72f-4467-8ed1-7554952b6e4b",
+  "type": "image_to_model"
+ },
+ "prey3/Coelacanth": {
+  "credits": 30,
+  "files": [
+   "Coelacanth.glb",
+   "Coelacanth_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "0f719528-dfb9-4a67-ad46-b86e629027d9",
+  "type": "image_to_model"
+ },
+ "prey3/GulperEel": {
+  "credits": 30,
+  "files": [
+   "GulperEel.glb",
+   "GulperEel_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "4ae45859-30ac-47f9-9313-f592d21d5640",
+  "type": "image_to_model"
+ },
+ "prey3/Oarfish": {
+  "credits": 30,
+  "files": [
+   "Oarfish.glb",
+   "Oarfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "228e3f17-93e0-4f9c-bcc7-e5081e89c0ab",
+  "type": "image_to_model"
+ },
+ "prey3/OceanSunfish": {
+  "credits": 30,
+  "files": [
+   "OceanSunfish.glb",
+   "OceanSunfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "31897147-ac8f-4c02-b602-9a6a4f77b751",
+  "type": "image_to_model"
+ },
+ "prey3/Swordfish": {
+  "credits": 30,
+  "files": [
+   "Swordfish.glb",
+   "Swordfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "4fdb3656-fb1c-420b-a3be-c66b94f25d20",
+  "type": "image_to_model"
+ },
+ "prey3/Triggerfish": {
+  "credits": 30,
+  "files": [
+   "Triggerfish.glb",
+   "Triggerfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e0bf0cc8-1c2c-4d71-99b8-9734f002efe4",
+  "type": "image_to_model"
+ },
+ "prey3/VentEelpout": {
+  "credits": 30,
+  "files": [
+   "VentEelpout.glb",
+   "VentEelpout_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "bf9dd4ee-5a4b-4423-9a82-4ca03bacb08a",
+  "type": "image_to_model"
+ },
  "prey3_sheets/Butterflyfish": {
   "credits": 5,
   "files": [
@@ -1193,7 +1313,7 @@
    "GulperEel.png"
   ],
   "status": "success",
-  "task_id": "0930f8a2-d6e5-4b22-9cce-c2bd6777fdb4",
+  "task_id": "0cd76ea8-dc49-4846-9a3a-8f6002b8535e",
   "type": "generate_image"
  },
  "prey3_sheets/Oarfish": {
@@ -1202,7 +1322,7 @@
    "Oarfish.png"
   ],
   "status": "success",
-  "task_id": "580fad7b-8b8f-454b-bfbb-5f96c375a466",
+  "task_id": "89c4d2ab-d4a2-4c85-b3c0-27e1f13a3578",
   "type": "generate_image"
  },
  "prey3_sheets/OceanSunfish": {

@@ -21,6 +21,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `whalefall_glb` | WhaleFall (GLB; the Whale Fall's carcass, 2026-10-15; lengthwise along its Z, head at +Z in the GLB; normal map stripped, colours made safe, screened) | `ReplicatedStorage.WorldProps.WhaleFall` |
 | `vendors_glb` | KeeperOutfitter, KeeperMason, KeeperCharms, KeeperDyer, KeeperTrophies (GLB; the five shopkeepers, from `assets/concepts/Vendors.jpg`; v2 colors made safe by `tools/props/safe_colors.py` and screened 2026-10-11) | `ReplicatedStorage.WorldProps.Keeper<VendorId>` |
 | `furniture_glb` | the 38 den furniture pieces of batch 1, `furniture/<Name>.glb` (GLB; cut off `assets/concepts/Furn*.jpg` by `tools/props/furniture_crops.py`, Tripo image_to_model; normal maps taken out by `tools/props/strip_normals.py`, colors made safe by `safe_colors.py`, all 76 images screened 2026-10-13; front faces +X) | `ReplicatedStorage.WorldProps.<Name>` |
+| `den_props2_glb` | the 12 den props of batch 2, `den_props2/<Name>.glb`: DriftwoodTable, KelpBed, PearlPedestal, BubbleColumn, SpongeSofa, ShipwreckBookshelf, JellyLamp, SeaGlassLantern, CoralLamp, Banner, ConchGramophone, TreasureChart (GLB; 2026-10-19, from `assets/concepts/DenPropsA.jpg` / `DenPropsB.jpg`; normal maps stripped, squared up and recoloured by `tools/props/den_props2_prep.py`, colours made safe, all 24 images screened, highest 0.115; see "The den props, batch 2" below) | `ReplicatedStorage.WorldProps.<Name>` |
 | `ruins_glb` | RuinHead, RuinHand, RuinGuardian, RuinUrn, RuinCapital, RuinStele, `props/<Name>.glb` (GLB; the Sunken Ruins' hero props, 2026-10-18, Tripo text_to_model from `tools/tripo_jobs_ruins_props.json` in the BiomeSunkenRuins concept's marble; normal maps stripped, colours made safe, all 12 images screened, highest 0.056; the head and the stele face +X, the guardian +Z) | `ReplicatedStorage.WorldProps.<Name>` |
 | `shade_patch_v9` | `<Fish>_ShadesPatch.glb` ×6: CatchCrystal on every fish, Magma on the MorayEel (2026-10-16 retextures; only these quads) | the same folders; `organize_shades.luau` replaces only these skins |
 | `shade_patch_v10` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch10`: CatchGolden, WeekWave, WeekWreck and PassAbyssalCurrent on every fish, Thunder and CudaChrome on the Cuda, MorRibbon on the MorayEel, ShkScarred on the ReefShark (2026-10-16, the PC's SK2 notes; 9-13 images a GLB) | the same folders; import after v9 |
@@ -149,6 +150,71 @@ and antennae (within 45), never a see-through body (`GLOWS`); the three nearest
 Lanternfish carry a faint cyan PointLight (range 7). The spots sit on the body's
 outline from its bounding box, so if they float off or sink into an imported
 Lanternfish, nudge `at` in `GLOWS` (x across, y up, z along the body, in half-extents).
+
+### The den props, batch 2 (`den_props2_glb`, 2026-10-19)
+
+The owner asked for the buyable den props to be "MUCH much better" and approved two
+boards, `assets/concepts/DenPropsA.jpg` (Driftwood Table, Kelp Bed, Pearl Pedestal,
+Bubble Column, Sponge Sofa, Shipwreck Bookshelf) and `DenPropsB.jpg` (Jellyfish Lamp,
+Sea Glass Lantern, Coral Lamp, Banner, Conch Gramophone, Treasure Chart). The eight
+first pieces keep their ids in `Config/Dens` (placed copies in saves stay) and the four
+new ones (SpongeSofa, ShipwreckBookshelf, ConchGramophone, TreasureChart) are bought in
+the den shop from the start. Each item's `prop` is its own id.
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/` and
+`assets/glb/`):
+
+1. `python3.11 tools/props/den_props2_refs.py`: each piece cut off its board on the
+   board's own teal, large (`assets/tripo/den_props2_refs/`).
+2. `python tools/tripo.py run tools/tripo_jobs_den_props2_sheets.json`: a clean
+   three-quarter model sheet each (Nano Banana, 5 credits), then
+   `python tools/tripo.py run tools/tripo_jobs_den_props2_models.json` (image_to_model,
+   30 credits). 420 credits in all, no redos.
+3. `tools/props/strip_normals.py assets/tripo/den_props2/*.glb --out assets/glb/den_props2_nonormals`.
+4. `python3.11 tools/props/den_props2_prep.py prep assets/glb/den_props2_nonormals/*.glb --out assets/glb/den_props2_prep`:
+   names each scene, node and mesh after the piece; squares three up in plan, baked
+   into the vertices (TreasureChart +31 degrees: Tripo kept the concept's turn, and a
+   wall thing must lie flat on the rock; PearlPedestal -9, KelpBed -5); recolours four
+   (the jellyfish bells' pale tan to amber gold, the coral lamp's salmon fans to deep
+   orange, the bed's tan rope to olive kelp rope, the table's warm patches to
+   driftwood grey: `safe_colors.py` alone made the rope copper and the table's top
+   blotchy orange); and sprinkles flecks over the pedestal's grey stone, whose colour
+   map scored 0.62 on the classifier without them (the toon materials' lesson).
+5. `tools/props/safe_colors.py assets/glb/den_props2_prep/*.glb --out assets/glb/den_props2_safe`
+   (skin-tone texels to 0.0% on every map; the gramophone horn's cream to cool white).
+6. `python3.11 tools/props/den_props2_prep.py cloth assets/glb/den_props2_safe/Banner.glb --out assets/glb/den_props2_cloth`:
+   the banner's colour map becomes a 1024 RGBA PNG whose teal cloth is alpha 0.2 (its
+   colours untouched). The 12 GLBs (Banner from step 6) are the bundle.
+7. Screened: every image extracted (Color and ORM, 24) and run through
+   `screen_shades.py` with the classifier: exit 0, none flagged, highest 0.115
+   (PearlPedestal ORM; colour maps at most 0.021).
+
+Facing in the GLB: +Z for most (`front` unset), -Z for DriftwoodTable (`front = 180`),
++X for ShipwreckBookshelf, SeaGlassLantern, Banner and TreasureChart (`front = 90`). The
+boxes in `Config/Dens` are each model's own proportions at its size, so a wall thing
+sits on the rock with no gap. Until a model is imported, `Shared/DenItems` builds a
+part-built stand-in of the same design (`STAND_INS`), so the den shop's photos, Build
+mode's ghost and the placed thing look like the concept either way.
+
+The banner's cloth follows the den's glow: `DenItems` colours its MeshPart in the glow
+and leaves the texture untinted, and the SurfaceAppearance in **Overlay** mode shows
+that colour where the colour map's alpha is low. Only a plugin or the Command Bar can
+set `AlphaMode`, so `organize_imports.luau` sets it on `WorldProps.Banner` (it prints
+`Banner: AlphaMode Overlay set`). If the cloth shows see-through, the importer left it
+in Transparency mode; run the script again.
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `den_props2_glb` into `assets/glb/den_props2/`).
+2. **File → Import 3D**, the 12 files in `assets/glb/den_props2/` (no rig), **Import
+   All**. A row named "Scene" gets its file name first.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the 12
+   names, files them in `ReplicatedStorage.WorldProps` and sets the banner's Overlay
+   mode), then **save the place**.
+4. Check the facing in a den (Build mode, or the den shop's photos): every piece's front
+   toward you in its photo; the lantern, banner and chart flat on the rock, standing
+   out from it; the bookshelf's back against the wall when snapped. A piece facing the
+   wrong way is its `front` in `Config/Dens` (90 for a GLB facing +X, 180 for -Z).
 
 ## Shade skins (tools/shades)
 

@@ -17,6 +17,16 @@ left alone), to each skin-tone or pale warm texel and a 2-texel ring round them:
   box (Cr over 178 or Cb under 74), so salmon reads as the concept's vivid orange.
 Everything else in the GLB (meshes, UVs, materials, the other images) is copied byte
 for byte. Run the screen on the result and upload only what exits 0.
+
+`--vivid` (for a yellow fish, 2026-10-19: the Butterflyfish's lemon body and fins came
+out grey-white under the bright rule): a yellow texel (more yellow than red) of any
+brightness gets more chroma instead, a deeper lemon at the same brightness, until it
+leaves the skin box; peach, pink and the rest still go as above.
+
+`--crimson` (2026-10-19: the Oarfish's orange-red fins over its pale blue-silver body
+scored 0.99 on the classifier though no texel was skin tone; a truer red scored 0.03):
+strong orange-reds lose most of their yellow and 15% of their brightness, a scarlet to
+crimson red (never pink: the red keeps its chroma), before the rules above.
 """
 
 from __future__ import annotations
@@ -45,6 +55,9 @@ DULL = 26.0  # chroma under which a texel turns greige instead of more vivid
 GREIGE = (0.5, -1.0)  # the greige keeps half its Cb (its yellow) and loses its red
 FEATHER = 2
 JPEG_QUALITY = 93
+YELLOW = 0.8  # --vivid: a texel whose red cast is under this share of its yellow
+K_YELLOW = 6.0  # --vivid: how far a pale yellow's chroma may be raised
+CRIMSON = (0.4, 3.0, 0.85)  # --crimson: Cb offset kept, Cb added, brightness kept
 
 
 def to_ycc(rgb: np.ndarray):
@@ -63,7 +76,16 @@ def to_rgb(y, cb, cr) -> np.ndarray:
     return np.clip(np.stack([r, g, b], -1) + 0.5, 0, 255).astype(np.uint8)
 
 
-def recolor(rgb: np.ndarray) -> tuple[np.ndarray, dict]:
+def crimson(rgb: np.ndarray) -> np.ndarray:
+    """Strong orange-reds toward a true red (see --crimson above)."""
+    y, cb, cr = to_ycc(rgb)
+    red = (cr - 128 > 30) & (rgb[..., 0].astype(np.float32) > rgb[..., 2].astype(np.float32) + 38)
+    keep, add, bright = CRIMSON
+    cb2 = np.where(red, 128 + (cb - 128) * keep + add, cb)
+    return to_rgb(np.where(red, y * bright, y), cb2, cr)
+
+
+def recolor(rgb: np.ndarray, vivid_yellow: bool = False) -> tuple[np.ndarray, dict]:
     out = rgb.copy()
     before = [m.mean() * 100 for m in skin_masks(rgb)]
     for _ in range(3):  # clipping at the gamut edge can leave a few; go again
@@ -80,11 +102,14 @@ def recolor(rgb: np.ndarray) -> tuple[np.ndarray, dict]:
         bright = zone & ((y >= BRIGHT) | pale)
         dark = zone & ~bright & (red <= DARK_RED)
         dull = zone & ~bright & ~dark & (np.hypot(dcb, dcr) < DULL)
+        yellow = zone & ~dark & (dcr <= YELLOW * -dcb) if vivid_yellow else np.zeros_like(zone)
+        bright &= ~yellow
+        dull &= ~yellow
         vivid = zone & ~bright & ~dark & ~dull
         with np.errstate(divide="ignore", invalid="ignore"):
             k_cr = np.where(dcr > 0, (CR_EXIT - 128) / dcr, np.inf)
             k_cb = np.where(dcb < 0, (128 - CB_EXIT) / -dcb, np.inf)
-        k = np.where(vivid, np.clip(np.minimum(k_cr, k_cb), 1.0, K_MAX), 1.0)
+        k = np.where(vivid, np.clip(np.minimum(k_cr, k_cb), 1.0, np.where(yellow, K_YELLOW, K_MAX)), 1.0)
         cb2, cr2 = 128 + dcb * k, 128 + dcr * k
         cb2 = np.where(bright, 128 + COOL[0], cb2)
         cb2 = np.where(dull, 128 + dcb * GREIGE[0], cb2)
@@ -149,6 +174,8 @@ def main() -> int:
     ap.add_argument("glbs", nargs="+")
     ap.add_argument("--out", required=True, help="folder for the safe GLBs (same file names)")
     ap.add_argument("--images", help="also write each new base color here as <Model>/baseColor.png, for the screen")
+    ap.add_argument("--vivid", action="store_true", help="yellows get more chroma instead of turning white (see above)")
+    ap.add_argument("--crimson", action="store_true", help="orange-reds toward a true red first (see above)")
     args = ap.parse_args()
     out_dir = pathlib.Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -162,7 +189,9 @@ def main() -> int:
             image = doc["images"][index]
             view = image["bufferView"]
             rgb = np.asarray(Image.open(io.BytesIO(views[view])).convert("RGB"))
-            safe, report = recolor(rgb)
+            if args.crimson:
+                rgb = crimson(rgb)
+            safe, report = recolor(rgb, args.vivid)
             buffer = io.BytesIO()
             if image.get("mimeType") == "image/png":
                 Image.fromarray(safe).save(buffer, "PNG", optimize=True)

@@ -1,6 +1,6 @@
 """Rigs a Tripo fish GLB with a spine for the procedural swim, and exports an FBX.
 
-    <bpy python> tools/blender/rig_fish.py <in.glb> <out.fbx> [--flip] [--segments N]
+    <bpy python> tools/blender/rig_fish.py <in.glb> <out.fbx> [--flip] [--segments N] [--head F]
     <bpy python> tools/blender/rig_fish.py <in.glb> <out.glb> --static   (squared up, no rig)
 
 The fish is squared up (its long axis becomes the body axis), the head end is found
@@ -30,6 +30,9 @@ SEGMENTS = int(argv[argv.index("--segments") + 1]) if "--segments" in argv else 
 # --static: export a squared-up GLB with no armature (prey fish, which the client
 # moves whole), instead of the rigged FBX
 STATIC = "--static" in argv
+# --head F: the share of the length the stiff Head bone covers (default 0.28). A long
+# ribbon body with a small head (the Oarfish) takes less, so more of it waves.
+HEAD = float(argv[argv.index("--head") + 1]) if "--head" in argv else 0.28
 
 
 def log(*args):
@@ -118,11 +121,11 @@ if STATIC:
 
 # ---------- bones ----------
 # Spine stations head -> tail along Y (head at y_min). The head bone covers the front
-# 28%, the tail bone the last 14% (the fin), spine segments share the middle.
-stations = [y_min, y_min + 0.28 * length]
-mid_len = (0.86 - 0.28) * length
+# 28% (HEAD), the tail bone the last 14% (the fin), spine segments share the middle.
+stations = [y_min, y_min + HEAD * length]
+mid_len = (0.86 - HEAD) * length
 for i in range(1, SEGMENTS + 1):
-    stations.append(y_min + 0.28 * length + mid_len * i / SEGMENTS)
+    stations.append(y_min + HEAD * length + mid_len * i / SEGMENTS)
 stations.append(y_max)
 names = ["Head"] + [f"Spine{i}" for i in range(1, SEGMENTS + 1)] + ["Tail"]
 

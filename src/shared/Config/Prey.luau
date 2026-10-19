@@ -86,7 +86,8 @@ local list: { PreyDef } = {
 			-- among the Ruins' columns (the Vents' and the Trench's minnow schools became
 			-- Ghost Shrimp swarms and Lanternfish, the second prey batch, below)
 			{ band = OUTER, angles = WRECKS, schools = 6, depth = { 4, 40 }, spread = 1.6 },
-			{ band = OUTER, angles = REEF, schools = 11, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
+			-- (11 until the Butterflyfish came)
+			{ band = OUTER, angles = REEF, schools = 8, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
 			{ band = DEEP, angles = RUINS, schools = 10, depth = { 6, 50 } },
 		} :: { Zone },
 		respawn = 8,
@@ -143,14 +144,15 @@ local list: { PreyDef } = {
 			{
 				band = DEEP,
 				angles = VENTS,
-				schools = 6, -- (10 until the Ghost Shrimp came)
+				schools = 3, -- (10 until the Ghost Shrimp came, 6 until the Vent Eelpout)
 				perSchool = 24,
 				depth = { 60, 200 },
 				round = true,
 				spread = 0.6,
 				pathRadius = { 12, 24 },
 			},
-			{ band = TRENCH, trench = true, schools = 6, perSchool = 16, depth = { 30, 220 } },
+			-- (the Trench's 6 schools of 16 became Gulper Eels, Oarfish and Lanternfish,
+			-- the third prey batch, 2026-10-19)
 		} :: { Zone },
 		-- The Sardine Run's bait balls: big tight schools in the Kelp Shallows and over
 		-- the reef, out only while it's up
@@ -177,7 +179,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = { 150, 830 }, schools = 12 }, -- (its old single band)
 			-- (2026-10-18) loose shoals over the wrecks and the reef, and in the Ruins
-			{ band = OUTER, angles = WRECKS, schools = 6, perSchool = 8, depth = { 6, 50 }, spread = 1.5 },
+			{ band = OUTER, angles = WRECKS, schools = 3, perSchool = 8, depth = { 6, 50 }, spread = 1.5 }, -- (6 before the Triggerfish)
 			{ band = OUTER, angles = REEF, schools = 10, perSchool = 8, depth = { 5, 45 } },
 			{ band = DEEP, angles = RUINS, schools = 9, perSchool = 7, depth = { 10, 80 } }, -- (12 before the Lionfish)
 		} :: { Zone },
@@ -199,7 +201,7 @@ local list: { PreyDef } = {
 		depth = { 20, 120 },
 		zones = {
 			{ band = { 150, 830 }, schools = 8 },
-			{ band = { 980, 1440 }, angles = { 228, 312 }, schools = 4, depth = { 150, 420 } }, -- Open Blue haul, mid-water
+			-- (its old 4 Open Blue schools went to the Swordfish and the Ocean Sunfish, 2026-10-19)
 			-- (2026-10-18) every biome past the kelp has its snappers
 			{ band = OUTER, angles = REEF, schools = 10, perSchool = 6, depth = { 10, 70 } },
 			{ band = OUTER, angles = WRECKS, schools = 5, perSchool = 5, depth = { 10, 60 } },
@@ -211,9 +213,11 @@ local list: { PreyDef } = {
 				depth = { 140, 400 },
 				spread = 1.3,
 			},
-			{ band = DEEP, angles = RUINS, schools = 12, perSchool = 6, depth = { 20, 120 } },
-			{ band = DEEP, angles = VENTS, schools = 12, perSchool = 6, depth = { 30, 160 } },
-			{ band = TRENCH, trench = true, schools = 5, perSchool = 6, depth = { 30, 200 } },
+			-- (2026-10-19: Ruins 12, Vents 12 and Trench 5 until the Coelacanth, the Vent
+			-- Eelpout and the Gulper Eel took some over)
+			{ band = DEEP, angles = RUINS, schools = 10, perSchool = 6, depth = { 20, 120 } },
+			{ band = DEEP, angles = VENTS, schools = 6, perSchool = 6, depth = { 30, 160 } },
+			{ band = TRENCH, trench = true, schools = 3, perSchool = 6, depth = { 30, 200 } },
 			{ band = DEEP, angles = { 70, 123 }, schools = 6, perSchool = 5, depth = { 20, 140 } }, -- the Trench's rim
 		} :: { Zone },
 		respawn = 15,
@@ -250,7 +254,7 @@ local list: { PreyDef } = {
 			{
 				band = DEEP,
 				angles = RUINS,
-				schools = 10,
+				schools = 6, -- (10 before the Coelacanth)
 				perSchool = 1,
 				depth = { 6, 50 },
 				pathRadius = { 14, 28 },
@@ -471,7 +475,7 @@ local list: { PreyDef } = {
 		pathRadius = { 8, 16 },
 		depth = { 6, 50 },
 		zones = {
-			{ band = DEEP, vents = true, schools = 8, round = true, spread = 0.7 },
+			{ band = DEEP, vents = true, schools = 10, round = true, spread = 0.7 }, -- (8 until 2026-10-19)
 			-- and a few smaller swarms low among the kelp, a fifth small fish for new
 			-- players (the Catch Log's goals count species)
 			{
@@ -494,19 +498,189 @@ local list: { PreyDef } = {
 		name = "Lanternfish",
 		biome = "AbyssalTrench",
 		mass = 0.5,
-		schools = 8,
+		schools = 12,
 		perSchool = 18,
 		spread = 2.6,
 		speed = 7,
 		pathRadius = { 20, 40 },
 		depth = { 20, 220 },
 		zones = {
-			{ band = TRENCH, trench = true, schools = 8 },
+			{ band = TRENCH, trench = true, schools = 12 }, -- (8 until 2026-10-19)
 		} :: { Zone },
 		respawn = 9,
 		back = Color3.fromRGB(30, 40, 72),
 		belly = Color3.fromRGB(58, 80, 122),
 		slim = 0.26,
+	},
+	-- The third batch (owner approved the PreySheetB concepts, 2026-10-19), from the
+	-- docs/ASSETS.md prey3_fbx models: a native for the reef and the wrecks, and big
+	-- natives for the deep, where the Vents and the Trench had borrowed the shelf's
+	-- Sardines and Snappers. They took schools over from the Minnows, Wrasse, Sardines,
+	-- Snappers and Groupers, so the sea still holds about as many fish (run_density.sh).
+	{
+		-- Pairs and small groups of little yellow discs flitting low round the coral
+		id = "Butterflyfish",
+		name = "Butterflyfish",
+		biome = "CoralReef",
+		mass = 1.2, -- (swallowed from about LV 13)
+		schools = 12,
+		perSchool = 5,
+		spread = 2.4,
+		speed = 5,
+		pathRadius = { 8, 18 },
+		depth = { 3, 30 },
+		zones = {
+			{ band = OUTER, angles = REEF, schools = 12 },
+		} :: { Zone },
+		respawn = 12,
+		back = Color3.fromRGB(240, 196, 30),
+		belly = Color3.fromRGB(250, 214, 60),
+		slim = 0.6,
+	},
+	{
+		-- Stout navy triggerfish with white-spotted bellies, picking round the wrecks
+		id = "Triggerfish",
+		name = "Triggerfish",
+		biome = "ShipwreckGraveyard",
+		mass = 2.2, -- (swallowed from about LV 19, the Wrecks' upper half)
+		schools = 7,
+		perSchool = 4,
+		spread = 2.2,
+		speed = 5,
+		pathRadius = { 12, 24 },
+		depth = { 4, 40 },
+		zones = {
+			{ band = OUTER, angles = WRECKS, schools = 7 },
+		} :: { Zone },
+		respawn = 15,
+		back = Color3.fromRGB(28, 36, 72),
+		belly = Color3.fromRGB(226, 230, 236),
+		slim = 0.5,
+	},
+	{
+		-- Lone swordfish sweeping huge loops through the Open Blue: the fastest fish
+		-- in the sea, a big meal for a fish near the top of the blue
+		id = "Swordfish",
+		name = "Swordfish",
+		biome = "OpenBlue",
+		mass = 55, -- (swallowed from about LV 51)
+		schools = 6,
+		perSchool = 1,
+		spread = 1,
+		speed = 18,
+		pathRadius = { 90, 160 },
+		depth = { 160, 420 },
+		zones = {
+			{ band = DEEP, angles = OPEN_BLUE, schools = 6 },
+		} :: { Zone },
+		respawn = 30,
+		back = Color3.fromRGB(72, 62, 150),
+		belly = Color3.fromRGB(200, 210, 222),
+		slim = 0.18,
+	},
+	{
+		-- Huge, slow, round sunfish drifting alone high in the Open Blue: the biggest
+		-- meal in the blue, only for a fish at its very top
+		id = "OceanSunfish",
+		name = "Ocean Sunfish",
+		biome = "OpenBlue",
+		mass = 80, -- (swallowed from about LV 54)
+		schools = 5,
+		perSchool = 1,
+		spread = 1,
+		speed = 2.5,
+		pathRadius = { 40, 80 },
+		depth = { 260, 410 },
+		zones = {
+			{ band = DEEP, angles = OPEN_BLUE, schools = 5 },
+		} :: { Zone },
+		respawn = 40,
+		back = Color3.fromRGB(128, 140, 150),
+		belly = Color3.fromRGB(176, 188, 196),
+		slim = 0.75,
+	},
+	{
+		-- Heavy, ancient lobe-finned fish lurking in pairs low among the Ruins' stones
+		id = "Coelacanth",
+		name = "Coelacanth",
+		biome = "SunkenRuins",
+		mass = 40, -- (swallowed from about LV 47)
+		schools = 8,
+		perSchool = 2,
+		spread = 2,
+		speed = 3,
+		-- (a wide, low loop: on a tight one a fish this long pitches steeply enough to
+		-- nose into the rocks the lift clears, run_schools.sh)
+		pathRadius = { 16, 30 },
+		depth = { 10, 40 },
+		zones = {
+			{ band = DEEP, angles = RUINS, schools = 8 },
+		} :: { Zone },
+		respawn = 25,
+		back = Color3.fromRGB(52, 84, 112),
+		belly = Color3.fromRGB(84, 116, 140),
+		slim = 0.28,
+	},
+	{
+		-- Big-headed, ember-speckled eelpouts nosing along the Vents' basin floors
+		id = "VentEelpout",
+		name = "Vent Eelpout",
+		biome = "HydrothermalVents",
+		mass = 16, -- (swallowed from about LV 39)
+		schools = 10,
+		perSchool = 4,
+		spread = 2.4,
+		speed = 2.5,
+		pathRadius = { 14, 26 }, -- (wide, like the Coelacanth's)
+		depth = { 6, 22 },
+		zones = {
+			{ band = DEEP, vents = true, schools = 10 },
+		} :: { Zone },
+		respawn = 18,
+		back = Color3.fromRGB(58, 56, 60),
+		belly = Color3.fromRGB(82, 78, 80),
+		slim = 0.25,
+	},
+	{
+		-- Black gulper eels, all mouth and whip tail, hanging in threes in the Trench
+		id = "GulperEel",
+		name = "Gulper Eel",
+		biome = "AbyssalTrench",
+		mass = 30, -- (swallowed from about LV 45)
+		schools = 8,
+		perSchool = 3,
+		spread = 2.6,
+		speed = 4,
+		pathRadius = { 20, 40 },
+		depth = { 40, 260 },
+		zones = {
+			{ band = TRENCH, trench = true, schools = 8 },
+		} :: { Zone },
+		respawn = 22,
+		back = Color3.fromRGB(22, 22, 28),
+		belly = Color3.fromRGB(40, 36, 46),
+		slim = 0.2,
+	},
+	{
+		-- Long silver oarfish with red crests, drifting alone through the Trench's
+		-- dark water: the heaviest prey in the sea
+		id = "Oarfish",
+		name = "Oarfish",
+		biome = "AbyssalTrench",
+		mass = 200, -- (swallowed from about LV 63)
+		schools = 6,
+		perSchool = 1,
+		spread = 1,
+		speed = 3,
+		pathRadius = { 40, 80 },
+		depth = { 60, 300 },
+		zones = {
+			{ band = TRENCH, trench = true, schools = 6 },
+		} :: { Zone },
+		respawn = 45,
+		back = Color3.fromRGB(176, 190, 206),
+		belly = Color3.fromRGB(200, 210, 222),
+		slim = 0.09,
 	},
 }
 

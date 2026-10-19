@@ -63,11 +63,66 @@ BATCHES = {
         "out": ROOT / "assets/tripo/prey3_refs",
         "sheets": "prey3_sheets",
         "mirror": True,
+        # The Oarfish's and the Gulper Eel's tails curl on the concept, and Nano Banana
+        # copied the curl however the prompt asked for a straight body (a rig wants one).
+        # Their references are straightened: everything past `cut` (x on the 1024 px
+        # reference) goes, then the body's last `period` columns repeat on `extend` px
+        # further, tapering to `taper` of their height (`clear` boxes: the curl's other
+        # bits left of the cut)
+        "straighten": {
+            "Oarfish": {"cut": 705, "period": 220, "extend": 560, "taper": 0.1, "clear": []},
+            "GulperEel": {"cut": 795, "period": 70, "extend": 560, "taper": 0.12, "clear": [(660, 420, 800, 560)]},
+        },
     },
 }
 batch = BATCHES["A"]
 SIZE = 1024
 TOP = 700  # the fish's part of the image; the style strip fills the rest
+
+
+def straighten(canvas: Image.Image, how: dict) -> Image.Image:
+    """Cut the curled tail off the reference's fish and run the body on straight."""
+    import numpy as np
+
+    top_area = np.asarray(canvas.crop((0, 0, SIZE, TOP))).astype(np.float32)
+    bg = top_area[300, 35].copy()  # the panel's teal, left of every fish's head
+    fish = np.sqrt(((top_area - bg) ** 2).sum(-1)) > 30
+    cut, period, extend, taper = how["cut"], how["period"], how["extend"], how["taper"]
+    for x0, y0, x1, y1 in how["clear"]:
+        fish[y0:y1, x0:x1] = False
+    wide = np.empty((TOP, cut + extend, 3), np.float32)
+    wide[:] = bg
+    keep = fish[:, :cut]
+    wide[:, :cut][keep] = top_area[:, :cut][keep]
+    # The band's middle at the cut, which every extended column keeps level with
+    rows = np.nonzero(fish[:, cut - 1])[0]
+    middle = (rows.min() + rows.max()) / 2
+    for k in range(extend):
+        phase = k % (2 * period)  # ping-pong through the last `period` columns: no seam
+        src = cut - 1 - (phase if phase < period else 2 * period - 1 - phase)
+        t = k / extend
+        scale = 1 - (1 - taper) * t**1.2
+        # Only the run of the column through the band's middle (not the fin streamers)
+        column = fish[:, src]
+        lo = hi = int(middle)
+        while lo > 0 and column[lo - 1]:
+            lo -= 1
+        while hi < TOP - 1 and column[hi + 1]:
+            hi += 1
+        ys = np.arange(TOP)
+        from_y = np.round(middle + (ys - middle) / scale).astype(int)
+        ok = (from_y >= lo) & (from_y <= hi) & column[int(middle)]
+        wide[ys[ok], cut + k] = top_area[from_y[ok], src]
+    # Fit the longer fish back into the reference's top part
+    cols = np.nonzero((np.sqrt(((wide - bg) ** 2).sum(-1)) > 30).any(0))[0]
+    rows = np.nonzero((np.sqrt(((wide - bg) ** 2).sum(-1)) > 30).any(1))[0]
+    body = Image.fromarray(wide[rows.min() : rows.max() + 1, cols.min() : cols.max() + 1].astype(np.uint8))
+    scale = min((SIZE - 60) / body.width, (TOP - 40) / body.height)
+    body = body.resize((round(body.width * scale), round(body.height * scale)), Image.LANCZOS)
+    fill = tuple(int(c) for c in bg)
+    canvas.paste(fill, (0, 0, SIZE, TOP))
+    canvas.paste(body, ((SIZE - body.width) // 2, (TOP - body.height) // 2))
+    return canvas
 
 
 def make(name: str) -> pathlib.Path:
@@ -82,6 +137,8 @@ def make(name: str) -> pathlib.Path:
     scale = min((SIZE - 60) / crop.width, (TOP - 40) / crop.height)
     crop = crop.resize((round(crop.width * scale), round(crop.height * scale)), Image.LANCZOS)
     canvas.paste(crop, ((SIZE - crop.width) // 2, (TOP - crop.height) // 2))
+    if name in batch.get("straighten", {}):
+        canvas = straighten(canvas, batch["straighten"][name])
     strip = style.resize((SIZE, SIZE - TOP - 8), Image.LANCZOS)
     canvas.paste((255, 255, 255), (0, TOP, SIZE, TOP + 8))
     canvas.paste(strip, (0, TOP + 8))
