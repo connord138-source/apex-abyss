@@ -469,13 +469,18 @@ end
 -- One fish's frame, given its school's frame at the same t.
 function Schools.fishFrame(index: number, schoolFrame: CFrame, t: number): CFrame
 	local f = fish[index]
+	local school = list[f.school]
 	local p = f.phase
 	local wobble = Vector3.new(
 		math.sin(t * 1.3 + p) * 0.5,
 		math.sin(t * 1.9 + p * 2) * 0.35,
 		math.sin(t * 0.9 + p) * 0.6
 	)
-	local position = schoolFrame:PointToWorldSpace(f.offset + wobble * f.length)
+	-- (its length, but never more studs than its speed: a big slow fish's sway along
+	-- its line outran its swim, and the Ocean Sunfish and the Oarfish slid tail first a
+	-- third of the time, PC 2026-10-19 round 2, PR7)
+	local size = math.min(f.length, math.abs(school.angularSpeed) * school.radius)
+	local position = schoolFrame:PointToWorldSpace(f.offset + wobble * size)
 	local yaw = math.sin(t * 2.6 + p * 3) * 0.14
 	return CFrame.new(position) * schoolFrame.Rotation * CFrame.Angles(0, yaw, 0)
 end

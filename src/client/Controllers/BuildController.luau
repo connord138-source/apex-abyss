@@ -711,6 +711,22 @@ local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): S
 				return nil
 			end
 			surface, position, normal = "floor", down.Position, down.Normal
+		elseif table.find(item.kinds, "ceiling") then
+			-- A ceiling thing aimed at the floor or a wall rises to the vault above: the
+			-- editor view always looks down (VIEW_PITCH), so the ceiling itself is never
+			-- under the aim (PC 2026-10-19 round 2, DP3: the Jellyfish Lamp couldn't be
+			-- placed at all)
+			local up = workspace:Raycast(position + normal * 1.5, Vector3.new(0, 80, 0), params)
+			if up == nil or up.Normal.Y >= -0.6 then
+				return {
+					ok = false,
+					surface = "ceiling",
+					at = DenSpace.toLocal(frame, position),
+					turn = yaw,
+					why = "Aim at the ceiling",
+				}
+			end
+			surface, position, normal = "ceiling", up.Position, up.Normal
 		else
 			local local0 = DenSpace.toLocal(frame, position)
 			return {
@@ -1722,7 +1738,14 @@ function BuildController.startController()
 	end
 	MenuController.startBuild = BuildController.start
 	ContextActionService:BindAction("ApexBuild", function(_, inputState)
-		if inputState ~= Enum.UserInputState.Begin or Input.locked or MenuController.isOpen() then
+		-- (nor under the full map: B in the den started Build mode beneath it, PC
+		-- 2026-10-19 round 2, UI3)
+		if
+			inputState ~= Enum.UserInputState.Begin
+			or Input.locked
+			or MenuController.isOpen()
+			or MapController.isOpen()
+		then
 			return Enum.ContextActionResult.Pass
 		end
 		if not active and not insideOwnDen() then
