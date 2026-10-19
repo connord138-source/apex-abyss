@@ -619,6 +619,7 @@ local function bank(player: Player, session: Session, data: DataService.PlayerDa
 	end
 	Net.banked(player, {
 		amount = amount,
+		food = Size.haulShown(record.mass - amount, amount), -- (the Haul as the card showed it)
 		coral = coral,
 		mass = record.mass,
 		levelBefore = levelBefore,
@@ -712,6 +713,13 @@ end
 -- What a full Haul holds for this player's fish now (kg)
 function HuntService.fullHaul(player: Player): number
 	return fullHaul(player)
+end
+
+-- A Haul amount (kg of growth) as the player sees it: food, kg of fish eaten
+-- (Size.haulShown), for toasts and reward cards
+function HuntService.shown(player: Player, kg: number): number
+	local data = DataService.get(player)
+	return if data then Size.haulShown(Progress.mass(data), kg) else kg
 end
 
 -- Adds `hauls` of this fish's full Haul (bait, whale chunks, slick chunks, predator
@@ -932,7 +940,7 @@ local function secondChance(player: Player, data: DataService.PlayerData)
 		end
 		Net.notify(
 			player,
-			`Second Chance: your {Format.mass(amount)} Haul is back! Swim home to bank it.`,
+			`Second Chance: your {Format.mass(HuntService.shown(player, amount))} Haul is back! Swim home to bank it.`,
 			"rare"
 		)
 		return

@@ -264,7 +264,7 @@ local function grant(
 	elseif reward.kind == "haul" then
 		-- Full Hauls of the digger's own, on top of what it carries (×2 Mass and
 		-- Frenzy still count; Config/Treasure `hauls`)
-		result.haul = HuntService.hauls(player, reward.hauls or 1, "sized")
+		result.haul = HuntService.shown(player, HuntService.hauls(player, reward.hauls or 1, "sized")) -- (as food)
 	elseif reward.kind == "dna" then
 		HuntService.giveDna(player, siteOf(map), reward.amount or 0)
 		result.dna = reward.amount

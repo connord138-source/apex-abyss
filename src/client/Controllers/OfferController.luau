@@ -22,6 +22,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Size = require(ReplicatedStorage.Shared.Size)
 local Ads = require(script.Parent.Parent.Ads)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
@@ -228,7 +229,11 @@ local function onBanked(summary: { [string]: any })
 	if product == nil or not Store.listed(product.id) then
 		return
 	end
-	local amount = typeof(summary.amount) == "number" and summary.amount or 0
+	-- (as food, like the Haul card: the server's `food`)
+	local amount = if typeof(summary.food) == "number"
+		then summary.food
+		elseif typeof(summary.amount) == "number" then summary.amount
+		else 0
 	local levels = typeof(offer.levels) == "number" and offer.levels or 0
 	local choices: { Choice } = {
 		{
@@ -282,7 +287,7 @@ local function onEaten(summary: { [string]: any })
 		openCard(
 			"second",
 			"GET YOUR HAUL BACK?",
-			`You lost {Format.mass(lost)} · Second Chance returns all of it`,
+			`You lost {Format.mass(Size.haulShown(state().mass or 1, lost))} · Second Chance returns all of it`,
 			Ui.color.accent,
 			{
 				{

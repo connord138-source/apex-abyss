@@ -27,6 +27,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local TutorialConfig = require(ReplicatedStorage.Shared.Config.Tutorial)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Size = require(ReplicatedStorage.Shared.Size)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
@@ -588,9 +589,12 @@ local function drawLive(s: { [string]: any })
 	countText.TextColor3 = Ui.color.muted
 	local progress = math.min(tutorial.progress or 0, step.goal)
 	if step.event == "haul" then
-		-- The Haul against its target, in kg (the server counts it in percent)
-		local haulTarget = TutorialConfig.haulTarget(s.mass or 1)
-		countText.Text = `{Format.mass(math.min(s.haul or 0, haulTarget))} / {Format.mass(haulTarget)}`
+		-- The Haul against its target, as food like the Haul card (Size.haulShown; the
+		-- server counts it in percent)
+		local banked = s.mass or 1
+		local haulTarget = TutorialConfig.haulTarget(banked)
+		local shown = Size.haulShown(banked, math.min(s.haul or 0, haulTarget))
+		countText.Text = `{Format.mass(shown)} / {Format.mass(Size.haulShown(banked, haulTarget))}`
 	else
 		countText.Text = if step.goal > 1 then `{progress} / {step.goal}` else ""
 	end

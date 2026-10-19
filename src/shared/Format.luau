@@ -18,8 +18,8 @@ function Format.mass(kg: number): string
 	return string.format("%d t", math.floor(kg / 1000 + 0.5))
 end
 
--- A Haul amount gained (pops, reward toasts): grams under a kilo, since a full Haul is
--- a fraction of a level (a sardine adds about a gram at LV 10): "1.3 g", "56 g",
+-- A Haul amount gained (pops, reward toasts), as food (Size.haulShown): grams under a
+-- kilo (a starfish is 40 g): "1.3 g", "56 g",
 -- "2.4 kg", "340 kg"
 function Format.haul(kg: number): string
 	if kg < 0.01 then

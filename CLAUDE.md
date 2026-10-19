@@ -1063,44 +1063,54 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   ... scales far too high", "so much more fish", "Visibility needs to be turned up ...
   Think Subnautica", "we dont want to see the map barrier"; then "Go with all of your
   recs, roll it into one"; built):**
-  - **Slower levelling** (superseded the next day by "Pace (2026-10-19)" below; what
+  - **Slower levelling** (superseded the next day by "Pace (2026-10-19b)" below; what
     stays is the one choke point, `HuntService.addHaul(kind)`: "food" (× rate, then ×2 Mass and
     Frenzy: prey, forage, slick chunks, bait, predator and boss loot), "rated"
     (whale share, kill and pod gains), "sized" (treasure, admin: no rate), "raw"
     (chum, Second Chance). Pay that comes from the Haul uses its `worth` before the
     rate (`Events.banked` 4th argument: Pass XP, map chance; bank coral 7 × √worth),
     so a dive pays as before). The creator owns ×2 Mass, so the owner levels faster.
-  - **Pace (2026-10-19; PC PG1 measured +12 levels a 16–30 s dive and no server
-    cap):** `Config/Tuning` `growth` `rate` (share of each kg eaten that goes on the
-    Haul) and `cap` (levels a full Haul holds), both by banked level (`Shared/Size`
-    `haulRate`/`haulLevels`/`haulCap`). Cap 7 up to LV 3 (the tutorial goes 1 → 8),
-    0.75 at LV 8 down to 0.2 at LV 100; rate 0.068 at LV 1, ~0.002–0.005 from LV 8 to
-    50, up to 0.18 at LV 100 (prey kg stop growing with the fish). **The cap is real**
-    (`HuntService` `addHaul`): everyday food stops at a full Haul (MAX SIZE = full;
-    eating still heals and counts catches, DNA and coral). Rewards go on top: `sized`
-    (boss, treasure, admin) and `restore` (Second Chance); Double Haul banks directly.
-    Bonus meals are shares of the eater's full Haul (`HuntService.hauls`): bait
-    `baitHaul` ½, whale `chunkHaul` ⅙ with at most `hauls` 2 a whale, slick ¹⁄₃₀,
-    predator `loot.hauls` 0.3/0.6, a kill ½ their Haul + `playerBaseHauls` ¼ of their
-    full Haul, boss `hauls` 1.5 + `haulsShare` × share, treasure 1/1.5/2.5. **Food
-    below you counts for less:** past the top level of the biome a fish is in
+  - **Pace (2026-10-19b; owner, after playing the 22 h curve: "No reason that a full
+    haul for nibbler should start at .2kg and only go up by .01 a level ... The first
+    fish you eat are worth far too little food right now. A full haul should take
+    15-20 fish first time and hold more each time allowing them to level up faster
+    and faster while taking more risk with a larger haul"):** `Config/Tuning`
+    `growth` `food` (kg of food a full Haul holds, log-interpolated by banked level:
+    4.4 at LV 1, 5.2 at 8, 15 at 15, 85 at 25, 230 at 35, 1,150 at 45, 1,500 at 55,
+    2,400 at 70, 4,000 at 85, 5,000 at 100) and `cap` (levels a full Haul banks: 7 up
+    to LV 3 for the tutorial's 1 → 8, then 1 at LV 8 rising to 2 at LV 100). The
+    growth per kg of food is derived (`Size.haulRate` = `haulCap` ÷ `haulFood`). **The
+    Haul shows as food:** the Haul card, pops, the tutorial's count and every toast
+    (bait, kills, pod, boss, treasure, Second Chance, Double Haul, the fisherman)
+    show `Size.haulShown` (growth ÷ rate; `HuntService.shown(player, kg)` on the
+    server), so a 0.4 kg Garibaldi reads "+0.4 kg" and a full Haul "5.2 kg" at LV 8,
+    "85 kg" at LV 25, "1.5 t" at LV 55; the server still stores growth (`liveMass`,
+    chum, kills, banking unchanged). Fish a full Haul (sim, prey only): the
+    tutorial 16, LV 8–15 25, 15–25 25, 25–40 53, 40–55 52 (the Open Blue's tuna are
+    big), 55–70 99, 70–85 166, 85–100 206; dives 1.4 → 8.7 min; hours to LV
+    15/25/40/55/70/85/100: 10 min/23 min/44 min/1.2/2.0/3.2/4.1 (was 22 h). **The cap
+    is real** (`HuntService` `addHaul`): everyday food stops at a full Haul (MAX SIZE
+    = full; eating still heals and counts catches, DNA and coral). Rewards go on top:
+    `sized` (boss, treasure, admin) and `restore` (Second Chance); Double Haul banks
+    directly. Bonus meals are shares of the eater's full Haul (`HuntService.hauls`):
+    bait `baitHaul` ½, whale `chunkHaul` ⅙ with at most `hauls` 2 a whale, slick
+    ¹⁄₃₀, predator `loot.hauls` 0.3/0.6, a kill ½ their Haul + `playerBaseHauls` ¼ of
+    their full Haul, boss `hauls` 1.5 + `haulsShare` × share, treasure 1/1.5/2.5.
+    **Food below you counts for less:** past the top level of the biome a fish is in
     (`Config/Biomes` `maxLevel`), prey and filler food go on at ×(1 − 0.1 per level
     over), floor ×0.2 (`growth.overLevel`, `Size.overLevel`, by `Biomes.at` of the
-    fish; worth unchanged); the Haul card says "Too easy here: deeper water feeds you
-    better" (the Open Blue's tuna had let a fish that stayed there reach LV 100 in
-    ~13 h; now 25.5 h). A dive is 2.5–4 min of hunting plus ~1 min of swim and banks
-    0.75 of a level early, 0.2 late; a bank under a level reads "40% OF THE WAY TO LV
-    26" (BankController). Hours to LV 15/25/40/55/70/85/100: 0.6/1.6/4.1/7/10.8/15.9/
-    21.9 (`tools/tests/run_progress_sim.sh`, which also fails if a biome stayer beats
-    following the biomes; `MODE=design` turns new targets into curve points; rerun
-    after `growth`, `Config/Prey`, `Config/Forage`, biome levels or size/speed
-    changes). Double Haul `minFull` 0.75, tiers 0.6/12 kg, ad 0.6 kg; Second Chance
-    `minShare` ½ a full Haul. ×2 Mass and Frenzy fill the Haul twice as fast (~×1.7
-    growth an hour). **Treasure maps from prey** are capped at `drops.preyPerHour` 7
-    a player (an allowance holding `preyBurst` 2; `TreasureService`): heavy prey had
-    made it 30–65 an hour from LV 25. **`Format.haul`** writes small gains in grams
-    ("+56 g Haul") for the pops, kill, pod, bait and boss texts. `haulLengthCap` is
-    retired.
+    fish; worth unchanged); the Haul card says "Too easy here: deeper water feeds
+    you better" (a fish staying in the Open Blue reaches LV 100 in 4.7 h, following
+    the biomes 4.1). `tools/tests/run_progress_sim.sh` checks the tutorial's Haul
+    takes 15–25 fish, each band's fish a Haul near `FISH` and never fewer than the
+    band before, levels a bank near `cap`, and no biome-stayer fast lane;
+    `MODE=design` turns `FISH`/`LEVELS` targets into `food`/`cap` points; rerun after
+    `growth`, `Config/Prey`, `Config/Forage`, biome levels or size/speed changes.
+    Double Haul `minFull` 0.75, tiers 1.2/63 kg of growth (Small to ~LV 22, Big to
+    ~LV 58), ad 1.2 kg; Second Chance `minShare` ½ a full Haul. ×2 Mass and Frenzy
+    fill the Haul twice as fast. **Treasure maps from prey** are capped at
+    `drops.preyPerHour` 7 a player (an allowance holding `preyBurst` 2;
+    `TreasureService`). `haulLengthCap` is retired.
   - **Whale Fall** never in the Kelp Shallows nor within 520 of the hub (`Config/Chum`
     `whale.never`, `minRadius`); one fish takes at most 2 full Hauls from
     one whale (since 2026-10-19; was 4 levels' worth) ("You're full of whale!", `WhaleFull` attribute; its chunks stay for
@@ -1282,7 +1292,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `bash tools/preview/run_ruins.sh`.
 - **The 2026-10-19 report's decisions (PC report `2026-10-19-pc.md`; Connor's standing
   "go with all of your recs"; built on `claude/world`):**
-  - **Pacing:** see "Pace (2026-10-19)" below (the Haul cap in levels, the rate by
+  - **Pacing:** see "Pace (2026-10-19b)" below (the Haul cap in levels, the rate by
     level, rewards past the cap, bonus meals as shares of a full Haul).
   - **Ruins head:** `RuinHead`'s GLB is an upright bust (face +X, crown +Y, neck −Y;
     box = depth, height, width); it had lain inside a pediment half, which hid its
@@ -2240,9 +2250,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     exotic variants (they're part-built pieces on the mesh for now); caustics
     (needs a texture upload)
   - den items from bosses (jaw arch, Kraken-eye lantern) as Trophy Hunter buys
-  - Pacing retuned 2026-10-19 to ~22 h of active play to LV 100 (GDD §3 Pacing,
-    `run_progress_sim.sh`); **the owner kept the 22 h curve** (2026-10-19), with dives
-    banking under a level past LV 8.
+  - Pacing: ~4 h of active play to LV 100 a fish since 2026-10-19b (the owner found
+    the 22 h curve too slow; see "Pace (2026-10-19b)"); if the late game proves too
+    quick, grow late Hauls (more fish, more risk) rather than slow the early game.
 
 ## Playtests
 

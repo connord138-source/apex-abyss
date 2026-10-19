@@ -104,9 +104,10 @@ local function haulGain(kg: number): number?
 	return math.min(kg * Size.haulRate(mass) * overLevelNow() * growthNow(), room)
 end
 
--- A Haul pop's amount: grams under a kilo (a sardine adds a gram or two at LV 10)
+-- A Haul pop's amount: the gain as food (Size.haulShown: a 0.4 kg Garibaldi is
+-- "+0.4 kg", ×2 with ×2 Mass), grams under a kilo
 local function popMass(kg: number): string
-	return "+" .. Format.haul(kg)
+	return "+" .. Format.haul(Size.haulShown(state().mass or 1, kg))
 end
 
 -- The Haul card: what's on it against what a full one holds
@@ -520,9 +521,10 @@ local function eatenScreen(summary: { [string]: any })
 	local by = typeof(summary.by) == "string" and summary.by or "a bigger fish"
 	local lost = typeof(summary.lost) == "number" and summary.lost or 0
 	local saved = typeof(summary.saved) == "number" and summary.saved or 0
+	local banked = state().mass or 1
 	local detail = if saved > 0
-		then `by {by} · Second Chance kept your {Format.mass(saved)} Haul`
-		elseif lost > 0 then `by {by} · lost {Format.mass(lost)} of Haul`
+		then `by {by} · Second Chance kept your {Format.mass(Size.haulShown(banked, saved))} Haul`
+		elseif lost > 0 then `by {by} · lost {Format.mass(Size.haulShown(banked, lost))} of Haul`
 		else `by {by}`
 	local line = Ui.label(
 		overlay,
@@ -851,9 +853,9 @@ local function step(dt: number)
 	end
 	local mass = s.mass or 1
 	-- A full Haul (Shared/Size haulCap, the server's cap): the bar fills to it and MAX
-	-- SIZE shows there
+	-- SIZE shows there. The card shows it as food (kg of fish eaten, Size.haulFood)
 	local full = Size.haulCap(mass)
-	haulValue.Text = haulText(math.max(shownHaul, 0), full)
+	haulValue.Text = haulText(Size.haulShown(mass, math.max(shownHaul, 0)), Size.haulFood(mass))
 	pulse, pulseVelocity = Spring.number(pulse, pulseVelocity, 1, 18, dt)
 	haulScale.Scale = math.max(pulse, 0.8)
 

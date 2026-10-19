@@ -205,7 +205,11 @@ local function takeBait(player: Player, id: any)
 		character:SetAttribute("HookedBy", hook.id)
 		character:SetAttribute("HookStruggle", 0)
 	end
-	Net.notify(player, `+{Format.haul(added)} bait · HOOKED! Mash BITE or DASH to break free`, "bad")
+	Net.notify(
+		player,
+		`+{Format.haul(HuntService.shown(player, added))} bait · HOOKED! Mash BITE or DASH to break free`,
+		"bad"
+	)
 	Net.hooks(payload(now))
 end
 
@@ -272,7 +276,7 @@ local function step()
 				Net.notify(
 					player,
 					if taken > 0
-						then `Landed! The fisherman kept {Format.mass(taken)} of your Haul`
+						then `Landed! The fisherman kept {Format.mass(HuntService.shown(player, taken))} of your Haul`
 						else "Landed! Lucky you had no Haul",
 					"bad"
 				)

@@ -184,7 +184,11 @@ local function shareKill(eater: Player, _victim: Player, gain: number)
 			-- (the kill took the eater's Haul rate already: "rated")
 			local added = HuntService.gain(mate, gain * tune.killShare, "rated")
 			if added > 0 then
-				Net.notify(mate, `Pod kill by {eater.DisplayName} · +{Format.haul(added)} Haul`, "good")
+				Net.notify(
+					mate,
+					`Pod kill by {eater.DisplayName} · +{Format.haul(HuntService.shown(mate, added))} Haul`,
+					"good"
+				)
 			end
 		end
 	end

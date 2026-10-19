@@ -177,77 +177,65 @@ return {
 		maxPitch = math.rad(80),
 	},
 
-	-- How fast eating grows you (owner, 2026-10-18: "You should level up a lot
-	-- slower"; retuned 2026-10-19 after the PC measured a full Haul at +12 levels in
-	-- 16 s and the Haul never capped on the server). Levels stay where they are (a
-	-- fish's size, speed and every size ratio come from its mass); instead each kg
-	-- eaten counts for little, and a dive holds a set amount. Both by the fish's
-	-- banked level (Shared/Size `haulRate`, `haulLevels`, `haulCap`), between the
-	-- points as straight lines (the rate's in log space):
-	-- * `rate`: the share of each kg eaten that goes on the Haul (HuntService
-	--   `addHaul` "food": prey and filler food). It follows how much a hunter can eat
-	--   at each level in the biome that suits it, so a full Haul takes 2.5–4 minutes
-	--   of hunting: prey kg stop growing with the fish past ~LV 50 (a LV 100 fish
-	--   eats ~0.03× its mass a minute, a LV 10 one ~8×), so it climbs late. The jumps
-	--   are biome changes (the Open Blue's tuna from LV ~45, the Ruins from 53, the
-	--   Vents from 68, the Trench from 83).
-	-- * `cap`: levels' worth a full Haul holds. Everyday food (prey, filler food,
-	--   chum, slicks, bait, whale chunks, kills, predator loot) stops going on there:
-	--   MAX SIZE, swim home and bank. Rewards (a boss's Haul, a treasure's, the admin's)
-	--   go on top, and a Second Chance gives back what was lost. 7 levels for a new
-	--   fish (the tutorial's Haul step, Config/Tutorial HAUL_LEVELS: LV 1 → 8), then
-	--   ~0.75 (the pace × a dive's minutes).
-	-- Measured by tools/tests/run_progress_sim.sh (MODE=design suggests the points
-	-- for the pace and fill it holds; rerun after changing these, Config/Prey,
-	-- Config/Forage, the biomes' levels or the size and speed curves): an active
-	-- hunter reaches LV 15 in ~35 min, 25 in ~1.5 h, 40 in ~4 h, 55 in ~7 h, 70 in
-	-- ~11 h, 85 in ~16 h and 100 in ~22 h of play.
-	-- What a bank pays (coral, Tide Pass XP, the map chance) is reckoned from the
-	-- Haul before the rate (HuntService Session `worth`: the kg eaten).
+	-- How fast eating grows you. A full Haul holds a set amount of food (kg of fish
+	-- eaten) and banks a set number of levels, both by the fish's banked level
+	-- (Shared/Size `haulFood`, `haulLevels`, `haulCap`, `haulRate`), between the points
+	-- as straight lines (the food's in log space). History: 2026-10-18 "You should
+	-- level up a lot slower" (a full Haul was +12 levels in 16 s); 2026-10-19 the
+	-- first retune held a full Haul to 0.75 of a level of tiny grams (LV 100 in ~22 h);
+	-- then the owner, the same day: "No reason that a full haul for nibbler should
+	-- start at .2kg and only go up by .01 a level ... The first fish you eat are worth
+	-- far too little food right now. A full haul should take 15-20 fish first time and
+	-- hold more each time allowing them to level up faster and faster while taking
+	-- more risk with a larger haul."
+	-- * `food`: kg of food a full Haul holds. What the Haul card and the pops show is
+	--   food (a 0.4 kg Garibaldi: "+0.4 kg"); it climbs every level, ~18 of the
+	--   kelp's fish at first (the tutorial's Haul step) to ~20 at LV 8, ~30 at LV 25,
+	--   ~40–90 past LV 40 (the biome's fish set the count: a tuna is 35 kg, a Rattail
+	--   6). Everyday food (prey, filler food, chum, slicks, bait, whale chunks, kills,
+	--   predator loot) stops at a full Haul: MAX SIZE, swim home and bank. Rewards (a
+	--   boss's Haul, a treasure's, the admin's) go on top, and a Second Chance gives
+	--   back what was lost.
+	-- * `cap`: levels a full Haul banks: 7 for a new fish (the tutorial's Haul step,
+	--   Config/Tutorial HAUL_LEVELS: LV 1 → 8), then 1 at LV 8 rising to 2 at LV 100,
+	--   so a bigger fish's bigger, riskier Haul grows it more.
+	-- The growth a kg of food gives (`haulRate`) is the cap's kg over the food.
+	-- Measured by tools/tests/run_progress_sim.sh (MODE=design suggests points for a
+	-- count of fish a Haul and levels a bank; rerun after changing these, Config/Prey,
+	-- Config/Forage, the biomes' levels or the size and speed curves).
+	-- What a bank pays (coral, Tide Pass XP, the map chance) is reckoned from the food
+	-- (HuntService Session `worth`).
 	growth = {
-		rate = {
-			{ 1, 0.068 }, -- the tutorial: its Haul step takes a minute or two
-			{ 4, 0.042 },
-			{ 8, 0.0036 },
-			{ 12, 0.0046 },
-			{ 15, 0.0042 },
-			{ 20, 0.0033 },
-			{ 25, 0.0021 },
-			{ 30, 0.0019 },
-			{ 35, 0.0022 },
-			{ 40, 0.0027 },
-			{ 45, 0.0024 },
-			{ 50, 0.0017 }, -- (the Open Blue's tuna)
-			{ 55, 0.0073 },
-			{ 60, 0.01 },
-			{ 65, 0.011 },
-			{ 70, 0.025 },
-			{ 75, 0.038 },
-			{ 80, 0.055 },
-			{ 85, 0.046 }, -- (the Trench's schools)
-			{ 90, 0.07 },
-			{ 95, 0.11 },
-			{ 100, 0.18 },
+		food = {
+			{ 1, 4.4 }, -- the tutorial: ~18 of the kelp's fish
+			{ 8, 5.2 },
+			{ 15, 15 },
+			{ 25, 85 },
+			{ 35, 230 },
+			{ 45, 1150 },
+			{ 55, 1500 },
+			{ 70, 2400 },
+			{ 85, 4000 },
+			{ 100, 5000 },
 		} :: { { number } },
 		cap = {
 			{ 1, 7 },
 			{ 3, 7 },
-			{ 8, 0.75 },
-			{ 20, 0.7 },
-			{ 30, 0.45 },
-			{ 50, 0.38 },
-			{ 70, 0.27 },
-			{ 90, 0.21 },
-			{ 100, 0.2 },
+			{ 8, 1 },
+			{ 15, 1.15 },
+			{ 25, 1.3 },
+			{ 40, 1.45 },
+			{ 55, 1.6 },
+			{ 70, 1.75 },
+			{ 85, 1.9 },
+			{ 100, 2 },
 		} :: { { number } },
-		-- Food in a biome below the fish counts for less (`rate` × this; HuntService,
+		-- Food in a biome below the fish counts for less (× this on the Haul; HuntService,
 		-- prey and filler food): past the top level of the biome the fish is in
-		-- (Config/Biomes `maxLevel`) the rate drops by `slope` a level, to no less than
+		-- (Config/Biomes `maxLevel`) it drops by `slope` a level, to no less than
 		-- `floor` (Shared/Size `overLevel`), and the HUD says "Too easy here". So a fish
-		-- keeps moving deeper with its level: from LV ~45 the Open Blue's tuna give 3–5×
-		-- the kg a second of the Ruins, Vents and Trench, and a fish that stayed there
-		-- reached LV 100 in ~13 h instead of ~22; now LV 85 in ~15.7 h (15.9 following
-		-- the biomes) and LV 100 in ~25.5 (run_progress_sim.sh STAY=OpenBlue).
+		-- keeps moving deeper with its level (the Open Blue's tuna would carry a fish to
+		-- LV 100; run_progress_sim.sh STAY=OpenBlue).
 		overLevel = { slope = 0.1, floor = 0.2 },
 	},
 

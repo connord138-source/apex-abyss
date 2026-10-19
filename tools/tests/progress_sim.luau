@@ -337,6 +337,8 @@ type Hunter = {
 	rules: Rules,
 	-- this dive
 	ate: number,
+	fish: number, -- prey fish swallowed this dive (not filler food)
+	fishKg: number, -- their kg
 	firstAte: number?,
 	maps: number, -- treasure maps from what it ate this dive (dug up as they come)
 	tokens: number, -- the prey map allowance (TreasureService)
@@ -356,6 +358,8 @@ local function newHunter(rules: Rules, mass: number): Hunter
 		t = 0,
 		rules = rules,
 		ate = 0,
+		fish = 0,
+		fishKg = 0,
 		firstAte = nil,
 		maps = 0,
 		tokens = Drops.preyBurst,
@@ -385,12 +389,16 @@ local function segDist(
 	return math.sqrt(qx * qx + qy * qy + qz * qz)
 end
 
-local function eat(h: Hunter, raw: number, map: number)
+local function eat(h: Hunter, raw: number, map: number, isFish: boolean?)
 	local b = biomeAt(h.x, h.z)
 	local added, worth = h.rules.add(h.mass, h.haul, raw, if b then b.def.maxLevel else nil)
 	h.haul += added
 	h.worth += worth
 	h.ate += 1
+	if isFish then
+		h.fish += 1
+		h.fishKg += raw
+	end
 	-- A treasure map from it (TreasureService: by the prey's mass, within the allowance)
 	if map > 0 then
 		local allowed = true
@@ -454,7 +462,7 @@ local function eatAlong(
 						<= (reachBase + fRad[i]) * Schools.EAT_PULLED
 					then
 						h.eatenFish[i] = t + fBack[i]
-						eat(h, fMass[i] * Tuning.hunt.preyGain, fMap[i])
+						eat(h, fMass[i] * Tuning.hunt.preyGain, fMap[i], true)
 					end
 				end
 			end
@@ -597,6 +605,8 @@ type Dive = {
 	worth: number,
 	haul: number,
 	ate: number,
+	fish: number,
+	fishKg: number,
 }
 
 local function indoor(h: Hunter): number
@@ -609,7 +619,7 @@ local function dive(h: Hunter, biome: Biome?, limit: number?): Dive
 	local level = Size.levelAt(h.mass)
 	biome = biome or biomeFor(Size.level(h.mass))
 	local b = biome :: Biome
-	h.haul, h.worth, h.ate, h.firstAte, h.maps = 0, 0, 0, nil, 0
+	h.haul, h.worth, h.ate, h.firstAte, h.maps, h.fish, h.fishKg = 0, 0, 0, nil, 0, 0, 0
 	-- Out: the wash, the plaza and the tunnel toward the biome
 	h.t += DEN_OUT + HUB_LEG / indoor(h)
 	local best, bestD = tunnels[1], math.huge
@@ -646,6 +656,8 @@ local function dive(h: Hunter, biome: Biome?, limit: number?): Dive
 		worth = h.worth,
 		haul = h.haul,
 		ate = h.ate,
+		fish = h.fish,
+		fishKg = h.fishKg,
 		-- treasure maps: from the prey it ate, and the bank's chance (TreasureService)
 		maps = h.maps + (if h.worth >= Drops.bankMinMass then Drops.bank else 0),
 		out = firstAte - out,
@@ -664,7 +676,7 @@ local function probe(every: boolean)
 	local rows = {}
 	for _, level in PROBE_LEVELS do
 		local mass = Size.massForLevel(level)
-		local kg, secs, n, outs, homes, fixed = 0, 0, 0, 0, 0, 0
+		local kg, secs, n, outs, homes, fixed, fishN, fishKg = 0, 0, 0, 0, 0, 0, 0, 0
 		local b = biomeFor(level)
 		for k = 1, DIVES do
 			local h = newHunter(PROBE, mass)
@@ -673,13 +685,22 @@ local function probe(every: boolean)
 			kg += d.worth
 			secs += d.hunting
 			n += d.ate
+			fishN += d.fish
+			fishKg += d.fishKg
 			outs += d.out
 			local _, home = nearestTunnel(h.x, h.y, h.z)
 			homes += home / (Size.topSpeed(Size.length(mass)) * SPEED * CRUISE)
 			fixed += DEN_OUT + DEN_IN + BANK + 2 * HUB_LEG / indoor(h)
 		end
 		local rate = kg / math.max(secs, 1e-6)
-		table.insert(rows, { level = level, rate = rate, travel = (outs + homes + fixed) / DIVES })
+		table.insert(rows, {
+			level = level,
+			rate = rate,
+			travel = (outs + homes + fixed) / DIVES,
+			perFish = fishKg / math.max(fishN, 1), -- kg a prey fish (not filler food)
+			fishRate = fishN / math.max(secs, 1e-6), -- prey fish a second
+			share = fishKg / math.max(kg, 1e-6), -- of the kg eaten, the prey fish's share
+		})
 		print(
 			string.format(
 				"  %3d  %-20s %7.3f  %8.3f  %6.2f  %5.0f  %6.0f  %7.0f",
@@ -734,8 +755,7 @@ end
 ---------------------------------------------------------------------------------
 local BANDS = { { 1, 8 }, { 8, 15 }, { 15, 25 }, { 25, 40 }, { 40, 55 }, { 55, 70 }, { 70, 85 }, { 85, 100 } }
 local MILESTONES = { 8, 15, 25, 40, 55, 70, 85, 100 }
-local TARGET_HOURS =
-	{ [15] = "0.5–0.67", [25] = "1.5", [40] = "4", [55] = "7", [70] = "11", [85] = "16", [100] = "22" }
+local TARGET_HOURS: { [number]: string } = {}
 
 local function progress(rules: Rules, maxHours: number)
 	local h = newHunter(rules, Size.massForLevel(1))
@@ -757,10 +777,10 @@ local function progress(rules: Rules, maxHours: number)
 		)} h)`
 	)
 	print(
-		"  band     dives  min/dive  (hunt + swim)  levels/dive  coral/min  XP/min (bank+catch)  kg/dive  fish/dive  maps/h"
+		"  band     dives  min/dive  (hunt + swim)  levels/dive  coral/min  XP/min (bank+catch)  Haul kg  fish/dive (eats)  maps/h"
 	)
 	for _, band in BANDS do
-		local n, total, hunting, levels, coral, xpB, xpC, haul, ate, maps = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+		local n, total, hunting, levels, coral, xpB, xpC, haul, ate, maps, fishN = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 		for _, d in dives do
 			if d.level >= band[1] and d.level < band[2] then
 				n += 1
@@ -770,8 +790,9 @@ local function progress(rules: Rules, maxHours: number)
 				coral += d.coral
 				xpB += d.xpBank
 				xpC += d.xpCatch
-				haul += d.haul
+				haul += d.worth
 				ate += d.ate
+				fishN += d.fish
 				maps += (d :: any).maps
 			end
 		end
@@ -782,7 +803,7 @@ local function progress(rules: Rules, maxHours: number)
 		local minutes = total / 60
 		print(
 			string.format(
-				"  %3d–%-3d  %5d  %7.1f  (%4.1f + %4.1f)  %10.2f  %9.0f  %6.0f (%3.0f + %3.0f)  %7.2f  %8.0f  %6.1f",
+				"  %3d–%-3d  %5d  %7.1f  (%4.1f + %4.1f)  %10.2f  %9.0f  %6.0f (%3.0f + %3.0f)  %7.2f  %6.0f (%4.0f)  %6.1f",
 				band[1],
 				band[2],
 				n,
@@ -795,6 +816,7 @@ local function progress(rules: Rules, maxHours: number)
 				xpB / minutes,
 				xpC / minutes,
 				haul / n,
+				fishN / n,
 				ate / n,
 				maps / minutes * 60
 			)
@@ -827,11 +849,12 @@ end
 -- a dive's minutes) and rate (that cap's kg over the kg eaten in the fill) at each
 -- probed level, as Config/Tuning `growth` tables. Then run the progress to check.
 ---------------------------------------------------------------------------------
--- Hours of active play to reach each level (2026-10-19 targets)
-local TARGETS =
-	{ { 8, 0.1 }, { 15, 0.58 }, { 25, 1.5 }, { 40, 4 }, { 55, 7 }, { 70, 11 }, { 85, 16 }, { 100, 22 } }
--- Minutes of hunting a full Haul should take (the tutorial's first, then 2.5–4)
-local FILL = { { 1, 1.5 }, { 4, 2 }, { 8, 2.5 }, { 25, 3 }, { 40, 3.5 }, { 55, 4 }, { 100, 4 } }
+-- The Haul by fish (owner, 2026-10-19: "A full haul should take 15-20 fish first
+-- time and hold more each time allowing them to level up faster and faster while
+-- taking more risk with a larger haul"): how many of the prey a level hunts fill a
+-- full Haul, and how many levels a full one banks, both by level
+local FISH = { { 1, 18 }, { 4, 18 }, { 8, 20 }, { 15, 24 }, { 25, 35 }, { 40, 55 }, { 55, 90 }, { 70, 140 }, { 85, 180 }, { 100, 220 } }
+local LEVELS = { { 8, 1.0 }, { 15, 1.15 }, { 25, 1.3 }, { 40, 1.45 }, { 55, 1.6 }, { 70, 1.75 }, { 85, 1.9 }, { 100, 2.0 } }
 local TUTORIAL_LEVELS = 7 -- a full Haul below LV 4 (Config/Tutorial HAUL_LEVELS)
 
 local function lerpPoints(points: { { number } }, x: number): number
@@ -847,42 +870,30 @@ local function lerpPoints(points: { { number } }, x: number): number
 	return points[#points][2]
 end
 
--- Levels an hour at a level: each band's slope, read at the band's middle and eased
--- between middles
-local function pace(level: number): number
-	local mids: { { number } } = {}
-	for i = 2, #TARGETS do
-		local a, b = TARGETS[i - 1], TARGETS[i]
-		table.insert(mids, { (a[1] + b[1]) / 2, (b[1] - a[1]) / (b[2] - a[2]) })
-	end
-	return lerpPoints(mids, level)
-end
-
 local function design()
 	local rows = probe(false)
 	local rates, caps = {}, {}
-	print("\n  LV  pace/h  fill min  swim min  cap (levels)  cap kg      rate")
+	print("\n  LV  fish  kg/fish  fill min  cap (levels)  cap kg   Haul kg      rate")
 	for _, row in rows do
 		local level = row.level
 		local mass = Size.massForLevel(level)
-		local fill = lerpPoints(FILL, level)
-		local levels
-		if level < 8 then
-			levels = TUTORIAL_LEVELS
-		else
-			levels = pace(level) * (fill + row.travel / 60) / 60
-		end
+		local fishCount = lerpPoints(FISH, level)
+		local levels = if level < 4 then TUTORIAL_LEVELS else lerpPoints(LEVELS, level)
 		local capKg = mass * (G ^ levels - 1)
-		local rate = capKg / (row.rate * fill * 60)
+		-- The food kg a full Haul holds: that many prey fish, plus the filler food a
+		-- hunter picks up alongside (its share of the kg eaten)
+		local food = fishCount * row.perFish / math.max(row.share, 0.05)
+		local rate = capKg / food
 		print(
 			string.format(
-				"  %3d  %6.2f  %8.2f  %8.2f  %12.3f  %8.3f  %8.5f",
+				"  %3d  %4.0f  %7.3f  %8.2f  %12.2f  %7.3f  %8.2f  %8.5f",
 				level,
-				if level < 8 then 0 else pace(level),
-				fill,
-				row.travel / 60,
+				fishCount,
+				row.perFish,
+				fishCount / math.max(row.fishRate, 1e-6) / 60,
 				levels,
 				capKg,
+				food,
 				rate
 			)
 		)
@@ -934,9 +945,10 @@ if args.mode == "old" then
 end
 local dives, reached = progress(NEW, 40)
 
--- The checks (the fish the targets are for: a Nibbler moving on with its level):
--- each level within 15% of its target hours, and a full Haul taking 2–5 minutes of
--- hunting past the tutorial
+-- The checks (the fish the targets are for: a Nibbler moving on with its level): a
+-- full Haul of 15–25 fish at first, more each band (within 40% of FISH's middle of
+-- the band, which the biome's fish sizes push about), and the levels a bank gives
+-- within 10% of the cap (Config/Tuning `growth`)
 if species.id ~= "Nibbler" or args.stay ~= "" then
 	return
 end
@@ -947,32 +959,38 @@ local function check(ok: boolean, text: string)
 		print("FAIL: " .. text)
 	end
 end
-for _, target in TARGETS do
-	local level, hours = target[1], target[2]
-	local at = reached[level]
-	if level > 8 then
-		check(
-			at ~= nil and math.abs(at / 3600 - hours) <= hours * 0.15,
-			`LV {level} at {if at then string.format("%.2f", at / 3600) else "never"} h, not ~{hours} h`
-		)
-	end
-end
+local lastFish = 0
 for _, band in BANDS do
-	if band[1] < 8 then
-		continue
-	end
-	local n, hunting = 0, 0
+	local n, fishN, levels = 0, 0, 0
 	for _, d in dives do
 		if d.level >= band[1] and d.level < band[2] then
 			n += 1
-			hunting += d.hunting
+			fishN += d.fish
+			levels += d.levels
 		end
 	end
-	local minutes = hunting / 60 / math.max(n, 1)
-	check(
-		n > 0 and minutes >= 2 and minutes <= 5,
-		`LV {band[1]}–{band[2]}: a full Haul takes {string.format("%.1f", minutes)} min of hunting, not 2–5`
-	)
+	if n == 0 then
+		check(false, `LV {band[1]}–{band[2]}: no dives`)
+		continue
+	end
+	local mid = (band[1] + band[2]) / 2
+	local perDive = fishN / n
+	local want = lerpPoints(FISH, mid)
+	if band[1] < 8 then
+		check(perDive >= 15 and perDive <= 25, `the tutorial's Haul took {string.format("%.0f", perDive)} fish, not 15–25`)
+	else
+		check(
+			math.abs(perDive - want) <= want * 0.4,
+			`LV {band[1]}–{band[2]}: {string.format("%.0f", perDive)} fish a full Haul, not ~{string.format("%.0f", want)}`
+		)
+		check(perDive >= lastFish * 0.9, `LV {band[1]}–{band[2]}: a full Haul holds fewer fish than the band before`)
+		local cap = Size.haulLevels(Size.massForLevel(mid))
+		check(
+			math.abs(levels / n - cap) <= cap * 0.1,
+			`LV {band[1]}–{band[2]}: {string.format("%.2f", levels / n)} levels a bank, not ~{string.format("%.2f", cap)}`
+		)
+	end
+	lastFish = perDive
 end
 -- No fast lane: a fish that stays in the Open Blue (its tuna) once it may gets to LV 85
 -- and 100 no sooner than 5% before one that follows the biomes (Config/Tuning

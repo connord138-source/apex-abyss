@@ -75,27 +75,37 @@ local function curve(points: { { number } }, level: number, log: boolean): numbe
 	return last[2]
 end
 
--- The Haul (Config/Tuning `growth`), both by the fish's banked mass: the share of
--- each kg eaten that goes on it...
-function Size.haulRate(banked: number): number
-	return curve(growth.rate, Size.levelAt(banked), true)
-end
-
--- ...× this for food eaten in a biome whose top level (Config/Biomes `maxLevel`) the
--- fish's `level` is past (Config/Tuning `growth` `overLevel`)...
-function Size.overLevel(level: number, maxLevel: number): number
-	local over = growth.overLevel
-	return math.clamp(1 - over.slope * (level - maxLevel), over.floor, 1)
-end
-
--- ...how many levels' worth a full Haul holds...
+-- The Haul (Config/Tuning `growth`), all by the fish's banked mass: how many levels a
+-- full one banks...
 function Size.haulLevels(banked: number): number
 	return curve(growth.cap, Size.levelAt(banked), false)
 end
 
--- ...and that in kg: everyday food stops going on here (MAX SIZE)
+-- ...that in kg of growth: everyday food stops going on here (MAX SIZE)...
 function Size.haulCap(banked: number): number
 	return math.max(banked, size.startMass) * (size.levelGrowth ^ Size.haulLevels(banked) - 1)
+end
+
+-- ...the kg of food a full one holds (what the Haul card shows)...
+function Size.haulFood(banked: number): number
+	return curve(growth.food, Size.levelAt(banked), true)
+end
+
+-- ...so the growth each kg of food gives (the Haul holds growth: Size.liveMass)...
+function Size.haulRate(banked: number): number
+	return Size.haulCap(banked) / math.max(Size.haulFood(banked), 1e-6)
+end
+
+-- ...and a Haul's growth shown as food (kg): the Haul card, pops and toasts
+function Size.haulShown(banked: number, haul: number): number
+	return haul / math.max(Size.haulRate(banked), 1e-9)
+end
+
+-- Food in a biome whose top level (Config/Biomes `maxLevel`) the fish's `level` is
+-- past counts for less (Config/Tuning `growth` `overLevel`)
+function Size.overLevel(level: number, maxLevel: number): number
+	local over = growth.overLevel
+	return math.clamp(1 - over.slope * (level - maxLevel), over.floor, 1)
 end
 
 -- Whether the Haul is full (MAX SIZE: swim home and bank it)

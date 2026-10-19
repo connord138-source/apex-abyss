@@ -44,7 +44,7 @@ owner disliked "Molt" and this was the recommended replacement.*
 - **A dive:**
   - Leave the hub and hunt. Everything you eat adds to your **Haul**, the mass you're
     carrying, and the Haul grows you **live** up to a **full Haul** (MAX SIZE): 7
-    levels' worth for a new fish, then under a level (see Pacing below). Everyday
+    levels' worth for a new fish, then 1 level at LV 8 rising to 2 (see Pacing below). Everyday
     food stops going on there; you swim home and bank it.
   - HUD: "HAUL 12.4k — swim home to bank it".
 - **Banking:** swim back into **your own den** to bank the Haul, which turns into XP.
@@ -58,60 +58,57 @@ owner disliked "Molt" and this was the recommended replacement.*
   the hub always has a purpose, and PvP has real stakes without rage-quit wipes. It
   also gives Second Chance and Double Haul (§9) clear value.
 
-### Pacing (owner, 2026-10-18: "level up a lot slower"; retuned 2026-10-19)
+### Pacing (owner, 2026-10-18: "level up a lot slower"; retuned 2026-10-19 twice)
 
-The PC measured the first slowdown (PG1, 2026-10-19): a full Haul was always +12
-levels, filled in 16–30 s, and the server never capped the Haul, only the size shown.
+History: the first rules had a full Haul at +12 levels in 16–30 s (PC PG1). The first
+retune held a full Haul to under a level of tiny grams (LV 100 in ~22 h); the owner
+played it and asked for the opposite feel: "No reason that a full haul for nibbler
+should start at .2kg and only go up by .01 a level ... The first fish you eat are
+worth far too little food right now. A full haul should take 15-20 fish first time
+and hold more each time allowing them to level up faster and faster while taking
+more risk with a larger haul."
 
+- **A full Haul is food:** it holds a set kg of fish eaten (`Config/Tuning` `growth`
+  `food`, by banked level) and banks a set number of levels (`cap`). The Haul card,
+  pops and toasts show food, so a 0.4 kg Garibaldi is "+0.4 kg" and a full Haul at
+  LV 8 is 5.2 kg; underneath the server still stores the growth the Haul will bank
+  (`Shared/Size` `haulShown`, `haulRate` = the cap's kg ÷ the food).
 - **Targets** (one fish, an active hunter, swimming home to bank included): the
-  tutorial ends at LV 8; LV 15 (the 'Cuda's gate) in ~35 min; 25 in ~1.5 h; 40 in
-  ~4 h; 55 in ~7 h; 70 in ~11 h; 85 in ~16 h; 100 in ~22 h. Each species levels on its
-  own.
-- **A dive** takes 2.5–4 minutes of hunting at a biome's own level plus about a minute
-  out, home and through the den, and banks about 0.75 of a level at LV 8–20, 0.45 at
-  25–40, 0.3 at 55–70 and 0.2 past 85. The bank card says how far into the next level
-  the fish is when a bank doesn't make one.
-- **How** (`Config/Tuning` `growth`, `Shared/Size` `haulRate` / `haulLevels` /
-  `haulCap`, both by the banked level):
-  - `rate`, the share of each kg eaten that goes on the Haul (prey, filler food):
-    0.068 at LV 1 (the tutorial's Haul step is a minute or so), ~0.002–0.005 from LV 8
-    to 50, climbing to 0.18 at LV 100. It climbs late because prey kg stop growing
-    with the fish: a LV 10 fish eats ~8× its own mass a minute, a LV 100 one ~0.03×.
-  - `cap`, the levels' worth a full Haul holds: 7 up to LV 3 (`Config/Tutorial`
-    HAUL_LEVELS: the first dive takes the Nibbler from LV 1 to 8), then 0.75 at LV 8
-    easing to 0.2 at LV 100. It is a real cap on the server (`HuntService` `addHaul`):
-    everyday food stops there and MAX SIZE shows.
-  - **Bonus meals are shares of the eater's own full Haul**, so they're worth the same
-    share of a dive at every level (in kg × a rate that climbs 50× with level they
-    would be nothing at LV 10 and a whole Haul at LV 90): bait ½ (`Config/Hooks`
-    `baitHaul`), a whale chunk ⅙ and at most 2 full Hauls from one whale
-    (`Config/Chum` `whale.chunkHaul`, `whale.hauls`), a Blood Tide slick chunk 1/30,
-    predator loot 0.3 (Barracuda) and 0.6 (Reef Shark) split by damage, a player kill
-    half its Haul plus a quarter of its full Haul (× how near its size was). All stop
-    at the full Haul.
-  - **Rewards go on top of a full Haul:** a boss's Haul (1.5 full Hauls plus the
-    damage share of another, `Config/Bosses` `hauls`, `haulsShare`), a treasure chest's
-    Kelp Haul (1 / 1.5 / 2.5 full Hauls by map tier), the admin's kg, a Second Chance
-    given back. Double Haul banks again on top.
-  - What a bank pays is unchanged: coral 7 × √(kg eaten), Tide Pass XP 2 a kg eaten
-    (20–300 a bank) plus 2 a fish; both reckoned from the kg eaten, before the rate.
+  tutorial's Haul is ~16 kelp fish (LV 1 → 8); then ~25 fish a Haul to LV 25, ~50 to
+  LV 55, ~100 at LV 55–70, ~170–210 past LV 70 (the biome's fish set the count: a
+  tuna is 35 kg, a Rattail 6); a bank is 1 level at LV 8 rising to 2 at LV 100. Dives
+  run 1.4 min early to ~8 min late: a bigger Haul to carry home is more to lose.
+  Hours to LV 15/25/40/55/70/85/100: 10 min, 23 min, 44 min, 1.2, 2.0, 3.2, 4.1. Each
+  species levels on its own.
+- **Bonus meals are shares of the eater's own full Haul**, so they're worth the same
+  share of a dive at every level: bait ½ (`Config/Hooks` `baitHaul`), a whale chunk ⅙
+  and at most 2 full Hauls from one whale (`Config/Chum` `whale.chunkHaul`,
+  `whale.hauls`), a Blood Tide slick chunk 1/30, predator loot 0.3 (Barracuda) and 0.6
+  (Reef Shark) split by damage, a player kill half its Haul plus a quarter of its full
+  Haul (× how near its size was). All stop at the full Haul.
+- **Rewards go on top of a full Haul:** a boss's Haul (1.5 full Hauls plus the damage
+  share of another), a treasure chest's Kelp Haul (1 / 1.5 / 2.5 full Hauls by map
+  tier), the admin's kg, a Second Chance given back. Double Haul banks again on top.
+- **Food below you counts for less:** past the top level of the biome a fish is in,
+  prey and filler food count ×(1 − 0.1 a level over), at least ×0.2.
+- What a bank pays: coral 7 × √(kg eaten), Tide Pass XP 2 a kg eaten (20–300 a bank)
+  plus 2 a fish.
 - **Measured** by `tools/tests/run_progress_sim.sh` (a hunter on the real school
   layout and filler food, in the biome whose middle level is nearest its own, at 0.9×
-  top speed like the PC's PG1 bot; `MODE=design` turns the targets and fill times into
-  `growth` points; rerun it after changing `growth`, `Config/Prey`, `Config/Forage`,
-  the biomes' levels or the size and speed curves). The old rules in the same sim
-  matched PG1 (a Reef dive at LV 25 full in 32 s, +13.6 levels; PG1 29 s, +12):
+  top speed like the PC's PG1 bot; `MODE=design` turns fish-a-Haul and levels-a-bank
+  targets into `growth` points; rerun it after changing `growth`, `Config/Prey`,
+  `Config/Forage`, the biomes' levels or the size and speed curves):
 
-  | Band | Dives | Min a dive (hunt + swim) | Levels a dive | Coral a min | Pass XP a min | Before: min a dive, levels, coral, XP |
-  |---|---|---|---|---|---|---|
-  | 1–8 | 1 | 1.5–1.9 (0.8–1.4 + 0.6) | 7 | 14–18 | 84–98 | 0.9, 12, 18, 59 |
-  | 8–15 | 10 | 3.4 (2.6 + 0.8) | 0.74 | 15 | 106 | 1.5, 12.8, 24, 63 |
-  | 15–25 | 15 | 3.9 (2.9 + 1.0) | 0.67 | 24 | 133 | (skipped) |
-  | 25–40 | 33 | 4.6 (3.7 + 0.8) | 0.45 | 37 | 154 | 1.6, 12, 59, 239 |
-  | 40–55 | 38 | 4.6 (3.7 + 0.9) | 0.39 | 67 | 109 | 1.7, 12, 131, 208 |
-  | 55–70 | 49 | 4.7 (4.0 + 0.8) | 0.31 | 58 | 102 | 7.2, 12, 57, 91 |
-  | 70–85 | 60 | 5.1 (4.3 + 0.7) | 0.25 | 55 | 115 | 32.7, 12, 23, 71 |
-  | 85–100 | 72 | 5.0 (4.2 + 0.8) | 0.21 | 76 | 167 | 56.9, 7.3, 25, 147 |
+  | Band | Dives | Min a dive (hunt + swim) | Levels a dive | Fish a Haul | Haul (food) | Coral a min | Pass XP a min |
+  |---|---|---|---|---|---|---|---|
+  | 1–8 | 1 | 0.8 (0.2 + 0.6) | 7 | 16 | 4.4 kg | 18 | 65 |
+  | 8–15 | 7 | 1.4 (0.5 + 0.9) | 1.07 | 25 | 8.8 kg | 15 | 52 |
+  | 15–25 | 8 | 1.6 (0.5 + 1.1) | 1.22 | 25 | 38 kg | 27 | 80 |
+  | 25–40 | 11 | 1.9 (1.1 + 0.8) | 1.37 | 53 | 200 kg | 51 | 197 |
+  | 40–55 | 10 | 2.9 (2.0 + 0.9) | 1.52 | 52 | 1.1 t | 79 | 140 |
+  | 55–70 | 9 | 5.4 (4.7 + 0.8) | 1.67 | 99 | 1.9 t | 56 | 93 |
+  | 70–85 | 8 | 8.7 (8.0 + 0.7) | 1.82 | 166 | 3.1 t | 44 | 74 |
+  | 85–100 | 8 | 7.0 (6.2 + 0.8) | 1.87 | 206 | 4.4 t | 67 | 103 |
 
   Hours to LV 15 / 25 / 40 / 55 / 70 / 85 / 100: 0.6 / 1.6 / 4.1 / 7.0 / 10.8 / 15.9 /
   21.9 (before: 2 min / 2 min / 6 min / 7 min / 15 min / 47 min / 2.7 h; the PC's
