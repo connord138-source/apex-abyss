@@ -1365,6 +1365,80 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Violet (96, 39, 158)), so the gold emblem and trim stand out on every glow and
     Violet no longer reads lilac; the part-built stand-in matches.
   - Still owed: SP2 (needs two players in a pod).
+- **The 2026-10-19 world-and-life batch (owner: the cliff "just bulbous spheres off
+  the edge ... should have coral etc on it"; turtles and rays "essentially just circles
+  put together"; crabs "need more detail like the turtles ... should be edible too";
+  the start screen "rolling shots of different fish around the different biomes"; "the
+  vents part of the map needs more substance"; the Megalodon's "mouth doesn't move ...
+  movements are very stiff ... If he misses the player he just slowly turns around ...
+  Same with other predator fish. Needs to be fun to fight them not robotic"; built):**
+  - **The reef wall** (`Shelf.luau` `dropOff`, `src/server/Cliff.luau`): the drop-off
+    is strata bands of flattened pebble slabs with grooves, 44 spurs, an undercut
+    sandstone lip, crevices, 12 caves, fluted columns, 48 ledges, a crest of rounded
+    rock with 70 reef heads, talus and sand fans; its own Random (`CLIFF_SEED` 19) with
+    the shared sequence's old draws burned, so no other op moved; nothing more than
+    `REACH` 25 studs out of the face (`FACE` 890). ~4,500 of the world's ~9,400 ops.
+    `Cliff.build` (WorldService, after the Vents) dresses it by raycast: reef patches
+    on the lip and heads, growth hanging from the undercuts, fans, plates and whips on
+    the face, gardens on band tops and ledges, sparse cool growth matched to the deep
+    biome below, barnacles and sponges in the wreck bay (135–225°); ~2,450 instances
+    with `cliff_glb` imported (PlateCoral, BarrelSponge, SeaWhips, LaceFan; sha256
+    51e843ee…, highest classifier 0.023), ~3,500 before. "Cliff" is in `Ground`'s
+    solids and `ChumService`'s dressing. Preview: `bash tools/preview/run_cliff.sh`.
+    Known nit: from far off the bands read mostly horizontal.
+  - **The Vents field** (`src/server/VentsPlan.luau` lays it out, its own Random, every
+    solid top under the lowest school loop over it; `Shelf.luau` builds it last so it
+    sees all the rock; `src/server/Vents.luau` dresses it): **the Forge**, a ~175-stud
+    vent mountain with a broken rim, a crater lava lake under a glare, glowing runnels
+    to lava pools and an ash column, plus a shoulder cone; black-smoker complexes,
+    columnar hex basalt causeways and outcrops (stepping up away from the hub), rimstone
+    mineral terraces, a brine pool, three tube-worm forests (mid-grey tubes, crimson
+    tufts), mussel beds, pillow lava and crust between the basins, the old chimneys
+    dressed to match. ~2,000–2,800 parts (`PARTS_CAP` 2,900), 13–14 lights, ~920 ops;
+    boulders cleared off landmarks. Preview: `bash tools/preview/run_vents.sh`.
+  - **Sea life** (`ambient_fbx`, sha256 58e7aef4…, highest classifier 0.006): Turtle,
+    Manta, Stingray (blue-spotted), Humpback and Crab rigged by
+    `tools/blender/rig_ambient.py` into `ReplicatedStorage.AmbientModels`;
+    `src/client/AmbientBody.luau` draws the model or a part-built stand-in (faceted
+    turtle, WedgePart manta, spotted disc, jointed crab) and `Shared/AmbientRigs` poses
+    them (lagging manta wingtips, rippling stingray edges that settle on the sand with
+    a puff, turtle strokes and glides, fluke strokes, banking); joint work LOD-limited
+    (380 a frame). `Workspace.AmbientLife` `PoseMs`/`Joints`.
+  - **Edible crabs** are filler food now (out of ambient life, so every crab is edible):
+    `Config/Forage` six kinds (Shore 0.1 kg Kelp, Rock 0.7 Wrecks, Decorator 1.5 Reef,
+    Stone 8 Ruins, Yeti 5 Vents painted grey, King 12 Trench; edible from LV
+    1/8/16/34/27/57), `Shared/Crabs` a sideways dash-and-pause round each spot on the
+    shared clock, ForageService places them on open floor beside rock and allows the
+    scuttle in its eat check; a crab too big for you squares up, claws raised.
+    `Workspace.Forage.Crabs` `Built`/`CrabMs`. Pace unchanged.
+  - **The start screen's attract mode** (`Config/Start`, `Shared/StartShots`,
+    `StartService`, `StartController`): rolling shots of real schools (kelp Garibaldi,
+    reef Parrotfish, a wreck's Triggerfish, Open Blue tuna, Ruins fish before the
+    temple, Vent Eelpouts, Trench Lanternfish, a rising Ocean Sunfish), framed on the
+    school's own fish, a documentary lower third ("Yellowfin Tuna · Open Blue · LV
+    35–55"), letterbox, murk-dip or bubble cuts every ~6.5 s, never the same biome
+    twice; the server prestreams each shot (validated, rate-limited, only on the start
+    screen); paths checked by ray in the background; the old viewport scene is the
+    loading layer and fallback. Gameplay UI, tags and markers stay hidden; ambience
+    follows the shot. Re-check the paths after any Terrain change: `DUMP_ONLY=1
+    LUAU=<luau> bash tools/preview/run_start.sh <dir>` (exit 1 if a shot has no clear
+    plan).
+  - **Predators that hunt like predators:** a Jaw bone (`rig_fish.py --jaw`) on the
+    Megalodon (plus FinL/FinR), Reef Shark and 'Cuda (`boss_fbx` 3477e8c2…,
+    `species_fbx` a13009ba…, the same screened colour maps); `SwimWave` takes bone rest
+    frames from the mesh part (the FBX Root's half turn had inverted every pitch, so a
+    jaw would have opened upward). `PredatorController`: jaw slightly open cruising,
+    gaping through a tell, snapping shut with a head shake, chomping in the frenzy;
+    burst-and-glide tail beats; a C-bend into turns, bank, pitch, fins; the squid's
+    arms close on each mantle pulse. Hunting: a miss comes round in ~2 s (the
+    Megalodon 3–5 s after any pass, 3.2 rad/s turns) by banked loops, `wheelOut` from
+    a pivot trap, circling, rising from below, feints; the Megalodon's bite commits
+    its head 40% into the tell (`BITE_COMMIT`) and reaches 1.6× ahead, 0.7× aside, so
+    a sideways dodge escapes; no charge at a surface-hugger it can't reach; `sated`
+    pauses after a landed bite keep still-fish hit rates where they were. **The
+    Megalodon is 175 studs** (every reach ×1.35, sight 560/330, fight light 300, dread
+    760). Sims: `run_predators.sh` (predators and bosses). The players' own fish bend
+    into turns too (`FishAnimator`: the bend is the yaw rate's opposite).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -1596,7 +1670,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   (`BossController`); while it's unseen the warning reads SOMETHING CIRCLES IN THE
   BLUE with no arrow or distance. The squid has no fade (the dark is its own) but the
   same fight light.
-- **Massive bosses (owner):** the Megalodon is 130 studs, the Giant Squid 95; reaches
+- **Massive bosses (owner):** the Megalodon is 175 studs (130 until 2026-10-19), the Giant Squid 95; reaches
   and radii scaled with them (`Config/Bosses.luau`). **The surface is a ceiling for
   the whole body** (playtest 2026-10-10: chasing a fish at the surface, the
   Megalodon's back and fin broke through the surface sheet): `PredatorService.steer`
@@ -2303,7 +2377,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   bait cap, sheen off teeth, screen base; chunks inside the whale, reef coral
   through it, the wheel chip full width), `2026-10-15-pc-2.md` (chunks clear,
   chips fit, the PC's level-sand fix; deep whales still faint at 70 studs),
-  `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-18-pc.md` (SK4, the plume
+  `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-19-pc*.md` (pace, Ruins, prey batches,
+  den props; round 3's brief covers the world-and-life batch), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
   clients via Test → Clients and Servers);
   briefs for the PC session sit beside them as `*-brief.md`).

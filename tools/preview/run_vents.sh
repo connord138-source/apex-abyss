@@ -6,15 +6,18 @@
 #   bash tools/preview/run_vents.sh <out_dir>
 # Views (vents_build.luau finds them on the plan): map and aerial (the whole field), forge
 # (the Forge from ~250 studs down its causeway's side), crater, causeway, basin (the
-# brine pool's basin), terraces1/2, smoker1..3, basalt1/2 and worms; VIEWS=a,b,...
-# picks some. Each view voxelizes its own box (B| lines) at its own cell size
-# (CELL=... overrides). NO_SCHOOLS=1 skips the school check (K| lines); DUMP_ONLY=1
-# stops after the build and the checks (read hub_parts.txt: C| counts, O| Terrain ops,
-# [Vents] the summary). The previews' Random isn't Roblox's: the basins, chimneys,
-# schools and so every landmark's spot differ from the game's (the layout rules are
-# the game's). Needs `luau` (LUAU=...) and Blender's Python with numpy,
-# scikit-image and Pillow (BPY=..., default python3.11). Cycles on the CPU: a view
-# takes a minute or two.
+# brine pool's basin), terraces1/2, smoker1..3, basalt1/2 and worms (a tube-worm
+# forest); VIEWS=a,b,... picks some. Each view voxelizes its own box (B| lines) at
+# its own cell size (CELL=... overrides), so Terrain past it isn't drawn (a far
+# chimney's flanges can seem to float). NO_SCHOOLS=1 skips the school check (K|
+# lines); T| is the boulder tidy's test; DUMP_ONLY=1 stops after the build and the
+# checks (read hub_parts.txt: C| counts, O| Terrain ops, [Vents] the summary).
+# Particles are drawn as see-through balls (fainter the more transparent the
+# emitter starts), far heavier than the game's. The previews' Random isn't
+# Roblox's: the basins, chimneys, schools and so every landmark's spot differ from
+# the game's (the layout rules are the game's). Needs `luau` (LUAU=...) and
+# Blender's Python with numpy, scikit-image and Pillow (BPY=..., default
+# python3.11). Cycles on the CPU: a view takes a few minutes.
 set -e
 cd "$(dirname "$0")"
 OUT=${1:-/tmp/vents_preview}

@@ -7,9 +7,10 @@
 -- it with parts (lava, throats and plumes, basalt columns, terraces, the brine pool,
 -- tube worms and mussels).
 --
---   * THE FORGE: a volcano 140–176 studs tall with a glowing crater lake, lava
---     runnels down its flanks and a tall ash column: the biome's destination. A
---     basalt CAUSEWAY of hex columns runs from its foot toward the hub.
+--   * THE FORGE: a volcano 140–176 studs tall with a glowing crater lake, a broken
+--     rim, lava runnels down its flanks, a parasitic SHOULDER cone low on one side
+--     and a tall ash column: the biome's destination. A basalt CAUSEWAY of hex
+--     columns runs from its foot toward the hub.
 --   * Three BLACK-SMOKER complexes: clustered spires 40–140 tall with flanges and a
 --     throat on every spire.
 --   * Two COLUMNAR BASALT outcrops stepping down in terraces.
@@ -23,6 +24,9 @@
 -- `settle`): a spire under a loop would carry its school up its side. So every solid
 -- thing keeps under `ceiling` (the lowest a school's fish come over it, less a
 -- clearance), and the Forge's site is the one whose cone fits under every loop.
+-- Everything also keeps clear of the rock already laid in the field (the drop-off's
+-- talus, the Wreck's tumbled debris, the basins' lip rubble: `obstacles`), which is
+-- why Shelf.ops lays the field last.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)

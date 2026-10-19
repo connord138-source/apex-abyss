@@ -410,7 +410,7 @@ local function flat(v)
 	return Vector3.new(v.X, 0, v.Z).Unit
 end
 -- A camera `distance` off `target` (flat), `rise` over it, from the first of 16
--- headings (starting toward the hub) whose spot is in open water inside the map and
+-- headings (starting toward the hub, or `start`) whose spot is in open water inside the map and
 -- whose line to the target clears the ground (Terrain) and every solid part
 local solidParts = {}
 for _, d in folder:GetDescendants() do
@@ -428,37 +428,39 @@ local function insideSolid(p)
 	end
 	return false
 end
-local function openView(target, look, distance, rise, clearance)
-	local toHub = flat(-target)
-	-- (higher each round: a spot down in a basin may have open water only over its rim)
-	for round = 0, 5 do
-	local riseNow = rise + round * 30
-	for k = 0, 15 do
+local function openView(target, look, distance, rise, clearance, start, riseFirst)
+	local toHub = start or flat(-target)
+	local function clear(k, round)
 		local turn = (if k % 2 == 0 then 1 else -1) * math.ceil(k / 2) * math.pi / 8
 		local dir = Vector3.new(
 			toHub.X * math.cos(turn) - toHub.Z * math.sin(turn),
 			0,
 			toHub.X * math.sin(turn) + toHub.Z * math.cos(turn)
 		)
-		local from = target + dir * distance + up * riseNow
-		local r = Seafloor.polar(from.X, from.Z)
-		local ok = r < World.boundsRadius - 20
+		local from = target + dir * distance + up * (rise + round * 30)
+		if Seafloor.polar(from.X, from.Z) >= World.boundsRadius - 20 then
+			return nil
+		end
 		-- (the line stops `clearance` short of the subject itself)
 		local span = (look - from).Magnitude
 		local share = math.max(0, (span - (clearance or 0)) / span)
 		for i = 0, 24 do
-			if not ok then
-				break
-			end
 			local q = from + (look - from) * (i / 24 * share)
 			if (groundAt(q.X, q.Z)).Y > q.Y - 3 or insideSolid(q) then
-				ok = false
+				return nil
 			end
 		end
-		if ok then
-			return from
-		end
+		return from
 	end
+	-- Higher each round (a spot down in a basin may have open water only over its
+	-- rim); `riseFirst` tries every height on a heading before turning
+	for outer = 0, if riseFirst then 15 else 5 do
+		for inner = 0, if riseFirst then 5 else 15 do
+			local from = if riseFirst then clear(outer, inner) else clear(inner, outer)
+			if from then
+				return from
+			end
+		end
 	end
 	return target + toHub * distance + up * rise
 end
@@ -470,20 +472,33 @@ view("map", middle + Vector3.new(0.01, 1150, 0), middle, 78, FIELD, 6, 6000)
 local inward = flat(-middle)
 -- (looking out over the field from just past the drop-off's foot, high up, toward
 -- the Forge)
-local aim = if plan.forge then middle:Lerp(plan.forge.center, 0.45) else middle
-view("aerial", aim + flat(-aim) * 300 + up * 470, aim + up * 30, 66, FIELD, 6, 600)
+local aim = if plan.forge then middle:Lerp(plan.forge.center, 0.6) else middle
+view("aerial", aim + flat(-aim) * 340 + up * 520, aim + up * 30, 70, FIELD, 6, 650)
 local forge = plan.forge
 if forge then
 	local c = forge.center
 	local toHub = flat(-c)
 	local side = Vector3.new(-toHub.Z, 0, toHub.X)
-	-- From ~150 studs off, a fish's height up the causeway's side
+	-- From ~150 studs off its foot, a fish's height up, turned 35° toward its shoulder
+	-- cone (if it has one) so the cone shows against the flank, on a clear line
+	local turnTo = 0
+	if forge.shoulder then
+		local toShoulder = flat(forge.shoulder.center - c)
+		turnTo = if side:Dot(toShoulder) >= 0 then 1 else -1
+	end
+	local a = math.rad(35) * turnTo
+	local dir = Vector3.new(
+		toHub.X * math.cos(a) - toHub.Z * math.sin(a),
+		0,
+		toHub.X * math.sin(a) + toHub.Z * math.cos(a)
+	)
+	local look = c + up * (forge.height * 0.45)
 	view(
 		"forge",
-		c + toHub * 250 + side * 60 + up * 70,
-		c + up * (forge.height * 0.5),
+		openView(c, look, 255, 70, forge.base + 10, dir, true),
+		look,
 		60,
-		boxAround(c + toHub * 120, 260, floorY - 130, floorY + forge.height + 20),
+		boxAround(c + dir * 120, 270, floorY - 130, floorY + forge.height + 20),
 		3
 	)
 	view(

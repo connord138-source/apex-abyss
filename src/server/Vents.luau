@@ -4,24 +4,28 @@
 -- Shelf.luau sculpted between the basins, so the whole sector reads as a working
 -- hydrothermal field with places to go, not a mud plain with holes in it.
 --
---   * THE FORGE: a lava lake glowing in its crater with dark crust rafting on it,
+--   * THE FORGE: a lava lake glowing in its crater with dark crust rafting on it and
+--     a soft glare hanging over it (it carries through the murk where a light can't),
 --     lava running down its runnels (bright cores over deep-red rims, laid on the
---     real flank by raycast) to pools at its foot, fumaroles steaming on its flanks,
+--     real flank by raycast and widening as they run) to oval pools at its foot,
+--     fumaroles steaming on its flanks, its shoulder cone's own lava, light and ash,
 --     and a column of ash rising some 300 studs from the crater in three stretches
 --     (lit orange low, murky grey high, so it carries in the deep blue over the
 --     vents' murk), with embers;
 --   * BLACK SMOKERS: a glowing throat on every spire (on its real top), a tall
 --     billowing black plume, heat shimmer, small side throats on the flanges,
---     sulfide crust (ochre, rust, sulfur) on them, a light at each complex;
+--     sulfide crust (ochre, rust, sulfur) on them, a light at each complex; and the
+--     basins' older chimneys dressed to match (flanges, staining, side throats);
 --   * COLUMNAR BASALT: hex columns (three blocks turned 60°, dark basalt with
 --     lighter tops) in two terraced outcrops and the causeway from the Forge's foot
 --     toward the hub;
---   * MINERAL TERRACES: sulfide shelves stepping down two basin walls, each holding a
---     shimmering warm pool, flowstone draped between them;
+--   * MINERAL TERRACES: rimstone shelves cascading down two basin walls, each with a
+--     warm glowing pool behind a scalloped rim, flowstone draped between them;
 --   * THE BRINE POOL: a dark glassy lake on a basin floor with a faint teal glow
 --     under it, a crust and mussel shoreline and mist rolling over it;
---   * TUBE WORMS (mid-grey tubes, crimson plumes) and MUSSEL and CLAM BEDS round the
---     smokers, the chimneys and the brine pool;
+--   * TUBE WORMS (mid-grey tubes, crimson plumes): three forests (round the tallest
+--     smoker complex, a basin chimney and the brine pool's far shore) and clumps
+--     round the smokers and chimneys, with MUSSEL and CLAM BEDS;
 --   * a glow over the two biggest crust patches, and embers and mineral flecks
 --     drifting over the field.
 --
@@ -29,7 +33,9 @@
 -- where Shared/Ground looks: predators climb over it, no shell or dig site lands in
 -- it, and every top stays under VentsPlan.ceiling, so no prey school is lifted over
 -- it. Decor neither collides, takes rays nor fires Touched. Everything is anchored,
--- SmoothPlastic, Neon or (the brine) Glass: never a toon-overridden material.
+-- SmoothPlastic, Neon or (the brine) Glass: never a toon-overridden material. It
+-- builds 2,000–2,800 parts and 13–14 lights (PARTS_CAP stops the small life past
+-- 2,900), and clears scattered boulders and plankton out of its landmarks (tidy).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -74,6 +80,8 @@ local COLORS = {
 	lavaRim = Color3.fromRGB(168, 38, 14),
 	raft = Color3.fromRGB(44, 34, 34),
 	minerals = { Color3.fromRGB(198, 142, 54), Color3.fromRGB(150, 66, 34), Color3.fromRGB(230, 208, 72) },
+	-- (the chimneys' flange crust: the same minerals, duller, so they don't ring gold)
+	crust = { Color3.fromRGB(168, 116, 56), Color3.fromRGB(128, 64, 38), Color3.fromRGB(160, 146, 70) },
 	-- Rimstone: cream, ochre and rust, and the warm water standing on it
 	travertine = { Color3.fromRGB(204, 182, 136), Color3.fromRGB(184, 130, 72), Color3.fromRGB(150, 86, 50) },
 	terracePool = Color3.fromRGB(236, 146, 64),
@@ -813,7 +821,7 @@ local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 				"FlangeLip",
 				center + Vector3.new(0, 0.7, 0),
 				Vector3.new(reach * 1.85, 1.6, reach * 1.62),
-				pick(COLORS.minerals)
+				pick(COLORS.crust)
 			)
 			if rng:NextNumber() < 0.35 then
 				local a = rng:NextNumber(0, TAU)

@@ -772,9 +772,10 @@ end
 -- Vents.luau dresses with parts. It draws on its own Random (World.seed + 98), so
 -- the shared sequence is untouched, and every top stays under VentsPlan.ceiling (no
 -- prey school is carried up its side).
---   * THE FORGE: a volcano of stacked basalt rings with lumps and buttresses on its
---     flanks, a crater bowl holding a lava lake, a notch where it spills, and lava
---     runnels in grooves down to aprons of lava at its foot;
+--   * THE FORGE: a volcano of stacked basalt rings (a voxel tall, so they round into
+--     one slope) with lumps and buttresses on its flanks, crags round a crater bowl
+--     holding a lava lake, a notch where it spills, lava runnels in grooves down to
+--     aprons of lava at its foot, and a shoulder cone with its own small crater;
 --   * the smoker complexes' SPIRES: tapering and knobbly, with flanges and a hot lip,
 --     on low mounds;
 --   * PILLOW LAVA (rounded basalt pillows with lava glowing between them), CRACKED
