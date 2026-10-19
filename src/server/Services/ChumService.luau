@@ -319,7 +319,7 @@ end
 -- box it fills (PC overnight 2026-10-14: one in the Sunken Ruins came to
 -- rest under a ruin's lintel; PC 2026-10-15: five columns let the reef's sponges and
 -- staghorns through the flukes and flank of a Coral Reef whale).
-local DRESSING = { "Rocks", "Coral", "Wrecks", "Ruins", "Vents" } -- under Workspace.World.Biomes
+local DRESSING = { "Rocks", "Coral", "Wrecks", "Ruins", "Vents", "Cliff" } -- under Workspace.World.Biomes
 -- Studs the sand may rise or fall under the footprint from its middle (PC 2026-10-15
 -- round 2: a Coral Reef dune buried a whale's flukes, and one on a hump left its tail
 -- floating ~9 studs over the sand)

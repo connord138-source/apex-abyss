@@ -52,12 +52,13 @@ export type Cliff = {
 	heads: { { position: Vector3, radius: number } }, -- reef heads on the crest
 	undercuts: { { number } }, -- angle runs where the lip overhangs
 	caves: { { position: Vector3, radius: number } }, -- cave mouths (their middle)
-	buttresses: { { angle: number, top: number, width: number } },
+	spurs: { { angle: number, half: number, top: number, extra: number } }, -- ribs (half: studs across)
 	columns: { { angle: number, top: number, bottom: number } }, -- fluted column groups
+	bands: { { y: number, thick: number, out: number } }, -- the strata, top down (their middles)
 }
 
 export type Features = {
-	chimneys: { { position: Vector3, height: number } },
+	chimneys: { VentsPlan.Chimney },
 	pinnacles: { Vector3 },
 	chutes: { number }, -- angles (degrees)
 	reefRocks: { { center: Vector3, radius: number } }, -- heads and ridges the corals grow on
@@ -200,18 +201,22 @@ end
 -- Now that we can see more it needs to look better"): a layered reef wall, toon
 -- rounded, on the shelf's drum (its face FACE from the hub's centre), in place of
 -- the balls that were stuck on and bitten out of it. From the top down:
---   * the CREST: two chained rows of rounded rock along the rim, the shelf's sand
---     running onto them, with reef heads on it: the reef's lip. In runs it overhangs
---     an UNDERCUT (an air band under it, the wall-dive notch); elsewhere a thick
+--   * the CREST: the reef's lip, rounded blocks of rock along the rim with the
+--     shelf's sand running onto them and reef heads on top. In runs it overhangs an
+--     UNDERCUT (an air band under it, the wall-dive notch); elsewhere a thick
 --     sandstone lip band holds it up;
---   * the STRATA: bands of rock, slate and sandstone (capsules chained round the rim,
---     Cave.pebble's shape) standing a few studs out of the face over recessed
---     grooves, dipping together round the shelf and broken into runs by erosion;
---   * LEDGES: wide shelves at several depths (Cave.pebble slabs) where Cliff.luau
---     grows coral gardens;
---   * BUTTRESSES standing out of the face to its foot (some bored through with a
---     swim-through), FLUTED COLUMNS (tall narrow capsules in groups), CREVICES (tall
---     air slots) and CAVES bitten into the face;
+--   * the STRATA: bands of rock, slate and sandstone, each a row of flattened
+--     Cave.pebble slabs laid end to end round the rim, every slab standing its own
+--     way out of the face (with the band, the spur it's on and a little jitter),
+--     sitting a little high or low and rolled a degree or two, so the joints show,
+--     over recessed grooves; thin and thick bands, a few merged, the lower wall a
+--     little further out than the upper (a batter), broken by erosion;
+--   * SPURS: ribs where every band stands further out, from below the lip to the
+--     foot, so the wall reads in bays and buttresses, not as shelves;
+--   * LEDGES: wide flat shelves at several depths (Cave.pebble slabs) where
+--     Cliff.luau grows coral gardens;
+--   * FLUTED COLUMNS (tall narrow capsules in groups), CREVICES (tall slots cut
+--     through every band to the face) and CAVES bitten into the face;
 --   * TALUS at the foot: rounded boulders on the deep floor (sandstone by the
 --     chutes, whose foot fans it), never past the foot into the Trench's canyon, the
 --     Ruins city's box or a Vents basin.
@@ -225,6 +230,7 @@ local FACE = shelf.radius + 40 -- the drum's face: the wall everything below sta
 local REACH = 25 -- the furthest anything stands out of the face (studs)
 local CLIFF_SEED = 19 -- the drop-off's own Random: World.seed + this
 local SEGMENT = 110 -- studs per capsule along the rim (a chord sags under 2 studs)
+local EMBED = 4 -- studs a slab reaches back into the face
 
 local function axisFrame(center: Vector3, axis: Vector3): CFrame
 	local reference = if math.abs(axis.Y) > 0.9 then Vector3.xAxis else Vector3.yAxis
@@ -339,11 +345,12 @@ local function dropOff(ops: { Op }, features: Features)
 		reach = REACH,
 		chutes = CHUTES,
 		chuteHalf = CHUTE_HALF,
+		bands = {},
 		ledges = {},
 		heads = {},
 		undercuts = {},
 		caves = {},
-		buttresses = {},
+		spurs = {},
 		columns = {},
 	}
 	features.cliff = cliff
@@ -390,22 +397,97 @@ local function dropOff(ops: { Op }, features: Features)
 		return 0 -- (never: the chutes take a twentieth of the rim)
 	end
 
-	-- The strata, from under the lip down to the foot: bands 12-28 thick with 9-16
-	-- stud grooves between them, each standing 12-18 studs out of the face, in runs
-	-- of 220-760 studs with eroded gaps. A band is two rows of capsules chained round
-	-- the rim, the front one standing out and the other behind it in the rock, so a
-	-- thin band is flat on top and a thick one a fat rounded roll. The first is the
-	-- sandstone lip band right under the crest, unbroken, which the undercut then
-	-- bites away in places.
-	local bands: { { y: number, thick: number, out: number, material: Enum.Material } } = {
-		{ y = -42, thick = 26, out = 12, material = SANDSTONE },
+	-- A slab of a band: a rounded roll `length` long round the rim at `angle`,
+	-- `thick` tall, its front `out` studs out of the face (wander included, never past
+	-- REACH), and when one roll doesn't reach back EMBED into the face a second one
+	-- behind it, a little shorter: Cave.pebble's flattened shape in at most two
+	-- capsules (a thin band can't stand far out: the two must overlap). Rolled `roll`
+	-- radians along the rim.
+	local function slab(
+		material: Enum.Material,
+		angle: number,
+		length: number,
+		y: number,
+		thick: number,
+		out: number,
+		roll: number
+	)
+		local r = thick / 2
+		local front = math.clamp(out + wander(angle) * 0.5, 2, math.min(REACH, 3.8 * r - EMBED))
+		local frame = rimFrame(angle, FACE, y) * CFrame.Angles(0, 0, roll)
+		local half = math.max(length / 2 - r * 0.6, r * 0.3)
+		-- (the frame's z points into the face: a roll `d` studs out sits at z = -d)
+		local rolls = { { d = front - r, half = half, open = false } }
+		if front - 2 * r > -EMBED then
+			-- (the back roll's ends hide behind the front roll's: no balls on them)
+			table.insert(rolls, { d = -EMBED + r, half = half * 0.86, open = true })
+		end
+		for _, roll in rolls do
+			capsule(
+				ops,
+				material,
+				(frame * CFrame.new(-roll.half, 0, -roll.d)).Position,
+				(frame * CFrame.new(roll.half, 0, -roll.d)).Position,
+				r,
+				roll.open
+			)
+		end
+	end
+
+	-- The spurs: ribs down the wall where every band stands further out (a smooth
+	-- bump across the rib, coming in over 40 studs under its top), so the face reads
+	-- in bays and buttresses
+	for _ = 1, 64 do
+		if #cliff.spurs >= 44 then
+			break
+		end
+		local angle = rimAngle(50)
+		local half = cr:NextNumber(14, 34)
+		local top = cr:NextNumber(-150, -64)
+		if not free(angle, half + 30, top, floor) then
+			continue
+		end
+		claim(angle, half + 10, top, floor)
+		table.insert(cliff.spurs, { angle = angle, half = half, top = top, extra = cr:NextNumber(8, 13) })
+	end
+	claims = {} -- (the spurs only keep each other apart: the slots and caves cut into them)
+	local function spurOut(angle: number, y: number): number
+		local best = 0
+		for _, spur in cliff.spurs do
+			local apart = math.rad(angleGap(angle, spur.angle)) * FACE
+			local reach = spur.half * 1.5
+			if apart < reach and y < spur.top then
+				local across = 1 - (apart / reach) ^ 2
+				best = math.max(best, spur.extra * across * across * math.clamp((spur.top - y) / 40, 0, 1))
+			end
+		end
+		return best
+	end
+
+	-- The strata, from under the lip down to the foot: bands 12-36 thick, most with
+	-- 4-10 stud grooves between them (a few merged with the next), each standing
+	-- 9-17 studs out of the face (the lower wall up to 5 more), as slabs 56-150 long.
+	-- The first is the sandstone lip band right under the crest, unbroken, which the
+	-- undercut then bites away in places.
+	type Band = {
+		y: number,
+		thick: number,
+		out: number,
+		material: Enum.Material,
+		erode: number,
+		k1: number,
+		k2: number,
+		phase: number,
+	}
+	local bands: { Band } = {
+		{ y = -42, thick = 26, out = 12, material = SANDSTONE, erode = 0, k1 = 0, k2 = 0, phase = 0 },
 	}
 	local palette = { SANDSTONE, SLATE, ROCK }
 	local level = -60
 	local last = SANDSTONE
 	while true do
-		local thick = cr:NextNumber(12, 28)
-		if level - thick < floor + 24 then
+		local thick = if cr:NextNumber() < 0.3 then cr:NextNumber(26, 36) else cr:NextNumber(12, 24)
+		if level - thick < floor + 20 then
 			break
 		end
 		local material = palette[cr:NextInteger(1, #palette)]
@@ -413,24 +495,50 @@ local function dropOff(ops: { Op }, features: Features)
 			material = palette[(table.find(palette, material) :: number) % #palette + 1]
 		end
 		last = material
-		table.insert(
-			bands,
-			{ y = level - thick / 2, thick = thick, out = cr:NextNumber(12, 18), material = material }
-		)
-		level -= thick + cr:NextNumber(9, 16)
+		local low = math.clamp((level - thick / 2) / floor, 0, 1)
+		table.insert(bands, {
+			y = level - thick / 2,
+			thick = thick,
+			out = cr:NextNumber(9, 17) + 5 * low,
+			material = material,
+			erode = cr:NextNumber(0.03, 0.14),
+			-- (it swells and pinches along the rim: waves of ~85-165 and ~40-70 studs)
+			k1 = cr:NextNumber(34, 66),
+			k2 = cr:NextNumber(80, 140),
+			phase = cr:NextNumber(0, 6.28),
+		})
+		level -= thick + (if cr:NextNumber() < 0.15 then cr:NextNumber(1, 3) else cr:NextNumber(4, 10))
 	end
 	for index, band in bands do
-		local spans = if index == 1 then stretches(14) else runs(cr, 14, { 220, 760 }, { 12, 40 })
-		for _, span in spans do
-			local out = if index == 1 then band.out else band.out + cr:NextNumber(-2, 2)
-			local radius = band.thick / 2
-			local behind = if band.thick >= 20 then radius else band.thick * 0.55
-			for _, middle in { FACE + out - radius, FACE + out - radius - behind } do
-				rimRow(ops, band.material, span[1], span[2], function(angle)
-					return middle + wander(angle) * 0.5
-				end, function(angle)
-					return band.y + (if index == 1 then 0 else dip(angle))
-				end, radius)
+		table.insert(cliff.bands, { y = band.y, thick = band.thick, out = band.out })
+		for _, stretch in stretches(14) do
+			local angle = stretch[1]
+			while true do
+				local length = if index == 1 then cr:NextNumber(90, 150) else cr:NextNumber(56, 150)
+				local stop = math.min(angle + math.deg(length / FACE), stretch[2])
+				local studs = math.rad(stop - angle) * FACE
+				if studs < 12 then
+					break
+				end
+				local middle = (angle + stop) / 2
+				if cr:NextNumber() >= band.erode then
+					local y = band.y
+					local thick, out, roll = band.thick, band.out, 0
+					if index > 1 then
+						local a = math.rad(middle)
+						y += dip(middle) + 2 * math.sin(a * band.k1 + band.phase) + cr:NextNumber(-1, 1)
+						thick *= cr:NextNumber(0.9, 1.08)
+						out += spurOut(middle, y) + 3 * math.sin(a * band.k1 + band.phase * 2) + 2 * math.sin(
+							a * band.k2 + band.phase
+						) + cr:NextNumber(-1.2, 1.2)
+						roll = cr:NextNumber(-0.015, 0.015)
+					end
+					slab(band.material, middle, studs + thick * 0.4, y, thick, math.max(out, 5), roll)
+				end
+				if stop >= stretch[2] then
+					break
+				end
+				angle = stop
 			end
 		end
 	end
@@ -448,7 +556,8 @@ local function dropOff(ops: { Op }, features: Features)
 		end
 	end
 
-	-- Crevices: tall air slots up the face, through the bands
+	-- Crevices: tall slots up the face, cut through every band in front of them to
+	-- 6 studs into the face
 	for _ = 1, 22 do
 		local angle = rimAngle(30)
 		local top = cr:NextNumber(-230, -70)
@@ -458,9 +567,13 @@ local function dropOff(ops: { Op }, features: Features)
 			continue
 		end
 		claim(angle, radius + 6, top + radius, bottom - radius)
-		local r = FACE + 2 + wander(angle) * 0.5
+		local inner, outer = FACE - 6 + radius, FACE + REACH + 4 - radius
+		local steps = math.max(1, math.ceil((outer - inner) / (radius * 1.2)))
 		for _ = 1, 2 do
-			capsule(ops, AIR, at(angle, r, bottom), at(angle, r, top), radius)
+			for k = 0, steps do
+				local r = inner + (outer - inner) * k / steps
+				capsule(ops, AIR, at(angle, r, bottom), at(angle, r, top), radius)
+			end
 		end
 	end
 
@@ -476,60 +589,10 @@ local function dropOff(ops: { Op }, features: Features)
 		local mouth = at(angle, FACE - 2, y)
 		for _ = 1, 2 do
 			ball(ops, AIR, mouth, radius)
+			ball(ops, AIR, at(angle, FACE + 10, y), radius * 0.9)
 			ball(ops, AIR, at(angle, FACE - radius * 0.9, y - radius * 0.15), radius * 0.62)
 		end
 		table.insert(cliff.caves, { position = mouth, radius = radius })
-	end
-
-	-- Buttresses: tall rounded spurs standing out of the face from high on the wall
-	-- to its foot, a broader flare at the bottom; the undercut runs keep them below
-	-- the lip. Some are bored through along the face: a swim-through a LV 100 fish
-	-- fits (radius 11; a fish's collider is at most 6.8, the Puffer's 8.5).
-	for _ = 1, 26 do
-		local angle = rimAngle(60)
-		if inTrenchSector(angle, 10) then
-			continue
-		end
-		local width = cr:NextNumber(30, 48)
-		local depth = cr:NextNumber(24, 32)
-		local front = cr:NextNumber(15, 20)
-		local undercut = false
-		for _, span in cliff.undercuts do
-			if Seafloor.inSector(angle, span[1] - 3, span[2] + 3) then
-				undercut = true
-			end
-		end
-		local top = if undercut then cr:NextNumber(-110, -66) else cr:NextNumber(-90, -34)
-		local bottom = floor - 6
-		if not free(angle, width / 2 + 6, top, bottom) then
-			continue
-		end
-		claim(angle, width / 2, top, bottom)
-		local r = FACE + front - depth / 2
-		local height = top - bottom
-		local material = if cr:NextNumber() < 0.7 then ROCK else SLATE
-		Cave.pebble(ops, material, rimFrame(angle, r, (top + bottom) / 2), Vector3.new(width, height, depth))
-		Cave.pebble(
-			ops,
-			material,
-			rimFrame(angle, FACE + front + 4 - depth * 0.65, floor + 18),
-			Vector3.new(width * 1.5, 56, depth * 1.3)
-		)
-		if cr:NextNumber() < 0.35 and height > 140 then
-			local y = cr:NextNumber(bottom + 50, top - 40)
-			local frame = rimFrame(angle, FACE + 7, y)
-			for _ = 1, 2 do
-				capsule(
-					ops,
-					AIR,
-					(frame * CFrame.new(-width / 2 - 18, 0, 0)).Position,
-					(frame * CFrame.new(width / 2 + 18, 0, 0)).Position,
-					11,
-					true
-				)
-			end
-		end
-		table.insert(cliff.buttresses, { angle = angle, top = top, width = width })
 	end
 
 	-- Fluted columns: 3-6 tall narrow capsules side by side, standing on the floor
@@ -549,7 +612,7 @@ local function dropOff(ops: { Op }, features: Features)
 			continue
 		end
 		claim(angle, half, bottom + tall, bottom)
-		local frame = rimFrame(angle, FACE + radius + 1, 0)
+		local frame = rimFrame(angle, FACE + REACH - radius - 1, 0)
 		for k = 1, count do
 			local x = (k - (count + 1) / 2) * radius * 1.7
 			local height = tall * cr:NextNumber(0.6, 1)
@@ -565,51 +628,71 @@ local function dropOff(ops: { Op }, features: Features)
 		table.insert(cliff.columns, { angle = angle, top = bottom + tall, bottom = bottom })
 	end
 
-	-- Ledges: wide shelves along a band (its top a little over it), 60-110 long,
-	-- standing 18-23 out of the face, for the coral gardens
-	for _ = 1, 60 do
-		if #cliff.ledges >= 44 then
+	-- Ledges: wide flat shelves along a band (its top a little over it), 60-110
+	-- long, standing 20-25 out of the face, for the coral gardens
+	for _ = 1, 70 do
+		if #cliff.ledges >= 48 then
 			break
 		end
 		local band = bands[cr:NextInteger(3, #bands)]
 		local length = cr:NextNumber(60, 110)
 		local angle = rimAngle(length / 2 + 20)
-		local depth = cr:NextNumber(18, 23)
+		local depth = cr:NextNumber(20, 25)
 		local y = band.y + dip(angle) + band.thick / 2 - 3
 		if not free(angle, length / 2 + 10, y + 20, y - 14) then
 			continue
 		end
 		claim(angle, length / 2, y + 20, y - 14)
-		local slab = 13
-		local thickness = 26
+		local slabThick = 14
+		local thickness = depth + EMBED
 		local r = FACE + depth - thickness / 2
 		Cave.pebble(
 			ops,
 			band.material,
-			rimFrame(angle, r, y - slab / 2),
-			Vector3.new(length, slab, thickness)
+			rimFrame(angle, r, y - slabThick / 2),
+			Vector3.new(length, slabThick, thickness)
 		)
 		table.insert(cliff.ledges, { top = at(angle, r, y), angle = angle, length = length, depth = depth })
 	end
 
-	-- The crest: the reef's lip, two rows along the rim (the inner one over the
+	-- The crest: the reef's lip, rounded blocks along the rim (the inner ones over the
 	-- drum's step to the sand), then reef heads on it
-	for _, span in stretches(14) do
-		rimRow(ops, ROCK, span[1], span[2], function(angle)
-			return FACE - 12 + wander(angle) * 0.4
-		end, function()
-			return -12
-		end, 14)
-		rimRow(ops, ROCK, span[1], span[2], function(angle)
-			return FACE + 6 + wander(angle) * 0.8
-		end, function()
-			return -14
-		end, 13)
+	for _, stretch in stretches(14) do
+		for _, row in { { r = -12, y = -12, size = { 12, 15 } }, { r = 7, y = -15, size = { 10, 14 } } } do
+			local angle = stretch[1]
+			while true do
+				local length = cr:NextNumber(46, 96)
+				local stop = math.min(angle + math.deg(length / FACE), stretch[2])
+				local studs = math.rad(stop - angle) * FACE
+				if studs < 12 then
+					break
+				end
+				local middle = (angle + stop) / 2
+				local radius = cr:NextNumber(row.size[1], row.size[2])
+				local frame = rimFrame(
+					middle,
+					FACE + row.r + wander(middle) * 0.6,
+					row.y + cr:NextNumber(-2, 2)
+				) * CFrame.Angles(0, cr:NextNumber(-0.05, 0.05), cr:NextNumber(-0.04, 0.04))
+				local half = studs / 2 + radius * 0.2
+				capsule(
+					ops,
+					ROCK,
+					(frame * CFrame.new(-half, 0, 0)).Position,
+					(frame * CFrame.new(half, 0, 0)).Position,
+					radius
+				)
+				if stop >= stretch[2] then
+					break
+				end
+				angle = stop
+			end
+		end
 	end
-	for _ = 1, 34 do
+	for _ = 1, 70 do
 		local angle = rimAngle(30)
-		local size = Vector3.new(cr:NextNumber(22, 40), cr:NextNumber(14, 22), cr:NextNumber(18, 28))
-		local r = FACE + cr:NextNumber(-10, 2)
+		local size = Vector3.new(cr:NextNumber(18, 40), cr:NextNumber(12, 22), cr:NextNumber(16, 28))
+		local r = FACE + cr:NextNumber(-22, 2)
 		local frame = rimFrame(angle, r, cr:NextNumber(-2, 3))
 			* CFrame.Angles(cr:NextNumber(-0.15, 0.15), cr:NextNumber(-0.5, 0.5), cr:NextNumber(-0.15, 0.15))
 		Cave.pebble(ops, if cr:NextNumber() < 0.75 then ROCK else SANDSTONE, frame, size)
@@ -722,9 +805,9 @@ local function forgeOps(ops: { Op }, forge: VentsPlan.Forge, vr: Random)
 		end
 		return false
 	end
-	-- The body: rings stacked up the cone, each a little narrower (Terrain rounds the
-	-- steps off)
-	local layers = math.ceil(height / 7)
+	-- The body: rings stacked up the cone, each a little narrower, a voxel (4 studs)
+	-- tall, so Terrain rounds the steps into one slope (7-stud rings read as terraces)
+	local layers = math.ceil(height / 4)
 	for i = 0, layers - 1 do
 		local t0, t1 = i / layers, (i + 1) / layers
 		local bottom = if i == 0 then c.Y - 8 else c.Y + height * t0 - 1
@@ -1182,19 +1265,15 @@ function Shelf.ops(): ({ Op }, Features)
 		local x, z = at(angle, r, 0).X, at(angle, r, 0).Z
 		local base = Seafloor.y(x, z)
 		local height = rng:NextNumber(30, 95)
-		cylinder(ops, BASALT, Vector3.new(x, base + height / 2, z), rng:NextNumber(5, 12), height)
+		-- (its radius drawn where it always was, kept for Vents.luau's dressing)
+		local radius = rng:NextNumber(5, 12)
+		cylinder(ops, BASALT, Vector3.new(x, base + height / 2, z), radius, height)
 		ball(ops, LAVA, Vector3.new(x, base + height, z), rng:NextNumber(4, 8))
-		table.insert(features.chimneys, { position = Vector3.new(x, base, z), height = height })
+		table.insert(
+			features.chimneys,
+			{ position = Vector3.new(x, base, z), height = height, radius = radius }
+		)
 	end
-	-- The field between the basins (owner, 2026-10-19: "The vents part of the map needs
-	-- more substance too"): the Forge, black-smoker spires, pillow lava, crust and
-	-- basalt ridges, laid out round the chimneys above by VentsPlan and dressed by
-	-- Vents.luau (ventsField: its own Random)
-	local field = VentsPlan.make(features.chimneys)
-	field.opsFrom = #ops + 1
-	ventsField(ops, field)
-	field.opsTo = #ops
-	features.vents = field
 
 	-- The Sunken Ruins' ground: buried sandstone mounds out in the biome (none under
 	-- the city), then the city's sand plain, its drifts and the courtyard's pit
@@ -1264,6 +1343,17 @@ function Shelf.ops(): ({ Op }, Features)
 			Vector3.new(radius * 2.1, radius * 1.1, radius * 1.7)
 		)
 	end
+
+	-- The Vents' field between the basins (owner, 2026-10-19: "The vents part of the
+	-- map needs more substance too"): the Forge, black-smoker spires, pillow lava,
+	-- crust and basalt ridges, laid out by VentsPlan round the chimneys and clear of
+	-- every rock already laid (the drop-off's talus, the debris above), and dressed by
+	-- Vents.luau. Last, with its own Random (ventsField), so nothing else moves.
+	local field = VentsPlan.make(features.chimneys, ops)
+	field.opsFrom = #ops + 1
+	ventsField(ops, field)
+	field.opsTo = #ops
+	features.vents = field
 
 	return ops, features
 end

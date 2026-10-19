@@ -32,11 +32,16 @@ function SwimWave.headYaw(bend: number): number
 	return bend * 0.25
 end
 
--- Each rig's bones' rest rotations in the fish's own axes (its Root bone's: Y up, -Z
--- ahead). Imported bones point their own Y down the spine (Blender's bone axis), so
--- a turn about a bone's own Y rolled the body instead of swinging the tail (playtest
--- 2026-10-07: tails moved +-0.02 studs); the swing is turned into each bone's axes.
--- Taken once per rig, before any turn is applied, so no pose leaks in.
+-- Each rig's bones' rest rotations in the fish's own axes: those of the part the bones
+-- live in (a rigged model faces -Z and is never turned, so its mesh's frame is the
+-- fish's: Y up, -Z ahead, X to its right). Imported bones point their own Y down the
+-- spine (Blender's bone axis), so a turn about a bone's own Y rolled the body instead
+-- of swinging the tail (playtest 2026-10-07: tails moved +-0.02 studs); the swing is
+-- turned into each bone's axes. Taken once per rig, before any turn is applied, so no
+-- pose leaks in. (Until 2026-10-19 they were taken in the Root bone's axes, which
+-- share only the up axis with the fish's: from rig_fish.py's FBX the root comes in
+-- facing the other way, so a yaw was the same but a turn about X, a jaw or an arch,
+-- went the wrong way round.)
 local restFrames: { [any]: { [string]: CFrame } } = setmetatable({}, { __mode = "k" }) :: any
 -- (and where each bone sits at rest, in the same axes: a head turns about its neck)
 local restPlaces: { [any]: { [string]: Vector3 } } = setmetatable({}, { __mode = "k" }) :: any
@@ -50,7 +55,10 @@ local function restOf(bones: { [string]: Bone }): { [string]: CFrame }?
 	if frames == nil then
 		local made: { [string]: CFrame } = {}
 		local places: { [string]: Vector3 } = {}
-		local rootFrame = root.WorldCFrame * root.Transform:Inverse()
+		local holder = root.Parent
+		local rootFrame = if holder and holder:IsA("BasePart")
+			then holder.CFrame
+			else root.WorldCFrame * root.Transform:Inverse()
 		for name, bone in bones do
 			local rest = rootFrame:ToObjectSpace(bone.WorldCFrame * bone.Transform:Inverse())
 			made[name] = rest.Rotation
@@ -68,9 +76,10 @@ local function turn(bone: Bone, frame: CFrame?, yaw: number, pitch: number?)
 	bone.Transform = if frame then frame:Inverse() * rotation * frame else rotation
 end
 
--- Drives a rigged body's bones (Head, Spine1..N, Tail) in place. `arch` (radians,
--- optional) bends the body up or down along its length the way `bend` curls it into
--- a turn (the tail lagging a climb, a squid's arms curling). `look` (radians,
+-- Drives a rigged body's bones (Head, Spine1..N, Tail) in place. `bend` curls the body
+-- side to side (positive swings the tail to the fish's right, +X: the body concave to
+-- its right, the shape of a right turn), `arch` (radians, optional) up or down along
+-- its length (positive tips the tail down: a squid's arms curling under it). `look` (radians,
 -- optional) turns the head alone about its neck, the body behind it held (a hunter
 -- eyeing its fish, a head shake): the chain runs Head -> Spine1 -> ..., so a turn of
 -- the Head bone on its own swings the whole body about the snout.
@@ -116,7 +125,8 @@ end
 
 -- Turns one bone (a Jaw, a FinL or FinR, the Head) by `rotation` in the fish's own
 -- axes (Y up, -Z ahead, X to its right), replacing whatever it had this frame. A jaw
--- opens with a negative turn about X (CFrame.Angles(-open, 0, 0)), as FishAnimator's.
+-- opens with a negative turn about X (CFrame.Angles(-open, 0, 0)), as FishAnimator's;
+-- a positive turn about Z tips a left fin's (FinL, at -X) tip down.
 function SwimWave.setBone(bones: { [string]: Bone }, name: string, rotation: CFrame)
 	local bone: Bone? = bones[name]
 	if bone == nil then

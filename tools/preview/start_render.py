@@ -192,6 +192,26 @@ def stand_ins(shot_id, shot, grid, marks, path_center):
                 continue
             size = rng.uniform(2, 8) * 1.6
             shape("sphere", "Coral", (x, top + size * 0.35, z), (size, size * 0.8, size), None, rng.choice(mats))
+    if biome == "ShipwreckGraveyard" and shot_id in marks:
+        # A stand-in wreck at the shot's landmark (WorldService wreck: a listing keel,
+        # two hull sides, ribs and a broken mast)
+        keel = marks[shot_id]
+        floor = keel.y - 8
+        wood = material("Wood", lin((96, 74, 52)), rough=0.9)
+        light_wood = material("WoodLight", lin((128, 102, 74)))
+        length, beam = 88, 88 * 0.28
+        turn = mathutils.Matrix.Rotation(0.7, 3, "Y") @ mathutils.Matrix.Rotation(math.radians(18), 3, "Z")
+        def at(x, y, z):
+            return mathutils.Vector((keel.x, floor, keel.z)) + turn @ mathutils.Vector((x, y, z))
+        shape("cube", "Keel", at(0, 2.5, 0), (length, 5, beam * 0.55), turn, wood)
+        for side in (-1, 1):
+            tilt = turn @ mathutils.Matrix.Rotation(math.radians(side * -30), 3, "X")
+            shape("cube", "Hull", at(0, beam * 0.24, side * beam * 0.34), (length * 0.92, beam * 0.55, 2.5), tilt, wood)
+            for i in range(7):
+                x = -length * 0.42 + i * (length * 0.84 / 6)
+                rib = turn @ mathutils.Matrix.Rotation(math.radians(side * -22), 3, "X")
+                shape("cube", "Rib", at(x, beam * 0.4, side * beam * 0.46), (2, beam * 0.7, 2), rib, light_wood)
+        shape("cylinder", "Mast", at(10, beam * 0.9, 0), (2.6, beam * 1.5, 2.6), turn, light_wood)
     if biome == "SunkenRuins" and shot_id in marks:
         # The great temple (Ruins.luau greatTemple, its frame T0) and the avenue's columns
         temple = marks[shot_id]

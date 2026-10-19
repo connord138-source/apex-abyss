@@ -20,7 +20,7 @@ local World = Config.World
 local Ground = {}
 
 local CELL = 4
-local SOLID = { "Rocks", "Coral", "Wrecks", "Ruins", "Vents" } -- under Workspace.World.Biomes
+local SOLID = { "Rocks", "Coral", "Wrecks", "Ruins", "Vents", "Cliff" } -- under Workspace.World.Biomes
 local PARAMS_AGE = 5 -- seconds before the ray filter is rebuilt (dressing streams in)
 
 local cache: { [number]: number } = {}

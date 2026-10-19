@@ -1015,6 +1015,24 @@ The owner's "aggressive AI predators worth more" are the base the bosses stand o
   other player who bit it in the last 2.5 s), × upgrades and species. Everyone who
   dealt damage gets a share of the loot (at least 10%; the killer +10%).
 - **Respawn** 90 s / 150 s after a kill, somewhere else in the band.
+- **Hunting like a real predator (owner, 2026-10-19: "If he misses the player he just
+  slowly turns around and goes at them again. It needs to feel like a real predator
+  ... Same with other predator fish. Needs to be fun to fight them not robotic"):**
+  after a strike it carries through (`carry`), then banks round hard (`comeTurn` ×
+  its turn rate) onto a loop a run-in's length out and turns in from a new angle once
+  its bite is ready; a bite that lands sates it `sated` s longer (it swings wide with
+  its mouthful), so a fish that sits still is bitten no faster than before while a
+  miss comes round at once. The Reef Shark opens a hunt by circling in (40%),
+  stalking up from below (35%) or straight in, and feints once a hunt in five; both
+  cruise in burst-and-glide strokes (`glide`, `beat`). Sim (`run_predators.sh`): a
+  missed pass comes round in ~2 s (was 2–4 s, a Barracuda after a dashing fish ~28
+  s), the hit rates on still, fleeing, juking and looping fish unchanged.
+- **The look, all on the client from how it moves (`PredatorController`, nothing more
+  on the stream):** tail beats by speed and thrust, a C-bend into turns and an arch
+  through climbs (the body concave toward the turn), a bank, a hunter's head eyeing
+  its fish, and the jaw (rig_fish.py `--jaw`: a Jaw bone on the 'Cuda, Reef Shark and
+  Megalodon): a little open as it cruises, a gape building through the tell, a snap
+  shut on the bite and a head shake when it lands.
 
 ### World boss: the Megalodon (owner, 2026-10-06; built 2026-10-07)
 
@@ -1115,6 +1133,28 @@ details below are Claude's proposal (concept: `assets/concepts/Megalodon.jpg`).
   shade roll, the Megalodon Slayer title, a 1/15 (×2 for the top dealer) drop of the
   Ghost shade. The Trophy Hunter stall sells Ghost for 12 Teeth. On escape it heals
   and returns in 15 min.
+- **Bigger and alive (owner, 2026-10-19: "his actual movements are very stiff ... he
+  could definitely be made larger and needs more movement"):** 175 studs (was 130),
+  every reach and radius ×1.35 (bite 21.5, trigger 43, charge 27 at 65–280, sweep 78,
+  breach ring 84 ± 27, aggro 240), seen from 560 and solid by 330, the fight light
+  300, the dread 760. It swims like a fish with momentum and a turning circle
+  (`predator.swim`): slow strokes and long glides, a surge into a charge, a carry
+  through a miss and a hard banked turn back (~2 s after a missed charge, 3–5 s after
+  any pass; the old crawl took 15–40 s after some), circling a fish
+  at 270 → 170 studs while its bite cools, and up from below at a far one. A fish
+  beside its head or over its back (inside the circle its mouth sweeps) gets a pass:
+  it swims on and wheels back instead of pivoting on the spot. **Its bite is
+  dodgeable:** it swings its head onto the fish for the first 40% of the 1.2 s tell,
+  then its head is set (`BITE_COMMIT`), and the jaws reach 1.6× ahead but 0.7× to the
+  side, so a fish that swims off its jaws or slips aside at JAWS OPEN · SWIM CLEAR
+  gets clear (sim: 20% of the bites dodged sideways land and 37% of those backed off
+  from, a still fish's ~100%; before, 98–100% landed either way). No charge at a fish hugging the surface above where its body can rise.
+  A landed bite adds 2.2 s to its cooldown (`sated`): it circles. On the client: the
+  jaw (gape through the tell, snap, head shake, chomps in the Frenzy), pectoral fins
+  (FinL/FinR, rig_fish.py `--fins`) flaring in a tell and tucked in a charge, the
+  belly rolled out in a hard turn, onto its side in a breach's crash. The Giant
+  Squid's arms writhe, close and trail on each pulse of its mantle and spread on the
+  glide, curl up to reach in a grab's tell and stream behind a jet.
 
 ### World boss: the Giant Squid (owner, 2026-10-06; Claude's proposal; built 2026-10-07)
 

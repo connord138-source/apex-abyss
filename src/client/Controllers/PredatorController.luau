@@ -846,22 +846,28 @@ local function animateRig(visual: Visual, dt: number, now: number, yawRate: numb
 		amplitude *= 0.4
 		frequency *= 0.5
 	end
+	-- (a squid's mantle pulse, read off its thrust: the arms close and trail straight
+	-- as it jets, then spread and drift on the glide)
+	local pulse = if squid then math.clamp(thrust * 1.5, 0, 1) else 0
+	local drift = if squid then math.clamp(-thrust * 2, 0, 1) else 0
 	if squid then
 		-- Its arms never quite still; streamed straight behind a jet
-		amplitude = if motion.jetUntil > now then 0.02 else math.max(amplitude, 0.1)
+		amplitude = if motion.jetUntil > now then 0.02 else math.max(amplitude, 0.1) * (1 - 0.55 * pulse)
 	end
 	motion.amplitude += (amplitude - motion.amplitude) * (1 - math.exp(-dt * 3))
 	visual.phase += TAU * frequency * dt
-	-- A C-bend into a turn (deep in a burst-turn), and the tail lagging a climb or dive
-	-- (bend is per joint and the joints add up: 0.2 curls a Megalodon ~1 radian nose
-	-- to tail)
+	-- A C-bend into a turn (deep in a burst-turn) and an arch through a climb or dive:
+	-- the body follows its own path, concave toward the turn, the tail swinging in
+	-- behind (yawRate is + turning left, and SwimWave's + bend swings the tail right,
+	-- so it's negated; the same for the arch). Bend is per joint and the joints add
+	-- up: 0.2 curls a Megalodon ~1 radian nose to tail.
 	motion.bend, motion.bendVelocity =
-		Spring.number(motion.bend, motion.bendVelocity, math.clamp(yawRate * 0.1, -0.2, 0.2), 7, dt)
-	local arch = math.clamp(pitchRate * 0.08, -0.08, 0.08)
+		Spring.number(motion.bend, motion.bendVelocity, math.clamp(-yawRate * 0.1, -0.2, 0.2), 7, dt)
+	local arch = math.clamp(-pitchRate * 0.08, -0.08, 0.08)
 	if squid then
 		-- The arms writhe, gather toward their fish in a grab's tell (up for a fish above
 		-- it, under the mantle for one below), and stream in a jet
-		arch += 0.1 * math.sin(now * 0.9 + visual.index) + 0.05 * math.sin(now * 2.3)
+		arch += (0.1 * math.sin(now * 0.9 + visual.index) + 0.05 * math.sin(now * 2.3)) * (1 - 0.7 * pulse + 0.6 * drift)
 		if motion.reachUntil > now then
 			local at = targetPosition(visual)
 			local above = at ~= nil and at.Y > visual.position.Y
@@ -1393,7 +1399,16 @@ local function onEvent(kind: any, index: any, payload: any)
 		visual.windupUntil = now + seconds
 		visual.motion.windupFrom = now
 		if payload.target == me then
-			warn(`{string.upper(def.name)} · INCOMING`, seconds + 0.3)
+			-- (a boss's bite: its head sets late in the tell, so swimming off its jaws
+			-- or slipping aside gets clear; BossService BITE_COMMIT)
+			local bossDef = Bosses.byId[def.id]
+			local jaws = bossDef ~= nil and bossDef.kit == "shark" and seconds >= 0.8
+			warn(
+				if jaws
+					then `{string.upper(def.name)} · JAWS OPEN · SWIM CLEAR`
+					else `{string.upper(def.name)} · INCOMING`,
+				seconds + 0.3
+			)
 			Sfx.play("Warning", { volume = 0.6 })
 		end
 	elseif kind == "lost" or kind == "stunned" then

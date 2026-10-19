@@ -493,6 +493,7 @@ type Pending = {
 	token: string, -- what StartService puts in `StartStreamed` once its water is in
 	askedAt: number,
 	arrivedAt: number?,
+	planning: boolean?, -- its path is being checked (a few frames: planFor)
 	plan: StartShots.Plan?,
 }
 
@@ -503,7 +504,10 @@ local lastBiome: string? = nil
 local lastAsk = -math.huge
 local everShown = false
 local resting: { [number]: number } = {} -- shots skipped until then (os.clock): no water, no clear path
-local bad: { [number]: boolean } = {} -- schools no clear path was found for
+-- Schools no clear path was found for, skipped until then (os.clock): most failures
+-- pass (a steep stretch of its loop, rock along this part of its path)
+local bad: { [number]: number } = {}
+local BAD_FOR = 120
 local candidateLists: { [number]: { number } } = {}
 local rng = Random.new()
 
@@ -532,6 +536,20 @@ local function castWorld(origin: Vector3, direction: Vector3): number?
 	return if hit then hit.Distance else nil
 end
 
+-- The same, for checking the next shot's path while one plays: a few hundred rays a
+-- frame, then it waits for the next (a whole check is up to ~1,500 rays a school,
+-- which would hitch the shot on screen)
+local CASTS_PER_FRAME = 160
+local castsThisFrame = 0
+local function castSpread(origin: Vector3, direction: Vector3): number?
+	castsThisFrame += 1
+	if castsThisFrame >= CASTS_PER_FRAME then
+		castsThisFrame = 0
+		RunService.Heartbeat:Wait()
+	end
+	return castWorld(origin, direction)
+end
+
 local terrainOnly = RaycastParams.new()
 terrainOnly.FilterType = Enum.RaycastFilterType.Include
 terrainOnly.FilterDescendantsInstances = { workspace.Terrain }
@@ -546,25 +564,21 @@ local function candidatesOf(index: number): { number }
 	return list
 end
 
--- One of the shot's best schools, at random so each visit differs: the first prey's
--- that has any left, or for the temple shot the three nearest its temple
+-- One of the shot's best schools, at random so each visit differs: one of the three
+-- gentlest swimmers (StartShots.candidates' order) of its first prey that has any
+-- left, or for the temple shot of those near its temple
 local function pickSchool(index: number): number?
-	local shot = Start.shots[index]
 	local best: { number } = {}
-	local prey: string? = nil
+	local first: string? = nil
+	local shot = Start.shots[index]
 	for _, school in candidatesOf(index) do
-		if bad[school] then
+		if (bad[school] or 0) > os.clock() then
 			continue
 		end
-		if shot.landmark == "temple" then
-			if #best < 3 then
-				table.insert(best, school)
-			end
-		else
-			prey = prey or Schools.list[school].prey
-			if Schools.list[school].prey == prey then
-				table.insert(best, school)
-			end
+		local group = if shot.landmark == "temple" then "temple" else Schools.list[school].prey
+		first = first or group
+		if group == first and #best < 3 then
+			table.insert(best, school)
 		end
 	end
 	if #best == 0 then
@@ -672,15 +686,16 @@ local function wreckNear(school: number): Vector3?
 end
 
 -- A clear camera path for a pending shot from `t0`: its own school, else up to three
--- of the shot's others in the same water
+-- of the shot's others in the same water. It yields (its rays are spread over a few
+-- frames), so it runs in its own thread
 local function planFor(p: Pending, t0: number): StartShots.Plan?
 	local shot = Start.shots[p.shot]
 	local side = if rng:NextNumber() < 0.5 then 1 else -1
 	local function try(school: number): StartShots.Plan?
 		local landmark = if shot.landmark == "wreck" then wreckNear(school) else nil
-		local plan = StartShots.plan(p.shot, school, t0, castWorld, side, landmark)
+		local plan = StartShots.plan(p.shot, school, t0, castSpread, side, landmark)
 		if plan == nil then
-			bad[school] = true
+			bad[school] = os.clock() + BAD_FOR
 		end
 		return plan
 	end
@@ -693,7 +708,7 @@ local function planFor(p: Pending, t0: number): StartShots.Plan?
 	for _, school in candidatesOf(p.shot) do
 		if
 			school ~= p.school
-			and not bad[school]
+			and (bad[school] or 0) <= os.clock()
 			and (Schools.list[school].center - center).Magnitude < 140
 		then
 			tried += 1
@@ -706,13 +721,15 @@ local function planFor(p: Pending, t0: number): StartShots.Plan?
 	return plan
 end
 
--- Puts a planned shot on screen now (checked again for this moment; its first check
--- covered running late by `extend`). False if it can't go.
+-- Puts a planned shot on screen now: its path moved to start now and checked again
+-- (one variant's rays), else planned afresh from now (under the murk), else as
+-- planned (its first check covered running late by `extend`). False if it can't go.
 local function begin(p: Pending): boolean
 	pending = nil
 	local planned = p.plan :: StartShots.Plan
 	local now = Timing.clock()
-	local plan = StartShots.plan(planned.shot, planned.school, now, castWorld, planned.side, planned.landmark)
+	local plan = StartShots.retime(planned, now, castWorld)
+		or StartShots.plan(planned.shot, planned.school, now, castWorld, planned.side, planned.landmark)
 	if plan == nil and now - planned.t0 <= timing.extend then
 		plan = planned
 	end
@@ -1529,17 +1546,29 @@ function StartController.start()
 					pending = nil
 				end
 			elseif
-				now - (p.arrivedAt :: number) >= (if everShown then timing.settle else timing.firstSettle)
+				not p.planning
+				and now - (p.arrivedAt :: number)
+					>= (if everShown then timing.settle else timing.firstSettle)
 			then
+				-- Its path, checked over the next few frames for when it would cut in
 				local current = show
 				local t0 = if current
 					then math.max(Timing.clock(), current.plan.t0 + current.plan.seconds)
 					else Timing.clock()
-				p.plan = planFor(p, t0)
-				if p.plan == nil then
-					resting[p.shot] = now + 45
-					pending = nil
-				end
+				p.planning = true
+				task.spawn(function()
+					local plan = planFor(p, t0)
+					if pending ~= p then
+						return -- (dived in, or given up on meanwhile)
+					end
+					p.planning = false
+					if plan then
+						p.plan = plan
+					else
+						resting[p.shot] = os.clock() + 45
+						pending = nil
+					end
+				end)
 			end
 		end
 		if cutPhase == "out" then

@@ -185,7 +185,54 @@ biomes.Parent = root
 local folder = Instance.new("Folder")
 folder.Name = "Vents"
 folder.Parent = biomes
+-- Test boulders (WorldService `rock`: a Rock part and its BoulderRoundProp model over
+-- the same spot) on the landmarks, which Vents.build's tidy should clear, and one
+-- out in the Ruins, which it must leave
+local rocks = Instance.new("Folder")
+rocks.Name = "Rocks"
+rocks.Parent = biomes
+local testSpots = {}
+if plan.brine then
+	table.insert(testSpots, plan.brine.center)
+end
+if plan.columns[1] then
+	table.insert(testSpots, plan.columns[1].at)
+end
+if plan.forge then
+	local f = plan.forge
+	table.insert(testSpots, (groundAt(f.center.X, f.center.Z)))
+	local q = VentsPlan.runnelPoint(f, f.runnels[2], 0.5)
+	table.insert(testSpots, (groundAt(q.X, q.Z)))
+end
+if plan.smokers[1] then
+	local spire = plan.smokers[1].spires[1]
+	table.insert(testSpots, (groundAt(spire.foot.X, spire.foot.Z)))
+end
+local expected = #testSpots
+table.insert(testSpots, Vector3.new(1100, floorY, -300))
+for _, spot in testSpots do
+	local part = Instance.new("Part")
+	part.Name = "Rock"
+	part.Size = Vector3.new(8, 6, 8)
+	part.CFrame = CFrame.new(spot + Vector3.new(0, 1.5, 0))
+	part.Parent = rocks
+	local prop = Instance.new("Model")
+	prop.Name = "BoulderRoundProp"
+	prop.CFrame = CFrame.new(spot + Vector3.new(0, 2.5, 0))
+	prop.Parent = rocks
+end
 local stats = Vents.build(folder, plan, groundAt)
+local left = #rocks:GetChildren()
+print(
+	string.format(
+		"T|boulders: %d of %d test boulders (and their models) cleared off the landmarks (want %d), %d left",
+		(#testSpots * 2 - left) / 2,
+		#testSpots,
+		expected,
+		left / 2
+	)
+)
+rocks.Parent = nil
 local total, collide, query, shadow = countParts(folder)
 print(string.format("C|%d|%d|%d|%d", total, collide, query, shadow))
 print(string.format("O|%d Terrain ops (%d..%d) of %d", plan.opsTo - plan.opsFrom + 1, plan.opsFrom, plan.opsTo, #ops))
@@ -434,46 +481,97 @@ for index, terrace in plan.terraces do
 		2
 	)
 end
+-- A camera `distance` off `target` (flat), `rise` over it, from the first of 16
+-- headings (starting toward the hub) whose spot is in open water inside the map and
+-- whose line to the target clears the ground (Terrain) and every solid part
+local solidParts = {}
+for _, d in folder:GetDescendants() do
+	if d.IsPart and d.CanCollide ~= false then
+		table.insert(solidParts, d)
+	end
+end
+local function insideSolid(p)
+	for _, part in solidParts do
+		local o = part.CFrame:PointToObjectSpace(p)
+		local h = part.Size / 2 + Vector3.new(0.5, 0.5, 0.5)
+		if math.abs(o.X) < h.X and math.abs(o.Y) < h.Y and math.abs(o.Z) < h.Z then
+			return true
+		end
+	end
+	return false
+end
+local function openView(target, look, distance, rise)
+	local toHub = flat(-target)
+	for k = 0, 15 do
+		local turn = (if k % 2 == 0 then 1 else -1) * math.ceil(k / 2) * math.pi / 8
+		local dir = Vector3.new(
+			toHub.X * math.cos(turn) - toHub.Z * math.sin(turn),
+			0,
+			toHub.X * math.sin(turn) + toHub.Z * math.cos(turn)
+		)
+		local from = target + dir * distance + up * rise
+		local r = Seafloor.polar(from.X, from.Z)
+		local ok = r < World.boundsRadius - 20
+		for i = 0, 24 do
+			if not ok then
+				break
+			end
+			local q = from + (look - from) * (i / 24 * 0.9)
+			if (groundAt(q.X, q.Z)).Y > q.Y - 3 or insideSolid(q) then
+				ok = false
+			end
+		end
+		if ok then
+			return from
+		end
+	end
+	return target + toHub * distance + up * rise
+end
 for index, smoker in plan.smokers do
 	local c = smoker.center
 	local tall = smoker.spires[1].height
-	local away = flat(c)
+	local look = c + up * (tall * 0.45)
 	view(
 		`smoker{index}`,
-		c - away * (tall * 0.9 + 40) + up * (tall * 0.35),
-		c + up * (tall * 0.45),
+		openView(c, look, tall * 0.7 + 40, tall * 0.35),
+		look,
 		58,
-		boxAround(c, tall * 0.9 + 60, c.Y - 20, c.Y + tall + 20),
+		boxAround(c, tall * 0.7 + 70, c.Y - 20, c.Y + tall + 20),
 		2
 	)
 end
 for index, outcrop in plan.outcrops do
 	local c = outcrop.center
-	local away = flat(c)
 	view(
 		`basalt{index}`,
-		c - away * 50 + Vector3.new(-away.Z, 0, away.X) * 18 + up * 26,
+		openView(c, c + up * 8, 52, 26),
 		c + up * 8,
 		60,
 		boxAround(c, 70, floorY - 20, floorY + 60),
 		2
 	)
 end
--- A tube-worm clump up close (the first round a smoker)
-for _, d in folder:GetDescendants() do
-	if d.Name == "TubeWorms" then
-		local sum, n = Vector3.new(0, 0, 0), 0
-		for _, p in d:GetChildren() do
-			sum = sum + p.CFrame.p
-			n += 1
-		end
-		if n > 0 then
-			local c = sum / n
-			local away = flat(c)
-			view("worms", c - away * 14 + up * 6, c + up * 1, 55, boxAround(c, 30, c.Y - 20, c.Y + 30), 1)
-			break
+-- A tube-worm forest up close (the first), else a clump
+local wormsAt = nil
+for _, name in { "TubeWormForest", "TubeWorms" } do
+	for _, d in folder:GetDescendants() do
+		if d.Name == name and wormsAt == nil then
+			local sum, n = Vector3.new(0, 0, 0), 0
+			for _, p in d:GetChildren() do
+				if p.Name == "Tube" then
+					sum = sum + p.CFrame.p
+					n += 1
+				end
+			end
+			if n > 0 then
+				wormsAt = sum / n
+			end
 		end
 	end
+end
+if wormsAt then
+	local c = wormsAt
+	view("worms", openView(c, c + up * 2, 24, 8), c + up * 2, 55, boxAround(c, 40, c.Y - 20, c.Y + 30), 1)
 end
 
 dumpParts(root)

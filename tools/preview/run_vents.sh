@@ -64,6 +64,7 @@ grep '^\[Vents\]' "$OUT/hub_parts.txt" || true
 grep '^C|' "$OUT/hub_parts.txt" | sed 's/^C|/parts|collide|query|shadow: /' || true
 grep '^O|' "$OUT/hub_parts.txt" | sed 's/^O|/terrain: /' || true
 grep '^K|' "$OUT/hub_parts.txt" | sed 's/^K|/schools: /' || true
+grep '^T|' "$OUT/hub_parts.txt" | sed 's/^T|/tidy: /' || true
 
 # The Terrain (cave_render.py rasterizes it at each view's BOUNDS, CELL)
 chunk=$(mktemp --suffix=.luau)

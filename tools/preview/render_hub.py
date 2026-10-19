@@ -357,9 +357,13 @@ def add_particles(f, meshes):
     box = vec(f[6])
     color = [float(v) for v in f[7].split(",")]
     rate, life, speed, rise, size = (float(v) for v in f[8:13])
+    # (an emitter's transparency at birth, when the dump has it: see-through ones
+    # are drawn fainter)
+    fade = float(f[13]) if len(f) > 13 and f[13] else 0.35
+    alpha = 0.45 * max(0.15, min(1.0, (1 - fade) / 0.65))
     rnd = random.Random(hash(f[2]) & 0xFFFF)
     count = int(max(4, min(90, rate * life * 0.8)))
-    key = ("particle", tuple(round(c, 2) for c in color))
+    key = ("particle", tuple(round(c, 2) for c in color), round(alpha, 2))
     mat = bpy.data.materials.get(str(key))
     if mat is None:
         mat, nodes, links = node_mat(str(key))
@@ -367,7 +371,7 @@ def add_particles(f, meshes):
         bsdf.inputs["Base Color"].default_value = (*lin(color), 1)
         bsdf.inputs["Emission Color"].default_value = (*lin(color), 1)
         bsdf.inputs["Emission Strength"].default_value = 1.2
-        bsdf.inputs["Alpha"].default_value = 0.45
+        bsdf.inputs["Alpha"].default_value = alpha
         bsdf.inputs["Roughness"].default_value = 0.1
     for _ in range(count):
         age = rnd.random()

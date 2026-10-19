@@ -3,7 +3,11 @@ a C-bend and bank in a burst-turn, a bite's tell with the jaw open and the fins
 hunched, the snap with a head shake, a charge, a breach), to check a rig moves as one
 body before it goes to Studio: no tearing at the jaw, the fins or the neck.
 
-    <bpy python> tools/blender/pose_check.py <in.fbx> <out.png> [--poses cruise,turn,tell,snap,charge,breach] [--top]
+    <bpy python> tools/blender/pose_check.py <in.fbx> <out.png> [--poses cruise,turn,tell,snap,charge,breach] [--top] [--jaw C,W,S]
+
+`--jaw cruise,wide,shut` (radians) sets the jaw to that rig's own range from
+PredatorController's JAW table (the Megalodon's -0.05,0.5,-0.2 by default; the Reef
+Shark 0.07,0.36,-0.08, the Barracuda 0.03,0.42,-0.12).
 
 The pose maths mirrors src/shared/SwimWave.luau (yaw per spine bone, the head turned
 about its neck, the arch) and PredatorController's jaw, fin and roll values, in
@@ -26,7 +30,9 @@ POSES = argv[argv.index("--poses") + 1].split(",") if "--poses" in argv else ["c
 # name: (phase, amplitude, bend, arch, look, gape, fin droop, fin sweep, roll, body pitch degrees)
 SPECS = {
     "cruise": (1.0, 0.08, 0.0, 0.0, 0.0, -0.05, 0.0, 0.05, 0.0, 0),
-    "turn": (2.2, 0.12, 0.2, 0.0, 0.15, -0.05, 0.1, 0.05, 0.9, 0),
+    # (a right turn: + bend swings the tail to the fish's right, concave into the turn,
+    # the head eyeing right and the body banked right side down, belly out)
+    "turn": (2.2, 0.12, 0.2, 0.0, -0.15, -0.05, 0.1, 0.05, -0.9, 0),
     "tell": (0.6, 0.06, 0.1, 0.0, 0.2, 0.5, 0.32, 0.05, 0.1, 0),
     "snap": (0.6, 0.06, 0.05, 0.0, -0.22, -0.2, 0.2, 0.05, 0.12, 0),
     "charge": (3.0, 0.22, 0.0, 0.0, 0.0, 0.45, -0.12, 0.35, 0.0, 0),
@@ -36,6 +42,15 @@ SPECS = {
     "reach": (1.5, 0.08, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0),
     "jet": (1.5, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0),
 }
+
+
+if "--jaw" in argv:
+    cruise, wide, shut = (float(v) for v in argv[argv.index("--jaw") + 1].split(","))
+    gapes = {"cruise": cruise, "turn": cruise, "tell": wide, "snap": shut, "charge": wide * 0.9, "breach": wide * 0.9}
+    for name, gape in gapes.items():
+        spec = list(SPECS[name])
+        spec[5] = gape
+        SPECS[name] = tuple(spec)
 
 
 def envelope(t):

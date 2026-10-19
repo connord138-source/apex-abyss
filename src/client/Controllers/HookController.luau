@@ -16,6 +16,7 @@ local Input = require(script.Parent.Parent.Input)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Ui = require(script.Parent.Parent.Ui)
 local HuntController = require(script.Parent.HuntController)
+local StartController = require(script.Parent.StartController)
 local SwimController = require(script.Parent.SwimController)
 
 local tune = Config.Hooks
@@ -215,7 +216,8 @@ local function step()
 		d.beam.Enabled = show
 		d.hookPart.Transparency = if show then 0 else 1
 		d.bait.Transparency = if show and hook and hook.taken == 0 then 0 else 1
-		d.tag.Enabled = show and hook ~= nil and hook.taken == 0
+		-- (no BAIT tag over the start screen's shots: the bait is still drawn)
+		d.tag.Enabled = show and hook ~= nil and hook.taken == 0 and not StartController.isUp()
 		if hook then
 			local point = hookPoint(hook, now)
 			d.hookPart.CFrame = CFrame.new(point)

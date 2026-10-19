@@ -628,9 +628,16 @@ function dumpParts(root)
 						end
 					end
 					local acc = child.Acceleration or Vector3.new(0, 0, 0)
+					-- (its transparency at birth: render_hub.py draws see-through
+					-- emitters fainter)
+					local fade = 0.35
+					local tk = child.Transparency and child.Transparency.Keypoints
+					if type(tk) == "table" and type(tk[1]) == "table" and tk[1].Value then
+						fade = tk[1].Value
+					end
 					print(
 						string.format(
-							"E|%s|%s|%s|%s|%.2f|%.2f|%.2f|%.2f|%.2f",
+							"E|%s|%s|%s|%s|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f",
 							esc(child.Name),
 							frame(d.CFrame),
 							v3(d.Size),
@@ -639,7 +646,8 @@ function dumpParts(root)
 							child.Lifetime and child.Lifetime.Max or 2,
 							child.Speed and child.Speed.Max or 1,
 							acc.Y,
-							size
+							size,
+							fade
 						)
 					)
 				elseif child.ClassName == "SurfaceGui" then

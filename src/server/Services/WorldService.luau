@@ -22,6 +22,7 @@ local Props = require(ReplicatedStorage.Shared.Props)
 local TreasureWheel = require(script.Parent.Parent.TreasureWheel)
 local Shelf = require(script.Parent.Parent.Shelf)
 local Vents = require(script.Parent.Parent.Vents)
+local Cliff = require(script.Parent.Parent.Cliff)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 
 local World = Config.World
@@ -1425,6 +1426,29 @@ local function buildBiomes(parent: Instance)
 	local field = features.vents
 	if field then
 		Vents.build(vents, field, groundAt)
+	end
+
+	-- The drop-off's reef wall (owner, 2026-10-19: "The cliff edge needs to be dialed
+	-- up more and should have coral etc on it"): coral and life on the strata, ledges,
+	-- lip and foot Shelf.luau laid (Cliff.luau), seated by rays against the Terrain
+	-- alone (the rock, not the dressing above)
+	local cliffLayout = features.cliff
+	if cliffLayout then
+		local terrainOnly = RaycastParams.new()
+		terrainOnly.FilterType = Enum.RaycastFilterType.Include
+		terrainOnly.FilterDescendantsInstances = { workspace.Terrain }
+		local clock = os.clock()
+		local stats = Cliff.build(folder("Cliff", parent), cliffLayout, function(origin, direction)
+			local hit = workspace:Raycast(origin, direction, terrainOnly)
+			if hit then
+				return hit.Position, hit.Normal, hit.Material
+			end
+			return nil, nil, nil
+		end)
+		local seconds = string.format("%.2f", os.clock() - clock)
+		print(
+			`[Cliff] the reef wall: {stats.parts} parts and {stats.models} models ({stats.solid} solid, {stats.glow} glowing), {stats.lights} lights, {seconds} s`
+		)
 	end
 end
 

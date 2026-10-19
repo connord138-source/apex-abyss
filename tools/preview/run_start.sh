@@ -6,8 +6,16 @@
 # the schools over them like the server (Schools.settle), and plans every shot on up
 # to MOST candidate schools (default 14) at three moments, with the client's own
 # checks (StartShots.plan: the subject sees the camera, its travel is clear, open
-# water under and round it); every plan tried is an R| line in <out_dir>/start.txt,
-# each shot's tally a SUMMARY| line. It exits 1 if a shot has no clear plan at all.
+# water under and round it, the school level enough, clear of the lens and at least
+# half in the picture); every plan tried is an R| line in <out_dir>/start.txt, each
+# shot's tally a SUMMARY| line, the schools the client actually picks from (the three
+# gentlest of its first prey) a PICKS| line, and the chosen plan's framing (nearest
+# fish to the lens, least share in the picture, fish size) a FRAME| line, and what
+# stands behind the school in the picks' shots (the cliff, a Vents basin, the
+# canyon, the shelf or deep floor, or open water) a BACKDROP| line. It exits 1
+# if a shot has no clear plan at all, or none among the schools the client picks.
+# Rerun it after any change to Shelf.luau, Cave.luau, Cliff/Vents fill ops, Config/Prey
+# zones, Schools or Config/Start (DUMP_ONLY=1 for the checks alone, ~30 s).
 # Then Blender (BPY=..., default python3.11, with numpy, scikit-image and Pillow)
 # voxelizes the Terrain round each shot's chosen plan and renders its key frames as
 # the player sees them (letterbox, lower third, the title and cards' places), with
@@ -40,8 +48,11 @@ $LUAU "$chunk" > "$OUT/start.txt" || { tail -5 "$OUT/start.txt"; rm "$chunk"; ex
 rm "$chunk"
 grep '^INFO|' "$OUT/start.txt" | sed 's/^INFO|/start: /'
 grep '^SUMMARY|' "$OUT/start.txt" | awk -F'|' '{ printf "  %-9s %2d of %2d plans clear  (%d candidate schools: %s)\n", $2, $3, $4, $5, $6 }'
+grep '^PICKS|' "$OUT/start.txt" | awk -F'|' '{ printf "  %-9s the client picks from schools %s: %d of %d plans clear\n", $2, $5, $3, $4 }'
+grep '^BACKDROP|' "$OUT/start.txt" | awk -F'|' '{ printf "  %-9s behind the school (15 frames of its picks): %s\n", $2, $3 }'
 grep '^SHOT|' "$OUT/start.txt" | awk -F'|' '{ printf "  %-9s render: school %s, variant %s, open water round the camera >= %s studs  (%s · %s)\n", $2, $11, $9, $10, $7, $8 }'
-failed=$(grep '^SUMMARY|' "$OUT/start.txt" | awk -F'|' '$3 == 0 { print $2 }')
+grep '^FRAME|' "$OUT/start.txt" | awk -F'|' '{ printf "  %-9s framing: nearest fish %s studs from the lens (gap %s), at least %s%% of its %s fish in the picture, fish %s-%s%% of its height\n", $2, $3, $4, $5, $6, $7, $8 }'
+failed=$(grep -E '^(SUMMARY|PICKS)\|' "$OUT/start.txt" | awk -F'|' '$3 == 0 { print $2 }' | sort -u | tr '\n' ' ')
 if [ -n "$failed" ]; then
 	echo "start: no clear plan for: $failed"
 	status=1

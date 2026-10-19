@@ -24,6 +24,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local OceanController = require(script.Parent.OceanController)
+local StartController = require(script.Parent.StartController)
 
 local LampController = {}
 
@@ -200,7 +201,9 @@ local function step()
 			detach(character)
 		end
 	end
-	OceanController.setReveal(myReveal)
+	-- (a start screen's shot films far from this fish, which waits in its den: its
+	-- light lifts none of the dark there)
+	OceanController.setReveal(if StartController.viewpoint() then 0 else myReveal)
 end
 
 function LampController.start()

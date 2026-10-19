@@ -557,7 +557,7 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		local goal = wantSpeed * (1 - 0.3 * math.clamp(angle / math.pi, 0, 1))
 		local change = if goal > speedNow
 			then def.speed * body.accel * (if goal > def.speed * 1.4 then 2.5 else 1)
-			else def.speed * body.brake * (if predator.mode == "windup" then 2.5 else 1)
+			else def.speed * body.brake * (if predator.mode == "windup" then 4 else 1)
 		local speed = speedNow + math.clamp(goal - speedNow, -change * dt, change * dt)
 		-- (its bulk carries a little way on through a turn: no slide, no snap)
 		predator.velocity = predator.velocity:Lerp(predator.heading * speed, 1 - math.exp(-dt * 4))
@@ -770,6 +770,8 @@ local function winded(predator: Predator, failed: boolean, now: number)
 	end
 	if not failed then
 		predator.fails[victim] = nil
+		-- (a bite that landed sates it a little longer: `sated`)
+		predator.modeUntil += style.sated or 0
 		return
 	end
 	local fails = (predator.fails[victim] or 0) + 1
@@ -1165,10 +1167,12 @@ local function simulate(predator: Predator, dt: number, now: number)
 							predator.peel = if rng:NextNumber() < 0.5 then -1 else 1
 							winded(predator, not hit, now)
 						else
+							-- (a miss comes round as soon as its bite is ready; a bite that
+							-- landed sates it a little, `sated`)
 							startRecover(
 								predator,
 								now,
-								if hit then def.biteCooldown else def.biteCooldown * 0.6,
+								if hit then def.biteCooldown + (style.sated or 0) else def.biteCooldown * 0.6,
 								true
 							)
 						end
@@ -1381,6 +1385,7 @@ PredatorService.targetRoot = targetRoot
 PredatorService.steer = steer
 PredatorService.mouthOf = mouthOf
 PredatorService.rhythm = rhythm
+PredatorService.CEILING_SHARE = CEILING_SHARE
 PredatorService.orbitWay = orbitWay
 PredatorService.rotateToward = rotateToward
 

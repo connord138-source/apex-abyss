@@ -325,10 +325,13 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 	setTransform(state, "FinL", CFrame.Angles(0, 0, flutter))
 	setTransform(state, "FinR", CFrame.Angles(0, 0, -flutter))
 
-	-- The jaw: open fast, then snap shut
+	-- The jaw: open fast, then snap shut (a mesh body's Jaw bone, rig_fish.py --jaw on
+	-- the 'Cuda and Reef Shark, a little less: past ~25° the 'Cuda's front teeth
+	-- stretch)
 	local wantJaw = if clock < state.snapUntil then 1 else 0
 	state.jaw, state.jawVelocity = Spring.number(state.jaw, state.jawVelocity, wantJaw, 34, dt)
-	setTransform(state, "Jaw", CFrame.Angles(-math.max(state.jaw, 0) * 0.55, 0, 0))
+	local jawOpen = if state.joints.Jaw then 0.55 else 0.42
+	setTransform(state, "Jaw", CFrame.Angles(-math.max(state.jaw, 0) * jawOpen, 0, 0))
 	-- A mesh body's rolled parts ride its bones (a veil tail swings with the tail)
 	Cosmetics.follow(state.body)
 end

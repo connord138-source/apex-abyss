@@ -6,9 +6,11 @@
 -- the school belongs to that shot (Shared/StartShots.fits) and that the player hasn't
 -- dived in yet (the `StartScreen` attribute, set on joining and cleared by
 -- `StartDone`), streams the area round the school (and the landmark behind it) in
--- with RequestStreamAroundAsync, then says so: the `StartStreamed` attribute becomes
--- "<shot>:<school>". The client still checks the Terrain is really there before it
--- cuts, and skips a shot that doesn't arrive.
+-- with RequestStreamAroundAsync (along the school's loop for as long as the shot
+-- could run, StartShots.streamPoints), then says so: the `StartStreamed` attribute
+-- becomes "<shot>:<school>". The client still checks the Terrain is really there
+-- before it cuts, and skips a shot that doesn't arrive. Requests are rate-limited by
+-- Net (one every 1.5 s) and capped per player (MOST).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -54,17 +56,20 @@ local function shot(player: Player, rawShot: any, rawSchool: any)
 	end
 	served[player] = count
 	local token = `{index}:{school}`
+	-- Every point at once (each waits up to TIMEOUT), then say so
 	local points = StartShots.streamPoints(def, school, Timing.clock())
-	task.spawn(function()
-		for _, at in points do
+	local left = #points
+	for _, at in points do
+		task.spawn(function()
 			pcall(function()
 				player:RequestStreamAroundAsync(at, TIMEOUT)
 			end)
-		end
-		if player.Parent and player:GetAttribute(ON_SCREEN) == true then
-			player:SetAttribute(STREAMED, token)
-		end
-	end)
+			left -= 1
+			if left == 0 and player.Parent and player:GetAttribute(ON_SCREEN) == true then
+				player:SetAttribute(STREAMED, token)
+			end
+		end)
+	end
 end
 
 local function done(player: Player)

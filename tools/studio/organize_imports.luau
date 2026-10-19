@@ -62,6 +62,8 @@ local PROPS = {
 	TreasurePile = true, TubeWormPlanter = true, VentCauldron = true, VoidThrone = true,
 	-- The Sunken Ruins' hero props (ruins_glb; Ruins.luau fits them over their stand-ins)
 	RuinHead = true, RuinHand = true, RuinGuardian = true, RuinUrn = true, RuinCapital = true, RuinStele = true,
+	-- The drop-off's reef wall growth (cliff_glb; Cliff.luau fits them over their stand-ins)
+	PlateCoral = true, BarrelSponge = true, SeaWhips = true, LaceFan = true,
 	-- Den props, batch 2 (den_props2_glb; Config/Dens items of the same names)
 	DriftwoodTable = true, KelpBed = true, PearlPedestal = true, BubbleColumn = true, SpongeSofa = true,
 	ShipwreckBookshelf = true, JellyLamp = true, SeaGlassLantern = true, CoralLamp = true, Banner = true,

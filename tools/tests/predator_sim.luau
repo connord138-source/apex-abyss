@@ -4,8 +4,9 @@
 -- line, jukes sideways or loops back when it sees the attack coming, Dashes during
 -- the tell, hides behind rock, burrows, puffs up, or gets the predator stunned.
 -- After every miss it also times the come-round (owner, 2026-10-19: "If he misses the
--- player he just slowly turns around and goes at them again"): how long until the
--- predator points back at the fish (`round`) and until its next attack (`again`).
+-- player he just slowly turns around and goes at them again"): after a miss it swam on
+-- past (facing away), how long until the predator points back at the fish (`round`),
+-- and after any miss, until its next attack (`again`).
 local rbx = require("./sim_rbx")
 local Vector3 = rbx.Vector3
 local sim = require("./sim_services")
@@ -98,7 +99,7 @@ type Result = {
 	stunned: number,
 	fraction: number, -- the share of max health the last hit took
 	recoil: number, -- the predator's health lost to recoil (share of its max)
-	rounds: { number }, -- seconds from each miss until it faces the fish again (within ~37°)
+	rounds: { number }, -- seconds from each miss it swam past until it faces the fish again (within ~37°)
 	agains: { number }, -- seconds from each miss until its next tell or burst at the fish
 }
 
@@ -165,6 +166,7 @@ local function run(
 		local first = nil
 		local healthBefore = predator.health
 		local missAt: number? = nil -- the last miss, until it has come round
+		local passed = false -- (it swam on past the fish after that miss)
 		local againFrom: number? = nil -- the last miss, until its next attack
 		for _ = 1, math.floor(SECONDS / DT) do
 			sim.now += DT
@@ -235,8 +237,15 @@ local function run(
 			-- Round again after a miss: pointed back at the fish
 			if missAt then
 				local toFish = position - predator.position
-				if toFish.Magnitude > 1e-3 and predator.heading:Dot(toFish.Unit) >= 0.8 and sim.now - missAt > 0.2 then
-					table.insert(result.rounds, sim.now - missAt)
+				-- (only a miss it swam on past counts: one still facing the fish
+				-- has nothing to come round from)
+				local facing = if toFish.Magnitude > 1e-3 then predator.heading:Dot(toFish.Unit) else 1
+				if not passed and facing < 0.3 then
+					passed = true
+				elseif not passed and sim.now - missAt > 1.5 then
+					missAt = nil
+				elseif passed and facing >= 0.8 then
+					table.insert(result.rounds, sim.now - (missAt :: number))
 					missAt = nil
 				end
 			end
@@ -267,7 +276,7 @@ local function run(
 						result.hits += 1
 						first = first or t
 					else
-						missAt, againFrom = sim.now, sim.now
+						missAt, againFrom, passed = sim.now, sim.now, false
 					end
 				elseif event.kind == "lost" then
 					result.lost += 1

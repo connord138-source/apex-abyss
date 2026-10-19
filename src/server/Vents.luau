@@ -49,10 +49,12 @@ export type Stats = {
 	lights: number,
 	emitters: number,
 	columns: number,
+	chimneys: number,
 	steps: number,
 	worms: number,
 	mussels: number,
 	clumps: number,
+	forests: number,
 	beds: number,
 	tidied: number,
 }
@@ -108,10 +110,12 @@ local function freshStats(): Stats
 		lights = 0,
 		emitters = 0,
 		columns = 0,
+		chimneys = 0,
 		steps = 0,
 		worms = 0,
 		mussels = 0,
 		clumps = 0,
+		forests = 0,
 		beds = 0,
 		tidied = 0,
 	}
@@ -438,6 +442,21 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 		holder(m, "CraterGlow", CFrame.new(c.X, lakeY + 8, c.Z), Vector3.new(f.crater, 2, f.crater))
 	light(crater, LIGHT.lava, 60, 3.2)
 	embers(crater, 8)
+	-- The glare over the lake: big soft self-lit puffs that hang there, so the
+	-- crater's glow carries through the murk from far off, where a light (60 studs
+	-- at most) doesn't reach
+	emit(crater, "Glare", {
+		rate = 1.5,
+		life = { 3, 4.5 },
+		speed = { 0, 0.5 },
+		size = { f.crater * 1.2, f.crater * 1.8, f.crater * 2 },
+		fade = { 0.8, 0.84 },
+		colors = { Color3.fromRGB(255, 150, 70), Color3.fromRGB(255, 100, 40) },
+		spread = 180,
+		drag = 1,
+		glow = 1,
+		lit = 0,
+	})
 	-- The ash column, in three stretches up to ~300 studs over the crater
 	local ash1 = holder(
 		m,
@@ -502,9 +521,10 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 		end
 		for k = 1, #points - 1 do
 			local along = (k - 1) / math.max(#points - 2, 1)
-			local width = 2.6 - 0.9 * along
+			-- (widening as it runs down, as a flow spreads)
+			local width = 2 + 2.4 * along
 			lavaStrip(m, points[k], points[k + 1], width, false)
-			lavaStrip(m, points[k], points[k + 1], width * 2.4, true)
+			lavaStrip(m, points[k], points[k + 1], width * 2.1, true)
 		end
 		local foot = VentsPlan.runnelPoint(f, heading, 0)
 		local out = Vector3.new(foot.X - c.X, 0, foot.Z - c.Z).Unit
@@ -537,6 +557,15 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 			)
 			light(poolGlow, LIGHT.lava, 50, 2.2)
 			embers(poolGlow, 3)
+		else
+			-- A glow halfway down the others too, so every side of the Forge shows a
+			-- lit runnel
+			local mid = points[math.max(1, math.floor(#points * 0.5))]
+			if mid then
+				local spot =
+					holder(m, "RunnelGlow", CFrame.new(mid + out * 6 + Vector3.new(0, 4, 0)), Vector3.one)
+				light(spot, LIGHT.lava, 50, 1.6)
+			end
 		end
 	end
 	-- Fumaroles steaming on the flanks, between the runnels
@@ -684,6 +713,57 @@ local function smokers(parent: Instance, plan: VentsPlan.Plan)
 				)
 			end
 		end
+	end
+end
+
+-- The basins' older chimneys (Shelf.luau's plain basalt columns, each with its
+-- glowing throat and smoke from WorldService ventSmoke) dressed like the smokers'
+-- spires: one or two flanges with a mineral lip, sulfide staining down the flank,
+-- and on some a small side throat breathing out at a flange's edge. All decor (no
+-- school or predator meets more than the chimney it already climbs over).
+local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
+	local m = model(parent, "ChimneyCrust")
+	for _, chimney in plan.chimneys do
+		local foot, h, r = chimney.position, chimney.height, chimney.radius
+		-- (one buried under rubble or a landmark keeps its plain look)
+		local top = groundOf(foot.X, foot.Z)
+		if top == nil or math.abs(top.Y - (foot.Y + h)) > 12 then
+			continue
+		end
+		local flanges = if h < 55 then 1 else 2
+		for f = 1, flanges do
+			local at = foot.Y
+				+ h * (if flanges == 1 then 0.55 else ({ 0.42, 0.72 })[f] + rng:NextNumber(-0.05, 0.05))
+			local reach = r + rng:NextNumber(2, 3.2)
+			local center = Vector3.new(foot.X, 0, foot.Z)
+			disc(m, "Flange", center, at, reach, 1.6, pick(COLORS.basalt), false)
+			disc(m, "FlangeLip", center, at + 0.25, reach - 0.6, 0.4, pick(COLORS.minerals), false)
+			if rng:NextNumber() < 0.35 then
+				local a = rng:NextNumber(0, TAU)
+				local spot = Vector3.new(
+					foot.X + math.cos(a) * (reach - 0.8),
+					at + 0.6,
+					foot.Z + math.sin(a) * (reach - 0.8)
+				)
+				glow(m, "SideThroat", Vector3.one * 1.4, CFrame.new(spot), COLORS.throat).Shape =
+					Enum.PartType.Ball
+				blackSmoke(holder(m, "SidePlume", CFrame.new(spot + Vector3.new(0, 1, 0)), Vector3.one), 0.2)
+			end
+		end
+		for _ = 1, rng:NextInteger(2, 3) do
+			local d = foot.Y + rng:NextNumber(0.12, 0.85) * h
+			local a = rng:NextNumber(0, TAU)
+			local out = Vector3.new(math.cos(a), 0, math.sin(a))
+			local on = Vector3.new(foot.X, d, foot.Z) + out * (r * 0.95)
+			blob(
+				m,
+				"Stain",
+				CFrame.lookAt(on, on + out),
+				Vector3.new(r * 0.6, r * rng:NextNumber(0.7, 1.1), 1.2),
+				pick(COLORS.minerals)
+			)
+		end
+		stats.chimneys += 1
 	end
 end
 
@@ -874,6 +954,25 @@ local function musselBed(parent: Instance, center: Vector3, inner: number, outer
 	end
 end
 
+-- One giant tube worm standing out of the ground at `hit` along `dir`: a mid-grey
+-- tube and its crimson plume (now and then drawn in)
+local function worm(m: Instance, hit: Vector3, dir: Vector3, length: number, radius: number)
+	local foot = hit - dir * 0.4
+	local tip = foot + dir * length
+	rod(m, "Tube", foot, tip, radius, pick(COLORS.tube))
+	if rng:NextNumber() < 0.85 then
+		local plume = tip + dir * 0.5
+		blob(
+			m,
+			"Plume",
+			CFrame.lookAt(plume, plume + dir),
+			Vector3.new(radius * 2.7, radius * 2.7, 1.5 + radius),
+			pick(COLORS.plume)
+		)
+	end
+	stats.worms += 1
+end
+
 -- A clump of giant tube worms: mid-grey tubes (tallest in the middle, leaning out)
 -- with crimson plumes at their tips; a few have drawn theirs in
 local function wormClump(parent: Instance, center: Vector3, count: number, spread: number)
@@ -889,22 +988,68 @@ local function wormClump(parent: Instance, center: Vector3, count: number, sprea
 		local length = rng:NextNumber(2.5, 8.5) * (1 - 0.45 * d / spread)
 		local lean = rng:NextNumber(0, 0.28) * (0.4 + d / spread)
 		local dir = Vector3.new(math.cos(a) * math.sin(lean), math.cos(lean), math.sin(a) * math.sin(lean))
-		local radius = rng:NextNumber(0.28, 0.46)
-		local foot = hit - dir * 0.4
-		local tip = foot + dir * length
-		rod(m, "Tube", foot, tip, radius, pick(COLORS.tube))
-		if rng:NextNumber() < 0.85 then
-			local plume = tip + dir * 0.5
-			blob(
-				m,
-				"Plume",
-				CFrame.lookAt(plume, plume + dir),
-				Vector3.new(radius * 2.7, radius * 2.7, 1.5 + radius),
-				pick(COLORS.plume)
-			)
-		end
-		stats.worms += 1
+		worm(m, hit, dir, length, rng:NextNumber(0.28, 0.46))
 	end
+end
+
+-- A tube-worm forest: a band `inner`–`outer` studs round `center` (a whole ring, or
+-- the arc `from`–`to` radians) thick with knots of tall worms, the tallest in each
+-- knot's middle, leaning out of it; the ground under each is found by raycast, and
+-- a worm whose ground isn't within `step` of the forest's is left out (a rock, a
+-- spire's flank)
+local FOREST = { knots = 7, tallest = 11, shortest = 3, step = 3.5, level = 6 }
+-- The forests and their worms: a belt round the tallest smoker complex, the floor
+-- round a basin chimney (not in the brine pool's basin) and an arc of the brine
+-- pool's shore
+local FORESTS = { smoker = 120, chimney = 90, brine = 70 }
+
+local function wormForest(
+	parent: Instance,
+	center: Vector3,
+	inner: number,
+	outer: number,
+	count: number,
+	from: number?,
+	to: number?
+): number
+	local a0, a1 = from or 0, to or TAU
+	-- The knots: on ground near the forest's own level (not up a mound or a spire)
+	local knots: { { at: Vector3, radius: number } } = {}
+	for k = 1, FOREST.knots * 2 do
+		if #knots >= FOREST.knots then
+			break
+		end
+		local a = a0 + (a1 - a0) * (k - 0.5 + rng:NextNumber(-0.3, 0.3)) / (FOREST.knots * 2)
+		local d = rng:NextNumber(inner, outer)
+		local hit = groundOf(center.X + math.cos(a) * d, center.Z + math.sin(a) * d)
+		if hit and math.abs(hit.Y - center.Y) <= FOREST.level then
+			table.insert(knots, { at = hit, radius = rng:NextNumber(3, 6) })
+		end
+	end
+	if #knots == 0 then
+		return 0
+	end
+	local m = model(parent, "TubeWormForest")
+	stats.forests += 1
+	local made = 0
+	for _ = 1, count do
+		local knot = knots[rng:NextInteger(1, #knots)]
+		local a = rng:NextNumber(0, TAU)
+		local share = math.sqrt(rng:NextNumber())
+		local d = knot.radius * share
+		local x, z = knot.at.X + math.cos(a) * d, knot.at.Z + math.sin(a) * d
+		local hit = groundOf(x, z)
+		if hit == nil or math.abs(hit.Y - knot.at.Y) > FOREST.step then
+			continue
+		end
+		made += 1
+		local length = (FOREST.shortest + (FOREST.tallest - FOREST.shortest) * (1 - share * 0.75))
+			* rng:NextNumber(0.6, 1)
+		local lean = rng:NextNumber(0.02, 0.22) * (0.3 + share)
+		local dir = Vector3.new(math.cos(a) * math.sin(lean), math.cos(lean), math.sin(a) * math.sin(lean))
+		worm(m, hit, dir, length, rng:NextNumber(0.32, 0.55))
+	end
+	return made
 end
 
 local function brinePool(parent: Instance, plan: VentsPlan.Plan)
@@ -944,6 +1089,8 @@ local function brinePool(parent: Instance, plan: VentsPlan.Plan)
 	musselBed(m, Vector3.new(c.X, y, c.Z), radius + 1.5, radius + 6, 44)
 	local a = rng:NextNumber(0, TAU)
 	wormClump(m, Vector3.new(c.X + math.cos(a) * (radius + 9), y, c.Z + math.sin(a) * (radius + 9)), 22, 5)
+	-- A forest along the far shore
+	wormForest(m, Vector3.new(c.X, y, c.Z), radius + 4, radius + 12, FORESTS.brine, a + 2.3, a + 4.0)
 	local mist =
 		holder(m, "BrineMist", CFrame.new(c.X, y + 1.2, c.Z), Vector3.new(radius * 1.6, 1, radius * 1.6))
 	emit(mist, "Mist", {
@@ -962,9 +1109,43 @@ local function brinePool(parent: Instance, plan: VentsPlan.Plan)
 	light(glowAt, LIGHT.brine, 40, 0.9)
 end
 
--- Tube worms and mussel beds round the smokers and some of the chimneys
+-- Tube worms and mussel beds round the smokers and some of the chimneys, and the
+-- forests
 local function life(parent: Instance, plan: VentsPlan.Plan)
 	local m = model(parent, "VentLife")
+	local first = plan.smokers[1]
+	if first then
+		local foot = Vector3.new(
+			first.center.X,
+			groundY(first.center.X, first.center.Z, first.center.Y),
+			first.center.Z
+		)
+		-- (the complex stands on a mound 0.85 of its radius round: the belt is past it)
+		local level = Vector3.new(foot.X, first.center.Y, foot.Z)
+		wormForest(m, level, first.radius * 0.9, first.radius + 16, FORESTS.smoker)
+		musselBed(m, level, first.radius + 14, first.radius + 22, 30)
+	end
+	local brineBasin = if plan.brine then plan.brine.basin else nil
+	local basins = Seafloor.ventBasins()
+	local bestChimney: VentsPlan.Chimney? = nil
+	local bestRoom = -math.huge
+	for _, chimney in plan.chimneys do
+		local p = chimney.position
+		if math.abs(p.Y - deep.ventsFloorY) > 4 then
+			continue
+		end
+		for index, basin in basins do
+			local d = math.sqrt((p.X - basin.x) ^ 2 + (p.Z - basin.z) ^ 2)
+			if index ~= brineBasin and d < basin.radius - 30 and basin.radius - d > bestRoom then
+				bestChimney, bestRoom = chimney, basin.radius - d
+			end
+		end
+	end
+	if bestChimney then
+		local p = bestChimney.position
+		wormForest(m, p, 13, 24, FORESTS.chimney)
+		musselBed(m, p, 22, 30, 24)
+	end
 	for _, smoker in plan.smokers do
 		for k = 1, math.min(2, #smoker.spires) do
 			local spire = smoker.spires[if k == 1 then 1 else rng:NextInteger(2, #smoker.spires)]
@@ -1066,8 +1247,53 @@ end
 
 -- ---------------------------------------------------------------------------
 
+local function flatDistance(a: Vector3, b: Vector3): number
+	return math.sqrt((a.X - b.X) ^ 2 + (a.Z - b.Z) ^ 2)
+end
+
+-- Whether a boulder `reach` round at `p` would sit in the brine pool, on a smoker's
+-- spire, in the Forge's crater or on one of its runnels or their pools
+local function blockedAt(plan: VentsPlan.Plan, p: Vector3, reach: number): boolean
+	local brine = plan.brine
+	if
+		brine
+		and flatDistance(p, brine.center) < brine.radius + reach + 2
+		and math.abs(p.Y - brine.center.Y) < 20
+	then
+		return true
+	end
+	for _, smoker in plan.smokers do
+		for _, spire in smoker.spires do
+			if flatDistance(p, spire.foot) < spire.radius + reach and p.Y > spire.foot.Y + 8 then
+				return true
+			end
+		end
+	end
+	local f = plan.forge
+	if f then
+		if flatDistance(p, f.center) < f.rim + reach + 4 and p.Y > f.center.Y + f.height * 0.6 then
+			return true
+		end
+		for _, heading in f.runnels do
+			for k = 0, 20 do
+				local q = VentsPlan.runnelPoint(f, heading, k / 20)
+				if flatDistance(p, q) < 7 + reach and math.abs(p.Y - q.Y) < 16 then
+					return true
+				end
+			end
+			local foot = VentsPlan.runnelPoint(f, heading, 0)
+			local out = Vector3.new(foot.X - f.center.X, 0, foot.Z - f.center.Z).Unit
+			if flatDistance(p, foot + out * 9) < 15 + reach then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 -- Dressing scattered over the biome by raycast on the Terrain alone can land inside
--- a basalt column (plankton mats), and the brine pool covers a basin's fissures: they go
+-- a basalt column (plankton mats, boulders) or on a landmark (boulders), and the
+-- brine pool covers a basin's fissures: they go
 local function tidy(parent: Instance, plan: VentsPlan.Plan): number
 	local removed = 0
 	local BIN = 16
@@ -1081,17 +1307,18 @@ local function tidy(parent: Instance, plan: VentsPlan.Plan): number
 		bins[k] = list
 		table.insert(list, c)
 	end
-	local function inColumn(p: Vector3): boolean
-		for dx = -1, 1 do
-			for dz = -1, 1 do
+	local function inColumn(p: Vector3, reach: number): boolean
+		local span = math.ceil(reach / BIN) + 1
+		for dx = -span, span do
+			for dz = -span, span do
 				local list = bins[key(p.X + dx * BIN, p.Z + dz * BIN)]
 				if list == nil then
 					continue
 				end
 				for _, c in list do
 					if
-						(p.X - c.at.X) ^ 2 + (p.Z - c.at.Z) ^ 2 < (c.size + 0.8) ^ 2
-						and p.Y < c.at.Y + c.height + 1
+						(p.X - c.at.X) ^ 2 + (p.Z - c.at.Z) ^ 2 < (c.size + 0.8 + reach) ^ 2
+						and p.Y < c.at.Y + c.height + 1 + reach
 					then
 						return true
 					end
@@ -1104,7 +1331,7 @@ local function tidy(parent: Instance, plan: VentsPlan.Plan): number
 	local mats = if biomes then biomes:FindFirstChild("PlanktonMats") else nil
 	if mats then
 		for _, dot in mats:GetChildren() do
-			if dot:IsA("BasePart") and inColumn(dot.Position) then
+			if dot:IsA("BasePart") and inColumn(dot.Position, 0) then
 				dot:Destroy()
 				removed += 1
 			end
@@ -1118,16 +1345,49 @@ local function tidy(parent: Instance, plan: VentsPlan.Plan): number
 			end
 			for _, piece in crack:GetChildren() do
 				if piece:IsA("BasePart") then
-					local d = Vector2.new(
-						piece.Position.X - brine.center.X,
-						piece.Position.Z - brine.center.Z
-					).Magnitude
-					if d < brine.radius + 1.5 then
+					if flatDistance(piece.Position, brine.center) < brine.radius + 1.5 then
 						piece:Destroy()
 						removed += 1
 					end
 				end
 			end
+		end
+	end
+	-- Boulders the biome's scatter dropped by raycast on the Terrain alone
+	-- (WorldService `rock`: a placeholder Rock part, and its BoulderRoundProp model
+	-- over the same spot) that came to rest in the basalt, the brine pool, on a
+	-- spire, in the crater or on a runnel: they go
+	local rocks = if biomes then biomes:FindFirstChild("Rocks") else nil
+	if rocks then
+		local props: { Model } = {}
+		for _, child in rocks:GetChildren() do
+			if child:IsA("Model") and child.Name == "BoulderRoundProp" then
+				table.insert(props, child)
+			end
+		end
+		for _, child in rocks:GetChildren() do
+			if not child:IsA("BasePart") or child.Name ~= "Rock" then
+				continue
+			end
+			local p = child.Position
+			local r, angle = Seafloor.polar(p.X, p.Z)
+			if r < deep.ventsRadii[1] - 200 or not Seafloor.inSector(angle, 110, 240) then
+				continue
+			end
+			local reach = math.max(child.Size.X, child.Size.Z) / 2
+			if not (inColumn(p, reach) or blockedAt(plan, p, reach)) then
+				continue
+			end
+			for index, prop in props do
+				local q = prop:GetPivot().Position
+				if (q.X - p.X) ^ 2 + (q.Z - p.Z) ^ 2 < 0.25 then
+					prop:Destroy()
+					table.remove(props, index)
+					break
+				end
+			end
+			child:Destroy()
+			removed += 1
 		end
 	end
 	return removed
@@ -1144,6 +1404,7 @@ function Vents.build(parent: Instance, plan: VentsPlan.Plan, ground: Ground): St
 	stats = freshStats()
 	forge(parent, plan)
 	smokers(parent, plan)
+	chimneyDress(parent, plan)
 	basalt(parent, plan)
 	terraces(parent, plan)
 	brinePool(parent, plan)
@@ -1161,9 +1422,9 @@ function Vents.build(parent: Instance, plan: VentsPlan.Plan, ground: Ground): St
 		spires += #smoker.spires
 	end
 	print(
-		`[Vents] {where}; {#plan.smokers} smoker complexes ({spires} spires), {stats.columns} basalt columns, {stats.steps} terrace steps, {if plan.brine
+		`[Vents] {where}; {#plan.smokers} smoker complexes ({spires} spires), {stats.chimneys} chimneys dressed, {stats.columns} basalt columns, {stats.steps} terrace steps, {if plan.brine
 			then "a"
-			else "no"} brine pool, {stats.clumps} tube-worm clumps ({stats.worms} worms), {stats.beds} mussel beds ({stats.mussels} shells); {stats.parts} parts ({stats.solid} solid, {stats.glow} glowing), {stats.lights} lights, {stats.emitters} emitters; {stats.tidied} plankton and fissure pieces cleared; {plan.opsTo - plan.opsFrom + 1} Terrain ops`
+			else "no"} brine pool, {stats.clumps} tube-worm clumps and {stats.forests} forests ({stats.worms} worms), {stats.beds} mussel beds ({stats.mussels} shells); {stats.parts} parts ({stats.solid} solid, {stats.glow} glowing), {stats.lights} lights, {stats.emitters} emitters; {stats.tidied} plankton, fissure pieces and boulders cleared; {plan.opsTo - plan.opsFrom + 1} Terrain ops`
 	)
 	for _, note in plan.notes do
 		print(`[Vents] {note}`)

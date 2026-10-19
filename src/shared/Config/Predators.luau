@@ -48,13 +48,16 @@ export type Style = {
 	kelpShy: boolean?, -- too big for a kelp forest: a fish in one is out of its reach
 	-- Coming round after a strike (owner, 2026-10-19: "If he misses the player he just
 	-- slowly turns around and goes at them again"): it carries through `carry` s at
-	-- speed, then turns back hard (× `comeTurn` its turn rate) at `comePace` × speed,
-	-- aimed `comeWide` body lengths beside the fish on the side it peeled to, so each
-	-- pass comes in from a new angle
+	-- speed, then turns back hard (× `comeTurn` its turn rate) at `comePace` × speed
+	-- onto a loop round the fish a run-in's length out, on the side it peeled to, and
+	-- turns in from there once its bite is ready, so each pass comes from a new angle.
+	-- A bite that lands sates it a little: `sated` s more before the next pass (it
+	-- swings wide with its mouthful), so a fish that sits still is bitten no faster
+	-- than before; a miss comes round at once.
 	carry: number?,
 	comeTurn: number?,
 	comePace: number?,
-	comeWide: number?,
+	sated: number?,
 	-- How it opens a hunt on a fish that isn't running (owner: "It needs to feel like a
 	-- real predator"): circling in and tightening (`circle`: the chance, for up to
 	-- `circleSeconds`), or stalking up from below (`under`: the chance, `underDepth`
@@ -147,7 +150,7 @@ local list: { PredatorDef } = {
 			carry = 0.35,
 			comeTurn = 2.6,
 			comePace = 0.45,
-			comeWide = 0.3,
+			sated = 1,
 			glide = 0.3,
 			beat = 2.6,
 		},
@@ -198,7 +201,7 @@ local list: { PredatorDef } = {
 			carry = 0.45,
 			comeTurn = 2.4,
 			comePace = 0.8,
-			comeWide = 0.7,
+			sated = 2.4,
 			circle = 0.4,
 			circleSeconds = 2.6,
 			under = 0.35,

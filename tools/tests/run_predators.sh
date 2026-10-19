@@ -4,9 +4,10 @@
 # style (Config/Predators `style`) against still, cruising, fleeing, juking,
 # looping, dashing, hidden, burrowed and puffed fish of several levels and
 # species, plus PredatorService.stun. Then the world bosses (BossService on the
-# real PredatorService, boss_sim.luau): the Megalodon on still, dodging, fleeing and
-# surface-hugging fish and the Giant Squid on a still one, with the time each takes
-# to come round after a miss. Prints the tables and fails on a broken rule.
+# real PredatorService, boss_sim.luau): the Megalodon on still, dodging, backing-off,
+# fleeing and surface-hugging fish and the Giant Squid on a still one, with the time
+# each takes to come round after a miss or a pass. Prints the tables and fails on a
+# broken rule.
 #   LUAU=/path/to/luau bash tools/tests/run_predators.sh [PredatorService.luau]
 # The optional argument runs another copy of the service; SRC=<an older src/> runs
 # an older checkout's Config and shared code too, and BEFORE=1 only prints the table

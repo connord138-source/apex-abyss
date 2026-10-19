@@ -20,12 +20,16 @@
 --   glide  slides past the school from behind, overtaking it
 --   orbit  a slow arc round the school (`sweep` radians)
 --   rise   from beside and below, rising toward the light (`height` to `rise`)
--- `frame` × the school's width (its spread both ways plus a fish), or `lengths` of its
--- fish if that's nearer (7 unless set), is the camera's distance, kept between `near`
--- and `far` and never inside the school's spread; `height` is the camera over the school, a
--- share of that distance (negative: below it, looking up); `push` the share pushed in
--- over the shot; `follow` how much the camera travels with the school (0: it only
--- pans, 1: it moves with it); `floor` the studs it keeps over the ground.
+-- The camera's distance keeps the school's furthest fish 2.5 of its lengths (5 studs
+-- at least) clear of the lens once it has pushed in, × `frame` (a lone fish: `lengths`
+-- of it, 6 unless set), kept between `near` and `far`; `height` is the camera over the
+-- school, a share of that distance (negative: below it, looking up); `push` the share
+-- pushed in over the shot; `follow` how much the camera travels with the school (0: it
+-- only pans, 1: it moves with it), raised so the school drifts no more than `drift`
+-- (0.3 unless set) of the distance through the picture; `floor` the studs it keeps
+-- over the ground. Shared/StartShots checks every moment of a shot: open water round
+-- the camera, no fish of the school within that gap of the lens, and at least half of
+-- the school in the picture between the letterbox bars.
 -- `landmark` turns the shot so something stands behind the school:
 --   temple  the Sunken Ruins' great temple (Config/Ruins), schools within `within`
 --   basin   the middle of the Vents' basin the school swims in (its chimneys)
@@ -43,6 +47,7 @@ export type Shot = {
 	style: Style,
 	frame: number?,
 	lengths: number?,
+	drift: number?,
 	near: number?,
 	far: number?,
 	height: number?,
@@ -65,7 +70,7 @@ local shots: { Shot } = {
 		prey = { "Garibaldi", "Opaleye", "KelpBass" },
 		radii = { 230, 450 },
 		style = "glide",
-		frame = 1.25,
+		frame = 1.05,
 		near = 8,
 		far = 30,
 		height = -0.12,
@@ -82,7 +87,7 @@ local shots: { Shot } = {
 		prey = { "Parrotfish", "BlueTang", "Butterflyfish" },
 		radii = { 530, 790 },
 		style = "track",
-		frame = 1.15,
+		frame = 1.0,
 		near = 10,
 		far = 40,
 		height = 0.3,
@@ -93,16 +98,17 @@ local shots: { Shot } = {
 		cut = "murk",
 	},
 	{
-		-- Triggerfish swimming at the camera, a wreck's hull behind them
+		-- Triggerfish passing a wreck: the camera behind them, the hull beyond (beside
+		-- them, keeping pace, when no wreck is near)
 		id = "wreck",
 		biome = "ShipwreckGraveyard",
 		prey = { "Triggerfish", "WreckCod", "Lingcod" },
 		radii = { 520, 800 },
-		style = "lead",
-		frame = 1.2,
+		style = "track",
+		frame = 1.1,
 		near = 10,
 		far = 40,
-		height = 0.28,
+		height = 0.18,
 		push = 0.15,
 		follow = 0.75,
 		fov = 55,
@@ -118,7 +124,7 @@ local shots: { Shot } = {
 		prey = { "YellowfinTuna", "MahiMahi", "Swordfish" },
 		radii = { 990, 1280 },
 		style = "lead",
-		frame = 0.85,
+		frame = 0.9,
 		lengths = 5.5,
 		near = 26,
 		far = 70,
@@ -135,10 +141,10 @@ local shots: { Shot } = {
 		biome = "SunkenRuins",
 		prey = { "HumpheadWrasse", "Lionfish", "Coelacanth" },
 		style = "track",
-		frame = 1.4,
+		frame = 1.15,
 		near = 14,
 		far = 46,
-		height = 0.32,
+		height = 0.12,
 		push = 0.12,
 		follow = 0.7,
 		fov = 58,
@@ -153,7 +159,7 @@ local shots: { Shot } = {
 		biome = "HydrothermalVents",
 		prey = { "VentEelpout", "Rattail", "GhostShrimp" },
 		style = "orbit",
-		frame = 1.3,
+		frame = 1.1,
 		near = 10,
 		far = 40,
 		height = 0.3,
@@ -171,7 +177,7 @@ local shots: { Shot } = {
 		biome = "AbyssalTrench",
 		prey = { "Lanternfish", "Viperfish", "Hatchetfish", "Oarfish" },
 		style = "orbit",
-		frame = 1.1,
+		frame = 1.0,
 		near = 10,
 		far = 44,
 		height = 0.12,

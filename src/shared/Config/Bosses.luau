@@ -13,7 +13,17 @@ local Predators = require(script.Parent.Predators)
 export type Spot = { from: number, to: number } -- along the body, 0 = tail tip, 1 = nose
 
 export type SharkKit = {
-	bite: { fraction: number, reach: number, telegraph: number, cooldown: number, trigger: number },
+	-- (`sated`: seconds more on the cooldown after a bite that lands; it circles its
+	-- fish meanwhile, so a fish that sits still is bitten no faster than before, while
+	-- a miss comes round at once)
+	bite: {
+		fraction: number,
+		reach: number,
+		telegraph: number,
+		cooldown: number,
+		trigger: number,
+		sated: number?,
+	},
 	charge: {
 		fraction: number,
 		telegraph: number,
@@ -200,7 +210,7 @@ local megalodon: BossDef = {
 	rigged = true,
 	kit = "shark",
 	shark = {
-		bite = { fraction = 0.55, reach = 21.5, telegraph = 1.2, cooldown = 4, trigger = 43 },
+		bite = { fraction = 0.55, reach = 21.5, telegraph = 1.2, cooldown = 4, trigger = 43, sated = 2.2 },
 		charge = {
 			fraction = 0.35,
 			telegraph = 1.2,

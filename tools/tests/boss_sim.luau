@@ -1,11 +1,12 @@
 -- The world bosses' fights (run_predators.sh, after predator_sim.luau): the real
 -- BossService on the real PredatorService against fake services. Each case raises a
 -- boss beside one player fish in its own water and runs the fight, many times from
--- different directions. The fish sits still, dodges sideways at every warning, flees
--- flat out, or hugs the surface. Besides the bites and hits it times how long the boss
--- takes to come round after a miss (owner, 2026-10-19: "If he misses the player he
--- just slowly turns around and goes at them again"): until it points back at the fish
--- (`round`) and until its next attack on it (`again`).
+-- different directions. The fish sits still, dodges sideways at every warning, backs
+-- straight off at every warning (`retreat`), flees flat out, or hugs the surface.
+-- Besides the bites and hits it times how long the boss takes to come round after a
+-- miss (owner, 2026-10-19: "If he misses the player he just slowly turns around and
+-- goes at them again"): after a miss it swam on past, until it points back at the
+-- fish (`round`), and after any miss, until its next attack on it (`again`).
 local rbx = require("./sim_rbx")
 local Vector3 = rbx.Vector3
 local sim = require("./sim_services")
@@ -69,7 +70,7 @@ local function fishAt(level: number, speedMul: number?): Fish
 	return { level = level, length = length, top = Size.topSpeed(length) * (speedMul or 1) }
 end
 
-type Behaviour = "still" | "dodge" | "flee" | "surface"
+type Behaviour = "still" | "dodge" | "retreat" | "flee" | "surface"
 type Result = {
 	attacks: number, -- tells aimed at the fish (bites, charges, lunges, grabs)
 	bites: number,
@@ -80,6 +81,9 @@ type Result = {
 	rounds: { number },
 	agains: { number },
 	turns: { number }, -- radians/s of its body's fastest turns
+	-- seconds from each time it swam on past the fish (from facing it to facing away)
+	-- until it faced the fish again, hit or miss: how fast it comes round
+	passes: { number },
 	speeds: { number }, -- its speed every tick (studs/s)
 }
 
@@ -95,6 +99,7 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 		agains = {},
 		turns = {},
 		speeds = {},
+		passes = {},
 	}
 	for trial = 1, TRIALS do
 		table.clear(sim.events)
@@ -126,6 +131,9 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 		local alarmAway: Vector3? = nil
 		local seen = 0
 		local missAt: number? = nil
+		local passed = false -- (it swam on past the fish after that miss)
+		local facedAt: number? = nil -- last faced the fish
+		local awayAt: number? = nil -- swam on past it (faced away) since
 		local againFrom: number? = nil
 		local chargeAt: number? = nil -- a charge or lunge under way at this fish
 		local hitsBefore = 0
@@ -145,6 +153,8 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 				local want = Vector3.zero
 				if behaviour == "dodge" and since >= 0 and since < DODGE then
 					want = side * fish.top
+				elseif behaviour == "retreat" and since >= 0 and since < DODGE then
+					want = frame * fish.top
 				elseif behaviour == "flee" then
 					want = away * fish.top
 				elseif alarmAt == math.huge and chargeAt == nil and (position - spot).Magnitude > 40 then
@@ -183,18 +193,40 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 			local turned = math.acos(math.clamp(lastHeading:Dot(predator.heading), -1, 1)) / DT
 			table.insert(result.turns, turned)
 			lastHeading = predator.heading
+			-- Every pass: from facing the fish to facing away, until it faces it again
+			do
+				local toFish = position - predator.position
+				local facing = if toFish.Magnitude > 1e-3 then predator.heading:Dot(toFish.Unit) else 1
+				if facing >= 0.8 then
+					if awayAt then
+						table.insert(result.passes, sim.now - awayAt)
+						awayAt = nil
+					end
+					facedAt = sim.now
+				elseif facing < 0.3 and facedAt and awayAt == nil and sim.now - facedAt < 3 then
+					awayAt = sim.now
+				end
+			end
 			-- Round again after a miss
 			if missAt then
 				local toFish = position - predator.position
-				if toFish.Magnitude > 1e-3 and predator.heading:Dot(toFish.Unit) >= 0.8 and sim.now - missAt > 0.3 then
-					table.insert(result.rounds, sim.now - missAt)
+				-- (only a miss it swam on past counts: one still facing the fish
+				-- has nothing to come round from)
+				local facing = if toFish.Magnitude > 1e-3 then predator.heading:Dot(toFish.Unit) else 1
+				if not passed and facing < 0.3 then
+					passed = true
+				elseif not passed and sim.now - missAt > 1.5 then
+					missAt = nil
+				elseif passed and facing >= 0.8 then
+					table.insert(result.rounds, sim.now - (missAt :: number))
 					missAt = nil
 				end
 			end
 			for i = seen + 1, #sim.events do
 				local event = sim.events[i]
 				local mine = event.payload.target == player.UserId
-				local tell = (event.kind == "windup" or event.kind == "charge" or event.kind == "grab") and mine
+				local tell = (event.kind == "windup" or event.kind == "charge" or event.kind == "grab")
+					and mine
 				if tell then
 					result.attacks += 1
 					local kind = if event.kind == "windup"
@@ -211,20 +243,29 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 					if event.kind ~= "charge" and (alarmAt == math.huge or sim.now - alarmAt > 2.5) then
 						alarmAt, alarmAway = sim.now + REACT, nil
 					end
-					if event.kind == "charge" or (event.kind == "windup" and (event.payload.seconds or 1) < 0.8) then
+					if
+						event.kind == "charge"
+						or (event.kind == "windup" and (event.payload.seconds or 1) < 0.8)
+					then
 						chargeAt = sim.now
 						hitsBefore = #sim.hits
 					end
 				elseif event.kind == "rush" and chargeAt then
 					alarmAt, alarmAway = sim.now + REACT, nil
+				elseif event.kind == "grabbed" and mine then
+					-- (a grab that caught the fish: its hold ticks small below)
+					result.hits += 1
+					local entry = result.byKind.grab or { tells = 0, hits = 0 }
+					entry.hits += 1
+					result.byKind.grab = entry
 				elseif event.kind == "bite" then
 					result.bites += 1
 					if not event.payload.hit then
-						missAt, againFrom = sim.now, sim.now
+						missAt, againFrom, passed = sim.now, sim.now, false
 					end
 				elseif event.kind == "charged" and chargeAt then
 					if #sim.hits == hitsBefore then
-						missAt, againFrom = sim.now, sim.now
+						missAt, againFrom, passed = sim.now, sim.now, false
 					end
 					chargeAt = nil
 				end
@@ -235,24 +276,16 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 				alarmAway = nil
 			end
 		end
-		-- Each hit by the attack its share says it was (a grab's hold ticks small)
+		-- Each hit by the attack its share says it was (a grab's hold ticks small, and
+		-- each grab is counted once, by its "grabbed" event above)
 		local shark = Config.Bosses.byId[id].shark
-		local held = false
 		for _, hit in sim.hits do
 			if hit.player == player then
 				result.damage += hit.fraction
 				result.worst = math.max(result.worst, hit.fraction)
 				if hit.fraction < 0.05 then
-					if not held then
-						held = true
-						result.hits += 1
-						local entry = result.byKind.grab or { tells = 0, hits = 0 }
-						entry.hits += 1
-						result.byKind.grab = entry
-					end
 					continue
 				end
-				held = false
 				result.hits += 1
 				local kind = "other"
 				if shark then
@@ -314,6 +347,16 @@ local function show(id: string, fish: Fish, behaviour: string, r: Result)
 			quick,
 			fast
 		)
+			.. (
+				if #r.passes > 0
+					then string.format(
+						"  · after a pass: round %.1f s (most %.1f, %d passes)",
+						median(r.passes),
+						most(r.passes),
+						#r.passes
+					)
+					else ""
+			)
 	)
 end
 
@@ -354,6 +397,17 @@ expect(
 -- (a charge carries it well past a fish that dodged, so the next attack takes longer)
 expect(#mDodge.agains > 0 and median(mDodge.agains) <= 8, "Megalodon: attacks again soon after a miss")
 expect(mDodge.hits < mStill.hits, "Megalodon: dodging its tells beats some of its attacks")
+-- A bite is dodged by backing straight off its jaws at the warning (its head swings
+-- after a fish that slips sideways), a charge by slipping sideways
+local mRetreat = case("Megalodon", n45, water, "retreat", 220)
+local function biteRate(r: Result): number
+	local entry = r.byKind.bite
+	return if entry and entry.tells > 0 then entry.hits / entry.tells else 0
+end
+expect(biteRate(mRetreat) <= 0.4, "Megalodon: backing off its jaws at the warning escapes most bites")
+expect(biteRate(mDodge) <= 0.4, "Megalodon: slipping aside at the warning escapes most bites")
+expect(biteRate(mStill) >= 0.9, "Megalodon: a fish that sits in front of its jaws is bitten")
+expect(mStill.worst < 1 and mRetreat.hits < mStill.hits, "Megalodon: dodging beats its attacks")
 local mFlee = case("Megalodon", fishAt(55, 1.25), water, "flee", 220)
 expect(mFlee.attacks > 0, "Megalodon: goes after a fish that runs")
 local surface = Vector3.new(blue.X, World.surfaceY - 3, blue.Z)

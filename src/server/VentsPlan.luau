@@ -34,7 +34,7 @@ local deep = World.deep
 
 local VentsPlan = {}
 
-export type Chimney = { position: Vector3, height: number }
+export type Chimney = { position: Vector3, height: number, radius: number }
 export type Spire = {
 	foot: Vector3, -- its middle on the floor
 	height: number,
@@ -64,6 +64,16 @@ export type Brine = { center: Vector3, radius: number, basin: number }
 export type Mound = { center: Vector3, radius: number, height: number }
 export type Crust = { center: Vector3, radius: number }
 export type Ridge = { cframe: CFrame, size: Vector3 }
+-- A Terrain fill op as Cave.luau lists them (the shape Shelf.ops hands over)
+export type Op = {
+	kind: "ball" | "block" | "cylinder",
+	material: Enum.Material,
+	center: Vector3,
+	radius: number?,
+	height: number?,
+	size: Vector3?,
+	cframe: CFrame?,
+}
 export type Plan = {
 	chimneys: { Chimney },
 	forge: Forge?,
@@ -110,9 +120,14 @@ local FORGE = {
 	keepBasin = 30, -- studs clear of a basin's wall (its lip rubble stands ~26 off it)
 	keepChimney = 16,
 	runnels = 3,
-	-- Where it would rather stand: the middle of the field
+	-- Where it would rather stand: the middle of the field (studs of height a degree
+	-- and a stud away from it are worth: `swing`, `reach`). The basins leave few gaps
+	-- wide enough, so it may stand far out, its foot up to the barrier (the map edge's
+	-- haze, OceanController EDGE_RAMP, then hides the barrier behind it).
 	angle = 170,
-	radius = 1250,
+	radius = 1220,
+	swing = 1.5,
+	reach = 0.25,
 }
 -- The smoker complexes, tallest first: their tallest spire, how many spires and the
 -- radius they stand in
@@ -283,6 +298,10 @@ end
 
 type Taken = { center: Vector3, radius: number }
 
+-- Rock other builders laid in the field (the drop-off's talus, the Wreck's tumbled
+-- debris, the basins' lip rubble, the chimneys): set by VentsPlan.make
+local obstacles: { Taken } = {}
+
 local function clearOf(list: { Taken }, x: number, z: number, radius: number, gap: number): boolean
 	local here = Vector3.new(x, 0, z)
 	for _, taken in list do
@@ -291,6 +310,50 @@ local function clearOf(list: { Taken }, x: number, z: number, radius: number, ga
 		end
 	end
 	return true
+end
+
+-- Whether a disc keeps `gap` clear of the rock already laid
+local function clearOfRock(x: number, z: number, radius: number, gap: number): boolean
+	return clearOf(obstacles, x, z, radius, gap)
+end
+
+-- The rock already standing proud of the deep floor in and round the field: every
+-- fill op that isn't a carve or the mud slab, under 70 studs round
+local function obstaclesIn(ops: { Op }): { Taken }
+	local found: { Taken } = {}
+	for _, op in ops do
+		local material = op.material
+		if material == Enum.Material.Air or material == Enum.Material.Mud then
+			continue
+		end
+		local c = op.center
+		local reach, top
+		local radius = op.radius or 0
+		if op.kind == "ball" then
+			reach, top = radius, c.Y + radius
+		elseif op.kind == "cylinder" then
+			local frame = op.cframe
+			local up = if frame then math.abs(frame.UpVector.Y) else 1
+			local side = math.sqrt(math.max(1 - up * up, 0))
+			local half = (op.height or 0) / 2
+			reach, top = radius + half * side, c.Y + half * up + radius * side
+		else
+			local size = op.size or Vector3.zero
+			reach, top = size.Magnitude / 2, c.Y + size.Magnitude / 2
+		end
+		if reach > 70 or top < deep.floorY + 1.5 then
+			continue
+		end
+		local r, angle = Seafloor.polar(c.X, c.Z)
+		if r < INNER - 120 or r > OUTER + 120 then
+			continue
+		end
+		if not Seafloor.inSector(angle, SECTOR[1] - 12, SECTOR[2] + 12) then
+			continue
+		end
+		table.insert(found, { center = Vector3.new(c.X, 0, c.Z), radius = reach })
+	end
+	return found
 end
 
 -- Whether a disc lies wholly outside every basin (`gap` clear of its wall)
@@ -348,9 +411,8 @@ local function placeForge(plan: Plan, taken: { Taken })
 	for _, size in FORGE_SIZES do
 		local site: Vector3? = nil
 		local siteRoom, siteScore = 0, -math.huge
-		-- (its back may reach a little past OUTER: the floor runs on past the barrier)
 		for angle = SECTOR[1], SECTOR[2], 1.5 do
-			for r = INNER + size.base, OUTER - size.base * 0.5, 8 do
+			for r = INNER + size.base, World.boundsRadius - size.base, 8 do
 				local p = point(angle, r, deep.floorY)
 				local half = math.deg(size.base / r)
 				if not Seafloor.inSector(angle, SECTOR[1] + half, SECTOR[2] - half) then
@@ -363,7 +425,8 @@ local function placeForge(plan: Plan, taken: { Taken })
 					continue
 				end
 				local room = math.min(forgeRoom(p.X, p.Z, size), size.height)
-				local away = math.abs(angle - FORGE.angle) * 1.5 + math.abs(r - FORGE.radius) * 0.2
+				local away = math.abs(angle - FORGE.angle) * FORGE.swing
+					+ math.abs(r - FORGE.radius) * FORGE.reach
 				local score = room * 4 - away
 				if score > siteScore then
 					site, siteRoom, siteScore = p, room, score
@@ -418,6 +481,9 @@ local function placeSmokers(plan: Plan, taken: { Taken }, rng: Random)
 					continue
 				end
 				if not clearOf(placed, p.X, p.Z, 0, SMOKER.apart) then
+					continue
+				end
+				if not clearOfRock(p.X, p.Z, want.radius, 6) then
 					continue
 				end
 				if not chimneysClear(plan.chimneys, p.X, p.Z, want.radius + SMOKER.keepChimney) then
@@ -537,7 +603,7 @@ local function placeCauseway(plan: Plan, taken: { Taken }, rng: Random)
 			then
 				continue
 			end
-			if not clearOf(others, p.X, p.Z, size, 6) then
+			if not clearOf(others, p.X, p.Z, size, 6) or not clearOfRock(p.X, p.Z, size, 1) then
 				continue
 			end
 			local height = (stepped * 0.7 + base * 0.3) + rng:NextNumber(-1.2, 1.2)
@@ -577,6 +643,7 @@ local function placeOutcrops(plan: Plan, taken: { Taken }, rng: Random)
 				if
 					not clearOf(taken, p.X, p.Z, want.radius, 30)
 					or not clearOf(placed, p.X, p.Z, 0, OUTCROP.apart)
+					or not clearOfRock(p.X, p.Z, want.radius, 8)
 				then
 					continue
 				end
@@ -779,7 +846,9 @@ local function scatterSpot(
 			continue
 		end
 		if
-			not clearOf(taken, p.X, p.Z, radius, 8) or not chimneysClear(plan.chimneys, p.X, p.Z, radius + 12)
+			not clearOf(taken, p.X, p.Z, radius, 8)
+			or not chimneysClear(plan.chimneys, p.X, p.Z, radius + 12)
+			or not clearOfRock(p.X, p.Z, radius, 4)
 		then
 			continue
 		end
@@ -868,10 +937,11 @@ local function placeScatter(plan: Plan, taken: { Taken }, rng: Random)
 	end
 end
 
--- Lays the field out round the chimneys Shelf.luau has already placed (the same
--- every start: its own Random)
-function VentsPlan.make(chimneys: { Chimney }): Plan
+-- Lays the field out round the chimneys Shelf.luau has already placed and clear of
+-- the rock in `ops` (the same every start: its own Random)
+function VentsPlan.make(chimneys: { Chimney }, ops: { Op }): Plan
 	local rng = Random.new(World.seed + 97)
+	obstacles = obstaclesIn(ops)
 	local plan: Plan = {
 		chimneys = chimneys,
 		forge = nil,

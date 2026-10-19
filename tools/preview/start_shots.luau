@@ -274,7 +274,9 @@ do
 				tostring(op.radius or "null"),
 				tostring(op.height or "null"),
 				if op.size then v(op.size) else "null",
-				if cf then string.format("%s,%s,%s", v(cf.RightVector), v(cf.UpVector), v(cf.LookVector)) else "null,null,null"
+				if cf
+					then string.format("%s,%s,%s", v(cf.RightVector), v(cf.UpVector), v(cf.LookVector))
+					else "null,null,null"
 			)
 		)
 	end
@@ -285,7 +287,13 @@ end
 do
 	local down = cast(Vector3.new(320, 50, 40), Vector3.new(0, -120, 0))
 	local open = cast(Vector3.new(0, -200, -1200), Vector3.new(30, 0, 0))
-	print(string.format("INFO|rays: down onto the shelf %s studs, open water %s", tostring(down), tostring(open)))
+	print(
+		string.format(
+			"INFO|rays: down onto the shelf %s studs, open water %s",
+			tostring(down),
+			tostring(open)
+		)
+	)
 	if down == nil or math.abs(down - 50) > 8 or open ~= nil then
 		error("the Terrain rays don't work")
 	end
@@ -352,6 +360,23 @@ local function clearance(p: Vector3): number
 	return least
 end
 
+-- The wreck shot's landmark is the nearest wreck, which the client finds once the area
+-- has streamed in (WorldService places them with Roblox's Random, which the preview
+-- doesn't have): here a stand-in wreck lies on the floor 110 studs off the school's
+-- middle, 40 degrees off the way it swims, and the render draws a hull there
+local function wreckFor(shot: any, school: number): Vector3?
+	if shot.landmark ~= "wreck" then
+		return nil
+	end
+	local s = Schools.list[school]
+	local heading = Schools.schoolFrame(school, 0).LookVector
+	local flatHeading = Vector3.new(heading.X, 0, heading.Z)
+	flatHeading = if flatHeading.Magnitude > 1e-3 then flatHeading.Unit else Vector3.new(1, 0, 0)
+	local turned = CFrame.Angles(0, math.rad(40), 0):VectorToWorldSpace(flatHeading)
+	local at = s.center + turned * 110
+	return Vector3.new(at.X, Seafloor.y(at.X, at.Z) + 8, at.Z)
+end
+
 local total = { clear = 0, tried = 0 }
 for index, shot in Start.shots do
 	local picked = candidatesOf[index]
@@ -362,7 +387,7 @@ for index, shot in Start.shots do
 		for _, t0 in TIMES do
 			tried += 1
 			local side = if (n + t0) % 2 == 0 then 1 else -1
-			local plan, best = StartShots.plan(index, school, t0, cast, side)
+			local plan, best = StartShots.plan(index, school, t0, cast, side, wreckFor(shot, school))
 			local shown = plan or best
 			print(
 				string.format(
@@ -399,6 +424,88 @@ for index, shot in Start.shots do
 		table.insert(counts, `{id} {preyCounts[id] or 0}`)
 	end
 	print(string.format("SUMMARY|%s|%d|%d|%d|%s", shot.id, clear, tried, #all, table.concat(counts, ", ")))
+	-- The schools the client picks from (StartController pickSchool: the three gentlest
+	-- of its first prey, or of those near its temple), at every moment tried
+	do
+		local picks: { number } = {}
+		local first: string? = nil
+		for _, school in all do
+			local group = if shot.landmark == "temple" then "temple" else Schools.list[school].prey
+			first = first or group
+			if group == first and #picks < 3 then
+				table.insert(picks, school)
+			end
+		end
+		local good, asked = 0, 0
+		for n, school in picks do
+			for _, t0 in TIMES do
+				asked += 1
+				local side = if (n + t0) % 2 == 0 then 1 else -1
+				if StartShots.plan(index, school, t0, cast, side, wreckFor(shot, school)) then
+					good += 1
+				end
+			end
+		end
+		local ids: { string } = {}
+		for _, school in picks do
+			table.insert(ids, tostring(school))
+		end
+		print(string.format("PICKS|%s|%d|%d|%s", shot.id, good, asked, table.concat(ids, " ")))
+		-- What stands behind the school in these shots: the first Terrain along the
+		-- camera's line past the subject, by where it is (the drop-off's cliff, the
+		-- Vents' basins, the Trench's canyon, the shelf's floor, the deep floor)
+		local seen: { [string]: number } = {}
+		for n, school in picks do
+			local plan = StartShots.plan(
+				index,
+				school,
+				TIMES[1],
+				cast,
+				if n % 2 == 0 then 1 else -1,
+				wreckFor(shot, school)
+			)
+			if plan == nil then
+				continue
+			end
+			for k = 0, 4 do
+				local frame = StartShots.view(plan, plan.t0 + plan.seconds * k / 4)
+				local hit = cast(frame.Position, frame.LookVector * 600)
+				local what = "open water"
+				if hit then
+					local at = frame.Position + frame.LookVector * hit
+					local r = Seafloor.polar(at.X, at.Z)
+					local basin = false
+					for _, b in Seafloor.ventBasins() do
+						if math.sqrt((b.x - at.X) ^ 2 + (b.z - at.Z) ^ 2) < b.radius + 40 then
+							basin = true
+						end
+					end
+					if Seafloor.inTrench(at.X, at.Z, 20) then
+						what = "the Trench's canyon"
+					elseif r < World.shelf.radius - 10 and at.Y > World.seabedY - 40 then
+						what = if r < 330 then "the hub's seamount" else "the shelf's floor"
+					elseif
+						r < World.shelf.radius + World.shelf.edge + 40
+						and at.Y < World.seabedY - 5
+						and at.Y > World.deep.floorY + 20
+					then
+						what = "the drop-off's cliff"
+					elseif basin then
+						what = "a Vents basin"
+					else
+						what = "the deep floor"
+					end
+				end
+				seen[what] = (seen[what] or 0) + 1
+			end
+		end
+		local parts: { string } = {}
+		for what, count in seen do
+			table.insert(parts, `{what} {count}`)
+		end
+		table.sort(parts)
+		print(string.format("BACKDROP|%s|%s", shot.id, table.concat(parts, ", ")))
+	end
 	local plan = chosen
 	if plan == nil then
 		continue
@@ -427,6 +534,54 @@ for index, shot in Start.shots do
 	if plan.landmark then
 		grow(plan.landmark :: Vector3)
 		print(string.format("MARK|%s|%s", shot.id, v3(plan.landmark :: Vector3)))
+	end
+	-- How the school sits in the picture over the shot (16:9, between the letterbox
+	-- bars): its nearest fish to the lens, the least share of it in the picture, and
+	-- how big its fish are (their length against the picture's height)
+	do
+		local school = Schools.list[plan.school]
+		local closest, least, smallest, biggest = math.huge, 1, math.huge, 0
+		local tanUp = math.tan(math.rad(plan.fov) / 2)
+		local visible = 1 - 2 * Start.timing.letterbox
+		local u = 0
+		while u <= plan.seconds + 1e-6 do
+			local t = plan.t0 + u
+			local frame = StartShots.view(plan, t)
+			local schoolFrame = Schools.schoolFrame(plan.school, t)
+			local shown, size, counted = 0, 0, 0
+			for i = school.first, school.first + school.count - 1 do
+				local away = Schools.fishFrame(i, schoolFrame, t).Position - frame.Position
+				closest = math.min(closest, away.Magnitude)
+				local depth = away:Dot(frame.LookVector)
+				if depth > 0 then
+					local y = away:Dot(frame.UpVector) / (depth * tanUp)
+					local x = away:Dot(frame.RightVector) / (depth * tanUp * 16 / 9)
+					if math.abs(y) <= visible and math.abs(x) <= 1 then
+						shown += 1
+						size += Schools.fish[i].length / (2 * depth * tanUp * visible)
+						counted += 1
+					end
+				end
+			end
+			least = math.min(least, shown / school.count)
+			if counted > 0 then
+				smallest = math.min(smallest, size / counted)
+				biggest = math.max(biggest, size / counted)
+			end
+			u += 0.5
+		end
+		print(
+			string.format(
+				"FRAME|%s|%.1f|%.1f|%.0f|%d|%.1f|%.1f",
+				shot.id,
+				closest,
+				plan.gap,
+				least * 100,
+				school.count,
+				smallest * 100,
+				biggest * 100
+			)
+		)
 	end
 	local reach = 230
 	local floorY = Seafloor.y((lo.X + hi.X) / 2, (lo.Z + hi.Z) / 2)

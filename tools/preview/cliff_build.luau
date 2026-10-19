@@ -171,12 +171,13 @@ if Cliff and features.cliff then
 	local stats = Cliff.build(folder, layout, cast)
 	print(
 		string.format(
-			"[Cliff] %d parts (%d solid, %d glow), %d lights, %d props dressed, %d rays, %.1f s",
+			"[Cliff] %d parts + %d models = %d (%d solid, %d glow), %d lights, %d rays, %.1f s",
 			stats.parts,
+			stats.models,
+			stats.parts + stats.models,
 			stats.solid,
 			stats.glow,
 			stats.lights,
-			stats.props,
 			RAYS,
 			os.clock() - clock
 		)
@@ -215,7 +216,19 @@ local seaward = polar(A, 1, 0)
 local sun = seaward * -math.sin(math.rad(30)) + Vector3.new(0, -math.cos(math.rad(30)), 0)
 print(string.format("D|%.3f,%.3f,%.3f", sun.X, sun.Y, sun.Z))
 local function view(name, from, to, fov)
-	print(string.format("V|%s|%.2f,%.2f,%.2f|%.2f,%.2f,%.2f|%.1f", name, from.X, from.Y, from.Z, to.X, to.Y, to.Z, fov))
+	print(
+		string.format(
+			"V|%s|%.2f,%.2f,%.2f|%.2f,%.2f,%.2f|%.1f",
+			name,
+			from.X,
+			from.Y,
+			from.Z,
+			to.X,
+			to.Y,
+			to.Z,
+			fov
+		)
+	)
 end
 view("wide", polar(A + 7, FACE + 300, floorY + 30), polar(A - 3, FACE, -175), 74)
 view("face", polar(A + 1, FACE + 170, -190), polar(A - 1, FACE, -200), 70)
