@@ -9,9 +9,10 @@
 -- back. Fish other players ate vanish with a puff and return when they respawn.
 --
 -- Rare fish (Config/Catch; the server says which, `PreyRarity`) wear their rarity:
--- gold foil, a teal glow, clear crystal or a shifting rainbow, with sparkles and a
--- small light so they can be spotted from a distance. A tide's own schools (the
--- Sardine Run's bait balls) are only drawn while it's up.
+-- bright silver flashing like a mirror, gold foil, a teal glow, clear crystal or a
+-- shifting rainbow, with sparkles and a small light so they can be spotted from a
+-- distance. A tide's own schools (the Sardine Run's bait balls) are only drawn while
+-- it's up.
 --
 -- Only the schools near the camera are built (owner, 2026-10-18: "We still need so
 -- much more fish too", which took the sea from ~1,300 fish to ~4,100): a school is
@@ -150,12 +151,29 @@ local chaseWarningUntil = 0
 local CatchConfig = Config.Catch
 local rarities: { [number]: string } = {} -- prey index → rarity id (rare fish only)
 local prisms: { [number]: Visual } = {} -- fish wearing the Prism look (their colour cycles)
--- Fish wearing the Silver look: polished bright silver that flashes white as they
--- turn, like scales catching the light, so it reads apart from the plain silvery
--- minnows and sardines (owner, 2026-10-18)
+-- Fish wearing the Silver look, which must read apart from the plain silvery minnows
+-- and sardines by its body, not only its sparkles (owner, 2026-10-18; PC 2026-10-19,
+-- SV1: on Foil, a metal that shows the dark water, its body read like a plain
+-- sardine's). A whiter cool polished silver (SmoothPlastic, lit, with a little sheen
+-- of the water), lit over its back by a small cool light of its own: a light inside
+-- the body lights none of its skin, and a wide one lit the plain fish round it too.
+-- Then a mirror flash: every 1.2-2 s, staggered fish by fish, its flank catches the
+-- light in a quick bright pulse, like a real silver fish turning in the sun. The
+-- pulse is Neon white at its peak beyond SILVER_NEAR; nearer the camera it is colour
+-- and light only. Its glint swells with it.
 local silvers: { [number]: Visual } = {}
-local SILVER_BASE = Color3.fromRGB(196, 210, 226)
-local SILVER_FLASH = Color3.fromRGB(255, 255, 255)
+local silverPulse: { [number]: number } = {} -- its flash as last drawn (0 at rest)
+local SILVER_BASE = Color3.fromRGB(222, 232, 248)
+local SILVER_FLASH = Color3.fromRGB(242, 249, 255)
+local SILVER_LIGHT = Color3.fromRGB(214, 232, 255)
+local SILVER_SHEEN = 0.15 -- its reflectance at rest
+local SILVER_GLOW = 1.5 -- its own light's brightness at rest
+local SILVER_GLOW_FLASH = 6 -- and at a flash's peak
+local SILVER_PERIOD = 1.2 -- seconds between flashes: SILVER_PERIOD + up to SILVER_SPREAD
+local SILVER_SPREAD = 0.8
+local SILVER_WIDTH = 0.11 -- the flash's half-width, a share of its period
+local SILVER_NEON = 0.55 -- the body is Neon above this (the peak, about 0.15 s)
+local SILVER_NEAR = 24 -- studs from the camera: nearer, no Neon
 -- A tide school near the camera when its tide ends shrinks away over TIDE_FADE
 -- seconds instead of popping out in front of you (playtest 2026-10-10); far off,
 -- out in the haze, it just goes
@@ -206,11 +224,11 @@ local LOOKS: {
 } =
 	{
 		Silver = {
-			material = Enum.Material.Foil,
+			material = Enum.Material.SmoothPlastic,
 			color = SILVER_BASE,
-			reflectance = 0.3,
+			reflectance = SILVER_SHEEN,
 			transparency = 0,
-			light = 1.3,
+			light = SILVER_GLOW,
 		},
 		Golden = {
 			material = Enum.Material.Foil,
@@ -705,6 +723,22 @@ local function setHidden(visual: Visual, hidden: boolean)
 	end
 end
 
+-- A Silver fish's mirror flash at `now`: 0 at rest, 1 at its peak. Each fish has its
+-- own period (SILVER_PERIOD + up to SILVER_SPREAD) and phase from its index, so the
+-- silver fish in a school never flash together
+local function silverFlash(index: number, now: number): number
+	local h = math.sin(index * 12.9898) * 43758.5453
+	h -= math.floor(h)
+	local period = SILVER_PERIOD + SILVER_SPREAD * h
+	local at = ((now + h * 7.3) / period) % 1
+	local d = math.abs(at - 0.5) / SILVER_WIDTH
+	if d >= 1 then
+		return 0
+	end
+	local bump = 1 - d * d
+	return bump * bump
+end
+
 -- Takes a rarity's look off a fish, putting its own texture and colours back
 local function clearLook(index: number, visual: Visual)
 	local look = visual.look
@@ -714,6 +748,7 @@ local function clearLook(index: number, visual: Visual)
 	visual.look = nil
 	prisms[index] = nil
 	silvers[index] = nil
+	silverPulse[index] = nil
 	glints[index] = nil
 	glintShown[index] = nil
 	glintBlocked[index] = nil
@@ -796,6 +831,18 @@ local function setLook(index: number, rarityId: string?)
 	light.Range = math.clamp(6 + length * 2 + (LIGHT_BONUS[rarityId] or 0), 8, 22)
 	light.Shadows = false
 	light.Parent = attachment
+	if rarityId == "Silver" then
+		-- Its own small light just over its back, lighting its back and flanks and
+		-- barely reaching the plain fish round it
+		local over = Instance.new("Attachment")
+		over.Name = "SilverLight"
+		over.Parent = visual.body
+		over.Position = Vector3.new(0, visual.bodySize.Y * 0.5 + length * 0.3, 0)
+		light.Color = SILVER_LIGHT
+		light.Range = math.clamp(length * 1.8, 3, 12)
+		light.Parent = over
+		table.insert(look.extras, over)
+	end
 	-- The glint: two thin bars crossed (a four-point star) and a bright core
 	local glint = Instance.new("BillboardGui")
 	glint.Name = "Glint"
@@ -1074,18 +1121,27 @@ local function step(dt: number)
 			end
 		end
 	end
-	-- Silver fish flash white once a turn (sharp, like a scale catching the light)
+	-- Silver fish: the mirror flash, redrawn only while one runs (or to put a fish
+	-- back at rest after one)
 	for index, visual in silvers do
 		local look = visual.look
 		if look and visual.cull < 1 then
-			local flash = math.max(math.sin(now * 5.5 + index * 1.3), 0) ^ 6
-			local color = SILVER_BASE:Lerp(SILVER_FLASH, 0.3 + 0.7 * flash)
-			for part in look.saved do
-				part.Color = color
-				part.Reflectance = 0.3 + 0.3 * flash
-			end
-			if look.light then
-				look.light.Brightness = 1.1 + 2.6 * flash
+			local pulse = silverFlash(index, now)
+			if pulse > 0 or (silverPulse[index] or 0) > 0 then
+				silverPulse[index] = pulse
+				local neon = pulse > SILVER_NEON and (visual.body.Position - camera).Magnitude > SILVER_NEAR
+				local material = if neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
+				local color = SILVER_BASE:Lerp(SILVER_FLASH, pulse)
+				for part in look.saved do
+					part.Color = color
+					part.Reflectance = SILVER_SHEEN * (1 - pulse)
+					if part.Material ~= material then
+						part.Material = material
+					end
+				end
+				if look.light then
+					look.light.Brightness = SILVER_GLOW + (SILVER_GLOW_FLASH - SILVER_GLOW) * pulse
+				end
 			end
 		end
 	end
@@ -1312,7 +1368,11 @@ local function step(dt: number)
 						glintSeen[index] = true
 						local glintScale = glintLook.glintScale
 						if glintScale then
-							glintScale.Scale = scaleBy * vis * (0.75 + 0.25 * math.sin(now * 5 + index * 1.7))
+							-- (a Silver fish's star swells with its mirror flash)
+							glintScale.Scale = scaleBy
+								* vis
+								* (0.75 + 0.25 * math.sin(now * 5 + index * 1.7))
+								* (1 + 0.7 * (silverPulse[index] or 0))
 						end
 					end
 				else

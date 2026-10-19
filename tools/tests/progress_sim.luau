@@ -583,8 +583,8 @@ end
 ---------------------------------------------------------------------------------
 -- Probing: kg eaten a second at each level, and the swim there and back
 ---------------------------------------------------------------------------------
-local PROBE_LEVELS = { 1, 3, 5, 8, 10, 12, 15, 18, 21, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }
-local function probe()
+local PROBE_LEVELS = { 1, 4, 8, 10, 12, 15, 18, 21, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }
+local function probe(every: boolean)
 	print(`PROBE ({species.name}): a hunter at each level, 4 minutes of hunting × 4 dives`)
 	print("   LV  biome                 kg/s   ×mass/min  fish/s  out s  home s  fixed s")
 	local rows = {}
@@ -619,6 +619,9 @@ local function probe()
 				fixed / 4
 			)
 		)
+	end
+	if not every then
+		return rows
 	end
 	-- Every biome a fish of the level may hunt (its level at least the biome's
 	-- lowest): kg eaten a second, so a biome much richer than the one that suits the
@@ -730,8 +733,82 @@ local function progress(rules: Rules, maxHours: number)
 	return dives, reached
 end
 
+---------------------------------------------------------------------------------
+-- Designing the curves (MODE=design): from the probe, the pace asked for and how
+-- long a full Haul should take to fill, the Haul's cap (levels' worth: the pace ×
+-- a dive's minutes) and rate (that cap's kg over the kg eaten in the fill) at each
+-- probed level, as Config/Tuning `growth` tables. Then run the progress to check.
+---------------------------------------------------------------------------------
+-- Hours of active play to reach each level (2026-10-19 targets)
+local TARGETS = { { 8, 0.1 }, { 15, 0.58 }, { 25, 1.5 }, { 40, 4 }, { 55, 7 }, { 70, 11 }, { 85, 16 }, { 100, 22 } }
+-- Minutes of hunting a full Haul should take (the tutorial's first, then 2.5–4)
+local FILL = { { 1, 1.5 }, { 4, 2 }, { 8, 2.5 }, { 25, 3 }, { 40, 3.5 }, { 55, 4 }, { 100, 4 } }
+local TUTORIAL_LEVELS = 7 -- a full Haul below LV 4 (Config/Tutorial HAUL_LEVELS)
+
+local function lerpPoints(points: { { number } }, x: number): number
+	if x <= points[1][1] then
+		return points[1][2]
+	end
+	for i = 2, #points do
+		local a, b = points[i - 1], points[i]
+		if x <= b[1] then
+			return a[2] + (b[2] - a[2]) * (x - a[1]) / (b[1] - a[1])
+		end
+	end
+	return points[#points][2]
+end
+
+-- Levels an hour at a level: each band's slope, read at the band's middle and eased
+-- between middles
+local function pace(level: number): number
+	local mids: { { number } } = {}
+	for i = 2, #TARGETS do
+		local a, b = TARGETS[i - 1], TARGETS[i]
+		table.insert(mids, { (a[1] + b[1]) / 2, (b[1] - a[1]) / (b[2] - a[2]) })
+	end
+	return lerpPoints(mids, level)
+end
+
+local function design()
+	local rows = probe(false)
+	local rates, caps = {}, {}
+	print("\n  LV  pace/h  fill min  swim min  cap (levels)  cap kg      rate")
+	for _, row in rows do
+		local level = row.level
+		local mass = Size.massForLevel(level)
+		local fill = lerpPoints(FILL, level)
+		local levels
+		if level < 8 then
+			levels = TUTORIAL_LEVELS
+		else
+			levels = pace(level) * (fill + row.travel / 60) / 60
+		end
+		local capKg = mass * (G ^ levels - 1)
+		local rate = capKg / (row.rate * fill * 60)
+		print(
+			string.format(
+				"  %3d  %6.2f  %8.2f  %8.2f  %12.3f  %8.3f  %8.5f",
+				level,
+				if level < 8 then 0 else pace(level),
+				fill,
+				row.travel / 60,
+				levels,
+				capKg,
+				rate
+			)
+		)
+		table.insert(rates, string.format("{ %d, %.3g }", level, rate))
+		table.insert(caps, string.format("{ %d, %.2f }", level, levels))
+	end
+	print("\n  rate = { " .. table.concat(rates, ", ") .. " },")
+	print("  cap = { " .. table.concat(caps, ", ") .. " },")
+end
+
 if args.mode == "probe" then
-	probe()
+	probe(true)
+	return
+elseif args.mode == "design" then
+	design()
 	return
 end
 
