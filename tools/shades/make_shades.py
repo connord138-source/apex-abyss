@@ -3040,6 +3040,43 @@ def mirror_scales(m: Fish, size, radius=0.75):
     return h.astype(np.float32), out.astype(np.float32), crease.astype(np.float32)
 
 
+# Silver's tones (v14), with a fish's own where it needs them. Each entry is a colour
+# and how far it's mixed in; `glow` is the body's glow (0 for none)
+SILVER = {
+    "lo": (0.62, 0.66, 0.72),
+    "hi": (0.70, 0.73, 0.78),
+    "horizon": ((0.17, 0.24, 0.37), 0.8),
+    "bounce": ((0.66, 0.70, 0.77), 0.45),
+    "streak": ((0.82, 0.85, 0.90), 0.9),
+    "core": ((0.86, 0.88, 0.93), 0.8),
+    "flash": ((0.85, 0.88, 0.94), 0.7),
+    "behind": ((0.20, 0.28, 0.42), 0.55),
+    "crease": ((0.24, 0.32, 0.46), 0.5),
+    "engraved": ((0.24, 0.31, 0.45), 0.6),
+    "glow": 0.45,
+}
+# v14.1 (PC 2026-10-19, SV1): on the Anglerfish, a dark fish whose lure lamp is
+# always lit, v14's silver read near-white and glowing, "almost glowing pale
+# blue-white". Its silver is a step darker (mid-toned like the other five in the
+# water), its bands and creases deeper, and its body doesn't glow: only the lure
+# does, as in every Angler skin (done() adds it)
+SILVER_FISH = {
+    "Angler": {
+        "lo": (0.50, 0.55, 0.62),
+        "hi": (0.58, 0.62, 0.69),
+        "horizon": ((0.11, 0.17, 0.29), 0.9),
+        "bounce": ((0.54, 0.59, 0.67), 0.45),
+        "streak": ((0.73, 0.77, 0.84), 0.9),
+        "core": ((0.77, 0.80, 0.87), 0.8),
+        "flash": ((0.77, 0.81, 0.88), 0.7),
+        "behind": ((0.13, 0.20, 0.33), 0.65),
+        "crease": ((0.16, 0.23, 0.36), 0.6),
+        "engraved": ((0.16, 0.22, 0.35), 0.7),
+        "glow": 0.0,
+    },
+}
+
+
 def catch_silver(m):  # Silver (v14): polished silver, mirror scales catching the light, steel-blue creases
     """The commonest catch track's skin (Silver prey, 2026-10-18): Golden's polish in
     silver. Not the plain silvery prey (a dark back over a silver belly) and not
@@ -3055,8 +3092,10 @@ def catch_silver(m):  # Silver (v14): polished silver, mirror scales catching th
     with dark parts trips the classifier), blue above green above red everywhere (no
     cream or beige), and little metal (metal shows the dark water, not its colour:
     Chrome went dark that way). The moving shine is the game's: Config/Shades FX
-    `sheen` in silver."""
+    `sheen` in silver. The tones are SILVER's, or the fish's own in SILVER_FISH (the
+    Angler's: darker, with no body glow, v14.1)."""
     base = m.base if isinstance(m, Smooth) else m
+    tone = {**SILVER, **SILVER_FISH.get(base.name, {})}
     sm = smooth(base)
     L = own_lum(base)
     lines = own_lines(base)
@@ -3078,24 +3117,26 @@ def catch_silver(m):  # Silver (v14): polished silver, mirror scales catching th
     core = smoothstep(0.5, 0.6, nz) * smoothstep(0.86, 0.74, nz)
     horizon = smoothstep(0.3, 0.16, nz) * smoothstep(-0.32, -0.12, nz)
     bounce = smoothstep(-0.42, -0.62, nz)
-    rgb = mix(board(base, (0.62, 0.66, 0.72)), (0.70, 0.73, 0.78), smoothstep(0.1, 0.85, L))
-    rgb = mix(rgb, (0.17, 0.24, 0.37), horizon * 0.8)
-    rgb = mix(rgb, (0.66, 0.70, 0.77), bounce * 0.45)
-    rgb = mix(rgb, (0.82, 0.85, 0.90), streak * 0.9)
-    rgb = mix(rgb, (0.86, 0.88, 0.93), core * 0.8)
+    rgb = mix(board(base, tone["lo"]), tone["hi"], smoothstep(0.1, 0.85, L))
+    rgb = mix(rgb, tone["horizon"][0], horizon * tone["horizon"][1])
+    rgb = mix(rgb, tone["bounce"][0], bounce * tone["bounce"][1])
+    rgb = mix(rgb, tone["streak"][0], streak * tone["streak"][1])
+    rgb = mix(rgb, tone["core"][0], core * tone["core"][1])
     # Each scale a flat mirror: lighter toward its free edge (a sequin's tilt), a
     # few tilted to the light flashing bright
     rgb = rgb * (0.93 + 0.14 * out * on)[..., None]
     flash = smoothstep(0.82, 0.9, h) * on * smoothstep(-0.3, 0.2, nz)
-    rgb = mix(rgb, (0.85, 0.88, 0.94), flash * 0.7)
+    rgb = mix(rgb, tone["flash"][0], flash * tone["flash"][1])
     # The crease behind each free edge steel-blue
-    rgb = mix(rgb, (0.20, 0.28, 0.42), behind * on * 0.55)
+    rgb = mix(rgb, tone["behind"][0], behind * on * tone["behind"][1])
     crease = smoothstep(-0.02, -0.14, base.fine)
-    rgb = mix(rgb, (0.24, 0.32, 0.46), crease * 0.5)
-    rgb = mix(rgb, (0.24, 0.31, 0.45), engraved * 0.6)
+    rgb = mix(rgb, tone["crease"][0], crease * tone["crease"][1])
+    rgb = mix(rgb, tone["engraved"][0], engraved * tone["engraved"][1])
     rgb = np.clip(rgb * (0.9 + 0.2 * grain)[..., None], 0, 1)
-    # A faint even glow, stronger in the streak and on the flashing scales
-    emit = rgb * (0.45 * (1 - 0.5 * engraved) * (1 + 0.8 * streak + 0.4 * core + 0.6 * flash))[..., None]
+    # A faint even glow, stronger in the streak and on the flashing scales (none on
+    # the Angler: its lure's glow is its only one, done() adds it)
+    glow = tone["glow"]
+    emit = rgb * (glow * (1 - 0.5 * engraved) * (1 + 0.8 * streak + 0.4 * core + 0.6 * flash))[..., None] if glow > 0 else None
     rough = 0.42 - 0.1 * streak - 0.08 * flash + 0.12 * behind * on
     metal = np.full(base.y.shape, 0.25, np.float32)
     return done(base, rgb, "satin", emit=emit, metal=metal, rough=rough, detail=0.4)
