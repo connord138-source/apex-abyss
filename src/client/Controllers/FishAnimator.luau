@@ -304,8 +304,11 @@ local function animate(character: Model, state: FishState, dt: number, isLocal: 
 		yawRate = math.asin(math.clamp(flatBefore.Unit:Cross(flatNow.Unit).Y, -1, 1)) / dt
 	end
 	state.heading = look
+	-- (yawRate is + turning left and SwimWave's + bend swings the tail right, so the
+	-- bend is the yaw rate's opposite: it had flung the tail out of the turn, as the
+	-- predators did until 2026-10-19)
 	state.bend, state.bendVelocity =
-		Spring.number(state.bend, state.bendVelocity, math.clamp(yawRate * 0.12, -0.4, 0.4), 10, dt)
+		Spring.number(state.bend, state.bendVelocity, math.clamp(-yawRate * 0.12, -0.4, 0.4), 10, dt)
 
 	local p, a, bend = state.phase, state.amplitude, state.bend
 	-- The head holds still; only a turn bends it (Shared/SwimWave: a real fish whips
