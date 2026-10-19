@@ -287,6 +287,13 @@ local function play(summary: { [string]: any })
 	local root = SwimController.root() :: BasePart
 	local camera = workspace.CurrentCamera
 	local startOffset = camera.CFrame - root.Position
+	-- A bank on arriving in the den can come before the camera has cut there: then
+	-- the "behind" it blends back to is a spot behind the fish, not the plaza (PC
+	-- 2026-10-19, BK1: the end of the sequence flew out to the Kelp outside the hub)
+	if startOffset.Position.Magnitude > math.max(after * 12, 60) then
+		local back = -root.CFrame.LookVector * math.max(after * 3, 10) + Vector3.new(0, math.max(after, 3), 0)
+		startOffset = CFrame.lookAt(back, Vector3.zero)
+	end
 	local startFov = camera.FieldOfView
 	-- Side-on, head to the left (the camera on the fish's left), framed for the
 	-- grown fish and its pop; the other side if rock is closer on this one
