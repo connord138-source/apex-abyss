@@ -15,6 +15,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `species_fbx` | Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged FBX) | `ReplicatedStorage.FishModels.<SpeciesId>` |
 | `prey_fbx` | Minnow, Sardine, Wrasse, Snapper, Grouper (rigged FBX, 4 spine segments: their bones swim) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey2_fbx` | Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept; rigged FBX like `prey_fbx`, 4 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.025; see "The second prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `prey3_fbx` | Butterflyfish, Triggerfish, Swordfish, OceanSunfish, Coelacanth, VentEelpout, GulperEel, Oarfish (2026-10-19, the third prey batch from the approved PreySheetB concept; rigged FBX like `prey_fbx`: 4 spine segments, the Sunfish 2, the Eelpout 5, the Gulper Eel 6, the Oarfish 7; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.094; see "The third prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
 | `props2_glb` | TreasureChest (GLB; the treasure map dig site's chest) | `ReplicatedStorage.WorldProps.TreasureChest` |
@@ -35,8 +36,8 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
 The Barracuda and Reef Shark predators (and prey schools) are the rigged 'Cuda and
 Reef Shark species models, copied into `PreyModels` by `organize_imports`. The Tripo
-balance is about 950 credits (2026-10-18, after the second prey batch; `python
-tools/tripo.py balance`).
+balance is about 205 credits (2026-10-19, after the third prey batch and the den props'
+batch 2; `python tools/tripo.py balance`).
 
 ## Import into Studio (owner's PC)
 
@@ -150,6 +151,68 @@ and antennae (within 45), never a see-through body (`GLOWS`); the three nearest
 Lanternfish carry a faint cyan PointLight (range 7). The spots sit on the body's
 outline from its bounding box, so if they float off or sink into an imported
 Lanternfish, nudge `at` in `GLOWS` (x across, y up, z along the body, in half-extents).
+
+### The third prey batch (`prey3_fbx`, 2026-10-19)
+
+Eight prey from the approved concept sheet `assets/concepts/PreySheetB.jpg` (the
+working copy is `assets/tripo/prey_concepts/PreySheetB_grid.png`), natives for the
+reef, the wrecks and the deep biomes (`Config/Prey`, ids as below): Butterflyfish
+(Coral Reef), Triggerfish (Shipwreck Graveyard), Swordfish and OceanSunfish (Open
+Blue), Coelacanth (Sunken Ruins), VentEelpout (Hydrothermal Vents), GulperEel and
+Oarfish (Abyssal Trench).
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/`):
+
+1. `python3 tools/props/prey_refs.py --batch B`: each fish's crop of the sheet, mirrored
+   to face left (the sheet's fish face right), large, over the style strip
+   (`assets/tripo/prey3_refs/`). The Oarfish's and the Gulper Eel's tails curl on the
+   concept, and Nano Banana copied the curl twice however the prompt asked for a
+   straight body, so their references are straightened (`BATCHES["B"]["straighten"]`:
+   the curl cut off and the body's last stretch run on straight, tapering).
+2. `python tools/tripo.py run tools/tripo_jobs_prey3_sheets.json`: a clean side-on
+   model sheet each (Nano Banana, 5 credits; 60 with the two redos). Six copied the
+   style strip under the fish; `prey_refs.py --batch B --tops <Names>` cut them above it.
+3. `python tools/tripo.py run tools/tripo_jobs_prey3_models.json`: image_to_model
+   (30 credits each, 240; 300 in all).
+4. `tools/props/strip_normals.py` (one each), then `tools/props/safe_colors.py`
+   (skin-tone texels: Butterflyfish 31.1%, VentEelpout 3.9%, Triggerfish 2.8%, Oarfish
+   1.3%, all to 0%). Two new options: `--vivid` for the Butterflyfish (its pale lemon
+   turned grey-white under the bright rule; yellows get more chroma instead) and
+   `--crimson` for the Oarfish (its orange-red fins over the pale blue-silver body
+   scored **0.99** on the classifier with no skin tone in them; a truer red, a little
+   darker, scored 0.03). Watch for this on any new pale fish with orange-red parts.
+5. `python3.11 tools/blender/rig_fish.py <safe>.glb assets/fbx/prey/<Id>.fbx --segments N`
+   with N = 4 (Butterflyfish, Triggerfish, Swordfish, Coelacanth), 2 (OceanSunfish, a
+   stiff disc), 5 (VentEelpout), 6 (GulperEel) and 7 with `--head 0.14` for the Oarfish
+   (`--head` is new: the share of the length the stiff Head bone takes, 0.28 by default;
+   the Oarfish's head is small, so more of its ribbon waves). `SchoolController` waves
+   however many `SpineN` bones a rig has. `tools/blender/fish_check.py`: every head on
+   the left, once the Swordfish and the OceanSunfish were rigged again with `--flip`
+   (the deep-end guess took the thin sword and the Sunfish's round head for tails; their
+   tail fin and scalloped back edge are the deeper ends).
+6. Each FBX embeds only its colour map (no ORM, no normal map; `fbx_strip_normals.py`
+   drops nothing). The eight embedded images were extracted and screened with
+   `screen_shades.py` and the classifier: exit 0, none flagged, highest 0.094
+   (Triggerfish; Oarfish 0.036).
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `prey3_fbx` into `assets/fbx/prey/`, beside
+   the others).
+2. **File → Import 3D**, the eight new files in `assets/fbx/prey/`
+   (`"Butterflyfish.fbx" "Triggerfish.fbx" "Swordfish.fbx" "OceanSunfish.fbx"
+   "Coelacanth.fbx" "VentEelpout.fbx" "GulperEel.fbx" "Oarfish.fbx"`), rig on and
+   textures on like the first prey, **Import All**.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the eight
+   names), then **save the place**.
+
+Until a model is imported, the fish is the part-built ellipsoid with `SHAPES` extras:
+the Butterflyfish's eye band, eyespots and snout, the Triggerfish's white belly, yellow
+back and orange beak, the Swordfish's sword and tall dorsal, the Sunfish's tall fins
+and scalloped back edge, the Coelacanth's blotches and lobed fins, the Eelpout's big
+head and ember specks, the Gulper's pouch mouth and whip tail, the Oarfish's red back
+fin, crest and streamers. None of them has `GLOWS` (the Eelpout's specks are painted
+on its texture).
 
 ### The den props, batch 2 (`den_props2_glb`, 2026-10-19)
 

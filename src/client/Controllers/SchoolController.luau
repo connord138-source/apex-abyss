@@ -280,8 +280,9 @@ local function makePart(parent: Instance, color: Color3, shape: "Ellipsoid" | "F
 end
 
 -- Part-built extras on some prey, each an ellipsoid riding on the fish (moved with its
--- body). SHAPES give the second prey batch (Config/Prey, 2026-10-18) a look of its own
--- while its model isn't imported: a belly, bands, fins on the part body. GLOWS are
+-- body). SHAPES give the second and third prey batches (Config/Prey, 2026-10-18/19) a
+-- look of their own while their models aren't imported: a belly, bands, fins on the
+-- part body. GLOWS are
 -- the glowing bits every body wears, imported or not: the Lanternfish's light spots and
 -- the Ghost Shrimp's teal tips (Neon parts; never a see-through body, which sorts
 -- badly). `at` is a place on the body in its half-extents (x across, y up, z along:
@@ -295,6 +296,10 @@ type Glow = { near: number, color: Color3, light: boolean, spots: { ExtraSpec } 
 local LANTERN = Color3.fromRGB(90, 236, 255)
 local SHRIMP_TIP = Color3.fromRGB(60, 240, 214)
 local CHARCOAL = Color3.fromRGB(52, 44, 44)
+local DARK_BAND = Color3.fromRGB(36, 34, 48) -- the Butterflyfish's eye band and eyespot
+local BLOTCH = Color3.fromRGB(214, 226, 234) -- the Coelacanth's pale blotches
+local EMBER = Color3.fromRGB(250, 120, 40) -- the Vent Eelpout's specks
+local OAR_RED = Color3.fromRGB(200, 32, 38) -- the Oarfish's fins (a true red, as its model)
 local GLOW_LIGHTS = 3
 local GLOW_LIGHT_RANGE = 7
 local GLOW_LIGHT_BRIGHTNESS = 0.7
@@ -421,6 +426,167 @@ local SHAPES: { [string]: { ExtraSpec } } = {
 			at = Vector3.new(0, -0.35, 0),
 			size = Vector3.new(0.85, 0.6, 0.85),
 			color = Color3.fromRGB(58, 80, 122),
+		},
+	},
+	-- The third batch (Config/Prey, 2026-10-19)
+	Butterflyfish = {
+		-- the dark band through the eye, the eyespot near the tail, the pointed snout
+		{
+			at = Vector3.new(0, 0.05, -0.5),
+			size = Vector3.new(1.04, 1.04, 0.14),
+			color = DARK_BAND,
+			hug = true,
+		},
+		{ at = Vector3.new(0.8, 0.45, 0.45), ball = 0.07, color = DARK_BAND, hug = true },
+		{ at = Vector3.new(-0.8, 0.45, 0.45), ball = 0.07, color = DARK_BAND, hug = true },
+		{
+			at = Vector3.new(0, -0.1, -1),
+			size = Vector3.new(0.18, 0.16, 0.25),
+			color = Color3.fromRGB(240, 196, 30),
+		},
+		{
+			at = Vector3.new(0, 0.85, 0.2),
+			size = Vector3.new(0.1, 0.45, 0.7),
+			color = Color3.fromRGB(226, 172, 20),
+		},
+	},
+	Triggerfish = {
+		-- the white-spotted belly, the yellow net on the back, the orange beak
+		{
+			at = Vector3.new(0, -0.4, 0.05),
+			size = Vector3.new(0.85, 0.5, 0.8),
+			color = Color3.fromRGB(226, 230, 236),
+		},
+		{
+			at = Vector3.new(0, 0.5, 0.05),
+			size = Vector3.new(0.75, 0.35, 0.5),
+			color = Color3.fromRGB(214, 186, 40),
+		},
+		{
+			at = Vector3.new(0, -0.05, -0.98),
+			size = Vector3.new(0.3, 0.25, 0.14),
+			color = Color3.fromRGB(244, 120, 24),
+		},
+		{
+			at = Vector3.new(0, 1, -0.15),
+			size = Vector3.new(0.08, 0.35, 0.2),
+			color = Color3.fromRGB(28, 36, 72),
+		},
+	},
+	Swordfish = {
+		-- the silver belly, the sword and the tall dorsal fin
+		{
+			at = Vector3.new(0, -0.35, 0),
+			size = Vector3.new(0.85, 0.6, 0.9),
+			color = Color3.fromRGB(200, 210, 222),
+		},
+		{
+			at = Vector3.new(0, 0, -1.45),
+			size = Vector3.new(0.12, 0.12, 0.5),
+			color = Color3.fromRGB(96, 88, 150),
+		},
+		{
+			at = Vector3.new(0, 1.5, -0.3),
+			size = Vector3.new(0.08, 1.3, 0.25),
+			color = Color3.fromRGB(58, 50, 128),
+		},
+	},
+	OceanSunfish = {
+		-- the paler belly, one tall fin up and one down, the scalloped back edge
+		{
+			at = Vector3.new(0, -0.3, 0),
+			size = Vector3.new(0.85, 0.6, 0.85),
+			color = Color3.fromRGB(176, 188, 196),
+		},
+		{
+			at = Vector3.new(0, 1.35, 0.5),
+			size = Vector3.new(0.1, 0.9, 0.25),
+			color = Color3.fromRGB(112, 124, 136),
+		},
+		{
+			at = Vector3.new(0, -1.35, 0.5),
+			size = Vector3.new(0.1, 0.9, 0.25),
+			color = Color3.fromRGB(112, 124, 136),
+		},
+		{
+			at = Vector3.new(0, 0, 0.95),
+			size = Vector3.new(0.3, 0.85, 0.12),
+			color = Color3.fromRGB(150, 162, 172),
+		},
+	},
+	Coelacanth = {
+		-- white blotches, fleshy lobed fins, the second dorsal on its stalk
+		{ at = Vector3.new(0.85, 0.25, -0.15), ball = 0.06, color = BLOTCH, hug = true },
+		{ at = Vector3.new(-0.85, 0.25, -0.15), ball = 0.06, color = BLOTCH, hug = true },
+		{ at = Vector3.new(0.85, -0.1, 0.3), ball = 0.07, color = BLOTCH, hug = true },
+		{ at = Vector3.new(-0.85, -0.1, 0.3), ball = 0.07, color = BLOTCH, hug = true },
+		{
+			at = Vector3.new(0.75, -0.55, -0.3),
+			size = Vector3.new(0.3, 0.3, 0.3),
+			color = Color3.fromRGB(44, 72, 98),
+		},
+		{
+			at = Vector3.new(-0.75, -0.55, -0.3),
+			size = Vector3.new(0.3, 0.3, 0.3),
+			color = Color3.fromRGB(44, 72, 98),
+		},
+		{
+			at = Vector3.new(0, 0.95, 0.4),
+			size = Vector3.new(0.1, 0.5, 0.3),
+			color = Color3.fromRGB(44, 72, 98),
+		},
+	},
+	VentEelpout = {
+		-- the big blunt head, the long soft back fin, a few ember-orange specks
+		{
+			at = Vector3.new(0, 0.05, -0.6),
+			size = Vector3.new(1.1, 1.1, 0.5),
+			color = Color3.fromRGB(64, 60, 64),
+		},
+		{
+			at = Vector3.new(0, 0.85, 0.3),
+			size = Vector3.new(0.08, 0.3, 0.9),
+			color = Color3.fromRGB(74, 70, 74),
+		},
+		{ at = Vector3.new(0.85, 0.2, -0.1), ball = 0.04, color = EMBER, hug = true },
+		{ at = Vector3.new(-0.85, 0.2, -0.1), ball = 0.04, color = EMBER, hug = true },
+		{ at = Vector3.new(0.85, -0.1, 0.35), ball = 0.04, color = EMBER, hug = true },
+		{ at = Vector3.new(-0.85, -0.1, 0.35), ball = 0.04, color = EMBER, hug = true },
+	},
+	GulperEel = {
+		-- the huge pouch mouth, its dark inside, the whip tail
+		{
+			at = Vector3.new(0, -0.1, -0.7),
+			size = Vector3.new(1.4, 1.6, 0.55),
+			color = Color3.fromRGB(26, 24, 30),
+		},
+		{
+			at = Vector3.new(0, -0.25, -1),
+			size = Vector3.new(0.9, 0.9, 0.1),
+			color = Color3.fromRGB(54, 30, 44),
+		},
+		{
+			at = Vector3.new(0, 0, 1.4),
+			size = Vector3.new(0.12, 0.15, 0.8),
+			color = Color3.fromRGB(22, 22, 28),
+		},
+	},
+	Oarfish = {
+		-- the red fin along the whole back, the crest of rays, the streamers below
+		{
+			at = Vector3.new(0, 1.1, 0.05),
+			size = Vector3.new(0.08, 0.5, 0.95),
+			color = OAR_RED,
+		},
+		{
+			at = Vector3.new(0, 2, -0.85),
+			size = Vector3.new(0.06, 1.8, 0.12),
+			color = OAR_RED,
+		},
+		{
+			at = Vector3.new(0, -1.6, -0.55),
+			size = Vector3.new(0.05, 0.35, 0.5),
+			color = OAR_RED,
 		},
 	},
 }

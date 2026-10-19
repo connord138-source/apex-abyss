@@ -49,6 +49,9 @@ export type PreyDef = {
 	back: Color3,
 	belly: Color3,
 	slim: number, -- body height / length (0.2 = eel-thin, 0.4 = deep-bodied)
+	-- Never turns on a smaller fish (AggroService): a drifter like the Ocean Sunfish
+	-- chasing anyone down would be silly
+	calm: boolean?,
 }
 
 -- Where the deep biomes are (Config/Biomes; the deep floor starts past the drop-off,
@@ -87,7 +90,7 @@ local list: { PreyDef } = {
 			-- Ghost Shrimp swarms and Lanternfish, the second prey batch, below)
 			{ band = OUTER, angles = WRECKS, schools = 6, depth = { 4, 40 }, spread = 1.6 },
 			-- (11 until the Butterflyfish came)
-			{ band = OUTER, angles = REEF, schools = 8, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
+			{ band = OUTER, angles = REEF, schools = 6, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
 			{ band = DEEP, angles = RUINS, schools = 10, depth = { 6, 50 } },
 		} :: { Zone },
 		respawn = 8,
@@ -498,14 +501,14 @@ local list: { PreyDef } = {
 		name = "Lanternfish",
 		biome = "AbyssalTrench",
 		mass = 0.5,
-		schools = 12,
+		schools = 10,
 		perSchool = 18,
 		spread = 2.6,
 		speed = 7,
 		pathRadius = { 20, 40 },
 		depth = { 20, 220 },
 		zones = {
-			{ band = TRENCH, trench = true, schools = 12 }, -- (8 until 2026-10-19)
+			{ band = TRENCH, trench = true, schools = 10 }, -- (8 until 2026-10-19)
 		} :: { Zone },
 		respawn = 9,
 		back = Color3.fromRGB(30, 40, 72),
@@ -584,6 +587,7 @@ local list: { PreyDef } = {
 		id = "OceanSunfish",
 		name = "Ocean Sunfish",
 		biome = "OpenBlue",
+		calm = true,
 		mass = 80, -- (swallowed from about LV 54)
 		schools = 5,
 		perSchool = 1,
@@ -604,7 +608,7 @@ local list: { PreyDef } = {
 		id = "Coelacanth",
 		name = "Coelacanth",
 		biome = "SunkenRuins",
-		mass = 40, -- (swallowed from about LV 47)
+		mass = 14, -- (swallowed from about LV 37)
 		schools = 8,
 		perSchool = 2,
 		spread = 2,
@@ -626,7 +630,7 @@ local list: { PreyDef } = {
 		id = "VentEelpout",
 		name = "Vent Eelpout",
 		biome = "HydrothermalVents",
-		mass = 16, -- (swallowed from about LV 39)
+		mass = 4, -- (a small fish down there; swallowed from about LV 25)
 		schools = 10,
 		perSchool = 4,
 		spread = 2.4,
@@ -646,7 +650,7 @@ local list: { PreyDef } = {
 		id = "GulperEel",
 		name = "Gulper Eel",
 		biome = "AbyssalTrench",
-		mass = 30, -- (swallowed from about LV 45)
+		mass = 4, -- (light for its length, like the Eelpout)
 		schools = 8,
 		perSchool = 3,
 		spread = 2.6,
@@ -666,18 +670,19 @@ local list: { PreyDef } = {
 		-- dark water: the heaviest prey in the sea
 		id = "Oarfish",
 		name = "Oarfish",
+		calm = true,
 		biome = "AbyssalTrench",
-		mass = 200, -- (swallowed from about LV 63)
-		schools = 6,
+		mass = 120, -- (swallowed from about LV 58)
+		schools = 3,
 		perSchool = 1,
 		spread = 1,
 		speed = 3,
 		pathRadius = { 40, 80 },
 		depth = { 60, 300 },
 		zones = {
-			{ band = TRENCH, trench = true, schools = 6 },
+			{ band = TRENCH, trench = true, schools = 3 },
 		} :: { Zone },
-		respawn = 45,
+		respawn = 180, -- (a rare meal: three of them, slow to come back)
 		back = Color3.fromRGB(176, 190, 206),
 		belly = Color3.fromRGB(200, 210, 222),
 		slim = 0.09,
