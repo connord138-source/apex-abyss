@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local PredatorsConfig = require(ReplicatedStorage.Shared.Config.Predators)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Ground = require(ReplicatedStorage.Shared.Ground)
 local Perks = require(ReplicatedStorage.Shared.Perks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
@@ -649,8 +650,8 @@ local function payOut(predator: Predator, killer: Player?)
 		Net.notify(
 			player,
 			if player == killer
-				then `You killed the {def.name}! +{string.format("%.1f", gained)} kg Haul`
-				else `The {def.name} is dead · your share: +{string.format("%.1f", gained)} kg Haul`,
+				then `You killed the {def.name}! +{Format.haul(gained)} Haul`
+				else `The {def.name} is dead · your share: +{Format.haul(gained)} Haul`,
 			"good"
 		)
 	end

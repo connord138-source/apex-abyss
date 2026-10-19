@@ -147,6 +147,14 @@ local function haulRate(player: Player): number
 	return if data then Size.haulRate(Progress.mass(data)) else 1
 end
 
+-- Food in a biome below the fish counts for less (Config/Tuning `growth`
+-- `overLevel`): × this, by the biome the fish is in now (none in the hub)
+local function overLevel(player: Player, banked: number): number
+	local _, root = FishService.character(player)
+	local biome = if root then Biomes.at(root.Position) else nil
+	return if biome then Size.overLevel(Size.level(banked), biome.maxLevel) else 1
+end
+
 -- How much a fish's full Haul holds (kg; Config/Tuning `growth` `cap`)
 local function fullHaul(player: Player): number
 	local data = DataService.get(player)
@@ -155,8 +163,8 @@ end
 
 -- How a gain counts (addHaul). Everyday food stops at the full Haul (MAX SIZE);
 -- rewards and a Haul given back go on top:
---   "food"    eaten food in kg: × the fish's Haul rate, then ×2 Mass and Server
---             Frenzy (prey, filler food)
+--   "food"    eaten food in kg: × the fish's Haul rate (less in a biome below it:
+--             `overLevel`), then ×2 Mass and Server Frenzy (prey, filler food)
 --   "rated"   already in Haul (a share of a full Haul: bait, whale and slick chunks,
 --             predator loot; a share of a kill): ×2 Mass and Server Frenzy only
 --   "raw"     goes on as it is (chum from a dead fish's Haul, grown already)
@@ -181,6 +189,8 @@ local function addHaul(player: Player, amount: number, how: Gain?): number
 		added *= MonetizationService.growth(player)
 	end
 	if how == nil or how == "food" then
+		-- (worth stays the kg eaten: what a bank pays isn't cut, only the growth)
+		rate *= overLevel(player, banked)
 		added *= rate
 	end
 	if how ~= "sized" and how ~= "restore" then

@@ -179,7 +179,7 @@ local function rewardCard(summary: { [string]: any })
 		table.insert(lines, `+{summary.teeth} {string.upper(currency)}`)
 	end
 	if typeof(summary.haul) == "number" then
-		table.insert(lines, `+{string.format("%.1f", summary.haul)} kg HAUL · carry it home`)
+		table.insert(lines, `+{Format.haul(summary.haul)} HAUL · carry it home`)
 	end
 	if typeof(summary.coral) == "number" then
 		table.insert(lines, `+{Ui.number(summary.coral)} CORAL`)

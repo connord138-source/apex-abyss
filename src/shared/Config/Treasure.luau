@@ -207,9 +207,16 @@ return {
 	maxHeld = 3, -- maps carried at once; more don't drop until one is dug up
 	-- Where maps come from, with the tier odds for each source (weights)
 	drops = {
-		-- Eating prey: the chance scales with the prey's mass (per kg, capped)
+		-- Eating prey: the chance scales with the prey's mass (per kg, capped)...
 		preyPerKg = 0.006,
 		preyMax = 0.045,
+		-- ...and at most this many an hour (TreasureService: an allowance that refills,
+		-- holding up to `preyBurst`). It's about what a fish in the Kelp gets anyway
+		-- (~6 an hour of hunting); from LV ~25 bigger, heavier prey (Parrotfish, Tuna,
+		-- Lionfish, Grouper, all at the 4.5% cap) made it 30–65 an hour, a map every
+		-- minute or two (run_progress_sim.sh `maps/h`)
+		preyPerHour = 7,
+		preyBurst = 2,
 		preyTiers = { Tattered = 70, Weathered = 25, Captain = 5 },
 		bigPreyMass = 2, -- prey this heavy or more use the big-prey tier odds
 		bigPreyTiers = { Tattered = 40, Weathered = 45, Captain = 15 },

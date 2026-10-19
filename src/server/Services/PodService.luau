@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
@@ -183,11 +184,7 @@ local function shareKill(eater: Player, _victim: Player, gain: number)
 			-- (the kill took the eater's Haul rate already: "rated")
 			local added = HuntService.gain(mate, gain * tune.killShare, "rated")
 			if added > 0 then
-				Net.notify(
-					mate,
-					`Pod kill by {eater.DisplayName} · +{math.floor(added * 10 + 0.5) / 10} kg Haul`,
-					"good"
-				)
+				Net.notify(mate, `Pod kill by {eater.DisplayName} · +{Format.haul(added)} Haul`, "good")
 			end
 		end
 	end

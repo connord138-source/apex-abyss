@@ -18,6 +18,18 @@ function Format.mass(kg: number): string
 	return string.format("%d t", math.floor(kg / 1000 + 0.5))
 end
 
+-- A Haul amount gained (pops, reward toasts): grams under a kilo, since a full Haul is
+-- a fraction of a level (a sardine adds about a gram at LV 10): "1.3 g", "56 g",
+-- "2.4 kg", "340 kg"
+function Format.haul(kg: number): string
+	if kg < 0.01 then
+		return string.format("%.1f g", kg * 1000)
+	elseif kg < 1 then
+		return string.format("%d g", math.floor(kg * 1000 + 0.5))
+	end
+	return Format.mass(kg)
+end
+
 -- A catch's weight with enough digits for the small fish (the Catch Log's biggest:
 -- a minnow weighs 0.06–0.3 kg)
 function Format.catchMass(kg: number): string

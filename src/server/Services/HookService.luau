@@ -205,7 +205,7 @@ local function takeBait(player: Player, id: any)
 		character:SetAttribute("HookedBy", hook.id)
 		character:SetAttribute("HookStruggle", 0)
 	end
-	Net.notify(player, `+{Format.mass(added)} bait · HOOKED! Mash BITE or DASH to break free`, "bad")
+	Net.notify(player, `+{Format.haul(added)} bait · HOOKED! Mash BITE or DASH to break free`, "bad")
 	Net.hooks(payload(now))
 end
 

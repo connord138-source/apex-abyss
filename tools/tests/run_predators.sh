@@ -18,7 +18,7 @@ mkdir -p "$tmp/Config"
 for name in Tuning World Predators Chum Prey; do
 	cp "$src/shared/Config/$name.luau" "$tmp/Config/"
 done
-cp "$src/shared/Size.luau" "$src/shared/Seafloor.luau" "$tmp/"
+cp "$src/shared/Size.luau" "$src/shared/Seafloor.luau" "$src/shared/Format.luau" "$tmp/"
 cp "$service" "$tmp/PredatorService.luau"
 cp "$here/sim_rbx.luau" "$here/sim_services.luau" "$here/predator_sim.luau" "$tmp/"
 if [[ -n "${BEFORE:-}" ]]; then echo 'return { before = true }' > "$tmp/sim_mode.luau"; else echo 'return { before = false }' > "$tmp/sim_mode.luau"; fi
@@ -42,7 +42,7 @@ done
 sed -i -E \
 	-e 's/require\(ReplicatedStorage\.Shared\.Config\.Predators\)/require(".\/Config\/Predators")/' \
 	-e 's/require\(ReplicatedStorage\.Shared\.Config\)/require(".\/Config")/' \
-	-e 's/require\(ReplicatedStorage\.Shared\.(Size|Seafloor)\)/require(".\/\1")/' \
+	-e 's/require\(ReplicatedStorage\.Shared\.(Size|Seafloor|Format)\)/require(".\/\1")/' \
 	-e 's/require\(ReplicatedStorage\.Shared\.([A-Za-z]+)\)/require(".\/sim_services").\1/' \
 	-e 's/require\(script\.Parent\.Parent\.([A-Za-z]+)\)/require(".\/sim_services").\1/' \
 	-e 's/require\(script\.Parent\.([A-Za-z]+)\)/require(".\/sim_services").\1/' \

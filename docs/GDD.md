@@ -118,11 +118,19 @@ levels, filled in 16–30 s, and the server never capped the Haul, only the size
   "10–20 minutes" to LV 100 came from LV 10 and 25 dives, but prey kg stop growing
   with the fish past LV 50, so the old rules took ~2.7 h). The 'Cuda (×1.25 speed)
   reaches LV 100 in ~18.6 h.
-- **Not even across biomes (open):** from LV ~45 the Open Blue's Yellowfin Tuna (35 kg,
-  tight schools of 8) and Mahi-mahi make it 3–5× richer in kg a second than the Ruins,
-  Vents and Trench (23–31 kg/s against 5–11), so a fish that stays there reaches LV
-  100 in ~13 h (`STAY=OpenBlue`). The pace above is for a fish that moves on with its
-  level. Fixes: lighter or fewer tuna (Config/Prey), or a per-biome share on the rate.
+- **Food below you counts for less** (2026-10-19 follow-up): past the top level of the
+  biome a fish is in (`Config/Biomes` `maxLevel`), prey and filler food go on the Haul
+  at ×(1 − 0.1 a level over), never under ×0.2 (`Config/Tuning` `growth`
+  `overLevel`, `Shared/Size.overLevel`, `HuntService` by where the fish is; what a
+  bank pays is unchanged), and the Haul card's hint reads "Too easy here: deeper water
+  feeds you better" (the pops show the smaller gain). From LV ~45 the Open Blue's
+  Yellowfin Tuna (35 kg, tight schools of 8) and Mahi-mahi make it 3–5× richer in kg
+  a second than the Ruins, Vents and Trench (23–31 kg/s against 5–11): a fish that
+  stayed there reached LV 70 / 85 / 100 in 8.4 / 10.3 / 13.1 h; with the falloff
+  10.4 / 15.7 / 25.5 h, against 10.8 / 15.9 / 21.9 following the biomes (switching to
+  the Trench at 85 gains nothing either). A fish lingering in the Kelp still reaches
+  LV 15 on pace (the falloff starts at 11), but past 15 there a dive takes ~20 min.
+  `run_progress_sim.sh` checks the Open Blue stayer every run.
 - ×2 Mass and Server Frenzy double every gain, so a Haul fills in half the time; with
   the swim home the same, a fish grows ~1.7× as fast an hour (it was ×2 a dive).
 
@@ -501,9 +509,12 @@ skin at a low drop rate. Like clue scrolls in RuneScape. Only the player holding
 map can uncover it. The map is in their inventory."
 
 - **Getting one:** prey carry a chance that scales with their mass (a Minnow ~0.06%,
-  a Grouper 4.5%); every shell 1.2%, a golden shell 12%; banking a Haul of 4 kg or
-  more 4%. You hold at most 3; more don't drop until one is dug up. A found map is
-  followed automatically if nothing else is.
+  a Grouper 4.5%), at most 7 maps an hour from prey (an allowance that refills,
+  holding up to 2: `Config/Treasure` `drops.preyPerHour`, `preyBurst`; 2026-10-19,
+  after the second prey batch's heavy fish made it 30–65 an hour from LV ~25, a map
+  every minute or two, against ~6 an hour in the Kelp); every shell 1.2%, a golden
+  shell 12%; banking a Haul of 4 kg or more 4%. You hold at most 3; more don't drop
+  until one is dug up. A found map is followed automatically if nothing else is.
 - **Tiers:** Tattered (170–460 studs from the hub), Weathered (460–830), Captain's
   (700–1,150, out past the drop-off onto the deep floor). Small prey and plain shells mostly give Tattered;
   big prey, golden shells and big banks skew to Weathered and Captain's.

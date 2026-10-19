@@ -11,6 +11,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Layout = require(ReplicatedStorage.Shared.Layout)
@@ -68,6 +69,7 @@ local zoneCandidate: boolean? = nil
 local zoneSince = 0
 local healthAlpha = 0
 local lastHaul = 0
+local hintAge = 0 -- seconds since the Haul card's hint was last worked out
 
 local function state(): { [string]: any }
 	return ClientState.current or {}
@@ -84,6 +86,14 @@ end
 -- What `kg` eaten puts on the Haul now, as the server reckons it (HuntService
 -- `addHaul`): × the Haul rate (Config/Tuning `growth`), ×2 Mass and Server Frenzy,
 -- up to a full Haul. Nil once the Haul is full (MAX SIZE: food stops going on).
+-- Food in a biome below the fish counts for less (Config/Tuning `growth` `overLevel`;
+-- HuntService does the same by where the fish is): × this here and now
+local function overLevelNow(): number
+	local root = SwimController.root()
+	local biome = if root then Biomes.at(root.Position) else nil
+	return if biome then Size.overLevel(state().level or 1, biome.maxLevel) else 1
+end
+
 local function haulGain(kg: number): number?
 	local s = state()
 	local mass = s.mass or 1
@@ -91,19 +101,12 @@ local function haulGain(kg: number): number?
 	if room <= 1e-9 then
 		return nil
 	end
-	return math.min(kg * Size.haulRate(mass) * growthNow(), room)
+	return math.min(kg * Size.haulRate(mass) * overLevelNow() * growthNow(), room)
 end
 
 -- A Haul pop's amount: grams under a kilo (a sardine adds a gram or two at LV 10)
 local function popMass(kg: number): string
-	if kg < 0.01 then
-		return string.format("+%.1f g", kg * 1000)
-	elseif kg < 1 then
-		return string.format("+%d g", math.floor(kg * 1000 + 0.5))
-	elseif kg < 10 then
-		return string.format("+%.1f kg", kg)
-	end
-	return `+{Format.mass(kg)}`
+	return "+" .. Format.haul(kg)
 end
 
 -- The Haul card: what's on it against what a full one holds
@@ -807,11 +810,14 @@ local function hintFor(s: { [string]: any }): string
 	if haul <= 0 then
 		return if s.inHub
 			then "Swim out a tunnel or up through the roof to hunt"
+			elseif overLevelNow() < 1 then "Too easy here: deeper water feeds you better"
 			else "Swim into smaller fish to swallow them"
 	elseif s.maxed then
 		return "MAX SIZE · bank your Haul to keep growing"
 	elseif s.inHub then
 		return "Swim into your den's glowing pool to bank"
+	elseif overLevelNow() < 1 then
+		return "Too easy here: deeper water feeds you better"
 	end
 	return "Swim home to bank it, or lose it if you're eaten"
 end
@@ -854,6 +860,16 @@ local function step(dt: number)
 	local wantGrowth = math.clamp(haul / math.max(full, 1e-9), 0, 1)
 	growth, growthVelocity = Spring.number(growth, growthVelocity, wantGrowth, 9, dt)
 	haulFill.Size = UDim2.fromScale(math.clamp(growth, 0, 1), 1)
+	-- The hint follows the fish between state updates too (into a biome below it:
+	-- "Too easy here"), twice a second
+	hintAge += dt
+	if hintAge > 0.5 then
+		hintAge = 0
+		local hint = hintFor(s)
+		if hintText.Text ~= hint then
+			hintText.Text = hint
+		end
+	end
 
 	-- The safe zone: checked here every frame so the warning is instant (the server
 	-- decides for real). A short settle time stops it flickering on the edge.

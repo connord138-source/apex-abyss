@@ -36,6 +36,7 @@ local species = Config.Species.byId[args.species]
 assert(species, `no species {args.species}`)
 local SPEED = species.stats.speed
 local rng = Random.new(20261019)
+local mapRng = Random.new(7)
 
 -- Fixed seconds a dive: the portal into the den, the bank's growth scene (3.7 s,
 -- skippable), the loading wash coming out on the plaza (~4.1 s, CLAUDE.md)
@@ -205,10 +206,11 @@ local function biomeAt(x: number, z: number): Biome?
 	return fallback
 end
 
+-- STAY=<biome id>: a player who keeps to one biome once its level opens it
+local stayIn: string = args.stay
 local function biomeFor(level: number): Biome
-	-- STAY=<biome id>: a player who keeps to one biome once its level opens it
 	for _, b in biomes do
-		if b.id == args.stay and level >= b.def.minLevel then
+		if b.id == stayIn and level >= b.def.minLevel then
 			return b
 		end
 	end
@@ -253,6 +255,7 @@ type Rules = {
 	full: (mass: number, haul: number) -> boolean,
 	live: (mass: number, haul: number) -> number,
 	coral: (worth: number, mass: number) -> number,
+	mapAllowance: boolean?, -- prey maps at most `preyPerHour` (Config/Treasure, 2026-10-19)
 }
 
 -- Before 2026-10-19: every kg × 1 at LV 1 easing to × 0.35 by LV 8 (by the level of
@@ -294,6 +297,7 @@ local NEW: Rules = {
 	coral = function(worth)
 		return Tuning.economy.bankCoral * math.sqrt(worth) -- (HuntService `bank`)
 	end,
+	mapAllowance = true,
 }
 
 -- Probing: every kg counts, never full (MODE=probe)
@@ -334,7 +338,9 @@ type Hunter = {
 	-- this dive
 	ate: number,
 	firstAte: number?,
-	maps: number, -- treasure maps expected from what it ate
+	maps: number, -- treasure maps from what it ate this dive (dug up as they come)
+	tokens: number, -- the prey map allowance (TreasureService)
+	tokensAt: number,
 }
 
 local function newHunter(rules: Rules, mass: number): Hunter
@@ -352,6 +358,8 @@ local function newHunter(rules: Rules, mass: number): Hunter
 		ate = 0,
 		firstAte = nil,
 		maps = 0,
+		tokens = Drops.preyBurst,
+		tokensAt = 0,
 	}
 end
 
@@ -383,7 +391,21 @@ local function eat(h: Hunter, raw: number, map: number)
 	h.haul += added
 	h.worth += worth
 	h.ate += 1
-	h.maps += map
+	-- A treasure map from it (TreasureService: by the prey's mass, within the allowance)
+	if map > 0 then
+		local allowed = true
+		if h.rules.mapAllowance then
+			h.tokens = math.min(Drops.preyBurst, h.tokens + (h.t - h.tokensAt) * Drops.preyPerHour / 3600)
+			h.tokensAt = h.t
+			allowed = h.tokens >= 1
+		end
+		if allowed and mapRng:NextNumber() < map then
+			h.maps += 1
+			if h.rules.mapAllowance then
+				h.tokens -= 1
+			end
+		end
+	end
 	if h.firstAte == nil then
 		h.firstAte = h.t
 	end
@@ -624,7 +646,7 @@ local function dive(h: Hunter, biome: Biome?, limit: number?): Dive
 		worth = h.worth,
 		haul = h.haul,
 		ate = h.ate,
-		-- treasure maps: from the prey it ate and the bank (TreasureService; none held)
+		-- treasure maps: from the prey it ate, and the bank's chance (TreasureService)
 		maps = h.maps + (if h.worth >= Drops.bankMinMass then Drops.bank else 0),
 		out = firstAte - out,
 	} :: any
@@ -729,7 +751,10 @@ local function progress(rules: Rules, maxHours: number)
 		end
 	end
 	print(
-		`\n{string.upper(rules.name)} ({species.name}, {#dives} dives, {string.format("%.1f", h.t / 3600)} h)`
+		`\n{string.upper(rules.name)}{if stayIn ~= "" then `, STAYING IN {string.upper(stayIn)}` else ""} ({species.name}, {#dives} dives, {string.format(
+			"%.1f",
+			h.t / 3600
+		)} h)`
 	)
 	print(
 		"  band     dives  min/dive  (hunt + swim)  levels/dive  coral/min  XP/min (bank+catch)  kg/dive  fish/dive  maps/h"
@@ -947,6 +972,22 @@ for _, band in BANDS do
 	check(
 		n > 0 and minutes >= 2 and minutes <= 5,
 		`LV {band[1]}–{band[2]}: a full Haul takes {string.format("%.1f", minutes)} min of hunting, not 2–5`
+	)
+end
+-- No fast lane: a fish that stays in the Open Blue (its tuna) once it may gets to LV 85
+-- and 100 no sooner than 5% before one that follows the biomes (Config/Tuning
+-- `growth` `overLevel`)
+stayIn = "OpenBlue"
+local _, stayed = progress(NEW, 40)
+for _, level in { 70, 85, 100 } do
+	local follow, stay = reached[level], stayed[level]
+	check(
+		follow ~= nil and stay ~= nil and stay >= follow * 0.95 - (if level == 70 then 0.1 * follow else 0),
+		`staying in the Open Blue reaches LV {level} at {if stay
+			then string.format("%.1f", stay / 3600)
+			else "never"} h, following the biomes {if follow
+			then string.format("%.1f", follow / 3600)
+			else "never"} h`
 	)
 end
 if failures > 0 then

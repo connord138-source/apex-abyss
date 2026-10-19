@@ -36,6 +36,10 @@ type Shade = typeof(Config.Shades.list[1])
 local TreasureService = {}
 
 local rng = Random.new()
+-- Each player's allowance of maps from prey (Config/Treasure `drops.preyPerHour`):
+-- tokens refill over time up to `preyBurst`, and a prey map takes one
+type Allowance = { tokens: number, at: number }
+local preyTokens: { [Player]: Allowance } = {}
 local digStarted: { [Player]: { mapId: string, at: number } } = {}
 
 type Data = DataService.PlayerData
@@ -146,15 +150,18 @@ function TreasureService.give(player: Player, tierId: string): boolean
 	return true
 end
 
-local function tryDrop(player: Player, chance: number, weights: { [string]: number })
+-- Returns whether a map dropped
+local function tryDrop(player: Player, chance: number, weights: { [string]: number }): boolean
 	local data = DataService.get(player)
 	if data == nil or #maps(data) >= Treasure.maxHeld or rng:NextNumber() >= chance then
-		return
+		return false
 	end
 	local tier = pickTier(weights)
 	if tier then
 		TreasureService.give(player, tier.id)
+		return true
 	end
+	return false
 end
 
 local function siteOf(map: DataService.TreasureMap): Vector3
@@ -352,12 +359,21 @@ function TreasureService.start()
 		if prey == nil then
 			return
 		end
+		-- At most `preyPerHour` an hour (the allowance refills, up to `preyBurst`)
+		local now = Timing.clock()
+		local bucket: Allowance = preyTokens[player] or { tokens = drops.preyBurst, at = now }
+		preyTokens[player] = bucket
+		bucket.tokens =
+			math.min(drops.preyBurst, bucket.tokens + (now - bucket.at) * drops.preyPerHour / 3600)
+		bucket.at = now
+		if bucket.tokens < 1 then
+			return
+		end
 		local chance = math.min(prey.mass * drops.preyPerKg, drops.preyMax)
-		tryDrop(
-			player,
-			chance,
-			if prey.mass >= drops.bigPreyMass then drops.bigPreyTiers else drops.preyTiers
-		)
+		local tiers = if prey.mass >= drops.bigPreyMass then drops.bigPreyTiers else drops.preyTiers
+		if tryDrop(player, chance, tiers) then
+			bucket.tokens -= 1
+		end
 	end)
 	Events.shells:connect(function(player: Player, value: number)
 		if value >= Config.Shells.goldenValue then
@@ -382,6 +398,7 @@ function TreasureService.start()
 	end)
 	DataService.releasing:connect(function(player)
 		digStarted[player] = nil
+		preyTokens[player] = nil
 	end)
 	if Timing.isStudio() then
 		-- Studio testing from the Server command bar (a require there gets its own
