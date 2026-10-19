@@ -1155,8 +1155,45 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Sunfish, Coelacanth, Vent Eelpout, Gulper Eel, Oarfish; Driftwood Table, Kelp
     Bed, Pearl Pedestal, Bubble Column, Sponge Sofa, Shipwreck Bookshelf, Jellyfish
     Lamp, Sea Glass Lantern, Coral Lamp, Banner, Conch Gramophone, Treasure Chart)
-    were approved by the owner on 2026-10-19 ("Approve all concepts"); prey sheet C
-    (the Kelp, Trench and Vents gaps) followed for approval.
+    were approved by the owner on 2026-10-19 ("Approve all concepts").
+    **Prey batch 3** (sheet B; `prey3_fbx`, sha256 7f4731cf…, colour maps only,
+    highest classifier 0.094): Butterflyfish (Reef 1.2 kg), Triggerfish (Wrecks 2.2),
+    Swordfish (Open Blue 55, fast), OceanSunfish (Open Blue 80, slow), Coelacanth
+    (Ruins 14), VentEelpout (Vents 4), GulperEel (Trench 4), Oarfish (Trench 120, 3 of
+    them). They took schools from the shelf's Minnows, Wrasse, Sardines, Snappers and
+    Groupers (~4,000 fish, 482 schools), so the Vents and Trench have natives; every
+    biome keeps 5+ species a fish of its level can eat. `calm` prey (the Sunfish and
+    Oarfish) never chase a smaller fish (AggroService). Big ones drop shells.
+    Pipeline: `prey_refs.py --batch B` mirrors crops to face left and can straighten a
+    curled tail in the reference (Nano Banana copies a curl whatever the prompt
+    says); `rig_fish.py --head F` sets the stiff head's share (the Oarfish 0.14);
+    `--flip` for a bill or a round head (Swordfish, Sunfish: the deep-end guess
+    fails); SchoolController waves however many `SpineN` bones a rig has.
+    **Moderation lesson:** orange-red fins over a pale silver body (the Oarfish)
+    scored 0.99 with no skin tone in it: `safe_colors.py --crimson` (true red) took
+    it to 0.036, and `--vivid` keeps a yellow fish yellow. Schools lift
+    `CLEAR_STUDS` 2 (a low fish 5+ studs long needs `pathRadius` ~14+ or it pitches
+    into rock). Changing an early prey's school count reshuffles the whole layout
+    and moved pace ±10%: rerun `run_progress_sim.sh` and check the Kelp hunter's 5
+    species in `run_catch_sim.sh`.
+    **Den props batch 2** (boards `assets/concepts/DenPropsA.jpg`/`B.jpg`;
+    `den_props2_glb`, sha256 a8241c01…, highest classifier 0.115): the 8 starter
+    pieces kept their ids and became Tripo models at real scale (Driftwood Table 14 ×
+    7.2 × 7.1, Kelp Bed 12.4 × 6.2 × 16 headboard at the back, Pearl Pedestal, Bubble
+    Column, Jellyfish Lamp on the ceiling, Sea Glass Lantern 1.5 × 5 × 3.2 on a
+    wall, Coral Lamp, Banner); new: Sponge Sofa 750, Shipwreck Bookshelf 800, Conch
+    Gramophone 1,100, Treasure Chart 450 (standalone, no set). `DenItems` `STAND_INS`
+    are part-built versions of the same designs until imported. Lamps light in their
+    own `lamp` colour (no longer the den's glow); the Banner's cloth follows the glow
+    through SurfaceAppearance Overlay (alpha 0.2 on the cloth in its colour map,
+    `DenItems` colours the MeshPart, `organize_imports` sets Overlay since a game
+    script can't). `front = 180` keeps width and depth. Pipeline:
+    `den_props2_refs.py` → sheets → models → `strip_normals` → `den_props2_prep.py
+    prep` (squares up, recolours, flecks) → `safe_colors` → `den_props2_prep.py
+    cloth`. A smooth carved-stone colour map scored 0.62 until it got flecks. **Prey
+    sheet C** (Opaleye, Kelp Bass, Blue Tang, Lingcod, Rattail, Viperfish,
+    Hatchetfish, Humphead Wrasse; `tools/tripo_jobs_prey_concepts3.json`) waits for
+    the owner's approval and a Tripo top-up (balance 205, ~280 needed).
   - **Tutorial: the full loop, nine steps** (`Config/Tutorial`, `TutorialService`
     rewritten, `tutorial.v`): leave the hub, eat 10, 5 shells, fill the Haul
     (`HAUL_LEVELS` 7 levels' worth), bank, spin the wheel (a spin granted), ROLL
