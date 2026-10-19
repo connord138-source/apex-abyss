@@ -348,7 +348,7 @@ local function step(dt: number)
 	end
 	local from = if root then root.Position else camera.CFrame.Position
 	local distance = (position - from).Magnitude
-	-- Distances to its body, not its middle (the Megalodon is 130 studs long)
+	-- Distances to its body, not its middle (the Megalodon is 175 studs long)
 	local measured, shown = PredatorController.gap(state.index, from)
 	local gap = measured or math.max(distance - def.predator.length * 0.4, 0)
 	local sight = def.sight

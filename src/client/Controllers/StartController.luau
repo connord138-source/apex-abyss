@@ -1133,18 +1133,15 @@ function StartController.start()
 		Ui.corner(ring, UDim.new(1, 0))
 		local stroke = Ui.stroke(ring, Color3.fromRGB(220, 250, 255), 0.35, 1.2)
 		ring.Parent = gui
-		table.insert(
-			bubbles,
-			{
-				frame = ring,
-				stroke = stroke,
-				x = x,
-				y = y,
-				speed = speed,
-				wobble = math.random() * 6,
-				passing = passing,
-			}
-		)
+		table.insert(bubbles, {
+			frame = ring,
+			stroke = stroke,
+			x = x,
+			y = y,
+			speed = speed,
+			wobble = math.random() * 6,
+			passing = passing,
+		})
 	end
 	for _ = 1, 12 do
 		bubble(

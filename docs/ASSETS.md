@@ -12,7 +12,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 
 | Bundle | Files | Goes to |
 |---|---|---|
-| `species_fbx` | Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged FBX) | `ReplicatedStorage.FishModels.<SpeciesId>` |
+| `species_fbx` | Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler (rigged FBX; the Cuda and ReefShark have a Jaw bone since 2026-10-19, see "Jaws and fins" below) | `ReplicatedStorage.FishModels.<SpeciesId>` |
 | `prey_fbx` | Minnow, Sardine, Wrasse, Snapper, Grouper (rigged FBX, 4 spine segments: their bones swim) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey2_fbx` | Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept; rigged FBX like `prey_fbx`, 4 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.025; see "The second prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey3_fbx` | Butterflyfish, Triggerfish, Swordfish, OceanSunfish, Coelacanth, VentEelpout, GulperEel, Oarfish (2026-10-19, the third prey batch from the approved PreySheetB concept; rigged FBX like `prey_fbx`: 4 spine segments, the Sunfish 2, the Eelpout 5, the Gulper Eel 6, the Oarfish 7; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.094; see "The third prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
@@ -32,7 +32,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `shade_patch_v13` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch13`: CatchGolden on every fish (polished: reflection bands, a semi-gloss) and X-Ray on the Cuda (an anatomical skeleton) (2026-10-18; 21 images: 3 a GLB, 6 on the Cuda) | the same folders; import after v12 |
 | `shade_patch_v14` | `<Fish>_ShadesPatch.glb` ×6 in `assets/shades/patch14`: CatchSilver, the new Silver catch skin, on every fish (polished silver: reflection bands over mirror scales, steel-blue creases, a semi-gloss) (2026-10-18; 18 images: 3 a GLB) | the same folders; import after v13 |
 | `shade_skins` | `<Fish>_Shades.glb` ×6: each fish's skins (27 quads each: its own 12-skin line plus the 15 universal skins, and a Natural quad on the four toothed fish; color, finish/metal and glow maps, never a normal map; tools/shades v8.2, bone-white teeth) | `ReplicatedStorage.ShadeSkins.<Fish>.<Shade>` (organize_shades.luau) |
-| `boss_fbx` | Megalodon (7 spine segments), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
+| `boss_fbx` | Megalodon (7 spine segments, a Jaw and FinL/FinR since 2026-10-19), GiantSquid (6; the arms trail) (rigged FBX; the world bosses) | `ReplicatedStorage.FishModels.<Id>` |
 
 Not yet made: species growth stages (Fry/Juvenile/Apex), the other biomes' props.
 The Barracuda and Reef Shark predators (and prey schools) are the rigged 'Cuda and
@@ -284,6 +284,38 @@ the three nearest Viperfish carry the faint cyan light like the Lanternfish. On 
 part-built stand-in those spots sit inside the body, and `SHAPES` paints cyan dots on
 its outline instead. If a spot floats off or sinks into an imported fish, nudge `at`
 in `viperSpots` / `hatchetSpots` (x across, y up, z along, in half-extents of the box).
+
+### Jaws and fins (`boss_fbx`, `species_fbx`, 2026-10-19)
+
+The owner: the Megalodon's "mouth doesn't move and his actual movements are very
+stiff ... Same with other predator fish". `tools/blender/rig_fish.py` gained `--jaw` (a
+Jaw bone, a child of Head, hinged at the corner of the mouth; the mouth is found by
+rays up through the head, the lower jaw weighted by a harmonic field along the welded
+surface, so the corners and throat hand over smoothly and every tooth goes with its
+gum) and `--fins` (FinL/FinR on the pectorals, the same way). Re-rigged from the
+original Tripo GLBs (`assets/tripo/bosses`, `assets/tripo/species`):
+
+    python3.11 tools/blender/rig_fish.py assets/tripo/bosses/Megalodon.glb <out>/Megalodon.fbx --segments 7 --jaw --fins
+    python3.11 tools/blender/rig_fish.py assets/tripo/species/ReefShark.glb <out>/ReefShark.fbx --jaw
+    python3.11 tools/blender/rig_fish.py assets/tripo/species/Cuda.glb <out>/Cuda.fbx --jaw
+    python3.11 -I tools/props/fbx_strip_normals.py --out <clean> <out>/*.fbx
+
+The rig is deterministic: the mesh, UVs and colour map come out byte-identical to the
+screened 2026-10-14 files (only the bones and weights change), so no image is new.
+`--fins` is only on the Megalodon: the Reef Shark's long swept pectorals kinked and
+pulled its gill slits out under a tilt. Check a rig with
+`tools/blender/jaw_check.py <fbx> <png> [--view side|three|front]` (the jaw shut, at
+rest and open; the fins tilted) and `tools/blender/pose_check.py <fbx> <png> [--top]`
+(the poses PredatorController drives: cruise, burst-turn, tell, snap, charge, breach).
+
+Import on the PC: `python tools/fetch_assets.py`, then File → Import 3D the three
+files (`assets/fbx/bosses/Megalodon.fbx`, `assets/fbx/species/ReefShark.fbx`,
+`assets/fbx/species/Cuda.fbx`) with the rig and textures on, Import All, run
+`tools/studio/organize_imports.luau` (it prints which came in with a Jaw and fins, and
+copies the new 'Cuda and Reef Shark into `PreyModels.Barracuda` / `.ReefShark`), save
+the place. Without the new files everything still works: no Jaw bone, no jaw motion.
+`FishAnimator` drives a `Jaw` bone by name, so the players' 'Cuda and Reef Shark snap
+their jaws on a bite too.
 
 ### The den props, batch 2 (`den_props2_glb`, 2026-10-19)
 

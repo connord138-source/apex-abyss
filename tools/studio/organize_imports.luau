@@ -112,6 +112,15 @@ for _, item in workspace:GetChildren() do
 		end
 		local rigged = item:FindFirstChildWhichIsA("Bone", true) ~= nil
 		if SPECIES[name] and rigged then
+			-- (the 2026-10-19 rigs: a Jaw on the Megalodon, Reef Shark and 'Cuda, and
+			-- FinL/FinR on the Megalodon; say which came in, so an old file shows)
+			local extras = {}
+			for _, bone in { "Jaw", "FinL", "FinR" } do
+				if item:FindFirstChild(bone, true) then
+					table.insert(extras, bone)
+				end
+			end
+			print(`[organize_imports] {name}: rigged{if #extras > 0 then ", " .. table.concat(extras, ", ") else ""}`)
 			replaceIn(folder("FishModels"), name, item)
 			-- The same model also feeds the prey school of that species (the 'Cuda is the
 			-- Barracuda prey, the shark is the ReefShark prey) until its own prey GLB is in

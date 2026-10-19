@@ -147,7 +147,7 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 					want = side * fish.top
 				elseif behaviour == "flee" then
 					want = away * fish.top
-				elseif (position - spot).Magnitude > 40 then
+				elseif alarmAt == math.huge and chargeAt == nil and (position - spot).Magnitude > 40 then
 					-- (pushed or dodged off its spot, it swims back to keep fighting there)
 					want = (spot - position).Unit * fish.top * 0.5
 				end

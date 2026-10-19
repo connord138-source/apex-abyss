@@ -432,8 +432,11 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 			desired = attack.aim * speed * (if lunge then 2 else shark.charge.speedMul)
 			boss.turn = 1.4
 			strike(boss, attack, fraction, now, function(fish)
-				local distance = alongBody(predator, fish.root.Position)
-				return distance <= radius + fish.length * 0.4
+				-- (the body tapers to its snout and tail, like the solid capsule the
+				-- client keeps fish out of: a full-width sausage ran over fish that had
+				-- already slipped off its nose)
+				local distance, along = alongBody(predator, fish.root.Position)
+				return distance <= radius * (0.45 + 0.55 * math.sin(math.pi * along)) + fish.length * 0.4
 			end, function(_)
 				return attack.aim * 30
 			end)
@@ -442,7 +445,8 @@ local function runShark(boss: Boss, attack: Attack, now: number, root: BasePart?
 			local past = false
 			if root and not lunge and now - (attack.endsAt - shark.charge.seconds) > 0.6 then
 				local back = root.Position - predator.position
-				past = predator.heading:Dot(back.Unit) < -0.3 and alongBody(predator, root.Position) > radius + 20
+				past = predator.heading:Dot(back.Unit) < -0.3
+					and alongBody(predator, root.Position) > radius + 20
 			end
 			if now >= attack.endsAt or past then
 				attack.stage = "recover"
@@ -935,8 +939,10 @@ local function rewards(boss: Boss, killer: Player?)
 		-- The Haul (carry it home): full Hauls of the fish's own, on top of what it
 		-- carries ("sized": ×2 Mass and Server Frenzy count, the full Haul doesn't)
 		-- (shown as food: HuntService.shown)
-		summary.haul =
-			HuntService.shown(player, HuntService.hauls(player, reward.hauls + reward.haulsShare * share, "sized"))
+		summary.haul = HuntService.shown(
+			player,
+			HuntService.hauls(player, reward.hauls + reward.haulsShare * share, "sized")
+		)
 		-- The coral jackpot
 		local coral = math.floor(math.max(reward.coral * share, reward.coralMin) + 0.5)
 		summary.coral = EconomyService.earnCoral(player, coral)
@@ -1527,7 +1533,12 @@ local function tick(boss: Boss, dt: number, now: number)
 				local fromMiddle = Vector3.new(lead.X - predator.position.X, 0, lead.Z - predator.position.Z)
 				if circle and cooling > 0 and fromMiddle.Magnitude < circle[1] * 1.5 then
 					local left = math.clamp(cooling / shark.bite.cooldown, 0, 1)
-					way = PredatorService.orbitWay(predator, lead, circle[2] + (circle[1] - circle[2]) * left, boss.orbit)
+					way = PredatorService.orbitWay(
+						predator,
+						lead,
+						circle[2] + (circle[1] - circle[2]) * left,
+						boss.orbit
+					)
 					pace = speed * 0.85
 				elseif under and gap > (if circle then circle[1] * 1.3 else 300) then
 					local below = lead - Vector3.yAxis * under

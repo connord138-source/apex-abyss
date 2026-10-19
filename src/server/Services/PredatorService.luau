@@ -1107,7 +1107,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 						and gap <= engage
 						and facing >= (style.tellFacing or strike.facing)
 					then
-						if gap < engage * 0.7 and fleeing < speed * 0.3 then
+						if not bursting and gap < engage * 0.7 and fleeing < speed * 0.3 then
 							-- Lined up only once it's far too close and fast to pull up: it
 							-- swims on past and comes round for a proper run (a tell from
 							-- here only overshot the fish)

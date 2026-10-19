@@ -38,6 +38,8 @@ end
 -- 2026-10-07: tails moved +-0.02 studs); the swing is turned into each bone's axes.
 -- Taken once per rig, before any turn is applied, so no pose leaks in.
 local restFrames: { [any]: { [string]: CFrame } } = setmetatable({}, { __mode = "k" }) :: any
+-- (and where each bone sits at rest, in the same axes: a head turns about its neck)
+local restPlaces: { [any]: { [string]: Vector3 } } = setmetatable({}, { __mode = "k" }) :: any
 
 local function restOf(bones: { [string]: Bone }): { [string]: CFrame }?
 	local root: Bone? = bones.Root
@@ -47,41 +49,82 @@ local function restOf(bones: { [string]: Bone }): { [string]: CFrame }?
 	local frames = restFrames[bones]
 	if frames == nil then
 		local made: { [string]: CFrame } = {}
+		local places: { [string]: Vector3 } = {}
 		local rootFrame = root.WorldCFrame * root.Transform:Inverse()
 		for name, bone in bones do
-			made[name] = rootFrame:ToObjectSpace(bone.WorldCFrame * bone.Transform:Inverse()).Rotation
+			local rest = rootFrame:ToObjectSpace(bone.WorldCFrame * bone.Transform:Inverse())
+			made[name] = rest.Rotation
+			places[name] = rest.Position
 		end
 		restFrames[bones] = made
+		restPlaces[bones] = places
 		frames = made
 	end
 	return frames
 end
 
-local function turn(bone: Bone, frame: CFrame?, yaw: number)
-	local rotation = CFrame.Angles(0, yaw, 0)
+local function turn(bone: Bone, frame: CFrame?, yaw: number, pitch: number?)
+	local rotation = CFrame.Angles(pitch or 0, yaw, 0)
 	bone.Transform = if frame then frame:Inverse() * rotation * frame else rotation
 end
 
--- Drives a rigged body's bones (Head, Spine1..N, Tail) in place
+-- Drives a rigged body's bones (Head, Spine1..N, Tail) in place. `arch` (radians,
+-- optional) bends the body up or down along its length the way `bend` curls it into
+-- a turn (the tail lagging a climb, a squid's arms curling). `look` (radians,
+-- optional) turns the head alone about its neck, the body behind it held (a hunter
+-- eyeing its fish, a head shake): the chain runs Head -> Spine1 -> ..., so a turn of
+-- the Head bone on its own swings the whole body about the snout.
 function SwimWave.applyBones(
 	bones: { [string]: Bone },
 	spine: { string },
 	phase: number,
 	amplitude: number,
-	bend: number
+	bend: number,
+	arch: number?,
+	look: number?
 )
 	local frames = restOf(bones)
+	local places = restPlaces[bones]
 	local head = bones.Head
+	local headAt: Vector3? = if places then places.Head else nil
+	local neckAt: Vector3? = if places and spine[1] then places[spine[1]] else nil
+	local turned = look ~= nil and look ~= 0 and headAt ~= nil and neckAt ~= nil
 	if head then
-		turn(head, frames and frames.Head, SwimWave.headYaw(bend))
+		if turned then
+			local frame = frames and frames.Head
+			local neck = (neckAt :: Vector3) - (headAt :: Vector3)
+			local rotation = CFrame.Angles(0, SwimWave.headYaw(bend), 0)
+				* CFrame.new(neck)
+				* CFrame.Angles(0, look :: number, 0)
+				* CFrame.new(-neck)
+			head.Transform = if frame then frame:Inverse() * rotation * frame else rotation
+		else
+			turn(head, frames and frames.Head, SwimWave.headYaw(bend))
+		end
 	end
 	local n = #spine
 	for i, name in spine do
 		local bone = bones[name]
 		if bone then
-			turn(bone, frames and frames[name], SwimWave.yaw(i, n, phase, amplitude, bend))
+			local pitch = if arch then arch * (0.3 + 0.7 * i / n) else nil
+			local yaw = SwimWave.yaw(i, n, phase, amplitude, bend)
+				- (if turned and i == 1 then look :: number else 0)
+			turn(bone, frames and frames[name], yaw, pitch)
 		end
 	end
+end
+
+-- Turns one bone (a Jaw, a FinL or FinR, the Head) by `rotation` in the fish's own
+-- axes (Y up, -Z ahead, X to its right), replacing whatever it had this frame. A jaw
+-- opens with a negative turn about X (CFrame.Angles(-open, 0, 0)), as FishAnimator's.
+function SwimWave.setBone(bones: { [string]: Bone }, name: string, rotation: CFrame)
+	local bone: Bone? = bones[name]
+	if bone == nil then
+		return
+	end
+	local frames = restOf(bones)
+	local frame = frames and frames[name]
+	bone.Transform = if frame then frame:Inverse() * rotation * frame else rotation
 end
 
 -- Whether a bare imported MeshPart needs turning round: the static GLB prey came in

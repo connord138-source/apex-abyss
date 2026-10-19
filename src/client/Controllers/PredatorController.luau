@@ -7,6 +7,18 @@
 -- it's coming for us), a bite (bubbles), a hurt (a flash, a damage pop for our own
 -- bites), a death (a fade), and the bosses' tells: a charge, a tail sweep, a mark,
 -- a stagger, a blood cloud, a breach and its shockwave.
+--
+-- A rigged body is animated from how it moves and the tells it shows (owner,
+-- 2026-10-19: "His mouth doesn't move and his actual movements are very stiff ...
+-- Needs to be fun to fight them not robotic"), with nothing more on the stream: tail
+-- beats that follow its speed and thrust (strong strokes, a trailing glide), a C-bend
+-- into turns and an arch through climbs, a bank (a boss rolls its belly out on a hard
+-- one), a hunter's head eyeing its fish, pectoral fins (FinL/FinR) that flare in a
+-- tell and tuck in a charge, and the jaw (rig_fish.py --jaw): a little open as it
+-- cruises (sharks breathe that way), a gape that builds through a bite's tell, a snap
+-- shut on the bite with a head shake when it lands, a wide mouth through a charge or
+-- breach, chomps in the Megalodon's frenzy. The Giant Squid's arms writhe, curl up to
+-- reach in a grab's tell and stream straight behind a jet.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -28,6 +40,17 @@ local SwimController = require(script.Parent.SwimController)
 -- A creature's body radius as a share of its length, for biting it and for bumping
 -- into a boss
 local BODY_RADIUS = 0.18
+
+-- Each rig's jaw, radians past the model's own pose (+ opens; Tripo models a mouth a
+-- little open): as it cruises, the full gape of a tell, and snapped shut
+type JawRange = { cruise: number, wide: number, shut: number }
+local JAW: { [string]: JawRange } = {
+	Megalodon = { cruise = -0.05, wide = 0.5, shut = -0.2 },
+	ReefShark = { cruise = 0.07, wide = 0.36, shut = -0.08 },
+	Barracuda = { cruise = 0.03, wide = 0.42, shut = -0.12 },
+	default = { cruise = 0.05, wide = 0.4, shut = -0.1 },
+}
+local TAU = 2 * math.pi
 
 -- A boss's own light in the pitch dark (OceanController.darkness): bioluminescent
 -- violet for the squid, a cold blue otherwise
@@ -71,6 +94,33 @@ type Sample = {
 	heading: Vector3,
 }
 
+type Motion = {
+	last: Vector3, -- where it was drawn last frame
+	velocity: Vector3, -- smoothed from the drawn motion
+	speed: number,
+	thrust: number, -- smoothed change of speed ÷ its top speed a second (+ strokes, - glide)
+	amplitude: number,
+	bend: number,
+	bendVelocity: number,
+	arch: number,
+	archVelocity: number,
+	look: number, -- the head's turn toward its fish
+	gape: number, -- the jaw, radians past the model's pose
+	gapeVelocity: number,
+	fins: number, -- the pectorals' droop (radians, tips down)
+	finsVelocity: number,
+	windupFrom: number, -- when the current bite tell began
+	snapUntil: number, -- jaw shut (a bite, a charge's end, a breach's crash)
+	shakeUntil: number, -- a head shake: the bite landed
+	rushUntil: number, -- a charge, lunge or burst under way (mouth wide, fins tucked)
+	rocketUntil: number, -- a breach's rocket (mouth wide, hard strokes)
+	crashUntil: number, -- a breach's crash (rolls onto its side)
+	jetUntil: number, -- a squid's jet (arms streaming straight)
+	reachUntil: number, -- a squid's grab tell (arms curling up to reach)
+	nextChomp: number, -- the Megalodon's frenzy chomps
+	jawRange: JawRange,
+}
+
 type Visual = {
 	index: number,
 	def: Def,
@@ -105,6 +155,7 @@ type Visual = {
 	shown: number, -- the opacity last applied to the body
 	roll: number, -- banked into its turn (radians; right side down is negative)
 	rollVelocity: number,
+	motion: Motion, -- a rigged body's animation (read off its motion and tells)
 	jaw: Highlight,
 	glow: PointLight,
 	blood: ParticleEmitter?,
@@ -350,6 +401,36 @@ local function bonesOf(model: Model): ({ [string]: Bone }, { string })
 	return bones, spine
 end
 
+local function newMotion(def: Def): Motion
+	local range = JAW[def.model] or JAW.default
+	return {
+		last = Vector3.new(0, -500, 0),
+		velocity = Vector3.zero,
+		speed = 0,
+		thrust = 0,
+		amplitude = 0.08,
+		bend = 0,
+		bendVelocity = 0,
+		arch = 0,
+		archVelocity = 0,
+		look = 0,
+		gape = range.cruise,
+		gapeVelocity = 0,
+		fins = 0,
+		finsVelocity = 0,
+		windupFrom = 0,
+		snapUntil = 0,
+		shakeUntil = 0,
+		rushUntil = 0,
+		rocketUntil = 0,
+		crashUntil = 0,
+		jetUntil = 0,
+		reachUntil = 0,
+		nextChomp = 0,
+		jawRange = range,
+	}
+end
+
 local function build(index: number, def: Def, boss: boolean): Visual
 	local length = def.length
 	local bodySize = Vector3.new(length * 0.2, length * 0.24, length * 0.8)
@@ -470,6 +551,7 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		shown = 0,
 		roll = 0,
 		rollVelocity = 0,
+		motion = newMotion(def),
 		jaw = jaw,
 		glow = glow,
 		blood = nil,
@@ -709,18 +791,173 @@ local function speedOf(visual: Visual): number
 	return (b.position - a.position).Magnitude / math.max(b.at - a.at, 1e-3)
 end
 
--- A rigged body swims: a wave runs down the spine, wider and faster with speed
-local function swimBones(visual: Visual, dt: number, relative: number)
-	local frequency = 0.5 + 1.4 * math.min(relative, 1.5)
-	visual.phase += 2 * math.pi * frequency * dt
-	local amplitude = 0.06 + 0.16 * math.min(relative, 1)
-	local p = visual.phase
-	local n = #visual.spine
-	if n == 0 then
-		return
+-- Where its fish is, for a hunter's eye (nil when it has none, or isn't drawn here)
+local function targetPosition(visual: Visual): Vector3?
+	if visual.target == 0 then
+		return nil
 	end
-	local soften = (3 / n) ^ 0.6
-	SwimWave.applyBones(visual.bones, visual.spine, p, amplitude * 1.6 * soften, 0)
+	local player = Players:GetPlayerByUserId(visual.target)
+	local character = player and player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	return if root and root:IsA("BasePart") then root.Position else nil
+end
+
+-- A rigged body comes alive, all of it read off how it moves and the tells it shows
+-- (see the top): its tail beats, C-bend, arch, head, jaw and pectoral fins
+local function animateRig(visual: Visual, dt: number, now: number, yawRate: number, pitchRate: number)
+	local def = visual.def
+	local motion = visual.motion
+	local bones = visual.bones
+	local bossDef = Bosses.byId[def.id]
+	local squid = bossDef ~= nil and bossDef.kit == "squid"
+	-- How it's moving: its speed, and its thrust (speeding up is a stroke, slowing a
+	-- glide), smoothed off where it's drawn
+	local step = math.max(dt, 1e-3)
+	local moved = (visual.position - motion.last) / step
+	motion.last = visual.position
+	if moved.Magnitude > def.speed * 5 then
+		moved = motion.velocity -- (a jet or a fresh life jumps it)
+	end
+	motion.velocity = motion.velocity:Lerp(moved, 1 - math.exp(-dt * 5))
+	local speed = motion.velocity.Magnitude
+	local change = (speed - motion.speed) / step
+	motion.speed = speed
+	motion.thrust += (math.clamp(change / math.max(def.speed, 1), -2, 3) - motion.thrust) * (1 - math.exp(
+		-dt * 3
+	))
+	local relative = speed / math.max(def.speed, 1)
+	local thrust = motion.thrust
+	local rushing = motion.rushUntil > now or motion.rocketUntil > now
+	local slack = visual.mode == "stunned" or visual.staggerUntil > now
+	-- Tail beats: quicker and wider with speed, hardest as it drives on, the tail
+	-- trailing through a glide; a big body beats slow and heavy (the Megalodon's
+	-- strokes come about once a second as it cruises)
+	local size = math.clamp((20 / def.length) ^ 0.35, 0.45, 1.3)
+	local stroking = if rushing then 1 else math.clamp(0.4 + thrust * 1.6, 0, 1)
+	local frequency = (
+		0.45
+		+ 1.1 * math.min(relative, 1.6)
+		+ 0.8 * math.clamp(thrust, 0, 1.5)
+		+ (if rushing then 0.5 else 0)
+	) * size
+	local amplitude = (0.05 + 0.13 * math.min(relative, 1.2) + 0.1 * math.clamp(thrust, 0, 1.5))
+		* (0.4 + 0.6 * stroking)
+	if slack then
+		amplitude *= 0.4
+		frequency *= 0.5
+	end
+	if squid then
+		-- Its arms never quite still; streamed straight behind a jet
+		amplitude = if motion.jetUntil > now then 0.02 else math.max(amplitude, 0.1)
+	end
+	motion.amplitude += (amplitude - motion.amplitude) * (1 - math.exp(-dt * 3))
+	visual.phase += TAU * frequency * dt
+	-- A C-bend into a turn (deep in a burst-turn), and the tail lagging a climb or dive
+	-- (bend is per joint and the joints add up: 0.2 curls a Megalodon ~1 radian nose
+	-- to tail)
+	motion.bend, motion.bendVelocity =
+		Spring.number(motion.bend, motion.bendVelocity, math.clamp(yawRate * 0.1, -0.2, 0.2), 7, dt)
+	local arch = math.clamp(pitchRate * 0.08, -0.08, 0.08)
+	if squid then
+		-- The arms writhe, gather toward their fish in a grab's tell (up for a fish above
+		-- it, under the mantle for one below), and stream in a jet
+		arch += 0.1 * math.sin(now * 0.9 + visual.index) + 0.05 * math.sin(now * 2.3)
+		if motion.reachUntil > now then
+			local at = targetPosition(visual)
+			local above = at ~= nil and at.Y > visual.position.Y
+			arch += if above then -0.3 else 0.3
+		end
+		if motion.jetUntil > now then
+			arch = 0
+		end
+	end
+	motion.arch, motion.archVelocity = Spring.number(motion.arch, motion.archVelocity, arch, 5, dt)
+	-- Its head: eyes on its fish while it hunts (a slow searching sweep at a cruise),
+	-- and a shake when a bite lands
+	local look = 0
+	if not squid and (visual.mode == "hunt" or visual.mode == "windup") then
+		local at = targetPosition(visual)
+		if at then
+			local toward = frameOf(visual.position, visual.heading):VectorToObjectSpace(at - visual.position)
+			look = math.clamp(math.atan2(-toward.X, -toward.Z) * 0.4, -0.22, 0.22)
+		end
+		look += math.sin(now * 1.7 + visual.index) * 0.04 * (1 - math.min(relative, 1))
+	end
+	motion.look += (look - motion.look) * (1 - math.exp(-dt * 4))
+	look = motion.look
+	if motion.shakeUntil > now then
+		local left = motion.shakeUntil - now
+		look += math.sin(left * 34) * 0.24 * (left / 0.6)
+	end
+	local n = #visual.spine
+	if n > 0 then
+		local soften = (3 / n) ^ 0.6
+		SwimWave.applyBones(
+			bones,
+			visual.spine,
+			visual.phase,
+			motion.amplitude * 1.6 * soften,
+			motion.bend * soften,
+			motion.arch * soften,
+			look
+		)
+	end
+	-- The jaw (rig_fish.py --jaw)
+	if bones.Jaw then
+		local range = motion.jawRange
+		local want = range.cruise + math.sin(now * 1.3 + visual.index) * 0.03 * range.wide
+		local stiffness = 9
+		if motion.snapUntil > now then
+			want, stiffness = range.shut, 40
+		elseif visual.windupUntil > now then
+			-- The gape builds through the tell, trembling as it comes
+			local span = math.max(visual.windupUntil - motion.windupFrom, 0.2)
+			local progress = math.clamp((now - motion.windupFrom) / span, 0, 1)
+			want = range.cruise
+				+ (range.wide - range.cruise) * (1 - (1 - progress) ^ 3)
+				+ math.sin(now * 38) * 0.015
+			stiffness = 12
+		elseif rushing then
+			want, stiffness = range.wide * 0.9, 14
+		elseif visual.tellUntil > now then
+			want = range.cruise + (range.wide - range.cruise) * 0.45
+		elseif slack then
+			want, stiffness = range.wide * 0.45 + math.sin(now * 2.2) * 0.05, 4
+		elseif
+			bossDef
+			and bossDef.kit == "shark"
+			and visual.mode == "hunt"
+			and visual.health <= bossDef.phases[1]
+		then
+			-- The Megalodon's frenzy: its jaws working as it hunts
+			if now >= motion.nextChomp then
+				motion.nextChomp = now + 1.1 + math.random() * 0.8
+			end
+			local into = motion.nextChomp - now
+			if into < 0.32 then
+				want = if into > 0.16 then range.wide * 0.75 else range.shut
+				stiffness = 30
+			end
+		end
+		motion.gape, motion.gapeVelocity =
+			Spring.number(motion.gape, motion.gapeVelocity, want, stiffness, dt)
+		SwimWave.setBone(bones, "Jaw", CFrame.Angles(-motion.gape, 0, 0))
+	end
+	-- Pectoral fins (rig_fish.py --fins): flared down in a tell (a shark's threat
+	-- hunch), tucked back in a charge, angled into a dive or climb, the inside one
+	-- lower in a bank, sculling slowly otherwise
+	if bones.FinL or bones.FinR then
+		local droop = if visual.windupUntil > now or visual.tellUntil > now
+			then 0.32
+			elseif rushing then -0.12
+			else 0.04 * math.sin(visual.phase * 0.5)
+		motion.fins, motion.finsVelocity = Spring.number(motion.fins, motion.finsVelocity, droop, 6, dt)
+		local tilt = math.clamp(visual.heading.Y * 0.7 + pitchRate * 0.15, -0.35, 0.35)
+		local bank = math.clamp(visual.roll * 0.35, -0.25, 0.25)
+		local sweep = if rushing then 0.35 else 0.05
+		SwimWave.setBone(bones, "FinL", CFrame.Angles(tilt, sweep, motion.fins + bank))
+		SwimWave.setBone(bones, "FinR", CFrame.Angles(tilt, -sweep, -(motion.fins - bank)))
+	end
 end
 
 -- Bosses are solid: your own fish is kept out of the body (a capsule from tail to
@@ -841,14 +1078,34 @@ local function step(dt: number)
 		local before = visual.heading
 		local blended = visual.heading:Lerp(heading, 1 - math.exp(-dt * 8))
 		visual.heading = if blended.Magnitude > 1e-3 then blended.Unit else heading
-		-- Bank into the turn, like the player's own fish (right side down turning right)
+		-- Bank into the turn, like the player's own fish (right side down turning right);
+		-- the Megalodon rolls its pale belly out on a hard one, falls onto its side in a
+		-- breach's crash, and twists with a bite's head shake
 		local flatBefore = Vector3.new(before.X, 0, before.Z)
 		local flatNow = Vector3.new(visual.heading.X, 0, visual.heading.Z)
-		local yawRate = 0
+		local yawRate, pitchRate = 0, 0
 		if dt > 0 and flatBefore.Magnitude > 1e-3 and flatNow.Magnitude > 1e-3 then
 			yawRate = math.asin(math.clamp(flatBefore.Unit:Cross(flatNow.Unit).Y, -1, 1)) / dt
 		end
-		local wantRoll = math.clamp(yawRate * 0.35, -0.5, 0.5) * (if visual.boss then 0.5 else 1)
+		if dt > 0 then
+			pitchRate = (
+				math.asin(math.clamp(visual.heading.Y, -1, 1)) - math.asin(math.clamp(before.Y, -1, 1))
+			) / dt
+		end
+		local bossDef = Bosses.byId[visual.def.id]
+		local bankScale, bankMost = 0.35, 0.5
+		if bossDef then
+			bankScale, bankMost =
+				if bossDef.kit == "shark" then 0.55 else 0.2, if bossDef.kit == "shark" then 0.95 else 0.3
+		end
+		local wantRoll = math.clamp(yawRate * bankScale, -bankMost, bankMost)
+		local motion = visual.motion
+		if motion.crashUntil > now then
+			wantRoll += 1.1
+		end
+		if motion.shakeUntil > now then
+			wantRoll += math.sin((motion.shakeUntil - now) * 30) * 0.12
+		end
 		visual.roll, visual.rollVelocity = Spring.number(visual.roll, visual.rollVelocity, wantRoll, 6, dt)
 		if visual.boss and not visual.hidden then
 			solid(visual)
@@ -856,7 +1113,7 @@ local function step(dt: number)
 		local frame = frameOf(position, visual.heading) * CFrame.Angles(0, 0, visual.roll)
 		local relative = speedOf(visual) / math.max(visual.def.speed, 1)
 		if visual.model then
-			swimBones(visual, dt, relative)
+			animateRig(visual, dt, now, yawRate, pitchRate)
 			table.insert(parts, visual.body)
 			table.insert(frames, frame)
 		else
@@ -1134,6 +1391,7 @@ local function onEvent(kind: any, index: any, payload: any)
 	elseif kind == "windup" then
 		local seconds = if typeof(payload.seconds) == "number" then payload.seconds else def.telegraph
 		visual.windupUntil = now + seconds
+		visual.motion.windupFrom = now
 		if payload.target == me then
 			warn(`{string.upper(def.name)} · INCOMING`, seconds + 0.3)
 			Sfx.play("Warning", { volume = 0.6 })
@@ -1149,13 +1407,20 @@ local function onEvent(kind: any, index: any, payload: any)
 			end
 		end
 	elseif kind == "burst" then
-		-- An ambusher bursts from cover: a swirl of bubbles off its tail
+		-- An ambusher bursts from cover: a swirl of bubbles off its tail, mouth open
 		bubbles(visual.position - visual.heading * def.length * 0.4, def.length * 0.35)
+		visual.motion.rushUntil = now + (if typeof(payload.seconds) == "number" then payload.seconds else 1.5)
 		if payload.target == me then
 			warn(`{string.upper(def.name)} · BURSTING AT YOU · JUKE SIDEWAYS`, 1.6)
 		end
 	elseif kind == "bite" then
 		visual.windupUntil = 0
+		-- The jaws snap shut; a bite that lands gets a head shake
+		visual.motion.snapUntil = now + 0.22
+		visual.motion.rushUntil = 0
+		if payload.hit == true then
+			visual.motion.shakeUntil = now + 0.6
+		end
 		if myDistance < def.length * 4 + 80 then
 			Sfx.play("Bite", {
 				volume = 0.7,
@@ -1175,10 +1440,15 @@ local function onEvent(kind: any, index: any, payload: any)
 		end
 	elseif kind == "rush" then
 		visual.tellUntil = 0
+		-- The surge: mouth wide, fins tucked, a burst of water off its tail
+		visual.motion.rushUntil = now + (if typeof(payload.seconds) == "number" then payload.seconds else 1)
+		bubbles(visual.position - visual.heading * def.length * 0.45, def.length * 0.25)
 		if myDistance < def.length * 3 then
 			CameraController.kick(0.35)
 		end
 	elseif kind == "charged" then
+		visual.motion.rushUntil = 0
+		visual.motion.snapUntil = now + 0.25
 		if at then
 			bubbles(at, def.length * 0.3)
 		end
@@ -1224,11 +1494,17 @@ local function onEvent(kind: any, index: any, payload: any)
 			end
 		elseif payload.stage == "rocket" then
 			visual.tellUntil = 0
+			visual.motion.rocketUntil = now + seconds
+			bubbles(visual.position - visual.heading * def.length * 0.45, def.length * 0.3)
 			if myDistance < 160 then
 				CameraController.kick(0.4)
 			end
+		elseif payload.stage == "crash" then
+			visual.motion.rocketUntil = 0
+			visual.motion.crashUntil = now + seconds + 0.6
 		end
 	elseif kind == "shock" then
+		visual.motion.snapUntil = now + 0.3
 		Sfx.play("Breach", { volume = 0.95, parent = visual.body :: Instance, range = 500 })
 		local radius = if typeof(payload.radius) == "number" then payload.radius else 45
 		if at then
@@ -1251,6 +1527,8 @@ local function onEvent(kind: any, index: any, payload: any)
 			end
 		else
 			visual.tellUntil = now + seconds
+			-- (its arms curl up and reach)
+			visual.motion.reachUntil = now + seconds + 0.3
 			if payload.target == me then
 				warn("TENTACLE · GET CLEAR", seconds + 0.3)
 			end
@@ -1290,6 +1568,8 @@ local function onEvent(kind: any, index: any, payload: any)
 		visual.tellUntil = now + (if typeof(payload.seconds) == "number" then payload.seconds else 0.6)
 	elseif kind == "jetted" then
 		visual.tellUntil = 0
+		-- (arms streamed straight behind it as it shoots off)
+		visual.motion.jetUntil = now + 0.9
 		if
 			typeof(payload.fromX) == "number"
 			and typeof(payload.fromY) == "number"
