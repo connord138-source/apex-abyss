@@ -209,14 +209,14 @@ local function run(id: string, fish: Fish, spot: Vector3, behaviour: Behaviour, 
 					end
 					-- (a charge is dodged once it comes: CHARGING · DODGE SIDEWAYS)
 					if event.kind ~= "charge" and (alarmAt == math.huge or sim.now - alarmAt > 2.5) then
-						alarmAt = sim.now + REACT
+						alarmAt, alarmAway = sim.now + REACT, nil
 					end
 					if event.kind == "charge" or (event.kind == "windup" and (event.payload.seconds or 1) < 0.8) then
 						chargeAt = sim.now
 						hitsBefore = #sim.hits
 					end
 				elseif event.kind == "rush" and chargeAt then
-					alarmAt = sim.now + REACT
+					alarmAt, alarmAway = sim.now + REACT, nil
 				elseif event.kind == "bite" then
 					result.bites += 1
 					if not event.payload.hit then
