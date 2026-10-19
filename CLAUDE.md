@@ -1192,8 +1192,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     prep` (squares up, recolours, flecks) → `safe_colors` → `den_props2_prep.py
     cloth`. A smooth carved-stone colour map scored 0.62 until it got flecks. **Prey
     sheet C** (Opaleye, Kelp Bass, Blue Tang, Lingcod, Rattail, Viperfish,
-    Hatchetfish, Humphead Wrasse; `tools/tripo_jobs_prey_concepts3.json`) waits for
-    the owner's approval and a Tripo top-up (balance 205, ~280 needed).
+    Hatchetfish, Humphead Wrasse; `tools/tripo_jobs_prey_concepts3.json`) was approved
+    by the owner on 2026-10-19 after a Tripo top-up (balance 705), for prey batch 4.
   - **Tutorial: the full loop, nine steps** (`Config/Tutorial`, `TutorialService`
     rewritten, `tutorial.v`): leave the hub, eat 10, 5 shells, fill the Haul
     (`HAUL_LEVELS` 7 levels' worth), bank, spin the wheel (a spin granted), ROLL
