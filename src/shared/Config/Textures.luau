@@ -31,10 +31,10 @@ return {
 	fxSpark = 123443623099259, -- assets/textures/fx_spark.png
 	-- the APEX TIDE logo over the start screen in place of the lettering
 	-- (tools/marketing/compose.py; StartController); 0 = the lettering
-	logo = 0, -- marketing/logo.png
+	logo = 129818407566312, -- marketing/logo.png
 	-- the sea chart behind the minimap and the full map (tools/map/make_chart.py;
 	-- src/client/MapDraw)
-	mapChart = 95685139995289, -- assets/textures/map_chart.png
+	mapChart = 80041452202646, -- assets/textures/map_chart.png
 	-- rug*: the den rugs' top-down art (tools/props/rug_textures.py; Shared/DenItems)
 	rugBraidedKelpRug = 135571701796831, -- assets/textures/rug_BraidedKelpRug.png
 	rugCoralRug = 73878696309005, -- assets/textures/rug_CoralRug.png
