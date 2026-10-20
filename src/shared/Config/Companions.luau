@@ -43,7 +43,7 @@ return {
 	ray = {
 		over = 9,
 		reach = 0.75, -- × the ray's span, flat from its middle
-		shells = 2,
+		shells = 8, -- (owner, 2026-10-20: "stingrays should definitely stir up more than 2 shells"; was 2)
 		cooldown = 90,
 		hidden = 60,
 	},

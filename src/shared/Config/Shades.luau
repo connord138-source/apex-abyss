@@ -600,13 +600,15 @@ local list: { Shade } = {
 		boss = "GiantSquid",
 		blurb = "The Kraken's skin: ink pigment, glowing violet veins, sucker rings. Won from the Giant Squid.",
 	},
-	-- Treasure-only shades (owner, 2026-10-07: "a super rare skin at a low drop
-	-- rate" from treasure maps). Only a Captain's chest holds them. Never rolled.
+	-- Treasure shades (owner, 2026-10-07: "a super rare skin at a low drop rate" from
+	-- treasure maps): a Captain's chest holds them, and since 2026-10-20 they roll too,
+	-- on every fish, at their tier's line odds (owner: "Every skin needs to be rollable
+	-- other than the boss skins and achievement skins ... drop rates scale with rarity")
 	{
 		id = "SunkenGold",
 		name = "Sunken Gold",
 		tier = "Mythic",
-		chance = 0,
+		chance = 1500,
 		refund = 2500,
 		back = Color3.fromRGB(232, 176, 48),
 		belly = Color3.fromRGB(255, 226, 140),
@@ -618,13 +620,13 @@ local list: { Shade } = {
 		sparkle = Color3.fromRGB(255, 236, 170),
 		aura = "glints",
 		treasure = "Captain",
-		blurb = "Doubloon gold with a verdigris tail. Dug up from a Captain's chest.",
+		blurb = "Doubloon gold with a verdigris tail. Dug up from a Captain's chest, or rolled.",
 	},
 	{
 		id = "DrownedPearl",
 		name = "Drowned Pearl",
 		tier = "Legendary",
-		chance = 0,
+		chance = 700,
 		refund = 1500,
 		back = Color3.fromRGB(236, 232, 240),
 		belly = Color3.fromRGB(255, 252, 250),
@@ -636,7 +638,7 @@ local list: { Shade } = {
 		sparkle = Color3.fromRGB(240, 246, 255),
 		aura = "bubbles",
 		treasure = "Captain",
-		blurb = "Nacre white with a lilac sheen. Dug up from a Captain's chest.",
+		blurb = "Nacre white with a lilac sheen. Dug up from a Captain's chest, or rolled.",
 	},
 	-- New in the per-fish lines (owner, 2026-10-10). Their tier, odds and fish come
 	-- from LINES; the colours are the swatches and the look before the skins import.
@@ -1440,12 +1442,13 @@ local function fits(shadeId: string, speciesId: string): boolean
 	return shade ~= nil and (shade.species == nil or shade.species == speciesId)
 end
 
--- Whether a skin comes out of rolls (its fish's own; never trophies, treasure,
--- catch, weekly or Tide Pass skins)
+-- Whether a skin comes out of rolls: every skin with odds (its fish's own line, and
+-- the treasure shades on every fish) but the ones earned another way: boss
+-- trophies, the Catch Log's goals, the Catch of the Week's and the Tide Pass's
+-- (owner, 2026-10-20: "Every skin needs to be rollable other than the boss skins and
+-- achievement skins")
 local function rollable(shade: Shade): boolean
-	return shade.chance > 0
-		and shade.species ~= nil
-		and not (shade.boss or shade.treasure or shade.catch or shade.week or shade.pass)
+	return shade.chance > 0 and not (shade.boss or shade.catch or shade.week or shade.pass)
 end
 
 return {

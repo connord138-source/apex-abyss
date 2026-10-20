@@ -4,6 +4,12 @@
 --
 -- Every shade, body part and variant has a "1 in N" chance; luck multiplies those
 -- (coral is never boosted). Coral takes the rest, split by its tiers' shares.
+--
+-- A skin a fish already has never rolls again for it (owner, 2026-10-08); its share
+-- goes to the skins of the same tier it hasn't got yet, so each tier's odds hold
+-- until the fish has the whole tier, and only then does that tier's share become
+-- coral (owner, 2026-10-20: "Ive done about 20 rolls and gotten coral everytime ...
+-- obviously drop rates scale with rarity"; owned skins had all turned into coral).
 local Config = require(script.Parent.Config)
 
 local Rolls = Config.Rolls
@@ -19,7 +25,7 @@ export type Outcome = {
 	amount: number?, -- coral
 	share: number?, -- coral: its share of the coral chance
 	refund: number?, -- coral a duplicate turns into
-	species: string?, -- a skin: the fish whose line it's in (it only rolls for that fish)
+	species: string?, -- a skin: the fish whose line it's in (it only rolls for that fish; nil: every fish's)
 }
 
 export type Odds = { outcome: Outcome, probability: number }
@@ -36,8 +42,8 @@ for _, coral in Rolls.coral do
 	})
 end
 for _, shade in Config.Shades.list do
-	-- Only a fish's own line rolls (owner, 2026-10-10); trophies are won, treasure dug
-	-- up, catch-track and weekly skins earned
+	-- A fish's own line and the treasure shades roll (Config/Shades.rollable); the
+	-- boss trophies are won, and the catch, weekly and Tide Pass skins earned
 	if not Config.Shades.rollable(shade) then
 		continue
 	end
@@ -86,31 +92,63 @@ function RollOdds.get(kind: string, id: string): Outcome?
 	return byKey[`{kind}:{id}`]
 end
 
--- Whether an outcome is out of the table: another fish's skin, or a skin the fish
--- already has (it never rolls again for it, owner 2026-10-08; its share goes to
--- coral, so every other chance stays exactly as it was).
-local function excluded(outcome: Outcome, owned: { [string]: boolean }?, species: string?): boolean
-	if outcome.kind == "variant" then
-		-- An exotic variant reshapes one fish (Config/Exotics), so it only rolls for it
-		return species ~= nil and outcome.species ~= species
-	end
-	if outcome.kind ~= "shade" then
+-- Whether an outcome is another fish's (a skin or a variant from someone else's line)
+local function otherFish(outcome: Outcome, species: string?): boolean
+	if outcome.kind ~= "variant" and outcome.kind ~= "shade" then
 		return false
 	end
-	if species and outcome.species ~= species then
+	-- (an exotic variant reshapes one fish, Config/Exotics, so it only rolls for it)
+	return species ~= nil and outcome.species ~= nil and outcome.species ~= species
+end
+
+-- Whether an outcome is out of the table: another fish's, or a skin the fish already
+-- has (it never rolls again for it)
+local function excluded(outcome: Outcome, owned: { [string]: boolean }?, species: string?): boolean
+	if otherFish(outcome, species) then
 		return true
 	end
-	return owned ~= nil and owned[outcome.id] == true
+	return outcome.kind == "shade" and owned ~= nil and owned[outcome.id] == true
+end
+
+-- How much more likely each skin of a tier the fish hasn't finished is: the tier's
+-- whole share over the share of the skins still to get (1 with none owned)
+local function tierBoosts(owned: { [string]: boolean }?, species: string?): { [string]: number }
+	local all: { [string]: number } = {}
+	local left: { [string]: number } = {}
+	for _, outcome in outcomes do
+		if outcome.kind == "shade" and outcome.chance and not otherFish(outcome, species) then
+			local share = 1 / outcome.chance
+			all[outcome.tier] = (all[outcome.tier] or 0) + share
+			if not (owned and owned[outcome.id]) then
+				left[outcome.tier] = (left[outcome.tier] or 0) + share
+			end
+		end
+	end
+	local boosts: { [string]: number } = {}
+	for tier, total in all do
+		local rest = left[tier]
+		if rest and rest > 0 then
+			boosts[tier] = total / rest
+		end
+	end
+	return boosts
 end
 
 -- Every outcome with its probability for one roll at `luck` (1 = normal) for a fish
--- of `species` (its own line), leaving out the skins in `owned` (the rolling fish's).
--- The probabilities add up to exactly 1.
+-- of `species` (its own line and the skins every fish can roll), leaving out the
+-- skins in `owned` (the rolling fish's) and handing their share to the rest of their
+-- tier. The probabilities add up to exactly 1.
 function RollOdds.table(luck: number, owned: { [string]: boolean }?, species: string?): { Odds }
+	local boosts = tierBoosts(owned, species)
+	local function base(outcome: Outcome): number
+		local chance = outcome.chance :: number
+		local boost = if outcome.kind == "shade" then boosts[outcome.tier] or 1 else 1
+		return luck / chance * boost
+	end
 	local special = 0
 	for _, outcome in outcomes do
 		if outcome.chance and not excluded(outcome, owned, species) then
-			special += luck / outcome.chance
+			special += base(outcome)
 		end
 	end
 	-- Luck can't push coral below its floor: scale the specials down if it would
@@ -122,7 +160,7 @@ function RollOdds.table(luck: number, owned: { [string]: boolean }?, species: st
 			continue
 		end
 		local probability = if outcome.chance
-			then luck / outcome.chance * scale
+			then base(outcome) * scale
 			else coralTotal * (outcome.share or 0)
 		table.insert(result, { outcome = outcome, probability = probability })
 	end

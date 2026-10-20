@@ -234,6 +234,17 @@ local function allShades(_admin: Player, targets: { Player }): string
 	return `Every shade, part, variant and boost trail for {names(targets)}`
 end
 
+-- Takes every skin off the target's current fish, to test rolls (a skin a fish has
+-- never rolls again for it, so after "every shade" a roll is nearly always coral)
+local function clearShades(_admin: Player, targets: { Player }): string
+	each(targets, function(player, data)
+		table.clear(Progress.shades(data))
+		Progress.wearShade(data, "")
+		WardrobeService.refresh(player)
+	end)
+	return `Every skin taken off {names(targets)}'s current fish (rolls can give them again)`
+end
+
 local function giveMap(_admin: Player, targets: { Player }, tier: any): string
 	if typeof(tier) ~= "string" or Config.Treasure.byId[tier] == nil then
 		return "Pick a map tier"
@@ -767,6 +778,7 @@ AdminActions.byName = {
 	charm = charm :: Handler,
 	unlockSpecies = unlockSpecies :: Handler,
 	allShades = allShades :: Handler,
+	clearShades = clearShades :: Handler,
 	giveMap = giveMap :: Handler,
 	heal = heal :: Handler,
 	kill = kill :: Handler,

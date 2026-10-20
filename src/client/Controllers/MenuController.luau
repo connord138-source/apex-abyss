@@ -1563,7 +1563,9 @@ local function shadeHow(shade: any, s: any): string
 		end
 		return `Beat the {boss} world boss: a 1 in 15 drop{price}`
 	elseif shade.treasure then
-		return "Dug up from a Captain's treasure chest (rare)"
+		return `Dug up from a Captain's treasure chest, or roll it on any fish · about {RollOdds.oneIn(
+			1 / shade.chance
+		)}`
 	elseif shade.price then
 		return `The Shade Dyer sells it for {Ui.number(shade.price)} coral, or roll it · {RollOdds.oneIn(
 			1 / shade.chance

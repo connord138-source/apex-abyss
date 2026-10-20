@@ -283,6 +283,12 @@ local function build()
 	end
 	pickRow("Unlock species", species, "unlockSpecies", "UNLOCK")
 	actionRow("Every shade, part, variant and boost trail", "allShades", "GIVE ALL")
+	actionRow(
+		"Skins: take every skin off the current fish (to test rolls)",
+		"clearShades",
+		"CLEAR",
+		"secondary"
+	)
 	local charms: { { label: string, value: any } } = {}
 	for _, def in Config.Shop.charms do
 		table.insert(charms, { label = def.name, value = def.id })

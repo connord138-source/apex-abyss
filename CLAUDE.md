@@ -316,8 +316,16 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     record holds its own `shades` set and the `shade` it wears (`Server/Progress`
     `shades/ownsShade/grantShade/wearShade/syncShade`); a switch puts on that fish's
     own shade. Rolls, the Dyer, the Trophy Hunter, boss drops and treasure all unlock
-    for the fish you're swimming as. `RollOdds.table(luck, owned)` leaves the fish's
-    shades out and gives their share to coral, so every other chance stays the same
+    for the fish you're swimming as. **Since 2026-10-20 (owner: "Ive done about 20
+    rolls and gotten coral everytime ... Every skin needs to be rollable other than the
+    boss skins and achievement skins ... drop rates scale with rarity")** an owned
+    skin's share goes to the unowned skins of its tier (`RollOdds` `tierBoosts`), so
+    each tier's odds hold until the fish has all of it, and only a finished tier's
+    share is coral; the treasure shades roll on every fish at their tier's line odds
+    (Drowned Pearl 1 in 700, Sunken Gold 1 in 1,500; `Config/Shades.rollable`: all
+    but boss, catch, weekly and Tide Pass skins). Admin "Skins: take every skin off
+    the current fish" (`clearShades`) for testing rolls. Before that, `RollOdds.table(luck, owned)` left the fish's
+    shades out and gave their share to coral, so every other chance stayed the same
     and the odds panel (this fish's table) still sums to 100%
     (`tools/tests/run_odds.sh` checks it). Boss and treasure shade rolls skip owned
     ones too. The wardrobe names a shade another of your fish has ("unlock it again
@@ -1544,7 +1552,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     you stay in it (`SwimController.draft`, a toast, a client-side `Draft` character
     attribute for tests; SpeedService allows the faster of it and the slipstream; a
     manta cruises at 4–6.5 studs/s, so a buff only inside the wake never held); skim low over a resting ray and it bursts off the sand
-    stirring up 2 shells (one every 90 s; it's gone from your view a minute). The
+    stirring up 8 shells (2 until 2026-10-20; one every 90 s; it's gone from your view a minute). The
     server checks a live fish out of the hub and dens, a biome that kind lives in, near
     the floor for a ray, and the cooldowns.
   - **The Vents' spheres are gone:** every sphere-mesh lump in `Vents.luau` is a cut,

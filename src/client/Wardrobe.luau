@@ -1030,7 +1030,7 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			elseif r.boss then
 				return `{if r.boss == "GiantSquid" then "GIANT SQUID" else string.upper(r.boss)} DROP`
 			elseif r.treasure then
-				return "CAPTAIN'S TREASURE"
+				return `TREASURE · ROLL {RollOdds.oneIn(1 / r.chance)}`
 			elseif r.price then
 				return `SHADE DYER · {Ui.number(r.price)}`
 			end
