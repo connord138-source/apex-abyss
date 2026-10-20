@@ -537,7 +537,9 @@ end
 
 -- Each new step opens with its goal in the middle of the screen for a few seconds
 -- (waiting its turn behind the bank's growth sequence or another banner)
+local bannerStep = 0 -- the step whose banner was asked for last
 local function stepBanner(index: number, step: TutorialConfig.Step)
+	bannerStep = index
 	Ui.stageBanner("tutorialStep", 3.2, 0.5, function()
 		local holder = Instance.new("Frame")
 		holder.Name = "TutorialStepBanner"
@@ -581,6 +583,10 @@ local function stepBanner(index: number, step: TutorialConfig.Step)
 				holder:Destroy()
 			end)
 		end
+	end, function()
+		-- (only while no later step's banner has been asked for: the bank step's banner
+		-- stepped aside for the bank's growth and came back over the next step's card)
+		return bannerStep == index
 	end)
 end
 

@@ -415,13 +415,25 @@ end
 -- builds it and returns a function that takes it down (`quick` when it steps
 -- aside). It stays `seconds`, then has `fade` seconds to fade before the next one;
 -- if a big moment takes the stage meanwhile (the bank's growth sequence holds it
--- without queueing) it steps aside at once and comes back first after. Doesn't
--- yield.
-function Ui.stageBanner(owner: string, seconds: number, fade: number, show: () -> (quick: boolean) -> ())
+-- without queueing) it steps aside at once and comes back first after. `still`, if
+-- given, is asked each time its turn comes: false drops it (a tutorial step's banner
+-- that came back after the bank's sequence when the step was already done, PC
+-- 2026-10-20, TU). Doesn't yield.
+function Ui.stageBanner(
+	owner: string,
+	seconds: number,
+	fade: number,
+	show: () -> (quick: boolean) -> (),
+	still: (() -> boolean)?
+)
 	task.spawn(function()
 		local front = false
 		for _ = 1, 3 do
 			local since = Ui.takeStage(owner, seconds + fade + 0.1, front)
+			if still and not still() then
+				Ui.releaseStage(owner)
+				return
+			end
 			local hide = show()
 			local stepped = false
 			while os.clock() - since < seconds do
