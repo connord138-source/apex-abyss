@@ -94,7 +94,7 @@ local REQUESTS: { [string]: number } = {
 	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
 	TutorialSaw = 1, -- ("Index") the tutorial's last step: the INDEX was opened
 	Companion = 1, -- ("turtle" | "ray") a sea turtle joined us, or we flushed a resting ray (Config/Companions)
-	StartShot = 1.5, -- (shotIndex, schoolIndex) the start screen's next shot: stream its water in (StartService)
+	StartShot = 1.5, -- (shotIndex, schoolIndex, showingShot, showingSchool) the start screen's next shot: stream its water in (StartService)
 	StartDone = 1, -- () dived in from the start screen
 }
 local requests: { [string]: RemoteEvent } = {}

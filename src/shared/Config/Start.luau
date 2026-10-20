@@ -8,8 +8,13 @@
 -- through a dip into murk or a quick bubble wash. StartController plays them;
 -- Shared/StartShots works out each camera from the school's own path and the world's
 -- config; the server streams each shot's water in ahead of its cut (StartService).
--- The old ViewportFrame scene is the loading layer: it shows until the first shot is
--- in, and again whenever none is.
+-- Until the first shot is in (and whenever none is) a plain water backdrop shows
+-- under the title (the old ViewportFrame scene is gone, owner 2026-10-20). Every cut
+-- is held under the murk until the new spot has loaded round the camera: its parts
+-- in (StartShots.partsNear against the server's count), the downloads queue nearly
+-- empty, and `mesh` seconds for the Terrain to mesh, which Roblox does only round the
+-- camera and can't report (cut straight in, the floor and kelp showed through for a
+-- few seconds, owner 2026-10-20).
 --
 -- A shot frames one school of its `prey` (the first in the list with a school in the
 -- shot's place: its biome's sector and radii, narrowed by `radii` and `angles`).
@@ -229,9 +234,13 @@ return {
 		arrive = 12, -- seconds to wait for an area to stream in before trying another shot
 		window = 1.2, -- seconds either side the school's path is averaged over (a calm subject)
 		dipOut = 0.35, -- into the murk
-		dipHold = 0.18, -- the cut, in the murk
+		dipHold = 0.18, -- the cut back onto the backdrop, in the murk
+		mesh = 2.6, -- the least a cut is held, the camera at the new spot (Terrain meshes round it)
+		holdMax = 6, -- the most: it clears then whatever is still loading
+		parts = 0.9, -- share of the server's parts round the school that must be in
+		queue = 10, -- downloads still waiting (ContentProvider.RequestQueueSize) at most
 		dipIn = 0.6, -- out of it into the new shot
-		reveal = 1.2, -- the loading scene clearing onto the first shot
+		reveal = 1.2, -- the backdrop clearing onto the first shot
 		diveIn = 0.45, -- the dive: the wash closing over the shot
 		diveHold = 0.9, -- held over the den while its Terrain meshes in round the camera
 		diveOut = 0.7,

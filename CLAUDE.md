@@ -1439,11 +1439,21 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     school's own fish, a documentary lower third ("Yellowfin Tuna · Open Blue · LV
     35–55"), letterbox, murk-dip or bubble cuts every ~6.5 s, never the same biome
     twice; the server prestreams each shot (validated, rate-limited, only on the start
-    screen); paths checked by ray in the background; the old viewport scene is the
-    loading layer and fallback. Gameplay UI, tags and markers stay hidden; ambience
-    follows the shot. Re-check the paths after any Terrain change: `DUMP_ONLY=1
-    LUAU=<luau> bash tools/preview/run_start.sh <dir>` (exit 1 if a shot has no clear
-    plan).
+    screen); paths checked by ray in the background. Gameplay UI, tags and markers
+    stay hidden; ambience follows the shot. Re-check the paths after any Terrain
+    change: `DUMP_ONLY=1 LUAU=<luau> bash tools/preview/run_start.sh <dir>` (exit 1 if
+    a shot has no clear plan). **No see-through cuts (owner, 2026-10-20: "it shows
+    through the map for a few seconds until it loads, thats very unacceptable"):**
+    `RequestStreamAroundAsync` only sends a spot's min radius once (a prefetch, GC'd
+    after ~5 s) and Roblox meshes Terrain only round the camera, so the server now puts
+    a replication focus at each shot (`Player:AddReplicationFocus` on a part in
+    `Workspace.StartFoci`; two at most, the shot on screen and the next; released on
+    `StartDone`) and answers with the parts round the school (`StartShots.partsNear`),
+    and every cut is held under an opaque murk with the camera already at the new spot
+    until those parts are 90% in, the downloads queue ≤ 10 and `mesh` 2.6 s have
+    passed (`holdMax` 6 s, logged as `[StartShots] ... still loading`); the first shot
+    is held the same way under the backdrop. The old ViewportFrame intro scene is gone
+    (owner): a plain water backdrop (shafts, snow, bubbles) shows until a shot is in.
   - **Predators that hunt like predators:** a Jaw bone (`rig_fish.py --jaw`) on the
     Megalodon (plus FinL/FinR), Reef Shark and 'Cuda (`boss_fbx` 3477e8c2…,
     `species_fbx` a13009ba…, the same screened colour maps); `SwimWave` takes bone rest

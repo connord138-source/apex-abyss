@@ -335,6 +335,23 @@ function StartShots.streamPoints(shot: Shot, index: number, t: number): { Vector
 	return points
 end
 
+-- How many of the built world's parts stand within AREA_RADIUS of `at`: the server
+-- counts them round a shot's school when it has streamed the area, and the client
+-- counts the ones that have reached it, so a cut waits until nearly all have
+-- (spatial queries see only parts with CanQuery on: rock, wrecks, the ruins' stones;
+-- the rest stream in with them)
+StartShots.AREA_RADIUS = 110
+function StartShots.partsNear(at: Vector3): number
+	local world = workspace:FindFirstChild("World")
+	if world == nil then
+		return 0
+	end
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { world }
+	return #workspace:GetPartBoundsInRadius(at, StartShots.AREA_RADIUS, params)
+end
+
 -- Whether the ground should be in reach under the school once its area has streamed
 -- in (a mid-water school in the Open Blue has nothing under it for hundreds of studs)
 function StartShots.groundNear(index: number): (boolean, number)

@@ -6,20 +6,25 @@
 -- could be rolling shots of different fish around the different biomes or just have
 -- the actual visual quality turned up").
 --
--- It covers the game from the first frame. While the game loads, a lit underwater
--- scene plays in two ViewportFrames (the far water hazed by depth, with a minnow
--- school, a tuna shoal and a shark's shadow; the near water with swaying kelp on the
--- sand, the playable fish and a few reef fish), with light shafts, marine snow and
--- rising bubbles: the loading layer. As soon as the first shot's water is in, it
--- clears onto the real sea: an attract mode of documentary shots (Config/Start,
--- Shared/StartShots), one per biome, each following a real prey school on the shared
--- clock with the camera easing alongside, ahead of or round it, letterboxed, a lower
--- third naming the fish and its biome, cut through a dip into murk or a bubble wash.
+-- It covers the game from the first frame. While the game loads, a plain water
+-- backdrop (light shafts, marine snow, rising bubbles) shows under the title; the old
+-- ViewportFrame scene of swimming fish and kelp is gone now the real sea plays
+-- (owner, 2026-10-20). As soon as the first shot's water is in, it clears onto an
+-- attract mode of documentary shots (Config/Start, Shared/StartShots), one per biome,
+-- each following a real prey school on the shared clock with the camera easing
+-- alongside, ahead of or round it, letterboxed, a lower third naming the fish and its
+-- biome, cut through a dip into murk or a bubble wash.
 -- Each next shot's water is streamed in by the server while the current one plays
--- (the StartShot request; StartService answers with the `StartStreamed` attribute),
--- and a shot cuts in only once its Terrain answers a ray there and its camera's path
--- has been checked clear of rock; one that doesn't arrive is skipped, and with none
--- ready the loading layer comes back. The camera is taken through
+-- (the StartShot request; StartService puts a replication focus there and answers
+-- with the `StartStreamed` attribute: how many of the world's parts stand round the
+-- school, and where); a shot is cut to only once those parts have reached this
+-- client, its Terrain answers a ray there and its camera's path has been checked
+-- clear of rock, and the cut is then held under the murk with the camera already at
+-- the new spot until it has loaded round it (Config/Start `mesh`, `parts`, `queue`,
+-- `holdMax`): Roblox meshes Terrain only round the camera and can't say when it's
+-- done, and a cut straight in showed the floor and the kelp missing for a few
+-- seconds (owner, 2026-10-20). One that doesn't arrive is skipped, and with none
+-- ready the backdrop comes back. The camera is taken through
 -- CameraController.override; every other GUI is hidden meanwhile, the music keeps
 -- the hub's list and BiomeController reads the dark where the shot is (`viewpoint`).
 --
@@ -30,6 +35,7 @@
 -- the Daily panel, or WELCOME BACK) picks up.
 --
 -- Other controllers hold their join-time UI until then with `afterStart`.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -38,11 +44,9 @@ local UserInputService = game:GetService("UserInputService")
 
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
-local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
 local Schools = require(ReplicatedStorage.Shared.Schools)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local StartShots = require(ReplicatedStorage.Shared.StartShots)
-local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
@@ -60,7 +64,6 @@ local StartController = {
 local MIN_SHOW = 2.4 -- seconds on screen before the prompt, so it never just flashes
 local MAX_WAIT = 25 -- the prompt shows by then even if the fish hasn't spawned yet
 local GRACE = 0.45 -- input is ignored this long after the prompt appears
-local FOV = 50
 local LOGO_HEIGHT = 200 -- the title logo's height on the 1280x720 design layer
 local LOGO_HEIGHT_TOUCH = 160 -- and on the phones' 960x540 one
 local LOGO_ASPECT = 838 / 708 -- marketing/logo.png's width over its height
@@ -96,312 +99,6 @@ end
 -- waits in its den meanwhile): BiomeController reads the dark there
 function StartController.viewpoint(): Vector3?
 	return if up then viewing else nil
-end
-
--- Scene ---------------------------------------------------------------------------
-
-type Swimmer = {
-	model: Model?, -- an imported model (rigged, or a bare mesh inside one)
-	mesh: BasePart?, -- a bare static mesh
-	body: BasePart?, -- or a simple ellipsoid body with a tail
-	tail: BasePart?,
-	offset: CFrame, -- centres the model on its swim point
-	bones: { [string]: Bone },
-	spine: { string },
-	flip: boolean,
-	length: number,
-	speed: number,
-	direction: number, -- +1 swims right, -1 left
-	x: number,
-	y: number,
-	z: number,
-	bob: number,
-	phase: number,
-	wave: number, -- tail beats per second
-}
-
-type Kelp = {
-	segments: { BasePart },
-	blades: { { part: BasePart, segment: number, side: number } },
-	base: CFrame,
-	phase: number,
-	length: number,
-}
-
-local swimmers: { Swimmer } = {}
-local kelps: { Kelp } = {}
-
-local function prepare(model: Instance)
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
-			descendant.CanCollide = false
-			descendant.CanQuery = false
-			descendant.CanTouch = false
-			descendant.CastShadow = false
-		end
-	end
-end
-
-local function bonesOf(model: Instance): ({ [string]: Bone }, { string })
-	local bones: { [string]: Bone } = {}
-	local spine: { string } = {}
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("Bone") then
-			bones[descendant.Name] = descendant
-		end
-	end
-	local i = 1
-	while bones[`Spine{i}`] do
-		table.insert(spine, `Spine{i}`)
-		i += 1
-	end
-	if bones.Tail then
-		table.insert(spine, "Tail")
-	end
-	return bones, spine
-end
-
-local function ellipsoid(parent: Instance, color: Color3, size: Vector3): Part
-	local part = Instance.new("Part")
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.Material = Enum.Material.SmoothPlastic
-	part.Color = color
-	part.Size = size
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Parent = part
-	part.Parent = parent
-	return part
-end
-
--- A fish `length` long from an imported model, or a simple body in `color` while
--- the model isn't imported
-local function fish(
-	world: WorldModel,
-	template: Instance?,
-	length: number,
-	color: Color3,
-	motion: {
-		speed: number,
-		direction: number,
-		x: number,
-		y: number,
-		z: number,
-		bob: number,
-		wave: number,
-	}
-): Swimmer
-	local swimmer: Swimmer = {
-		offset = CFrame.identity,
-		bones = {},
-		spine = {},
-		flip = false,
-		length = length,
-		speed = motion.speed,
-		direction = motion.direction,
-		x = motion.x,
-		y = motion.y,
-		z = motion.z,
-		bob = motion.bob,
-		phase = math.random() * 10,
-		wave = motion.wave,
-	}
-	if template and template:IsA("Model") and template:FindFirstChildWhichIsA("BasePart", true) then
-		local clone = template:Clone()
-		prepare(clone)
-		clone:ScaleTo(1)
-		-- The fish's frame is its main mesh's (like the prey and predators): its -Z
-		-- is the head on a rigged body, and its Z is the length
-		local mesh: MeshPart? = nil
-		for _, descendant in clone:GetDescendants() do
-			if
-				descendant:IsA("MeshPart")
-				and (mesh == nil or descendant.Size.Magnitude > (mesh :: MeshPart).Size.Magnitude)
-			then
-				mesh = descendant
-			end
-		end
-		local long = if mesh then mesh.Size.Z else clone:GetExtentsSize().Z
-		clone:ScaleTo(length / math.max(long, 0.01))
-		if mesh then
-			swimmer.offset = clone:GetPivot():ToObjectSpace(mesh.CFrame):Inverse()
-		end
-		swimmer.bones, swimmer.spine = bonesOf(clone)
-		-- A rigged model faces -Z; a lone static mesh may face +Z (SwimWave.needsFlip)
-		swimmer.flip = #swimmer.spine == 0 and mesh ~= nil and SwimWave.needsFlip(mesh :: MeshPart)
-		clone.Parent = world
-		swimmer.model = clone
-	elseif template and template:IsA("MeshPart") then
-		local mesh = template:Clone()
-		prepare(mesh)
-		mesh.Size = template.Size * (length / math.max(template.Size.Z, 0.01))
-		mesh.Anchored = true
-		mesh.CanCollide = false
-		mesh.CastShadow = false
-		mesh.Parent = world
-		swimmer.mesh = mesh
-		swimmer.flip = SwimWave.needsFlip(template)
-	else
-		swimmer.body = ellipsoid(world, color, Vector3.new(length * 0.3, length * 0.36, length * 0.8))
-		swimmer.tail = ellipsoid(
-			world,
-			color:Lerp(Color3.new(1, 1, 1), 0.15),
-			Vector3.new(length * 0.04, length * 0.4, length * 0.28)
-		)
-	end
-	table.insert(swimmers, swimmer)
-	return swimmer
-end
-
--- How far either side of the middle a fish at depth `z` leaves the screen
-local function halfWidth(z: number, aspect: number): number
-	return -z * math.tan(math.rad(FOV / 2)) * aspect
-end
-
-local function moveSwimmer(swimmer: Swimmer, t: number, dt: number, aspect: number)
-	swimmer.x += swimmer.direction * swimmer.speed * dt
-	local span = halfWidth(swimmer.z, aspect) + swimmer.length
-	if swimmer.x * swimmer.direction > span then
-		swimmer.x = -swimmer.direction * span
-	end
-	local y = swimmer.y + math.sin(t * 0.55 + swimmer.phase) * swimmer.bob
-	local climb = math.cos(t * 0.55 + swimmer.phase) * swimmer.bob * 0.55 * 0.25
-	local position = Vector3.new(swimmer.x, y, swimmer.z)
-	local frame = CFrame.lookAt(position, position + Vector3.new(swimmer.direction, climb, 0))
-	if swimmer.flip then
-		frame *= CFrame.Angles(0, math.pi, 0)
-	end
-	local wave = t * swimmer.wave * 2 * math.pi + swimmer.phase
-	if swimmer.model then
-		(swimmer.model :: Model):PivotTo(frame * swimmer.offset)
-		if #swimmer.spine > 0 then
-			SwimWave.applyBones(swimmer.bones, swimmer.spine, wave, 0.32, 0)
-		end
-	elseif swimmer.mesh then
-		(swimmer.mesh :: BasePart).CFrame = frame * CFrame.Angles(0, math.sin(wave) * 0.08, 0)
-	elseif swimmer.body and swimmer.tail then
-		local body = swimmer.body :: BasePart
-		local tail = swimmer.tail :: BasePart
-		body.CFrame = frame * CFrame.Angles(0, math.sin(wave) * 0.06, 0)
-		tail.CFrame = frame
-			* CFrame.new(0, 0, body.Size.Z * 0.45)
-			* CFrame.Angles(0, math.sin(wave + 1.2) * 0.45, 0)
-			* CFrame.new(0, 0, tail.Size.Z * 0.4)
-	end
-end
-
-local KELP_GREEN = Color3.fromRGB(70, 128, 54)
-
--- A stalk of kelp built from parts (low-poly, like the world's), rooted at `base`
-local function kelp(world: WorldModel, base: CFrame, height: number, thickness: number): Kelp
-	local count = 9
-	local segment = height / count
-	local stalk: Kelp =
-		{ segments = {}, blades = {}, base = base, phase = math.random() * 6, length = segment }
-	for i = 1, count do
-		local part = Instance.new("Part")
-		part.Anchored = true
-		part.CanCollide = false
-		part.CanQuery = false
-		part.CanTouch = false
-		part.CastShadow = false
-		part.Material = Enum.Material.SmoothPlastic
-		part.Color = KELP_GREEN:Lerp(Color3.fromRGB(150, 160, 70), i / count * 0.5)
-		part.Size = Vector3.new(thickness, segment * 1.05, thickness)
-		part.Parent = world
-		table.insert(stalk.segments, part)
-		if i > 1 then
-			for side = -1, 1, 2 do
-				local blade = Instance.new("Part")
-				blade.Anchored = true
-				blade.CanCollide = false
-				blade.CanQuery = false
-				blade.CanTouch = false
-				blade.CastShadow = false
-				blade.Material = Enum.Material.SmoothPlastic
-				blade.Color = part.Color:Lerp(Color3.fromRGB(120, 150, 60), 0.3)
-				blade.Size = Vector3.new(thickness * 3.6, segment * 0.95, 0.08)
-				blade.Parent = world
-				table.insert(stalk.blades, { part = blade :: BasePart, segment = i, side = side })
-			end
-		end
-	end
-	table.insert(kelps, stalk)
-	return stalk
-end
-
-local function swayKelp(stalk: Kelp, t: number, parts: { BasePart }, frames: { CFrame })
-	local cf = stalk.base
-	local joints: { CFrame } = {}
-	for i, part in stalk.segments do
-		local bend = math.sin(t * 0.8 + stalk.phase - i * 0.35) * 0.05
-			+ 0.012 * i * math.sin(t * 0.3 + stalk.phase)
-		cf = cf * CFrame.Angles(bend * 0.4, 0, bend)
-		local centre = cf * CFrame.new(0, stalk.length / 2, 0)
-		table.insert(parts, part)
-		table.insert(frames, centre)
-		joints[i] = centre
-		cf = cf * CFrame.new(0, stalk.length, 0)
-	end
-	for _, blade in stalk.blades do
-		local at = joints[blade.segment]
-		local flutter = math.sin(t * 1.7 + stalk.phase + blade.segment) * 0.25
-		table.insert(parts, blade.part)
-		table.insert(
-			frames,
-			at
-				* CFrame.Angles(0, blade.side * 0.5, 0)
-				* CFrame.new(blade.side * blade.part.Size.X * 0.45, 0, 0)
-				* CFrame.Angles(0, 0, blade.side * (0.35 + flutter))
-		)
-	end
-end
-
-local function rock(world: WorldModel, cframe: CFrame, size: Vector3, color: Color3)
-	local part = Instance.new("Part")
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.Material = Enum.Material.Slate
-	part.Color = color
-	part.Size = size
-	part.CFrame = cframe
-	part.Parent = world
-end
-
-local function viewport(parent: Instance, name: string, order: number): (ViewportFrame, WorldModel, Camera)
-	local frame = Instance.new("ViewportFrame")
-	frame.Name = name
-	frame.Size = UDim2.fromScale(1, 1)
-	frame.BackgroundTransparency = 1
-	frame.ZIndex = order
-	local world = Instance.new("WorldModel")
-	world.Parent = frame
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = FOV
-	camera.Parent = frame
-	frame.CurrentCamera = camera
-	frame.Parent = parent
-	return frame, world, camera
-end
-
--- The imported model of a playable fish (named after its species or its body plan),
--- of a prey fish, or of a boss
-local function speciesModel(id: string): Instance?
-	local species = Config.Species.byId[id]
-	return FishBuilder.meshTemplate(if species then species.plan else id)
-end
-
-local function folderModel(folderName: string, name: string): Instance?
-	local folder = ReplicatedStorage:FindFirstChild(folderName)
-	return folder and folder:FindFirstChild(name)
 end
 
 -- Screen ---------------------------------------------------------------------------
@@ -487,14 +184,25 @@ type Show = {
 	color: Color3, -- the biome's accent
 	guard: number, -- how far the camera may stand from its subject (rock pulls it in)
 	captioned: boolean,
+	token: string, -- the shot it was asked for as ("<shot>:<school>"): its focus stays while it plays
+}
+
+-- A shot's area as the server streamed it: how many of the world's parts stand round
+-- its school, and where (StartShots.partsNear)
+type Area = {
+	parts: number,
+	at: Vector3,
+	checkedAt: number,
+	ok: boolean,
 }
 
 -- The next shot: asked for, then its water in, then its path checked
 type Pending = {
 	shot: number,
 	school: number,
-	token: string, -- what StartService puts in `StartStreamed` once its water is in
+	token: string, -- what StartService's `StartStreamed` starts with once its water is in
 	askedAt: number,
+	area: Area?, -- read from that answer
 	arrivedAt: number?,
 	planning: boolean?, -- its path is being checked (a few frames: planFor)
 	plan: StartShots.Plan?,
@@ -648,13 +356,51 @@ local function ask()
 		token = `{index}:{school}`,
 		askedAt = os.clock(),
 	}
-	ClientState.request("StartShot", index, school)
+	-- (and the shot on screen, whose focus the server keeps)
+	local showing = show
+	local keepShot, keepSchool = 0, 0
+	if showing then
+		local a, b = string.match(showing.token, "^(%d+):(%d+)$")
+		keepShot, keepSchool = tonumber(a) or 0, tonumber(b) or 0
+	end
+	ClientState.request("StartShot", index, school, keepShot, keepSchool)
 end
 
--- Whether a pending shot's water is in: the server has streamed it, and (unless its
--- school swims in open water far over the floor) the Terrain under it answers a ray
+-- Whether nearly all of an area's parts have reached this client (checked at most
+-- every AREA_EVERY seconds: a spatial query over ~110 studs)
+local AREA_EVERY = 0.3
+local function areaIn(area: Area): boolean
+	local now = os.clock()
+	if now - area.checkedAt >= AREA_EVERY then
+		area.checkedAt = now
+		area.ok = area.parts <= 0 or StartShots.partsNear(area.at) >= area.parts * timing.parts
+	end
+	return area.ok
+end
+
+-- The server's answer for a shot: "<shot>:<school>|<parts>|<x>,<y>,<z>"
+local function areaOf(answer: string): Area?
+	local parts, x, y, z = string.match(answer, "|(%d+)|([%-%d%.]+),([%-%d%.]+),([%-%d%.]+)$")
+	local n, px, py, pz = tonumber(parts), tonumber(x), tonumber(y), tonumber(z)
+	if n == nil or px == nil or py == nil or pz == nil then
+		return nil
+	end
+	return { parts = n, at = Vector3.new(px, py, pz), checkedAt = -math.huge, ok = false }
+end
+
+-- Whether a pending shot's water is in: the server has streamed it, nearly all of
+-- the world's parts round its school are here, and (unless its school swims in open
+-- water far over the floor) the Terrain under it answers a ray
 local function arrived(p: Pending): boolean
-	if Players.LocalPlayer:GetAttribute("StartStreamed") ~= p.token then
+	local answer = Players.LocalPlayer:GetAttribute("StartStreamed")
+	if typeof(answer) ~= "string" or string.sub(answer, 1, #p.token + 1) ~= p.token .. "|" then
+		return false
+	end
+	if p.area == nil then
+		p.area = areaOf(answer)
+	end
+	local area = p.area
+	if area and not areaIn(area) then
 		return false
 	end
 	local near, over = StartShots.groundNear(p.school)
@@ -724,16 +470,18 @@ local function planFor(p: Pending, t0: number): StartShots.Plan?
 	return plan
 end
 
--- Puts a planned shot on screen now: its path moved to start now and checked again
--- (one variant's rays), else planned afresh from now (under the murk), else as
--- planned (its first check covered running late by `extend`). False if it can't go.
+-- Puts a planned shot's camera in place now, under the murk, its path starting once
+-- the hold is over (`mesh` from now): moved to start then and checked again (one
+-- variant's rays), else planned afresh from then, else as planned (its first check
+-- covered running late by `extend`). False if it can't go.
 local function begin(p: Pending): boolean
 	pending = nil
 	local planned = p.plan :: StartShots.Plan
 	local now = Timing.clock()
-	local plan = StartShots.retime(planned, now, castWorld)
-		or StartShots.plan(planned.shot, planned.school, now, castWorld, planned.side, planned.landmark)
-	if plan == nil and now - planned.t0 <= timing.extend then
+	local startAt = now + timing.mesh
+	local plan = StartShots.retime(planned, startAt, castWorld)
+		or StartShots.plan(planned.shot, planned.school, startAt, castWorld, planned.side, planned.landmark)
+	if plan == nil and startAt - planned.t0 <= timing.extend then
 		plan = planned
 	end
 	if plan == nil then
@@ -750,6 +498,7 @@ local function begin(p: Pending): boolean
 		color = if biome then biome.color else Ui.color.accent,
 		guard = math.huge,
 		captioned = false,
+		token = p.token,
 	}
 	lastBiome = shot.biome
 	everShown = true
@@ -857,7 +606,7 @@ function StartController.start()
 	gui.DisplayOrder = 100
 	gui.Parent = playerGui
 
-	-- The loading layer -------------------------------------------------------------
+	-- The backdrop -------------------------------------------------------------------
 
 	-- The water: lighter toward the surface (and a button for taps)
 	local cover = Instance.new("TextButton")
@@ -904,210 +653,6 @@ function StartController.start()
 		)
 		shaft.Parent = gui
 		table.insert(shafts, { frame = shaft, base = shaft.Rotation, phase = i * 1.3 })
-	end
-
-	-- The far water (hazed), a veil of water between, and the near water: three
-	-- depths, each lit its own way (the far one cool and dim, the near one in warm
-	-- light from above)
-	local far, farWorld, farCamera = viewport(gui, "Far", 2)
-	far.Ambient = Color3.fromRGB(62, 106, 140)
-	far.LightColor = Color3.fromRGB(160, 214, 240)
-	far.LightDirection = Vector3.new(-0.2, -1, -0.3)
-	far.ImageColor3 = Color3.fromRGB(118, 176, 212)
-	local veil = Instance.new("Frame")
-	veil.Name = "Veil"
-	veil.Size = UDim2.fromScale(1, 1)
-	veil.BackgroundColor3 = Color3.fromRGB(22, 88, 120)
-	veil.BorderSizePixel = 0
-	veil.ZIndex = 3
-	gradient(
-		veil,
-		90,
-		NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.82),
-			NumberSequenceKeypoint.new(0.6, 0.62),
-			NumberSequenceKeypoint.new(1, 0.5),
-		})
-	)
-	veil.Parent = gui
-	local near, nearWorld, nearCamera = viewport(gui, "Near", 4)
-	near.Ambient = Color3.fromRGB(104, 146, 166)
-	near.LightColor = Color3.fromRGB(255, 244, 224)
-	near.LightDirection = Vector3.new(-0.3, -1, -0.25)
-
-	-- The floor and rocks far off; sand, kelp and a little coral near
-	local sand = Instance.new("Part")
-	sand.Anchored = true
-	sand.CanCollide = false
-	sand.CastShadow = false
-	sand.Material = Enum.Material.Sand
-	sand.Color = Color3.fromRGB(150, 160, 140)
-	sand.Size = Vector3.new(900, 2, 400)
-	sand.CFrame = CFrame.new(0, -12, -210)
-	sand.Parent = farWorld
-	local nearSand = sand:Clone()
-	nearSand.Color = Color3.fromRGB(176, 172, 146)
-	nearSand.Size = Vector3.new(140, 2, 40)
-	nearSand.CFrame = CFrame.new(0, -12.2, -32)
-	nearSand.Parent = nearWorld
-	local rng = Random.new(7)
-	for _ = 1, 14 do
-		local x = rng:NextNumber(-120, 120)
-		local z = rng:NextNumber(-150, -55)
-		local size = rng:NextNumber(4, 14)
-		rock(
-			farWorld,
-			CFrame.new(x, -11 + size * 0.2, z)
-				* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, 6), 0.3),
-			Vector3.new(size * 1.4, size * 0.7, size),
-			Color3.fromRGB(96, 110, 112)
-		)
-	end
-	for i = 1, 9 do
-		local x = -95 + (i - 1) * 24 + rng:NextNumber(-8, 8)
-		kelp(farWorld, CFrame.new(x, -11, rng:NextNumber(-110, -70)), rng:NextNumber(38, 58), 0.9)
-	end
-	for _, spot in
-		{
-			Vector3.new(-17, -11, -22),
-			Vector3.new(-13.5, -11, -27),
-			Vector3.new(-21, -11, -30),
-			Vector3.new(16, -11, -21),
-			Vector3.new(20.5, -11, -28),
-			Vector3.new(13, -11, -33),
-		}
-	do
-		kelp(nearWorld, CFrame.new(spot), rng:NextNumber(20, 27), 0.45)
-		rock(
-			nearWorld,
-			CFrame.new(spot + Vector3.new(rng:NextNumber(-1, 1), 0.3, 0.8))
-				* CFrame.Angles(0.2, rng:NextNumber(0, 6), 0.1),
-			Vector3.new(3.2, 1.6, 2.4),
-			Color3.fromRGB(104, 112, 108)
-		)
-	end
-	local coral =
-		{ Color3.fromRGB(240, 110, 120), Color3.fromRGB(255, 160, 80), Color3.fromRGB(170, 110, 220) }
-	for i, spot in { Vector3.new(-7, -11, -24), Vector3.new(8, -11, -26), Vector3.new(-1, -11, -36) } do
-		local head = ellipsoid(nearWorld, coral[i], Vector3.new(2.6, 1.6, 2.2))
-		head.CFrame = CFrame.new(spot + Vector3.new(0, 0.5, 0))
-	end
-
-	-- Who swims past: the playable fish up close with a few reef fish, a sardine school
-	-- between, and minnows, a tuna shoal and a big shark's shadow far off
-	local species = Config.Species.byId
-	local function speciesColor(id: string): Color3
-		local entry = species[id]
-		return if entry then entry.back else Ui.color.accent
-	end
-	local function preyColor(id: string): Color3
-		local entry = Config.Prey.byId[id]
-		return if entry then entry.back else Color3.fromRGB(150, 170, 190)
-	end
-	fish(nearWorld, speciesModel("Nibbler"), 4.6, speciesColor("Nibbler"), {
-		speed = 4.2,
-		direction = 1,
-		x = -6,
-		y = -1.2,
-		z = -18,
-		bob = 0.8,
-		wave = 2.2,
-	})
-	fish(nearWorld, speciesModel("Cuda"), 8, speciesColor("Cuda"), {
-		speed = 6,
-		direction = -1,
-		x = 12,
-		y = 2.6,
-		z = -27,
-		bob = 0.6,
-		wave = 1.6,
-	})
-	fish(nearWorld, speciesModel("Pufferfish"), 3.6, speciesColor("Pufferfish"), {
-		speed = 2.4,
-		direction = 1,
-		x = 18,
-		y = -4.5,
-		z = -15,
-		bob = 0.5,
-		wave = 2.6,
-	})
-	for i = 1, 3 do
-		fish(nearWorld, folderModel("PreyModels", "Garibaldi"), 1.7, preyColor("Garibaldi"), {
-			speed = 2.6,
-			direction = -1,
-			x = -24 + i * 2.2,
-			y = -8.6 + (i % 2) * 0.7,
-			z = -24 - i * 1.6,
-			bob = 0.3,
-			wave = 3,
-		})
-	end
-	for i = 1, 4 do
-		fish(nearWorld, folderModel("PreyModels", "BlueTang"), 1.8, preyColor("BlueTang"), {
-			speed = 3.4,
-			direction = 1,
-			x = 6 + i * 2.6,
-			y = -6.8 + (i % 2) * 0.9,
-			z = -31 - (i % 3) * 1.4,
-			bob = 0.35,
-			wave = 3.2,
-		})
-	end
-	for i = 1, 11 do
-		fish(nearWorld, folderModel("PreyModels", "Sardine"), 1.5, preyColor("Sardine"), {
-			speed = 7,
-			direction = -1,
-			x = 26 + (i % 4) * 2.4 + i * 1.3,
-			y = 5 + (i % 3) * 1.1 - (i % 2) * 0.8,
-			z = -36 - (i % 5) * 1.4,
-			bob = 0.35,
-			wave = 3.4,
-		})
-	end
-	for i = 1, 16 do
-		fish(farWorld, folderModel("PreyModels", "Minnow"), 1.6, preyColor("Minnow"), {
-			speed = 5,
-			direction = 1,
-			x = -70 + (i % 5) * 3 + i * 2.2,
-			y = 8 + (i % 4) * 1.6,
-			z = -78 - (i % 3) * 3,
-			bob = 0.5,
-			wave = 3,
-		})
-	end
-	for i = 1, 6 do
-		fish(farWorld, folderModel("PreyModels", "YellowfinTuna"), 7, preyColor("YellowfinTuna"), {
-			speed = 9,
-			direction = -1,
-			x = 90 + i * 9 + (i % 2) * 4,
-			y = 26 + (i % 3) * 3,
-			z = -140 - (i % 2) * 8,
-			bob = 1,
-			wave = 1.4,
-		})
-	end
-	local shadow = fish(farWorld, folderModel("FishModels", "Megalodon"), 46, Color3.fromRGB(70, 86, 100), {
-		speed = 4.5,
-		direction = -1,
-		x = 60,
-		y = 16,
-		z = -125,
-		bob = 1.4,
-		wave = 0.5,
-	})
-	if shadow.model == nil and shadow.body then
-		-- No Megalodon imported: a Reef Shark stands in, far off
-		(shadow.body :: BasePart).Transparency = 1;
-		(shadow.tail :: BasePart).Transparency = 1
-		fish(farWorld, speciesModel("ReefShark"), 22, Color3.fromRGB(70, 86, 100), {
-			speed = 5,
-			direction = -1,
-			x = 40,
-			y = 14,
-			z = -110,
-			bob = 1,
-			wave = 0.8,
-		})
 	end
 
 	-- Marine snow and rising bubbles (the bubbles also wash over cuts and the dive)
@@ -1525,8 +1070,8 @@ function StartController.start()
 		end
 	end)
 
-	-- The loading layer's presence (0 gone, 1 there), eased: it clears onto the first
-	-- shot, and comes back whenever no shot is ready
+	-- The backdrop's presence (0 gone, 1 there), eased: it clears onto the first shot,
+	-- and comes back whenever no shot is ready
 	local loading, loadingFrom, loadingTo, loadingSince, loadingSeconds = 1, 1, 1, 0, 0
 	local function setLoading(on: boolean, seconds: number)
 		loadingFrom, loadingTo, loadingSince, loadingSeconds =
@@ -1536,28 +1081,56 @@ function StartController.start()
 		end
 	end
 
-	-- Cuts: dip out into the murk (or a bubble wash), cut while it's thickest, clear
-	-- onto the next shot (or back onto the loading layer)
+	-- Cuts: dip out into the murk (or a bubble wash), cut while it's thickest, hold
+	-- there with the camera at the new spot until it has loaded round it, then clear
+	-- onto the next shot (or back onto the backdrop). The first shot is held the same
+	-- way under the backdrop, then the backdrop clears.
 	local cutPhase: "none" | "out" | "hold" | "in" = "none"
 	local cutAt = 0
 	local cutTo: Pending? = nil
+	local holdArea: Area? = nil -- the new spot's parts, waited for in the hold
+	local fromBackdrop = false -- the hold is under the backdrop (the first shot), not the murk
+	local clearSeconds = 0 -- how long the clearing takes
 	local snapIn = 0 -- frames until the water's look snaps to the new place
 	local function startCut(to: Pending?)
 		local shot = if to then Start.shots[to.shot] else nil
 		local style = if shot then shot.cut or "murk" else "murk"
 		cutPhase, cutAt, cutTo = "out", os.clock(), to
+		fromBackdrop = false
 		hideCaption(0.3)
 		murk.BackgroundColor3 = if style == "bubbles" then WASH else MURK
-		Ui.tween(
-			murk,
-			timing.dipOut,
-			{ BackgroundTransparency = if style == "bubbles" then 0.03 else 0 },
-			Enum.EasingStyle.Sine
-		)
+		-- (fully opaque either way: the hold must hide the spot loading)
+		Ui.tween(murk, timing.dipOut, { BackgroundTransparency = 0 }, Enum.EasingStyle.Sine)
 		if style == "bubbles" then
 			Sfx.play("Bubble", { volume = 0.22, pitch = 0.9 })
 			burst(30, 0.05, 0.95)
 		end
+	end
+
+	-- Whether a held cut may clear: at least `mesh` seconds with the camera at the new
+	-- spot (the Terrain meshes round it), nearly all its parts in and the downloads
+	-- queue nearly empty; or `holdMax` whatever is left. Back onto the backdrop there's
+	-- nothing to wait for.
+	local function spotReady(held: number, area: Area?, showing: boolean): boolean
+		if not showing then
+			return held >= timing.dipHold
+		end
+		if held >= timing.holdMax then
+			local current = show
+			warn(
+				string.format(
+					"[StartShots] %s cleared after %.1f s still loading (parts %s, queue %d)",
+					if current then Start.shots[current.plan.shot].id else "?",
+					held,
+					if area then tostring(areaIn(area)) else "n/a",
+					ContentProvider.RequestQueueSize
+				)
+			)
+			return true
+		end
+		return held >= timing.mesh
+			and (area == nil or areaIn(area))
+			and ContentProvider.RequestQueueSize <= timing.queue
 	end
 
 	-- The schedule, each frame until the dive: the next shot asked for, its water
@@ -1581,11 +1154,14 @@ function StartController.start()
 				and now - (p.arrivedAt :: number)
 					>= (if everShown then timing.settle else timing.firstSettle)
 			then
-				-- Its path, checked over the next few frames for when it would cut in
+				-- Its path, checked over the next few frames for when it would show: once
+				-- the one on screen ends, the dip and the hold
 				local current = show
-				local t0 = if current
-					then math.max(Timing.clock(), current.plan.t0 + current.plan.seconds)
-					else Timing.clock()
+				local t0 = (
+					if current
+						then math.max(Timing.clock(), current.plan.t0 + current.plan.seconds) + timing.dipOut
+						else Timing.clock()
+				) + timing.mesh
 				p.planning = true
 				task.spawn(function()
 					local plan = planFor(p, t0)
@@ -1607,23 +1183,31 @@ function StartController.start()
 				local to = cutTo
 				if to and begin(to) then
 					setLoading(false, 0)
+					holdArea = to.area
 				else
 					show = nil
 					viewing = nil
 					setLoading(true, 0)
+					holdArea = nil
 				end
 				snapIn = 2
 				cutPhase, cutAt, cutTo = "hold", now, nil
 			end
 			return
 		elseif cutPhase == "hold" then
-			if now - cutAt >= timing.dipHold then
-				Ui.tween(murk, timing.dipIn, { BackgroundTransparency = 1 }, Enum.EasingStyle.Sine)
+			if spotReady(now - cutAt, holdArea, show ~= nil) then
+				if fromBackdrop then
+					setLoading(false, timing.reveal)
+					clearSeconds = timing.reveal
+				else
+					Ui.tween(murk, timing.dipIn, { BackgroundTransparency = 1 }, Enum.EasingStyle.Sine)
+					clearSeconds = timing.dipIn
+				end
 				cutPhase, cutAt = "in", now
 			end
 			return
 		elseif cutPhase == "in" then
-			if now - cutAt >= timing.dipIn then
+			if now - cutAt >= clearSeconds then
 				cutPhase = "none"
 			end
 			return
@@ -1631,10 +1215,16 @@ function StartController.start()
 		local current = show
 		local nextUp = pending
 		if current == nil then
-			-- The first shot (or the next after the loading layer came back): clear onto it
-			if nextUp and nextUp.plan and begin(nextUp) then
-				setLoading(false, timing.reveal)
-				snapIn = 2
+			-- The first shot (or the next after the backdrop came back): held under the
+			-- backdrop until its spot has loaded, then the backdrop clears onto it
+			if nextUp and nextUp.plan then
+				local area = nextUp.area
+				if begin(nextUp) then
+					holdArea = area
+					fromBackdrop = true
+					snapIn = 2
+					cutPhase, cutAt = "hold", now
+				end
 			end
 			return
 		end
@@ -1653,7 +1243,7 @@ function StartController.start()
 	-- Motion
 	local opened = os.clock()
 	local promptAt: number? = nil
-	local dive = 0 -- 0..1 once started: the loading layer's cameras rush forward
+	local dive = 0 -- 0..1 once started: the bubbles rush up
 	local leaving = false
 	local lastMouseMove = os.clock()
 	local mouseConnection = UserInputService.InputChanged:Connect(function(input)
@@ -1675,46 +1265,14 @@ function StartController.start()
 				OceanController.snap()
 			end
 		end
-		-- The loading layer: eased in or out, and moving only while it shows
+		-- The backdrop: eased in or out, and moving only while it shows
 		if loadingSeconds > 0 then
 			local u = math.clamp((os.clock() - loadingSince) / loadingSeconds, 0, 1)
 			loading = loadingFrom + (loadingTo - loadingFrom) * u * u * (3 - 2 * u)
 		end
 		local shown = loading > 0.001
-		far.Visible = shown
-		near.Visible = shown
-		veil.Visible = shown
 		cover.BackgroundTransparency = 1 - loading
-		far.ImageTransparency = 1 - 0.68 * loading
-		near.ImageTransparency = 1 - loading
-		veil.BackgroundTransparency = 1 - loading
 		if shown then
-			local size = gui.AbsoluteSize
-			local aspect = if size.Y > 0 then size.X / size.Y else 16 / 9
-			-- Both cameras drift together (parallax), and rush ahead on the dive
-			local eye = Vector3.new(math.sin(t * 0.13) * 1.4, 2 + math.sin(t * 0.21) * 0.6, -dive * dive * 26)
-			local view = CFrame.lookAt(eye, Vector3.new(eye.X * 0.4, -1.5, -40 - dive * 26))
-			nearCamera.CFrame = view
-			farCamera.CFrame = view
-			nearCamera.FieldOfView = FOV + dive * 18
-			farCamera.FieldOfView = FOV + dive * 18
-			for _, swimmer in swimmers do
-				moveSwimmer(swimmer, t, dt, aspect)
-			end
-			local nearParts: { BasePart } = {}
-			local nearFrames: { CFrame } = {}
-			local farParts: { BasePart } = {}
-			local farFrames: { CFrame } = {}
-			for _, stalk in kelps do
-				local first = stalk.segments[1]
-				if first and first:IsDescendantOf(nearWorld) then
-					swayKelp(stalk, t, nearParts, nearFrames)
-				else
-					swayKelp(stalk, t, farParts, farFrames)
-				end
-			end
-			nearWorld:BulkMoveTo(nearParts, nearFrames, Enum.BulkMoveMode.FireCFrameChanged)
-			farWorld:BulkMoveTo(farParts, farFrames, Enum.BulkMoveMode.FireCFrameChanged)
 			for _, speck in specks do
 				speck.y += speck.speed * dt
 				if speck.y > 1.02 then
@@ -1746,7 +1304,7 @@ function StartController.start()
 			end
 			b.frame.Position = UDim2.fromScale(b.x + math.sin(t * 2 + b.wobble) * 0.006, b.y)
 			if not b.passing then
-				-- (the loading layer's own bubbles go with it)
+				-- (the backdrop's own bubbles go with it)
 				b.frame.BackgroundTransparency = 1 - 0.15 * loading
 				b.stroke.Transparency = 1 - 0.65 * loading
 			end
@@ -1806,7 +1364,7 @@ function StartController.start()
 		for _, line in guideLines do
 			Ui.tween(line, 0.35, { TextTransparency = 1 })
 		end
-		-- The shot (or the loading layer's cameras) pushes on into a bubble wash...
+		-- The shot (if one is on) pushes on into a bubble wash...
 		diveFrom = os.clock()
 		task.spawn(function()
 			local from = os.clock()
@@ -1872,8 +1430,6 @@ function StartController.start()
 				mouseConnection:Disconnect()
 				viewportChanged:Disconnect()
 				gui:Destroy()
-				table.clear(swimmers)
-				table.clear(kelps)
 			end)
 		end)
 	end
