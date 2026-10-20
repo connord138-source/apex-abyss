@@ -82,6 +82,62 @@ local function hubLoaded(hub: Instance): boolean
 	return counted >= want * HUB_SHARE and ContentProvider.RequestQueueSize <= QUEUE_LEFT
 end
 
+-- Whether the cavern's own rock round the plaza has finished arriving: rays from the
+-- plaza's middle out to its walls at two heights and up into its vault, against the
+-- Terrain only, counted every CAVERN_EVERY seconds; settled once at least
+-- CAVERN_LEAST of them hit and the count hasn't changed for CAVERN_STILL seconds (the
+-- tunnels and the oculus let a few through, so it waits for the count to stop rising
+-- rather than for a number). The parts count and the doorway's rock didn't cover it:
+-- the far walls and the vault were still streaming in when the wash cleared, and
+-- filled in only as the fish swam off (owner, 2026-10-20: "the fish still has to
+-- start moving once leaving the den for the hub to load")
+local CAVERN_EVERY = 0.25
+local CAVERN_STILL = 1.5
+local CAVERN_LEAST = 0.6
+local CAVERN_AROUND = 24 -- rays round each ring
+local CAVERN_UP = 12 -- rays up into the vault
+local cavernParams = RaycastParams.new()
+cavernParams.FilterType = Enum.RaycastFilterType.Include
+cavernParams.FilterDescendantsInstances = { workspace.Terrain }
+cavernParams.IgnoreWater = true
+local cavernAt, cavernHits, cavernSince = 0, -1, 0
+
+local function cavernRays(): number
+	local hub = Config.World.hub
+	local reach = hub.radius + 60
+	local hits = 0
+	for _, height in { hub.paving + 18, hub.paving + 70 } do
+		local origin = hub.center + Vector3.new(0, height, 0)
+		for i = 0, CAVERN_AROUND - 1 do
+			local a = (i + 0.5) / CAVERN_AROUND * 2 * math.pi
+			if workspace:Raycast(origin, Vector3.new(math.cos(a), 0, math.sin(a)) * reach, cavernParams) then
+				hits += 1
+			end
+		end
+	end
+	local origin = hub.center + Vector3.new(0, hub.paving + 30, 0)
+	for i = 0, CAVERN_UP - 1 do
+		local a = i / CAVERN_UP * 2 * math.pi
+		local direction = Vector3.new(math.cos(a) * 0.6, 0.8, math.sin(a) * 0.6)
+		if workspace:Raycast(origin, direction * (hub.height + 60), cavernParams) then
+			hits += 1
+		end
+	end
+	return hits
+end
+
+local function cavernSettled(): boolean
+	local now = os.clock()
+	if now - cavernAt >= CAVERN_EVERY then
+		cavernAt = now
+		local hits = cavernRays()
+		if hits ~= cavernHits then
+			cavernHits, cavernSince = hits, now
+		end
+	end
+	return cavernHits >= (2 * CAVERN_AROUND + CAVERN_UP) * CAVERN_LEAST and now - cavernSince >= CAVERN_STILL
+end
+
 -- How much of the hub is here, 0–1, for the loading words
 local function hubShare(): number
 	local world = workspace:FindFirstChild("World")
@@ -113,7 +169,7 @@ local function arrivedAt(door: number?): boolean
 		if doorway:GetAttribute("Owner") ~= nil and doorway:FindFirstChildWhichIsA("Light", true) == nil then
 			return false
 		end
-		if not hubLoaded(hub :: Instance) then
+		if not hubLoaded(hub :: Instance) or not cavernSettled() then
 			return false
 		end
 	end
@@ -173,6 +229,7 @@ end
 local function go(request: string, index: number?)
 	busy = true
 	arrived = false
+	cavernAt, cavernHits, cavernSince = 0, -1, 0
 	-- Leaving: the doorway on the plaza we'll come out at
 	local root = SwimController.root()
 	local door = if request == "LeaveDen" and root then Layout.denAt(root.Position) else nil
