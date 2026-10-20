@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Input = require(script.Parent.Parent.Input)
 local Spring = require(script.Parent.Parent.Spring)
@@ -125,6 +126,44 @@ local function sweep(
 		free, normal = swept.Distance, swept.Normal
 	end
 	return free, normal
+end
+
+-- Den portals: their panes are decor the rays don't see (not queryable, so fish swim
+-- through them), and a big fish backed up to one put the camera in the alcove behind
+-- the pane, which then filled the screen (PC 2026-10-20: a LV 100 fish arriving over
+-- its den's pool, 32 studs from the way out, saw only flat yellow). The camera stops
+-- short of a portal's plane near its middle: the den's way out, or the doorways on
+-- the plaza near the fish.
+local PORTAL_STOP = 1 -- studs kept in front of the pane, past the near plane
+local PORTAL_SPAN = Layout.DOOR_RADIUS + 4 -- how far from a portal's middle its plane counts
+local portalFrames: { CFrame } = {}
+
+local function portalStop(eye: Vector3, back: Vector3, length: number, near: number): number
+	table.clear(portalFrames)
+	local den = Layout.denAt(eye)
+	if den then
+		table.insert(portalFrames, Layout.exitFrame(den))
+	elseif Layout.inHub(eye) then
+		for index = 1, Layout.DEN_COUNT do
+			local frame = Layout.doorFrame(index)
+			if (frame.Position - eye).Magnitude < length + PORTAL_SPAN + 20 then
+				table.insert(portalFrames, frame)
+			end
+		end
+	end
+	-- Each frame faces out of its alcove (-Z is the open side)
+	for _, frame in portalFrames do
+		local from = frame:PointToObjectSpace(eye)
+		local along = frame:VectorToObjectSpace(back)
+		if from.Z < 0 and along.Z > 1e-3 then
+			local cross = -from.Z / along.Z
+			local at = from + along * cross
+			if cross < length and Vector2.new(at.X, at.Y).Magnitude <= PORTAL_SPAN then
+				length = math.max(cross - (near + PORTAL_STOP) / along.Z, 0)
+			end
+		end
+	end
+	return length
 end
 
 -- Set by a view that takes the screen over (Build mode's editor): called every
@@ -294,6 +333,10 @@ local function update(dt: number)
 	local aspect = if viewport.Y > 0 then viewport.X / viewport.Y else 16 / 9
 	local nearBox = Vector3.new(halfHeight * aspect * 2, halfHeight * 2, near * 2)
 	local first, normal = sweep(eye, back, distance, nearBox, near)
+	local portal = portalStop(eye, back, first, near)
+	if portal < first then
+		first, normal = portal, nil
+	end
 	-- 3. Stopped by a ceiling (looking down) or the seabed (looking up): rather than
 	-- collapse into the fish (it sat 0.7 studs off, re-test 2026-10-07), slide the
 	-- rest of the way along the rock and look back at the fish from there. How far
