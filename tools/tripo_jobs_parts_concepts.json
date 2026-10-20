@@ -1,0 +1,22 @@
+{
+ "jobs": [
+  {
+   "name": "PartsSheetA",
+   "group": "parts_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/SpeciesRoster.jpg",
+   "note": "natural designs",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D game models with visible flat facets, bold clean colors, soft light), paint five copies of the small orange starter fish at the far left of the reference, each wearing one body part, laid out in two rows with wide empty space between them: three on the top row, two centred on the bottom row, every fish whole in a three-quarter side view, head to the right, the part big and easy to read, on one plain flat soft teal background. Top row, left to right: an anglerfish lure, a long curved stalk rising from its forehead and arching forward over its eyes, ending in a glowing pale-cyan bulb; a narwhal horn, a long straight ivory tusk with a deep spiral groove growing forward from the snout, longer than the fish; a sawfish blade, a flat grey-blue blade sticking straight out from the snout, as long as the fish, with blunt white teeth along both edges. Bottom row, left to right: a sailfish sail, a tall blue-violet dorsal sail along its whole back, stiff spines fanning back through a membrane with dark spots; a betta veil tail, a long flowing double tail about twice the fish's length in rippling folds, deep blue fading to violet at the edges. Each part is solid, chunky and faceted like the fish, clearly growing from or bolted to the body, never floating. Keep the fish's own eyes as in the reference. No pink, red, peach, flesh or beige anywhere. The picture has no writing at all: no names, labels, numbers or captions; no ground or shadows."
+  },
+  {
+   "name": "PartsSheetB",
+   "group": "parts_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/SpeciesRoster.jpg",
+   "note": "legendary, a little magical",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly 3D game models with visible flat facets, bold clean colors, soft light), paint five copies of the small orange starter fish at the far left of the reference, each wearing one body part, laid out in two rows with wide empty space between them: three on the top row, two centred on the bottom row, every fish whole in a three-quarter side view, head to the right, the part big and easy to read, on one plain flat soft teal background. These are legendary, very rare parts, so make them grand and a little magical while staying natural. Top row, left to right: an abyssal lure, a segmented stalk arching forward from the forehead to a faceted glowing cyan crystal bulb with a soft halo and two thin trailing filaments; a narwhal horn, a long ivory spiral tusk with gold bands at its base and a faint pearly shine, longer than the fish; a sawfish blade, a long dark slate blade from the snout with chunky bone-white teeth along both edges and a glowing teal line down its middle. Bottom row, left to right: a sailfish sail, a tall sail along the whole back, its spines glowing cyan through a deep navy membrane with gold spots; a betta veil tail, a long flowing triple tail about twice the fish's length in deep blue and violet with glowing cyan edges. Each part is solid, chunky and faceted like the fish, clearly growing from or bolted to the body, never floating. Keep the fish's own eyes as in the reference. No pink, red, peach, flesh or beige anywhere. The picture has no writing at all: no names, labels, numbers or captions; no ground or shadows."
+  }
+ ]
+}
