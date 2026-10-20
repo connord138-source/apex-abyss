@@ -212,12 +212,13 @@ def bubble(f0=700, dur=0.09, rise=0.6):
     return np.sin(phase) * np.exp(-t / (dur * 0.35)) * envelope(len(t), 0.002, 0.01)
 
 
-def bubbles(track, at, dur, count, f_lo=400, f_hi=1600, gain=0.25, spread=0.6):
+def bubbles(track, at, dur, count, f_lo=400, f_hi=1600, gain=0.25, spread=0.6, gen=None):
     """A loose cluster of bubbles over `dur` seconds."""
+    gen = gen or rng
     for _ in range(count):
-        when = at + rng.random() * dur
-        f = np.exp(rng.uniform(np.log(f_lo), np.log(f_hi)))
-        track.add(bubble(f, rng.uniform(0.05, 0.13), rng.uniform(0.3, 0.9)), when, gain * rng.uniform(0.5, 1), rng.uniform(-spread, spread))
+        when = at + gen.random() * dur
+        f = np.exp(gen.uniform(np.log(f_lo), np.log(f_hi)))
+        track.add(bubble(f, gen.uniform(0.05, 0.13), gen.uniform(0.3, 0.9)), when, gain * gen.uniform(0.5, 1), gen.uniform(-spread, spread))
 
 
 def shimmer(track, at, dur, density=14, low="C6", high="E7", gain=0.12):
@@ -231,13 +232,14 @@ def shimmer(track, at, dur, density=14, low="C6", high="E7", gain=0.12):
         track.add(glock(rng.choice(notes), 0.6), when, gain * (0.4 + 0.6 * fade), rng.uniform(-0.8, 0.8))
 
 
-def reverb(stereo, wet=0.25, decay=1.6, predelay=0.012):
+def reverb(stereo, wet=0.25, decay=1.6, predelay=0.012, gen=None):
     """Convolution with decorrelated, exponentially decaying noise (a soft hall)."""
+    gen = gen or rng
     n = int(decay * 2.2 * SR)
     t = np.arange(n) / SR
     ir = []
     for _ in range(2):
-        tail = rng.standard_normal(n) * np.exp(-t * 6.9 / decay)
+        tail = gen.standard_normal(n) * np.exp(-t * 6.9 / decay)
         tail = lowpass(tail, 5500) + 0.0
         tail = np.concatenate([np.zeros(int(predelay * SR)), tail])
         ir.append(tail / np.sqrt(np.sum(tail**2)))
@@ -255,8 +257,8 @@ def underwater(stereo, cutoff=3200):
     return out
 
 
-def finish(track, peak=0.89, wet=0.22, decay=1.5, muffle=3200):
-    out = underwater(reverb(track.buf, wet, decay), muffle)
+def finish(track, peak=0.89, wet=0.22, decay=1.5, muffle=3200, gen=None):
+    out = underwater(reverb(track.buf, wet, decay, gen=gen), muffle)
     # gentle limiter, then normalize
     out = np.tanh(out * 1.1) / np.tanh(1.1)
     out *= peak / (np.abs(out).max() + 1e-9)
@@ -362,7 +364,7 @@ def dash():
     return finish(tr, 0.85, 0.12, 0.8)
 
 
-def snap():
+def _old_snap():
     tr = Track(0.35)
     click = lowpass(rng.standard_normal(int(0.03 * SR)), 2400) * np.exp(-secs(0.03) / 0.006)
     tr.add(click, 0.0, 0.9)
@@ -370,7 +372,7 @@ def snap():
     return finish(tr, 0.8, 0.08, 0.5)
 
 
-def bite():
+def _old_bite():
     tr = Track(0.7)
     tr.add(thump(110, 0.3), 0.0, 0.9)
     crunch = bandpass(rng.standard_normal(int(0.08 * SR)), 900, 3600) * np.exp(-secs(0.08) / 0.02)
@@ -378,6 +380,94 @@ def bite():
     tr.add(crunch * 0.6, 0.06, 0.5)
     bubbles(tr, 0.04, 0.3, 6, 400, 1400, 0.25, 0.5)
     return finish(tr, 0.88, 0.1, 0.7)
+
+
+# The bite sounds, v3 (owner, 2026-10-20: "bite sound needs to be a bite sound.
+# Sounds like a coconut falling"): the v2 Snap and Bite were a pitch-dropping sine
+# (`thump`, 110-160 Hz: a hollow wooden knock) under a dull click. A bite is now the
+# water pulled into the jaws, the teeth clacking shut (a few bright, fast-dying modes:
+# enamel on enamel, a hair of a flam between the jaws) and, when it lands, a wet
+# crackling crunch with a short dull weight under it (noise, never a pitch), heard
+# through less water than the rest so the teeth keep their edge. They draw from their
+# own generator after spending the old sounds' draws, so every later sound in the pack
+# comes out exactly as before.
+bite_rng = np.random.default_rng(2026102001)
+
+
+def water_pull(dur=0.07):
+    """Water sucked toward the jaws: a short swell of dull noise cut off at the clack."""
+    t = secs(dur)
+    noise = bandpass(bite_rng.standard_normal(len(t)), 250, 1400)
+    return noise * (t / dur) ** 2 * envelope(len(t), 0.004, 0.002)
+
+
+def teeth_clack(bright=1.0):
+    """Teeth meeting: a few high damped modes over a tick of noise."""
+    t = secs(0.05)
+    out = np.zeros_like(t)
+    for f, decay, amp in ((2850, 0.010, 1.0), (4300, 0.007, 0.7), (6100, 0.005, 0.5), (1650, 0.014, 0.4)):
+        out += amp * np.sin(2 * np.pi * f * bright * bite_rng.uniform(0.97, 1.03) * t + bite_rng.uniform(0, 6.28)) * np.exp(-t / decay)
+    tick = highpass(bite_rng.standard_normal(len(t)), 1800) * np.exp(-t / 0.0015)
+    return (out * 0.6 + tick * 0.7) * envelope(len(t), 0.0002, 0.01)
+
+
+def jaws_shut(tr, at, gain=1.0):
+    """Both jaws: the clack, and a softer one a few milliseconds behind it."""
+    tr.add(teeth_clack(1.0), at, gain, -0.08)
+    tr.add(teeth_clack(0.86), at + 0.008, gain * 0.55, 0.1)
+
+
+def crunch(dur=0.09):
+    """Crackling flesh and scale: many tiny bright bursts, thinning out."""
+    t = secs(dur)
+    out = np.zeros_like(t)
+    for _ in range(16):
+        start = int(bite_rng.uniform(0, 0.75) ** 1.6 * len(t))
+        n = int(bite_rng.uniform(0.002, 0.006) * SR)
+        burst = bandpass(bite_rng.standard_normal(n), 1300, 5200) * np.exp(-secs(n / SR) / 0.0015)
+        end = min(len(t), start + n)
+        out[start:end] += burst[: end - start] * bite_rng.uniform(0.35, 1.0) * (1 - start / len(t))
+    return out
+
+
+def squelch(dur=0.1):
+    """A wet give: noise through a resonance sliding down."""
+    t = secs(dur)
+    noise = bite_rng.standard_normal(len(t))
+    out = np.zeros_like(t)
+    edges = np.linspace(0, len(t), 9).astype(int)
+    for k in range(8):
+        f = 1500 * (0.38 ** (k / 7))
+        piece = bandpass(noise, f * 0.75, f * 1.3)[edges[k] : edges[k + 1]]
+        out[edges[k] : edges[k + 1]] = piece
+    return out * np.exp(-t / 0.035) * envelope(len(t), 0.002, 0.02)
+
+
+def weight(dur=0.06):
+    """A short dull push of water under a bite that lands: noise, not a note."""
+    t = secs(dur)
+    return lowpass(bite_rng.standard_normal(len(t)), 220, order=4) * np.exp(-t / 0.018) * 4
+
+
+def snap():
+    _old_snap()  # (its random draws, so later sounds don't move)
+    tr = Track(0.35)
+    tr.add(water_pull(0.06), 0.0, 0.35)
+    jaws_shut(tr, 0.06, 0.9)
+    bubbles(tr, 0.08, 0.12, 2, 900, 1800, 0.1, 0.4, gen=bite_rng)
+    return finish(tr, 0.8, 0.05, 0.35, 7500, gen=bite_rng)
+
+
+def bite():
+    _old_bite()  # (its random draws, so later sounds don't move)
+    tr = Track(0.6)
+    tr.add(water_pull(0.05), 0.0, 0.3)
+    jaws_shut(tr, 0.05, 0.85)
+    tr.add(crunch(0.09), 0.056, 0.9, 0.05)
+    tr.add(squelch(0.1), 0.06, 0.55, -0.05)
+    tr.add(weight(0.06), 0.05, 0.6)
+    bubbles(tr, 0.1, 0.25, 4, 500, 1500, 0.12, 0.5, gen=bite_rng)
+    return finish(tr, 0.88, 0.07, 0.5, 6500, gen=bite_rng)
 
 
 def chomp():
