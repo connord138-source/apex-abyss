@@ -53,6 +53,16 @@ local lastTooBig = 0
 -- wave can't be seen that far off, and there are many more small fish near the hub
 -- now (owner, 2026-10-10: "far too scarce"). Small fish stop sooner (Schools `wave`).
 local WAVE_DISTANCE = 160
+-- Past this a spine's wave is set every other frame (half of them each frame), so
+-- the fuller sea (Config/Prey `fill`, 2026-10-20: ~8,500 fish, up to ~300 waving at
+-- once in a swarm) costs about half; the bones hold their pose in between
+local WAVE_HALF = 60
+-- A fish that respawns swims back in from behind its school as it grows, over
+-- RETURN_SECONDS from RETURN_LENGTHS of its own body lengths back (owner,
+-- 2026-10-20: respawns are ~⅓ as long now, so they're seen much more)
+local RETURN_SECONDS = 1.1
+local RETURN_LENGTHS = 6
+local RETURN_EDIBLE = 0.8
 -- A fish fades out over the last share of its draw range (Schools `range`)
 local FADE_SHARE = 0.2
 -- A school is let go this far past its reach (so one on the edge isn't rebuilt
@@ -141,6 +151,7 @@ local protos: { [string]: Proto } = {}
 local folder: Folder? = nil
 local detail = 1 -- how far this client draws (×), from its frame time
 local smoothDt = 1 / 60
+local frameCount = 0
 local wanted: { { index: number, away: number } } = {}
 local drawList: { number } = {}
 -- (a readout on the Prey folder for play tests: Detail, Built, Drawn, once a second)
@@ -1543,6 +1554,7 @@ local function step(dt: number)
 	-- How far this client can afford to draw: its frame time, smoothed over a couple
 	-- of seconds, eases the ranges in on a slow device and back out
 	smoothDt += (math.min(dt, 0.1) - smoothDt) * math.min(1, dt * 0.6)
+	frameCount += 1
 	local wantDetail = if smoothDt > SLOW_FRAME then DETAIL_MIN elseif smoothDt < FAST_FRAME then 1 else detail
 	detail += (wantDetail - detail) * math.min(1, dt * 0.3)
 	-- Schools near enough are built (nearest first, a few milliseconds a frame), far
@@ -1700,7 +1712,10 @@ local function step(dt: number)
 						visual.tail.Size = visual.tailSize * shrink
 					end
 				elseif visual.fadeIn < 1 then
-					visual.fadeIn = math.min(1, visual.fadeIn + dt * 2.5)
+					-- Back from being eaten: it swims in from behind the school as it grows
+					visual.fadeIn = math.min(1, visual.fadeIn + dt / RETURN_SECONDS)
+					local behind = (1 - visual.fadeIn) ^ 2 * RETURN_LENGTHS * fish.length
+					frame *= CFrame.new(0, 0, behind)
 					local grow = 0.3 + 0.7 * visual.fadeIn
 					if visual.model then
 						(visual.model :: Model):ScaleTo(visual.unitScale * grow)
@@ -1715,7 +1730,9 @@ local function step(dt: number)
 				-- toward the mouth as we pass close (suction), and goes in a little way out
 				-- (owner, 2026-10-17: "I've swam inches from one and if you don't directly
 				-- hit the fish it doesn't eat it")
-				local open = fadeOut == nil and mouth ~= nil and not inHub
+				-- (a fish still swimming back in is drawn off its path, where the server
+				-- wouldn't find it: it's edible once nearly back, RETURN_EDIBLE)
+				local open = fadeOut == nil and mouth ~= nil and not inHub and visual.fadeIn >= RETURN_EDIBLE
 				local gap = if mouth then (frame.Position - mouth).Magnitude else math.huge
 				local swallow = Size.canSwallow(length, fish.length)
 				local inReach = false
@@ -1782,7 +1799,10 @@ local function step(dt: number)
 					-- (Shared/SwimWave), faster for the quick little ones
 					local prey = Config.Prey.byId[fish.prey]
 					visual.phase += dt * 2 * math.pi * (0.9 + prey.speed * 0.22)
-					if far < math.min(fish.wave, WAVE_DISTANCE) * detail then
+					if
+						far < math.min(fish.wave, WAVE_DISTANCE) * detail
+						and (far < WAVE_HALF or (index + frameCount) % 2 == 0)
+					then
 						SwimWave.applyBones(visual.bones, visual.spine, visual.phase, 0.34, 0)
 					end
 					table.insert(frames, frame)

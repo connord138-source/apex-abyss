@@ -87,6 +87,10 @@ local WAVE_BASE = 40
 local WAVE_PER_STUD = 45
 local WAVE_MAX = 160
 local BUILD_MARGIN = 40 -- studs past a school's reach before a client builds its fish
+-- A zone whose band starts this far out is past the drop-off (Config/Prey `fill`
+-- `deepSchools`)
+local DEEP_FROM = 900
+local SETTLE_SLICE = 0.02 -- seconds of lifting between the server's yields (Schools.settle)
 
 local list: { School } = {}
 local fish: { Fish } = {}
@@ -110,11 +114,19 @@ end
 -- everywhere)
 local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 	local length = Size.length(prey.mass)
-	local perSchool = zone.perSchool or prey.perSchool
+	-- How full the sea is (Config/Prey `fill`): more schools (more again in the deep
+	-- biomes) and bigger ones (a lone hunter stays alone)
+	local fill = Prey.fill
+	local listed = zone.perSchool or prey.perSchool
+	local perSchool = if listed > 1
+		then math.max(listed, math.min(math.floor(listed * fill.perSchool + 0.5), fill.perSchoolMax))
+		else listed
+	local deepZone = zone.trench == true or zone.vents == true or zone.band[1] >= DEEP_FROM
+	local schools = math.floor(zone.schools * (if deepZone then fill.deepSchools else fill.schools) + 0.5)
 	local pathRadius = zone.pathRadius or prey.pathRadius
 	-- A bait ball is round (as deep as it is wide); a shoal is flatter
 	local deep = if zone.round then 2 else 1
-	for _ = 1, zone.schools do
+	for _ = 1, schools do
 		local radius = rng:NextNumber(pathRadius[1], pathRadius[2])
 		local spread = prey.spread * length * math.sqrt(perSchool) * (zone.spread or 1)
 		local margin = radius + spread + 10
@@ -334,7 +346,7 @@ end
 -- Works out every school's lift over `groundY` (Shared/Ground.y on the server, once
 -- the world's dressing is built), applies it here and returns it as the string
 -- clients `load`.
-function Schools.settle(groundY: (number, number) -> number): string
+function Schools.settle(groundY: (number, number) -> number, pause: (() -> ())?): string
 	-- The tallest ground in the 3 × 3 cells round a point (a rock's edge can fall
 	-- between two cells' sample columns)
 	local tallestCache: { [number]: number } = {}
@@ -357,7 +369,14 @@ function Schools.settle(groundY: (number, number) -> number): string
 	local ceiling = World.surfaceY - 8
 	local parts: { string } = {}
 	table.clear(lifts)
+	-- (`pause`, if given, is called between schools every SETTLE_SLICE seconds: the
+	-- server yields there, since ~8,500 fish take a couple of seconds)
+	local sliceFrom = os.clock()
 	for index, school in list do
+		if pause and os.clock() - sliceFrom > SETTLE_SLICE then
+			pause()
+			sliceFrom = os.clock()
+		end
 		-- The loop's length, roughly (an ellipse)
 		local around = math.pi * school.radius * (1 + school.ellipse)
 		local fine = math.clamp(math.ceil(around / FINE_STEP), 48, 720)

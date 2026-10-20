@@ -213,16 +213,28 @@ return {
 	-- (HuntService Session `worth`).
 	growth = {
 		food = {
+			-- (refitted 2026-10-20 to the fuller sea, Config/Prey `fill`: with ~2.3× the
+			-- fish a hunter finds bigger ones sooner, so the same kg took fewer fish)
 			{ 1, 2.1 }, -- the tutorial: ~18 of the kelp's fish
 			{ 8, 6.9 },
-			{ 15, 38 },
-			{ 25, 230 },
-			{ 35, 730 },
-			{ 45, 5400 },
+			{ 10, 10.4 },
+			{ 12, 25 },
+			{ 15, 41.5 },
+			{ 18, 63.5 },
+			{ 21, 121 },
+			{ 25, 180 },
+			{ 30, 353 },
+			{ 35, 560 },
+			{ 40, 1130 },
+			{ 45, 3750 },
+			{ 50, 5000 },
 			{ 55, 5600 },
-			{ 70, 5800 },
-			{ 85, 9400 },
-			{ 100, 10500 },
+			{ 60, 6000 },
+			{ 65, 6650 },
+			{ 70, 13000 },
+			{ 80, 15000 },
+			{ 90, 16800 },
+			{ 100, 17500 },
 		} :: { { number } },
 		cap = {
 			{ 1, 5 },

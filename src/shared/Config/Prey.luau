@@ -45,7 +45,11 @@ export type PreyDef = {
 	band: { number }?, -- distance from the hub its schools roam (default: the shallows ring on the shelf)
 	zones: { Zone }?, -- instead of one band: several places, each with its own schools (and depth)
 	tideZones: { Zone }?, -- schools that only come out with a tide (each zone sets `tide`)
-	respawn: number, -- seconds after being eaten
+	-- Seconds after being eaten (owner, 2026-10-20: "a lvl 100 fish can absolutely
+	-- decimate an ecosystem too so the fish need a high respawn rate": ~⅓ of the old
+	-- 8–40 s). A fish comes back swimming in from behind its school as it grows
+	-- (SchoolController `RETURN`), never popping in where it was eaten.
+	respawn: number,
 	back: Color3,
 	belly: Color3,
 	slim: number, -- body height / length (0.2 = eel-thin, 0.4 = deep-bodied)
@@ -102,7 +106,7 @@ local list: { PreyDef } = {
 			{ band = OUTER, angles = REEF, schools = 6, perSchool = 18, depth = { 3, 32 }, spread = 0.8 },
 			{ band = DEEP, angles = RUINS, schools = 10, depth = { 6, 50 } },
 		} :: { Zone },
-		respawn = 8,
+		respawn = 3,
 		back = Color3.fromRGB(122, 150, 160),
 		belly = Color3.fromRGB(214, 226, 230),
 		slim = 0.22,
@@ -173,7 +177,7 @@ local list: { PreyDef } = {
 			{ band = { 170, 470 }, schools = 5, perSchool = 36, depth = { 40, 140 }, tide = "Sardine" },
 			{ band = { 520, 820 }, schools = 3, perSchool = 36, depth = { 50, 180 }, tide = "Sardine" },
 		},
-		respawn = 10,
+		respawn = 4,
 		back = Color3.fromRGB(64, 104, 140),
 		belly = Color3.fromRGB(205, 218, 228),
 		slim = 0.24,
@@ -196,7 +200,7 @@ local list: { PreyDef } = {
 			{ band = OUTER, angles = REEF, schools = 6, perSchool = 8, depth = { 5, 45 } }, -- (10 before the Blue Tang)
 			{ band = DEEP, angles = RUINS, schools = 7, perSchool = 7, depth = { 10, 80 } }, -- (12 before the Lionfish, 9 before the Humphead Wrasse)
 		} :: { Zone },
-		respawn = 12,
+		respawn = 4,
 		back = Color3.fromRGB(196, 120, 64),
 		belly = Color3.fromRGB(236, 196, 140),
 		slim = 0.32,
@@ -233,7 +237,7 @@ local list: { PreyDef } = {
 			{ band = DEEP, angles = VENTS, schools = 3, perSchool = 6, depth = { 30, 160 } },
 			{ band = DEEP, angles = { 70, 123 }, schools = 6, perSchool = 5, depth = { 20, 140 } }, -- the Trench's rim
 		} :: { Zone },
-		respawn = 15,
+		respawn = 5,
 		back = Color3.fromRGB(200, 72, 70),
 		belly = Color3.fromRGB(240, 186, 170),
 		slim = 0.34,
@@ -277,7 +281,7 @@ local list: { PreyDef } = {
 			{ band = DEEP, angles = { 70, 123 }, schools = 4, perSchool = 2, depth = { 15, 100 } }, -- the Trench's rim
 			{ band = TRENCH, trench = true, schools = 3, perSchool = 2, depth = { 20, 160 } }, -- (6 before the Viperfish)
 		} :: { Zone },
-		respawn = 20,
+		respawn = 7,
 		back = Color3.fromRGB(96, 92, 70),
 		belly = Color3.fromRGB(176, 168, 130),
 		slim = 0.4,
@@ -311,7 +315,7 @@ local list: { PreyDef } = {
 				pathRadius = { 30, 60 },
 			},
 		} :: { Zone },
-		respawn = 25,
+		respawn = 9,
 		back = Color3.fromRGB(110, 124, 132),
 		belly = Color3.fromRGB(210, 216, 220),
 		slim = 0.18,
@@ -343,7 +347,7 @@ local list: { PreyDef } = {
 				pathRadius = { 40, 70 },
 			},
 		} :: { Zone },
-		respawn = 35,
+		respawn = 12,
 		back = Color3.fromRGB(92, 104, 114),
 		belly = Color3.fromRGB(222, 226, 228),
 		slim = 0.26,
@@ -368,7 +372,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = { 160, 460 }, schools = 8, spread = 1.2 },
 		} :: { Zone },
-		respawn = 10,
+		respawn = 4,
 		back = Color3.fromRGB(240, 104, 20),
 		belly = Color3.fromRGB(255, 140, 36),
 		slim = 0.55,
@@ -388,7 +392,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = OUTER, angles = WRECKS, schools = 8 },
 		} :: { Zone },
-		respawn = 16,
+		respawn = 6,
 		back = Color3.fromRGB(106, 100, 58),
 		belly = Color3.fromRGB(172, 178, 176),
 		slim = 0.3,
@@ -408,7 +412,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = OUTER, angles = REEF, schools = 10 },
 		} :: { Zone },
-		respawn = 15,
+		respawn = 5,
 		back = Color3.fromRGB(36, 150, 140),
 		belly = Color3.fromRGB(96, 196, 176),
 		slim = 0.4,
@@ -429,7 +433,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = OPEN_BLUE, schools = 7, spread = 0.7 },
 		} :: { Zone },
-		respawn = 22,
+		respawn = 8,
 		back = Color3.fromRGB(32, 48, 84),
 		belly = Color3.fromRGB(196, 206, 220),
 		slim = 0.3,
@@ -449,7 +453,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = OPEN_BLUE, schools = 6 },
 		} :: { Zone },
-		respawn = 22,
+		respawn = 8,
 		back = Color3.fromRGB(56, 140, 88),
 		belly = Color3.fromRGB(222, 196, 52),
 		slim = 0.3,
@@ -470,7 +474,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = RUINS, schools = 12 },
 		} :: { Zone },
-		respawn = 18,
+		respawn = 6,
 		back = Color3.fromRGB(176, 70, 32),
 		belly = Color3.fromRGB(58, 46, 44),
 		slim = 0.45,
@@ -502,7 +506,7 @@ local list: { PreyDef } = {
 				spread = 0.8,
 			},
 		} :: { Zone },
-		respawn = 8,
+		respawn = 3,
 		back = Color3.fromRGB(150, 176, 198),
 		belly = Color3.fromRGB(186, 206, 222),
 		slim = 0.22,
@@ -523,7 +527,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = TRENCH, trench = true, schools = 10 }, -- (8 until 2026-10-19)
 		} :: { Zone },
-		respawn = 9,
+		respawn = 3,
 		back = Color3.fromRGB(30, 40, 72),
 		belly = Color3.fromRGB(58, 80, 122),
 		slim = 0.26,
@@ -548,7 +552,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = OUTER, angles = REEF, schools = 12 },
 		} :: { Zone },
-		respawn = 12,
+		respawn = 4,
 		back = Color3.fromRGB(240, 196, 30),
 		belly = Color3.fromRGB(250, 214, 60),
 		slim = 0.6,
@@ -568,7 +572,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = OUTER, angles = WRECKS, schools = 7 },
 		} :: { Zone },
-		respawn = 15,
+		respawn = 5,
 		back = Color3.fromRGB(28, 36, 72),
 		belly = Color3.fromRGB(226, 230, 236),
 		slim = 0.5,
@@ -589,7 +593,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = OPEN_BLUE, schools = 6 },
 		} :: { Zone },
-		respawn = 30,
+		respawn = 10,
 		back = Color3.fromRGB(72, 62, 150),
 		belly = Color3.fromRGB(200, 210, 222),
 		slim = 0.18,
@@ -611,7 +615,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = OPEN_BLUE, schools = 5 },
 		} :: { Zone },
-		respawn = 40,
+		respawn = 14,
 		back = Color3.fromRGB(128, 140, 150),
 		belly = Color3.fromRGB(176, 188, 196),
 		slim = 0.75,
@@ -633,7 +637,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = RUINS, schools = 8 },
 		} :: { Zone },
-		respawn = 25,
+		respawn = 9,
 		back = Color3.fromRGB(52, 84, 112),
 		belly = Color3.fromRGB(84, 116, 140),
 		slim = 0.28,
@@ -653,7 +657,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, vents = true, schools = 10 },
 		} :: { Zone },
-		respawn = 18,
+		respawn = 6,
 		back = Color3.fromRGB(58, 56, 60),
 		belly = Color3.fromRGB(82, 78, 80),
 		slim = 0.25,
@@ -673,7 +677,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = TRENCH, trench = true, schools = 8 },
 		} :: { Zone },
-		respawn = 22,
+		respawn = 8,
 		back = Color3.fromRGB(22, 22, 28),
 		belly = Color3.fromRGB(40, 36, 46),
 		slim = 0.2,
@@ -695,7 +699,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = TRENCH, trench = true, schools = 3 },
 		} :: { Zone },
-		respawn = 180, -- (a rare meal: three of them, slow to come back)
+		respawn = 60, -- (a rare meal: three of them, slower to come back; 180 until 2026-10-20)
 		back = Color3.fromRGB(176, 190, 206),
 		belly = Color3.fromRGB(200, 210, 222),
 		slim = 0.09,
@@ -721,7 +725,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = { 160, 470 }, schools = 8 },
 		} :: { Zone },
-		respawn = 10,
+		respawn = 4,
 		back = Color3.fromRGB(112, 120, 50),
 		belly = Color3.fromRGB(150, 158, 84),
 		slim = 0.5,
@@ -742,7 +746,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = { 180, 470 }, schools = 5 },
 		} :: { Zone },
-		respawn = 12,
+		respawn = 4,
 		back = Color3.fromRGB(100, 96, 54),
 		belly = Color3.fromRGB(160, 168, 116),
 		slim = 0.34,
@@ -762,7 +766,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = OUTER, angles = REEF, schools = 8 },
 		} :: { Zone },
-		respawn = 14,
+		respawn = 5,
 		back = Color3.fromRGB(34, 84, 222),
 		belly = Color3.fromRGB(60, 112, 232),
 		slim = 0.6,
@@ -782,7 +786,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = OUTER, angles = WRECKS, schools = 6 },
 		} :: { Zone },
-		respawn = 18,
+		respawn = 6,
 		back = Color3.fromRGB(100, 112, 94),
 		belly = Color3.fromRGB(170, 182, 164),
 		slim = 0.24,
@@ -803,7 +807,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, vents = true, schools = 6 },
 		} :: { Zone },
-		respawn = 20,
+		respawn = 7,
 		back = Color3.fromRGB(86, 98, 118),
 		belly = Color3.fromRGB(118, 130, 148),
 		slim = 0.2,
@@ -824,7 +828,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = TRENCH, trench = true, schools = 6 },
 		} :: { Zone },
-		respawn = 18,
+		respawn = 6,
 		back = Color3.fromRGB(24, 32, 54),
 		belly = Color3.fromRGB(36, 48, 74),
 		slim = 0.16,
@@ -846,7 +850,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = TRENCH, trench = true, schools = 4 },
 		} :: { Zone },
-		respawn = 9,
+		respawn = 3,
 		back = Color3.fromRGB(42, 74, 132),
 		belly = Color3.fromRGB(168, 188, 212),
 		slim = 0.95,
@@ -867,7 +871,7 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = RUINS, schools = 4 },
 		} :: { Zone },
-		respawn = 30,
+		respawn = 10,
 		back = Color3.fromRGB(38, 148, 160),
 		belly = Color3.fromRGB(84, 182, 182),
 		slim = 0.45,
@@ -882,6 +886,21 @@ end
 return {
 	list = list,
 	byId = byId,
+	-- How full the sea is (owner, 2026-10-20: "we still need so much more prey fish
+	-- volume too. Too sparce"; ~3,660 fish before): every zone's `schools` × `schools`
+	-- (× `deepSchools` past the drop-off, in the canyon and over the vents, where prey
+	-- was thinnest), and every school of more than one fish × `perSchool` (lone
+	-- hunters like the Barracuda stay alone), up to `perSchoolMax` (a bait ball already
+	-- bigger keeps its size: the Open Blue's balls drew ~860 fish a frame at ×1.5).
+	-- Applied by Schools.build, so the numbers
+	-- in the entries above are the old ones. Rerun run_density.sh (a client's moved,
+	-- waved and built fish), run_progress_sim.sh and run_catch_sim.sh after a change.
+	fill = {
+		schools = 1.4,
+		deepSchools = 1.9,
+		perSchool = 1.5,
+		perSchoolMax = 30,
+	},
 	-- Swallowing (owner, 2026-10-17: "needs to be a bigger eat radius for eating
 	-- smaller fish too. I've swam inches from one and if you don't directly hit the
 	-- fish it doesn't eat it"): a fish small enough to swallow whole is eaten within

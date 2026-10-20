@@ -149,11 +149,15 @@ end
 -- dressing is built by now) and tells clients
 local function settleSchools()
 	local started = os.clock()
-	local lifts = Schools.settle(Ground.y)
+	local lifts = Schools.settle(Ground.y, function()
+		task.wait()
+	end)
 	workspace:SetAttribute("SchoolLifts", lifts)
 	local lifted = if lifts == "" then 0 else #string.split(lifts, ";")
 	local ms = math.floor((os.clock() - started) * 1000)
-	print(`[ForageService] {lifted} of {#Schools.list} prey schools lifted over the ground ({ms} ms)`)
+	print(
+		`[ForageService] {lifted} of {#Schools.list} prey schools lifted over the ground ({ms} ms, yielding)`
+	)
 end
 
 local function onEat(player: Player, batch: any)
@@ -220,7 +224,9 @@ local function onEat(player: Player, batch: any)
 end
 
 function ForageService.start()
-	settleSchools()
+	-- (in its own thread: it yields between schools, and the start order goes on; the
+	-- server and every client draw the schools unlifted until it's published)
+	task.spawn(settleSchools)
 	placeSpots()
 	Net.onRequest("EatForage", onEat)
 	Net.onGetForage(function(): { [string]: any }
