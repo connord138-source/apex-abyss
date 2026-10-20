@@ -49,7 +49,6 @@ predatorState.Parent = folder
 -- Each request: its minimum seconds between calls from one player
 local REQUESTS: { [string]: number } = {
 	EatPrey = 0.05, -- ({ { index: number, at: number } }) batched by the client
-	EatPlayer = 0.2, -- (userId)
 	Bite = 0.35, -- (userId)
 	Collect = 0.03, -- (shell spot index)
 	EatForage = 0.05, -- ({ number }) forage spot indexes, batched by the client

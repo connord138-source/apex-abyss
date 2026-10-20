@@ -953,7 +953,7 @@ function StartController.start()
 	local biteLine = guideCard(2, "BITE", "", Ui.color.danger)
 	guideCard(3, "BANK", "Swim home to your den's pool to keep what you ate.", Ui.color.haul)
 	local function refreshBite()
-		biteLine.Text = `{biteKey()} bites fish your size, predators and bosses. {dashKey()} dashes.`
+		biteLine.Text = `{biteKey()} bites other players, predators and bosses. {dashKey()} dashes.`
 	end
 	refreshBite()
 

@@ -59,11 +59,18 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Getting eaten loses the unbanked Haul, which bursts into chum, and the eater gains
     a share. Permanent progress is never lost.
 - **Eating:**
-  - Under ~70% of your size: swallowed whole, sucked into the mouth.
-  - ~70–130%: a bite fight with health.
-  - Over 130%: it eats you.
-  - XP from eating a player scales with the size ratio, so farming new players pays
-    almost nothing.
+  - Prey and filler food under ~70% of your size: swallowed whole, sucked into the
+    mouth.
+  - **Players are never swallowed whole** (owner, 2026-10-20: "bigger fish should never
+    auto eat another player it needs to be a fight. obviously bigger fish will be
+    stronger though ... it goes by level not haul size"): every player fight is bitten
+    out. A bite's strength is the biters' banked mass (their level; the Haul aboard
+    doesn't count) against the target's, ^⅔, ×0.04–2 (`Config/Pvp` `fight`): ~×1.07 a
+    level, so a fish 10+ levels up bites at ×2 (3 bites eat anyone). Nametags read
+    LV n · STRONGER / WEAKER / EVEN FIGHT, `edge` 6 levels apart (the `FishLevel`
+    character attribute, `HuntController.standing`); the `EatPlayer` request is gone.
+  - What eating a player pays scales with the level ratio, so farming new players
+    pays almost nothing.
 - **PvP:** always on in the biomes, with protections.
   - The hub plaza and the dens are safe, and there's spawn protection.
   - Size-gated terrain gives small fish places to hide.
@@ -124,8 +131,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (`SwimController` `slipstreamOf`); a podmate's player kill gives podmates within
     220 studs half its gain (`Events.atePlayer`).
   - **Schooling:** a bite counts every other biter of the same fish in the last 2.5 s
-    within 40 studs: their combined live mass against the target's sets the damage
-    ((mass ratio)^⅔, clamped 0.04–1.5), +15% per extra biter; the biter sees SCHOOL
+    within 40 studs: their combined banked mass (levels, since 2026-10-20) against the
+    target's sets the damage ((mass ratio)^⅔, clamped 0.04–2), +15% per extra biter; the biter sees SCHOOL
     BITE ×N. `HintController` shows SCHOOL (not DANGER) when another small fish is near.
   - **Apex bounty** (`ApexService`): the heaviest live fish (LV 10+, 2+ players) is
     the Apex: Workspace attributes `ApexUserId`/`ApexBounty`, a gold ★ on every map,
@@ -2224,8 +2231,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Eating vs biting made clear (owner, 2026-10-09: "needs to be clear mechanics on
   how to actually bite fish ... are the other fish the same way or do they need to be
   eaten by hitting a bite key?"):** anything under ~70% of your length (prey, shrimp,
-  starfish, small players) is swallowed just by swimming into it, like shells; fish
-  your size, AI predators and bosses take BITE (F / click, RB / X, the BITE button);
+  starfish) is swallowed just by swimming into it, like shells; other players (never
+  swallowed since 2026-10-20), AI predators and bosses take BITE (F / click, RB / X, the BITE button);
   prey too big can't be eaten (oversized ones chase you). Said on the start screen's
   cards, the tutorial's Eat step ("Swim into 10 small fish ... to swallow them"), the
   Haul card hint, the controls hint and `HintController`: a chip above the health bar

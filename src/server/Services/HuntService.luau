@@ -133,6 +133,11 @@ local function refreshSize(player: Player)
 	if character and session then
 		character:SetAttribute("Haul", session.haul)
 	end
+	-- (its banked level: what a fight goes by, Config/Pvp `fight`; nametags show it)
+	local data = DataService.get(player)
+	if character and data then
+		character:SetAttribute("FishLevel", Size.level(Progress.mass(data)))
+	end
 	DataService.markDirty(player)
 end
 
@@ -244,13 +249,13 @@ local function eatPlayer(victim: Player, eater: Player)
 	local victimSession = sessions[victim]
 	local eaterSession = sessions[eater]
 	local victimData = DataService.get(victim)
-	local eaterLength = liveLength(eater)
+	local eaterData = DataService.get(eater)
 	local victimLength = liveLength(victim)
 	if
 		victimSession == nil
 		or eaterSession == nil
 		or victimData == nil
-		or eaterLength == nil
+		or eaterData == nil
 		or victimLength == nil
 	then
 		return
@@ -264,7 +269,13 @@ local function eatPlayer(victim: Player, eater: Player)
 		lost = 0
 	end
 	-- Eating much smaller players pays almost nothing, so farming new fish is pointless
-	local ratio = math.clamp(Size.ratio(victimLength, eaterLength) / hunt.swallowRatio, 0, 1)
+	-- (by level: their banked sizes)
+	local ratio = math.clamp(
+		Size.ratio(Size.length(Progress.mass(victimData)), Size.length(Progress.mass(eaterData)))
+			/ hunt.swallowRatio,
+		0,
+		1
+	)
 	local farm = math.max(ratio * ratio, 0.02)
 	-- Half its Haul, and a share of what a full Haul is for it (Config/Tuning `hunt`):
 	-- already in Haul, so no Haul rate; it stops at the eater's full Haul
@@ -281,10 +292,7 @@ local function eatPlayer(victim: Player, eater: Player)
 	victimSession.worth = 0
 	victimSession.alive = false
 	victimData.stats.timesEaten += 1
-	local eaterData = DataService.get(eater)
-	if eaterData then
-		eaterData.stats.playersEaten += 1
-	end
+	eaterData.stats.playersEaten += 1
 	Net.hit(eater, victim, -1)
 	Net.eaten(victim, {
 		by = eater.DisplayName,
@@ -434,13 +442,13 @@ local function podmates(a: Player, b: Player): boolean
 end
 
 -- A fish's live mass (banked plus Haul), for schooling
-local function liveMassOf(player: Player): number
+-- A fish's banked mass (its level, without the Haul aboard): what a fight goes by
+local function bankedMassOf(player: Player): number
 	local data = DataService.get(player)
-	local session = sessions[player]
-	if data == nil or session == nil then
+	if data == nil or sessions[player] == nil then
 		return 0
 	end
-	return Size.liveMass(Progress.mass(data), session.haul)
+	return Progress.mass(data)
 end
 
 local function targetOf(player: Player, userId: any): (Player?, Session?, BasePart?)
@@ -459,48 +467,12 @@ local function targetOf(player: Player, userId: any): (Player?, Session?, BasePa
 	return target, session, root
 end
 
--- Swallowing a smaller player whole.
-local function onEatPlayer(player: Player, userId: any)
-	local session = sessions[player]
-	local _, root = FishService.character(player)
-	local length = liveLength(player)
-	local target, targetSession, targetRoot = targetOf(player, userId)
-	if
-		session == nil
-		or root == nil
-		or length == nil
-		or target == nil
-		or targetSession == nil
-		or targetRoot == nil
-	then
-		return
-	end
-	local now = Timing.clock()
-	if not session.alive or isSafe(session, now) or isSafe(targetSession, now) then
-		return
-	end
-	local targetLength = liveLength(target)
-	if targetLength == nil or not Size.canSwallow(length * 1.03, targetLength) then
-		return
-	end
-	-- A puffed-up Pufferfish can't be swallowed (Config/Abilities PuffUp)
-	local targetCharacter = FishService.character(target)
-	local puffed = if targetCharacter then targetCharacter:GetAttribute("Puffed") else nil
-	if typeof(puffed) == "number" and puffed > now then
-		Net.notify(player, "Too spiky to swallow!", "bad")
-		return
-	end
-	local distance = (targetRoot.Position - mouthOf(root, length)).Magnitude
-	if distance > Size.reach(length) + targetLength * 0.4 + slack(length) + slack(targetLength) then
-		return
-	end
-	eatPlayer(target, player)
-end
-
--- A bite on a fish too big to swallow. Small fish do little alone, but a school
--- bites together (Config/Pvp `school`): everyone who bit the same target in the last
--- few seconds, close to the biter, bites with their combined mass, so a school of
--- small fish can bring down one far bigger than any of them.
+-- A bite on another player: every player fight is bitten out, however big the
+-- biter (Config/Pvp `fight`: by level, never swallowed whole). Small fish do little
+-- alone, but a school bites together (Config/Pvp `school`): everyone who bit the
+-- same target in the last few seconds, close to the biter, bites with their combined
+-- banked mass, so a school of small fish can bring down one far bigger than any of
+-- them.
 local function onBite(player: Player, userId: any)
 	local session = sessions[player]
 	local _, root = FishService.character(player)
@@ -534,7 +506,7 @@ local function onBite(player: Player, userId: any)
 	session.lastBiteAt = now
 	local schooling = Config.Pvp.school
 	local school = 0
-	local mass = liveMassOf(player)
+	local mass = bankedMassOf(player)
 	for otherId, at in targetSession.bitBy do
 		if otherId == player.UserId or now - at >= schooling.window then
 			continue
@@ -546,13 +518,15 @@ local function onBite(player: Player, userId: any)
 		end
 		if other and otherRoot and (otherRoot.Position - root.Position).Magnitude <= schooling.range then
 			school += 1
-			mass += liveMassOf(other)
+			mass += bankedMassOf(other)
 		end
 	end
 	targetSession.bitBy[player.UserId] = now
-	-- The school's combined mass against the target's (raw lengths: Size.ratio)
-	local targetMass = math.max(liveMassOf(target), 1e-3)
-	local ratio = math.clamp((mass / targetMass) ^ (2 / 3), 0.04, 1.5)
+	-- The school's combined banked mass against the target's: their levels, not the
+	-- Haul aboard (Config/Pvp `fight`)
+	local fight = Config.Pvp.fight
+	local targetMass = math.max(bankedMassOf(target), 1e-3)
+	local ratio = math.clamp((mass / targetMass) ^ fight.power, fight.min, fight.max)
 	local attackerData = DataService.get(player)
 	local jaw = Perks.bite(if attackerData then attackerData.upgrades else nil)
 	local species = if attackerData then Progress.species(attackerData).stats.bite else 1
@@ -998,7 +972,6 @@ function HuntService.start()
 
 	Net.onRequest("EatPrey", onEatPrey)
 	Net.onRequest("UseWrap", useWrap)
-	Net.onRequest("EatPlayer", onEatPlayer)
 	Net.onRequest("Bite", onBite)
 	Net.onGetEaten(function(): { [string]: number }
 		local now = Timing.clock()

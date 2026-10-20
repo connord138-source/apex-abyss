@@ -1671,7 +1671,7 @@ local function guide(): { { title: string, text: string } }
 				"BITE (right click)",
 				"BITE (RB)",
 				"Tap BITE on"
-			)} fish your own size, predators and bosses. A fish that's too big to eat will chase you: swim away.`,
+			)} other players, predators and bosses: players are never swallowed whole, and a higher level bites harder. A fish that's too big to eat will chase you: swim away.`,
 		},
 		{
 			title = "Bank your Haul",

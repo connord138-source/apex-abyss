@@ -829,11 +829,11 @@ end
 
 local function showControlsHint()
 	local text = if Input.isTouch()
-		then "Left stick: push up to swim, sideways to turn · drag to aim · swim into smaller fish to eat · BITE for fish your size"
+		then "Left stick: push up to swim, sideways to turn · drag to aim · swim into smaller fish to eat · BITE other players"
 		elseif
 			Input.isGamepad()
-		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites fish your size · RT dash · LB heal (hold for items) · Y at a stall"
-		else "Mouse to look · WASD swim · Space / Ctrl up and down · swim into smaller fish to eat · LEFT CLICK dash · RIGHT CLICK bites fish your size · M map · E at a stall · H heal · G items · Alt frees the cursor for menus"
+		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites other players · RT dash · LB heal (hold for items) · Y at a stall"
+		else "Mouse to look · WASD swim · Space / Ctrl up and down · swim into smaller fish to eat · LEFT CLICK dash · RIGHT CLICK bites other players · M map · E at a stall · H heal · G items · Alt frees the cursor for menus"
 	local label = Ui.label(gui, "Controls", text, Ui.FONT_SEMI, 14, Ui.color.muted, UDim2.fromOffset(800, 18))
 	-- Top centre under the safe-zone pill, and below the boss bar or the boss
 	-- countdown while one is up (the countdown sits at the same spot and covered it,

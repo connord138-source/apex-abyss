@@ -1,17 +1,17 @@
 --!strict
--- Names over other players' fish, colored by threat at a glance: red if they can
--- swallow you, green if you can swallow them, white for an even fight, and blue
--- while they're safe (in the hub or freshly spawned).
+-- Names over other players' fish with their level, colored by threat at a glance:
+-- red if they're well above your level (STRONGER: their bites hit much harder), green
+-- if well below (WEAKER), white for an even fight (Config/Pvp `fight` `edge`), and
+-- blue while they're safe (in the hub or freshly spawned). No player is swallowed
+-- whole: every fight is bitten out, by level.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Format = require(ReplicatedStorage.Shared.Format)
-local Size = require(ReplicatedStorage.Shared.Size)
 local Ui = require(script.Parent.Parent.Ui)
 local HuntController = require(script.Parent.HuntController)
 local StartController = require(script.Parent.StartController)
-local SwimController = require(script.Parent.SwimController)
 
 local NametagController = {}
 
@@ -58,7 +58,6 @@ local function make(player: Player, character: Model, root: BasePart): Tag
 end
 
 local function step()
-	local myLength = SwimController.length()
 	for _, player in Players:GetPlayers() do
 		if player == Players.LocalPlayer then
 			continue
@@ -79,13 +78,17 @@ local function step()
 			color, status = Color3.fromRGB(110, 236, 220), "PODMATE"
 		elseif HuntController.isSafe(character) then
 			color, status = Ui.color.accent, "SAFE"
-		elseif Size.canSwallow(theirs, myLength) then
-			color, status = Ui.color.danger, "DANGER"
-		elseif Size.canSwallow(myLength, theirs) then
-			color, status = Ui.color.safe, "PREY"
 		else
-			color, status = Ui.color.text, "EVEN FIGHT"
+			local standing = HuntController.standing(character)
+			if standing == "stronger" then
+				color, status = Ui.color.danger, "STRONGER"
+			elseif standing == "weaker" then
+				color, status = Ui.color.safe, "WEAKER"
+			else
+				color, status = Ui.color.text, "EVEN FIGHT"
+			end
 		end
+		status = `LV {HuntController.levelOf(character)} · {status}`
 		tag.name.TextColor3 = color
 		local display =
 			string.gsub(string.gsub(string.gsub(player.DisplayName, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")

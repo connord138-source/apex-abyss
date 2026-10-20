@@ -115,7 +115,7 @@ local list: { Species } = {
 		signature = "PuffUp",
 		perks = {
 			"Most health of any fish",
-			"PUFF UP: can't be swallowed, hurts biters",
+			"PUFF UP: bites do half, hurts biters",
 			"Turns quickly",
 		},
 		drawbacks = {

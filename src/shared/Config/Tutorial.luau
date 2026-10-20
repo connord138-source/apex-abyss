@@ -96,7 +96,7 @@ local steps: { Step } = {
 		event = "haul",
 		guide = "food",
 		controls = {
-			{ keys = "RIGHT CLICK", pad = "RB", touch = "BITE", does = "bite fish your size" },
+			{ keys = "RIGHT CLICK", pad = "RB", touch = "BITE", does = "bite other fish" },
 			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
 		},
 	},
@@ -190,7 +190,7 @@ return {
 	-- Tips on the loading wash between the hub and a den (DenDoorController), one at
 	-- a time (owner, 2026-10-17: "Needs more direction for players starting out")
 	tips = {
-		"Swim into anything under about two thirds your size to swallow it. BITE fish your own size.",
+		"Swim into anything under about two thirds your size to swallow it. Other players are never swallowed: BITE them down. Higher levels bite harder.",
 		"Your Haul only counts once it's banked in your den's pool. Get eaten first and it's gone.",
 		"Every 50 shells is a roll for a new skin. Golden shells in the Trench are worth 5.",
 		"Bigger fish are worth far more. Grow, then push into the deeper biomes.",

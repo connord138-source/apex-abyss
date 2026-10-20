@@ -3,18 +3,18 @@
 -- "needs to be clear mechanics on how to actually bite fish ... are the other fish
 -- the same way or do they need to be eaten by hitting a bite key?").
 --
--- The rule: anything under ~70% of your length (prey fish, shrimp, starfish, small
--- players) is swallowed just by swimming into it, like shells; a fish about your
--- size, an AI predator or a boss takes bites with the BITE button; a fish ~1.4x your
--- length can swallow you. A chip above the health bar says which, a few times a
--- session:
+-- The rule: anything under ~70% of your length (prey fish, shrimp, starfish) is
+-- swallowed just by swimming into it, like shells; another player, an AI predator or
+-- a boss takes bites with the BITE button. No player is ever swallowed whole (owner,
+-- 2026-10-20): a fish well above your level just bites much harder (Config/Pvp
+-- `fight`). A chip above the health bar says which, a few times a session:
 --
 --   EAT       out of the hub, until you've swallowed a few things
---   BITE      a fish your size, a predator or a boss is at your mouth
---   DANGER    a fish big enough to swallow you is close
+--   BITE      another player, a predator or a boss is at your mouth
+--   DANGER    a fish well above your level is close
 --   TOO BIG   a prey fish too big to swallow is at your mouth
---   SCHOOL    a fish big enough to swallow you is close, and so is another small
---             fish: bitten together, their masses add up (Config/Pvp `school`)
+--   SCHOOL    a fish well above your level is close, and so is another fish that
+--             isn't: bitten together, their strength adds up (Config/Pvp `school`)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -60,11 +60,11 @@ local function textFor(kind: Kind): string
 	if kind == "eat" then
 		return "Swim into smaller fish, shrimp and starfish to swallow them. No button needed."
 	elseif kind == "bite" then
-		return `Press {biteKey()} to bite fish your size, predators and bosses. Bites wear them down.`
+		return `Press {biteKey()} to bite other fish, predators and bosses. Bites wear them down.`
 	elseif kind == "danger" then
-		return "That fish is big enough to swallow you. Dash away or hide!"
+		return "That fish is well above your level: its bites hit much harder. Dash away or hide!"
 	elseif kind == "school" then
-		return `Too big alone: bite it together ({biteKey()}), and your masses add up. Or dash away!`
+		return `Too strong alone: bite it together ({biteKey()}), and your strength adds up. Or dash away!`
 	end
 	return "Too big to swallow yet. Eat smaller fish and grow first."
 end
@@ -202,8 +202,8 @@ local function check()
 	local length = SwimController.length()
 	local mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
 	local reach = Size.reach(length)
-	-- Other players: one your size is a bite, a much bigger one is a danger (or, with
-	-- another small fish close by, a school's target)
+	-- Other players: any is a bite, one well above your level a danger (or, with
+	-- another fish close by that isn't, a school's target)
 	local friends = 0
 	for _, player in Players:GetPlayers() do
 		local other = player.Character
@@ -213,7 +213,7 @@ local function check()
 			and other
 			and otherRoot
 			and otherRoot:IsA("BasePart")
-			and not Size.canSwallow(lengthOf(other), length)
+			and HuntController.standing(other) ~= "stronger"
 			and (otherRoot.Position - root.Position).Magnitude < 40
 		then
 			friends += 1
@@ -232,10 +232,10 @@ local function check()
 			local otherLength = lengthOf(other)
 			local gap = (otherRoot.Position - mouth).Magnitude - reach - otherLength * 0.4
 			if not HuntController.isSafe(other) then
-				if Size.canSwallow(otherLength, length) and gap < length * 3 then
+				if HuntController.standing(other) == "stronger" and gap < length * 3 then
 					show(if friends > 0 then "school" else "danger")
 					return
-				elseif not Size.canSwallow(length, otherLength) and gap < length * 1.2 then
+				elseif gap < length * 1.2 then
 					show("bite")
 					return
 				end

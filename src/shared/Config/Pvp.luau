@@ -16,6 +16,15 @@ return {
 	-- `range` studs of each other) bites with their combined mass, so a school of
 	-- small fish can take down one far bigger than any of them
 	school = { range = 40, window = 2.5, bonus = 0.15 },
+	-- Player fights (owner, 2026-10-20: "bigger fish should never auto eat another
+	-- player it needs to be a fight. obviously bigger fish will be stronger though
+	-- ... and it goes by level not haul size"): no player is ever swallowed whole,
+	-- every one is bitten down. A bite's strength is the biters' banked mass (their
+	-- level; the Haul aboard doesn't count) against the target's, to the `power`,
+	-- within `min`..`max` (× Config/Tuning hunt.biteDamage): about ×1.07 a level up,
+	-- so a fish 10 or more levels up bites at `max` (3 bites eat anyone) and one 10
+	-- levels down at about half. Nametags read STRONGER or WEAKER `edge` levels apart.
+	fight = { power = 2 / 3, min = 0.04, max = 2, edge = 6 },
 	-- The Apex bounty: the biggest fish in the server (live mass, at least `minLevel`,
 	-- with at least `minPlayers` in the server) wears a crown everyone sees on the map;
 	-- the bounty grows while it's out of the hub, and whoever eats it takes it

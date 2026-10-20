@@ -1,11 +1,12 @@
 --!strict
--- Hunting other players on this client: swallowing a small-enough fish the
--- moment it's in reach, the bite button (a lunge that bites whatever is in front
--- of the mouth), and the feedback for hits (jaw snaps, a camera jolt, bubbles).
--- The server checks every eat and bite (HuntService).
+-- Hunting other players on this client: the bite button (a lunge that bites
+-- whatever is in front of the mouth) and the feedback for hits (jaw snaps, a camera
+-- jolt, bubbles). No player is ever swallowed whole, however small (owner,
+-- 2026-10-20: "bigger fish should never auto eat another player it needs to be a
+-- fight"); a bigger fish only bites harder (Config/Pvp `fight`, by level). The
+-- server checks every bite (HuntService).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Signal = require(ReplicatedStorage.Shared.Signal)
@@ -31,11 +32,24 @@ local HuntController = {
 	snapped = Signal.new(),
 }
 
-local lastEatTry: { [number]: number } = {}
-
 local function lengthOf(character: Model): number
 	local length = character:GetAttribute("Length")
 	return if typeof(length) == "number" then length else 2
+end
+
+-- A fish's level, the one fights go by (HuntService's `FishLevel`: banked, so the
+-- Haul aboard doesn't count; Config/Pvp `fight`)
+function HuntController.levelOf(character: Model?): number
+	local level = if character then character:GetAttribute("FishLevel") else nil
+	return if typeof(level) == "number" then level else 1
+end
+
+-- How another fish stands against ours in a fight: "stronger", "weaker" or "even"
+-- (Config/Pvp `fight` `edge` levels apart)
+function HuntController.standing(character: Model): string
+	local gap = HuntController.levelOf(character) - HuntController.levelOf(SwimController.character())
+	local edge = Config.Pvp.fight.edge
+	return if gap >= edge then "stronger" elseif gap <= -edge then "weaker" else "even"
 end
 
 -- Whether another player is in our pod (PodService's `Pod` attribute): podmates
@@ -90,30 +104,6 @@ local function selfSafe(): boolean
 	return character == nil or HuntController.isSafe(character)
 end
 
--- Swallow any small-enough fish that's in reach.
-local function autoEat()
-	if selfSafe() then
-		return
-	end
-	local length = SwimController.length()
-	local now = os.clock()
-	for _, entry in nearby(0) do
-		local userId = entry.player.UserId
-		if
-			Size.canSwallow(length, lengthOf(entry.character))
-			and not HuntController.isSafe(entry.character)
-			and now - (lastEatTry[userId] or 0) > 0.25
-		then
-			lastEatTry[userId] = now
-			local character = SwimController.character()
-			if character then
-				FishAnimator.snap(character)
-			end
-			ClientState.request("EatPlayer", userId)
-		end
-	end
-end
-
 local function onBite()
 	if SwimController.isHeld() then
 		SwimController.struggle()
@@ -128,13 +118,9 @@ local function onBite()
 		for _, entry in nearby(length * 0.6 + 2) do
 			if not HuntController.isSafe(entry.character) then
 				local userId = entry.player.UserId
-				target = if Size.canSwallow(length, lengthOf(entry.character))
-					then function()
-						ClientState.request("EatPlayer", userId)
-					end
-					else function()
-						ClientState.request("Bite", userId)
-					end
+				target = function()
+					ClientState.request("Bite", userId)
+				end
 				break
 			end
 		end
@@ -245,14 +231,6 @@ function HuntController.start()
 	PredatorController.hit:connect(function()
 		Sfx.play("Bite", { volume = 0.85, pitch = 0.95 + math.random() * 0.1 })
 		HuntController.snapped:fire(true)
-	end)
-	local accumulator = 0
-	RunService.Heartbeat:Connect(function(dt)
-		accumulator += dt
-		if accumulator >= 0.05 then
-			accumulator = 0
-			autoEat()
-		end
 	end)
 end
 
