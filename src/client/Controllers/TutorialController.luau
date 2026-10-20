@@ -709,6 +709,12 @@ local function onState(s: { [string]: any })
 		clearPoint()
 		target = nil
 		hideTrail()
+		-- A restart draws its first card afresh (its trail, banner and keys): the card
+		-- that was up when it finished may be the same step (PC 2026-10-20, DX: finished
+		-- at step 1, restarted, no trail)
+		shownStep = 0
+		liveStep = 0
+		liveShownAt = nil
 		if wasDone == false then
 			task.spawn(celebrate)
 		end
