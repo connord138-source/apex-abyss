@@ -1589,6 +1589,28 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     and that session blocks the next publish until it's closed (this round it hung on
     "Applying script changes"). Everything in it is in git and `ApexAbyss.rbxl`, so
     the PC closes that window right after publishing and reopens the file.
+- **The 2026-10-20 round-3 report (PC report `2026-10-20-pc-3.md`; published as v17
+  from 2db727c; no fixes needed):**
+  - **Measured:** Kelp 41 → 42 → 45 FPS over the three rounds, Reef 45 → 43 → 46,
+    Trench 39 → 43 → 43 (phone sim 43). KelpController 59 → 19 ms/s, instances moved a
+    frame 576 → 192–320; in the Trench the shadow switch took the shadow draw calls 484
+    → 0 and render prepare 11.9 → 5.7 ms. The sway's edge doesn't show, and turning
+    shadows off costs one ~40 ms frame on the way down (left as is). In the Kelp the
+    prey (SchoolController 70 ms/s, ForageController 36) are now the biggest script
+    costs, and render prepare (9–11 ms) is still the CPU bottleneck there.
+  - **The Trench `fill` stays ×1.9:** a trim would buy ~1 ms. **Studio Play no longer
+    shows render savings as FPS** (it runs the server too; the Trench stood at 18 ms a
+    frame standing still), so judge any further render or prey cut on a real phone.
+  - **Diamond v15** reads ice blue in the den, pale ice blue in the Trench (no light of
+    its own) and mid sapphire in the Reef. Left as is; if the Reef should match the
+    den, raise its roughness or its glow a touch.
+  - **Every publish ends the same way:** Close Place hangs on "Applying script changes"
+    (`CommitInProgress`) even with no edits, so the PC closes once, ends that Studio
+    window if it hangs, and reopens `ApexAbyss.rbxl` (its Rojo panel shows 34872 again:
+    set 34873).
+  - **Old normal maps:** 1,804 SurfaceAppearances in the place carry a NormalMap, all
+    on Tripo props imported before the 2026-10-13 rule (garden corals, shells, …).
+    They stay until a model needs replacing; nothing new carries one.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -2529,7 +2551,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   through it, the wheel chip full width), `2026-10-15-pc-2.md` (chunks clear,
   chips fit, the PC's level-sand fix; deep whales still faint at 70 studs),
   `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-20-pc*.md` (the 2026-10-20 owner
-  batch; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
+  batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
   clients via Test → Clients and Servers);
