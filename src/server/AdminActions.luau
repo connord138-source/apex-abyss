@@ -156,8 +156,9 @@ local function trophies(_admin: Player, targets: { Player }, currency: any, amou
 	if typeof(currency) ~= "string" or n == nil then
 		return "Pick a currency and an amount"
 	end
-	each(targets, function(_, data)
+	each(targets, function(player, data)
 		data.trophies[currency] = (data.trophies[currency] or 0) + n
+		Events.trophies:fire(player)
 	end)
 	-- "MegalodonTeeth" reads "Megalodon Teeth"
 	local label = string.gsub(currency, "(%l)(%u)", "%1 %2")
@@ -270,6 +271,7 @@ local function title(_admin: Player, targets: { Player }, text: any): string
 			data.titles[text] = true
 		end
 		WardrobeService.refresh(player)
+		Events.trophies:fire(player) -- (the den's title board)
 	end)
 	return if text == "" then `Title taken off {names(targets)}` else `Title "{text}" for {names(targets)}`
 end

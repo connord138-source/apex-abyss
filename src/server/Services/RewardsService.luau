@@ -93,6 +93,7 @@ function RewardsService.grant(
 			if character then
 				character:SetAttribute("Title", reward.title)
 			end
+			Events.trophies:fire(player) -- (the den's title board)
 		end
 		table.insert(got, `the "{reward.title}" title`)
 	end
