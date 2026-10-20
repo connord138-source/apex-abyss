@@ -1537,7 +1537,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     King. The toothed fish leave out the face their head points from.
   - **Sea-life companions** (`Config/Companions`, `CompanionService`,
     `CompanionController`, AmbientLifeController's `interact`): swim beside a turtle 2 s
-    and it joins you for 90 s at your side, seen by everyone (character attribute
+    and it joins you for 300 s (5 min since 2026-10-20; was 90) at your side, seen by everyone (character attribute
     `Escort`; admin "Sea turtle: one joins the target now", `CompanionService.join`),
     bites on you ×0.8 (not the crushing deep), back in 4 min; ride a manta's
     wake 0.4 s and its current carries you at ×1.3 top speed for 8 s, renewed while
@@ -1684,7 +1684,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Healing (owner: "a healing element ... for boss fights as well as PvP and PvE"):**
     built. **Kelp Wraps** heal 40% over 4 s (18 s cooldown, carry 5, swim 30% slower
     while healing, green glow everyone sees); from glowing medkelp fronds in the kelp
-    (eaten like forage), the Tidecharm Trader (120 coral), a 3% prey drop and treasure
+    (eaten like forage; a fish carrying the most swims through them, leaving them for
+    others, owner 2026-10-20), the Tidecharm Trader (120 coral), a 3% prey drop and treasure
     chests; H / LB / HEAL. Eating prey heals 2% + 0.5%/kg. `Config/Tuning.luau`
     `heal`, `HuntService.giveWrap/useWrap/damage/kill`, `HealController`. Never sold
     for Robux. **No regeneration** (owner, 2026-10-11: "Health should not regenerate

@@ -23,7 +23,7 @@ return {
 	turtle = {
 		join = 2,
 		reach = 1.8, -- × the turtle's length, from its middle
-		lasts = 90,
+		lasts = 300, -- (owner, 2026-10-20: "sea turtle buffs should last for 5 minutes"; was 90)
 		cooldown = 240,
 		bite = 0.8,
 		-- Where it swims beside you (× your drawn length, then its own), and how fast

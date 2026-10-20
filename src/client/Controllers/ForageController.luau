@@ -457,8 +457,19 @@ local function stepCrabs(
 	end
 end
 
+-- Whether this fish carries all the Kelp Wraps it can: then it swims through medkelp
+-- without eating it, so the fronds stay for other players (owner, 2026-10-20: "if a
+-- player's kelp wrap slot is full then they should just swim through kelp wraps")
+local function wrapsFull(): boolean
+	local state = ClientState.current
+	local charms = state and state.charms
+	local held = if typeof(charms) == "table" then charms.KelpWrap else nil
+	return typeof(held) == "number" and held >= Config.Tuning.heal.wrapMax
+end
+
 local function step()
 	local now = Timing.clock()
+	local full = wrapsFull()
 	local camera = workspace.CurrentCamera.CFrame.Position
 	local root = SwimController.root()
 	local length = SwimController.length()
@@ -496,7 +507,11 @@ local function step()
 		local near = (food.position - camera).Magnitude < HOP_DISTANCE
 		local frame = frameOf(food, now, near)
 		local moved = near and food.kind == "Shrimp"
-		if mouth then
+		local passBy = full and Forage.byId[food.kind].wrap == true
+		if passBy and food.pulled then
+			food.pulled, moved = false, true
+		end
+		if mouth and not passBy then
 			local gap = (frame.Position - mouth).Magnitude
 			if gap < pullRange then
 				-- Suction: drawn toward the mouth as it comes close

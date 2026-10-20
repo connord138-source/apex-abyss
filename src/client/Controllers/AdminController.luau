@@ -327,7 +327,12 @@ local function build()
 	actionRow("Whale Fall on reef coral (test: corals under it hide)", "whaleCoral", "START", "secondary")
 	amountRow("Chum in front of the target (kg)", "kg, e.g. 20", "chumHere", 1, "BURST")
 	actionRow("Apex: crown the target now", "apexCrown", "CROWN", "secondary")
-	actionRow("Sea turtle: one joins the target now (90 s, bites ×0.8)", "turtleJoin", "JOIN", "secondary")
+	actionRow(
+		`Sea turtle: one joins the target now ({Config.Companions.turtle.lasts} s, bites ×{Config.Companions.turtle.bite})`,
+		"turtleJoin",
+		"JOIN",
+		"secondary"
+	)
 	amountRow("Apex: add to the bounty (coral)", "coral, e.g. 1000", "apexBounty", 0, "ADD")
 
 	header("MONETIZATION (NO ROBUX)")
