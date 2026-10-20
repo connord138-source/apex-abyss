@@ -2088,6 +2088,15 @@
   "task_id": "a2f96c21-dac9-42f2-9d50-25abb92f68f1",
   "type": "generate_image"
  },
+ "variant_concepts/VariantSheet": {
+  "credits": 10,
+  "files": [
+   "VariantSheet.png"
+  ],
+  "status": "success",
+  "task_id": "db0c8a8c-123e-41bf-8f28-0fa013d434ac",
+  "type": "generate_image"
+ },
  "vendor_sheets/KeeperCharms": {
   "credits": 10,
   "files": [

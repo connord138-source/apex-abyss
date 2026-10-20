@@ -1,0 +1,13 @@
+{
+ "jobs": [
+  {
+   "name": "VariantSheet",
+   "group": "variant_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/variant_concepts/RefSpecies.jpg",
+   "note": "the six variants, legendary like parts sheet B",
+   "prompt": "The attached image shows the six playable fish of a game in a 3 by 2 grid. Using them as the base AND the style reference (chunky stylized low-poly 3D game models with visible flat facets, the same colours, the same eyes), paint each fish's rare variant: the same fish, plainly the same species and colours, upgraded into a grander, rarer form, a little magical but still natural. Keep the same 3 by 2 order and each fish facing the same way, whole and big in its own cell, on one plain flat soft teal background with wide space between. Top row: 1) Puffball Nibbler: the orange striped starter fish puffed into a near-perfect ball, short blunt cream spikes all over, tiny fins, big proud eyes; 2) Sabrecuda: the silver barracuda, longer and leaner, two long curved sabre fangs from its upper jaw, a ridge of sharp gold-tipped spines down its back; 3) Porcupine Puffer: the brown pufferfish puffed up for good, bristling with long bone-white quills all over like a sea urchin. Bottom row: 4) Dragon Moray: the green moray with two swept-back horns and a frilled spiny crest along its whole back like a sea dragon, gold-green scales glinting; 5) Hammerhead: the grey shark with a wide flat hammer-shaped head, its eyes at the two tips, a taller first dorsal fin; 6) Deepfang Angler: the dark-blue anglerfish with a crown of three glowing lures on curved stalks and huge glassy fangs too long to close its mouth over. Every open mouth is dark navy-grey inside, never red. No pink, red, peach, flesh or beige anywhere. The picture has no writing at all: no names, labels, numbers or captions; no ground or shadows."
+  }
+ ]
+}
