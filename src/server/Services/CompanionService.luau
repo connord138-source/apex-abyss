@@ -9,17 +9,25 @@
 -- `Escort` attribute (the clock it leaves at): every client draws it at that fish's
 -- side (CompanionController) and HuntService scales what bites do by `bite`. A ray
 -- pays a few shells. The manta's draft is a speed the client takes for itself, which
--- SpeedService allows.
+-- SpeedService allows. The humpbacks crossing the Open Blue are edible (owner,
+-- 2026-10-20: "whales should be edible too"): their passes are the same here as on
+-- every client (Shared/Giants), so a bite on one (`BiteWhale`) is checked against
+-- where the whale really is.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
+local Giants = require(ReplicatedStorage.Shared.Giants)
 local Ground = require(ReplicatedStorage.Shared.Ground)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Net = require(script.Parent.Parent.Net)
+local BossService = require(script.Parent.BossService)
 local EconomyService = require(script.Parent.EconomyService)
 local FishService = require(script.Parent.FishService)
+local HuntService = require(script.Parent.HuntService)
 
 local Companions = Config.Companions
 local Kinds = Config.Ambient.kinds
@@ -80,6 +88,75 @@ local function onRequest(player: Player, kind: any)
 	end
 end
 
+-- A bite off a passing humpback (Config/Ambient `whale.feed`; the client sends the
+-- lane): a whale on that lane now (or a moment ago, as the biter saw it) with its
+-- skin in reach of the mouth, not sooner than a bite allows, while no boss is up (the
+-- giants hide then), out of the hub and the dens. Each bite is a mouthful worth
+-- `bite` of the fish's own full Haul, up to `hauls` full Hauls from one whale's pass.
+local WHALE_SLACK = 6 -- studs: the client's reach allowance and its view's lag
+local lastWhaleBite: { [Player]: number } = {}
+local whaleFed: { [Player]: { pass: string, taken: number, told: boolean } } = {}
+
+local function onBiteWhale(player: Player, lane: any)
+	local settings = Config.Ambient.giants
+	if typeof(lane) ~= "number" or lane % 1 ~= 0 or lane < 1 or lane > settings.lanes then
+		return
+	end
+	local now = Timing.clock()
+	if BossService.active() or now - (lastWhaleBite[player] or 0) < Config.Tuning.swim.biteCooldown * 0.8 then
+		return
+	end
+	local mouth, length, slack = HuntService.mouth(player)
+	if mouth == nil or Layout.inHub(mouth) or Layout.denAt(mouth) then
+		return
+	end
+	local pass = Giants.pass(lane, now)
+	if pass.kind ~= "whale" then
+		return
+	end
+	local heading = (pass.to - pass.from).Unit
+	local reach = Size.reach(length) + length * 0.6 + 2 + slack + WHALE_SLACK
+	local near = false
+	for _, back in { 0, 0.4 } do
+		local at, u = Giants.at(lane, pass.from, pass.to, now - back)
+		if u > 0.04 and u < 0.96 and (Giants.gap(at, heading, pass.size, mouth)) <= reach then
+			near = true
+		end
+	end
+	if not near then
+		return
+	end
+	lastWhaleBite[player] = now
+	local feed = settings.whale.feed
+	local key = `{lane}:{pass.slot}`
+	local fed = whaleFed[player]
+	if fed == nil or fed.pass ~= key then
+		fed = { pass = key, taken = 0, told = false }
+		whaleFed[player] = fed
+	end
+	local full = HuntService.fullHaul(player)
+	local take = math.min(full * feed.bite, math.max(full * feed.hauls - fed.taken, 0))
+	if take <= 1e-6 then
+		if not fed.told then
+			fed.told = true
+			Net.notify(player, "You're full of whale! Leave the rest for the others", "info")
+		end
+		return
+	end
+	-- (in Haul, then ×2 Mass and Server Frenzy, like the Whale Fall's chunks; nothing
+	-- past a full Haul)
+	local added = HuntService.gain(player, take, "rated")
+	-- (the first mouthful of a pass says so; the Haul's own pops show the rest)
+	if added > 0 and fed.taken <= 0 then
+		Net.notify(
+			player,
+			`A mouthful of whale · +{Format.haul(HuntService.shown(player, added))} a bite`,
+			"good"
+		)
+	end
+	fed.taken += added
+end
+
 -- A turtle joins this fish now, whatever its place and cooldown (the admin panel's
 -- test: a fish needn't find one first)
 function CompanionService.join(player: Player): boolean
@@ -95,9 +172,12 @@ end
 
 function CompanionService.start()
 	Net.onRequest("Companion", onRequest)
+	Net.onRequest("BiteWhale", onBiteWhale)
 	game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
 		turtleAgain[player] = nil
 		rayAgain[player] = nil
+		lastWhaleBite[player] = nil
+		whaleFed[player] = nil
 	end)
 end
 

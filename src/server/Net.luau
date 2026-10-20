@@ -50,6 +50,7 @@ predatorState.Parent = folder
 local REQUESTS: { [string]: number } = {
 	EatPrey = 0.05, -- ({ { index: number, at: number } }) batched by the client
 	Bite = 0.35, -- (userId)
+	BiteWhale = 0.3, -- (lane) a mouthful off a passing humpback (CompanionService)
 	Collect = 0.03, -- (shell spot index)
 	EatForage = 0.05, -- ({ number }) forage spot indexes, batched by the client
 	EatChum = 0.05, -- ({ { cloudId, chunkIndex } }) chum chunks, batched by the client

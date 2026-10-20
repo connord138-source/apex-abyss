@@ -30,6 +30,9 @@ local HuntController = {
 	-- or a creature (owner, 2026-10-20: "biting also needs a sound queue or something
 	-- to let the player know they are biting"; HudController draws the jaws)
 	snapped = Signal.new(),
+	-- (mouth, reach) → the lane of a humpback in reach, set by AmbientLifeController
+	-- (the whales are edible: Config/Ambient `whale.feed`)
+	findWhale = nil :: ((Vector3, number) -> number?)?,
 }
 
 local function lengthOf(character: Model): number
@@ -132,6 +135,18 @@ local function onBite()
 			if index then
 				target = function()
 					ClientState.request("BitePredator", index)
+				end
+			end
+			-- ...or a passing humpback: a mouthful off it (CompanionService checks it)
+			local findWhale = HuntController.findWhale
+			local lane = if target == nil and findWhale
+				then findWhale(mouth, Size.reach(length) + length * 0.6 + 2)
+				else nil
+			if lane then
+				target = function()
+					ClientState.request("BiteWhale", lane)
+					Sfx.play("Bite", { volume = 0.85, pitch = 0.8 + math.random() * 0.1 })
+					HuntController.snapped:fire(true)
 				end
 			end
 		end

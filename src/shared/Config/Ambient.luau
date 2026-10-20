@@ -195,9 +195,10 @@ return {
 		default = { "BlueTang" },
 	} :: { [string]: { string } },
 	-- The giants: `lanes` at a time, each crossing the Open Blue on a line `lane`
-	-- studs long over `period` seconds (the same on every client), seen only past
-	-- `near` (part-built shapes, read as silhouettes in the haze: the Open Blue's
-	-- water shows ~280 studs, Config/Bosses `sight`)
+	-- studs long over `period` seconds (the same on every client and the server,
+	-- Shared/Giants). A giant manta is seen only past `near` (a silhouette in the
+	-- haze: the Open Blue's water shows ~280 studs, Config/Bosses `sight`); a humpback
+	-- stays in view up close, since it's edible (`whale.feed`)
 	giants = {
 		lanes = 5,
 		period = 170,
@@ -208,6 +209,14 @@ return {
 			rig = "whale",
 			model = "Humpback",
 			beat = { 6.5, 8.5 },
+			-- Edible (owner, 2026-10-20: "whales should be edible too. Once the player
+			-- gets close they disappear"): far too big to swallow, so every BITE on one
+			-- tears off a mouthful worth `bite` of the biter's own full Haul, at most
+			-- `hauls` full Hauls from one whale's pass ("You're full of whale!");
+			-- CompanionService checks each. A fish can't swim through it: its body is
+			-- a capsule `girth` of its length thick at the middle.
+			girth = 0.11,
+			feed = { bite = 1 / 10, hauls = 1 },
 			look = {
 				top = Color3.fromRGB(56, 72, 94),
 				top2 = Color3.fromRGB(50, 66, 88),

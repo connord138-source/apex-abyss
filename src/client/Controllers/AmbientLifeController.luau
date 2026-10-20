@@ -35,6 +35,7 @@ local AmbientRigs = require(ReplicatedStorage.Shared.AmbientRigs)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Ground = require(ReplicatedStorage.Shared.Ground)
+local Giants = require(ReplicatedStorage.Shared.Giants)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local AmbientBody = require(script.Parent.Parent.AmbientBody)
@@ -43,6 +44,7 @@ local SchoolController = require(script.Parent.SchoolController)
 local SwimController = require(script.Parent.SwimController)
 local ClientState = require(script.Parent.Parent.ClientState)
 local HudController = require(script.Parent.HudController)
+local HuntController = require(script.Parent.HuntController)
 
 local Ambient = Config.Ambient
 local World = Config.World
@@ -578,33 +580,7 @@ end
 -- through the haze
 
 local function giantLine(lane: number, slot: number): (string, Vector3, Vector3, number)
-	local rng = Random.new(seedOf(lane, slot, SALT.giant))
-	local kind = KINDS.giant
-	local which = if rng:NextNumber() < 0.55 then "whale" else "manta"
-	local length = rng:NextNumber(kind.size[1], kind.size[2])
-	local r = rng:NextNumber(1050, 1350)
-	local angle = math.rad(rng:NextNumber(234, 306))
-	local x, z = math.cos(angle) * r, math.sin(angle) * r
-	-- Roughly across the sector (along the circle), so it stays in the Open Blue
-	local heading = angle + math.pi / 2 + rng:NextNumber(-0.5, 0.5)
-	local floor = Seafloor.y(x, z)
-	local y = math.min(floor + rng:NextNumber(150, 360), World.surfaceY - 60)
-	local half = Ambient.giants.lane / 2
-	local direction = Vector3.new(math.cos(heading), 0, math.sin(heading))
-	local middle = Vector3.new(x, y, z)
-	local function inside(point: Vector3): Vector3
-		local flat = Vector2.new(point.X, point.Z)
-		if flat.Magnitude > 1460 then
-			flat = flat.Unit * 1460
-		end
-		return Vector3.new(flat.X, point.Y, flat.Y)
-	end
-	local from = inside(middle - direction * half)
-	local to = inside(middle + direction * half + Vector3.new(0, rng:NextNumber(-40, 40), 0))
-	if rng:NextNumber() < 0.5 then
-		from, to = to, from
-	end
-	return which, from, to, if which == "whale" then length else length * 0.42
+	return Giants.line(lane, slot)
 end
 
 local function makeGiant(lane: number, slot: number): Creature
@@ -623,11 +599,7 @@ local function makeGiant(lane: number, slot: number): Creature
 end
 
 local function giantAt(creature: Creature, t: number): (Vector3, number)
-	local period = Ambient.giants.period
-	local lane = creature.key
-	local u = ((t + lane * period / Ambient.giants.lanes) % period) / period
-	local from, to = creature.from :: Vector3, creature.to :: Vector3
-	return from:Lerp(to, u) + Vector3.new(0, math.sin(u * TAU) * 12, 0), u
+	return Giants.at(creature.key, creature.from :: Vector3, creature.to :: Vector3, t)
 end
 
 ----------------------------------------------------------------------------------
@@ -971,6 +943,45 @@ local function frameOf(creature: Creature, t: number): (CFrame, number, number, 
 	return frame, rate, 0, -1
 end
 
+----------------------------------------------------------------------------------
+-- The humpbacks are edible (Config/Ambient `whale.feed`): our fish can't swim through
+-- one, and BITE finds one at our mouth (HuntController.findWhale; CompanionService
+-- checks the bite)
+
+-- Sets our own fish back onto a whale's skin, keeping only its speed along it
+local function solidWhale(creature: Creature, frame: CFrame)
+	local mine = SwimController.root()
+	if mine == nil or SwimController.isHeld() then
+		return
+	end
+	local gap, out = Giants.gap(frame.Position, frame.LookVector, creature.size, mine.Position)
+	local inside = mine.Size.X * 0.4 - gap
+	if inside <= 0 then
+		return
+	end
+	local velocity = SwimController.velocity
+	local into = velocity:Dot(out)
+	if into < 0 then
+		SwimController.velocity = velocity - out * into
+	end
+	mine.CFrame += out * inside
+end
+
+-- The lane of a whale in view whose skin is within `reach` of `mouth`, if any
+local function whaleAt(mouth: Vector3, reach: number): number?
+	local now = Timing.clock()
+	for lane, creature in giants do
+		if creature.giant == "whale" and creature.fade < 0.5 then
+			local at = giantAt(creature, now)
+			local heading = ((creature.to :: Vector3) - (creature.from :: Vector3)).Unit
+			if (Giants.gap(at, heading, creature.size, mouth)) <= reach then
+				return lane
+			end
+		end
+	end
+	return nil
+end
+
 local function centerOf(creature: Creature, t: number): Vector3
 	local kind = creature.kind
 	if kind == "jelly" then
@@ -1130,11 +1141,17 @@ local function step(dt: number)
 			fade = (away - range * (1 - FADE_SHARE)) / (range * FADE_SHARE)
 		end
 		if isGiant then
-			-- never close, and in and out at the ends of its line
-			local near = Ambient.giants.near
-			fade = math.max(fade, 1 - (away - near) / 50)
+			-- in and out at the ends of its line; a manta never close (a humpback stays
+			-- in view up close: it's edible, Config/Ambient `whale.feed`)
+			if creature.giant ~= "whale" then
+				local near = Ambient.giants.near
+				fade = math.max(fade, 1 - (away - near) / 50)
+			end
 			local _, u = giantAt(creature, now)
 			fade = math.max(fade, 1 - math.min(u, 1 - u) / 0.08)
+		end
+		if creature.giant == "whale" and fade < 0.5 then
+			solidWhale(creature, frame)
 		end
 		fade = math.max(fade, bossFade)
 		fade = math.clamp(math.floor(fade * 10 + 0.5) / 10, 0, 1)
@@ -1241,6 +1258,7 @@ function AmbientLifeController.start()
 	folder = Instance.new("Folder")
 	folder.Name = "AmbientLife"
 	folder.Parent = workspace
+	HuntController.findWhale = whaleAt
 	RunService.RenderStepped:Connect(step)
 end
 
