@@ -715,8 +715,9 @@ local function buildThumbstick()
 	-- corner, its knob under the tutorial card's keys once the top-left column moves
 	-- below the top bar (PC 2026-10-19: at 90 up the ring lay over the card's
 	-- distance line; on a phone that line now sits at the card's top,
-	-- TutorialController `layoutCard`)
-	local rest = UDim2.new(0, 100, 1, -74)
+	-- TutorialController `layoutCard`; the card's key caps line up from its right on
+	-- a phone, so the ring rests over the card's empty lower-left corner, PC 2026-10-20)
+	local rest = UDim2.new(0, 92, 1, -70)
 	ring.Position = rest
 	ring.BackgroundTransparency = 0.75
 

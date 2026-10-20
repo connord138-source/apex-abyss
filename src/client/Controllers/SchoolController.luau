@@ -65,13 +65,17 @@ local RETURN_LENGTHS = 6
 local RETURN_EDIBLE = 0.8
 -- A fish fades out over the last share of its draw range (Schools `range`)
 local FADE_SHARE = 0.2
+-- A built fish past its draw range is looked at again only every CULL_EVERY frames
+-- (most built fish are: Kelp 472 built, 119 drawn, PC 2026-10-20; their path maths
+-- was spent every frame for nothing)
+local CULL_EVERY = 4
 -- A school is let go this far past its reach (so one on the edge isn't rebuilt
 -- every few frames)
 local RELEASE_SLACK = 90
 local BUILD_BUDGET = 0.003 -- seconds a frame spent building newly near schools
 -- How far the client draws (×): eased toward DETAIL_MIN while frames take longer
 -- than SLOW_FRAME, back to 1 under FAST_FRAME
-local DETAIL_MIN = 0.7
+local DETAIL_MIN = 0.6 -- (0.7 until 2026-10-20: the fuller sea held Kelp, Reef and Trench at it)
 local SLOW_FRAME = 1 / 38
 local FAST_FRAME = 1 / 52
 -- Static GLB prey meshes came in facing +Z (owner, 2026-10-07: "swimming backwards");
@@ -1624,6 +1628,14 @@ local function step(dt: number)
 			local visual = visuals[index]
 			if visual == nil then
 				continue -- (still being built)
+			end
+			if
+				visual.cull >= 1
+				and visual.chase == nil
+				and visual.suckFrom == nil
+				and (index + frameCount) % CULL_EVERY ~= 0
+			then
+				continue
 			end
 			-- Respawned, or our eat wasn't confirmed: show it again
 			if visual.hidden and visual.suckFrom == nil then

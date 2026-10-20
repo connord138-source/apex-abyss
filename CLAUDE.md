@@ -1247,7 +1247,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     map for plum (red well over green, blue over green) and use `safe_colors.py
     --plum`. Tripo balance 425 (2026-10-19).
   - **Tutorial: the full loop, nine steps** (`Config/Tutorial`, `TutorialService`
-    rewritten, `tutorial.v`): leave the hub, eat 10, 5 shells, fill the Haul
+    rewritten, `tutorial.v`): leave the hub, eat 5 (10 until 2026-10-20), 5 shells, fill the Haul
     (`HAUL_LEVELS` 7 levels' worth), bank, spin the wheel (a spin granted), ROLL
     (shells topped to 50), use a Kelp Wrap (one granted), open the INDEX (I key);
     new `Events.spun/rolled/usedItem`, `TutorialSaw`.
@@ -1527,8 +1527,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     and it joins you for 90 s at your side, seen by everyone (character attribute
     `Escort`; admin "Sea turtle: one joins the target now", `CompanionService.join`),
     bites on you ×0.8 (not the crushing deep), back in 4 min; ride a manta's
-    wake for ×1.3 top speed (`SwimController.draft`; SpeedService allows the faster of
-    it and the slipstream); skim low over a resting ray and it bursts off the sand
+    wake 0.4 s and its current carries you at ×1.3 top speed for 8 s, renewed while
+    you stay in it (`SwimController.draft`, a toast, a client-side `Draft` character
+    attribute for tests; SpeedService allows the faster of it and the slipstream; a
+    manta cruises at 4–6.5 studs/s, so a buff only inside the wake never held); skim low over a resting ray and it bursts off the sand
     stirring up 2 shells (one every 90 s; it's gone from your view a minute). The
     server checks a live fish out of the hub and dens, a biome that kind lives in, near
     the floor for a ray, and the cooldowns.
@@ -1541,6 +1543,26 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Community logo:** `marketing/community_{a,b,c}_512.png` (A recommended; screened
     0.17 / 0.15 / 0.05). Connor creates the community and sends its id for
     `tuning.group` in both games.
+- **The 2026-10-20 report's decisions (PC report `2026-10-20-pc.md`, published as v15;
+  PC fixes e95679d…3b45f4a merged into `claude/world`; Connor's standing "go with all of
+  your recs"):**
+  - **FPS** (Studio Play, PC: Kelp 41, Reef 45, Open Blue 43, Ruins 49, Vents 51, Trench
+    39; phone sim Kelp 44, Open Blue 46): a built fish past its draw range is looked at
+    only every 4th frame (`SchoolController` `CULL_EVERY`; Kelp had 472 built, 119
+    drawn, each one's path worked out every frame), and the draw-range floor on a slow
+    device is 0.6 (`DETAIL_MIN`, was 0.7). The `fill` stays until a real phone and the
+    Script Profiler say where the time goes (next brief).
+  - **Tutorial:** step 2 eats 5 things (ten of the shallows' fish filled a LV 1 fish's
+    2.1 kg Haul, so step 4 was done on sight).
+  - **Phone tutorial card:** its key caps line up from the card's right
+    (`TutorialController` `showControls`), and the stick ring rests at (92, H−70)
+    over the card's empty lower-left corner.
+  - **Diamond's window** is a deeper ice blue (140, 196, 255) at 0.6 transparency (was
+    near-white at 0.35: the Nibbler read white).
+  - **Manta:** ride then carry (above), with the `Draft` attribute.
+  - **Den vault:** the carved roof hangs up to `Config/Dens` `vaultSag` 4 studs under
+    `DenSpace.vaultAt`; the way out's nameplate keeps that clear (DenDoor `underVault`),
+    and the PC's raycast still seats it on the real rock (6b17c05).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

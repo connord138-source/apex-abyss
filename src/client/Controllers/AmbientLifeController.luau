@@ -42,6 +42,7 @@ local BossController = require(script.Parent.BossController)
 local SchoolController = require(script.Parent.SchoolController)
 local SwimController = require(script.Parent.SwimController)
 local ClientState = require(script.Parent.Parent.ClientState)
+local HudController = require(script.Parent.HudController)
 
 local Ambient = Config.Ambient
 local World = Config.World
@@ -983,7 +984,9 @@ end
 -- Companions): a turtle we've stayed beside long enough joins us, a manta's wake
 -- carries us, and a ray resting on the sand bursts away from a fish skimming over it
 local fishVelocity = Vector3.zero
-local draft = false
+local inWake = false -- in a manta's wake this frame
+local wakeSince: number? = nil -- since when, unbroken
+local draftUntil = 0 -- its current carries us until then (the clock)
 local sawTurtle = false
 local function interact(creature: Creature, frame: CFrame, settled: number, fishAt: Vector3, now: number)
 	local kind = creature.kind
@@ -1013,7 +1016,7 @@ local function interact(creature: Creature, frame: CFrame, settled: number, fish
 			and fishVelocity.Magnitude > 2
 			and fishVelocity.Unit:Dot(look) > tune.align
 		then
-			draft = true
+			inWake = true
 		end
 	elseif kind == "ray" then
 		local tune = Companions.ray
@@ -1070,7 +1073,7 @@ local function step(dt: number)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local fishAt = if root and root:IsA("BasePart") then root.Position else nil
 	fishVelocity = if root and root:IsA("BasePart") then root.AssemblyLinearVelocity else Vector3.zero
-	draft = false
+	inWake = false
 	sawTurtle = false
 	-- The turtle swimming with us: until the server's `Escort` runs out
 	local escort = if character then character:GetAttribute("Escort") else nil
@@ -1158,8 +1161,28 @@ local function step(dt: number)
 	if not sawTurtle then
 		turtleKey = nil
 	end
-	-- A manta's draft (SwimController takes it like a podmate's slipstream)
-	SwimController.draft = draft
+	-- A manta's draft (SwimController takes it like a podmate's slipstream): ridden
+	-- `ride` s, its current carries us `carry` s more, renewed while we stay in it.
+	-- `Draft` on our own character (this client's copy only) is for play tests.
+	local manta = Companions.manta
+	if inWake then
+		wakeSince = wakeSince or now
+		if now - (wakeSince :: number) >= manta.ride then
+			if now >= draftUntil then
+				HudController.toast("A manta's current carries you · faster", "good")
+			end
+			draftUntil = now + manta.carry
+		end
+	else
+		wakeSince = nil
+	end
+	local draft = now < draftUntil and fishAt ~= nil
+	if SwimController.draft ~= draft then
+		SwimController.draft = draft
+		if character then
+			character:SetAttribute("Draft", if draft then true else nil)
+		end
+	end
 	-- The bodies: joints nearest first within the budget, every one moved
 	table.sort(posing, function(a, b)
 		return a.away < b.away

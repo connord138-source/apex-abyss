@@ -491,6 +491,12 @@ local function showControls(step: TutorialConfig.Step)
 	layout.Padding = UDim.new(0, 10)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.VerticalAlignment = Enum.VerticalAlignment.Top
+	-- On a phone the caps line up from the card's right: its lower-left corner is
+	-- where the swim stick's ring rests (HudController), and it lay over STICK / DRAG
+	-- (PC 2026-10-20, TU3)
+	layout.HorizontalAlignment = if shownDevice == "touch"
+		then Enum.HorizontalAlignment.Right
+		else Enum.HorizontalAlignment.Left
 	layout.Parent = capsRow
 	local shown = 0
 	for i, control in step.controls do

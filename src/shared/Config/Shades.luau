@@ -1398,7 +1398,7 @@ local function window(
 end
 local WINDOWS: { [string]: Sheen } = {
 	-- Nibbler: Diamond, Divine, Prismatic
-	Diamond = window("sheenFacets", C(220, 240, 255), 0.35, 0.7, 0.03),
+	Diamond = window("sheenFacets", C(140, 196, 255), 0.6, 0.7, 0.03), -- (0.35 in near-white read the Nibbler white, PC 2026-10-20)
 	Divine = window("sheenVeil", C(255, 236, 170), 0.3, 0.9, 0.05),
 	Prismatic = window("sheenPrismatic", C(255, 255, 255), 0.3, 0.8, 0.06),
 	-- 'Cuda: Chrome, Thunder, Comet

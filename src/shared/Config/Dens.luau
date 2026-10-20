@@ -1357,6 +1357,11 @@ return {
 	-- radius, how far into the wall it stands and the alcove's radius (it was flat on
 	-- the wall, 13 up, until then)
 	exit = { y = 11, radius = 9, back = 9, alcove = 10.5 },
+	-- How far the carved roof can hang under the arch DenSpace.vaultAt works out: the
+	-- Terrain's voxel surface sits lower than the cylinder cut (rock 35.6 studs over
+	-- the deck where the arch says 39; PC 2026-10-20). Anything placed near the vault
+	-- keeps this much more clear, and checks against the arch should allow for it.
+	vaultSag = 4,
 	-- Where the interiors are: a grid of blocks at the hub's height, far outside the
 	-- play area (the map's rim is 1,500 out, the Horizon walls 2,900), `spacing`
 	-- apart, `columns` to a row

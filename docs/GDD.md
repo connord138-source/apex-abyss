@@ -309,7 +309,7 @@ The approved details:
   to the step's target with the distance and an arrow on the card, and the card
   says how to free the cursor):**
   1. Swim out of your den.
-  2. Eat 10 small fish.
+  2. Eat 5 small fish.
   3. Bank your Haul.
   4. Pick up shells.
   5. Dodge a barracuda.

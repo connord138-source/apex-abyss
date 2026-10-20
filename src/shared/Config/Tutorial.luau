@@ -64,9 +64,11 @@ local steps: { Step } = {
 	},
 	{
 		id = "Eat",
-		title = "EAT 10 SMALL THINGS",
-		text = "Swim into 10 small fish, shrimp or starfish. Smaller things are swallowed on touch, no button",
-		goal = 10,
+		-- (5, not 10: ten of the shallows' fish filled a new fish's whole Haul, so the
+		-- Haul step was done the moment it showed; PC report 2026-10-20)
+		title = "EAT 5 SMALL THINGS",
+		text = "Swim into 5 small fish, shrimp or starfish. Smaller things are swallowed on touch, no button",
+		goal = 5,
 		event = "ate",
 		guide = "food",
 		controls = {

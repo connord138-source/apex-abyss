@@ -1455,13 +1455,15 @@ end
 
 -- A way out's nameplate is kept under the vault: a tall style's (the Whalebone's
 -- reached 40 studs over the deck, the vault 38–39 at its corners) hangs lower, a
--- little out from the wall so what's behind it stays behind it
+-- little out from the wall so what's behind it stays behind it. The carved roof
+-- hangs up to `vaultSag` under the arch, so that's kept clear too (seatPlaque still
+-- checks against the rock once the Terrain answers rays).
 local VAULT_CLEAR = 0.8
 local function underVault(frame: CFrame, plate: Decor.Plaque)
 	local board = plate.board
 	local at = frame:PointToObjectSpace(board.Position)
 	local top = at.Y + board.Size.Y / 2 + Config.Dens.exit.y -- over the deck
-	local limit = frontVault(math.abs(at.X) + board.Size.X / 2) - VAULT_CLEAR
+	local limit = frontVault(math.abs(at.X) + board.Size.X / 2) - Config.Dens.vaultSag - VAULT_CLEAR
 	if top <= limit then
 		return
 	end

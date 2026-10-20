@@ -10,8 +10,12 @@
 --           (everyone sees it at your side): bites on you hurt ×`bite` (players,
 --           predators, bosses; not the crushing deep). It leaves for `cooldown` s.
 --   manta   ride in a manta's wake (behind it within `behind` × its span, inside
---           `width` × its span of its line, swimming its way) for ×`speed` top speed
---           while you're in it (like a podmate's slipstream; SpeedService allows it).
+--           `width` × its span of its line, swimming its way) for `ride` s and its
+--           current carries you: ×`speed` top speed for `carry` s, renewed while you
+--           stay in it (like a podmate's slipstream; SpeedService allows it). A manta
+--           cruises at 4–6.5 studs/s, slower than any fish, so a buff only while
+--           inside its wake was gone the moment you passed it (PC 2026-10-20: never
+--           held long enough to measure).
 --   ray     skim low (within `over` studs) over a stingray resting on the sand and it
 --           bursts away in a cloud of sand, stirring up `shells` shells; one every
 --           `cooldown` s, and that ray's gone from your view for `hidden` s.
@@ -30,9 +34,11 @@ return {
 	},
 	manta = {
 		speed = 1.3,
-		behind = 1.6,
-		width = 0.6,
-		align = 0.5, -- the cosine your heading must reach with its heading
+		behind = 3,
+		width = 1,
+		align = 0.3, -- the cosine your heading must reach with its heading
+		ride = 0.4,
+		carry = 8,
 	},
 	ray = {
 		over = 9,

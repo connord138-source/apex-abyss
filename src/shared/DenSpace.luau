@@ -127,7 +127,8 @@ function DenSpace.archRadius(room: DensConfig.Room): number
 	return (room.x * room.x + rise * rise) / (2 * rise)
 end
 
--- The ceiling's height over a storey's deck at `x` across a room
+-- The ceiling's height over a storey's deck at `x` across a room, as cut (the carved
+-- voxel roof can hang up to Config/Dens `vaultSag` lower)
 function DenSpace.vaultAt(room: DensConfig.Room, x: number): number
 	local s = DenSpace.storey(room.storey)
 	local rise = s.ceiling - s.deck - s.wall
