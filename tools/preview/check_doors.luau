@@ -51,8 +51,14 @@ for index = 1, Layout.DEN_COUNT do
 		DenDoor.restyle(index, style)
 		check(`den {index} doorway {style}`, Layout.doorFrame(index), den, 8)
 	end
+	-- the way out inside the den wears the same styles (DenDoor.restyle dressed it
+	-- above; it's built on its own model)
 	local inside = Instance.new("Model")
 	DenDoor.exit(inside, index)
-	check(`den {index} exit`, Layout.exitFrame(index), inside, 8)
+	for _, style in DenDoor.styles() do
+		DenDoor.restyle(index, "Stone")
+		DenDoor.restyle(index, style)
+		check(`den {index} exit {style}`, Layout.exitFrame(index), inside, 8)
+	end
 end
 print(if failures == 0 then "D|all doorways clear for a LV 100 fish" else `D|{failures} BLOCKED`)

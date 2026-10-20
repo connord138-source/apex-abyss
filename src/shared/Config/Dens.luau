@@ -1350,9 +1350,13 @@ return {
 	-- moved over once (DenService `relayout`): across and along by `growth`, the v4
 	-- rooms' size over the v3 ones'.
 	layout = { current = 4, growth = 1.22 },
-	-- The way out: a bubble portal on the main storey's front wall (its middle's
-	-- height over the deck, and its radius)
-	exit = { y = 13, radius = 9 },
+	-- The way out: a bubble portal at the back of a round alcove in the main storey's
+	-- front wall, the same shape as the doorways on the plaza (owner, 2026-10-20: "den
+	-- exit needs to be more pronounced like the entrance too"; DenCarve cuts it, DenDoor
+	-- dresses it in the den's doorway style): its middle's height over the deck, its
+	-- radius, how far into the wall it stands and the alcove's radius (it was flat on
+	-- the wall, 13 up, until then)
+	exit = { y = 11, radius = 9, back = 9, alcove = 10.5 },
 	-- Where the interiors are: a grid of blocks at the hub's height, far outside the
 	-- play area (the map's rim is 1,500 out, the Horizon walls 2,900), `spacing`
 	-- apart, `columns` to a row

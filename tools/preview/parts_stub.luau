@@ -426,6 +426,15 @@ game = {
 	end,
 }
 workspace = new("Workspace")
+-- (no scheduler: what a builder defers, like DenDoor seating a nameplate on the rock
+-- by raycast, is skipped here)
+task = {
+	spawn = function() end,
+	delay = function() end,
+	wait = function()
+		return 0
+	end,
+}
 
 -- Props stub: records what would be dressed with an imported model (render_hub.py
 -- draws the GLB when it's in assets/tripo/, else the placeholder part stays)

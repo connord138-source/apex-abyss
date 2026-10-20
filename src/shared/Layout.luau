@@ -117,11 +117,13 @@ end
 -- The way out: the portal on the main storey's front wall, facing into the den
 function Layout.exitFrame(index: number): CFrame
 	local storey = Dens.storeys[1]
-	return denPoint(index, 0, storey.deck + Dens.exit.y, Dens.maxFront - 0.6) * CFrame.Angles(0, math.pi, 0)
+	return denPoint(index, 0, storey.deck + Dens.exit.y, Dens.maxFront + Dens.exit.back)
+		* CFrame.Angles(0, math.pi, 0)
 end
 
 -- How far a den's block reaches round its frame (the rooms plus their walls)
-local HALF, FRONT, BACK, TOP, BOTTOM = 0, Dens.maxFront + 16, Dens.maxBack - 16, 0, 0
+-- (the front reaches past the way out's alcove, Dens.exit `back`, with rock to spare)
+local HALF, FRONT, BACK, TOP, BOTTOM = 0, Dens.maxFront + Dens.exit.back + 13, Dens.maxBack - 16, 0, 0
 for _, room in Dens.rooms do
 	HALF = math.max(HALF, room.x + 16)
 end

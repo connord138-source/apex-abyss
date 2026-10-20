@@ -20,6 +20,12 @@
 -- dim, still curtain (its portal lets no one in: DenDoorController). A freed den
 -- goes back to the Stone Arch.
 --
+-- The way out inside a den (owner, 2026-10-20: "den exit needs to be more pronounced
+-- like the entrance too") is the same doorway turned round: an alcove in the front
+-- wall of the same shape (DenCarve), the den's own doorway style round it, a
+-- threshold level with the deck, TO THE HUB · THE PLAZA on its nameplate, always lit,
+-- and a stronger glow from its portal.
+--
 -- Nothing solid reaches inside 10 studs of the doorway's axis (the alcove's radius
 -- is 10.5, the sill 18 wide), so a LV 100 fish (collider ~6.8) swims in as before,
 -- and the portal's trigger (Layout.doorAt) is unchanged; what does reach in (kelp
@@ -139,9 +145,16 @@ type Door = {
 	built: Built?,
 	owner: string?,
 	levelName: string?,
+	exit: boolean?, -- the way out inside the den (DenDoor.exit)
 }
 
 local doors: { [number]: Door } = {}
+local exits: { [number]: Door } = {}
+
+-- The way out's portal glows brighter than a doorway's (it's what you look for in
+-- your den): its light's range and brightness
+local EXIT_GLOW_RANGE = 30
+local EXIT_GLOW = 1.4
 
 local function glowOf(p: BasePart, light: Light?, color: Color3): Glow
 	return { part = p, light = light, color = color, material = p.Material, transparency = p.Transparency }
@@ -1387,36 +1400,90 @@ local function seatPlaque(frame: CFrame, plate: Decor.Plaque)
 	end)
 end
 
--- Builds (or rebuilds) door `index`'s style
-local function build(index: number, styleId: string)
-	local door = doors[index]
-	if door == nil then
+-- The main storey's vault over its deck `x` studs across, at the front wall where
+-- the way out is (DenSpace.vaultAt, worked out here: the hub's previews build
+-- DenDoor without DenSpace)
+local function frontVault(x: number): number
+	local s = Config.Dens.storeys[1]
+	local room = Config.Dens.rooms[1]
+	for _, candidate in Config.Dens.rooms do
+		if candidate.storey == 1 and candidate.z0 >= Config.Dens.maxFront then
+			room = candidate
+			break
+		end
+	end
+	local rise = s.ceiling - s.deck - s.wall
+	local radius = (room.x * room.x + rise * rise) / (2 * rise)
+	return s.wall + math.max(math.sqrt(math.max(radius * radius - x * x, 0)) - (radius - rise), 0)
+end
+
+-- A way out's nameplate is kept under the vault: a tall style's (the Whalebone's
+-- reached 40 studs over the deck, the vault 38–39 at its corners) hangs lower, a
+-- little out from the wall so what's behind it stays behind it
+local VAULT_CLEAR = 0.8
+local function underVault(frame: CFrame, plate: Decor.Plaque)
+	local board = plate.board
+	local at = frame:PointToObjectSpace(board.Position)
+	local top = at.Y + board.Size.Y / 2 + Config.Dens.exit.y -- over the deck
+	local limit = frontVault(math.abs(at.X) + board.Size.X / 2) - VAULT_CLEAR
+	if top <= limit then
 		return
 	end
+	local move = frame:VectorToWorldSpace(Vector3.new(0, limit - top, -0.9))
+	board.CFrame += move
+	for _, trim in plate.trims do
+		trim.CFrame += move
+	end
+	local face = plate.gui.Parent
+	if face and face:IsA("BasePart") and face ~= board then
+		face.CFrame += move
+	end
+end
+
+-- Where door `index` stands (its portal, -Z out of its alcove) and its floor in that
+-- frame: the doorway on the plaza, or the way out inside the den
+local function placeOf(door: Door, index: number): (CFrame, number)
+	if door.exit then
+		return Layout.exitFrame(index), -Config.Dens.exit.y -- (the deck)
+	end
+	local frame = Layout.doorFrame(index)
+	return frame, hub.denFloorY - frame.Position.Y -- (the den floor's height)
+end
+
+-- Builds (or rebuilds) a door's style
+local function build(door: Door, index: number, styleId: string)
 	if door.style then
 		door.style:Destroy()
 	end
 	local builder = STYLES[styleId] or STYLES.Stone
 	local style = Instance.new("Model")
 	style.Name = "Style"
-	local frame = Layout.doorFrame(index)
+	local frame, floor = placeOf(door, index)
 	local site: Site = {
 		frame = frame,
-		floor = hub.denFloorY - frame.Position.Y, -- the doorway's floor (the den floor's height)
+		floor = floor,
 		index = index,
-		open = tunnelSide(index),
-		rng = Random.new(World.seed + index * 31),
+		-- (no tunnel beside the way out; its growth is seeded apart from the doorway's)
+		open = if door.exit then 0 else tunnelSide(index),
+		rng = Random.new(World.seed + index * 31 + (if door.exit then 500 else 0)),
 	}
 	local made = builder(style, site)
+	if door.exit then
+		underVault(frame, made.plaque)
+	end
 	seatPlaque(frame, made.plaque)
 	local curtain, backing, bubbles, shimmer, glow = pane(style, frame, Layout.DOOR_RADIUS, made.pane)
+	if door.exit then
+		glow.Range = EXIT_GLOW_RANGE
+		glow.Brightness = EXIT_GLOW
+	end
 	style:SetAttribute("Style", if STYLES[styleId] then styleId else "Stone")
 	style.Parent = door.model
 	-- The nameplate's top (local to the door's frame), so YOUR DEN sits over it on
 	-- every style (PC 2026-10-19, DN1: on the Megalodon Jaws it sat across the name)
 	local board = made.plaque.board
 	local den = door.model.Parent
-	if den then
+	if den and not door.exit then
 		den:SetAttribute("PlaqueTop", frame:PointToObjectSpace(board.Position).Y + board.Size.Y / 2)
 	end
 	door.style = style
@@ -1439,9 +1506,12 @@ local function apply(door: Door)
 	if built == nil then
 		return
 	end
-	local lived = door.owner ~= nil
+	-- (the way out is only there while someone lives in the den: always lit)
+	local lived = door.exit == true or door.owner ~= nil
 	local plate = built.plaque
-	if door.owner then
+	if door.exit then
+		plate.title.Text = "TO THE HUB"
+	elseif door.owner then
 		plate.title.Text = `{Decor.oneLine(door.owner)}'S`
 	else
 		plate.title.Text = "EMPTY DEN"
@@ -1449,7 +1519,10 @@ local function apply(door: Door)
 	plate.title.TextColor3 = if lived then Decor.TEXT else TEXT_EMPTY
 	local sub = plate.sub
 	if sub then
-		sub.Text = if lived then Decor.oneLine(door.levelName or "Den") else "VACANT"
+		sub.Text = if door.exit
+			then "THE PLAZA"
+			elseif lived then Decor.oneLine(door.levelName or "Den")
+			else "VACANT"
 		sub.TextColor3 = if lived then Decor.TEXT_GOLD else TEXT_EMPTY
 	end
 	local look = built.look
@@ -1518,24 +1591,26 @@ function DenDoor.front(parent: Instance, index: number)
 		})
 	end
 	folder.Parent = parent
-	doors[index] = { model = folder }
-	build(index, "Stone")
-	apply(doors[index])
+	local door: Door = { model = folder }
+	doors[index] = door
+	build(door, index, "Stone")
+	apply(door)
 end
 
 -- Den `index`'s doorway style (Config/Dens `doors`; nil or unknown: the Stone
 -- Arch). Rebuilt only when it changes.
+-- The way out inside the den wears the same style.
 function DenDoor.restyle(index: number, styleId: string?)
-	local door = doors[index]
-	if door == nil then
-		return
-	end
 	local id = if styleId and STYLES[styleId] then styleId else "Stone"
-	if door.styleId == id then
-		return
+	local both: { Door } = {}
+	table.insert(both, doors[index])
+	table.insert(both, exits[index])
+	for _, door in both do
+		if door.styleId ~= id then
+			build(door, index, id)
+			apply(door)
+		end
 	end
-	build(index, id)
-	apply(door)
 end
 
 -- The style ids DenDoor can build (tools/preview/check_doors.luau tries each)
@@ -1549,40 +1624,37 @@ function DenDoor.styles(): { string }
 	return list
 end
 
--- The way out inside den `index` (on its front wall, Layout.exitFrame): the same
--- arch, curtain and lanterns as the front door under a TO THE HUB plaque
+-- The way out inside den `index` (Layout.exitFrame: at the back of an alcove in its
+-- front wall, DenCarve), into `parent` (its Den<i> model): a threshold over the
+-- alcove's sill, level with the deck, then the Stone Arch until the den's doorway
+-- style is set (DenDoor.restyle dresses both)
 function DenDoor.exit(parent: Instance, index: number)
 	local frame = Layout.exitFrame(index)
-	local radius = Config.Dens.exit.radius
 	local folder = Instance.new("Model")
 	folder.Name = "Exit"
 	local floor = -Config.Dens.exit.y -- the deck, in the portal's frame
-	-- The front wall is 0.6 behind the portal (its frame looks into the den)
-	local inner = radius + 0.4
-	local outer = radius + 3.6
-	local wall = 0.6
-	local jambX, stoneZ = arch(folder, frame, inner, outer, wall, floor, World.seed + 700 + index)
-	local outerX = jambX + (outer - inner) / 2
-	local sign = Decor.plaque(
-		folder,
-		frame * CFrame.new(0, inner + 2.3, wall - DEPTH),
-		Vector2.new(14, 4.6),
-		Decor.LACQUER,
-		true
-	)
-	sign.title.Text = "TO THE HUB"
-	if sign.sub then
-		sign.sub.Text = "THE PLAZA"
-	end
-	for side = -1, 1, 2 do
-		Decor.lantern(folder, frame * CFrame.new(side * (outerX + 1.2), -2.2, stoneZ - 0.4), -side, true, 14)
-	end
-	local rng = Random.new(World.seed + 900 + index)
-	for side = -1, 1, 2 do
-		growth(folder, frame, side, outerX, floor, stoneZ, rng)
-	end
-	pane(folder, frame * CFrame.new(0, 0, 0.3), radius, STONE_PANE)
+	-- The rock floor under the deck (Config/Dens storeys): the slab reaches down to it
+	local rock = Config.Dens.storeys[1].floor - Config.Dens.storeys[1].deck + floor
+	part(folder, {
+		Name = "Threshold",
+		Size = Vector3.new(19.6, floor + 0.2 - rock, 10.2),
+		CFrame = frame * CFrame.new(0, (floor + 0.2 + rock) / 2, WALL_Z / 2 + 0.2),
+		Color = STEP,
+		CanCollide = true,
+	})
+	part(folder, {
+		Name = "ThresholdNose",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(19.6, 1.0, 1.0),
+		CFrame = frame * CFrame.new(0, floor - 0.1, WALL_Z - 0.3),
+		Color = STEP_EDGE,
+		CanCollide = false,
+	})
 	folder.Parent = parent
+	local door: Door = { model = folder, exit = true }
+	exits[index] = door
+	build(door, index, "Stone")
+	apply(door)
 end
 
 -- Who lives in den `index` (nil: nobody) and its level's name (Config/Dens

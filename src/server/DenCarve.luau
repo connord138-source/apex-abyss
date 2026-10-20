@@ -124,6 +124,22 @@ function DenCarve.ops(index: number, level: number): { Cave.Op }
 		end
 	end
 
+	-- The way out's alcove in the main storey's front wall (Config/Dens `exit`), cut
+	-- like a doorway on the plaza (Cave.denDoor): a round tunnel to just behind the
+	-- portal and a flat sill from the rock floor (DenDoor lays a threshold over it,
+	-- level with the deck)
+	do
+		local exit = Config.Dens.exit
+		local s = DenSpace.storey(1)
+		local middle = s.deck + exit.y
+		local inner = Config.Dens.maxFront - 12 -- (inside the room: air already)
+		local outer = Config.Dens.maxFront + exit.back + 1 -- just behind the portal
+		local cut = #ops + 1
+		Cave.cylinder(ops, AIR, at(0, middle, (inner + outer) / 2), along, outer - inner, exit.alcove)
+		span(AIR, -9, 9, s.floor, s.floor + 12, outer, inner, false)
+		twice(cut)
+	end
+
 	-- 3. The shafts between the storeys, cut wider than their openings (a slanted
 	-- cylinder clears a good deal less than its radius of 4-stud voxels) and on well
 	-- into the vault below (cut only to its ceiling, a voxel of rock stayed)
