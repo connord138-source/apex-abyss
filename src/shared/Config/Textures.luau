@@ -29,6 +29,9 @@ return {
 	fxStar = 103216324017752, -- assets/textures/fx_star.png
 	fxFlame = 82338604318401, -- assets/textures/fx_flame.png
 	fxSpark = 123443623099259, -- assets/textures/fx_spark.png
+	-- the APEX TIDE logo over the start screen in place of the lettering
+	-- (tools/marketing/compose.py; StartController); 0 = the lettering
+	logo = 0, -- marketing/logo.png
 	-- the sea chart behind the minimap and the full map (tools/map/make_chart.py;
 	-- src/client/MapDraw)
 	mapChart = 95685139995289, -- assets/textures/map_chart.png

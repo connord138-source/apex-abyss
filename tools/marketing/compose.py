@@ -1,4 +1,4 @@
-"""Builds the Roblox store art (icon, logo, thumbnails) for Apex Abyss.
+"""Builds the Roblox store art (icon, logo, thumbnails) for Apex Tide.
 
     python3 tools/marketing/compose.py refs     # the style-reference sheets for the image jobs
     SR_MODEL=<EDSR_x2.pb> python3 tools/marketing/compose.py sr   # upscale the key art (slow, cached)
@@ -22,7 +22,8 @@ Pipeline (owner, 2026-10-09: "generate our page photo and some thumbnails"):
    the files to upload in Creator Hub:
 
        icon_512.png, icon_512_alt.png   the experience icon (512x512) and the runner-up
-       logo.png                         APEX ABYSS on a transparent background
+       logo.png, logo_alt.png           APEX TIDE on a transparent background (A, and B the
+                                        runner-up with a curling wave)
        thumb_N_<name>.jpg               thumbnails (1920x1080)
        thumb_N_<name>.jpg from marketing/raw/shot_*.png, in-game captures (committed)
 
@@ -142,8 +143,26 @@ def key_magenta(im: Image.Image) -> Image.Image:
     # Despill: the logo is white, aqua, blue and navy, so red never rises above green
     # or blue there; at the edges the screen's pink did
     r = ImageChops.darker(r, ImageChops.lighter(g, b))
+    # The image model leaves faint noise in the screen (a blocky band along the top of
+    # the LogoTide images): drop near-clear pixels, then keep the longest run of rows
+    # that hold the logo
+    alpha = alpha.point(lambda v: 0 if v < 40 else v)
     out = Image.merge("RGBA", (r, g, b, alpha))
+    rows = [y for y, n in enumerate(_row_counts(alpha)) if n > 3]
+    runs: list[list[int]] = []
+    for y in rows:
+        if runs and y == runs[-1][1] + 1:
+            runs[-1][1] = y
+        else:
+            runs.append([y, y])
+    top, bottom = max(runs, key=lambda run: run[1] - run[0])
+    out = out.crop((0, top, out.width, bottom + 1))
     return out.crop(out.getbbox())
+
+
+def _row_counts(alpha: Image.Image) -> list[int]:
+    data = alpha.tobytes()
+    return [sum(1 for v in data[y * alpha.width : (y + 1) * alpha.width] if v) for y in range(alpha.height)]
 
 
 def vibrance(im: Image.Image, amount: float = 1.1, contrast: float = 1.04) -> Image.Image:
@@ -256,8 +275,11 @@ def save(c: Image.Image, name: str):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    logo = key_magenta(src("Logo"))
+    # APEX TIDE (2026-10-20, renamed from Apex Abyss): the old logo's APEX line kept by
+    # an image edit, TIDE under a foam crest (A); B curls a wave round TIDE
+    logo = key_magenta(src("LogoTideA"))
     logo.save(OUT / "logo.png")
+    key_magenta(src("LogoTideB")).save(OUT / "logo_alt.png")
 
     # The icon: eat or be eaten, readable at the size of a thumbnail tile. B (the
     # Nibbler chomping at you) is the runner-up

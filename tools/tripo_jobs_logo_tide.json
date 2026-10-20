@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    {
+      "name": "LogoTideA",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/marketing/Logo.png",
+      "prompt": "Edit the attached game logo. Keep the top line \"APEX\" exactly as it is: the same chunky angular 3D letters, faceted bevels, thick dark navy outline, white fading to aqua, the shark-tooth points and the grey shark fin through the top of the A. Replace the second line with the word \"TIDE\" (spelled T-I-D-E, four letters) in exactly the same lettering style, size, bevel and navy outline, deep ocean blue fading to glowing teal at the bottom, with a white foam wave crest curling over the top edge of the letters and a few small bubbles rising off it. The logo reads exactly \"APEX TIDE\" and nothing else. Two stacked lines, centered, generous margins, on the same completely flat pure magenta (#FF00FF) background with no shadows, gradients, scenery or other objects."
+    },
+    {
+      "name": "LogoTideB",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/marketing/Logo.png",
+      "prompt": "Edit the attached game logo. Keep the top line \"APEX\" exactly as it is: the same chunky angular 3D letters, faceted bevels, thick dark navy outline, white fading to aqua, the shark-tooth points and the grey shark fin through the top of the A. Replace the second line with the word \"TIDE\" (spelled T-I-D-E, four letters) in exactly the same lettering style and navy outline, deep ocean blue fading to glowing teal at the bottom, a few small bubbles rising off it, and one stylized low-poly breaking wave curling behind the TIDE line from left to right, teal with a white foam lip, inside the navy outline. The logo reads exactly \"APEX TIDE\" and nothing else. Two stacked lines, centered, generous margins, on the same completely flat pure magenta (#FF00FF) background with no shadows, gradients, scenery or other objects."
+    }
+  ]
+}

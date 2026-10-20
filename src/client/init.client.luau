@@ -99,4 +99,4 @@ task.spawn(ShellController.start) -- waits for the server's shell spots
 task.spawn(ForageController.start) -- waits for the server's starfish and shrimp spots
 SwimController.start() -- last: spawning fires the signals the others listen to
 
-print("[ApexAbyss] Client ready")
+print("[ApexTide] Client ready")

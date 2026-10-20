@@ -1,4 +1,4 @@
-"""Screens Apex Abyss's shade skins for anything a moderation classifier could read
+"""Screens Apex Tide's shade skins for anything a moderation classifier could read
 as human skin, before they go anywhere near Roblox. Ported from Hatch & Snatch's
 tools/mutations/screen_skins.py (the account was suspended once over a pale, pinkish
 atlas, 2026-10-03); the rules and thresholds are unchanged, read that file's notes.

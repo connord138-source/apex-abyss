@@ -83,4 +83,4 @@ StartService.start() -- the start screen's documentary shots: each one's water s
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 
-print("[ApexAbyss] Server started")
+print("[ApexTide] Server started")

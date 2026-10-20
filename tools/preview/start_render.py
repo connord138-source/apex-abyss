@@ -320,15 +320,28 @@ def overlay(img, shot, k, seconds):
     bar = int(H * 0.085)
     draw.rectangle((0, 0, W, bar), fill=(0, 0, 0, 240))
     draw.rectangle((0, H - bar, W, H), fill=(0, 0, 0, 240))
-    # Title (top): APEX ABYSS and its line
-    title = font(FONT_HEAVY, 72 * s)
-    tw = draw.textlength("APEX ABYSS", font=title)
-    ty = int(H * 0.2 - 40 * s)
-    draw.text(((W - tw) / 2 + 3 * s, ty + 3 * s), "APEX ABYSS", font=title, fill=(4, 26, 44, 150))
-    draw.text(((W - tw) / 2, ty), "APEX ABYSS", font=title, fill=(232, 250, 255, 255))
+    # Title (top): the APEX TIDE logo (marketing/logo.png, once Config/Textures `logo`
+    # is set) or the lettering, and its line; the group rests at UIScale 0.86
     sub = font(FONT_BOLD, 17 * s)
     line = "EAT   ·   GROW   ·   BECOME THE APEX"
-    draw.text(((W - draw.textlength(line, font=sub)) / 2, ty + 84 * s), line, font=sub, fill=(86, 222, 255, 255))
+    logo_path = os.path.join(HERE, "..", "..", "marketing", "logo.png")
+    if os.path.exists(logo_path):
+        k = 0.86 * s
+        cy = H * 0.32
+        logo = Image.open(logo_path).convert("RGBA")
+        lh = round(200 * k)
+        logo = logo.resize((round(lh * logo.width / logo.height), lh), Image.LANCZOS)
+        bottom = cy + (110 - 85) * k
+        layer.alpha_composite(logo, (int((W - logo.width) / 2), int(bottom - lh)))
+        ty = cy + (128 - 85) * k
+        draw.text(((W - draw.textlength(line, font=sub)) / 2, ty), line, font=sub, fill=(86, 222, 255, 255))
+    else:
+        title = font(FONT_HEAVY, 72 * s)
+        tw = draw.textlength("APEX TIDE", font=title)
+        ty = int(H * 0.2 - 40 * s)
+        draw.text(((W - tw) / 2 + 3 * s, ty + 3 * s), "APEX TIDE", font=title, fill=(4, 26, 44, 150))
+        draw.text(((W - tw) / 2, ty), "APEX TIDE", font=title, fill=(232, 250, 255, 255))
+        draw.text(((W - draw.textlength(line, font=sub)) / 2, ty + 84 * s), line, font=sub, fill=(86, 222, 255, 255))
     # How-to cards above the bottom bar
     card_w, card_h, gap = 236 * s, 64 * s, 12 * s
     left = (W - (3 * card_w + 2 * gap)) / 2

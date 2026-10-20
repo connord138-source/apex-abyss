@@ -1,4 +1,7 @@
-# APEX ABYSS — Roblox game (read this first)
+# APEX TIDE — Roblox game (read this first)
+
+Formerly **Apex Abyss** (renamed 2026-10-20). The repo (`apex-abyss`), the local folder and
+`ApexAbyss.rbxl` keep the old name; no DataStore name holds the game's name.
 
 A third-person underwater eat-and-grow game. You start as a small fish, eat your way up
 to an apex predator, and bank your growth at your den in a cave hub. PvP is always on,
@@ -27,9 +30,22 @@ guarded loops, state sync). Everything about this game is new.
 
 Every decision below was made with the owner on 2026-10-06. The details are in `docs/GDD.md`.
 
-- **Title:** Apex Abyss. The live title is "Apex Abyss 🦈 Eat & Grow", and the brand is
-  a clean APEX ABYSS. The name was checked unused on Roblox (games and groups) and the
-  web. The owner also liked "Frenzy Depths" as the runner-up.
+- **Title: Apex Tide** (owner, 2026-10-20: "Go with Apex Tide"; it was Apex Abyss from
+  2026-10-06 until the game stopped being about the abyss). The live title is "Apex Tide
+  🦈 Eat & Grow", and the brand is APEX TIDE. Checked 2026-10-19: no Roblox game or
+  group by the name (omni-search and group search), and no web, app or trademark hit.
+  "Abyss" alone is crowded on Roblox (18+ games, among them Deep Spirit Games' ocean game
+  Abyss, ~87M plays), and the direct rivals are Be Fish, Be a Shark, SharkBite, Fish Eat
+  Fish and DEVOUR. The name ties to the Tide Clock and the Tide Pass. Runners-up:
+  Tidebite, Food Chain (Frenzy Depths before). **The logo** (`marketing/logo.png`; B,
+  a curling wave, is `logo_alt.png`) keeps the old logo's APEX line by an image edit
+  (`tools/tripo_jobs_logo_tide.json`, LogoTideA/B; `compose.py` keys it and drops the
+  model's faint noise band); every thumbnail carries it. The start screen shows it once
+  `Config/Textures` `logo` holds its id (StartController, sized for the letterbox), the
+  lettering APEX TIDE until then. **Community or individual** (Connor asked 2026-10-20):
+  Claude recommended a studio community for both games, with this experience moved
+  into it before launch (Creator Hub's free user-to-community transfer keeps the game,
+  place ids and URL); Connor to decide.
 - **Reference:** the trending Fortnite UEFN fish maps "Be a fish" (civistudios) and
   "BE FISH" (ickrisp). We add twists, never copies.
 - **Core loop: Hunt & Haul** (the owner approved the design and disliked its first name,
@@ -1998,7 +2014,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   lit underwater scene in two ViewportFrames (far: hazed floor, kelp, a minnow school
   and the Megalodon's shadow; near: swaying part-built kelp, the Nibbler, 'Cuda and
   Pufferfish swimming past with the SwimWave, a sardine school), light shafts, marine
-  snow, rising bubbles, the APEX ABYSS title with a shine, and three how-to-play cards
+  snow, rising bubbles, the APEX TIDE title with a shine (the logo once uploaded), and three how-to-play cards
   (EAT, BITE with the device's key, BANK). LOADING THE REEF until the fish has spawned
   and the state arrived (at least 2.4 s), then PRESS ANY KEY / BUTTON / TAP TO START
   (the device is read when the screen opens and changes only on real input of another

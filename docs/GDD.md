@@ -1,6 +1,7 @@
-# Apex Abyss — Game Design Document
+# Apex Tide — Game Design Document
 
-Live title: **Apex Abyss 🦈 Eat & Grow**. The logo and brand say **APEX ABYSS**, and the
+Live title: **Apex Tide 🦈 Eat & Grow** (renamed from Apex Abyss on 2026-10-20). The logo
+and brand say **APEX TIDE**, and the
 "Eat & Grow" tag is there so Roblox search finds it for "shark", "eat" and "grow".
 
 Status: design locked with the owner on 2026-10-06 (brainstorm in the Hatch & Snatch
@@ -15,11 +16,12 @@ players are food too, but small players can school together and take down a big 
 **Reference:** the Fortnite UEFN fish maps trending in 2026: **"Be a fish"** by
 civistudios (8865-1817-4348) and **"BE FISH 🐟 FISH SIMULATOR"** by ickrisp
 (4918-1000-0196). In those you eat to grow, eat other fish, avoid big fish, dodge
-fishing hooks and unlock rare fish. Apex Abyss adds the twists below.
+fishing hooks and unlock rare fish. Apex Tide adds the twists below.
 
-The name was checked on 2026-10-06. No Roblox game or group uses "Apex Abyss" (Roblox
-omni-search and the group lookup), and no game elsewhere does either. The nearest
-neighbours are a Roblox diving game called "Abyss" and Apex Legends.
+The name was checked on 2026-10-19 (Roblox omni-search, the group lookup, the web and
+trademarks): nothing uses "Apex Tide". "Apex Abyss" was free too, but "Abyss" alone is
+crowded on Roblox (18+ games, among them Deep Spirit Games' ocean game Abyss) and the
+game is no longer about the abyss. "Tide" ties to the Tide Clock and the Tide Pass.
 
 ## 2. Pillars
 
@@ -361,7 +363,7 @@ The approved details:
   - Small fish are cute and a little goofy; big ones are powerful and menacing.
   - The owner offered a Schedule I-style cartoony look, and Claude chose it: it stands
     out on Roblox, reads at a glance (size and threat), stays light enough for hundreds
-    of fish on phones, and suits Tripo. It also keeps Apex Abyss looking different
+    of fish on phones, and suits Tripo. It also keeps Apex Tide looking different
     from Hatch & Snatch.
   - The first concepts are in `assets/concepts/`: StyleSheet, ShadeSheet, Vendors and
     HubPlaza. They are waiting for the owner's approval before any 3D conversion.
@@ -1490,7 +1492,7 @@ then it pushes them straight to the den and tutorial. Starter screen should have
 and some fish swimming by with maybe some kelp." It covers the game while it loads: a
 lit underwater scene (swaying kelp, the playable fish and a sardine school swimming
 past, minnows and the Megalodon's shadow far off in hazed water, light shafts, marine
-snow, rising bubbles), the APEX ABYSS title, and three cards on how to play (EAT, BITE,
+snow, rising bubbles), the APEX TIDE title (the logo once uploaded), and three cards on how to play (EAT, BITE,
 BANK). Once the fish is in its den the prompt reads PRESS ANY KEY (PRESS ANY BUTTON on
 a controller, TAP TO START on a phone); any input dives in and the water clears onto
 the fish in its den, where the tutorial step pops (or the Daily panel and WELCOME BACK

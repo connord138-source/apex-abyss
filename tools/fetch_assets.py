@@ -38,7 +38,7 @@ for name, bundle in manifest.get("bundles", {}).items():
     if not force and sources.get(name) == url and into.exists():
         continue
     try:
-        request = urllib.request.Request(url, headers={"User-Agent": "apex-abyss-assets"})
+        request = urllib.request.Request(url, headers={"User-Agent": "apex-tide-assets"})
         with urllib.request.urlopen(request, timeout=600) as response:
             data = response.read()
         # A bundle that isn't the one screened is never unpacked (it could be an

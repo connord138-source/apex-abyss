@@ -119,7 +119,7 @@ def task_body(job: dict) -> dict:
 
 def download(url: str, out: pathlib.Path):
     out.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "apex-abyss-assets"})
+    req = urllib.request.Request(url, headers={"User-Agent": "apex-tide-assets"})
     with urllib.request.urlopen(req, timeout=300) as response:
         out.write_bytes(response.read())
 

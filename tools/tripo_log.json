@@ -1106,6 +1106,24 @@
   "task_id": "cac3cea2-f84f-4aa3-acce-772a5b1d3b31",
   "type": "generate_image"
  },
+ "marketing/LogoTideA": {
+  "credits": 10,
+  "files": [
+   "LogoTideA.png"
+  ],
+  "status": "success",
+  "task_id": "f3b7258f-5948-4681-9371-937ab7de8b84",
+  "type": "generate_image"
+ },
+ "marketing/LogoTideB": {
+  "credits": 10,
+  "files": [
+   "LogoTideB.png"
+  ],
+  "status": "success",
+  "task_id": "9abd09bb-f099-476d-9f7e-0cc130183d3d",
+  "type": "generate_image"
+ },
  "marketing/Shades": {
   "credits": 10,
   "files": [

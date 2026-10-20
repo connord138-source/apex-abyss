@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-make_sfx.py -- Apex Abyss's sound pack, synthesized (numpy + scipy).
+make_sfx.py -- Apex Tide's sound pack, synthesized (numpy + scipy).
 
 Everything is made here from oscillators and noise (no samples, nothing licensed,
 nothing that can trip moderation) and written back to back into ONE audio file, so

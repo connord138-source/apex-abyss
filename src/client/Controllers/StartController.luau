@@ -61,6 +61,9 @@ local MIN_SHOW = 2.4 -- seconds on screen before the prompt, so it never just fl
 local MAX_WAIT = 25 -- the prompt shows by then even if the fish hasn't spawned yet
 local GRACE = 0.45 -- input is ignored this long after the prompt appears
 local FOV = 50
+local LOGO_HEIGHT = 200 -- the title logo's height on the 1280x720 design layer
+local LOGO_HEIGHT_TOUCH = 160 -- and on the phones' 960x540 one
+local LOGO_ASPECT = 838 / 708 -- marketing/logo.png's width over its height
 
 local Start = Config.Start
 local timing = Start.timing
@@ -1259,7 +1262,7 @@ function StartController.start()
 	local title = Ui.label(
 		titleGroup,
 		"Name",
-		"APEX ABYSS",
+		"APEX TIDE",
 		Ui.FONT_HEAVY,
 		100,
 		Color3.new(1, 1, 1),
@@ -1285,6 +1288,30 @@ function StartController.start()
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(96, 200, 236)),
 		})
 	)
+	-- The store logo in place of the lettering once it's uploaded (Config/Textures
+	-- `logo`, marketing/logo.png): the group moves down so the stacked logo clears the
+	-- letterbox, and its bottom sits on the rule
+	local logoId = (Config.Textures :: any).logo
+	local logo: ImageLabel? = nil
+	if typeof(logoId) == "number" and logoId > 0 then
+		-- (phones lay out on a 960x540 design, so the logo is smaller there and sits
+		-- a little lower to clear the bar)
+		local touch = Ui.isTouch()
+		local height = if touch then LOGO_HEIGHT_TOUCH else LOGO_HEIGHT
+		titleGroup.Position = UDim2.fromScale(0.5, if touch then 0.34 else 0.32)
+		local image = Instance.new("ImageLabel")
+		image.Name = "Logo"
+		image.BackgroundTransparency = 1
+		image.Image = `rbxassetid://{logoId}`
+		image.ScaleType = Enum.ScaleType.Fit
+		image.AnchorPoint = Vector2.new(0.5, 1)
+		image.Position = UDim2.new(0.5, 0, 0, 110)
+		image.Size = UDim2.fromOffset(math.round(height * LOGO_ASPECT), height)
+		image.ImageTransparency = 1
+		image.ZIndex = 9
+		image.Parent = titleGroup
+		logo = image
+	end
 	local rule = Instance.new("Frame")
 	rule.Name = "Rule"
 	rule.AnchorPoint = Vector2.new(0.5, 0)
@@ -1472,8 +1499,12 @@ function StartController.start()
 	prompt.ZIndex = 9
 
 	-- Entrance
-	Ui.tween(title, 0.9, { TextTransparency = 0 })
-	Ui.tween(titleStroke, 0.9, { Transparency = 0.25 })
+	if logo then
+		Ui.tween(logo, 0.9, { ImageTransparency = 0 })
+	else
+		Ui.tween(title, 0.9, { TextTransparency = 0 })
+		Ui.tween(titleStroke, 0.9, { Transparency = 0.25 })
+	end
 	Ui.tween(titlePop, 1.1, { Scale = 0.86 }, Enum.EasingStyle.Back)
 	task.delay(0.45, function()
 		Ui.tween(rule, 0.8, { Size = UDim2.fromOffset(480, 2) })
@@ -1760,6 +1791,9 @@ function StartController.start()
 			Ui.tween(label, 0.45, { TextTransparency = 1, TextStrokeTransparency = 1 })
 		end
 		Ui.tween(titleStroke, 0.45, { Transparency = 1 })
+		if logo then
+			Ui.tween(logo, 0.45, { ImageTransparency = 1 })
+		end
 		Ui.tween(rule, 0.45, { BackgroundTransparency = 1 })
 		hideCaption(0.35)
 		for _, card in guideCards do
