@@ -157,7 +157,10 @@ local kinds: { [string]: Kind } = {
 			Color3.fromRGB(40, 200, 170),
 			Color3.fromRGB(122, 84, 214),
 		},
-		max = 8, -- clouds
+		-- None since 2026-10-20: the clouds over the coral are real prey now (Config/Prey
+		-- `laterZones`), edible and in the Catch Log (owner: "every fish should be
+		-- edible ... unless it is a buff fish or boost fish")
+		max = 0, -- clouds
 	},
 	giant = {
 		biomes = { "OpenBlue" },

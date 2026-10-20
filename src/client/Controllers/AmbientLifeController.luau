@@ -875,6 +875,9 @@ end
 -- The coral heads near the camera, a reef-fish cloud over each of the nearest
 local function refreshClouds(camera: Vector3, scale: number)
 	local kind = KINDS.cloud
+	if kind.max <= 0 then
+		return -- (the clouds are real prey now: Config/Prey `laterZones`)
+	end
 	local range = kind.range * scale
 	local world = workspace:FindFirstChild("World")
 	local biomes = world and world:FindFirstChild("Biomes")

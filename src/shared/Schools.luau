@@ -99,15 +99,18 @@ local fish: { Fish } = {}
 local lifts: { [number]: { number } } = {}
 
 -- Every fish its own size (owner, 2026-10-10: the Catch Log tracks "their biggest
--- eat of each species"): most within ±18% of the species, 1 in 25 a trophy up to
--- half again as long. From its own seed, so no school moves.
+-- eat of each species"; 2026-10-20: "All fish need to have varied sizes so that its
+-- reflected accurately in the collection log for largest catch"): most from 0.68 to
+-- 1.3 of the species' length (its kg ×0.31 to ×2.2), 1 in 16 a trophy 1.3–1.65 long
+-- (to ×4.5 the kg). The mean kg is ~6% over the species' (it was ~3%). From its own
+-- seed, so no school moves.
 local sizeRng = Random.new(World.seed + 2)
-local TROPHY_CHANCE = 0.04
+local TROPHY_CHANCE = 0.0625
 local function sizeOf(): number
 	if sizeRng:NextNumber() < TROPHY_CHANCE then
-		return 1.25 + sizeRng:NextNumber() * 0.25
+		return 1.3 + sizeRng:NextNumber() * 0.35
 	end
-	return 0.82 + sizeRng:NextNumber() * 0.36
+	return 0.68 + sizeRng:NextNumber() * 0.62
 end
 
 -- Lays out one zone's schools of a prey (rng shared, so the layout is the same
@@ -247,6 +250,15 @@ do
 		local tideZones: { Zone } = prey.tideZones or {}
 		for _, zone in tideZones do
 			build(tideRng, prey, zone, zone.tide)
+		end
+	end
+	-- Then the schools added later (Config/Prey `laterZones`: the clouds over the coral
+	-- and rock, more kinds in the Coral Reef), from their own seed too
+	local cloudRng = Random.new(World.seed + 5)
+	for _, prey in Prey.list do
+		local laterZones: { Zone } = prey.laterZones or {}
+		for _, zone in laterZones do
+			build(cloudRng, prey, zone, nil)
 		end
 	end
 end

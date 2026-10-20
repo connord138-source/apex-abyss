@@ -45,6 +45,13 @@ export type PreyDef = {
 	band: { number }?, -- distance from the hub its schools roam (default: the shallows ring on the shelf)
 	zones: { Zone }?, -- instead of one band: several places, each with its own schools (and depth)
 	tideZones: { Zone }?, -- schools that only come out with a tide (each zone sets `tide`)
+	-- Schools added after the layout was set (2026-10-20), built after every other
+	-- school, the tides' included, from their own seed, so no school moved: the little
+	-- clouds hovering low over the coral and rock (owner: "every fish should be edible
+	-- and attributable to the catch log unless it is a buff fish or boost fish"; they
+	-- were AmbientLife's client-only fry, which no one could eat), and more kinds in
+	-- the Coral Reef ("largest variety of fish needs to be coral reef")
+	laterZones: { Zone }?,
 	-- Seconds after being eaten (owner, 2026-10-20: "a lvl 100 fish can absolutely
 	-- decimate an ecosystem too so the fish need a high respawn rate": ~⅓ of the old
 	-- 8–40 s). A fish comes back swimming in from behind its school as it grows
@@ -372,6 +379,16 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = { 160, 460 }, schools = 8, spread = 1.2 },
 		} :: { Zone },
+		laterZones = {
+			{
+				band = { 180, 460 },
+				schools = 6,
+				perSchool = 6,
+				spread = 0.9,
+				pathRadius = { 4, 9 },
+				depth = { 2, 6 },
+			},
+		} :: { Zone },
 		respawn = 4,
 		back = Color3.fromRGB(240, 104, 20),
 		belly = Color3.fromRGB(255, 140, 36),
@@ -474,6 +491,9 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = RUINS, schools = 12 },
 		} :: { Zone },
+		laterZones = {
+			{ band = OUTER, angles = REEF, schools = 6, depth = { 3, 18 } }, -- (the Coral Reef's too)
+		} :: { Zone },
 		respawn = 6,
 		back = Color3.fromRGB(176, 70, 32),
 		belly = Color3.fromRGB(58, 46, 44),
@@ -552,6 +572,26 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = OUTER, angles = REEF, schools = 12 },
 		} :: { Zone },
+		laterZones = {
+			{
+				band = OUTER,
+				angles = REEF,
+				schools = 20,
+				perSchool = 7,
+				spread = 0.9,
+				pathRadius = { 4, 9 },
+				depth = { 2, 6 },
+			},
+			{
+				band = OUTER,
+				angles = WRECKS,
+				schools = 8,
+				perSchool = 6,
+				spread = 0.9,
+				pathRadius = { 4, 9 },
+				depth = { 2, 6 },
+			},
+		} :: { Zone },
 		respawn = 4,
 		back = Color3.fromRGB(240, 196, 30),
 		belly = Color3.fromRGB(250, 214, 60),
@@ -571,6 +611,9 @@ local list: { PreyDef } = {
 		depth = { 4, 40 },
 		zones = {
 			{ band = OUTER, angles = WRECKS, schools = 7 },
+		} :: { Zone },
+		laterZones = {
+			{ band = OUTER, angles = REEF, schools = 6 }, -- (the Coral Reef's too)
 		} :: { Zone },
 		respawn = 5,
 		back = Color3.fromRGB(28, 36, 72),
@@ -725,6 +768,16 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = { 160, 470 }, schools = 8 },
 		} :: { Zone },
+		laterZones = {
+			{
+				band = { 180, 460 },
+				schools = 6,
+				perSchool = 6,
+				spread = 0.9,
+				pathRadius = { 4, 9 },
+				depth = { 2, 6 },
+			},
+		} :: { Zone },
 		respawn = 4,
 		back = Color3.fromRGB(112, 120, 50),
 		belly = Color3.fromRGB(150, 158, 84),
@@ -765,6 +818,26 @@ local list: { PreyDef } = {
 		depth = { 6, 45 },
 		zones = {
 			{ band = OUTER, angles = REEF, schools = 8 },
+		} :: { Zone },
+		laterZones = {
+			{
+				band = OUTER,
+				angles = REEF,
+				schools = 16,
+				perSchool = 7,
+				spread = 0.9,
+				pathRadius = { 4, 9 },
+				depth = { 2, 6 },
+			},
+			{
+				band = DEEP,
+				angles = RUINS,
+				schools = 6,
+				perSchool = 6,
+				spread = 0.9,
+				pathRadius = { 4, 9 },
+				depth = { 2, 6 },
+			},
 		} :: { Zone },
 		respawn = 5,
 		back = Color3.fromRGB(34, 84, 222),
@@ -870,6 +943,9 @@ local list: { PreyDef } = {
 		depth = { 10, 50 },
 		zones = {
 			{ band = DEEP, angles = RUINS, schools = 4 },
+		} :: { Zone },
+		laterZones = {
+			{ band = OUTER, angles = REEF, schools = 2 }, -- (the Coral Reef's too)
 		} :: { Zone },
 		respawn = 10,
 		back = Color3.fromRGB(38, 148, 160),

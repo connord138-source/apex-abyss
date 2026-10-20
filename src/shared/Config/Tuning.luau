@@ -215,7 +215,7 @@ return {
 		food = {
 			-- (refitted 2026-10-20 to the fuller sea, Config/Prey `fill`: with ~2.3× the
 			-- fish a hunter finds bigger ones sooner, so the same kg took fewer fish)
-			{ 1, 2.1 }, -- the tutorial: ~18 of the kelp's fish
+			{ 1, 1.9 }, -- the tutorial: ~20 of the kelp's fish (2.1 until the wider fish sizes, 2026-10-20)
 			{ 8, 6.9 },
 			{ 10, 10.4 },
 			{ 12, 25 },
