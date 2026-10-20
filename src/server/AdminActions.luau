@@ -20,6 +20,7 @@ local BountyService = require(script.Parent.Services.BountyService)
 local CatchService = require(script.Parent.Services.CatchService)
 local ApexService = require(script.Parent.Services.ApexService)
 local ChumService = require(script.Parent.Services.ChumService)
+local CompanionService = require(script.Parent.Services.CompanionService)
 local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local DataService = require(script.Parent.Services.DataService)
 local EconomyService = require(script.Parent.Services.EconomyService)
@@ -341,6 +342,17 @@ end
 -- whale had found open sand, so the hiding had never run)
 local function whaleCoral(_admin: Player, _targets: { Player }): string
 	return ChumService.whaleNow(true)
+end
+
+-- Sea life (Config/Companions): a turtle swims with each target now
+local function turtleJoin(_admin: Player, targets: { Player }): string
+	local count = 0
+	for _, player in targets do
+		if CompanionService.join(player) then
+			count += 1
+		end
+	end
+	return `A sea turtle swims with {count} player(s) for {Config.Companions.turtle.lasts} s`
 end
 
 local function chumHere(_admin: Player, targets: { Player }, amount: any): string
@@ -759,6 +771,7 @@ AdminActions.byName = {
 	apexCrown = apexCrown :: Handler,
 	apexBounty = apexBounty :: Handler,
 	chumHere = chumHere :: Handler,
+	turtleJoin = turtleJoin :: Handler,
 	hurtBoss = hurtBoss :: Handler,
 	endBoss = endBoss :: Handler,
 	grantPass = grantPass :: Handler,

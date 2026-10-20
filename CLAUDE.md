@@ -1469,7 +1469,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   chowder skin style in hatch and snatch", the Vents' "spheres that are all over the
   place that were clearly placeholders", "so much more prey fish volume ... Too
   sparce", "a lvl 100 fish can absolutely decimate an ecosystem too so the fish need a
-  high respawn rate"; built on `claude/world`; Connor tests this round himself):**
+  high respawn rate"; built on `claude/world`; the PC session tests and publishes it):**
   - **Linear growth:** every full Haul banks `growth.cap` 5 levels (the tutorial's
     `HAUL_LEVELS` 5: LV 1 → 6), and the drawn length is a straight line in level
     (`Size.length`/`Size.raw` from `size.lengthTop` 16.9 at LV 100, soft cap from 16.6
@@ -1525,7 +1525,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Sea-life companions** (`Config/Companions`, `CompanionService`,
     `CompanionController`, AmbientLifeController's `interact`): swim beside a turtle 2 s
     and it joins you for 90 s at your side, seen by everyone (character attribute
-    `Escort`), bites on you ×0.8 (not the crushing deep), back in 4 min; ride a manta's
+    `Escort`; admin "Sea turtle: one joins the target now", `CompanionService.join`),
+    bites on you ×0.8 (not the crushing deep), back in 4 min; ride a manta's
     wake for ×1.3 top speed (`SwimController.draft`; SpeedService allows the faster of
     it and the slipstream); skim low over a resting ray and it bursts off the sand
     stirring up 2 shells (one every 90 s; it's gone from your view a minute). The
@@ -2480,7 +2481,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   through it, the wheel chip full width), `2026-10-15-pc-2.md` (chunks clear,
   chips fit, the PC's level-sand fix; deep whales still faint at 70 studs),
   `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-20-pc*.md` (the 2026-10-20 owner
-  batch; the PC publishes and Connor tests), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
+  batch; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
   clients via Test → Clients and Servers);

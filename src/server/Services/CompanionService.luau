@@ -80,6 +80,19 @@ local function onRequest(player: Player, kind: any)
 	end
 end
 
+-- A turtle joins this fish now, whatever its place and cooldown (the admin panel's
+-- test: a fish needn't find one first)
+function CompanionService.join(player: Player): boolean
+	local character = FishService.character(player)
+	if character == nil then
+		return false
+	end
+	local now = Timing.clock()
+	character:SetAttribute("Escort", now + Companions.turtle.lasts)
+	turtleAgain[player] = now + Companions.turtle.lasts
+	return true
+end
+
 function CompanionService.start()
 	Net.onRequest("Companion", onRequest)
 	game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
