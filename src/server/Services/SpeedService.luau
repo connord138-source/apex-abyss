@@ -43,13 +43,9 @@ local function fastest(player: Player, length: number): number
 	-- A Reef Shark's Blood Sense frenzy (kept on 1.5 s past its end: the check spans
 	-- the last second)
 	local sense = Perks.sense(FishService.character(player), Timing.clock(), 1.5)
-	return Size.topSpeed(length)
-		* fins
-		* species
-		* sense
-		* swim.boostMultiplier
-		-- (the faster of a podmate's slipstream and a manta's draft, Config/Companions)
-		* math.max(Config.Pvp.pods.slipstream.speed, Config.Companions.manta.speed)
+	-- The faster of a podmate's slipstream and a manta's draft (Config/Companions)
+	local draft = math.max(Config.Pvp.pods.slipstream.speed, Config.Companions.manta.speed)
+	return Size.topSpeed(length) * fins * species * sense * swim.boostMultiplier * draft
 end
 
 function SpeedService.start()
