@@ -52,8 +52,12 @@ type Plant = {
 	seen: number, -- the rescan that last found it in reach
 }
 
-local REACH = 180 -- studs from the camera a plant still sways ...
-local BLEND = 50 -- ... easing to stillness over the last this many
+local REACH = 120 -- studs from the camera a plant still sways ...
+local BLEND = 40 -- ... easing to stillness over the last this many
+-- (180 and 50 until 2026-10-20: the sway moved as many parts as all the prey, and
+-- moving parts is what the renderer's prepare step pays for, PC 2026-10-20 round 2)
+-- Past HALF_RATE studs a plant no fish is pushing is posed every other frame
+local HALF_RATE = 60
 local SCAN_REACH = REACH + 80 -- plants a rescan keeps (the camera moves between scans)
 local RESCAN = 0.5 -- seconds between picking the plants in reach
 local GIVE = 2.5 -- studs round the stalk's fronds a fish touches it (plus its radius)
@@ -279,6 +283,8 @@ local function setFade(plant: Plant, dt: number, inside: boolean)
 	end
 end
 
+local frameCount = 0
+
 local function pose(plant: Plant, frame: CFrame)
 	for i, part in plant.parts do
 		if part.Parent ~= nil then
@@ -311,7 +317,8 @@ local function step(dt: number)
 	-- The spring's steps stay short however long the frame
 	local steps = math.max(1, math.ceil(dt * 60))
 	local h = dt / steps
-	for _, plant in active do
+	frameCount += 1
+	for index, plant in active do
 		local eye = plant.base:PointToObjectSpace(camera)
 		local along = math.clamp(eye.Y, 0, plant.height)
 		local across = math.sqrt(eye.X * eye.X + eye.Z * eye.Z)
@@ -343,6 +350,13 @@ local function step(dt: number)
 			continue
 		end
 		plant.posed = true
+		if
+			distance > HALF_RATE
+			and math.abs(plant.leanX) + math.abs(plant.leanZ) < 0.01
+			and (index + frameCount) % 2 == 1
+		then
+			continue
+		end
 		-- A slow lean that wanders round, so no two plants nod together. About X
 		-- tips the top toward +Z; about Z by a negative angle, toward +X.
 		local a = plant.amplitude * weight

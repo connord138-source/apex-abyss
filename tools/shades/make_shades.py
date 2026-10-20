@@ -1138,24 +1138,33 @@ def lanternfish(m):  # Navy back, mirror-silver flanks, rows of glowing light or
     return done(m, rgb, "gloss", emit=emit, metal=silver * 0.5)
 
 
-def diamond(m):  # Cut diamond: big bevelled facets, dispersion fire along the bevels, mirror
+def diamond(m):  # Cut diamond: ice-blue facets, dispersion fire along the bevels, gloss
+    """v15 (PC 2026-10-20 round 2, DM: "nearly white in the den, dark navy in the
+    Reef"): v8's mirror finish (roughness 0.14, metal 0.35) showed whatever was round
+    it, the warm den or the dark water, and never its own colour. Now a gloss with no
+    metal, so it reads as the colour painted here: a deeper ice blue (facets from
+    pale ice to a cold sapphire, the bevels' highlights blue-white well under white),
+    and a faint, even ice-blue glow so it holds pale blue in dark water. The glow map
+    is a blue field over the whole body, never thin lines on black."""
     m = smooth(m)
     value, edge = cells(m, 150, seed=31)
     d1, d2, _, _ = worley(m, 150, 31)
     bevel = smoothstep(0.0, 0.06, edge)  # 0 at a facet's edge .. 1 at its heart
-    base = mix(board(m, (0.70, 0.84, 0.98)), (0.86, 0.94, 1.0), value)
+    base = mix(board(m, (0.50, 0.70, 0.94)), (0.68, 0.84, 0.99), value)
     # Each facet tilts a little, so it catches the light differently from its neighbours
-    facet = mix(base, (0.52, 0.70, 0.96), (1 - value) * 0.5)
-    rgb = mix(facet, (0.98, 1.0, 1.0), smoothstep(0.35, 0.0, bevel) * 0.8)
+    facet = mix(base, (0.27, 0.46, 0.84), (1 - value) * 0.55)
+    rgb = mix(facet, (0.80, 0.91, 1.0), smoothstep(0.35, 0.0, bevel) * 0.6)
     hue = (value * 2.3 + m.y * 1.5) % 1
-    fire_col = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.55), np.ones_like(hue)], -1))
-    fire = smoothstep(0.45, 0.12, bevel) * smoothstep(0.08, 0.0, edge * 0 + (d2 - d1)) * 0.6
+    fire_col = hsv_to_rgb(np.stack([hue, np.full_like(hue, 0.6), np.ones_like(hue)], -1))
+    fire = smoothstep(0.45, 0.12, bevel) * smoothstep(0.08, 0.0, edge * 0 + (d2 - d1)) * 0.55
     rgb = mix(rgb, fire_col, np.clip(fire, 0, 1))
     glints = speckle(m, 160, 0.86, seed=32)
-    rgb = mix(rgb, (1.0, 1.0, 1.0), glints * 0.8)
-    rgb = sheen(m, rgb, 0.3, (1, 1, 1))
+    rgb = mix(rgb, (0.86, 0.94, 1.0), glints * 0.6)
+    rgb = sheen(m, rgb, 0.22, (0.85, 0.93, 1.0))
+    # A faint ice-blue glow, a little more in each facet's heart
+    emit = (0.13 + 0.09 * bevel)[..., None] * C(0.36, 0.62, 1.0)
     height = bevel * 0.8  # facets stand proud of their bevels
-    return done(m, rgb, "mirror", metal=np.full(m.y.shape, 0.35, np.float32), detail=0.6, relief=1.6, height=height)
+    return done(m, rgb, "gloss", emit=emit, detail=0.6, relief=1.6, height=height)
 
 
 def plate_field(m: Fish, count, seed, weight=None, round_k=0.0025):

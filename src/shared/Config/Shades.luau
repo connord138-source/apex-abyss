@@ -390,10 +390,12 @@ local list: { Shade } = {
 		tier = "Epic",
 		chance = 250,
 		refund = 2000,
-		back = Color3.fromRGB(206, 240, 255),
-		belly = Color3.fromRGB(246, 252, 255),
-		fin = Color3.fromRGB(176, 224, 250),
-		reflectance = 0.35,
+		-- (ice blue, not near-white: the stand-in while the skin loads is flat in
+		-- `back`; skins v15 made the skin itself a gloss, 2026-10-20)
+		back = Color3.fromRGB(168, 210, 248),
+		belly = Color3.fromRGB(208, 232, 255),
+		fin = Color3.fromRGB(138, 192, 244),
+		reflectance = 0.12,
 		sparkle = Color3.fromRGB(255, 255, 255),
 		aura = "glints",
 		blurb = "Cut crystal facets that throw rainbow fire.",
@@ -1398,7 +1400,7 @@ local function window(
 end
 local WINDOWS: { [string]: Sheen } = {
 	-- Nibbler: Diamond, Divine, Prismatic
-	Diamond = window("sheenFacets", C(140, 196, 255), 0.6, 0.7, 0.03), -- (0.35 in near-white read the Nibbler white, PC 2026-10-20)
+	Diamond = window("sheenFacets", C(140, 196, 255), 0.6, 0.7, 0.03), -- (0.35 in near-white read white, PC 2026-10-20; the mirror skin was the cause: v15)
 	Divine = window("sheenVeil", C(255, 236, 170), 0.3, 0.9, 0.05),
 	Prismatic = window("sheenPrismatic", C(255, 255, 255), 0.3, 0.8, 0.06),
 	-- 'Cuda: Chrome, Thunder, Comet

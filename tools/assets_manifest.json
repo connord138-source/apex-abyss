@@ -113,6 +113,13 @@
       "clean": "no normal maps (none in the material, none shaped like one); the patch GLB cleared by screen_shades.py with the classifier (exit 0), 3 rows, none flagged, highest 0.021 (CatchSilver_emit, the lure-only glow map; colour 0.000, roughness/metal 0.001); the 4 skin PNGs screened too (exit 0, highest 0.021)",
       "contents": "Angler_ShadesPatch.glb only (2026-10-19, skins v14.1, PC playtest SV1: the Angler's Silver read \"very bright, almost glowing pale blue-white\"): CatchSilver on the Anglerfish, filed by organize_shades.luau without clearing its other skins. The same polished silver as v14 a step darker (make_shades SILVER_FISH: mean luminance 0.54, was 0.60; blue over green over red, Cr - Cb about -19), its horizon band, scale creases, painted creases and engraving deeper, and no body glow: its glow map holds only the lure (0.7% of the atlas, was 90%), as in every Angler skin. The other five fish keep v14. 3 images (colour, glow, roughness/metal). Import after shade_patch_v14, never in the same organize run."
     },
+    "shade_patch_v15": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/58e5c876-2396-401e-b463-06588798f69d.zip",
+      "into": "assets/shades/patch15",
+      "sha256": "ef0b749b1e4d2a451859d7dba0b85da495811be51681ad82dcce8a7b6c02d56f",
+      "clean": "no normal maps (none in the material, none shaped like one); the patch GLB cleared by screen_shades.py with the classifier (exit 0), 3 rows, none flagged, highest 0.01 (Diamond_emit; colour 0.000, roughness/metal 0.000); the 2 skin PNGs screened too (exit 0, highest 0.001)",
+      "contents": "Nibbler_ShadesPatch.glb only (2026-10-20, skins v15, PC playtest DM: Diamond on the Nibbler read \"nearly white in the den, dark navy in the Reef\"): Diamond on the Nibbler (the only fish whose line holds it), filed by organize_shades.luau without clearing its other skins. v8's mirror finish (roughness 0.14, metal 0.35) reflected its surroundings and never showed its own colour; v15 is a gloss (0.3) with no metal, a deeper ice blue (facets from pale ice to a cold sapphire, bevel highlights blue-white well under white, dispersion fire kept) and a faint, even ice-blue glow map (13-22%, a blue field over the whole body) so it holds pale blue in dark water. 3 images (colour, glow, the shared gloss roughness map). Import after shade_patch_v14_1, never in the same organize run."
+    },
     "furniture_glb": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/530c2fa1-0323-4260-9b50-5e3730712f0a.zip",
       "into": "assets/glb",

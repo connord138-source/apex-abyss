@@ -1563,6 +1563,32 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Den vault:** the carved roof hangs up to `Config/Dens` `vaultSag` 4 studs under
     `DenSpace.vaultAt`; the way out's nameplate keeps that clear (DenDoor `underVault`),
     and the PC's raycast still seats it on the real rock (6b17c05).
+- **The 2026-10-20 round-2 report's decisions (PC report `2026-10-20-pc-2.md`, PC fix
+  f4bf771 merged: the tutorial's Haul step waits for a full Haul, so the first bank is
+  LV 1 → 6; not published, the old live editing session blocked it):**
+  - **Where the frame goes** (Script Profiler, Studio stats): render prepare ~11 ms of
+    ~23 (CPU-bound; the GPU has time to spare), client scripts ~5.5 ms. Prepare grows
+    with moving instances and draw calls, so cut those first. In the Kelp the kelp sway
+    cost as much as all the prey (59 ms/s, most of it BulkMoveTo); in the Trench the
+    prey were the biggest script cost (105 ms/s) and the shadow pass took 484 of 1,014
+    draw calls under a sun faded to 14%.
+  - **Kelp sway** reaches 120 studs (`REACH`, was 180; `BLEND` 40), and past
+    `HALF_RATE` 60 a plant no fish is pushing is posed every other frame.
+  - **No shadows in the dark:** `OceanController` turns `Lighting.GlobalShadows` off on
+    the client once the water's own dark passes 0.6 and puts back the server's value
+    under 0.35.
+  - **The prey `fill` stays** (the PC's advice: trim only the Trench and canyon, ×1.9 →
+    ~×1.4, if it's still slow after these two).
+  - **Diamond, skins v15** (`shade_patch_v15`): the Nibbler's Diamond was a mirror
+    (roughness 0.14, metal 0.35) that showed the den white and the Reef navy; it's a
+    gloss with no metal now, a deeper ice blue with a faint even ice-blue glow map (no
+    `emissive` in Config/Shades, so it isn't a lamp). Config `back`/`belly`/`fin` are
+    ice blue for the stand-in, `reflectance` 0.12. A skin that reads as its
+    surroundings needs its finish changed, never a stronger window layer.
+  - **Publishing:** a publish leaves Studio in the experience's live editing session,
+    and that session blocks the next publish until it's closed (this round it hung on
+    "Applying script changes"). Everything in it is in git and `ApexAbyss.rbxl`, so
+    the PC closes that window right after publishing and reopens the file.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -2196,7 +2222,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `BubbleController` streams bubbles off every fish's mouth by speed; vents and ~37
     seeps on the shelf and deep floor send bubble columns up (`WorldService`
     `bubbleColumn`); `KelpController` sways the kelp (in `World.Biomes.Kelp`) within
-    180 studs of the camera (one BulkMoveTo a frame). It collects plants as they
+    120 studs of the camera (180 until 2026-10-20) (one BulkMoveTo a frame). It collects plants as they
     come into reach, never once at the start: with streaming a plant's Model arrives
     before its parts (retest 2026-10-08: the first start swayed nothing). Each part's
     rest pose is kept (`KelpRest`), so re-collecting mid-sway can't drift.

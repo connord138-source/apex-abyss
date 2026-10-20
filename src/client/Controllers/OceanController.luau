@@ -369,6 +369,12 @@ local darkTarget = 0
 local dark, darkVelocity = 0, 0 -- the dark this player sees (less where their own light lifts it)
 local water, waterVelocity = 0, 0 -- the water's own dark, before anyone's light
 local reveal = 0 -- how much of the dark this fish's own light lifts (LampController)
+-- No shadow pass in the dark: the Trench spent 484 of its 1,014 draw calls on
+-- shadows under a sun faded to 14% (PC 2026-10-20 round 2). Off once the water is
+-- SHADOWS_OFF dark, back on under SHADOWS_ON (so a fish on the edge can't flip it),
+-- to whatever the server had set.
+local SHADOWS_OFF, SHADOWS_ON = 0.6, 0.35
+local shadowsHeld: boolean? = nil -- the server's GlobalShadows while ours are off
 local glow = 0
 -- Plankton glow in the deepest water (PlanktonController): a very faint blue-green
 -- light, most noticeable in the pitch dark
@@ -501,6 +507,13 @@ local function step(dt: number)
 	dark, darkVelocity =
 		Spring.number(dark, darkVelocity, darkTarget * (1 - reveal) * (1 - bossLight * 0.6), 1.8, dt)
 	water, waterVelocity = Spring.number(water, waterVelocity, darkTarget, 1.8, dt)
+	if shadowsHeld == nil and water > SHADOWS_OFF then
+		shadowsHeld = Lighting.GlobalShadows
+		Lighting.GlobalShadows = false
+	elseif shadowsHeld ~= nil and water < SHADOWS_ON then
+		Lighting.GlobalShadows = shadowsHeld :: boolean
+		shadowsHeld = nil
+	end
 	if dark > 0.001 then
 		local day: Light = daylight
 			or {

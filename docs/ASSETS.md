@@ -694,6 +694,25 @@ assets/shades/patch14_1), then
 (must exit 0). Then File → Import 3D that one GLB, run `organize_shades.luau`, and save
 the place.
 
+**Skins v15** (`shade_patch_v15`, in `assets/shades/patch15`; 2026-10-20): the
+Nibbler's Diamond only (the one fish whose line holds it). On the PC (playtest DM) it
+read nearly white in the den and dark navy in the Reef: v8's finish was a mirror
+(roughness 0.14, metal 0.35), so it showed its surroundings, not its colour, and the
+game's ice-blue window layer couldn't change that. `diamond` is now a gloss (0.3) with
+no metal, a deeper ice blue (facets from pale ice to a cold sapphire, the bevels'
+highlights blue-white well under white, the dispersion fire kept) and a faint, even
+ice-blue glow map (a blue field over the whole body, never thin lines on black), with
+no `emissive` in Config/Shades, so EmissiveStrength stays 1 and it isn't a lamp. Sheet:
+`assets/shades/previews/v15_Nibbler_diamond.jpg` (v8 above, v15 below; studio light,
+then the water at 0.35 and 0.6). Blender's even lighting can't show the mirror
+problem, so judge it in game, in the den and in the Reef. The screen is in the manifest.
+Import it after v14.1.
+
+On the PC: `python tools/fetch_assets.py` (shade_patch_v15 → assets/shades/patch15),
+then `python tools/shades/screen_shades.py assets/shades/patch15/Nibbler_ShadesPatch.glb`
+(must exit 0). Then File → Import 3D that one GLB, run `organize_shades.luau`, and save
+the place.
+
 **FX particle textures** (`tools/shades/make_fx.py`, python3.11 + scipy):
 `assets/textures/fx_{swirl,mist,bubble,star,flame,spark}.png`, 512² RGBA, for the skins'
 in-game particles (the swirls over Undertow, mist, bubbles, glints, flames, sparks). Like
