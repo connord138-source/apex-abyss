@@ -12,10 +12,11 @@
 -- speed but each different fish should have their own limitations/advantages").
 -- Every number is optional except `kind`, `chase`, `turnAtSpeed` and `tellFollow`;
 -- PredatorService reads only the ones its kind uses.
---   ambush:  lurks slow and low by rocks and kelp, stalks a fish, then bursts at it
---            from close; out of breath after a burst (no tell, no bite) and turning
---            wide while it bursts. A juke or outlasting the burst escapes it, and it
---            gives a fish up after a few failed bursts.
+--   ambush:  lurks low by rocks and kelp, stalks a fish, bursts at it from mid range
+--            leading its swim, snaps at once from close and whips round on a fish
+--            beside or behind it; briefly out of breath after a burst. Outlasting the
+--            burst (a faster fish, or a Dash) escapes it; a juke only sometimes
+--            (owner, 2026-10-20: "a lot more aggressive and more accurate").
 --   tracker: a sustained fast chase that runs most fish in its water down, a long
 --            leash and a nose for blood; but wide turns (a tight loop or doubling
 --            back makes it overshoot and swing round), too big for kelp, and a Dash
@@ -29,6 +30,7 @@ export type Style = {
 	tellBrake: number?, -- × speed per second it can slow by during its tell (default strike.brake)
 	tellFacing: number?, -- how squarely (cosine) it must face the fish to start a tell (default strike.facing)
 	snap: number?, -- × biteReach its snap reaches past its mouth when the tell ends (default 1.6)
+	cone: number?, -- how far off its nose (cosine) its snap still catches a fish (default strike.cone)
 	slowsToTurn: number?, -- × chase it slows to when the fish is off its nose up close
 	roam: number?, -- × speed roaming (default Predators.roamSpeed)
 	recover: number?, -- × speed peeling off after a strike (default 0.8)
@@ -38,6 +40,9 @@ export type Style = {
 	burst: number?, -- × speed in a burst (it keeps it through a tell begun in one)
 	burstSeconds: number?,
 	burstTurn: number?, -- × turn rate in a burst (wide)
+	burstFacing: number?, -- how squarely (cosine) it lines up before it bursts (default 0.92)
+	burstLead: number?, -- share of the time to close it leads a fish by in a burst (0: where it is)
+	whip: number?, -- × turn rate it snaps round at, nearly stopping, on a fish beside or behind it
 	winded: number?, -- seconds out of breath after a burst: slow, no tell, no bite
 	giveUp: number?, -- failed bursts on one fish before it gives that fish up
 	forget: number?, -- seconds it leaves a fish it gave up on alone
@@ -126,25 +131,35 @@ local list: { PredatorDef } = {
 		length = 9,
 		health = 140,
 		speed = 26,
-		turnRate = 2.2,
-		aggroRange = 60,
-		-- The ambush sprinter: ~49 studs/s for 1.6 s from close, then winded 3 s
+		turnRate = 2.6,
+		aggroRange = 90,
+		-- The ambush sprinter: ~49 studs/s for 1.6 s from mid range, a snap from close,
+		-- then winded 1.2 s (owner, 2026-10-20: "predator fish need to be a lot more
+		-- aggressive and more accurate ... Easily killed a barracuda at lvl 16 by just
+		-- going back and forth at it. It wouldnt attack unless I sat still for a second
+		-- or two": it had needed a 32-stud line-up within 25° to burst, swam off for a
+		-- second whenever a fish got beside it, and was winded 3 s after each try)
 		style = {
 			kind = "ambush",
-			chase = 0.55,
-			turnAtSpeed = 0.8,
+			chase = 0.8,
+			turnAtSpeed = 0.85,
 			tellFollow = 1.9,
-			slowsToTurn = 0.35,
+			slowsToTurn = 0.3,
 			roam = 0.3,
-			recover = 0.6,
+			recover = 0.8,
 			lurk = { 4, 16 },
-			trigger = 32,
+			trigger = 44,
 			burst = 1.9,
 			burstSeconds = 1.6,
-			burstTurn = 0.3,
-			winded = 3,
-			giveUp = 2,
-			forget = 25,
+			burstTurn = 0.8,
+			burstFacing = 0.75,
+			burstLead = 0.7,
+			whip = 3.2,
+			snap = 2,
+			cone = 0.25,
+			winded = 1.2,
+			giveUp = 6,
+			forget = 8,
 			-- Out of breath, it still swings round to face the fish (a glide and a hard
 			-- C-turn), so it can burst again the moment it has its wind
 			carry = 0.35,
@@ -156,8 +171,8 @@ local list: { PredatorDef } = {
 		},
 		biteReach = 3,
 		biteFraction = 0.2,
-		biteCooldown = 2.2,
-		telegraph = 0.9,
+		biteCooldown = 1.4,
+		telegraph = 0.55,
 		ignoreBelow = 0.25,
 		band = { 300, 820 },
 		depth = { 8, 120 },

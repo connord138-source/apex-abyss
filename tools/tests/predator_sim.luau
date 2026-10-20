@@ -89,6 +89,7 @@ type Behaviour =
 	| "stun"
 	| "puff"
 	| "bleed"
+	| "harass"
 type Result = {
 	bites: number,
 	hits: number,
@@ -168,6 +169,7 @@ local function run(
 		local missAt: number? = nil -- the last miss, until it has come round
 		local passed = false -- (it swam on past the fish after that miss)
 		local againFrom: number? = nil -- the last miss, until its next attack
+		local backOffUntil = 0 -- (harass: swimming off after a pass at it)
 		for _ = 1, math.floor(SECONDS / DT) do
 			sim.now += DT
 			local t = sim.now - 1000 * trial
@@ -200,7 +202,20 @@ local function run(
 			for _ = 1, 4 do
 				local sub = DT / 4
 				local want = Vector3.zero
-				if behaviour == "cruise" then
+				if behaviour == "harass" then
+					-- The owner's back and forth (2026-10-20): straight at it to bite,
+					-- off for a second, and back at it again
+					local toIt = predator.position - position
+					local unit = if toIt.Magnitude > 1e-3 then toIt.Unit else Vector3.xAxis
+					if sim.now < backOffUntil then
+						want = -unit * fish.top
+					elseif toIt.Magnitude < predator.def.length * 0.5 + 3 then
+						backOffUntil = sim.now + 1
+						want = -unit * fish.top
+					else
+						want = unit * fish.top
+					end
+				elseif behaviour == "cruise" then
 					local a = sim.now * 5 / 12
 					want = Vector3.new(-math.sin(a), 0, math.cos(a)) * 5
 				elseif behaviour == "dash" and since >= 0 and since < swim.dashSeconds then
@@ -396,6 +411,13 @@ case("Barracuda", c25, "water", water, "flee", 30)
 local cudaFlee = case("Barracuda", c40, "water", water, "flee", 30)
 expect(cudaFlee.caught <= TRIALS * 0.25, "Barracuda: a LV 40 'Cuda outlasts its burst")
 local juke = case("Barracuda", n25, "water", water, "juke", 30)
+-- The owner's LV 16 fish darting in and out at it (2026-10-20)
+local n16 = fishAt("Nibbler", 16)
+local harass = case("Barracuda", n16, "water", water, "harass", 30)
+expect(
+	harass.caught >= TRIALS * 0.9 and rate(harass) >= 0.6,
+	"Barracuda: a fish darting back and forth at it is bitten"
+)
 -- Sits still and jukes each burst: after `giveUp` failed bursts it leaves the fish be
 local dodge = case("Barracuda", n25, "water", water, "dodge", 30, "burst")
 local giveUp = Config.Predators.byId.Barracuda.style.giveUp :: number
@@ -470,6 +492,11 @@ local sJuke = case("ReefShark", n45, "water", blueWater, "juke", 50)
 expect(
 	#sJuke.rounds > 0 and median(sJuke.rounds) <= 3 and most(sJuke.rounds) <= 5,
 	"Reef Shark: comes round within a few seconds of a miss"
+)
+local sHarass = case("ReefShark", n45, "water", blueWater, "harass", 50)
+expect(
+	sHarass.caught >= TRIALS * 0.9 and rate(sHarass) >= 0.5,
+	"Reef Shark: a fish darting back and forth at it is bitten"
 )
 local sLoop = case("ReefShark", n45, "water", blueWater, "loop", 50)
 expect(

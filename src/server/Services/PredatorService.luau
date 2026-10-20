@@ -661,8 +661,8 @@ end
 
 -- How close (studs from its mouth to the fish's middle) a predator holds its open
 -- jaw while it telegraphs a bite
--- An ambusher lines up on its fish this well (cosine of the angle) before it bursts:
--- in a burst it hardly turns
+-- An ambusher lines up on its fish this well (cosine of the angle) before it bursts
+-- (a style's `burstFacing`)
 local BURST_FACING = 0.92
 
 local function holdGap(def: Def, fishLength: number): number
@@ -990,9 +990,10 @@ local function simulate(predator: Predator, dt: number, now: number)
 			local fleeing = if gap > 1e-3 then math.max(fishVelocity:Dot(toFish / gap), 0) else 0
 			-- Lead the fish by the time it takes to close the gap, and keep the aim off
 			-- the ground (a fish on the sand is struck from just above it)
-			-- (in a burst it charges where the fish is: it can't read a juke)
+			-- (in a burst it leads the fish by `burstLead` of the time to close: a sprinter
+			-- reads a fish's swim, so a juke has to be a real one)
 			local lead = if predator.burstUntil > now
-				then 0
+				then math.clamp(gap / math.max(speed * (style.burst or 1), 1), 0, 0.6) * (style.burstLead or 0)
 				elseif predator.mode == "windup" then math.clamp(predator.modeUntil - now, 0, 0.5)
 				else math.clamp(gap / math.max(speed, 1), 0, 1.2)
 			local aim = root.Position + fishVelocity * lead
@@ -1073,8 +1074,19 @@ local function simulate(predator: Predator, dt: number, now: number)
 					end
 					desired = way * pace
 					-- A fish close beside or behind it is inside its turning circle (it only
-					-- circles it): it swims on out and comes round hard for another pass
-					if not bursting and gap < def.length * 2 and facing < 0.2 then
+					-- circles it): it swims on out and comes round hard for another pass. A
+					-- `whip` hunter (the Barracuda) snaps its body round on the spot instead,
+					-- nearly stopping, and faces the fish in a fraction of a second (owner,
+					-- 2026-10-20: "Easily killed a barracuda at lvl 16 by just going back and
+					-- forth at it")
+					local whipping = style.whip ~= nil
+						and not bursting
+						and gap < def.length * 2.5
+						and facing < 0.7
+					if whipping then
+						desired = direction * speed * (style.slowsToTurn or 0.35)
+						turnRate = def.turnRate * (style.whip :: number)
+					elseif not bursting and gap < def.length * 2 and facing < 0.2 then
 						startRecover(predator, now, 1, false)
 					elseif
 						-- A feint (once a hunt, `feint`): it swerves off a run at a fish that
@@ -1090,11 +1102,13 @@ local function simulate(predator: Predator, dt: number, now: number)
 						startRecover(predator, now, 1.4, true, 0.9)
 					end
 					local sees = false
-					if ambush and not bursting then
+					-- (an ambusher already this close snaps at once, no burst needed)
+					local snapsNow = ambush and gap <= engage
+					if ambush and not bursting and not snapsNow then
 						-- An ambusher stalks in low and slow, then bursts from close
 						if
 							gap <= (style.trigger or 0)
-							and facing >= BURST_FACING
+							and facing >= (style.burstFacing or BURST_FACING)
 							and Ground.sees(mouth, root.Position, fishLength * 0.3)
 						then
 							predator.burstUntil = now + (style.burstSeconds or 1.5)
@@ -1109,10 +1123,11 @@ local function simulate(predator: Predator, dt: number, now: number)
 						and gap <= engage
 						and facing >= (style.tellFacing or strike.facing)
 					then
-						if not bursting and gap < engage * 0.7 and fleeing < speed * 0.3 then
+						if not bursting and not ambush and gap < engage * 0.7 and fleeing < speed * 0.3 then
 							-- Lined up only once it's far too close and fast to pull up: it
 							-- swims on past and comes round for a proper run (a tell from
-							-- here only overshot the fish)
+							-- here only overshot the fish; an ambusher stalks in slow enough
+							-- to pull up and snaps)
 							startRecover(predator, now, 0.5, false)
 						else
 							sees = Ground.sees(mouth, root.Position, fishLength * 0.3)
@@ -1144,7 +1159,8 @@ local function simulate(predator: Predator, dt: number, now: number)
 						-- it came on is missed: it overshoots), and not through rock (a fish
 						-- under an arch or in a reef's tunnel is safe)
 						local ahead = gap <= 1
-							or predator.heading:Dot(toFish / math.max(gap, 1e-3)) >= strike.cone
+							or predator.heading:Dot(toFish / math.max(gap, 1e-3))
+								>= (style.cone or strike.cone)
 						local hit = gap <= strikeReach(def, fishLength)
 							and ahead
 							and Ground.sees(mouth, root.Position, fishLength * 0.3)
