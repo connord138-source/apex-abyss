@@ -31,6 +31,7 @@ export type Style = {
 	tellFacing: number?, -- how squarely (cosine) it must face the fish to start a tell (default strike.facing)
 	snap: number?, -- × biteReach its snap reaches past its mouth when the tell ends (default 1.6)
 	cone: number?, -- how far off its nose (cosine) its snap still catches a fish (default strike.cone)
+	commit: number?, -- share of its tell after which it stops turning and lunges on its line
 	slowsToTurn: number?, -- × chase it slows to when the fish is off its nose up close
 	roam: number?, -- × speed roaming (default Predators.roamSpeed)
 	recover: number?, -- × speed peeling off after a strike (default 0.8)
@@ -159,8 +160,9 @@ local list: { PredatorDef } = {
 			burstFacing = 0.75,
 			burstLead = 0.7,
 			whip = 3.2,
-			snap = 2,
-			cone = 0.25,
+			snap = 1.6,
+			cone = 0.45,
+			commit = 0.6, -- (a juke late in its tell gets away about half the time)
 			winded = 1.2,
 			giveUp = 6,
 			forget = 8,
@@ -176,7 +178,7 @@ local list: { PredatorDef } = {
 		biteReach = 3,
 		biteFraction = 0.2,
 		biteCooldown = 1.4,
-		telegraph = 0.55,
+		telegraph = 0.7,
 		ignoreBelow = 0.25,
 		band = { 300, 820 },
 		depth = { 8, 120 },
@@ -199,15 +201,18 @@ local list: { PredatorDef } = {
 		-- 45.9, was 47.2). At 42 a juke at its tell stopped beating it (19% bitten).
 		speed = 44,
 		turnRate = 1.6,
-		aggroRange = 80,
+		aggroRange = 110,
 		style = {
 			kind = "tracker",
 			chase = 1,
-			turnAtSpeed = 0.45,
+			turnAtSpeed = 0.6,
 			tellFollow = 0.95,
 			tellBrake = 0.5, -- heavy: it can't pull up short (a loop past it overshoots)
-			tellFacing = 0.9, -- so it lines up before it commits
-			snap = 1.2,
+			tellFacing = 0.75, -- so it lines up before it commits
+			snap = 1.5,
+			cone = 0.3,
+			commit = 0.7,
+			whip = 1.8, -- (a fish darting round its head is turned on, not circled)
 			slowsToTurn = 0.35,
 			roam = 0.3,
 			recover = 0.5,
@@ -231,8 +236,8 @@ local list: { PredatorDef } = {
 		},
 		biteReach = 4,
 		biteFraction = 0.3,
-		biteCooldown = 2.8,
-		telegraph = 1.1,
+		biteCooldown = 2,
+		telegraph = 0.8,
 		ignoreBelow = 0.3,
 		band = { 980, 1440 },
 		angles = { 228, 312 }, -- the Open Blue is shark water (owner, 2026-10-08)

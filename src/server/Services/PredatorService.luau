@@ -9,10 +9,13 @@
 -- damage (onHit) and pays their rewards.
 --
 -- Each plain predator hunts in its own style (Config/Predators `style`): the
--- Barracuda is an ambush sprinter (lurks by cover, bursts from close, then is out of
--- breath; a juke or outlasting the burst beats it), the Reef Shark a relentless
--- tracker (runs most fish in its water down, smells blood, but turns wide and is too
--- big for kelp). A burrowed fish (character attribute `Burrowed`) is never prey, a
+-- Barracuda is an ambush sprinter (lurks by cover, bursts from mid range leading its
+-- fish, snaps at once from close and whips round on a fish beside it; outlasting the
+-- burst or a Dash beats it, a juke late in its tell about half the time), the Reef
+-- Shark a relentless tracker (runs most fish in its water down, smells blood, but
+-- turns wide and is too big for kelp). Owner, 2026-10-20: "a lot more aggressive and
+-- more accurate ... Easily killed a barracuda at lvl 16 by just going back and forth
+-- at it": both now bite a fish darting in and out at them. A burrowed fish (character attribute `Burrowed`) is never prey, a
 -- puffed one (`Puffed`) takes half a bite and spines the biter, and the Anglerfish's
 -- Lantern Flash stuns them (`PredatorService.stun`).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1152,7 +1155,12 @@ local function simulate(predator: Predator, dt: number, now: number)
 					-- ends, keeping up with a fish getting away up to `cap`, still turning
 					local left = math.max(predator.modeUntil - now, dt)
 					local pace = math.clamp((gap - hold) / left + fleeing, 1, math.max(cap, 1))
-					desired = direction * pace
+					-- Past `commit` of its tell it has committed to its line and only
+					-- lunges along it, so a juke timed well escapes (Config/Predators)
+					local committed = style.commit ~= nil
+						and def.telegraph - (predator.modeUntil - now)
+							>= def.telegraph * (style.commit :: number)
+					desired = (if committed then predator.heading else direction) * pace
 					if now >= predator.modeUntil then
 						local victim = predator.target :: Player
 						-- In front of its jaws (a fish that turned off to the side of its head as

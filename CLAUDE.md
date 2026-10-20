@@ -965,6 +965,20 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `BurrowStrike`, `FlashAt`; HuntService, PredatorService and the clients read them
     (`AbilityController`, FishAnimator's puff scale, NametagController). The Torpedo
     stays within SpeedService's Dash allowance.
+  - **Aggressive and accurate (owner, 2026-10-20: "predator fish need to be a lot more
+    aggressive and more accurate as well. Easily killed a barracuda at lvl 16 by just
+    going back and forth at it. It wouldnt attack unless I sat still"):** an ambusher
+    within its tell distance snaps at once (no burst needed), a `whip` hunter turns on
+    a fish beside or behind it instead of swimming off (Barracuda ×3.2, Reef Shark
+    ×1.8), bursts lead the fish (`burstLead` 0.7) and line up at `burstFacing` 0.75,
+    and past `commit` of its tell (Barracuda 0.6, Shark 0.7) it lunges on its line, so
+    a well-timed juke escapes about half the time. Barracuda: telegraph 0.7, bite every
+    1.4 s, winded 1.2 s, aggro 90, trigger 44, gives a fish up after 6 failed bursts
+    for 8 s. Reef Shark: telegraph 0.8, bite every 2 s, aggro 110, turns 0.6 at speed,
+    lines up at 0.75. Sim (`run_predators.sh`, new `harass` fish darting in and out):
+    Barracuda bites the harasser 99% of tells (was never), a juke 56%, a still fish
+    96%; a Dash, doubling back at its burst, hiding, burrowing and a LV 40 'Cuda's
+    straight run still escape. Shark: harasser 42%, juke 47%, a loop as it closes 0%.
   - **Predator styles** (owner: "shark should be able to catch fish with speed but
     each different fish should have their own limitations/advantages";
     `Config/Predators` `style`): the **Barracuda** (`ambush`) lurks low by cover,

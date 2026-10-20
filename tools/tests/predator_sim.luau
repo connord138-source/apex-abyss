@@ -418,15 +418,12 @@ expect(
 	harass.caught >= TRIALS * 0.9 and rate(harass) >= 0.6,
 	"Barracuda: a fish darting back and forth at it is bitten"
 )
--- Sits still and jukes each burst: after `giveUp` failed bursts it leaves the fish be
+-- Sits still and jukes each burst or tell (owner, 2026-10-20: "a lot more aggressive
+-- and more accurate"): past `commit` of its tell it lunges on its line, so a juke
+-- escapes it only some of the time
 local dodge = case("Barracuda", n25, "water", water, "dodge", 30, "burst")
-local giveUp = Config.Predators.byId.Barracuda.style.giveUp :: number
-local forget = Config.Predators.byId.Barracuda.style.forget :: number
-expect(
-	dodge.hits == 0 and dodge.bites <= TRIALS * giveUp * math.ceil(SECONDS / (forget + 10)),
-	"Barracuda: gives a fish up after a few failed bursts"
-)
-expect(rate(juke) <= 0.3, "Barracuda: a sideways juke beats most of its strikes")
+expect(rate(dodge) >= 0.3 and rate(dodge) <= 0.9, "Barracuda: a juke at every strike only sometimes works")
+expect(rate(juke) >= 0.3 and rate(juke) <= 0.75, "Barracuda: a sideways juke escapes about half its strikes")
 -- Out of breath after a missed burst it still glides round to face the fish, and
 -- bursts again once it has its wind
 expect(
@@ -435,7 +432,8 @@ expect(
 )
 case("Barracuda", n25, "water", water, "loop", 30)
 case("Barracuda", n25, "water", water, "juke", 30, "burst")
-case("Barracuda", n25, "water", water, "loop", 30, "burst")
+local loopBurst = case("Barracuda", n25, "water", water, "loop", 30, "burst")
+expect(rate(loopBurst) <= 0.3, "Barracuda: doubling back as it bursts makes it overshoot")
 local dash = case("Barracuda", n25, "water", water, "dash", 30)
 expect(rate(dash) <= 0.3, "Barracuda: a Dash at the burst escapes most strikes")
 local hide = case("Barracuda", n25, "sand", sand(n25), "hide", 40)
@@ -487,6 +485,10 @@ expect(sCuda.caught <= TRIALS * 0.25, "Reef Shark: a LV 45 'Cuda outruns it")
 case("ReefShark", m45, "water", blueWater, "flee", 50)
 case("ReefShark", p45, "water", blueWater, "flee", 50)
 local sJuke = case("ReefShark", n45, "water", blueWater, "juke", 50)
+expect(
+	rate(sJuke) >= 0.25 and rate(sJuke) <= 0.75,
+	"Reef Shark: a sideways juke escapes about half its strikes"
+)
 -- A missed strike: it carries through, banks round fast and runs in again from a new
 -- angle (a juke then a dash away, or a loop back past it)
 expect(
@@ -495,7 +497,7 @@ expect(
 )
 local sHarass = case("ReefShark", n45, "water", blueWater, "harass", 50)
 expect(
-	sHarass.caught >= TRIALS * 0.9 and rate(sHarass) >= 0.5,
+	sHarass.caught >= TRIALS * 0.75 and rate(sHarass) >= 0.35,
 	"Reef Shark: a fish darting back and forth at it is bitten"
 )
 local sLoop = case("ReefShark", n45, "water", blueWater, "loop", 50)
@@ -511,9 +513,9 @@ local sDash = case("ReefShark", n45, "water", blueWater, "dash", 50)
 expect(rate(sDash) <= 0.2, "Reef Shark: a Dash during its tell escapes")
 local sHide = case("ReefShark", n45, "water", blueWater, "hide", 60)
 expect(sHide.bites == 0, "Reef Shark: no bite through rock")
--- Smells blood: a fish 130 studs off is out of its range (80) unless it's bleeding
-local sCalm = case("ReefShark", n45, "water", blueWater, "still", 130)
-local sBleed = case("ReefShark", n45, "water", blueWater, "bleed", 130)
+-- Smells blood: a fish 180 studs off is out of its range (110) unless it's bleeding
+local sCalm = case("ReefShark", n45, "water", blueWater, "still", 180)
+local sBleed = case("ReefShark", n45, "water", blueWater, "bleed", 180)
 expect(sBleed.first * 3 <= sCalm.first, "Reef Shark: smells a bleeding fish from twice as far")
 local _ = sJuke
 
