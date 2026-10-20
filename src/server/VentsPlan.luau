@@ -655,7 +655,8 @@ local function placeCauseway(plan: Plan, taken: { Taken }, rng: Random)
 				continue
 			end
 			if
-				not outsideBasins(p.X, p.Z, size, 10) or not chimneysClear(plan.chimneys, p.X, p.Z, size + 12)
+				not outsideBasins(p.X, p.Z, size, 10)
+				or not chimneysClear(plan.chimneys, p.X, p.Z, size + 12)
 			then
 				continue
 			end
