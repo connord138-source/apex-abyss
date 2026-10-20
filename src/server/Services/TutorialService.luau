@@ -93,10 +93,13 @@ end
 
 -- The Haul step's target in kg, from the Nibbler's banked mass: HAUL_LEVELS' worth,
 -- a full Haul for a new fish (Config/Tuning `growth` `cap`), or a full Haul if it's
--- less (a fish that banked part of its first dive past LV 3), so the step can end
+-- less (a fish that banked part of its first dive past LV 3), so the step can end.
+-- The full Haul itself, where HuntService stops food: at 99.9% of it the step ended
+-- early and the first bank came to 4.99 levels, LV 5 and "+4 LEVELS" on the card
+-- (PC 2026-10-20 round 2, TU5)
 local function haulTarget(data: DataService.PlayerData): number
 	local banked = Progress.mass(data, Config.Species.STARTER)
-	return math.min(Tutorial.haulTarget(banked), Size.haulCap(banked) * 0.999)
+	return math.min(Tutorial.haulTarget(banked), Size.haulCap(banked))
 end
 
 -- A step starting: hand over what it needs if the player has none (each only while
@@ -122,7 +125,8 @@ end
 local function measure(player: Player, data: DataService.PlayerData, step: TutorialConfig.Step): number?
 	if step.event == "haul" then
 		local share = HuntService.haul(player) / math.max(haulTarget(data), 1e-6)
-		return math.clamp(math.floor(share * 100), 0, step.goal)
+		-- (a hair of slack: a Haul topped up to the cap can land an ulp under it)
+		return math.clamp(math.floor(share * 100 + 1e-6), 0, step.goal)
 	end
 	return nil
 end
