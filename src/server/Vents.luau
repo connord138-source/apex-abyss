@@ -34,8 +34,8 @@
 -- it, and every top stays under VentsPlan.ceiling, so no prey school is lifted over
 -- it. Decor neither collides, takes rays nor fires Touched. Everything is anchored,
 -- SmoothPlastic, Neon or (the brine) Glass: never a toon-overridden material. It
--- builds 2,000–2,800 parts and 13–14 lights (PARTS_CAP stops the small life past
--- 2,900), and clears scattered boulders and plankton out of its landmarks (tidy).
+-- builds 2,200–3,100 parts and 13–14 lights (PARTS_CAP stops the small life past
+-- 3,300), and clears scattered boulders and plankton out of its landmarks (tidy).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -111,7 +111,7 @@ local LIGHT = {
 
 -- The most parts the field builds: the small life (worms, shells) is left out past it
 -- (a field lays out at 2,100–2,700 over every seed tried)
-local PARTS_CAP = 2900
+local PARTS_CAP = 3300
 
 local rng = Random.new(World.seed + 99)
 local groundOf: Ground = function(_x: number, _z: number): (Vector3?, Vector3?)
@@ -193,13 +193,68 @@ local function glow(
 	return p
 end
 
--- A rounded lump filling `size` (a sphere mesh on a decor block)
-local function blob(parent: Instance, name: string, cframe: CFrame, size: Vector3, color: Color3): Part
-	local p = trim(parent, name, size, cframe, color)
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Parent = p
+-- No sphere-mesh lumps (owner, 2026-10-20: "I hate the spheres that are all over the
+-- place that were clearly placeholders that never received a design update"): every
+-- piece here is a cut, flat-faced shape in the low-poly look of the hex columns.
+
+local function wedge(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3): WedgePart
+	local p = Instance.new("WedgePart")
+	setup(p, name, size, cframe, color, false)
+	p.Parent = parent
 	return p
+end
+
+-- A faceted chip filling about `size`: two blocks an eighth of a turn apart, the
+-- second a little lower and narrower, so it reads as a broken stone or a crust plate
+local function chip(parent: Instance, name: string, cframe: CFrame, size: Vector3, color: Color3): Part
+	local p = trim(parent, name, size * Vector3.new(0.8, 1, 0.8), cframe, color)
+	trim(
+		parent,
+		name,
+		size * Vector3.new(0.72, 0.78, 0.72),
+		cframe * CFrame.new(0, -size.Y * 0.11, 0) * CFrame.Angles(0, math.pi / 4, 0),
+		color
+	)
+	return p
+end
+
+-- A flat-topped ledge round a column (a chimney's flange): `sides` blocks turned
+-- evenly, so its edge is a many-sided polygon like the basalt's, never a disc
+local function ledge(
+	parent: Instance,
+	name: string,
+	cframe: CFrame,
+	size: Vector3,
+	color: Color3,
+	sides: number
+)
+	for k = 0, sides - 1 do
+		trim(parent, name, size, cframe * CFrame.Angles(0, k * HALF / sides, 0), color)
+	end
+end
+
+-- A mineral streak running down a flank from `on` (its middle, on the surface; `out`
+-- the surface's normal): two thin wedges back to back, wide at the top and coming to
+-- a point below, like a drip of sulfur down the rock
+local function streak(
+	parent: Instance,
+	name: string,
+	on: Vector3,
+	out: Vector3,
+	width: number,
+	length: number,
+	color: Color3
+)
+	local base = CFrame.fromMatrix(on + out * 0.2, out, Vector3.yAxis)
+	local size = Vector3.new(0.35, length, width / 2)
+	wedge(parent, name, size, base * CFrame.new(0, 0, width / 4) * CFrame.Angles(math.pi, 0, 0), color)
+	wedge(
+		parent,
+		name,
+		size,
+		base * CFrame.Angles(0, math.pi, 0) * CFrame.new(0, 0, width / 4) * CFrame.Angles(math.pi, 0, 0),
+		color
+	)
 end
 
 -- A flat disc lying level, its top at `top`
@@ -225,6 +280,16 @@ local function disc(
 	p.Shape = Enum.PartType.Cylinder
 	p.Parent = parent
 	return p
+end
+
+-- A vent's glowing mouth on a top at `at`: a hot disc set level into the rock with a
+-- dark rim round it (it was a glowing ball sat on top)
+local function mouthGlow(parent: Instance, name: string, at: Vector3, radius: number)
+	local hot = disc(parent, name, at, at.Y + 0.35, radius, 0.7, COLORS.throat, false)
+	hot.Material = NEON
+	hot.CastShadow = false
+	stats.glow += 1
+	disc(parent, `{name}Rim`, at, at.Y + 0.2, radius * 1.35, 0.6, COLORS.raft, false)
 end
 
 -- A cylinder from `a` to `b`
@@ -444,7 +509,7 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 	for _ = 1, 5 do
 		local a, d = rng:NextNumber(0, TAU), rng:NextNumber(0.25, 0.5) * f.crater
 		local size = rng:NextNumber(2.5, 5)
-		blob(
+		chip(
 			m,
 			"CrustRaft",
 			CFrame.new(c.X + math.cos(a) * d, lakeY + 0.45, c.Z + math.sin(a) * d)
@@ -554,18 +619,22 @@ local function forge(parent: Instance, plan: VentsPlan.Plan)
 		local pool = foot + out * 9
 		local poolY = groundY(pool.X, pool.Z, c.Y)
 		local radius = rng:NextNumber(5, 7)
-		-- (an oval, its long way across the flow: a box read as a slab)
-		local lavaPool = blob(
-			m,
-			"LavaPool",
-			CFrame.lookAt(
-				Vector3.new(pool.X, poolY + 0.1, pool.Z),
-				Vector3.new(pool.X, poolY + 0.1, pool.Z) + out
-			),
-			Vector3.new(radius * 2.4, 0.7, radius * 1.6),
-			COLORS.lava
-		)
+		-- (flat and level with its crust round it: an oval sphere read as a glowing egg)
+		local lavaPool = disc(m, "LavaPool", pool, poolY + 0.25, radius, 0.5, COLORS.lava, false)
 		lavaPool.Material = NEON
+		for k = 1, 7 do
+			local a = k * TAU / 7 + rng:NextNumber(-0.2, 0.2)
+			local edge =
+				Vector3.new(pool.X + math.cos(a) * radius, poolY + 0.3, pool.Z + math.sin(a) * radius)
+			local size = rng:NextNumber(1.8, 3)
+			chip(
+				m,
+				"PoolCrust",
+				CFrame.new(edge) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0),
+				Vector3.new(size * 1.3, 0.8, size),
+				COLORS.raft
+			)
+		end
 		lavaPool.CastShadow = false
 		stats.glow += 1
 		if index == 1 then
@@ -706,14 +775,8 @@ local function smokers(parent: Instance, plan: VentsPlan.Plan)
 			end
 			assert(hit)
 			local scale = math.clamp(h / 140, 0.3, 1)
-			glow(
-				m,
-				"Throat",
-				Vector3.one * (2.6 + 3 * scale),
-				CFrame.new(hit + Vector3.new(0, 0.6, 0)),
-				COLORS.throat
-			).Shape =
-				Enum.PartType.Ball
+			-- (a glowing mouth set into the top, not a ball sitting on it)
+			mouthGlow(m, "Throat", hit, 1.3 + 1.5 * scale)
 			local mouth = holder(
 				m,
 				"Plume",
@@ -742,14 +805,23 @@ local function smokers(parent: Instance, plan: VentsPlan.Plan)
 						+ Vector3.new(math.cos(a), 0, math.sin(a)) * (reach * rng:NextNumber(0.75, 1))
 					local onTop = groundOf(spot.X, spot.Z)
 					if onTop and math.abs(onTop.Y - (center.Y + 2)) < 4 then
+						-- (sulfide crystals: a pair of leaning prisms)
 						local size = rng:NextNumber(1.6, 3.2)
-						blob(
-							m,
-							"Sulfide",
-							CFrame.new(onTop) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0),
-							Vector3.new(size * 1.5, size * 0.55, size),
-							pick(COLORS.minerals)
-						)
+						local color = pick(COLORS.minerals)
+						for _ = 1, 2 do
+							trim(
+								m,
+								"Sulfide",
+								Vector3.new(size * 0.32, size * rng:NextNumber(0.7, 1.2), size * 0.32),
+								CFrame.new(onTop + Vector3.new(0, size * 0.3, 0))
+									* CFrame.Angles(
+										rng:NextNumber(-0.5, 0.5),
+										rng:NextNumber(0, TAU),
+										rng:NextNumber(-0.5, 0.5)
+									),
+								color
+							)
+						end
 					end
 				end
 				if rng:NextNumber() < 0.6 then
@@ -757,14 +829,7 @@ local function smokers(parent: Instance, plan: VentsPlan.Plan)
 					local spot = center + Vector3.new(math.cos(a), 0, math.sin(a)) * (reach - 0.5)
 					local onTop = groundOf(spot.X, spot.Z)
 					if onTop and math.abs(onTop.Y - (center.Y + 2)) < 4 then
-						glow(
-							m,
-							"SideThroat",
-							Vector3.one * 1.6,
-							CFrame.new(onTop + Vector3.new(0, 0.3, 0)),
-							COLORS.throat
-						).Shape =
-							Enum.PartType.Ball
+						mouthGlow(m, "SideThroat", onTop, 0.8)
 						local side =
 							holder(m, "SidePlume", CFrame.new(onTop + Vector3.new(0, 1.2, 0)), Vector3.one)
 						blackSmoke(side, 0.2)
@@ -777,13 +842,7 @@ local function smokers(parent: Instance, plan: VentsPlan.Plan)
 				local a = rng:NextNumber(0, TAU)
 				local out = Vector3.new(math.cos(a), 0, math.sin(a))
 				local r = radiusAt(d)
-				blob(
-					m,
-					"Stain",
-					CFrame.lookAt(along(d) + out * (r * 0.92), along(d) + out * (r + 4)),
-					Vector3.new(r * 0.7, r * 0.9, 1.2),
-					pick(COLORS.minerals)
-				)
+				streak(m, "Stain", along(d) + out * (r * 0.95), out, r * 0.8, r * 1.6, pick(COLORS.minerals))
 			end
 		end
 	end
@@ -807,7 +866,8 @@ local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 		for f = 1, flanges do
 			local at = foot.Y
 				+ h * (if flanges == 1 then 0.55 else ({ 0.42, 0.72 })[f] + rng:NextNumber(-0.05, 0.05))
-			-- (rounded shelves, a little off round: a flat disc read as a plate)
+			-- (a many-sided ledge, a little tilted: a flat disc read as a plate, and a
+			-- squashed sphere as a ring of egg)
 			local reach = r + rng:NextNumber(1.6, 2.8)
 			local turn = CFrame.Angles(
 				rng:NextNumber(-0.08, 0.08),
@@ -815,13 +875,14 @@ local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 				rng:NextNumber(-0.08, 0.08)
 			)
 			local center = CFrame.new(foot.X, at, foot.Z) * turn
-			blob(m, "Flange", center, Vector3.new(reach * 2, 2.6, reach * 1.8), pick(COLORS.basalt))
-			blob(
+			ledge(m, "Flange", center, Vector3.new(reach * 2, 2.2, reach * 2), pick(COLORS.basalt), 3)
+			ledge(
 				m,
 				"FlangeLip",
-				center + Vector3.new(0, 0.7, 0),
-				Vector3.new(reach * 1.85, 1.6, reach * 1.62),
-				pick(COLORS.crust)
+				center * CFrame.new(0, 1.3, 0) * CFrame.Angles(0, HALF / 6, 0),
+				Vector3.new(reach * 1.8, 0.7, reach * 1.8),
+				pick(COLORS.crust),
+				2
 			)
 			if rng:NextNumber() < 0.35 then
 				local a = rng:NextNumber(0, TAU)
@@ -830,8 +891,7 @@ local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 					at + 0.6,
 					foot.Z + math.sin(a) * (reach - 0.8)
 				)
-				glow(m, "SideThroat", Vector3.one * 1.4, CFrame.new(spot), COLORS.throat).Shape =
-					Enum.PartType.Ball
+				mouthGlow(m, "SideThroat", spot, 0.7)
 				blackSmoke(holder(m, "SidePlume", CFrame.new(spot + Vector3.new(0, 1, 0)), Vector3.one), 0.2)
 			end
 		end
@@ -839,14 +899,8 @@ local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 			local d = foot.Y + rng:NextNumber(0.12, 0.85) * h
 			local a = rng:NextNumber(0, TAU)
 			local out = Vector3.new(math.cos(a), 0, math.sin(a))
-			local on = Vector3.new(foot.X, d, foot.Z) + out * (r * 0.95)
-			blob(
-				m,
-				"Stain",
-				CFrame.lookAt(on, on + out),
-				Vector3.new(r * 0.6, r * rng:NextNumber(0.7, 1.1), 1.2),
-				pick(COLORS.minerals)
-			)
+			local on = Vector3.new(foot.X, d, foot.Z) + out * (r * 0.97)
+			streak(m, "Stain", on, out, r * 0.7, r * rng:NextNumber(1.2, 2), pick(COLORS.minerals))
 		end
 		stats.chimneys += 1
 	end
@@ -942,13 +996,17 @@ local function shelf(
 		local a = facing + (k - (lobes + 1) / 2) * (2.3 / lobes) + rng:NextNumber(-0.08, 0.08)
 		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
 		local at = Vector3.new(center.X, y + 0.5, center.Z) + dir * (radius - 0.3)
-		blob(
+		-- (a rimstone dam's lobe: a flat-topped, round-fronted step)
+		local lobe = radius * 2.3 / lobes * 1.35
+		local tall = rng:NextNumber(1.6, 2)
+		local dam = trim(
 			m,
 			"TerraceRim",
-			CFrame.lookAt(at, at + Vector3.new(-dir.Z, 0, dir.X)),
-			Vector3.new(1.7, rng:NextNumber(1.6, 2), radius * 2.3 / lobes * 1.35),
+			Vector3.new(tall, lobe * 0.8, lobe * 0.8),
+			CFrame.new(at) * CFrame.Angles(0, 0, HALF),
 			rim
 		)
+		dam.Shape = Enum.PartType.Cylinder
 	end
 	return Vector3.new(center.X, y, center.Z) + inward * radius
 end
@@ -998,13 +1056,21 @@ local function terraces(parent: Instance, plan: VentsPlan.Plan)
 				local from = last.front + Vector3.new(0, -0.6, 0)
 				local to = center + inward * (radius * 0.55) + Vector3.new(0, 0.5, 0)
 				local span = to - from
-				blob(
-					m,
-					"Flowstone",
-					CFrame.lookAt((from + to) / 2, to),
-					Vector3.new(last.radius * rng:NextNumber(0.7, 1), 1.5, span.Magnitude * 1.15),
-					COLORS.travertine[(s + 2) % #COLORS.travertine + 1]
-				)
+				-- (a sheet over the rim with ribs of drip running down it: as one
+				-- stretched sphere it read as a huge pale egg)
+				local width = last.radius * rng:NextNumber(0.6, 0.85)
+				local tone = COLORS.travertine[(s + 2) % #COLORS.travertine + 1]
+				local sheet = CFrame.lookAt((from + to) / 2, to)
+				trim(m, "Flowstone", Vector3.new(width, 0.8, span.Magnitude), sheet, tone)
+				for k = -1, 1 do
+					trim(
+						m,
+						"FlowstoneRib",
+						Vector3.new(width * 0.16, 0.5, span.Magnitude * rng:NextNumber(0.55, 0.95)),
+						sheet * CFrame.new(k * width * 0.3, 0.5, span.Magnitude * 0.05),
+						tone:Lerp(Color3.new(1, 1, 1), 0.12)
+					)
+				end
 			end
 			-- A smaller shelf beside it, half a step down
 			if rng:NextNumber() < TERRACE.side then
@@ -1056,28 +1122,34 @@ local function musselBed(parent: Instance, center: Vector3, inner: number, outer
 		local s = rng:NextNumber(0.8, 1.3)
 		local yaw = rng:NextNumber(0, TAU)
 		if rng:NextNumber() < 0.2 then
-			blob(
+			-- (two shell halves meeting in a ridge, the lip dark between them)
+			local clam = CFrame.new(hit + Vector3.new(0, 0.3 * s, 0))
+				* CFrame.Angles(0, yaw, rng:NextNumber(-0.2, 0.2))
+			local half = Vector3.new(2 * s, 0.6 * s, 0.7 * s)
+			wedge(m, "Clam", half, clam * CFrame.new(0, 0, 0.35 * s), COLORS.clam)
+			wedge(
 				m,
 				"Clam",
-				CFrame.new(hit + Vector3.new(0, 0.35 * s, 0))
-					* CFrame.Angles(0, yaw, rng:NextNumber(-0.2, 0.2)),
-				Vector3.new(2, 0.8, 1.4) * s,
+				half,
+				clam * CFrame.Angles(0, math.pi, 0) * CFrame.new(0, 0, 0.35 * s),
 				COLORS.clam
 			)
-			blob(
+			trim(
 				m,
 				"ClamLip",
-				CFrame.new(hit + Vector3.new(0, 0.36 * s, 0)) * CFrame.Angles(0, yaw, 0),
-				Vector3.new(2.06, 0.18, 1) * s,
+				Vector3.new(2.04 * s, 0.14, 0.12),
+				clam * CFrame.new(0, 0.27 * s, 0),
 				COLORS.clamLip
 			)
 		else
-			blob(
+			-- (a long shell set on its edge: a lozenge, faceted along its length)
+			trim(
 				m,
 				"Mussel",
+				Vector3.new(1.7, 0.6, 0.6) * s,
 				CFrame.new(hit + Vector3.new(0, 0.25 * s, 0))
-					* CFrame.Angles(rng:NextNumber(-0.3, 0.3), yaw, rng:NextNumber(-0.5, 0.5)),
-				Vector3.new(1.7, 0.6, 0.85) * s,
+					* CFrame.Angles(rng:NextNumber(-0.3, 0.3), yaw, rng:NextNumber(-0.5, 0.5))
+					* CFrame.Angles(math.pi / 4, 0, 0),
 				pick(COLORS.mussel)
 			)
 		end
@@ -1095,14 +1167,8 @@ local function worm(m: Instance, hit: Vector3, dir: Vector3, length: number, rad
 	local tip = foot + dir * length
 	rod(m, "Tube", foot, tip, radius, pick(COLORS.tube))
 	if rng:NextNumber() < 0.85 then
-		local plume = tip + dir * 0.5
-		blob(
-			m,
-			"Plume",
-			CFrame.lookAt(plume, plume + dir),
-			Vector3.new(radius * 2.9, radius * 2.9, 1.6 + radius * 1.4),
-			pick(COLORS.plume)
-		)
+		-- (a giant tube worm's plume: a red brush out of its tube's mouth)
+		rod(m, "Plume", tip - dir * 0.2, tip + dir * (1.2 + radius * 1.1), radius * 1.15, pick(COLORS.plume))
 	end
 	stats.worms += 1
 end
@@ -1216,7 +1282,7 @@ local function brinePool(parent: Instance, plan: VentsPlan.Plan)
 		local a = k * TAU / pieces + rng:NextNumber(-0.04, 0.04)
 		local d = radius + rng:NextNumber(0.2, 1)
 		local at = Vector3.new(c.X + math.cos(a) * d, y + 0.15, c.Z + math.sin(a) * d)
-		blob(
+		chip(
 			m,
 			"BrineCrust",
 			CFrame.lookAt(at, at + Vector3.new(-math.sin(a), 0, math.cos(a))),
@@ -1230,7 +1296,7 @@ local function brinePool(parent: Instance, plan: VentsPlan.Plan)
 		local hit = groundOf(c.X + math.cos(a) * d, c.Z + math.sin(a) * d)
 		if hit and math.abs(hit.Y - y) < 2 then
 			local size = rng:NextNumber(1, 2.2)
-			blob(
+			chip(
 				m,
 				"BrineNodule",
 				CFrame.new(hit) * CFrame.Angles(0, rng:NextNumber(0, TAU), 0),

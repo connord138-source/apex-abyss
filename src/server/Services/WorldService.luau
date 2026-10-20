@@ -789,17 +789,17 @@ local function ventSmoke(parent: Instance, chimney: { position: Vector3, height:
 	holder.CFrame = CFrame.new(top + Vector3.new(0, 4, 0))
 	holder.Parent = parent
 	-- The glowing throat: a light alone didn't read through the basin's water
-	-- (retest 2026-10-08: a chimney 45 studs off was only a silhouette)
+	-- (retest 2026-10-08: a chimney 45 studs off was only a silhouette). A hot disc set
+	-- level into the cap (owner, 2026-10-20: the Vents' balls "clearly placeholders")
 	local throat = Instance.new("Part")
 	throat.Name = "VentGlow"
 	throat.Anchored = true
 	throat.CanCollide = false
 	throat.CanQuery = false
 	throat.CanTouch = false
-	throat.Shape = Enum.PartType.Ball
-	throat.Size = Vector3.one * 5
-	-- Sitting in the cap, most of it above the rock
-	throat.CFrame = CFrame.new(top + Vector3.new(0, 1.2, 0))
+	throat.Shape = Enum.PartType.Cylinder
+	throat.Size = Vector3.new(1, 4.6, 4.6)
+	throat.CFrame = CFrame.new(top + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.pi / 2)
 	throat.Color = Color3.fromRGB(255, 112, 36)
 	throat.Material = Enum.Material.Neon
 	throat.Parent = parent
