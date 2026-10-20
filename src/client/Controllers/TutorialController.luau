@@ -47,6 +47,7 @@ local TutorialController = {}
 local gui: ScreenGui
 local panel: Frame
 local header: TextLabel
+local titleText: TextLabel
 local stepText: TextLabel
 local countText: TextLabel
 local fill: Frame
@@ -72,8 +73,14 @@ local TRAIL_DOTS = 9 -- lights between the fish and the target
 local TRAIL_NEAR = 14 -- studs: the trail goes out this close to the target
 local TRAIL_SPAN = 90 -- studs: the trail reaches this far ahead at most
 local SEARCH_RANGE = 420 -- studs: how far the guide looks for food or a shell
-local PANEL_HEIGHT = 194
-local PANEL_HEIGHT_TOUCH = 174 -- no cursor tip on a phone
+-- Bigger and bolder (owner, 2026-10-20: "tutorial needs to be more prominent its a
+-- bit small"): a headline with the goal, larger text, and the card drawn at
+-- CARD_SCALE (a little less on a phone's smaller screen); each step also opens with
+-- a banner in the middle of the screen (stepBanner)
+local PANEL_HEIGHT = 214
+local PANEL_HEIGHT_TOUCH = 196 -- no cursor tip on a phone
+local CARD_SCALE = 1.2
+local CARD_SCALE_TOUCH = 1.05
 
 -- A step done the moment it began (the Haul already full from the steps before:
 -- PC 2026-10-19, TU1) would flash past unseen, so the card still shows it, done,
@@ -453,12 +460,22 @@ end
 -- step's target) sits right under the header, clear of the swim stick's resting
 -- ring at the screen's lower left, which lay over it (PC 2026-10-19: "21 ft to the
 -- nearest exit"); the cursor tip is for a mouse, so a phone's card is shorter.
+local function cardScale(): number
+	return if shownDevice == "touch" then CARD_SCALE_TOUCH else CARD_SCALE
+end
+
 local function layoutCard()
 	local touch = shownDevice == "touch"
-	local guideY = if touch then 30 else 143
+	local guideY = if touch then 30 else 160
 	panel.Size = UDim2.fromOffset(300, if touch then PANEL_HEIGHT_TOUCH else PANEL_HEIGHT)
-	stepText.Position = UDim2.fromOffset(14, if touch then 48 else 28)
-	capsRow.Position = UDim2.fromOffset(14, if touch then 108 else 88)
+	titleText.Position = UDim2.fromOffset(14, if touch then 48 else 28)
+	stepText.Position = UDim2.fromOffset(14, if touch then 74 else 54)
+	capsRow.Position = UDim2.fromOffset(14, if touch then 128 else 106)
+	tipLine.Position = UDim2.fromOffset(14, guideY + 19)
+	local scaler = panel:FindFirstChildOfClass("UIScale")
+	if scaler then
+		scaler.Scale = cardScale()
+	end
 	guideArrow.Position = UDim2.fromOffset(23, guideY + 8)
 	guideLine.Position = UDim2.fromOffset(36, guideY)
 	tipLine.Visible = not touch
@@ -518,15 +535,67 @@ local function cursorTip(): string
 	return "Tap ALT to free the cursor for buttons and menus · ALT again to swim"
 end
 
+-- Each new step opens with its goal in the middle of the screen for a few seconds
+-- (waiting its turn behind the bank's growth sequence or another banner)
+local function stepBanner(index: number, step: TutorialConfig.Step)
+	Ui.stageBanner("tutorialStep", 3.2, 0.5, function()
+		local holder = Instance.new("Frame")
+		holder.Name = "TutorialStepBanner"
+		holder.AnchorPoint = Vector2.new(0.5, 0.5)
+		holder.Position = UDim2.fromScale(0.5, 0.3)
+		holder.Size = UDim2.fromOffset(760, 96)
+		holder.BackgroundTransparency = 1
+		local scale = Instance.new("UIScale")
+		scale.Scale = 0.7
+		scale.Parent = holder
+		local over = Ui.label(
+			holder,
+			"Over",
+			`TUTORIAL · STEP {index} OF {#Tutorial.steps}`,
+			Ui.FONT_BOLD,
+			20,
+			Ui.color.accent,
+			UDim2.new(1, 0, 0, 24)
+		)
+		over.TextXAlignment = Enum.TextXAlignment.Center
+		over.TextStrokeTransparency = 0.6
+		local title = Ui.label(
+			holder,
+			"Title",
+			step.title,
+			Ui.FONT_HEAVY,
+			44,
+			Ui.color.text,
+			UDim2.new(1, 0, 0, 52),
+			UDim2.fromOffset(0, 28)
+		)
+		title.TextXAlignment = Enum.TextXAlignment.Center
+		title.TextStrokeTransparency = 0.45
+		holder.Parent = gui
+		Ui.tween(scale, 0.45, { Scale = 1 }, Enum.EasingStyle.Back)
+		return function(quick: boolean)
+			local seconds = if quick then 0.2 else 0.5
+			Ui.tween(over, seconds, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			Ui.tween(title, seconds, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			task.delay(seconds + 0.05, function()
+				holder:Destroy()
+			end)
+		end
+	end)
+end
+
 -- The card turns to another step (or to a step shown done): a little bounce so it's
 -- noticed, and its keys; the trail or ring only for the step being played
 local function newCard(index: number, step: TutorialConfig.Step, done: boolean)
 	if shownStep ~= 0 then
 		local bounce = panel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 		bounce.Parent = panel
-		bounce.Scale = 1.08
-		Ui.tween(bounce, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+		bounce.Scale = cardScale() * 1.08
+		Ui.tween(bounce, 0.4, { Scale = cardScale() }, Enum.EasingStyle.Back)
 		Sfx.play("Banner", { volume = 0.3 })
+	end
+	if not done and shownStep ~= index then
+		stepBanner(index, step)
 	end
 	shownStep = index
 	shownRecap = done
@@ -564,6 +633,7 @@ local function drawRecap(index: number, s: { [string]: any })
 		newCard(index, step, true)
 	end
 	header.Text = `TUTORIAL · STEP {index} OF {#Tutorial.steps}`
+	titleText.Text = step.title
 	stepText.Text = recapNote(step, s)
 	stepText.TextColor3 = Ui.color.haul
 	countText.Text = "DONE ✓"
@@ -584,9 +654,10 @@ local function drawLive(s: { [string]: any })
 		liveShownAt = os.clock()
 	end
 	header.Text = `TUTORIAL · STEP {index} OF {#Tutorial.steps}`
+	titleText.Text = step.title
 	stepText.Text = step.text
 	stepText.TextColor3 = Ui.color.text
-	countText.TextColor3 = Ui.color.muted
+	countText.TextColor3 = Ui.color.accent
 	local progress = math.min(tutorial.progress or 0, step.goal)
 	if step.event == "haul" then
 		-- The Haul against its target, as food like the Haul card (Size.haulShown; the
@@ -770,6 +841,9 @@ function TutorialController.start()
 	gui = Ui.screen("Tutorial", Players.LocalPlayer:WaitForChild("PlayerGui"), 7)
 	panel = Ui.panel(gui, "Tutorial", UDim2.fromOffset(300, PANEL_HEIGHT), UDim2.fromOffset(18, 262))
 	Ui.belowTopBar(gui, panel, 262)
+	local scaler = Instance.new("UIScale")
+	scaler.Scale = CARD_SCALE
+	scaler.Parent = panel
 	local stroke = panel:FindFirstChildOfClass("UIStroke")
 	if stroke then
 		stroke.Color = Ui.color.accent
@@ -785,6 +859,20 @@ function TutorialController.start()
 		UDim2.new(1, -28, 0, 16),
 		UDim2.fromOffset(14, 10)
 	)
+	titleText = Ui.label(
+		panel,
+		"Title",
+		"",
+		Ui.FONT_HEAVY,
+		21,
+		Ui.color.text,
+		UDim2.new(1, -28, 0, 24),
+		UDim2.fromOffset(14, 28)
+	)
+	titleText.TextScaled = true
+	local titleSize = Instance.new("UITextSizeConstraint")
+	titleSize.MaxTextSize = 21
+	titleSize.Parent = titleText
 	stepText = Ui.label(
 		panel,
 		"Step",
@@ -792,8 +880,8 @@ function TutorialController.start()
 		Ui.FONT_SEMI,
 		14,
 		Ui.color.text,
-		UDim2.new(1, -28, 0, 56),
-		UDim2.fromOffset(14, 28)
+		UDim2.new(1, -28, 0, 48),
+		UDim2.fromOffset(14, 54)
 	)
 	stepText.TextWrapped = true
 	stepText.TextYAlignment = Enum.TextYAlignment.Top
@@ -801,11 +889,11 @@ function TutorialController.start()
 		panel,
 		"Count",
 		"",
-		Ui.FONT_BOLD,
-		12,
-		Ui.color.muted,
-		UDim2.fromOffset(120, 14),
-		UDim2.new(1, -134, 0, 10)
+		Ui.FONT_HEAVY,
+		16,
+		Ui.color.accent,
+		UDim2.fromOffset(130, 18),
+		UDim2.new(1, -144, 0, 8)
 	)
 	countText.TextXAlignment = Enum.TextXAlignment.Right
 	capsRow = Instance.new("Frame")

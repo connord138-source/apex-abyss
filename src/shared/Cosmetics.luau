@@ -814,6 +814,20 @@ local SHEEN_FACES = {
 	Enum.NormalId.Back,
 }
 
+-- A window's pattern holds still on screen (Config/Shades `window`): each face's
+-- texture slides against the part's movement relative to the camera. The texture's
+-- right and down on each face in the part's own axes, as Hatch & Snatch measured them
+-- for its Galaxy finish (CreatureAnimator SKY_AXES; the top face's entry negated
+-- there to match); the bottom mirrors the top.
+local WINDOW_AXES: { [Enum.NormalId]: { Vector3 } } = {
+	[Enum.NormalId.Front] = { Vector3.new(-1, 0, 0), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Back] = { Vector3.new(1, 0, 0), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Right] = { Vector3.new(0, 0, -1), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Left] = { Vector3.new(0, 0, 1), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Top] = { Vector3.new(-1, 0, 0), Vector3.new(0, 0, -1) },
+	[Enum.NormalId.Bottom] = { Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1) },
+}
+
 -- The face of `part` the fish's head points out of (`forward` in the part's own frame)
 local function headFace(part: BasePart, forward: Vector3): Enum.NormalId
 	local own = part.CFrame:VectorToObjectSpace(forward)
@@ -1353,7 +1367,28 @@ function Cosmetics.animate(body: Model, shadeId: string?, t: number)
 		SkinFx.step(state.fx, body, t + state.phase)
 	end
 	local sheen = shade.sheen
-	if state and sheen and #state.sheens > 0 then
+	if state and sheen and sheen.window and #state.sheens > 0 then
+		-- A window: the pattern holds still on screen while the fish moves through
+		-- it, and drifts slowly so it moves on a still fish too
+		local drawn = body:GetAttribute("Applied")
+		local studs = sheen.tile * (if typeof(drawn) == "number" then drawn else 2)
+		local camera = workspace.CurrentCamera
+		local eye = if camera then camera.CFrame.Position else Vector3.zero
+		local drift = (t + state.phase) * (sheen.drift or 0) * studs
+		for _, layer in state.sheens do
+			if layer.StudsPerTileU ~= studs then
+				layer.StudsPerTileU = studs
+				layer.StudsPerTileV = studs
+			end
+			local part = layer.Parent
+			local axes = WINDOW_AXES[layer.Face]
+			if part and part:IsA("BasePart") and axes then
+				local relative = part.CFrame:VectorToObjectSpace(part.Position - eye)
+				layer.OffsetStudsU = relative:Dot(axes[1]) + drift
+				layer.OffsetStudsV = relative:Dot(axes[2]) + drift * 0.6
+			end
+		end
+	elseif state and sheen and #state.sheens > 0 then
 		-- The moving layer: slides along the body (U on the side faces) and drifts
 		-- across it, one tile every 1/speed seconds, sized to the fish as it grows
 		local drawn = body:GetAttribute("Applied")

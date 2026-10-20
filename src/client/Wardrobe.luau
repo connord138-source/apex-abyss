@@ -220,6 +220,20 @@ end
 
 type TierInfo = { id: string, name: string, color: Color3, order: number }
 
+-- A locked thing's look, hidden (cards and the stage)
+local SILHOUETTE = Color3.fromRGB(10, 20, 30)
+
+-- A boost trail's wake drawn as a dark, hidden shape
+local function hideWake(frame: Instance)
+	for _, d in frame:GetDescendants() do
+		if d:IsA("Frame") then
+			d.BackgroundColor3 = Color3.fromRGB(34, 46, 58)
+		elseif d:IsA("UIGradient") then
+			d.Color = ColorSequence.new(Color3.fromRGB(34, 46, 58))
+		end
+	end
+end
+
 local function tierOf(id: string): TierInfo
 	return Tiers.byId[id] or Tiers.byId.Common
 end
@@ -300,8 +314,8 @@ local function hasTrail(shade: any): boolean
 	return false
 end
 
--- Every item of a tab, in the order it's shown: owned first, then by tier (rarest
--- first). Skins are this fish's own line and the ones every fish can have.
+-- Every item of a tab, in the order it's shown: by tier, Common first, owned first
+-- within a tier. Skins are this fish's own line and the ones every fish can have.
 local function itemsFor(tab: string, s: { [string]: any }, filter: string): ({ Item }, number, number)
 	local items: { Item } = {}
 	local current = s.species or Config.Species.STARTER
@@ -415,16 +429,18 @@ local function itemsFor(tab: string, s: { [string]: any }, filter: string): ({ I
 		end
 		items = kept
 	end
+	-- Common first, down to Mythic (owner, 2026-10-20: "skins should be listed from
+	-- common ascending down to mythic"); owned first within a tier
 	table.sort(items, function(a, b)
-		if a.has ~= b.has then
-			return a.has
-		end
 		if a.kind == "variant" and (a.order == 0) ~= (b.order == 0) then
 			return a.order == 0
 		end
 		local ta, tb = tierOf(a.tier).order, tierOf(b.tier).order
 		if ta ~= tb then
-			return ta > tb
+			return ta < tb
+		end
+		if a.has ~= b.has then
+			return a.has
 		end
 		if a.universal ~= b.universal then
 			return not a.universal
@@ -1135,7 +1151,10 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			variant = nonEmpty(equipped.variant),
 		}
 		local species: string? = nil
-		if item then
+		-- A locked thing isn't put on: the fish stands as a silhouette instead
+		local hidden = item ~= nil and not item.has and not item.elsewhere
+		preview.frame.ImageColor3 = if hidden then SILHOUETTE else Color3.new(1, 1, 1)
+		if item and not hidden then
 			if item.kind == "shade" then
 				dress.shade = item.id
 			elseif item.kind == "part" and item.slot then
@@ -1183,6 +1202,9 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			end
 			if item and item.kind == "trail" then
 				stageWake = wake(stage, item.record, 2, 14)
+				if hidden and stageWake then
+					hideWake(stageWake.frame)
+				end
 			end
 		end
 	end
@@ -1228,7 +1250,11 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 		if worn then
 			chipColor(stateChip, "✓ WORN", Ui.color.safe)
 		elseif not item.has then
-			chipColor(stateChip, "LOCKED · PREVIEW", MUTED)
+			chipColor(
+				stateChip,
+				if item.elsewhere then "ON ANOTHER FISH" else "LOCKED · UNLOCK TO SEE IT",
+				MUTED
+			)
 		elseif item.kind == "trail" then
 			chipColor(stateChip, "BOOST TRAIL", Ui.color.accent)
 		else
@@ -1439,11 +1465,7 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			made.frame.Position = UDim2.fromScale(-0.3, 0)
 			made.frame.Size = UDim2.fromScale(1.25, 1)
 			if not item.has then
-				for _, d in made.frame:GetDescendants() do
-					if d:IsA("Frame") then
-						d.BackgroundTransparency = math.min(1, d.BackgroundTransparency + 0.4)
-					end
-				end
+				hideWake(made.frame)
 			end
 		end
 		if not item.has then
@@ -1622,10 +1644,12 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 		)
 		if photo then
 			photo.ZIndex = 2
+			-- A locked one is a dark silhouette until it's unlocked (owner, 2026-10-20:
+			-- "the skin should be hidden until unlocked and not shown until then, but
+			-- they should still be able to see the name and description"); one this
+			-- player has on another fish is only dimmed
 			if not item.has then
-				photo.ImageColor3 = if item.elsewhere
-					then Color3.fromRGB(190, 196, 206)
-					else Color3.fromRGB(128, 138, 152)
+				photo.ImageColor3 = if item.elsewhere then Color3.fromRGB(190, 196, 206) else SILHOUETTE
 			end
 		end
 	end

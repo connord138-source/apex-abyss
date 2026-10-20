@@ -27,6 +27,12 @@ export type Sheen = {
 	transparency: number,
 	color: Color3?,
 	drift: number?, -- a slow slide across the body too (tiles a second)
+	-- A window (owner, 2026-10-20: "nebula should be moving across the shark. Each
+	-- fish should have a few skins that actually have movement similar to what we
+	-- discussed with the chowder skin style in hatch and snatch"): the pattern holds
+	-- still on screen and the fish swims through it, as Hatch & Snatch's Galaxy;
+	-- `drift` then slides it slowly across the screen too (Cosmetics.animate)
+	window: boolean?,
 }
 
 export type Shade = {
@@ -1365,6 +1371,61 @@ for id, set in FX do
 	shade.fxColor = set.color
 	shade.fxColor2 = set.color2
 	shade.fxLight = set.light
+end
+
+-- Window skins: three of each fish's top skins show a pattern that holds still on
+-- screen while the fish swims through it (Chowder's trick, Hatch & Snatch's Galaxy:
+-- `window` above). The image tiles over the body (`tile` × the fish's length), laid
+-- over the skin at `transparency` so its own pattern, eyes and glow still show
+-- through, in `color`; `drift` keeps it moving when the fish is still. A toothed
+-- fish's mouth face is left out (Cosmetics `headFace`).
+local function window(
+	texture: string,
+	color: Color3,
+	transparency: number,
+	tile: number,
+	drift: number
+): Sheen
+	return {
+		texture = texture,
+		speed = 0,
+		tile = tile,
+		transparency = transparency,
+		color = color,
+		drift = drift,
+		window = true,
+	}
+end
+local WINDOWS: { [string]: Sheen } = {
+	-- Nibbler: Diamond, Divine, Prismatic
+	Diamond = window("sheenFacets", C(220, 240, 255), 0.35, 0.7, 0.03),
+	Divine = window("sheenVeil", C(255, 236, 170), 0.3, 0.9, 0.05),
+	Prismatic = window("sheenPrismatic", C(255, 255, 255), 0.3, 0.8, 0.06),
+	-- 'Cuda: Chrome, Thunder, Comet
+	CudaChrome = window("sheenCurrent", C(200, 220, 240), 0.4, 0.8, 0.08),
+	Thunder = window("sheenBolt", C(170, 210, 255), 0.25, 0.8, 0.1),
+	CudaComet = window("stars", C(255, 255, 255), 0.3, 0.9, 0.04),
+	-- Pufferfish: Coral Bloom, Sunburst, Exotic
+	PufCoralBloom = window("sheenCaustic", C(255, 210, 180), 0.35, 0.8, 0.05),
+	PufSunburst = window("sheenGold", C(255, 220, 120), 0.3, 0.8, 0.05),
+	Exotic = window("sheenPrismatic", C(220, 255, 230), 0.35, 0.7, 0.05),
+	-- Moray: Magma, Jade, Void
+	Magma = window("sheenLava", C(255, 170, 90), 0.2, 0.7, 0.04),
+	MorJade = window("sheenCaustic", C(150, 255, 200), 0.35, 0.8, 0.05),
+	Void = window("stars", C(200, 170, 255), 0.25, 0.8, 0.03),
+	-- Reef Shark: Glacier, Aurora, Nebula
+	Glacier = window("sheenFacets", C(190, 235, 255), 0.35, 0.8, 0.03),
+	Aurora = window("sheenVeil", C(150, 255, 210), 0.3, 1.0, 0.06),
+	Nebula = window("stars", C(255, 220, 255), 0.2, 0.8, 0.04),
+	-- Anglerfish: Abyss Eye, Lantern King, Starfall
+	AngAbyssEye = window("sheenVeil", C(190, 160, 255), 0.35, 0.9, 0.04),
+	AngLanternKing = window("sheenGold", C(255, 210, 110), 0.35, 0.8, 0.05),
+	AngStarfall = window("stars", C(220, 230, 255), 0.25, 0.8, 0.05),
+}
+for id, look in WINDOWS do
+	local shade = byId[id]
+	assert(shade, `Config/Shades WINDOWS: no shade {id}`)
+	shade.sheen = look
 end
 
 -- Whether a fish of `speciesId` can have a skin: one of its own line, or one every

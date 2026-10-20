@@ -24,6 +24,7 @@ export type Control = {
 
 export type Step = {
 	id: string,
+	title: string, -- the goal in a few words, big on the card and the step's banner
 	text: string,
 	-- How many of `event` finish it ("haul": percent of the Haul target)
 	goal: number,
@@ -49,6 +50,7 @@ export type Step = {
 local steps: { Step } = {
 	{
 		id = "LeaveHub",
+		title = "SWIM OUT OF THE HUB",
 		text = "Swim out of your den, then follow the lights out of the hub: a tunnel or the hole in the roof",
 		goal = 1,
 		event = "leftHub",
@@ -62,6 +64,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Eat",
+		title = "EAT 10 SMALL THINGS",
 		text = "Swim into 10 small fish, shrimp or starfish. Smaller things are swallowed on touch, no button",
 		goal = 10,
 		event = "ate",
@@ -73,6 +76,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Shells",
+		title = "PICK UP 5 SHELLS",
 		text = "Pick up 5 shells from the seabed. Every 50 shells buys a roll for a new skin",
 		goal = 5,
 		event = "shells",
@@ -84,6 +88,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Haul",
+		title = "FILL YOUR HAUL",
 		text = "Keep eating to fill your Haul. It grows you now, but it's only yours for good once it's banked",
 		goal = 100,
 		event = "haul",
@@ -95,6 +100,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Bank",
+		title = "BANK IT AT HOME",
 		text = "Swim home through your den's door and into the glowing pool to bank your Haul. Watch yourself grow!",
 		goal = 1,
 		event = "banked",
@@ -107,6 +113,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Wheel",
+		title = "SPIN THE TREASURE WHEEL",
 		text = "Spin the Treasure Wheel on the plaza: here's a free spin! A new one comes every 4 hours",
 		goal = 1,
 		event = "spun",
@@ -118,6 +125,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Roll",
+		title = "ROLL FOR A NEW LOOK",
 		text = "Roll for a new look! Every 50 shells is a roll, and here are enough for your first",
 		goal = 1,
 		event = "rolled",
@@ -129,6 +137,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Wrap",
+		title = "USE A KELP WRAP",
 		text = "Health never comes back on its own. Use your Kelp Wrap from the item bar to heal",
 		goal = 1,
 		event = "item",
@@ -141,6 +150,7 @@ local steps: { Step } = {
 	},
 	{
 		id = "Index",
+		title = "OPEN THE INDEX",
 		text = "Open the INDEX. Its NEXT FOR YOU always shows what to do next",
 		goal = 1,
 		event = "index",
