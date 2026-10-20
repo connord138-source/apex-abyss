@@ -149,7 +149,7 @@ local kinds: { [string]: Kind } = {
 		biomes = { "CoralReef", "ShipwreckGraveyard", "KelpShallows", "SunkenRuins" },
 		perCell = 0, -- (round the coral heads found near the camera, not by square)
 		range = 75,
-		size = { 0.35, 0.6 },
+		size = { 0.55, 0.95 }, -- fry: smaller than any prey (a Minnow is ~1.2)
 		colors = {
 			Color3.fromRGB(250, 210, 40),
 			Color3.fromRGB(40, 120, 230),
@@ -182,6 +182,15 @@ return {
 	cloudCell = 22,
 	cloudScan = 1,
 	cloudFish = { 6, 12 },
+	-- The species a cloud is made of, by the biome it's in (their models from
+	-- PreyModels shrunk to fry size; part-built fish while one isn't imported)
+	cloudPrey = {
+		KelpShallows = { "Garibaldi", "Opaleye" },
+		CoralReef = { "BlueTang", "Butterflyfish" },
+		ShipwreckGraveyard = { "Butterflyfish", "BlueTang" },
+		SunkenRuins = { "BlueTang", "Butterflyfish" },
+		default = { "BlueTang" },
+	} :: { [string]: { string } },
 	-- The giants: `lanes` at a time, each crossing the Open Blue on a line `lane`
 	-- studs long over `period` seconds (the same on every client), seen only past
 	-- `near` (part-built shapes, read as silhouettes in the haze: the Open Blue's

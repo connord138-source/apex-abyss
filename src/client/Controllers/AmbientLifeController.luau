@@ -27,6 +27,7 @@
 -- fades away, and the giants hide while one is up. The folder `Workspace.AmbientLife`
 -- carries a readout for play tests: how many of each are built, and `PoseMs` / `Joints`
 -- (the posing's cost a frame, averaged over a second).
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -78,7 +79,10 @@ type Creature = {
 	tips: { Attachment }?,
 	tipRest: { Vector3 }?,
 	beams: { Beam }?,
-	fish: { { a: number, w: number, r: number, h: number } }?, -- a reef cloud's fish
+	-- a reef cloud's fish: where each circles, and its parts with their offsets from
+	-- the fish's own frame (a model's mesh, or a part-built body, tail and fin)
+	fish: { CloudFish }?,
+	startle: number, -- a reef cloud scattering from a fish swimming into it, 0–1
 	from: Vector3?, -- a giant's line
 	to: Vector3?,
 	giant: string?, -- "whale" | "manta"
@@ -91,6 +95,8 @@ type Creature = {
 	posedAt: number, -- when its joints last moved
 	motion: AmbientRigs.Motion,
 }
+
+type CloudFish = { a: number, w: number, r: number, h: number, parts: { BasePart }, offsets: { CFrame } }
 
 local AmbientLifeController = {}
 
@@ -167,6 +173,7 @@ local function newCreature(kind: string, key: number, home: Vector3, size: numbe
 		tipRest = nil,
 		beams = nil,
 		fish = nil,
+		startle = 0,
 		from = nil,
 		to = nil,
 		giant = nil,
@@ -610,6 +617,86 @@ end
 -- Reef-fish clouds: a handful of tiny bright fish circling and darting over a coral
 -- head (the corals near the camera, looked for every so often).
 
+-- The little fish a cloud is made of (owner, 2026-10-20: "little groups of fish or
+-- something that are just spheres"): a small reef species' own model shrunk to fry
+-- size (Config/Ambient `cloudPrey`, by biome; the rigged model faces -Z, its mesh
+-- moved with its bones), else a part-built one (body, tail and dorsal fin)
+type CloudProto = { model: Model, length: number }
+local cloudProtos: { [string]: CloudProto | false } = {}
+
+local function cloudProto(preyId: string): CloudProto?
+	local known = cloudProtos[preyId]
+	if known == false then
+		return nil
+	elseif known then
+		return known :: CloudProto
+	end
+	local models = ReplicatedStorage:FindFirstChild("PreyModels")
+	local template = models and models:FindFirstChild(preyId)
+	if
+		template == nil
+		or not template:IsA("Model")
+		or template:FindFirstChildWhichIsA("MeshPart", true) == nil
+	then
+		cloudProtos[preyId] = false
+		return nil
+	end
+	local clone = template:Clone()
+	for _, descendant in clone:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			descendant.CanTouch = false
+			descendant.CastShadow = false
+		end
+	end
+	clone:ScaleTo(1)
+	local proto = { model = clone, length = math.max(clone:GetExtentsSize().Z, 0.01) }
+	cloudProtos[preyId] = proto
+	return proto
+end
+
+local function cloudFish(
+	parent: Instance,
+	proto: CloudProto?,
+	size: number,
+	color: Color3
+): ({ BasePart }, { CFrame })
+	if proto then
+		local clone = proto.model:Clone()
+		clone:ScaleTo(size / proto.length)
+		local mesh = clone:FindFirstChildWhichIsA("MeshPart", true) :: MeshPart
+		local box = clone:GetBoundingBox()
+		local base = CFrame.new(box.Position) * clone:GetPivot().Rotation
+		local offset = base:ToObjectSpace(mesh.CFrame)
+		mesh.Parent = parent
+		clone:Destroy()
+		return { mesh }, { offset }
+	end
+	local body =
+		part(parent, Vector3.new(size * 0.32, size * 0.5, size * 0.8), color, Enum.Material.SmoothPlastic, 0)
+	local tail = Instance.new("WedgePart")
+	tail.Anchored = true
+	tail.CanCollide = false
+	tail.CanQuery = false
+	tail.CanTouch = false
+	tail.CastShadow = false
+	tail.Material = Enum.Material.SmoothPlastic
+	tail.Color = color:Lerp(Color3.new(0, 0, 0), 0.15)
+	tail.Size = Vector3.new(size * 0.04, size * 0.42, size * 0.3)
+	tail.Parent = parent
+	local fin = tail:Clone()
+	fin.Size = Vector3.new(size * 0.03, size * 0.18, size * 0.32)
+	fin.Parent = parent
+	-- (-Z is ahead: the tail behind the body, its wedge's slope facing back; the fin on top)
+	return { body, tail, fin }, {
+		CFrame.identity,
+		CFrame.new(0, 0, size * 0.52) * CFrame.Angles(0, math.pi, 0),
+		CFrame.new(0, size * 0.27, size * 0.05),
+	}
+end
+
 local function makeCloud(key: number, top: Vector3): Creature
 	local kind = KINDS.cloud
 	local rng = Random.new(key)
@@ -618,26 +705,25 @@ local function makeCloud(key: number, top: Vector3): Creature
 	local main = kind.colors[rng:NextInteger(1, #kind.colors)]
 	local fishSize = rng:NextNumber(kind.size[1], kind.size[2])
 	local count = rng:NextInteger(Ambient.cloudFish[1], Ambient.cloudFish[2])
-	local fish = {}
+	-- One species a cloud, from the biome it's in
+	local biome = Biomes.at(center)
+	local species = Ambient.cloudPrey[if biome then biome.id else ""] or Ambient.cloudPrey.default
+	local proto = cloudProto(species[rng:NextInteger(1, #species)])
+	local fish: { CloudFish } = {}
 	local pieces: { BasePart } = {}
 	for _ = 1, count do
 		local color = if rng:NextNumber() < 0.75 then main else kind.colors[rng:NextInteger(1, #kind.colors)]
-		local size = fishSize * rng:NextNumber(0.8, 1.2)
-		table.insert(
-			pieces,
-			part(
-				creature.model,
-				Vector3.new(size * 0.35, size * 0.55, size),
-				color,
-				Enum.Material.SmoothPlastic,
-				0
-			)
-		)
+		local parts, offsets = cloudFish(creature.model, proto, fishSize * rng:NextNumber(0.8, 1.2), color)
+		for _, piece in parts do
+			table.insert(pieces, piece)
+		end
 		table.insert(fish, {
 			a = rng:NextNumber(0, 2 * math.pi),
 			w = rng:NextNumber(0.6, 1.3) * (if rng:NextNumber() < 0.5 then -1 else 1),
 			r = rng:NextNumber(0.35, 1),
 			h = rng:NextNumber(-0.5, 0.5),
+			parts = parts,
+			offsets = offsets,
 		})
 	end
 	creature.fish = fish
@@ -645,21 +731,32 @@ local function makeCloud(key: number, top: Vector3): Creature
 	return creature
 end
 
-local function poseCloud(creature: Creature, t: number)
+-- A cloud scatters when a fish swims into it: wider and quicker for a few seconds
+local STARTLE_REACH = 7 -- studs past the cloud's own size
+local lastCloudAt = 0
+
+local function poseCloud(creature: Creature, t: number, fishAt: Vector3?)
 	local fish = creature.fish
 	if fish == nil then
 		return
 	end
 	local center = creature.home
-	local radius = creature.size
-	for i, f in fish do
-		local a = f.a + f.w * t
+	local dt = math.clamp(t - lastCloudAt, 0, 0.1)
+	local near = fishAt ~= nil and (fishAt - center).Magnitude < creature.size + STARTLE_REACH
+	creature.startle = math.clamp(creature.startle + (if near then dt * 4 else -dt * 0.6), 0, 1)
+	local spread = 1 + 1.4 * creature.startle
+	local radius = creature.size * spread
+	for _, f in fish do
+		local a = f.a + f.w * (t + creature.startle * 1.5)
 		local r = radius * f.r * (1 + 0.25 * math.sin(t * 0.7 + f.a * 3))
 		local at = center
 			+ Vector3.new(math.cos(a) * r, (f.h + math.sin(t * 1.3 + f.a) * 0.25) * radius, math.sin(a) * r)
 		local heading = Vector3.new(-math.sin(a), 0, math.cos(a)) * math.sign(f.w)
-		table.insert(moveParts, creature.parts[i])
-		table.insert(moveFrames, CFrame.lookAt(at, at + heading))
+		local frame = CFrame.lookAt(at, at + heading)
+		for i, piece in f.parts do
+			table.insert(moveParts, piece)
+			table.insert(moveFrames, frame * f.offsets[i])
+		end
 	end
 end
 
@@ -899,6 +996,9 @@ local function step(dt: number)
 		poseTime, poseFrames, jointsPosed = 0, 0, 0
 	end
 	local started = os.clock()
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local fishAt = if root and root:IsA("BasePart") then root.Position else nil
 	table.clear(moveParts)
 	table.clear(moveFrames)
 	table.clear(posing)
@@ -938,7 +1038,7 @@ local function step(dt: number)
 		if id == "jelly" then
 			poseJelly(creature, now, at, away)
 		elseif id == "cloud" then
-			poseCloud(creature, now)
+			poseCloud(creature, now, fishAt)
 		elseif creature.body then
 			table.insert(posing, {
 				creature = creature,
@@ -950,6 +1050,7 @@ local function step(dt: number)
 			})
 		end
 	end
+	lastCloudAt = now
 	-- The bodies: joints nearest first within the budget, every one moved
 	table.sort(posing, function(a, b)
 		return a.away < b.away
