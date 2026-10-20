@@ -93,6 +93,7 @@ local REQUESTS: { [string]: number } = {
 	WatchAd = 3, -- () a rewarded video ad (its reward: Double Haul on a small Haul)
 	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
 	TutorialSaw = 1, -- ("Index") the tutorial's last step: the INDEX was opened
+	Companion = 1, -- ("turtle" | "ray") a sea turtle joined us, or we flushed a resting ray (Config/Companions)
 	StartShot = 1.5, -- (shotIndex, schoolIndex) the start screen's next shot: stream its water in (StartService)
 	StartDone = 1, -- () dived in from the start screen
 }

@@ -40,6 +40,8 @@ local Timing = require(ReplicatedStorage.Shared.Timing)
 local AmbientBody = require(script.Parent.Parent.AmbientBody)
 local BossController = require(script.Parent.BossController)
 local SchoolController = require(script.Parent.SchoolController)
+local SwimController = require(script.Parent.SwimController)
+local ClientState = require(script.Parent.Parent.ClientState)
 
 local Ambient = Config.Ambient
 local World = Config.World
@@ -51,6 +53,20 @@ local CELL = Ambient.CELL
 local SQUARE_KINDS = { "jelly", "ray", "manta", "turtle" }
 local SALT: { [string]: number } = { jelly = 1, ray = 2, turtle = 4, cloud = 5, giant = 6, manta = 7 }
 local HUB_CLEAR = 210 -- studs from the hub's middle: its seamount, no life laid out
+-- Sea life that helps (Config/Companions; CompanionService checks and pays, and
+-- CompanionController draws a turtle at an escorted fish's side): a turtle we've swum
+-- beside since `turtleSince` (its key `turtleKey`), the one swimming with us now (its
+-- loop's copy hidden meanwhile), when another may join or a ray be flushed, and each
+-- flushed ray (key → when: it bursts off the sand and is gone from our view a while)
+local Companions = Config.Companions
+local INTERACT = 140 -- studs from the camera within which they notice our fish
+local RAY_BURST = 1.2 -- seconds a flushed ray takes to burst away and fade
+local turtleKey: number? = nil
+local turtleSince = 0
+local escortKey: number? = nil
+local turtleAgain = 0
+local rayAgain = 0
+local flushed: { [number]: number } = {}
 local FADE_SHARE = 0.2 -- the last share of a range a creature fades over
 local REFRESH = 0.4 -- seconds between looks at which squares should be built
 local SPAWN_BUDGET = 0.002 -- seconds a refresh may spend building squares
@@ -963,6 +979,60 @@ local function centerOf(creature: Creature, t: number): Vector3
 	return (frameOf(creature, t)).Position
 end
 
+-- What a turtle, manta or ray near the camera does with our fish this frame (Config/
+-- Companions): a turtle we've stayed beside long enough joins us, a manta's wake
+-- carries us, and a ray resting on the sand bursts away from a fish skimming over it
+local fishVelocity = Vector3.zero
+local draft = false
+local sawTurtle = false
+local function interact(creature: Creature, frame: CFrame, settled: number, fishAt: Vector3, now: number)
+	local kind = creature.kind
+	local offset = fishAt - frame.Position
+	if kind == "turtle" then
+		local tune = Companions.turtle
+		if escortKey or offset.Magnitude > creature.size * tune.reach then
+			return
+		end
+		sawTurtle = true
+		if turtleKey ~= creature.key then
+			turtleKey, turtleSince = creature.key, now
+		elseif now - turtleSince >= tune.join and now >= turtleAgain then
+			turtleAgain = now + tune.lasts + tune.cooldown
+			escortKey = creature.key
+			ClientState.request("Companion", "turtle")
+		end
+	elseif kind == "manta" then
+		local tune = Companions.manta
+		local look = frame.LookVector
+		local along = offset:Dot(look)
+		local span = creature.size
+		if
+			along < 0
+			and -along < span * tune.behind
+			and (offset - look * along).Magnitude < span * tune.width
+			and fishVelocity.Magnitude > 2
+			and fishVelocity.Unit:Dot(look) > tune.align
+		then
+			draft = true
+		end
+	elseif kind == "ray" then
+		local tune = Companions.ray
+		if settled < 0.85 or now < rayAgain or flushed[creature.key] then
+			return
+		end
+		local flat = Vector2.new(offset.X, offset.Z).Magnitude
+		if flat <= creature.size * tune.reach and offset.Y > -2 and offset.Y <= tune.over then
+			rayAgain = now + tune.cooldown
+			flushed[creature.key] = now
+			local puff = creature.puff
+			if puff then
+				puff:Emit(40)
+			end
+			ClientState.request("Companion", "ray")
+		end
+	end
+end
+
 type Posing = { creature: Creature, away: number, frame: CFrame, rate: number, settled: number, since: number }
 local posing: { Posing } = {}
 
@@ -999,6 +1069,14 @@ local function step(dt: number)
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local fishAt = if root and root:IsA("BasePart") then root.Position else nil
+	fishVelocity = if root and root:IsA("BasePart") then root.AssemblyLinearVelocity else Vector3.zero
+	draft = false
+	sawTurtle = false
+	-- The turtle swimming with us: until the server's `Escort` runs out
+	local escort = if character then character:GetAttribute("Escort") else nil
+	if escortKey and not (typeof(escort) == "number" and escort > now) then
+		escortKey = nil
+	end
 	table.clear(moveParts)
 	table.clear(moveFrames)
 	table.clear(posing)
@@ -1016,6 +1094,32 @@ local function step(dt: number)
 		end
 		local away = (at - camera).Magnitude
 		local fade = 0
+		-- A flushed ray bursts up off the sand and away, then stays gone a while
+		local flushedAt = if creature.kind == "ray" then flushed[creature.key] else nil
+		if flushedAt then
+			local elapsed = now - flushedAt
+			if elapsed >= Companions.ray.hidden + RAY_BURST then
+				flushed[creature.key] = nil
+			elseif elapsed >= Companions.ray.hidden then
+				fade = 1 - (elapsed - Companions.ray.hidden) / RAY_BURST -- (back, fading in)
+			elseif elapsed < RAY_BURST then
+				local u = elapsed / RAY_BURST
+				frame = (frame + frame.LookVector * (u * u * 22) + Vector3.new(0, u * 5, 0))
+					* CFrame.Angles(-u * 0.5, 0, 0)
+				at = frame.Position
+				settled, since = 0, -1
+				fade = u
+			else
+				fade = 1
+			end
+		end
+		-- The turtle swimming with us is drawn at our side (CompanionController), not here
+		if creature.kind == "turtle" and creature.key == escortKey then
+			fade = 1
+		end
+		if fishAt and creature.body and away < INTERACT and fade < 1 then
+			interact(creature, frame, settled, fishAt, now)
+		end
 		if away > range * (1 - FADE_SHARE) then
 			fade = (away - range * (1 - FADE_SHARE)) / (range * FADE_SHARE)
 		end
@@ -1051,6 +1155,11 @@ local function step(dt: number)
 		end
 	end
 	lastCloudAt = now
+	if not sawTurtle then
+		turtleKey = nil
+	end
+	-- A manta's draft (SwimController takes it like a podmate's slipstream)
+	SwimController.draft = draft
 	-- The bodies: joints nearest first within the budget, every one moved
 	table.sort(posing, function(a, b)
 		return a.away < b.away

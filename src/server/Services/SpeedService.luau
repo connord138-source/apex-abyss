@@ -3,7 +3,8 @@
 -- server-side speed checks"). Each fish runs on its owner's client, so an exploiter
 -- could move theirs faster than any fish can swim. Every second this compares how
 -- far each fish moved with the most it could (its top speed with Strong Fins, its
--- species, a Dash the whole time and a podmate's slipstream, plus generous slack);
+-- species, a Dash the whole time and a podmate's slipstream or a manta's draft, plus
+-- generous slack);
 -- three strikes in 30 s writes a warning to the Output with the numbers, so false
 -- positives can be found in testing before anything is enforced. Moves the server
 -- made (a teleport, a respawn, a creature's shove) reset the baseline.
@@ -47,7 +48,8 @@ local function fastest(player: Player, length: number): number
 		* species
 		* sense
 		* swim.boostMultiplier
-		* Config.Pvp.pods.slipstream.speed
+		-- (the faster of a podmate's slipstream and a manta's draft, Config/Companions)
+		* math.max(Config.Pvp.pods.slipstream.speed, Config.Companions.manta.speed)
 end
 
 function SpeedService.start()

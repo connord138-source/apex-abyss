@@ -37,6 +37,7 @@ local SwimController = {
 	velocity = Vector3.zero,
 	boosting = false, -- mid-Dash
 	slipstream = false, -- in a podmate's slipstream (faster)
+	draft = false, -- in a manta's wake (faster; AmbientLifeController sets it, Config/Companions)
 	dashCharge = 1, -- 0..1; the Dash is ready at 1
 	-- Held still (a Moray's Burrow, AbilityController): no swimming until it's let go
 	pinned = false,
@@ -446,8 +447,12 @@ local function step(dt: number)
 	-- A podmate's slipstream: close behind one swimming the same way is faster
 	-- (Config/Pvp `pods.slipstream`)
 	SwimController.slipstream = slipstreamOf(currentRoot)
-	if SwimController.slipstream then
-		top *= Config.Pvp.pods.slipstream.speed
+	if SwimController.slipstream or SwimController.draft then
+		-- (a manta's draft and a podmate's slipstream don't add up: the faster wins)
+		top *= math.max(
+			if SwimController.slipstream then Config.Pvp.pods.slipstream.speed else 1,
+			if SwimController.draft then Config.Companions.manta.speed else 1
+		)
 	end
 	-- Indoors (the hub's cavern, its tunnels and the dens) the biggest fish keep to
 	-- `indoorSpeed`: at 83 studs/s a LV 100 fish crossed its 60-stud Nook in 0.7 s

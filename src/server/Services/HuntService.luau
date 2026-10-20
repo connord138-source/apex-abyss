@@ -96,6 +96,17 @@ local function liveLength(player: Player): number?
 end
 
 -- The species' max health in bite fights.
+-- How much a bite hurts a fish with a sea turtle at its side (Config/Companions:
+-- CompanionService sets the character's `Escort`, the clock it leaves at)
+local PRESSURE = "the crushing deep" -- (PressureService's source: no turtle helps there)
+local function escortScale(character: Model): number
+	local escort = character:GetAttribute("Escort")
+	if typeof(escort) == "number" and escort > Timing.clock() then
+		return Config.Companions.turtle.bite
+	end
+	return 1
+end
+
 local function maxHealth(player: Player): number
 	local data = DataService.get(player)
 	return hunt.health * (if data then Progress.species(data).stats.health else 1)
@@ -565,6 +576,9 @@ local function onBite(player: Player, userId: any)
 		damage *= abilities.PuffUp.damageTaken or 0.5
 		HuntService.damage(player, abilities.PuffUp.recoil or 0.1, "spines")
 	end
+	if victim then
+		damage *= escortScale(victim)
+	end
 	targetSession.health -= damage
 	targetSession.lastHitAt = now
 	Net.hit(player, target, damage)
@@ -817,7 +831,9 @@ function HuntService.damage(player: Player, fraction: number, source: string, qu
 	if session == nil or character == nil or not session.alive or isSafe(session, Timing.clock()) then
 		return
 	end
-	local amount = maxHealth(player) * fraction
+	-- (a turtle at its side takes the edge off a bite, never off the crushing deep)
+	local scale = if source == PRESSURE then 1 else escortScale(character)
+	local amount = maxHealth(player) * fraction * scale
 	session.health -= amount
 	session.lastHitAt = Timing.clock()
 	character:SetAttribute("Health", math.max(session.health, 0))

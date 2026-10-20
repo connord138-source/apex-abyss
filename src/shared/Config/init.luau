@@ -41,4 +41,5 @@ return {
 	Ruins = require(script.Ruins),
 	Ambient = require(script.Ambient),
 	Start = require(script.Start),
+	Companions = require(script.Companions),
 }
