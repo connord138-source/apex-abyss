@@ -11,6 +11,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Bubbles = require(script.Parent.Parent.Bubbles)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
@@ -24,6 +25,10 @@ local hunt = Config.Tuning.hunt
 local HuntController = {
 	-- (damage) — we were bitten
 	bitten = Signal.new(),
+	-- (landed) — our own bite: false as the jaws snap, true when one lands on a fish
+	-- or a creature (owner, 2026-10-20: "biting also needs a sound queue or something
+	-- to let the player know they are biting"; HudController draws the jaws)
+	snapped = Signal.new(),
 }
 
 local lastEatTry: { [number]: number } = {}
@@ -148,7 +153,19 @@ local function onBite()
 	if not SwimController.lunge(target ~= nil) then
 		return
 	end
-	Sfx.play("Snap", { volume = 0.35, pitch = math.clamp(1.3 - length * 0.03, 0.6, 1.3) })
+	-- Heard and seen every time: a sharp snap (it was 0.35, lost under the music), a
+	-- puff of bubbles at the mouth, a nudge of the camera and the jaws at the screen's
+	-- middle; a bite that lands adds the crunch (onHit, onPredatorHit)
+	Sfx.play(
+		"Snap",
+		{ volume = 0.9, pitch = math.clamp(1.3 - length * 0.03, 0.6, 1.3) * (0.94 + math.random() * 0.12) }
+	)
+	local root = SwimController.root()
+	if root then
+		Bubbles.burst(root.CFrame:PointToWorldSpace(Size.mouthOffset(length)), length * 0.35, 6)
+	end
+	CameraController.kick(0.1)
+	HuntController.snapped:fire(false)
 	if target then
 		target()
 	end
@@ -206,7 +223,8 @@ local function onHit(attackerId: number, victimId: number, damage: number)
 	if victim == Players.LocalPlayer and damage > 0 then
 		Sfx.play("Hurt", { volume = 0.8 })
 	elseif attacker == Players.LocalPlayer then
-		Sfx.play(if damage < 0 then "Chomp" else "Bite", { volume = 0.75 })
+		Sfx.play(if damage < 0 then "Chomp" else "Bite", { volume = 0.85 })
+		HuntController.snapped:fire(true)
 	end
 	if victim == Players.LocalPlayer then
 		CameraController.kick(if damage < 0 then 1 else math.clamp(damage / hunt.biteDamage, 0.2, 0.8))
@@ -223,6 +241,11 @@ function HuntController.start()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local hit = remotes:WaitForChild("Hit") :: RemoteEvent
 	hit.OnClientEvent:Connect(onHit)
+	-- Our bite landing on a predator or a boss: the crunch and the jaws, as on a fish
+	PredatorController.hit:connect(function()
+		Sfx.play("Bite", { volume = 0.85, pitch = 0.95 + math.random() * 0.1 })
+		HuntController.snapped:fire(true)
+	end)
 	local accumulator = 0
 	RunService.Heartbeat:Connect(function(dt)
 		accumulator += dt

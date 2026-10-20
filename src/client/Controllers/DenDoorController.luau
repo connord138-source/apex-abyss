@@ -20,6 +20,7 @@
 -- paving in front of it, and YOUR DEN floats over its nameplate (boxless, like the
 -- tutorial's markers), seen across the plaza. The doorway's style (Config/Dens
 -- `doors`, bought in the den menu) makes it stand out to everyone too.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -46,7 +47,14 @@ local SETTLE = 0.6 -- the place must be there this long (Terrain meshes after it
 -- already pass), and meshes it finely only 1.5–3.6 s after arriving (PC 2026-10-18,
 -- LD2); 5 s since the owner's "needs to wait a touch longer for the map to fully
 -- develop" (2026-10-18), the words and a tip showing all the while
-local SETTLE_HUB = 5
+local SETTLE_HUB = 3.5
+-- ...and only once nearly every part of the hub has streamed in (World.Hub
+-- `PlazaParts`, Layout.hubParts) and the meshes and textures they asked for have
+-- loaded (ContentProvider's queue nearly empty): the owner's "the loading screen back
+-- to the hub from the den ends before the hub finishes loading" (2026-10-20), after
+-- the rock-and-doorway check alone let the plaza's stalls, lamps and dressing pop in
+local HUB_SHARE = 0.96
+local QUEUE_LEFT = 4
 local PRESTREAM_REACH = 36 -- studs from a portal at which the far side is asked for
 local COOLDOWN = 1.2 -- after a move, before another portal takes the fish
 
@@ -58,6 +66,32 @@ local prestreamAt = 0
 local wash: Frame
 local loading: TextLabel
 local tipLabel: TextLabel
+
+-- Whether the hub has arrived on this client: its parts (counted at most every
+-- 0.3 s) and the assets they load
+local countedAt, counted = 0, 0
+local function hubLoaded(hub: Instance): boolean
+	local want = hub:GetAttribute("PlazaParts")
+	if typeof(want) ~= "number" or want <= 0 then
+		return true
+	end
+	if os.clock() - countedAt > 0.3 then
+		countedAt = os.clock()
+		counted = Layout.hubParts(hub)
+	end
+	return counted >= want * HUB_SHARE and ContentProvider.RequestQueueSize <= QUEUE_LEFT
+end
+
+-- How much of the hub is here, 0–1, for the loading words
+local function hubShare(): number
+	local world = workspace:FindFirstChild("World")
+	local hub = world and world:FindFirstChild("Hub")
+	local want = hub and hub:GetAttribute("PlazaParts")
+	if typeof(want) ~= "number" or want <= 0 then
+		return 1
+	end
+	return math.clamp(counted / (want * HUB_SHARE), 0, 1)
+end
 
 -- Whether the place round the fish has streamed in: rock under it and round it,
 -- and (for the plaza) the doorway it came out of
@@ -77,6 +111,9 @@ local function arrivedAt(door: number?): boolean
 		-- and its lanterns' lights: the doorway and the rock round it showed dim blue
 		-- for ~0.5–1 s after the wash cleared while they streamed in (PC 2026-10-17, LD1)
 		if doorway:GetAttribute("Owner") ~= nil and doorway:FindFirstChildWhichIsA("Light", true) == nil then
+			return false
+		end
+		if not hubLoaded(hub :: Instance) then
 			return false
 		end
 	end
@@ -182,6 +219,9 @@ local function go(request: string, index: number?)
 			end
 			if shown and math.random() < 0.02 then
 				bubbles()
+			end
+			if door then
+				loading.Text = `SWIMMING OUT TO THE HUB · {math.floor(hubShare() * 100)}%`
 			end
 			task.wait(0.05)
 		end

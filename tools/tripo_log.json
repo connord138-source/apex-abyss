@@ -1025,6 +1025,33 @@
   "task_id": "02d4f3ee-392f-454e-b6a1-3986320d37ff",
   "type": "generate_image"
  },
+ "marketing/CommunityA": {
+  "credits": 10,
+  "files": [
+   "CommunityA.png"
+  ],
+  "status": "success",
+  "task_id": "1305ca0f-a0b1-4e3e-89c7-673398e2819d",
+  "type": "generate_image"
+ },
+ "marketing/CommunityB": {
+  "credits": 10,
+  "files": [
+   "CommunityB.png"
+  ],
+  "status": "success",
+  "task_id": "7576a8f3-2130-498a-b6b2-1d09562e6503",
+  "type": "generate_image"
+ },
+ "marketing/CommunityC": {
+  "credits": 10,
+  "files": [
+   "CommunityC.png"
+  ],
+  "status": "success",
+  "task_id": "32cc3b5c-c4be-450f-9fe9-431bb147d628",
+  "type": "generate_image"
+ },
  "marketing/DeepPassA": {
   "credits": 10,
   "files": [

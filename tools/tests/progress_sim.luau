@@ -881,9 +881,13 @@ end
 -- time and hold more each time allowing them to level up faster and faster while
 -- taking more risk with a larger haul"): how many of the prey a level hunts fill a
 -- full Haul, and how many levels a full one banks, both by level
-local FISH = { { 1, 18 }, { 4, 18 }, { 8, 20 }, { 15, 24 }, { 25, 35 }, { 40, 55 }, { 55, 90 }, { 70, 140 }, { 85, 180 }, { 100, 220 } }
-local LEVELS = { { 8, 1.0 }, { 15, 1.15 }, { 25, 1.3 }, { 40, 1.45 }, { 55, 1.6 }, { 70, 1.75 }, { 85, 1.9 }, { 100, 2.0 } }
-local TUTORIAL_LEVELS = 7 -- a full Haul below LV 4 (Config/Tutorial HAUL_LEVELS)
+local FISH = { { 1, 18 }, { 6, 24 }, { 11, 35 }, { 16, 50 }, { 25, 90 }, { 40, 150 }, { 55, 220 }, { 70, 300 }, { 85, 380 }, { 100, 440 } }
+-- ...and the same levels from every full Haul, the first one too (owner, 2026-10-20:
+-- "a full load from lvl one ... sends you to level 8 but then it takes two more full
+-- loads to get to level 10 ... the growth is linear. Less than one to one level per
+-- load is far too low")
+local LEVELS = { { 1, 5 }, { 100, 5 } }
+local TUTORIAL_LEVELS = 5 -- a full Haul below LV 4 (Config/Tutorial HAUL_LEVELS)
 
 local function lerpPoints(points: { { number } }, x: number): number
 	if x <= points[1][1] then
@@ -925,10 +929,10 @@ local function design()
 				rate
 			)
 		)
-		table.insert(rates, string.format("{ %d, %.3g }", level, rate))
+		table.insert(rates, string.format("{ %d, %.3g }", level, food))
 		table.insert(caps, string.format("{ %d, %.2f }", level, levels))
 	end
-	print("\n  rate = { " .. table.concat(rates, ", ") .. " },")
+	print("\n  food = { " .. table.concat(rates, ", ") .. " },")
 	print("  cap = { " .. table.concat(caps, ", ") .. " },")
 end
 

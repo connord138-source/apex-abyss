@@ -203,6 +203,24 @@ end
 
 -- Whether a position is inside the hub (the cavern, its doorways and tunnels) or a
 -- den's interior, where nobody can be eaten.
+-- The parts that make the hub (under World.Hub, within the seamount's reach of the
+-- centre: the plaza, doorways, stalls, the wheel, the exits' dressing; never a den's
+-- far interior). The server publishes its count (World.Hub `PlazaParts`) and a
+-- client leaving its den waits until it has nearly all of them.
+local HUB_REACH = 210
+function Layout.hubParts(folder: Instance): number
+	local count = 0
+	for _, item in folder:GetDescendants() do
+		if item:IsA("BasePart") then
+			local offset = item.Position - hub.center
+			if Vector2.new(offset.X, offset.Z).Magnitude < HUB_REACH and offset.Y < hub.height + 60 then
+				count += 1
+			end
+		end
+	end
+	return count
+end
+
 function Layout.inHub(position: Vector3): boolean
 	local offset = position - hub.center
 	local flat = Vector2.new(offset.X, offset.Z).Magnitude

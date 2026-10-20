@@ -4,14 +4,14 @@
 return {
 	size = {
 		lengthScale = 2, -- raw length in studs = lengthScale × mass^(1/3)
-		-- Bodies ease off past the knee toward the cap (owner, 2026-10-14: "Each den
-		-- should be large enough that a max size player can fit in it ... full grown
-		-- shark should be a bit larger than an actual shark and max size for fish
-		-- should all be relatively the same but not ridiculously large"): LV 60 draws
-		-- 12 studs (was 15), LV 80 15.7 (was 30), LV 100 16.9 (was 59), and a full
-		-- Haul at LV 100 17 (was 103). The Reef Shark predator is 14. Size ratios and
-		-- swim speed still use the raw length (Shared/Size `raw`).
-		lengthKnee = 6,
+		-- The drawn length grows the same each level (owner, 2026-10-20: "the growth
+		-- is linear"; Shared/Size `length`): 2 studs at LV 1, ~0.15 more a level, to
+		-- `lengthTop` at LV 100, then a soft cap at `lengthCap` (owner, 2026-10-14:
+		-- "Each den should be large enough that a max size player can fit in it ...
+		-- max size for fish should all be relatively the same but not ridiculously
+		-- large"). LV 10 3.4 studs, 25 5.6, 50 9.4, 75 13.1. The Reef Shark predator
+		-- is 14. Size ratios and swim speed still use the raw length (Size `raw`).
+		lengthTop = 16.9,
 		lengthCap = 17,
 		startMass = 1, -- a brand-new fish (2 studs long)
 		levelGrowth = 1.108, -- banked mass ×this per level (level 100 ≈ 26,000× start)
@@ -189,16 +189,22 @@ return {
 	-- hold more each time allowing them to level up faster and faster while taking
 	-- more risk with a larger haul."
 	-- * `food`: kg of food a full Haul holds. What the Haul card and the pops show is
-	--   food (a 0.4 kg Garibaldi: "+0.4 kg"); it climbs every level, ~18 of the
-	--   kelp's fish at first (the tutorial's Haul step) to ~20 at LV 8, ~30 at LV 25,
-	--   ~40–90 past LV 40 (the biome's fish set the count: a tuna is 35 kg, a Rattail
-	--   6). Everyday food (prey, filler food, chum, slicks, bait, whale chunks, kills,
+	--   food (a 0.4 kg Garibaldi: "+0.4 kg"); it never drops from one level to the
+	--   next (the biome's fish set the count: a tuna is 35 kg, a Rattail 6). Everyday
+	--   food (prey, filler food, chum, slicks, bait, whale chunks, kills,
 	--   predator loot) stops at a full Haul: MAX SIZE, swim home and bank. Rewards (a
 	--   boss's Haul, a treasure's, the admin's) go on top, and a Second Chance gives
 	--   back what was lost.
-	-- * `cap`: levels a full Haul banks: 7 for a new fish (the tutorial's Haul step,
-	--   Config/Tutorial HAUL_LEVELS: LV 1 → 8), then 1 at LV 8 rising to 2 at LV 100,
-	--   so a bigger fish's bigger, riskier Haul grows it more.
+	-- * `cap`: levels a full Haul banks: 5, the first one too (Config/Tutorial
+	--   HAUL_LEVELS: LV 1 → 6) and every one after (owner, 2026-10-20: "a full load
+	--   from lvl one ... sends you to level 8 but then it takes two more full loads to
+	--   get to level 10 ... the growth is linear. Less than one to one level per load
+	--   is far too low"; it was 7 for a new fish, then 1 at LV 8 rising to 2). With the
+	--   drawn length linear in level (`size.lengthTop`) every full Haul grows a fish
+	--   ~0.7 ft. The food a full Haul holds still climbs, so later Hauls are bigger
+	--   and riskier: ~18 fish at first, ~35 at LV 11, ~90 at LV 25, ~150 at LV 40,
+	--   ~220 at LV 55, ~300 at LV 70, ~440 at LV 100 (fewer where the fish are big:
+	--   the Open Blue's tuna).
 	-- The growth a kg of food gives (`haulRate`) is the cap's kg over the food.
 	-- Measured by tools/tests/run_progress_sim.sh (MODE=design suggests points for a
 	-- count of fish a Haul and levels a bank; rerun after changing these, Config/Prey,
@@ -207,28 +213,20 @@ return {
 	-- (HuntService Session `worth`).
 	growth = {
 		food = {
-			{ 1, 4.4 }, -- the tutorial: ~18 of the kelp's fish
-			{ 8, 5.2 },
-			{ 15, 15 },
-			{ 25, 85 },
-			{ 35, 230 },
-			{ 45, 1150 },
-			{ 55, 1500 },
-			{ 70, 2400 },
-			{ 85, 4000 },
-			{ 100, 5000 },
+			{ 1, 2.1 }, -- the tutorial: ~18 of the kelp's fish
+			{ 8, 6.9 },
+			{ 15, 38 },
+			{ 25, 230 },
+			{ 35, 730 },
+			{ 45, 5400 },
+			{ 55, 5600 },
+			{ 70, 5800 },
+			{ 85, 9400 },
+			{ 100, 10500 },
 		} :: { { number } },
 		cap = {
-			{ 1, 7 },
-			{ 3, 7 },
-			{ 8, 1 },
-			{ 15, 1.15 },
-			{ 25, 1.3 },
-			{ 40, 1.45 },
-			{ 55, 1.6 },
-			{ 70, 1.75 },
-			{ 85, 1.9 },
-			{ 100, 2 },
+			{ 1, 5 },
+			{ 100, 5 },
 		} :: { { number } },
 		-- Food in a biome below the fish counts for less (× this on the Haul; HuntService,
 		-- prey and filler food): past the top level of the biome the fish is in
@@ -236,7 +234,7 @@ return {
 		-- `floor` (Shared/Size `overLevel`), and the HUD says "Too easy here". So a fish
 		-- keeps moving deeper with its level (the Open Blue's tuna would carry a fish to
 		-- LV 100; run_progress_sim.sh STAY=OpenBlue).
-		overLevel = { slope = 0.1, floor = 0.2 },
+		overLevel = { slope = 0.1, floor = 0.15 },
 	},
 
 	hunt = {

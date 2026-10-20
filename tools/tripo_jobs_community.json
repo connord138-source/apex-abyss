@@ -1,0 +1,28 @@
+{
+  "jobs": [
+    {
+      "name": "CommunityA",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/marketing_refs/RefIcon.jpg",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). A square emblem for a game studio's Roblox community icon. A round badge fills most of the square: a thick dark navy ring with a bright teal inner rim, and inside it a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) leaping out of a curling teal wave with a white foam crest, mouth closed in a cheeky confident grin, a few round bubbles. Behind the badge, a deep ocean-blue background fading darker at the corners. Bold, simple, centered, readable at very small sizes, strong silhouette. Crisp, professional mascot logo. No text, no letters, no numbers, no watermark."
+    },
+    {
+      "name": "CommunityB",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/marketing_refs/RefIcon.jpg",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). A square emblem for a game studio's Roblox community icon. A round badge fills most of the square: a thick dark navy ring with a bright aqua inner rim. Inside it, a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) swims toward the viewer in the front, mouth closed in a determined grin, while a big grey low-poly shark fin cuts through a teal wave crest behind it. Deep ocean-blue background behind the badge, darker at the corners. Bold, simple, centered, readable at very small sizes, strong silhouette. Crisp, professional mascot logo. No text, no letters, no numbers, no watermark."
+    },
+    {
+      "name": "CommunityC",
+      "group": "marketing",
+      "type": "generate_image",
+      "model": "gemini_3_pro_image_preview",
+      "ref": "assets/tripo/marketing_refs/RefIcon.jpg",
+      "prompt": "Use the attached reference sheet ONLY for the ART STYLE of the game: chunky stylized low-poly 3D, flat-shaded facets, bold saturated colors, simple cartoon eyes, soft underwater light (Schedule I meets Abzu). A square emblem for a game studio's Roblox community icon: a heraldic shield-shaped crest with a thick dark navy outline and a teal-to-deep-blue faceted field, with a curling white-capped wave across its lower half. On the crest, a small round orange-and-yellow fish with big white googly eyes (the hero, called the Nibbler) in a heroic side pose, mouth closed in a smug grin, a tiny gold crown tilted on its head. A few bubbles. Deep ocean-blue background behind the crest, darker at the corners. Bold, simple, centered, readable at very small sizes, strong silhouette. Crisp, professional mascot logo. No text, no letters, no numbers, no ribbon banner, no watermark."
+    }
+  ]
+}

@@ -153,14 +153,14 @@ local steps: { Step } = {
 
 -- The Haul step's target: a Haul worth this many levels once banked, from the
 -- fish's banked mass (1.05 kg for a LV 1 Nibbler, 1.3 kg at LV 3): a new fish's full
--- Haul (Tuning `growth` `cap` holds 7 levels up to LV 3), so the step ends at MAX
--- SIZE and the bank takes the Nibbler from LV 1 to 8 (TutorialService stops it at a
+-- Haul (Tuning `growth` `cap`: 5 levels, every Haul), so the step ends at MAX
+-- SIZE and the bank takes the Nibbler from LV 1 to 6 (TutorialService stops it at a
 -- full Haul for a fish that banked part of its first dive past LV 3). With the Haul
 -- rate at LV 1 (Tuning `growth` `rate`, 0.068 since 2026-10-19; it was the whole kg)
 -- the Eat and Shells steps' snacking fills ~10–25% of it, so this step is a minute or
 -- so of hunting in the Kelp, not done on arrival (PC 2026-10-19: at the whole kg the
 -- Haul was full before the step showed)
-local HAUL_LEVELS = 7
+local HAUL_LEVELS = 5
 local function haulTarget(banked: number): number
 	return math.max(banked, Tuning.size.startMass) * (Tuning.size.levelGrowth ^ HAUL_LEVELS - 1)
 end

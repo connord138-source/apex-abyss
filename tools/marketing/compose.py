@@ -22,6 +22,7 @@ Pipeline (owner, 2026-10-09: "generate our page photo and some thumbnails"):
    the files to upload in Creator Hub:
 
        icon_512.png, icon_512_alt.png   the experience icon (512x512) and the runner-up
+       community_{a,b,c}_512.png        the studio community's icon (A recommended)
        logo.png, logo_alt.png           APEX TIDE on a transparent background (A, and B the
                                         runner-up with a curling wave)
        thumb_N_<name>.jpg               thumbnails (1920x1080)
@@ -285,6 +286,12 @@ def main():
     # Nibbler chomping at you) is the runner-up
     vibrance(src("IconA")).resize((512, 512), Image.LANCZOS).save(OUT / "icon_512.png")
     vibrance(src("IconB")).resize((512, 512), Image.LANCZOS).save(OUT / "icon_512_alt.png")
+
+    # The studio community's icon (2026-10-20, tools/tripo_jobs_community.json): the
+    # Nibbler leaping from a wave in a round badge (A), before a shark fin (B), on a
+    # crowned crest (C); no text, so it fits whatever the community is called
+    for name in "ABC":
+        vibrance(src(f"Community{name}")).resize((512, 512), Image.LANCZOS).save(OUT / f"community_{name.lower()}_512.png")
 
     # 1. The hook (lead thumbnail): the Nibbler gulping, the Megalodon behind
     c = thumb("HeroWide")

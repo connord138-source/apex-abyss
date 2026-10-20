@@ -1558,6 +1558,17 @@ function WorldService.start()
 	end
 	buildWheel(hubFolder)
 	buildBiomes(folder("Biomes", root))
+	-- How many parts make the hub (the plaza, doorways, stalls, the wheel; not the
+	-- dens' far interiors), for the den's way-out loading screen to wait for
+	-- (DenDoorController `hubLoaded`; owner, 2026-10-20: "the loading screen back to
+	-- the hub from the den ends before the hub finishes loading"). Counted again now
+	-- and then: doorways light and change style as players come and go.
+	task.spawn(function()
+		while true do
+			hubFolder:SetAttribute("PlazaParts", Layout.hubParts(hubFolder))
+			task.wait(15)
+		end
+	end)
 end
 
 return WorldService

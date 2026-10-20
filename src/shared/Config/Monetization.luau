@@ -175,12 +175,13 @@ local Monetization = {
 				-- full Haul is ~1.2 kg at LV 22 and ~63 kg at LV 58 (since the Haul
 				-- pace of 2026-10-19b), so the tiers still split where they did: Small
 				-- up to ~LV 22, Big to ~LV 58, Huge past it (0.6 / 12 kg before; the R$
-				-- prices are unchanged)
-				{ key = "DoubleHaulSmall", maxKg = 1.2 },
-				{ key = "DoubleHaulBig", maxKg = 63 },
+				-- prices are unchanged); 5.8 / 230 kg since a full Haul banks 5 levels
+				-- (2026-10-20)
+				{ key = "DoubleHaulSmall", maxKg = 5.8 },
+				{ key = "DoubleHaulBig", maxKg = 230 },
 				{ key = "DoubleHaulHuge", maxKg = math.huge },
 			},
-			adMaxKg = 1.2,
+			adMaxKg = 5.8,
 		},
 		-- Free perks. Roblox Premium (owner, 2026-10-12; Creator Rewards pay for paying
 		-- players' time in the game): more coral, bigger playtime gifts, a free wheel

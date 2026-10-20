@@ -59,6 +59,10 @@ local toastList: Frame
 local toastCount = 0
 local popLayer: Frame
 local flash: Frame
+local jaws: Frame -- our bite at the screen's middle (snapJaws)
+local jawRing: Frame
+local fangs: { Frame } = {}
+local jawStamp = 0
 
 local shownHaul, haulVelocity = 0, 0
 local pulse, pulseVelocity = 1, 0
@@ -567,6 +571,55 @@ local function eatenScreen(summary: { [string]: any })
 end
 
 -- "+0.3" floating up from where a prey was eaten (or "+1 SHELL").
+-- The jaws at the screen's middle (built in start): open and shut white as we snap,
+-- a red burst when the bite lands
+local function snapJaws(landed: boolean)
+	jawStamp += 1
+	local stamp = jawStamp
+	local stroke = jawRing:FindFirstChildOfClass("UIStroke")
+	local color = if landed then Ui.color.danger else Color3.fromRGB(236, 250, 255)
+	if stroke then
+		stroke.Color = color
+	end
+	for i, fang in fangs do
+		local side = if i == 1 then -1 else 1
+		fang.BackgroundColor3 = color
+		fang.BackgroundTransparency = if landed then 0 else 0.1
+		if landed then
+			fang.Position = UDim2.new(0.5, 0, 0.5, side * 6)
+			Ui.tween(fang, 0.12, { Position = UDim2.new(0.5, 0, 0.5, side * 4) })
+		else
+			fang.Position = UDim2.new(0.5, 0, 0.5, side * 24)
+			Ui.tween(fang, 0.09, { Position = UDim2.new(0.5, 0, 0.5, side * 6) }, Enum.EasingStyle.Quad)
+		end
+	end
+	if landed then
+		jawRing.Size = UDim2.fromOffset(30, 30)
+		if stroke then
+			stroke.Transparency = 0
+			Ui.tween(stroke, 0.38, { Transparency = 1 })
+		end
+		Ui.tween(jawRing, 0.38, { Size = UDim2.fromOffset(96, 96) }, Enum.EasingStyle.Quad)
+	else
+		jawRing.Size = UDim2.fromOffset(62, 62)
+		if stroke then
+			stroke.Transparency = 0.3
+		end
+		Ui.tween(jawRing, 0.1, { Size = UDim2.fromOffset(34, 34) }, Enum.EasingStyle.Quad)
+	end
+	task.delay(if landed then 0.2 else 0.14, function()
+		if stamp ~= jawStamp then
+			return
+		end
+		for _, fang in fangs do
+			Ui.tween(fang, 0.25, { BackgroundTransparency = 1 })
+		end
+		if stroke and not landed then
+			Ui.tween(stroke, 0.25, { Transparency = 1 })
+		end
+	end)
+end
+
 local function pop(text: string, color: Color3, position: Vector3)
 	local camera = workspace.CurrentCamera
 	local point, visible = camera:WorldToViewportPoint(position)
@@ -1008,6 +1061,43 @@ function HudController.start()
 	vignette.Parent = flash
 	flash.Parent = gui
 
+	-- Our bite (owner, 2026-10-20: "biting also needs a sound queue or something to
+	-- let the player know they are biting"): two fangs shut at the screen's middle
+	-- inside a closing ring as the jaws snap; a bite that lands bursts the ring red
+	jaws = Instance.new("Frame")
+	jaws.Name = "BiteJaws"
+	jaws.AnchorPoint = Vector2.new(0.5, 0.5)
+	jaws.Position = UDim2.fromScale(0.5, 0.5)
+	jaws.Size = UDim2.fromOffset(120, 120)
+	jaws.BackgroundTransparency = 1
+	jaws.ZIndex = 9
+	jaws.Parent = gui
+	jawRing = Instance.new("Frame")
+	jawRing.Name = "Ring"
+	jawRing.AnchorPoint = Vector2.new(0.5, 0.5)
+	jawRing.Position = UDim2.fromScale(0.5, 0.5)
+	jawRing.BackgroundTransparency = 1
+	jawRing.ZIndex = 9
+	Ui.corner(jawRing, UDim.new(1, 0))
+	local ringStroke = Instance.new("UIStroke")
+	ringStroke.Thickness = 3
+	ringStroke.Transparency = 1
+	ringStroke.Parent = jawRing
+	jawRing.Parent = jaws
+	for i = 1, 2 do
+		local fang = Instance.new("Frame")
+		fang.Name = if i == 1 then "Upper" else "Lower"
+		fang.AnchorPoint = Vector2.new(0.5, 0.5)
+		fang.Size = UDim2.fromOffset(13, 13)
+		fang.Rotation = 45
+		fang.BorderSizePixel = 0
+		fang.BackgroundTransparency = 1
+		fang.ZIndex = 10
+		Ui.corner(fang, UDim.new(0, 2))
+		fang.Parent = jaws
+		fangs[i] = fang
+	end
+
 	if Input.isTouch() then
 		buildTouchButtons()
 	end
@@ -1057,6 +1147,7 @@ function HudController.start()
 	PredatorController.hit:connect(function(damage: number, position: Vector3)
 		pop(`-{math.floor(damage + 0.5)}`, Ui.color.danger, position)
 	end)
+	HuntController.snapped:connect(snapJaws)
 	ShellController.collected:connect(function(value: number, position: Vector3)
 		pop(`+{value} SHELL{if value == 1 then "" else "S"}`, Color3.fromRGB(242, 228, 204), position)
 	end)

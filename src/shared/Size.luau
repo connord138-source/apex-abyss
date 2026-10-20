@@ -12,30 +12,45 @@ local LOG_GROWTH = math.log(size.levelGrowth)
 
 local Size = {}
 
--- A fish's drawn length: its raw length (lengthScale × mass^(1/3)) up to the knee,
--- then easing toward the cap, so a max-size fish still fits its den (Config/Tuning
--- `lengthKnee`, `lengthCap`). Smooth at the knee (slope 1 either side).
-local KNEE, CAP = size.lengthKnee, size.lengthCap
+-- A fish's drawn length, linear in level (owner, 2026-10-20: "the first jump is a
+-- foot in length second and third jumps were 0.1 foot in increase. That needs to be
+-- adjusted so that the growth is linear"): every level adds the same STEP studs, from
+-- 2 at the start mass to `lengthTop` at the last level, then a soft cap at
+-- `lengthCap` (a full Haul at LV 100 stays under it, and a max-size fish still fits
+-- its den). Below the start mass (the small prey) it's the raw curve, which meets the
+-- line at 2 studs. Size ratios and swim speed use the raw length (Size.raw).
+local START_LENGTH = size.lengthScale * size.startMass ^ (1 / 3)
+local STEP = (size.lengthTop - START_LENGTH) / (size.maxLevel - 1)
+local CAP = size.lengthCap
+local SOFT = CAP - 0.4 -- where the soft cap starts
+local SPAN = CAP - SOFT
 
 function Size.length(mass: number): number
-	local raw = size.lengthScale * math.max(mass, 1e-4) ^ (1 / 3)
-	if raw <= KNEE then
-		return raw
+	if mass <= size.startMass then
+		return size.lengthScale * math.max(mass, 1e-4) ^ (1 / 3)
 	end
-	local span = CAP - KNEE
-	return KNEE + span * (1 - math.exp(-(raw - KNEE) / span))
+	local line = START_LENGTH + STEP * math.log(mass / size.startMass) / LOG_GROWTH
+	if line <= SOFT then
+		return line
+	end
+	return SOFT + SPAN * (1 - math.exp(-(line - SOFT) / SPAN))
 end
 
--- The raw length a drawn length stands for: what size ratios (swallowing, bites,
--- aggro, predators) and swim speed are measured in, so easing the bodies changed
--- none of the balance. Lengths at or past the cap read as a very big fish.
+-- The raw length (lengthScale × mass^⅓) a drawn length stands for: what size ratios
+-- (swallowing, bites, aggro, predators) and swim speed are measured in, so the drawn
+-- curve changes none of the balance. Lengths at or past the cap read as a very big
+-- fish.
 function Size.raw(length: number): number
-	if length <= KNEE then
+	if length <= START_LENGTH then
 		return length
 	end
-	local span = CAP - KNEE
-	local t = math.min((length - KNEE) / span, 0.999)
-	return KNEE - span * math.log(1 - t)
+	local line = length
+	if length > SOFT then
+		local t = math.min((length - SOFT) / SPAN, 0.999)
+		line = SOFT - SPAN * math.log(1 - t)
+	end
+	local mass = size.startMass * math.exp((line - START_LENGTH) / STEP * LOG_GROWTH)
+	return size.lengthScale * mass ^ (1 / 3)
 end
 
 -- The mass a dive shows: banked mass plus the Haul. Food stops going on at the Haul's
