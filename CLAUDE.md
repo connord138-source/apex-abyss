@@ -389,9 +389,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     species. Measured by `tools/tests/run_catch_sim.sh` (the school layout, a hunter
     chasing glints and a casual player taking only what's within 60 studs of their
     path; checks `every` within ±30%; rerun it after changing rates, lives, `spawn`,
-    `Config/Prey` or `Config/Tides`): a hunter's minutes per catch Silver 1.0, Golden
-    5 (Calm 11, Golden Hour 2), Glowing 25, Crystal ~100 (Blood Tide ~50), Prism ~2.5
-    a Prism Tide; a casual player a third to a half of that. The server streams which
+    `Config/Prey` or `Config/Tides`): a hunter's minutes per catch Silver 0.8, Golden
+    1.9, Glowing 10, Crystal ~31, Prism ~2.6 a Prism Tide; a casual player a third to a
+    half of that (owner, 2026-10-20: "i havent seen a single gold or crystal fish
+    spawn today": Golden, Glowing and Crystal rates ×2.7/×2.3/×3.4 and lives longer;
+    were Golden 5, Glowing 25, Crystal ~100). Skin goals in one biome: Golden ~2.5–3 h,
+    Glowing ~6–8 h, Crystal ~7–9 h. Shell spots doubled the same day (300 on the
+    shelf, 28 golden in the Trench). The server streams which
     are rare (`PreyRarity`, `GetRarities`) and
     `SchoolController` draws them (foil, Neon teal, Glass, rainbow; sparkles and a
     light; their texture held aside), each with a **glint** (playtest 2026-10-10: a

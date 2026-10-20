@@ -4,8 +4,8 @@
 -- after `respawn` seconds. Spots are placed at server start on whatever's under
 -- them (seabed, rocks), and golden shells lie on the trench floor.
 return {
-	spots = 150, -- across the Kelp Shallows
-	goldenSpots = 14, -- on the trench floor
+	spots = 300, -- across the shelf (owner, 2026-10-20: "need more shell spawns too. Atleast double"; was 150)
+	goldenSpots = 28, -- on the trench floor (was 14)
 	value = 1,
 	goldenValue = 5,
 	respawn = 240,
