@@ -355,6 +355,10 @@ end
 
 function FishAnimator.start()
 	RunService.PreSimulation:Connect(step)
+	-- Window skins move once the camera has (Cosmetics.windows)
+	RunService:BindToRenderStep("ShadeWindows", Enum.RenderPriority.Camera.Value + 2, function(dt: number)
+		Cosmetics.windows(clock, dt)
+	end)
 	SwimController.lunged:connect(function()
 		local character = SwimController.character()
 		if character then

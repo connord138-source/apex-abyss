@@ -1553,7 +1553,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     part's place against the camera, plus a slow drift): Nebula, Void, Comet and
     Starfall (stars), Diamond and Glacier (facets), Divine, Aurora and Abyss Eye (veil),
     Prismatic and Exotic, Chrome, Thunder, Magma, Coral Bloom, Jade, Sunburst, Lantern
-    King. The toothed fish leave out the face their head points from.
+    King. The toothed fish leave out the face their head points from. **Smoothed
+    (owner, 2026-10-20: "a bit glitchy once moving"):** the pattern is laid on the two
+    flanks only (`sideFaces`; the six projections' seams slid along the back, belly,
+    head and tail), placed after the camera moves each frame (`Cosmetics.windows`,
+    bound at Camera + 2; it was a frame behind), its offsets eased 0.05 s, and it fades
+    up to 85% while the fish turns or banks hard (0.9 → 2.6 rad/s).
   - **Sea-life companions** (`Config/Companions`, `CompanionService`,
     `CompanionController`, AmbientLifeController's `interact`): swim beside a turtle 2 s
     and it joins you for 300 s (5 min since 2026-10-20; was 90) at your side, seen by everyone (character attribute

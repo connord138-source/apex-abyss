@@ -801,6 +801,13 @@ type Live = {
 	phase: number,
 	sheens: { Texture }, -- the moving layer's six faces per part (Config/Shades `sheen`)
 	fx: SkinFx.Live?, -- the skin's effects (Config/Shades `fx`)
+	-- A window skin's layer (Cosmetics.windows): its sheen, the core part's frame last
+	-- frame, how fast the fish is turning (smoothed), and each layer's smoothed offset
+	window: ShadesConfig.Sheen?,
+	core: BasePart?,
+	lastFrame: CFrame?,
+	turn: number,
+	offsets: { [Texture]: Vector2 },
 }
 
 -- The faces a moving layer is projected from (a MeshPart takes a Texture as a
@@ -828,6 +835,26 @@ local WINDOW_AXES: { [Enum.NormalId]: { Vector3 } } = {
 	[Enum.NormalId.Bottom] = { Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1) },
 }
 
+-- The two faces of `part` its flanks look out of (`right` the fish's right): a window
+-- skin is laid only on those (PC 2026-10-20: "a bit glitchy once moving": where the
+-- six projections met, along the back, belly, head and tail, the seams slid against
+-- each other as the fish turned and banked)
+local function sideFaces(part: BasePart, right: Vector3): { Enum.NormalId }
+	local own = part.CFrame:VectorToObjectSpace(right)
+	local best, worst = Enum.NormalId.Right, Enum.NormalId.Left
+	local most, least = -math.huge, math.huge
+	for _, face in SHEEN_FACES do
+		local dot = Vector3.FromNormalId(face):Dot(own)
+		if dot > most then
+			best, most = face, dot
+		end
+		if dot < least then
+			worst, least = face, dot
+		end
+	end
+	return { best, worst }
+end
+
 -- The face of `part` the fish's head points out of (`forward` in the part's own frame)
 local function headFace(part: BasePart, forward: Vector3): Enum.NormalId
 	local own = part.CFrame:VectorToObjectSpace(forward)
@@ -850,7 +877,8 @@ local function sheenLayers(
 	part: BasePart,
 	shade: ShadesConfig.Shade,
 	length: number,
-	skip: Enum.NormalId?
+	skip: Enum.NormalId?,
+	only: { Enum.NormalId }?
 ): { Texture }
 	local sheen = shade.sheen
 	local id = if sheen then (Config.Textures :: { [string]: number })[sheen.texture] else nil
@@ -858,7 +886,8 @@ local function sheenLayers(
 		return {}
 	end
 	local layers: { Texture } = {}
-	for _, face in SHEEN_FACES do
+	local faces: { Enum.NormalId } = if only then only else SHEEN_FACES :: any
+	for _, face in faces do
 		if face == skip then
 			continue
 		end
@@ -1096,6 +1125,8 @@ local function paint(body: Model, look: FishBuilder.Look, shadeId: string?, leng
 		phase = math.random() * 20,
 		sheens = {},
 		fx = SkinFx.build(body, body, core, shade, length),
+		turn = 0,
+		offsets = {},
 	}
 	aura(core, shade, length)
 end
@@ -1212,7 +1243,12 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 		core = core or part
 		local ownTexture = part:GetAttribute("OwnTexture")
 		if shade then
-			for _, layer in sheenLayers(part, shade, length, if toothed then headFace(part, forward) else nil) do
+			local sides = if shade.sheen and shade.sheen.window
+				then sideFaces(part, body:GetPivot().RightVector)
+				else nil
+			for _, layer in
+				sheenLayers(part, shade, length, if toothed then headFace(part, forward) else nil, sides)
+			do
 				table.insert(sheens, layer)
 			end
 		end
@@ -1303,6 +1339,10 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 		phase = math.random() * 20,
 		sheens = sheens,
 		fx = SkinFx.build(body, mesh, core, shade, length),
+		window = if shade.sheen and shade.sheen.window and #sheens > 0 then shade.sheen else nil,
+		core = core,
+		turn = 0,
+		offsets = {},
 	}
 	aura(core, shade, length)
 end
@@ -1355,6 +1395,71 @@ function Cosmetics.apply(
 	paint(body, look, dress.shade, length)
 end
 
+-- Window skins in the world, every frame once the camera has moved (FishAnimator binds
+-- this after the camera's render step; run with the fish's animation, before the
+-- camera, the pattern was a frame behind and shimmered as the fish swam, PC
+-- 2026-10-20: "a bit glitchy once moving"). Each flank's pattern holds still on
+-- screen, its offset eased over a few hundredths of a second so the camera's spring
+-- doesn't jitter it, and drifts slowly; it fades while the fish turns or banks hard
+-- (the flank swings faster than a still pattern can follow) and comes back as it
+-- straightens out.
+local WINDOW_EASE = 0.05 -- seconds: the offsets' smoothing
+local TURN_SMOOTH = 0.12 -- seconds: the turn rate's smoothing
+local TURN_FROM, TURN_FULL = 0.9, 2.6 -- rad/s: the layer starts to fade, and is faded most
+local TURN_FADE = 0.85 -- the most it fades
+
+function Cosmetics.windows(t: number, dt: number)
+	local camera = workspace.CurrentCamera
+	if camera == nil then
+		return
+	end
+	local eye = camera.CFrame.Position
+	local ease = 1 - math.exp(-dt / WINDOW_EASE)
+	for body, state in live do
+		local sheen, core = state.window, state.core
+		-- (a preview's fish is animated by Cosmetics.animate, against its own view)
+		if sheen == nil or core == nil or #state.sheens == 0 or not body:IsDescendantOf(workspace) then
+			continue
+		end
+		-- How fast it's turning: its core part's look and up, frame to frame
+		local frame = core.CFrame
+		local last = state.lastFrame
+		state.lastFrame = frame
+		if last and dt > 0 then
+			local swing = math.acos(math.clamp(last.LookVector:Dot(frame.LookVector), -1, 1))
+			local roll = math.acos(math.clamp(last.UpVector:Dot(frame.UpVector), -1, 1))
+			state.turn += (math.max(swing, roll) / dt - state.turn) * (1 - math.exp(-dt / TURN_SMOOTH))
+		end
+		local fade = math.clamp((state.turn - TURN_FROM) / (TURN_FULL - TURN_FROM), 0, 1) * TURN_FADE
+		fade = math.floor(fade * 50 + 0.5) / 50
+		local transparency = sheen.transparency + (1 - sheen.transparency) * fade
+		local drawn = body:GetAttribute("Applied")
+		local studs = sheen.tile * (if typeof(drawn) == "number" then drawn else 2)
+		local drift = (t + state.phase) * (sheen.drift or 0) * studs
+		for _, layer in state.sheens do
+			if layer.StudsPerTileU ~= studs then
+				layer.StudsPerTileU = studs
+				layer.StudsPerTileV = studs
+			end
+			if layer.Transparency ~= transparency then
+				layer.Transparency = transparency
+			end
+			local part = layer.Parent
+			local axes = WINDOW_AXES[layer.Face]
+			if part and part:IsA("BasePart") and axes then
+				local relative = part.CFrame:VectorToObjectSpace(part.Position - eye)
+				local goal = Vector2.new(relative:Dot(axes[1]) + drift, relative:Dot(axes[2]) + drift * 0.6)
+				local was = state.offsets[layer]
+				-- (a jump, from a teleport or a new tile size, isn't eased)
+				local now = if was and (goal - was).Magnitude < studs then was:Lerp(goal, ease) else goal
+				state.offsets[layer] = now
+				layer.OffsetStudsU = now.X
+				layer.OffsetStudsV = now.Y
+			end
+		end
+	end
+end
+
 -- Per-frame shade animation: the glow's pulse, Prismatic's rolling colors, the
 -- Ghost's breathing haunt. `t` is any clock.
 function Cosmetics.animate(body: Model, shadeId: string?, t: number)
@@ -1367,9 +1472,12 @@ function Cosmetics.animate(body: Model, shadeId: string?, t: number)
 		SkinFx.step(state.fx, body, t + state.phase)
 	end
 	local sheen = shade.sheen
-	if state and sheen and sheen.window and #state.sheens > 0 then
-		-- A window: the pattern holds still on screen while the fish moves through
-		-- it, and drifts slowly so it moves on a still fish too
+	if state and sheen and sheen.window and body:IsDescendantOf(workspace) then
+		-- (a fish in the world: Cosmetics.windows, after the camera has moved)
+		state.window = if #state.sheens > 0 then sheen else nil
+	elseif state and sheen and sheen.window and #state.sheens > 0 then
+		-- A window in a preview: the pattern holds still against the world's camera
+		-- while the fish turns, and drifts slowly so it moves on a still fish too
 		local drawn = body:GetAttribute("Applied")
 		local studs = sheen.tile * (if typeof(drawn) == "number" then drawn else 2)
 		local camera = workspace.CurrentCamera
