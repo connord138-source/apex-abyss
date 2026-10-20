@@ -122,15 +122,22 @@ local function setLevel(_admin: Player, targets: { Player }, level: any): string
 	return `Level {n} ({names(targets)}): respawning at that size`
 end
 
+-- Haul in kg of food, as the Haul card shows it (since the Haul became food a full one
+-- reads e.g. 4.9 kg at LV 6 but holds ~1.1 kg of growth), fractions allowed, so a
+-- tester can fill one exactly (PC 2026-10-20, GR: whole kg of growth overfilled a
+-- small fish's Haul and banked the wrong number of levels)
 local function feed(_admin: Player, targets: { Player }, kg: any): string
-	local n = amountOf(kg, 1)
-	if n == nil then
-		return "Give a mass in kg"
+	if typeof(kg) ~= "number" or kg ~= kg or kg < 0.01 or kg == math.huge then
+		return "Give a mass in kg of food"
 	end
 	for _, player in targets do
-		HuntService.feed(player, n, "sized") -- (the kg asked for, without the Haul rate)
+		local data = DataService.get(player)
+		if data then
+			local rate = Size.haulRate(Progress.mass(data))
+			HuntService.feed(player, kg * rate, "sized") -- (growth, without the Haul rate again)
+		end
 	end
-	return `+{n} kg Haul for {names(targets)}`
+	return `+{kg} kg of food in the Haul for {names(targets)}`
 end
 
 local function dna(_admin: Player, targets: { Player }, biomeId: any, amount: any): string

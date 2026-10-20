@@ -269,7 +269,7 @@ local function build()
 	amountRow("Set coral", "amount", "setCoral", 0, "SET")
 	amountRow("Add shells", "amount", "addShells", 1, "ADD")
 	amountRow("Set level (respawns)", "1–100", "setLevel", 1, "SET")
-	amountRow("Add Haul (kg)", "kg", "feed", 1, "FEED")
+	amountRow("Add Haul (kg of food, as the card shows)", "e.g. 4.9", "feed", 0.01, "FEED")
 
 	header("UNLOCKS · ITEMS")
 	local biomes: { { label: string, value: any } } = {}
