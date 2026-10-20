@@ -1353,7 +1353,41 @@ end
 -- (PC 2026-10-19, DN1: the Brass Porthole's, 1.6 out, showed only "NAIRE138'S"; the
 -- Whalebone's and the Megalodon Jaws' corners were in the rock). Once the Terrain
 -- answers rays (tried every half second for 10 s); never moved back.
-local function seatPlaque(frame: CFrame, plate: Decor.Plaque)
+-- With `under` (the way out) it's also lowered under the vault as carved: the voxel
+-- surface hangs a few studs under the arch underVault works out (PC 2026-10-20, DX:
+-- rock at 35.6 studs over the deck where the arch says 39, and the Whalebone's TO THE
+-- HUB line, 31.8–36.9 up, was in it).
+local ROOF_CLEAR = 0.6
+local function lowerUnderRoof(frame: CFrame, plate: Decor.Plaque, params: RaycastParams)
+	local board = plate.board
+	local at = frame:PointToObjectSpace(board.Position)
+	local top = at.Y + board.Size.Y / 2
+	local roof = math.huge
+	for _, fx in { -0.5, -0.25, 0, 0.25, 0.5 } do
+		for _, dz in { board.Size.Z / 2 + 0.4, 2.5 } do -- (just in front of its face)
+			local from = frame * Vector3.new(at.X + fx * board.Size.X, at.Y - board.Size.Y, at.Z - dz)
+			local hit = workspace:Raycast(from, frame.UpVector * 40, params)
+			if hit then
+				roof = math.min(roof, frame:PointToObjectSpace(hit.Position).Y)
+			end
+		end
+	end
+	local drop = top - (roof - ROOF_CLEAR)
+	if roof == math.huge or drop <= 0 then
+		return
+	end
+	local down = frame.UpVector * -drop
+	board.CFrame += down
+	for _, trim in plate.trims do
+		trim.CFrame += down
+	end
+	local face = plate.gui.Parent
+	if face and face:IsA("BasePart") and face ~= board then
+		face.CFrame += down
+	end
+end
+
+local function seatPlaque(frame: CFrame, plate: Decor.Plaque, under: boolean?)
 	task.spawn(function()
 		local board = plate.board
 		local params = RaycastParams.new()
@@ -1385,17 +1419,19 @@ local function seatPlaque(frame: CFrame, plate: Decor.Plaque)
 			end
 		end
 		local shift = back - (rock - 0.15)
-		if rock == math.huge or shift <= 0 then
-			return
+		if rock < math.huge and shift > 0 then
+			local out = frame.LookVector * shift
+			board.CFrame += out
+			for _, trim in plate.trims do
+				trim.CFrame += out
+			end
+			local face = plate.gui.Parent
+			if face and face:IsA("BasePart") then
+				face.CFrame += out
+			end
 		end
-		local out = frame.LookVector * shift
-		board.CFrame += out
-		for _, trim in plate.trims do
-			trim.CFrame += out
-		end
-		local face = plate.gui.Parent
-		if face and face:IsA("BasePart") then
-			face.CFrame += out
+		if under and rock < math.huge then
+			lowerUnderRoof(frame, plate, params)
 		end
 	end)
 end
@@ -1471,7 +1507,7 @@ local function build(door: Door, index: number, styleId: string)
 	if door.exit then
 		underVault(frame, made.plaque)
 	end
-	seatPlaque(frame, made.plaque)
+	seatPlaque(frame, made.plaque, door.exit)
 	local curtain, backing, bubbles, shimmer, glow = pane(style, frame, Layout.DOOR_RADIUS, made.pane)
 	if door.exit then
 		glow.Range = EXIT_GLOW_RANGE
