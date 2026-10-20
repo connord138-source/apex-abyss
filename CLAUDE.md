@@ -273,7 +273,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Frozen Shelf is dropped for now** (owner: not much sea life; maybe a later
     update). The **Sunken Ruins replace it** (owner approved).
 - **Creatures:**
-  - **Bodies ease off toward 17 studs** (owner, 2026-10-14: "Each den should be
+  - **Bodies ease off toward 17 studs** (since 2026-10-20 the drawn length is linear
+    in level, see "The 2026-10-20 owner batch"; owner, 2026-10-14: "Each den should be
     large enough that a max size player can fit in it ... full grown shark should
     be a bit larger than an actual shark and max size for fish should all be
     relatively the same but not ridiculously large"): `Size.length` follows the raw
@@ -1086,7 +1087,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (chum, Second Chance). Pay that comes from the Haul uses its `worth` before the
     rate (`Events.banked` 4th argument: Pass XP, map chance; bank coral 7 × √worth),
     so a dive pays as before). The creator owns ×2 Mass, so the owner levels faster.
-  - **Pace (2026-10-19b; owner, after playing the 22 h curve: "No reason that a full
+  - **Pace (2026-10-19b; its levels per Haul, food table and hours were superseded on
+    2026-10-20, see "The 2026-10-20 owner batch"; owner, after playing the 22 h curve: "No reason that a full
     haul for nibbler should start at .2kg and only go up by .01 a level ... The first
     fish you eat are worth far too little food right now. A full haul should take
     15-20 fish first time and hold more each time allowing them to level up faster
@@ -1455,6 +1457,89 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Megalodon is 175 studs** (every reach ×1.35, sight 560/330, fight light 300, dread
     760). Sims: `run_predators.sh` (predators and bosses). The players' own fish bend
     into turns too (`FishAnimator`: the bend is the yaw rate's opposite).
+- **The 2026-10-20 owner batch (owner: "make a community logo in the game's style",
+  "the loading screen back to the hub from the den ends before the hub finishes
+  loading", reef "little groups of fish ... that are just spheres", "tutorial needs to
+  be more prominent its a bit smal", "biting also needs a sound queue", "the growth is
+  linear. Less than one to one level per load is far too low", turtles, stingrays and
+  mantas "need to have some kind of function ... a buff where they swim with you", "den
+  exit needs to be more pronounced like the entrance too", the Wardrobe "listed from
+  common ascending down to mythic ... hidden until unlocked", "nebula should be moving
+  across the shark ... a few skins that actually have movement similar to ... the
+  chowder skin style in hatch and snatch", the Vents' "spheres that are all over the
+  place that were clearly placeholders", "so much more prey fish volume ... Too
+  sparce", "a lvl 100 fish can absolutely decimate an ecosystem too so the fish need a
+  high respawn rate"; built on `claude/world`; Connor tests this round himself):**
+  - **Linear growth:** every full Haul banks `growth.cap` 5 levels (the tutorial's
+    `HAUL_LEVELS` 5: LV 1 → 6), and the drawn length is a straight line in level
+    (`Size.length`/`Size.raw` from `size.lengthTop` 16.9 at LV 100, soft cap from 16.6
+    to `lengthCap` 17): ~+0.15 studs (0.14 ft) a level, ~0.7 ft a load. Raw length (the
+    ratios, speed, swallowing) is unchanged. `growth.food` was refitted twice (to 5
+    levels a load, then to the fuller sea): LV 1 2.1 kg, 8 6.9, 15 41.5, 25 180, 40
+    1,130, 55 5,600, 70 13,000, 100 17,500. Sim: LV 100 in ~2.1 h following the
+    biomes, 4.4 h staying in the Open Blue; fish a full Haul 22 / 22 / 50 / 109 / 138 /
+    281 / 331 / 435 by band. Double Haul tiers 5.8 / 230 kg of growth, ad 5.8.
+  - **A fuller sea** (`Config/Prey` `fill`, applied by `Schools.build`; the entries keep
+    the old numbers): every zone's schools ×1.4 (×1.9 past the drop-off, in the canyon
+    and over the vents), every school of more than one fish ×1.5 up to `perSchoolMax`
+    30 (lone hunters stay alone): ~8,560 fish in ~824 schools (was ~3,660 in ~484).
+    Spines past `WAVE_HALF` 60 studs wave every other frame (`SchoolController`); the
+    server's school lift yields between schools in its own thread (`Schools.settle`
+    `pause`, ~3 s in the CLI, 25k characters). run_density: a client moves ≤ ~650,
+    waves ≤ ~300 and keeps ≤ ~1,080 fish built at the busiest spot.
+  - **Fast respawns:** every prey's `respawn` ~⅓ (Minnow 3 s, Snapper 5, Reef Shark 12,
+    Oarfish 60). A fish coming back swims in from behind its school as it grows
+    (`RETURN_SECONDS` 1.1 from `RETURN_LENGTHS` 6 lengths back), edible from
+    `RETURN_EDIBLE` 0.8 (off its path the server wouldn't find it).
+  - **Reef-fish clouds** are small copies of the biome's own reef prey from `PreyModels`
+    (`Config/Ambient` `cloudPrey`; part-built body, tail and fin until imported) and
+    scatter when your fish swims through.
+  - **Bite feedback:** a snap sound with bubbles and a camera kick on every bite, a
+    crunch when it lands, and a jaws marker at the screen's middle (two fangs close; a
+    red ring bursts on a hit; `HuntController.snapped`, `HudController` `snapJaws`).
+  - **Leaving a den waits for the plaza:** the server publishes `World.Hub`
+    `PlazaParts` (`Layout.hubParts`); the wash holds until 96% of them have streamed
+    in, the content queue is nearly empty and 3.5 s have passed, showing SWIMMING OUT
+    TO THE HUB · N%.
+  - **The den's way out is a real doorway** (`Config/Dens` `exit` y 11, back 9, alcove
+    10.5): DenCarve cuts an alcove into the front wall like the plaza's (Cave.denDoor),
+    the portal at its back; DenDoor builds it in the den's own doorway style (restyle
+    dresses both sides) with a threshold, TO THE HUB · THE PLAZA, always lit, a
+    brighter portal light; a tall style's nameplate is kept under the vault
+    (`underVault`). The den's title board hangs over the trophy wall now. The den block
+    reaches 6 further forward (`Layout.DEN_EXTENT`). `check_doors.luau` tries every
+    style on the exit too; `exit_build.luau` previews it.
+  - **Tutorial, bigger:** each step has a `title` (SWIM OUT OF THE HUB, ...), the card
+    is ×1.2 (×1.05 on phones) and taller, and a new step shows a centre banner
+    (TUTORIAL · STEP n OF 9, `Ui.stageBanner`).
+  - **Wardrobe:** cards Common first down to Mythic (owned first within a tier); a
+    locked skin is a dark silhouette on its card and on the stage, its name, tier,
+    how-to-get and details still shown (LOCKED · UNLOCK TO SEE IT).
+  - **Window skins** (Hatch & Snatch's Galaxy look): `Config/Shades` `WINDOWS` gives
+    three or so skins a fish a pattern that holds still on screen while the fish moves
+    through it (`Cosmetics` `WINDOW_AXES`: each face's tiling Texture offset by the
+    part's place against the camera, plus a slow drift): Nebula, Void, Comet and
+    Starfall (stars), Diamond and Glacier (facets), Divine, Aurora and Abyss Eye (veil),
+    Prismatic and Exotic, Chrome, Thunder, Magma, Coral Bloom, Jade, Sunburst, Lantern
+    King. The toothed fish leave out the face their head points from.
+  - **Sea-life companions** (`Config/Companions`, `CompanionService`,
+    `CompanionController`, AmbientLifeController's `interact`): swim beside a turtle 2 s
+    and it joins you for 90 s at your side, seen by everyone (character attribute
+    `Escort`), bites on you ×0.8 (not the crushing deep), back in 4 min; ride a manta's
+    wake for ×1.3 top speed (`SwimController.draft`; SpeedService allows the faster of
+    it and the slipstream); skim low over a resting ray and it bursts off the sand
+    stirring up 2 shells (one every 90 s; it's gone from your view a minute). The
+    server checks a live fish out of the hub and dens, a biome that kind lives in, near
+    the floor for a ray, and the cooldowns.
+  - **The Vents' spheres are gone:** every sphere-mesh lump in `Vents.luau` is a cut,
+    flat-faced piece (drip streaks, polygon ledges, sulfide prisms, faceted chips, flat
+    lava pools, a draped flowstone sheet, flat-topped rimstone lobes, clam halves,
+    mussel lozenges, red worm brushes), and every vent throat (smokers, side throats,
+    the basins' chimneys) is a hot disc with a dark rim. ~2,960 parts (`PARTS_CAP`
+    3,300). **Rule: no sphere-mesh lumps in built scenery.**
+  - **Community logo:** `marketing/community_{a,b,c}_512.png` (A recommended; screened
+    0.17 / 0.15 / 0.05). Connor creates the community and sends its id for
+    `tuning.group` in both games.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -2367,7 +2452,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     exotic variants (they're part-built pieces on the mesh for now); caustics
     (needs a texture upload)
   - den items from bosses (jaw arch, Kraken-eye lantern) as Trophy Hunter buys
-  - Pacing: ~4 h of active play to LV 100 a fish since 2026-10-19b (the owner found
+  - Pacing: ~2.1 h of active play to LV 100 a fish since 2026-10-20 (5 levels a full
+    Haul in a fuller sea; ~4 h after 2026-10-19b; the owner found
     the 22 h curve too slow; see "Pace (2026-10-19b)"); if the late game proves too
     quick, grow late Hauls (more fish, more risk) rather than slow the early game.
 
@@ -2393,7 +2479,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   bait cap, sheen off teeth, screen base; chunks inside the whale, reef coral
   through it, the wheel chip full width), `2026-10-15-pc-2.md` (chunks clear,
   chips fit, the PC's level-sand fix; deep whales still faint at 70 studs),
-  `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-19-pc*.md` (pace, Ruins, prey batches,
+  `2026-10-16-pc*.md`, `2026-10-17-pc*.md`, `2026-10-20-pc*.md` (the 2026-10-20 owner
+  batch; the PC publishes and Connor tests), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
   clients via Test → Clients and Servers);

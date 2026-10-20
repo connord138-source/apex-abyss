@@ -246,9 +246,9 @@ for _, chimney in plan.chimneys do
 	local top = groundAt(p.X, p.Z)
 	local throat = Instance.new("Part")
 	throat.Name = "VentGlow"
-	throat.Shape = Enum.PartType.Ball
-	throat.Size = Vector3.new(5, 5, 5)
-	throat.CFrame = CFrame.new(top + Vector3.new(0, 1.2, 0))
+	throat.Shape = Enum.PartType.Cylinder
+	throat.Size = Vector3.new(1, 4.6, 4.6)
+	throat.CFrame = CFrame.new(top + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.pi / 2)
 	throat.Color = Color3.fromRGB(255, 112, 36)
 	throat.Material = Enum.Material.Neon
 	throat.Parent = context
