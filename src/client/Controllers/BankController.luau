@@ -142,8 +142,17 @@ local function towardNext(summary: { [string]: any }): string
 	return `LV {level} · {share}% OF THE WAY TO LV {level + 1}`
 end
 
+-- The Haul banked as the Haul card showed it: kg of food (the summary's `food`), not
+-- the growth it banked (PC 2026-10-20, GR: "+102 kg BANKED" after a 5,000 kg Haul)
+local function shownAmount(summary: { [string]: any }): number
+	if typeof(summary.food) == "number" then
+		return summary.food
+	end
+	return typeof(summary.amount) == "number" and summary.amount or 0
+end
+
 local function card(summary: { [string]: any }, before: number): Card
-	local amount = typeof(summary.amount) == "number" and summary.amount or 0
+	local amount = shownAmount(summary)
 	local frame =
 		Ui.panel(gui, "BankGrowth", UDim2.fromOffset(470, 150), UDim2.new(0.5, 0, 0, 0), Vector2.new(0.5, 0))
 	frame.Position = UDim2.new(0.5, 0, 0, math.max(Ui.topBottom() + 14, 74))
@@ -276,7 +285,7 @@ local function play(summary: { [string]: any })
 	if not canPlay() or mass <= 0 then
 		-- Under a menu (or in Build mode): no camera move, a toast instead
 		HudController.toast(
-			`+{Format.mass(amount)} banked{if leveled then ` · LEVEL {summary.level}` else ""}`,
+			`+{Format.mass(shownAmount(summary))} banked{if leveled then ` · LEVEL {summary.level}` else ""}`,
 			"rare"
 		)
 		return

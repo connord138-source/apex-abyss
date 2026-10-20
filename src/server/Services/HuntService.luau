@@ -930,6 +930,7 @@ local function doubleHaul(player: Player, data: DataService.PlayerData, cap: num
 	local levelAfter = Size.level(record.mass)
 	Net.banked(player, {
 		amount = amount,
+		food = Size.haulShown(record.mass - amount, amount), -- (as food, like the bank card)
 		doubled = true,
 		mass = record.mass,
 		levelBefore = levelBefore,
