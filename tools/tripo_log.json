@@ -1196,6 +1196,24 @@
   "task_id": "2d392912-4944-446c-a09f-55c2ae9dd423",
   "type": "generate_image"
  },
+ "parts_concepts/PartsSheetA": {
+  "credits": 10,
+  "files": [
+   "PartsSheetA.png"
+  ],
+  "status": "success",
+  "task_id": "6a9ed131-2d92-4044-8263-5fe47860239e",
+  "type": "generate_image"
+ },
+ "parts_concepts/PartsSheetB": {
+  "credits": 10,
+  "files": [
+   "PartsSheetB.png"
+  ],
+  "status": "success",
+  "task_id": "7a1e4266-f007-4369-babe-fc6a6cca7a86",
+  "type": "generate_image"
+ },
  "prey/Grouper": {
   "credits": 20,
   "files": [
