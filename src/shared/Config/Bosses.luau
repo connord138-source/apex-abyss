@@ -122,6 +122,10 @@ export type BossDef = {
 		leash: number?,
 	},
 	stagger: {
+		-- Bites on its soft spots that stagger it (owner, 2026-10-20: "megalodon takes
+		-- far too many bites to stagger": the meter filled by damage, 700, and every
+		-- fish in its water bites a 175-stud boss at the minimum, ~3.8 on the gills, so
+		-- it took ~180 gill bites solo); a school fills it together
 		need: number,
 		seconds: number,
 		cooldown: number,
@@ -258,7 +262,7 @@ local megalodon: BossDef = {
 		-- the deep floor, where the floor is lost in the blue below
 		depth = { 170, 470 },
 	},
-	stagger = { need = 700, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
+	stagger = { need = 12, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
 	softSpots = { { from = 0.6, to = 0.8 }, { from = 0, to = 0.22 } }, -- gills, tail
 	frenzySpeed = 1.3,
 	escapeClock = 60,
@@ -370,7 +374,7 @@ local giantSquid: BossDef = {
 		trench = true,
 		leash = 160,
 	},
-	stagger = { need = 650, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
+	stagger = { need = 10, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
 	softSpots = { { from = 0.52, to = 0.7 }, { from = 0, to = 0.25 } }, -- the eye, the tentacles
 	frenzySpeed = 1.25,
 	escapeClock = 90,

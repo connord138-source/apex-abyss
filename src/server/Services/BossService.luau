@@ -76,7 +76,7 @@ type Boss = {
 	grabFree: { [Player]: number }, -- when a fish let go can be grabbed again
 	whirl: { endsAt: number, center: Vector3 }?,
 	inkUntil: number,
-	stagger: number, -- damage on soft spots toward a stagger
+	stagger: number, -- bites on soft spots toward a stagger (Config/Bosses `stagger.need`)
 	staggeredUntil: number,
 	staggerReadyAt: number,
 	exhaustedUntil: number,
@@ -1108,8 +1108,8 @@ local function onDied(predator: Predator, killer: Player?)
 end
 
 -- Every player bite on the boss: soft spots double it, a stagger or exhaustion
--- triples it, soft-spot damage fills the stagger meter, and bites help a grabbed
--- teammate break free.
+-- triples it, each soft-spot bite fills the stagger meter a notch, and bites help a
+-- grabbed teammate break free.
 local function onHit(predator: Predator, player: Player, damage: number, point: Vector3): number
 	local boss = active
 	if boss == nil or boss.predator ~= predator then
@@ -1134,7 +1134,7 @@ local function onHit(predator: Predator, player: Player, damage: number, point: 
 	end
 	local final = damage * multiplier
 	if soft and not stunned then
-		boss.stagger += final
+		boss.stagger += 1
 		predator.meter = math.clamp(boss.stagger / def.stagger.need, 0, 1)
 		if boss.stagger >= def.stagger.need and now >= boss.staggerReadyAt then
 			boss.stagger = 0
