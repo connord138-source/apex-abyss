@@ -1276,8 +1276,11 @@ local function onBite(player: Player, index: any)
 			school += 1
 		end
 	end
+	local bitten = def.bitten
 	local ratio = math.clamp(
-		(Size.raw(length) / def.length) ^ Predators.biteRatioPower,
+		if bitten
+			then bitten.scale * (Size.raw(length) / def.length) ^ bitten.power
+			else (Size.raw(length) / def.length) ^ Predators.biteRatioPower,
 		Predators.biteRatioMin,
 		Predators.biteRatioMax
 	)

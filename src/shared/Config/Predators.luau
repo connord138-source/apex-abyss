@@ -119,6 +119,10 @@ export type PredatorDef = {
 	loot: { hauls: number, dna: number, coral: number },
 	back: Color3, -- part-body colors while the model is missing
 	belly: Color3,
+	-- How a player's bite on it scales (a boss's): `scale` × (the biter's raw length /
+	-- its length) ^ `power`, in Predators' biteRatioMin..biteRatioMax, instead of the
+	-- plain ^ biteRatioPower, which put every fish at the minimum against a boss
+	bitten: { scale: number, power: number }?,
 	style: Style?, -- how it hunts (nil = plain; bosses have none)
 	swim: Swim?, -- a boss's body (nil = the plain fish model)
 }

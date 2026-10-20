@@ -1763,8 +1763,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Last stand under 25% (makes for the open ocean, the far edge of the Open Blue, on a 60 s clock; Breach every 13 s:
     sinks, rockets up, crashes with a shockwave 30% + shove, then 5 s exhausted at
     triple damage; escapes when the clock runs out and returns in 15 min). Gills and
-    tail take double damage and fill the stagger meter (700); full → 4 s stagger at
-    triple damage, breaks the mark. Rewards for everyone with ≥1% of the damage:
+    tail take double damage and fill the stagger meter, a notch a bite (12 bites, the
+    Squid 10; owner, 2026-10-20: "far too many bites to stagger", it was 700 damage);
+    full → 4 s stagger at triple damage, breaks the mark. Player bites on a boss scale
+    by `bitten` (×2.2 × (raw length ÷ 175)^0.5, the Squid ×0.9 ÷ 95; was the plain
+    ^1.5, so every fish hit the 0.08 floor, ~1.9 a bite): ~12 a bite at LV 45, about
+    9 min solo. Rewards for everyone with ≥1% of the damage:
     Megalodon Teeth (1, +1 top three, +1 killer), a Haul (1.5 full Hauls + the damage share × 1 more, since 2026-10-19; was 120 kg by share),
     coral (5,000 by share, min 500), a Rare+ shade roll, the Megalodon Slayer title
     (worn on the nametag), and a 1/15 (×2 for the top dealer) direct drop of the

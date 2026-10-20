@@ -179,6 +179,11 @@ local megalodon: BossDef = {
 		-- every reach and radius below grew with it (×1.35)
 		length = 175,
 		health = 6000,
+		-- Player bites (owner, 2026-10-20: "takes far too many bites"; boss rules: solo
+		-- in 8–10 min): every fish in its water bit at the plain minimum, 1.9 a bite,
+		-- ~3,000 bites solo. Now a LV 45 fish bites for ~12 (LV 35 10, LV 55 14, LV 100
+		-- 29), ~330 bites solo with the gills and staggers, about 9 min.
+		bitten = { scale = 2.2, power = 0.5 },
 		speed = 34,
 		turnRate = 0.9,
 		aggroRange = 240,
@@ -305,6 +310,8 @@ local giantSquid: BossDef = {
 		tag = "TERROR OF THE DEEP",
 		length = 95,
 		health = 5500,
+		-- (a LV 85 fish, the Trench's, bites for ~13, a LV 100 one ~17: ~8 min solo)
+		bitten = { scale = 0.9, power = 0.5 },
 		speed = 26,
 		turnRate = 1.1,
 		aggroRange = 280, -- it rises to fish well above its lurk band (190 missed one 180 up)
