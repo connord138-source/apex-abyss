@@ -25,6 +25,9 @@ guarded loops, state sync). Everything about this game is new.
   Controller Emulator, Device Simulator) and writes the reports.
 - Instructions for the owner's PC session must be written as a **paste-ready prompt**.
 - The owner prefers compact, decision-focused replies and keeping conversation context.
+- **Show the owner images by sending the files themselves** (attached so they open in the
+  app), never as a repo path or link: a link opens GitHub's code view, which shows no
+  picture (owner, 2026-10-20). On the PC, the same files are in the local clone.
 
 ## Decisions already made (do not re-litigate)
 
