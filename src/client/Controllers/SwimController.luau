@@ -493,7 +493,7 @@ local function step(dt: number)
 		intent = 0
 	end
 
-	-- The Dash: a burst that recharges (Deep Gills makes it recharge faster)
+	-- The Dash: a burst that recharges (Quick Recovery makes it recharge faster)
 	local boosting = clock < dashUntil
 	if not boosting then
 		SwimController.dashCharge =

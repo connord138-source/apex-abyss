@@ -25,7 +25,8 @@ function Perks.speed(upgrades: { [string]: number }?): number
 	return 1 + per("Fins") * Perks.level(upgrades, "Fins")
 end
 
--- Dash recharge speed (Deep Gills).
+-- How fast every fish's own ability recharges (Quick Recovery: the Nibbler's Dash and
+-- every other signature ability's cooldown, ÷ this).
 function Perks.boost(upgrades: { [string]: number }?): number
 	return 1 + per("Gills") * Perks.level(upgrades, "Gills")
 end

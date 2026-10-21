@@ -309,6 +309,14 @@ local function trophyRows(list: ScrollingFrame)
 	end
 end
 
+-- An upgrade's blurb for the fish being swum: `{ability}` is its own ability's name
+-- (Quick Recovery speeds up the Dash, the Torpedo, Puff Up, ...)
+local function upgradeBlurb(blurb: string): string
+	local species = Config.Species.byId[state().species or Config.Species.STARTER]
+	local ability = if species then Config.Abilities.byId[species.signature] else nil
+	return (string.gsub(blurb, "{ability}", if ability then ability.name else "Your ability"))
+end
+
 local function upgradeRows(list: ScrollingFrame, vendorId: string)
 	local upgrades = state().upgrades or {}
 	local order = 0
@@ -324,7 +332,7 @@ local function upgradeRows(list: ScrollingFrame, vendorId: string)
 			order,
 			upgrade.id,
 			upgrade.name,
-			upgrade.blurb,
+			upgradeBlurb(upgrade.blurb),
 			pips(level, #upgrade.costs),
 			if cost then coralText(cost) else "MAXED",
 			if cost then priceStyle(cost) else "disabled"

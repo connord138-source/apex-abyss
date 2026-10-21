@@ -551,7 +551,7 @@ map can uncover it. The map is in their inventory."
 
 | Vendor (keeper) | Sells |
 |---|---|
-| **Fin & Gill Outfitter** (Old Hermit) | 5-level upgrades: Strong Fins +4% speed, Deep Gills +12% boost, Shell Sense +20% pickup reach, Iron Jaw +6% bite. 150–11,000 coral a level. |
+| **Fin & Gill Outfitter** (Old Hermit) | 5-level upgrades: Strong Fins +4% speed, Quick Recovery: the fish's own ability (Dash, Torpedo, Puff Up, Burrow, Blood Sense, Lantern Flash) recharges 12% faster, Shell Sense +20% pickup reach, Iron Jaw +6% bite. 150–11,000 coral a level. |
 | **Den Mason** (Octavio) | Haul Chamber: +6% to every banked Haul per level, 300–15,000 |
 | **Tidecharm Trader** (Old Tortuga) | Lucky Charm 800 (hold 3), Second Chance 1,200 (keep your Haul once), Shell Magnet 250 (×2 reach, 10 min), Feast Charm 400 (+25% Haul, 10 min); 10 Shells for 400, 5 times a day |
 | **Shade Dyer** (Puff) | The 14 common shades at 1,500 each, previewed on your fish. Rare shades only come from rolls. |

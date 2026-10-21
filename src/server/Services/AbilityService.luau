@@ -24,6 +24,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
@@ -42,6 +43,13 @@ type Burrow = { spot: Vector3, since: number }
 
 local readyAt: { [Player]: { [string]: number } } = {}
 local burrows: { [Player]: Burrow } = {}
+
+-- An ability's cooldown for this player (the Outfitter's Quick Recovery shortens every
+-- fish's own: Perks.boost), a little short of the client's for latency
+local function cooldownOf(player: Player, seconds: number): number
+	local data = DataService.get(player)
+	return seconds * SLACK / Perks.boost(if data then data.upgrades else nil)
+end
 
 -- The signature ability of the fish a player swims as
 local function signatureOf(player: Player): string?
@@ -85,7 +93,7 @@ local function endBurrow(player: Player)
 	local now = Timing.clock()
 	local mine: { [string]: number } = readyAt[player] or {}
 	readyAt[player] = mine
-	mine.Burrow = now + (Abilities.Burrow.cooldown or 8) * SLACK
+	mine.Burrow = now + cooldownOf(player, Abilities.Burrow.cooldown or 8)
 	local character = FishService.character(player)
 	if character then
 		character:SetAttribute("Burrowed", nil)
@@ -135,7 +143,7 @@ local function use(player: Player, id: any)
 	else
 		return
 	end
-	mine[id] = now + (ability.cooldown or 0) * SLACK
+	mine[id] = now + cooldownOf(player, ability.cooldown or 0)
 end
 
 function AbilityService.start()

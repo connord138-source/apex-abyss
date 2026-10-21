@@ -110,7 +110,7 @@ return {
 		-- that recharges"): a short burst of speed with a tail flick, then a recharge
 		boostMultiplier = 2.1, -- Dash speed, × top speed (also the server's eat slack)
 		dashSeconds = 0.5,
-		dashRecharge = 3.5, -- seconds to recharge (Deep Gills shortens it)
+		dashRecharge = 3.5, -- seconds to recharge (Quick Recovery shortens it)
 		lungeSpeed = 1.7, -- a bite lunge's speed, × top speed
 		lungeSeconds = 0.2,
 		biteCooldown = 0.6,

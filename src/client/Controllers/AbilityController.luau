@@ -27,6 +27,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Bubbles = require(script.Parent.Parent.Bubbles)
 local ClientState = require(script.Parent.Parent.ClientState)
@@ -73,6 +74,13 @@ end
 
 local Abilities = Config.Abilities.byId
 
+-- An ability's cooldown for this player: the Outfitter's Quick Recovery shortens every
+-- fish's own (Perks.boost; AbilityService does the same)
+local function recharge(seconds: number): number
+	local s = ClientState.current
+	return seconds / Perks.boost(if s then s.upgrades else nil)
+end
+
 -- The other signature abilities' cooldowns and runs (os.clock)
 local readyAt: { [string]: number } = {}
 local runUntil: { [string]: number } = {}
@@ -115,7 +123,7 @@ function AbilityController.charge(): number
 		if now >= senseReadyAt then
 			return 1
 		end
-		return math.clamp(1 - (senseReadyAt - now) / SENSE_COOLDOWN, 0, 0.999)
+		return math.clamp(1 - (senseReadyAt - now) / recharge(SENSE_COOLDOWN), 0, 0.999)
 	elseif id == "Dash" then
 		return SwimController.dashCharge
 	elseif id == "Burrow" and burrowed() then
@@ -125,7 +133,7 @@ function AbilityController.charge(): number
 	if now >= ready then
 		return 1
 	end
-	local cooldown = (Abilities[id] and Abilities[id].cooldown) or 1
+	local cooldown = recharge((Abilities[id] and Abilities[id].cooldown) or 1)
 	return math.clamp(1 - (ready - now) / cooldown, 0, 0.999)
 end
 
@@ -261,7 +269,7 @@ local function bloodSense(): boolean
 		return false
 	end
 	senseUntil = now + SENSE_SECONDS
-	senseReadyAt = now + SENSE_COOLDOWN
+	senseReadyAt = now + recharge(SENSE_COOLDOWN)
 	nextRefresh = 0
 	Sfx.play("Warning", { volume = 0.45, pitch = 0.8 })
 	return true
@@ -275,7 +283,7 @@ local function take(id: string): boolean
 		return false
 	end
 	local ability = Abilities[id]
-	readyAt[id] = now + (ability.cooldown or 1)
+	readyAt[id] = now + recharge(ability.cooldown or 1)
 	if ability.seconds then
 		runUntil[id] = now + ability.seconds
 		runFor[id] = ability.seconds
@@ -398,7 +406,7 @@ local function abilityStep()
 		end
 		Sfx.play("Forage", { volume = 0.5, pitch = 0.6 })
 	elseif wasBurrowed and not hiding then
-		readyAt.Burrow = os.clock() + (Abilities.Burrow.cooldown or 8)
+		readyAt.Burrow = os.clock() + recharge(Abilities.Burrow.cooldown or 8)
 	end
 	wasBurrowed = hiding
 	if hiding and os.clock() - endAskedAt > 0.3 then

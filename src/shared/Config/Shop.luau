@@ -123,10 +123,17 @@ local upgrades: { Upgrade } = {
 		costs = { 200, 600, 1500, 3500, 8000 },
 	},
 	{
+		-- Every fish's own ability (owner, 2026-10-21: "sells dash for all of them when
+		-- not all fish can dash. That vendor needs to be relative to all fish"): the
+		-- Nibbler's Dash, the 'Cuda's Torpedo, the Puffer's Puff Up, the Moray's Burrow,
+		-- the Reef Shark's Blood Sense and the Angler's Lantern Flash all recharge
+		-- faster (Perks.boost). `{ability}` in the blurb is the current fish's
+		-- (MenuController). The id is the one saves hold: it sold "Deep Gills", a
+		-- faster Dash only, until then.
 		id = "Gills",
 		vendor = "Outfitter",
-		name = "Deep Gills",
-		blurb = "Dash recharges 12% faster per level",
+		name = "Quick Recovery",
+		blurb = "{ability} recharges 12% faster per level",
 		per = 0.12,
 		costs = { 250, 700, 1800, 4000, 9000 },
 	},

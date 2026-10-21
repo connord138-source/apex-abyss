@@ -476,6 +476,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Den Mason: the Haul Chamber.
   - Tidecharm Trader: Lucky, Second Chance, Magnet and Feast charms, plus 10 shells for
     400 coral 5 times a day.
+  - **The Outfitter's upgrades fit every fish** (owner, 2026-10-21: it "sells dash for
+    all of them when not all fish can dash"): Deep Gills (a faster Dash only) is
+    **Quick Recovery**, every fish's own ability recharging 12% faster a level
+    (`Perks.boost`: the Dash in SwimController, the rest in AbilityController and
+    AbilityService); the row names the current fish's ability (`{ability}` in the
+    blurb). The id stays `Gills`, so saved levels carry over.
   - Shade Dyer: tints.
   - More ways to spend coral come later (den decor, currents, bounties).
 - **World:**
