@@ -94,6 +94,7 @@ export type Style = {
 	lure: { radius: number, pull: number }?, -- a glowing lure that draws in the fish it stalks
 	trench: boolean?, -- lives down in the Trench's canyon (its waypoints follow the canyon)
 	spareLearners: boolean?, -- never hunts a fish still in the tutorial
+	nips: number?, -- bites that land on one fish (within `forget` s of each other) before it lets that fish go for `forget` s
 	warn: string?, -- the words after its name when its tell is on you (default INCOMING)
 }
 
@@ -290,7 +291,8 @@ local list: { PredatorDef } = {
 	{
 		-- The kelp's harrier: darts in, nips and loops back to come again. Its nip is
 		-- light and its tell long, so it's where a new fish learns to juke; it leaves a
-		-- fish still in the tutorial alone
+		-- fish still in the tutorial alone, and lets a fish go after two nips (owner,
+		-- 2026-10-21: a warning, not a kill)
 		id = "SeaLion",
 		name = "Sea Lion",
 		model = "SeaLion",
@@ -326,6 +328,8 @@ local list: { PredatorDef } = {
 			glide = 0.25,
 			beat = 1.8,
 			spareLearners = true,
+			nips = 2,
+			forget = 30,
 			warn = "NIP · JUKE SIDEWAYS",
 		},
 		biteReach = 2.2,

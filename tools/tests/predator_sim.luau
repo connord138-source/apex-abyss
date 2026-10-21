@@ -177,6 +177,7 @@ local function run(
 			member.stunUntil = 0
 			member.fails = {}
 			member.ignore = {}
+			member.nipped = {}
 			-- (a tethered hunter's hole is where it starts)
 			if member.home then
 				member.home = member.position
@@ -674,6 +675,13 @@ local kelp = at(30, 380, 12)
 local n6 = fishAt("Nibbler", 6)
 local lStill = case("SeaLion", n6, "water", kelp, "still", 40)
 expect(lStill.caught >= TRIALS * 0.9, "Sea Lion: a still fish is nipped")
+-- (it lets a fish go after its `nips` and leaves it `forget` s: a 60 s trial sees two
+-- rounds of nips at most)
+local lionStyle = Config.Predators.byId.SeaLion.style :: any
+expect(
+	lStill.hits <= TRIALS * lionStyle.nips * math.ceil(SECONDS / lionStyle.forget),
+	`Sea Lion: lets a fish go after {lionStyle.nips} nips ({lStill.hits} in {TRIALS} trials)`
+)
 expect(
 	math.abs(lStill.fraction - Config.Predators.byId.SeaLion.biteFraction) < 1e-6,
 	"Sea Lion: a light nip at its level"

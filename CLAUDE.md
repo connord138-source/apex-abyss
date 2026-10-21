@@ -2038,8 +2038,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
       second line reads LV n · STRONGER / WEAKER / EVEN FIGHT (Config/Pvp `edge`), and a
       roamer 12+ levels under you reads WARY OF YOU. The Index's GUIDE and FISH say so.
     - **Each its own way** (`Style`: `pack`, `gulp`, `tether`, `lure`, `trench`,
-      `spareLearners`, `warn`): the **Sea Lion** (LV 6) harries with light nips and never
-      hunts a fish in the tutorial; the **Goliath Grouper** (LV 18) lurks low and its
+      `spareLearners`, `nips`, `warn`): the **Sea Lion** (LV 6) harries with light nips,
+      never hunts a fish in the tutorial and lets a fish go after `nips` 2 landed nips
+      for `forget` 30 s, with a toast (owner, 2026-10-21; a still fish took ~15 nips a
+      minute, now ~2.3); the **Goliath Grouper** (LV 18) lurks low and its
       tell sucks the fish in (`gulp` 34 studs/s² within 26) until the fish swims off
       faster than 1.4 × its top speed (a Dash); **Giant Trevally** (LV 32) hunt in packs
       of 3 (the leader drives, the others keep station and swing out to its flanks,

@@ -91,6 +91,9 @@ export type Predator = {
 	-- An ambusher's failed bursts on each fish, and the fish it has given up on (until)
 	fails: { [Player]: number },
 	ignore: { [Player]: number },
+	-- A harrier's landed nips on each fish (how many, the last one's clock), until it
+	-- lets that fish go (`nips`)
+	nipped: { [Player]: { count: number, at: number } },
 	-- Its last strike (or feint) and how far it swerves off as it carries through: it
 	-- comes round once `carry` has passed
 	strikeAt: number,
@@ -399,6 +402,7 @@ local function spawn(predator: Predator, at: Vector3?)
 	predator.stunUntil = 0
 	predator.fails = {}
 	predator.ignore = {}
+	predator.nipped = {}
 	predator.strikeAt = -math.huge
 	predator.veer = 0
 	predator.approach = "direct"
@@ -995,6 +999,27 @@ local function winded(predator: Predator, failed: boolean, now: number)
 	end
 end
 
+-- A harrier's nip landed: after `nips` of them (each within `forget` s of the last)
+-- it lets the fish go for `forget` s and says so
+local function nipped(predator: Predator, victim: Player, now: number)
+	local style = styleOf(predator.def)
+	local limit = style.nips
+	if limit == nil then
+		return
+	end
+	local forget = style.forget or 20
+	local last = predator.nipped[victim]
+	local count = if last and now - last.at <= forget then last.count + 1 else 1
+	if count < limit then
+		predator.nipped[victim] = { count = count, at = now }
+		return
+	end
+	predator.nipped[victim] = nil
+	predator.ignore[victim] = now + forget
+	predator.target = nil
+	Net.notify(victim, `The {predator.def.name} has had its fun and leaves you be`, "info")
+end
+
 -- How far out it likes to start a run at a fish: room to reach speed and open its jaw
 local function runInOf(def: Def): number
 	return def.length * 1.5 + def.speed * def.telegraph * 0.8
@@ -1469,6 +1494,9 @@ local function simulate(predator: Predator, dt: number, now: number)
 								if hit then def.biteCooldown + (style.sated or 0) else def.biteCooldown * 0.6,
 								true
 							)
+							if hit then
+								nipped(predator, victim, now)
+							end
 						end
 						-- A puffed fish's spines: the biter takes recoil and flinches
 						if puffed then
@@ -1651,6 +1679,7 @@ local function make(def: Def, custom: boolean?): Predator
 		stunUntil = 0,
 		fails = {},
 		ignore = {},
+		nipped = {},
 		strikeAt = -math.huge,
 		veer = 0,
 		approach = "direct",
@@ -1797,6 +1826,7 @@ function PredatorService.start()
 			predator.hitBy[player] = nil
 			predator.fails[player] = nil
 			predator.ignore[player] = nil
+			predator.nipped[player] = nil
 			if predator.target == player then
 				predator.target = nil
 			end
