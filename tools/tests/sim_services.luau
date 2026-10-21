@@ -17,6 +17,12 @@ local sim = {
 	events = {} :: { { kind: string, index: number, payload: any, at: number } },
 	hits = {} :: { { player: any, fraction: number, at: number } },
 	shoves = {} :: { { player: any, push: Vector3, at: number } },
+	-- (a player's bite on a predator: the request handlers, the biter's mouth, their
+	-- save, and the coral each kill paid)
+	requests = {} :: { [string]: (...any) -> () },
+	mouth = nil :: ((player: any) -> (Vector3?, number, number))?,
+	data = {} :: any,
+	coral = {} :: { number },
 }
 
 local function noop() end
@@ -74,7 +80,9 @@ sim.Net = {
 		table.insert(sim.events, { kind = kind, index = index, payload = payload, at = sim.now })
 	end,
 	predatorStateTo = noop,
-	onRequest = noop,
+	onRequest = function(name: string, handler: (...any) -> ())
+		sim.requests[name] = handler
+	end,
 	notify = noop,
 	-- (the world bosses: boss_sim.luau)
 	notifyAll = noop,
@@ -108,12 +116,17 @@ sim.DataService = {
 	releasing = signal(),
 	loaded = signal(),
 	get = function()
-		return {}
+		return sim.data
 	end,
 	markDirty = noop,
 	save = noop,
 }
-sim.EconomyService = { earnCoral = noop, addCoral = noop }
+sim.EconomyService = {
+	earnCoral = function(_player: any, amount: number)
+		table.insert(sim.coral, amount)
+	end,
+	addCoral = noop,
+}
 sim.FishService = {
 	character = function(player: any)
 		local entry = sim.characters[player]
@@ -140,7 +153,11 @@ sim.HuntService = {
 		return kg
 	end,
 	giveDna = noop,
-	mouth = function()
+	mouth = function(player: any)
+		local mouth = sim.mouth
+		if mouth then
+			return mouth(player)
+		end
 		return nil, 0, 0
 	end,
 }

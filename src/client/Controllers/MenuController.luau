@@ -1154,7 +1154,7 @@ end
 function MenuController.openSpecies()
 	open(
 		"Your Fish",
-		"Every species grows on its own. Switch in the safe zone.",
+		"Each fish levels up on its own, and fights go by its level. Switch in the safe zone.",
 		Vector2.new(920, 540),
 		function(window)
 			local left = Instance.new("Frame")
@@ -1680,6 +1680,10 @@ local function guide(): { { title: string, text: string } }
 				"BITE (RB)",
 				"Tap BITE on"
 			)} other players, predators and bosses: players are never swallowed whole, and a higher level bites harder. A fish that's too big to eat will chase you: swim away.`,
+		},
+		{
+			title = "Predators",
+			text = "Every predator shows its level on its tag. Ten levels above it you bite it apart in a few bites, twenty above you swallow it whole, and once you're twelve above it, it won't hunt you. Below its level its bites hurt more and yours barely scratch. Each hunts its own way, so read the warning: dash out of a grouper's gulp, dodge a goblin shark's jaws sideways.",
 		},
 		{
 			title = "Bank your Haul",

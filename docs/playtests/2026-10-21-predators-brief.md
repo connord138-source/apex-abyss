@@ -29,6 +29,31 @@ Apex Tide — PC brief (2026-10-21): import the eight new predator models. Built
    - its colours match the board (no pink mouths; the dragonfish's lure glows cyan below its chin).
 3. Screenshot each into `docs/playtests/shots/2026-10-21-predators/`.
 
+## Code: the eight in game (QR)
+
+The eight hunt in code too (same branch). Test with the models imported; anything that
+reads wrong without them, note it. Admin's "set level" and "teleport to a biome" get you
+to each. 53 plain predators in all: Kelp 5 Sea Lions, Wreck 6 Barracuda + 3 Groupers,
+Reef 3 Trevally packs + 4 Reef Sharks, Open Blue 5 Reef Sharks + 3 Makos, Ruins 4
+Sixgills, Vents 6 Wolf Eels, Trench 3 Goblin Sharks + 5 Black Dragonfish.
+
+| # | Check | Pass when |
+|---|---|---|
+| QR1 | Level tags | Every predator's tag has a second line `LV n · STRONGER / WEAKER / EVEN FIGHT` against your fish: a Barracuda (LV 18) reads STRONGER (red) at LV 10, EVEN FIGHT at 18, WEAKER (green) at 26. A Reef Shark reads LV 34 on the reef and LV 45 in the Open Blue. |
+| QR2 | Bites by level | Biting a Barracuda kills it in about 8 bites at LV 18, about 5 at LV 28, and **one** at LV 38: "You swallowed the Barracuda whole!", a big bubble burst and a chomp. The coral toast at LV 38 is a small fraction of LV 18's. |
+| QR3 | Shy | At LV 31+ a Barracuda nearby reads WARY OF YOU and never starts a hunt on you. Bite it and it fights back for a few seconds. |
+| QR4 | Sea Lion (kelp's outer ring, LV 6) | Admin: restart the tutorial. No Sea Lion hunts you during it. After it, a Sea Lion nips (`SEA LION · NIP · JUKE SIDEWAYS`), and a sideways juke as its jaw flashes makes it miss. |
+| QR5 | Goliath Grouper (Wreck bay, LV 18) | Sit near one: water streams into its open mouth and you're pulled in (`GULP · DASH OUT`). A Dash breaks the pull and gets you clear. |
+| QR6 | Giant Trevally (Reef, LV 32) | Three swim together. One drives at you while the other two swing out to your flanks; their tags read PACK HUNTING YOU. Hiding under an arch or in a tunnel stops them. |
+| QR7 | Mako (Open Blue, LV 45) | It comes up at you from below (`FROM BELOW · JUKE NOW`). A juke the moment its jaw flashes escapes; a late one doesn't. |
+| QR8 | Sixgill (Ruins, LV 60) | Big, slow and heavy-biting; it's outswum. On the part-built stand-in the eyes glow green. |
+| QR9 | Wolf Eel (Vents, LV 75) | It holds near its hole and lunges (`LUNGE · BACK OFF`). Back off about 80 studs and it stays at its hole. |
+| QR10 | Goblin Shark (Trench, LV 90) | Late in its tell its jaws shoot forward on the bite (`JAW THROW · DODGE SIDEWAYS`). A sideways dodge early in the tell escapes. |
+| QR11 | Black Dragonfish (Trench, LV 88) | A cyan lure glows under its chin and brightens as it hunts. `ITS LURE IS PULLING YOU IN · SWIM OFF` shows and you drift toward it; then it bursts (`IT'S A LURE · DASH OFF`). |
+| QR12 | Body size | Your bite lands at each one's body, not at the sea lion's flipper tips or the dragonfish's barbel. A boss bumped into still stops you at its flank. |
+| QR13 | Full, not slow | In the Reef with the packs, and in the Trench, FPS stays where round 3 had it (Reef ~46, Trench ~43). Any `[Guard]` error naming PredatorService goes in the report. |
+| QR14 | Words | INDEX → GUIDE has a **Predators** entry, and FISH's subtitle says fights go by level. |
+
 ## 4. Report
 
-Write `docs/playtests/2026-10-21-predators.md`: a row per predator (PASS / FAIL / NOTE: facing, jaw, look, size against the board), your fixes (one commit each), and push `claude/core-systems`.
+Write `docs/playtests/2026-10-21-predators.md`: a row per predator (PASS / FAIL / NOTE: facing, jaw, look, size against the board) and a row per QR check, your fixes (one commit each), and push `claude/core-systems`.

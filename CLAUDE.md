@@ -1860,9 +1860,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     **Every shelf biome has its own (owner, 2026-10-21: "we need more predator fish
     too that felt pretty scattered"; there were 8 in all):** a def's `also` lists more
     waters, each its own group of the same fish (`Predators.groups`, one spawn group
-    per water): Barracuda 6 in the Wreck bay (home), 5 over the Reef, 3 on the kelp's
-    outer edge (respawn 60 s); Reef Shark 7 in the Open Blue and 5 cruising the Reef's
-    outer half (respawn 100 s), 26 in all. Each player is streamed only the creatures
+    per water): since the eight below, Barracuda 6 in the Wreck bay (respawn 60 s) and
+    Reef Shark 5 in the Open Blue (LV 45) and 4 cruising the Reef's outer half (LV 34;
+    respawn 100 s). Each player is streamed only the creatures
     within `streamRange` 700 studs of their fish, any hunting them and every boss
     (`Net.predatorStateTo`); a client hides one it hasn't heard of for `STALE` 1.5 s and
     starts its path afresh when it's back. The ambusher's lurk spots keep to its
@@ -1874,6 +1874,55 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `PreyModels.<Id>` by `organize_imports`; their shapes and jaw hinges are in docs/ASSETS.md
     "The new predators". Every Tripo sheet paints an open mouth mauve inside: recolour it
     (`tools/props/predator_refs.py --fix`) before 3D, and run `safe_colors.py --plum` after.
+    **The eight in code (owner, 2026-10-21: "Ensure ease of eating them scales with
+    levels as well", "the world should feel full"):** 53 plain predators: Kelp 5 Sea
+    Lions (the kelp-edge Barracuda went), Wreck 6 Barracuda + 3 Goliath Groupers, Reef 3
+    Giant Trevally packs of 3 + 4 Reef Sharks, Open Blue 5 Reef Sharks + 3 Makos, Ruins 4
+    Sixgills, Vents 6 Wolf Eels, Trench 3 Goblin Sharks + 5 Black Dragonfish.
+    - **Fights go by level, like PvP** (`Config/Predators` `fight`): every group has a
+      `level` (a Water can set its own). A player's bite on a plain predator is ×
+      1.108^((their banked level − its level) × ⅔), clamped `yours` 0.05–4 (24 × that a
+      bite; health = 24 × the bites an even fight takes): 10 up takes ~5 bites, 20 up
+      (`swallow`) swallows it whole in one, still paying its loot; 10 down ~16. Its bite on
+      a player goes the other way, `theirs` 0.15–1.5 × its `biteFraction`. It won't hunt
+      a fish more than `shy` 12 levels over it (it keeps clear, unless that fish bit it in
+      the last 8 s), and a fish above it gets its loot × (its strength against the fish)
+      ^ `pay` 1.5 (floor `payMin` 0.05), so farming low predators doesn't pay.
+      Bosses keep `bitten`. The stream's 13th field is the group's level; the tag's
+      second line reads LV n · STRONGER / WEAKER / EVEN FIGHT (Config/Pvp `edge`), and a
+      roamer 12+ levels under you reads WARY OF YOU. The Index's GUIDE and FISH say so.
+    - **Each its own way** (`Style`: `pack`, `gulp`, `tether`, `lure`, `trench`,
+      `spareLearners`, `warn`): the **Sea Lion** (LV 6) harries with light nips and never
+      hunts a fish in the tutorial; the **Goliath Grouper** (LV 18) lurks low and its
+      tell sucks the fish in (`gulp` 34 studs/s² within 26) until the fish swims off
+      faster than 1.4 × its top speed (a Dash); **Giant Trevally** (LV 32) hunt in packs
+      of 3 (the leader drives, the others keep station and swing out to its flanks,
+      sharing its target; a dead one respawns at its station); the **Mako** (LV 45)
+      comes up from below (`under` 0.75) and commits 60% into its tell, so a juke as its
+      jaw flashes beats it and a late one doesn't; the **Sixgill** (LV 60) is a slow,
+      heavy patroller with glowing green eyes; the **Wolf Eel** (LV 75) holds a hole
+      (`home`, the best cover near its spawn) and lunges from it, never straying past
+      `tether` 36 studs (a fish 80 out is safe); the **Goblin Shark** (LV 90) throws its
+      jaws (a long snap, commit 0.4: a sideways dodge early in the tell escapes); the
+      **Black Dragonfish** (LV 88) draws the fish it stalks in with its lure (9 studs/s²
+      within 45) and bursts. Trench hunters keep to the canyon (`trenchWaypoint`).
+      Server pulls go through `Net.shove` every tick, like the whirlpool.
+    - **Client** (`PredatorController`): each draws its rigged `PreyModels.<Id>` (Jaw
+      bone; `DRAW_SHIFT` moves the dragonfish's mesh up off its barbel's box) or a
+      part-built stand-in from its own proportions (`STAND_INS`: body, tail, head, fins,
+      snout, eyes; `rig` pieces such as the dragonfish's cyan lure also go on the model).
+      Bodies are measured by `girth` (height and length, never the sea lion's flippers or
+      the dragonfish's barbel). Tells: water streams into a grouper's open mouth
+      (`suction`), the goblin's jaws shoot forward (`JawRange.throw`), the lure breathes
+      and brightens as it hunts; warnings in words from `warn` (GULP · DASH OUT, JAW
+      THROW · DODGE SIDEWAYS, PACK · HIDE IN THE ARCHES, ...), ITS LURE IS PULLING YOU IN,
+      PACK HUNTING YOU; a predator swallowed whole goes in a big burst and a chomp.
+    - Sim (`run_predators.sh`, with level cases and each species' escape): Barracuda
+      bites ×1.5 a LV 10, ×1 a LV 18, ×0.5 a LV 28, and takes 16/8/5/1 bites from LV
+      8/18/28/38; a LV 35 fish isn't hunted. Sea Lion: a juke at the tell escapes 99%
+      (late, 2%); Grouper: a Dash out of the gulp 100%; Trevally: hiding 100%, a Dash
+      97%; Mako: a timely juke 100% (late 40%); Sixgill: outswum; Wolf Eel: past its
+      tether; Goblin: an early dodge 100% (late 0%); Dragonfish: a Dash at the tell ~60%.
     **Real ground and fluid swimming (owner, 2026-10-13: "the predator fish will
     phase through the sand in the ground ... Their tracking should also be more
     fluid and realistic"):** `Shared/Ground.luau` gives the real ground's top in a

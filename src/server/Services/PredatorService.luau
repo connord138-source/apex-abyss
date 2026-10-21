@@ -18,6 +18,16 @@
 -- at it": both now bite a fish darting in and out at them. A burrowed fish (character attribute `Burrowed`) is never prey, a
 -- puffed one (`Puffed`) takes half a bite and spines the biter, and the Anglerfish's
 -- Lantern Flash stuns them (`PredatorService.stun`).
+--
+-- Every biome has its own since 2026-10-21 (Config/Predators), each in its own way:
+-- the Sea Lion harries, the Goliath Grouper's tell sucks a fish in (`gulp`), Giant
+-- Trevally hunt in packs (one drives, two flank), the Mako comes up from below, the
+-- Sixgill patrols, the Wolf Eel lunges from its hole and never strays far
+-- (`tether`), the Goblin Shark throws its jaws, and the Black Dragonfish draws its fish
+-- in with a lure (`lure`). A fight goes by level like a fight between players
+-- (Config/Predators `fight`): bites both ways scale with the gap, a fish `swallow`
+-- levels up swallows it whole, it shies off a fish `shy` levels up, and a kill pays a
+-- fish well above it little.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -92,6 +102,15 @@ export type Predator = {
 	approachUntil: number,
 	orbit: number,
 	feintLeft: boolean,
+	-- Its pack (Config/Predators `pack`): every member, and its place in it (1 leads)
+	pack: { Predator }?,
+	role: number,
+	-- A tethered hunter's hole (`tether`): where it spawned
+	home: Vector3?,
+	-- A gulper's pull is broken for this tell (the fish swam off too fast)
+	gulpFree: boolean,
+	-- When a lure last told its fish it's being drawn in
+	luredAt: number,
 }
 
 local PredatorService = {
@@ -131,6 +150,45 @@ local PLAIN: PredatorsConfig.Style = {
 }
 local function styleOf(def: Def): PredatorsConfig.Style
 	return def.style or PLAIN
+end
+
+local fight = Predators.fight
+local growth = Config.Tuning.size.levelGrowth
+
+-- A fish's level, the one fights go by (HuntService's `FishLevel`: banked, so the
+-- Haul aboard doesn't count)
+local function levelOf(character: Model?): number
+	local level = if character then character:GetAttribute("FishLevel") else nil
+	return if typeof(level) == "number" then level else 1
+end
+
+-- How much stronger level `a` is than level `b` in a fight: (the mass at `a` ÷ the
+-- mass at `b`) ^ power, about ×1.07 a level (Config/Pvp `fight`)
+local function strength(a: number, b: number): number
+	return growth ^ ((a - b) * fight.power)
+end
+
+-- Its bite on a fish, × its biteFraction: harder on a fish under its level, a nip on
+-- one well above it (1 for a creature with no level: a boss)
+local function theirBite(def: Def, character: Model?): number
+	local level = def.level
+	if level == nil then
+		return 1
+	end
+	return math.clamp(strength(level, levelOf(character)), fight.theirs.min, fight.theirs.max)
+end
+
+-- Whether a fish is too far above a plain predator's level for it to take on
+local function outclassed(def: Def, character: Model): boolean
+	local level = def.level
+	return level ~= nil and levelOf(character) > level + fight.shy
+end
+
+-- Whether a fish is still in the tutorial (a `spareLearners` hunter leaves it alone)
+local function learning(player: Player): boolean
+	local data = DataService.get(player)
+	local tutorial = if data then (data :: any).tutorial else nil
+	return typeof(tutorial) == "table" and tutorial.done == false
 end
 
 -- Kelp forests (World.Biomes.Kelp): where each stalk stands, by cell, for a hunter
@@ -215,8 +273,26 @@ local function coverAt(x: number, z: number): number
 	return raised
 end
 
+-- A spot down in the Trench's canyon (a `trench` hunter): along its winding line,
+-- across its floor, at the hunter's depth over the real ground
+local function trenchWaypoint(def: Def): Vector3
+	local trench = World.trench
+	local r = rng:NextNumber(
+		math.max(def.band[1], trench.radii[1] + 15),
+		math.max(math.min(def.band[2], trench.radii[2] - 15), trench.radii[1] + 16)
+	)
+	local _, width = Seafloor.trenchAxis(r)
+	local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
+	local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-1, 1) * math.max(halfBottom - 12, 4))
+	local ground = math.max(Seafloor.y(x, z), Ground.y(x, z))
+	return Vector3.new(x, ground + rng:NextNumber(def.depth[1], def.depth[2]), z)
+end
+
 local function randomWaypoint(def: Def): Vector3
 	local style = styleOf(def)
+	if style.trench then
+		return trenchWaypoint(def)
+	end
 	local lurk = style.lurk
 	if lurk then
 		-- An ambusher lurks low by a rock, a coral head or the kelp: the best cover of a
@@ -264,15 +340,57 @@ local function randomWaypoint(def: Def): Vector3
 	return Vector3.new(x, Seafloor.y(x, z) + def.depth[1] + 10, z)
 end
 
+-- Where it roams to next: a tethered hunter hovers by its hole, the rest roam
+local function waypointFor(predator: Predator): Vector3
+	local home = predator.home
+	if home then
+		local wander = rng:NextUnitVector() * rng:NextNumber(2, 8)
+		return home + Vector3.new(wander.X, math.abs(wander.Y) * 0.5, wander.Z)
+	end
+	return randomWaypoint(predator.def)
+end
+
+-- A pack's leader: its first member that's alive (nil for a lone hunter)
+local function leaderOf(predator: Predator): Predator?
+	local pack = predator.pack
+	if pack == nil then
+		return nil
+	end
+	for _, member in pack do
+		if member.mode ~= "dead" then
+			return member
+		end
+	end
+	return nil
+end
+
+-- Where a pack member keeps station round its leader: out to one side and a little
+-- behind (its `role` picks the side)
+local function stationOf(predator: Predator, leader: Predator): Vector3
+	local spread = (styleOf(predator.def).pack :: { size: number, spread: number }).spread
+	local heading = Vector3.new(leader.heading.X, 0, leader.heading.Z)
+	heading = if heading.Magnitude > 1e-3 then heading.Unit else Vector3.xAxis
+	local right = Vector3.new(-heading.Z, 0, heading.X)
+	local side = if predator.role % 2 == 0 then 1 else -1
+	local rank = math.ceil((predator.role - 1) / 2)
+	return leader.position + right * side * spread * rank - heading * spread * 0.6 * rank
+end
+
 local function spawn(predator: Predator, at: Vector3?)
+	-- (a pack member comes back beside its leader)
+	local leader = leaderOf(predator)
+	if at == nil and leader and leader ~= predator then
+		at = stationOf(predator, leader)
+	end
 	predator.position = at or randomWaypoint(predator.def)
+	predator.home = if styleOf(predator.def).tether then predator.position else nil
 	predator.velocity = Vector3.zero
 	predator.heading = Vector3.new(1, 0, 0)
 	predator.health = predator.maxHealth
 	predator.mode = "roam"
 	predator.modeUntil = 0
 	predator.target = nil
-	predator.waypoint = randomWaypoint(predator.def)
+	predator.waypoint = waypointFor(predator)
 	predator.waypointUntil = Timing.clock() + 12
 	predator.hitBy = {}
 	predator.meter = 0
@@ -287,6 +405,7 @@ local function spawn(predator: Predator, at: Vector3?)
 	predator.approachFor = nil
 	predator.approachUntil = 0
 	predator.feintLeft = false
+	predator.gulpFree = false
 	Net.predatorEvent("spawned", predator.index, {
 		id = predator.def.id,
 		x = predator.position.X,
@@ -296,7 +415,7 @@ local function spawn(predator: Predator, at: Vector3?)
 end
 
 local function mouthOf(predator: Predator): Vector3
-	return predator.position + predator.heading * predator.def.length * 0.45
+	return predator.position + predator.heading * predator.def.length * (predator.def.mouth or 0.45)
 end
 
 local function rotateToward(from: Vector3, to: Vector3, maxAngle: number): Vector3
@@ -397,8 +516,34 @@ local function keepsHunting(predator: Predator, player: Player, now: number): bo
 	if nearHub(root.Position, 0) or not inReach(predator, player, character, root, now) then
 		return false
 	end
-	local leash = styleOf(predator.def).leash or Predators.loseRange
+	-- (a fish far above its level only while it's being bitten by it)
+	local hit = predator.hitBy[player]
+	if outclassed(predator.def, character) and not (hit and now - hit.at < 8) then
+		return false
+	end
+	-- (a tethered hunter lets a fish go once it's out of reach of its hole)
+	local style = styleOf(predator.def)
+	local home = predator.home
+	if home and (root.Position - home).Magnitude > (style.tether or 0) + predator.def.aggroRange * 0.6 then
+		return false
+	end
+	local leash = style.leash or Predators.loseRange
 	return (root.Position - predator.position).Magnitude <= senseRange(predator, character) * leash
+end
+
+-- A fish its packmates are already on (it joins in)
+local function packTarget(predator: Predator, now: number): Player?
+	local pack = predator.pack
+	if pack == nil then
+		return nil
+	end
+	for _, mate in pack do
+		local target = mate.target
+		if mate ~= predator and mate.mode ~= "dead" and target and keepsHunting(predator, target, now) then
+			return target
+		end
+	end
+	return nil
 end
 
 -- The fish worth hunting: alive, not safe, in range, big enough (or it bit us).
@@ -429,9 +574,44 @@ local function pickTarget(predator: Predator, now: number): Player?
 		if Size.raw(fishLength) < def.length * def.ignoreBelow and not provoked then
 			continue
 		end
+		-- (it shies off a fish far above its level, leaves one still in the tutorial
+		-- alone if it's a `spareLearners` hunter, and a tethered one only takes fish
+		-- near its hole)
+		if not provoked and outclassed(def, character) then
+			continue
+		end
+		local style = styleOf(def)
+		if style.spareLearners and learning(player) then
+			continue
+		end
+		local home = predator.home
+		if home and (root.Position - home).Magnitude > (style.tether or 0) + def.aggroRange * 0.5 then
+			continue
+		end
 		local score = fishLength + (if provoked then 50 else 0) - distance * 0.05
 		if score > bestScore then
 			best, bestScore = player, score
+		end
+	end
+	return best
+end
+
+-- The nearest fish far above its level that's close (it shies off), or nil
+local function shyFrom(predator: Predator): Vector3?
+	local def = predator.def
+	if def.level == nil or predator.custom then
+		return nil
+	end
+	local best: Vector3? = nil
+	local bestGap = def.aggroRange * 0.5
+	for player, record in HuntService.sessions() do
+		local character, root = FishService.character(player)
+		if character == nil or root == nil or not record.alive or record.inHub then
+			continue
+		end
+		local gap = (root.Position - predator.position).Magnitude
+		if gap < bestGap and outclassed(def, character) then
+			best, bestGap = root.Position, gap
 		end
 	end
 	return best
@@ -685,7 +865,7 @@ local function strikeReach(def: Def, fishLength: number): number
 	return def.biteReach * (styleOf(def).snap or 1.6) + fishLength * 0.5 + Size.topSpeed(fishLength) * 0.1
 end
 
-local function payOut(predator: Predator, killer: Player?)
+local function payOut(predator: Predator, killer: Player?, swallowed: boolean?)
 	local def = predator.def
 	local total = 0
 	for _, record in predator.hitBy do
@@ -706,15 +886,27 @@ local function payOut(predator: Predator, killer: Player?)
 		if data == nil then
 			continue
 		end
+		-- A fish well above its level gets little for it (Config/Predators `fight`
+		-- `pay`), so farming low predators doesn't pay
+		local pay = 1
+		local level = def.level
+		if level then
+			local over = strength(level, levelOf((FishService.character(player))))
+			pay = if over < 1 then math.max(over ^ fight.pay, fight.payMin) else 1
+		end
 		-- (a share of the fish's own full Haul: Config/Predators `loot`)
-		local gained = HuntService.shown(player, HuntService.hauls(player, def.loot.hauls * share)) -- (as food)
-		HuntService.giveDna(player, predator.position, math.max(1, math.floor(def.loot.dna * share + 0.5)))
-		EconomyService.earnCoral(player, def.loot.coral * share)
+		local gained = HuntService.shown(player, HuntService.hauls(player, def.loot.hauls * share * pay)) -- (as food)
+		local dna = math.floor(def.loot.dna * share * pay + 0.5)
+		if dna > 0 then
+			HuntService.giveDna(player, predator.position, dna)
+		end
+		EconomyService.earnCoral(player, def.loot.coral * share * pay)
 		Events.ate:fire(player, 1)
 		Net.notify(
 			player,
-			if player == killer
-				then `You killed the {def.name}! +{Format.haul(gained)} Haul`
+			if player == killer and swallowed
+				then `You swallowed the {def.name} whole! +{Format.haul(gained)} Haul`
+				elseif player == killer then `You killed the {def.name}! +{Format.haul(gained)} Haul`
 				else `The {def.name} is dead · your share: +{Format.haul(gained)} Haul`,
 			"good"
 		)
@@ -723,7 +915,14 @@ end
 
 -- Damage to a creature from a player (a bite, or a puffed fish's spines), counted
 -- toward that player's share of the kill
-local function hurt(predator: Predator, player: Player, damage: number, at: Vector3, now: number)
+local function hurt(
+	predator: Predator,
+	player: Player,
+	damage: number,
+	at: Vector3,
+	now: number,
+	swallowed: boolean?
+)
 	local def = predator.def
 	predator.health -= damage
 	local record: { damage: number, at: number } = predator.hitBy[player] or { damage = 0, at = now }
@@ -743,9 +942,13 @@ local function hurt(predator: Predator, player: Player, damage: number, at: Vect
 		predator.respawnAt = now + def.respawn
 		predator.target = nil
 		predator.burstUntil = 0
-		Net.predatorEvent("died", predator.index, { by = player.UserId, gone = predator.custom == true })
+		Net.predatorEvent(
+			"died",
+			predator.index,
+			{ by = player.UserId, gone = predator.custom == true, swallowed = swallowed == true }
+		)
 		if not predator.custom then
-			payOut(predator, player)
+			payOut(predator, player, swallowed)
 		end
 		PredatorService.died:fire(predator, player)
 		if predator.custom then
@@ -867,7 +1070,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 			return
 		end
 		predator.mode = "roam"
-		predator.waypoint = randomWaypoint(def)
+		predator.waypoint = waypointFor(predator)
 		predator.waypointUntil = now + 12
 	end
 	-- Keep or drop its fish. One that burrows, slips into kelp it's too big for, gets
@@ -888,7 +1091,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 		local mode = modeOf(predator)
 		if mode ~= "windup" and mode ~= "recover" then
 			if predator.target == nil then
-				predator.target = pickTarget(predator, now)
+				predator.target = packTarget(predator, now) or pickTarget(predator, now)
 			end
 			predator.mode = if predator.target then "hunt" else "roam"
 		end
@@ -919,7 +1122,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 					predator.waypointUntil = now + 6
 				end
 			elseif reached then
-				predator.waypoint = randomWaypoint(def)
+				predator.waypoint = waypointFor(predator)
 				predator.waypointUntil = now + 12
 			end
 		end
@@ -931,6 +1134,25 @@ local function simulate(predator: Predator, dt: number, now: number)
 			* speed
 			* (style.roam or Predators.roamSpeed)
 			* rhythm(predator, now, math.max(style.glide or 0.2, 0.2), style.beat or 2.6)
+		-- A pack member keeps station by its leader (it catches up when behind)
+		local leader = leaderOf(predator)
+		if leader and leader ~= predator then
+			local toStation = stationOf(predator, leader) - predator.position
+			local far = toStation.Magnitude
+			if far > 3 then
+				local pace = speed * (style.roam or Predators.roamSpeed) * math.clamp(far / 20, 0.6, 1.6)
+				desired = toStation.Unit * pace
+			end
+		end
+		-- ...and it shies off a fish far above its level (Config/Predators `fight`)
+		local bully = shyFrom(predator)
+		if bully then
+			local away = predator.position - bully
+			away = Vector3.new(away.X, math.max(away.Y, 0) * 0.3, away.Z)
+			if away.Magnitude > 1e-3 then
+				desired = away.Unit * speed * 0.7
+			end
+		end
 	elseif predator.mode == "recover" then
 		-- After a strike it carries on through, then comes round hard (owner,
 		-- 2026-10-19: "If he misses the player he just slowly turns around and goes at
@@ -1006,6 +1228,17 @@ local function simulate(predator: Predator, dt: number, now: number)
 				elseif predator.mode == "windup" then math.clamp(predator.modeUntil - now, 0, 0.5)
 				else math.clamp(gap / math.max(speed, 1), 0, 1.2)
 			local aim = root.Position + fishVelocity * lead
+			-- A pack's flankers swing out wide to either side of the fish and come in
+			-- from there, while the leader drives straight at it
+			local leader = leaderOf(predator)
+			local pack = style.pack
+			if pack and leader and leader ~= predator and gap > pack.spread * 2.2 then
+				local across = Vector3.new(-toFish.Z, 0, toFish.X)
+				local side = if predator.role % 2 == 0 then 1 else -1
+				if across.Magnitude > 1e-3 then
+					aim += across.Unit * side * pack.spread * math.clamp(gap / (pack.spread * 4), 0.5, 1.5)
+				end
+			end
 			local aimFloor = Ground.y(aim.X, aim.Z) + def.length * BODY_HALF + BELLY_GAP
 			aim = Vector3.new(aim.X, math.max(aim.Y, aimFloor), aim.Z)
 			local toTarget = aim - mouth
@@ -1026,6 +1259,17 @@ local function simulate(predator: Predator, dt: number, now: number)
 				-- The fastest it keeps up during a tell: a burst's pace, else `tellFollow`
 				local cap = def.speed * (if bursting then style.burst or 1 else style.tellFollow)
 				if predator.mode == "hunt" then
+					-- A lure draws in the fish it stalks (Config/Predators `lure`): a gentle
+					-- pull toward its glowing bulb, and a word to the fish the first time
+					local lure = style.lure
+					if lure and gap <= lure.radius and gap > hold then
+						local victim = predator.target :: Player
+						Net.shove(victim, -toFish / math.max(gap, 1e-3) * lure.pull * dt)
+						if now - predator.luredAt > 5 then
+							predator.luredAt = now
+							Net.predatorEvent("luring", predator.index, { target = victim.UserId })
+						end
+					end
 					-- Where the tell starts: it glides in from there to arrive as it ends,
 					-- allowing for a fish getting away, and never closer than it can pull up
 					-- in (a heavy tracker opens its jaw further out)
@@ -1111,8 +1355,11 @@ local function simulate(predator: Predator, dt: number, now: number)
 						startRecover(predator, now, 1.4, true, 0.9)
 					end
 					local sees = false
+					-- (a gulper opens its mouth from further out: its tell sucks the fish in)
+					local gulp = style.gulp
+					local tellAt = if gulp then math.max(engage, gulp.reach * 0.65) else engage
 					-- (an ambusher already this close snaps at once, no burst needed)
-					local snapsNow = ambush and gap <= engage
+					local snapsNow = ambush and gap <= tellAt
 					if ambush and not bursting and not snapsNow then
 						-- An ambusher stalks in low and slow, then bursts from close
 						if
@@ -1129,7 +1376,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 					elseif
 						predator.mode == "hunt"
 						and not circling
-						and gap <= engage
+						and gap <= tellAt
 						and facing >= (style.tellFacing or strike.facing)
 					then
 						if not bursting and not ambush and gap < engage * 0.7 and fleeing < speed * 0.3 then
@@ -1145,6 +1392,7 @@ local function simulate(predator: Predator, dt: number, now: number)
 					if sees then
 						predator.mode = "windup"
 						predator.modeUntil = now + def.telegraph
+						predator.gulpFree = false
 						-- (and it stops speeding up as it opens its jaw)
 						desired = direction * math.min(desired.Magnitude, moving)
 						-- (a burst carries it through a tell begun in it)
@@ -1167,6 +1415,19 @@ local function simulate(predator: Predator, dt: number, now: number)
 						and def.telegraph - (predator.modeUntil - now)
 							>= def.telegraph * (style.commit :: number)
 					desired = (if committed then predator.heading else direction) * pace
+					-- A gulper's open mouth sucks the fish in (Config/Predators `gulp`) until
+					-- it swims off faster than it can pull (a Dash breaks it)
+					local gulp = style.gulp
+					if gulp and not predator.gulpFree and gap <= gulp.reach then
+						if fleeing > Size.topSpeed(fishLength) * gulp.breakAt then
+							predator.gulpFree = true
+						else
+							Net.shove(
+								predator.target :: Player,
+								-toFish / math.max(gap, 1e-3) * gulp.pull * dt
+							)
+						end
+					end
 					if now >= predator.modeUntil then
 						local victim = predator.target :: Player
 						-- In front of its jaws (a fish that turned off to the side of its head as
@@ -1182,7 +1443,10 @@ local function simulate(predator: Predator, dt: number, now: number)
 						if hit then
 							local character = FishService.character(victim)
 							puffed = character ~= nil and isPuffed(character, now)
-							local fraction = def.biteFraction * (if puffed then Predators.puffDamage else 1)
+							-- (by level: harder on a fish under its level, a nip on one above)
+							local fraction = def.biteFraction
+								* theirBite(def, character)
+								* (if puffed then Predators.puffDamage else 1)
 							HuntService.damage(victim, fraction, def.name)
 						end
 						Net.predatorEvent(
@@ -1221,6 +1485,15 @@ local function simulate(predator: Predator, dt: number, now: number)
 	if modeOf(predator) == "dead" then
 		return
 	end
+	-- A tethered hunter never strays far from its hole: past its tether it swims back
+	-- (a lunge or a tell may carry it out a little)
+	local home = predator.home
+	if home and predator.mode ~= "windup" and predator.burstUntil <= now then
+		local back = home - predator.position
+		if back.Magnitude > (style.tether or 0) then
+			desired = back.Unit * def.speed * 0.8
+		end
+	end
 	steer(predator, desired, dt, turnRate)
 end
 
@@ -1241,6 +1514,7 @@ local function stream(now: number)
 			if predator.target then (predator.target :: Player).UserId else 0,
 			predator.def.id,
 			math.floor(predator.meter * 100) / 100,
+			predator.def.level or 0, -- (its level, for the tag's LV n · STRONGER / WEAKER)
 		}
 		table.insert(list, entry)
 		table.insert(where, predator)
@@ -1299,7 +1573,10 @@ local function onBite(player: Player, index: any)
 	-- interpolation delay plus latency), so a fast boss gets that much room too
 	-- (retest 2026-10-09: bites on a swimming Megalodon's flank missed)
 	local drift = predator.velocity.Magnitude * (Predators.interpolationDelay + hunt.latencySeconds)
-	if (nearest - mouth).Magnitude > Size.reach(length) + def.length * 0.18 + slack + drift then
+	if
+		(nearest - mouth).Magnitude
+		> Size.reach(length) + def.length * (def.girth or 0.18) + slack + drift
+	then
 		return
 	end
 	lastBite[player] = now
@@ -1309,17 +1586,35 @@ local function onBite(player: Player, index: any)
 			school += 1
 		end
 	end
+	-- A plain predator: by level, like a fight between players (Config/Predators
+	-- `fight`); `swallow` levels up, one bite swallows it whole. A boss: `bitten`.
 	local bitten = def.bitten
-	local ratio = math.clamp(
-		if bitten
-			then bitten.scale * (Size.raw(length) / def.length) ^ bitten.power
-			else (Size.raw(length) / def.length) ^ Predators.biteRatioPower,
-		Predators.biteRatioMin,
-		Predators.biteRatioMax
-	)
+	local level = def.level
+	local swallowed = false
+	local ratio: number
+	if bitten then
+		ratio = math.clamp(
+			bitten.scale * (Size.raw(length) / def.length) ^ bitten.power,
+			Predators.biteRatioMin,
+			Predators.biteRatioMax
+		)
+	elseif level then
+		local mine = levelOf((FishService.character(player)))
+		swallowed = not predator.custom and mine >= level + fight.swallow
+		ratio = math.clamp(strength(mine, level), fight.yours.min, fight.yours.max)
+	else
+		ratio = math.clamp(
+			(Size.raw(length) / def.length) ^ Predators.biteRatioPower,
+			Predators.biteRatioMin,
+			Predators.biteRatioMax
+		)
+	end
 	local jaw = Perks.bite(data.upgrades)
 	local species = Progress.species(data).stats.bite
 	local damage = hunt.biteDamage * ratio * (1 + Predators.schoolBonus * school) * jaw * species
+	if swallowed then
+		damage = math.max(damage, predator.health)
+	end
 	local hook = predator.onHit
 	if hook then
 		damage = hook(predator, player, damage, nearest)
@@ -1328,7 +1623,7 @@ local function onBite(player: Player, index: any)
 	if predator.custom then
 		Events.bossDamage:fire(player, damage)
 	end
-	hurt(predator, player, damage, nearest, now)
+	hurt(predator, player, damage, nearest, now, swallowed)
 end
 
 local function make(def: Def, custom: boolean?): Predator
@@ -1363,6 +1658,11 @@ local function make(def: Def, custom: boolean?): Predator
 		approachUntil = 0,
 		orbit = 1,
 		feintLeft = false,
+		pack = nil,
+		role = 1,
+		home = nil,
+		gulpFree = false,
+		luredAt = -math.huge,
 	}
 	nextIndex += 1
 	predators[predator.index] = predator
@@ -1431,6 +1731,18 @@ function PredatorService.biteScale(player: Player): number
 	return 1
 end
 
+-- A fight by level (Config/Predators `fight`), for the sims: how much stronger level
+-- `a` is than `b`, and a creature's bite on a fish of `level`, × its biteFraction
+PredatorService.strength = strength
+function PredatorService.theirBite(def: Def, level: number): number
+	local stand = {
+		GetAttribute = function(_: any, name: string): any
+			return if name == "FishLevel" then level else nil
+		end,
+	}
+	return theirBite(def, stand :: any)
+end
+
 -- Helpers for a boss controller
 PredatorService.pickTarget = pickTarget
 PredatorService.targetRoot = targetRoot
@@ -1443,8 +1755,22 @@ PredatorService.rotateToward = rotateToward
 
 function PredatorService.start()
 	for _, def in Predators.groups do
+		local pack = styleOf(def).pack
 		for _ = 1, def.count do
-			spawn(make(def, false))
+			if pack then
+				-- (`count` packs, each `size` together: the leader first, the rest at
+				-- their stations beside it)
+				local members: { Predator } = {}
+				for role = 1, pack.size do
+					local member = make(def, false)
+					member.pack = members
+					member.role = role
+					table.insert(members, member)
+					spawn(member)
+				end
+			else
+				spawn(make(def, false))
+			end
 		end
 	end
 	Net.onRequest("BitePredator", onBite)

@@ -22,6 +22,8 @@ local sizeTuning = Config.Tuning.size
 local DT = 0.1
 local LAG = 0.1 -- the server sees a fish this far in the past
 local REACT = 0.3 -- a person's reaction to a warning
+-- (a case can react sooner or later: `reactNext` for the next case only)
+local reactNext: number? = nil
 local TRIALS = 12
 local SECONDS = 60
 
@@ -53,12 +55,21 @@ local function fishAt(species: string, level: number): Fish
 	}
 end
 
+-- The first creature of a kind (and its pack, if it hunts in one); every other one
+-- is put out of the way
 local function only(id: string)
 	local chosen = nil
 	for _, predator in PredatorService.list() do
 		if predator.def.id == id and chosen == nil then
 			chosen = predator
-		else
+		end
+	end
+	local crew = {}
+	for _, member in (chosen and chosen.pack) or { chosen } do
+		crew[member] = true
+	end
+	for _, predator in PredatorService.list() do
+		if not crew[predator] then
 			predator.mode = "dead"
 			predator.respawnAt = math.huge
 			predator.target = nil
@@ -90,6 +101,7 @@ type Behaviour =
 	| "puff"
 	| "bleed"
 	| "harass"
+	| "stillDash"
 type Result = {
 	bites: number,
 	hits: number,
@@ -100,6 +112,10 @@ type Result = {
 	stunned: number,
 	fraction: number, -- the share of max health the last hit took
 	recoil: number, -- the predator's health lost to recoil (share of its max)
+	biters: number, -- how many of its pack bit (or snapped at) the fish
+	pulled: number, -- shoves toward it (a gulp or a lure)
+	lured: number, -- "luring" warnings
+	stray: number, -- the furthest it got from its hole (a tethered hunter)
 	rounds: { number }, -- seconds from each miss it swam past until it faces the fish again (within ~37°)
 	agains: { number }, -- seconds from each miss until its next tell or burst at the fish
 }
@@ -122,13 +138,21 @@ local function run(
 		stunned = 0,
 		fraction = 0,
 		recoil = 0,
+		biters = 0,
+		pulled = 0,
+		lured = 0,
+		stray = 0,
 		rounds = {},
 		agains = {},
 	}
 	local firsts = {}
+	local whoBit = {}
+	local react = reactNext or REACT
+	reactNext = nil
 	for trial = 1, TRIALS do
 		table.clear(sim.events)
 		table.clear(sim.hits)
+		table.clear(sim.shoves)
 		sim.now = 1000 * trial
 		sim.sees = function()
 			return behaviour ~= "hide"
@@ -136,21 +160,31 @@ local function run(
 		local predator = only(id)
 		local angle = (trial - 1) / TRIALS * 2 * math.pi
 		local from = spot + Vector3.new(math.cos(angle), 0, math.sin(angle)) * startGap
-		predator.position = Vector3.new(from.X, spot.Y + 4, from.Z)
-		predator.velocity = Vector3.zero
-		predator.heading = Vector3.new(math.cos(angle + 2), 0, math.sin(angle + 2)) -- not facing it
-		predator.mode = "roam"
-		predator.target = nil
-		predator.waypoint = predator.position
-		predator.waypointUntil = 0
-		predator.hitBy = {}
-		predator.health = predator.maxHealth
-		predator.burstUntil = 0
-		predator.stunUntil = 0
-		predator.fails = {}
-		predator.ignore = {}
+		-- (a pack starts together: the rest at their stations beside the leader)
+		for i, member in predator.pack or { predator } do
+			local side = Vector3.new(-math.sin(angle), 0, math.cos(angle)) * ((i - 1) * 6 - 6)
+			member.position = Vector3.new(from.X, spot.Y + 4, from.Z)
+				+ (if predator.pack then side else Vector3.zero)
+			member.velocity = Vector3.zero
+			member.heading = Vector3.new(math.cos(angle + 2), 0, math.sin(angle + 2)) -- not facing it
+			member.mode = "roam"
+			member.target = nil
+			member.waypoint = member.position
+			member.waypointUntil = 0
+			member.hitBy = {}
+			member.health = member.maxHealth
+			member.burstUntil = 0
+			member.stunUntil = 0
+			member.fails = {}
+			member.ignore = {}
+			-- (a tethered hunter's hole is where it starts)
+			if member.home then
+				member.home = member.position
+			end
+		end
 		local player = { Name = "Fish", UserId = 7, Parent = true }
 		local character, root = sim.fish(fish.length, spot)
+		character:SetAttribute("FishLevel", fish.level)
 		character:SetAttribute("MaxHealth", 100)
 		character:SetAttribute("Health", if behaviour == "bleed" then 40 else 100)
 		character:SetAttribute("Burrowed", behaviour == "burrow")
@@ -186,7 +220,7 @@ local function run(
 			end
 			-- Turning early: as it closes to within 25 studs, before any tell
 			if early == "close" and fleeing and gapNow < 25 and alarmAt == math.huge then
-				alarmAt = sim.now + REACT
+				alarmAt = sim.now + react
 			end
 			if fleeing and (gapNow > 150 or not hunted) and alarmAt == math.huge then
 				fleeing = false
@@ -218,7 +252,11 @@ local function run(
 				elseif behaviour == "cruise" then
 					local a = sim.now * 5 / 12
 					want = Vector3.new(-math.sin(a), 0, math.cos(a)) * 5
-				elseif behaviour == "dash" and since >= 0 and since < swim.dashSeconds then
+				elseif
+					(behaviour == "dash" or behaviour == "stillDash")
+					and since >= 0
+					and since < swim.dashSeconds
+				then
 					want = away * fish.top * swim.boostMultiplier
 					velocity = want -- a dash is a burst
 				elseif (behaviour == "juke" or behaviour == "dodge") and since >= 0 and since < 0.7 then
@@ -248,7 +286,19 @@ local function run(
 			end
 			root.Position = history[1].position
 			root.AssemblyLinearVelocity = history[1].velocity
+			local pushedBefore = #sim.shoves
 			heartbeat(DT)
+			-- A gulp or a lure pulls the fish (the server shoves it; its client adds it)
+			for i = pushedBefore + 1, #sim.shoves do
+				local shove = sim.shoves[i]
+				if shove.player == player then
+					velocity += shove.push
+					result.pulled += 1
+				end
+			end
+			if predator.home then
+				result.stray = math.max(result.stray, (predator.position - predator.home).Magnitude)
+			end
 			-- Round again after a miss: pointed back at the fish
 			if missAt then
 				local toFish = position - predator.position
@@ -277,7 +327,7 @@ local function run(
 						result.tells += 1
 					end
 					if alarmAt == math.huge or sim.now - alarmAt > 2.5 then
-						alarmAt = sim.now + REACT
+						alarmAt = sim.now + react
 					end
 					if event.kind == "windup" and behaviour == "burrowMid" then
 						character:SetAttribute("Burrowed", true)
@@ -285,8 +335,11 @@ local function run(
 						local count = PredatorService.stun(position, 30, 3)
 						expect(count == 1, `stun: {count} stunned, wanted 1`)
 					end
+				elseif event.kind == "luring" and mine then
+					result.lured += 1
 				elseif event.kind == "bite" then
 					result.bites += 1
+					whoBit[event.index] = true
 					if event.payload.hit then
 						result.hits += 1
 						first = first or t
@@ -316,6 +369,9 @@ local function run(
 	end
 	table.sort(firsts)
 	result.first = firsts[math.ceil(#firsts / 2)]
+	for _ in whoBit do
+		result.biters += 1
+	end
 	return result
 end
 
@@ -446,8 +502,9 @@ local stun = case("Barracuda", n25, "sand", sand(n25), "stun", 40)
 expect(stun.stunned > 0 and stun.hits == 0 and stun.bites == 0, "Barracuda: a stun calls its tell off")
 local puff = case("Barracuda", p25, "sand", sand(p25), "puff", 40)
 expect(puff.hits > 0, "Barracuda: bites a puffed fish")
+local barracudaLevel = PredatorService.theirBite(Config.Predators.byId.Barracuda, 25)
 expect(
-	math.abs(puff.fraction - Config.Predators.byId.Barracuda.biteFraction * 0.5) < 1e-6,
+	math.abs(puff.fraction - Config.Predators.byId.Barracuda.biteFraction * barracudaLevel * 0.5) < 1e-6,
 	"puffed: half damage"
 )
 -- (every bite but a killing one flinches it)
@@ -456,7 +513,7 @@ print(
 	string.format(
 		"   puffed: a bite took %.0f%% (not %.0f%%), the Barracuda lost %.0f%% of its health over %d runs and flinched %d times",
 		puff.fraction * 100,
-		Config.Predators.byId.Barracuda.biteFraction * 100,
+		Config.Predators.byId.Barracuda.biteFraction * barracudaLevel * 100,
 		puff.recoil / TRIALS * 100,
 		TRIALS,
 		puff.stunned
@@ -518,6 +575,225 @@ local sCalm = case("ReefShark", n45, "water", blueWater, "still", 180)
 local sBleed = case("ReefShark", n45, "water", blueWater, "bleed", 180)
 expect(sBleed.first * 3 <= sCalm.first, "Reef Shark: smells a bleeding fish from twice as far")
 local _ = sJuke
+
+-- A spot at `degrees` round the hub, `r` out, `up` studs over the floor
+local function at(degrees: number, r: number, up: number): Vector3
+	local a = math.rad(degrees)
+	local x, z = math.cos(a) * r, math.sin(a) * r
+	return Vector3.new(x, Seafloor.y(x, z) + up, z)
+end
+-- Down in the Trench's canyon, over its floor
+local trenchR = 1200
+local tx, tz = Seafloor.trenchPoint(trenchR, 0)
+local function trenchAt(up: number): Vector3
+	return Vector3.new(tx, Seafloor.y(tx, tz) + up, tz)
+end
+
+-- The levels (owner, 2026-10-21: "Ensure ease of eating them scales with levels as
+-- well"): a Barracuda (LV 18) bites a LV 10 fish harder, shies off a LV 35 one
+print("-- Levels")
+local n35shy = case("Barracuda", n35, "water", water, "still", 30)
+expect(n35shy.tells == 0 and n35shy.bites == 0, "levels: a Barracuda won't hunt a fish 17 levels above it")
+local f10 = PredatorService.theirBite(Config.Predators.byId.Barracuda, 10)
+local f18 = PredatorService.theirBite(Config.Predators.byId.Barracuda, 18)
+local f28 = PredatorService.theirBite(Config.Predators.byId.Barracuda, 28)
+expect(math.abs(f18 - 1) < 1e-6, "levels: its bite at its own level is as tuned")
+expect(f10 > 1.2 and f10 <= 1.5, "levels: a fish 8 under it takes more (to 1.5×)")
+expect(f28 < 0.6, "levels: a fish 10 over it takes about half")
+print(
+	string.format(
+		"   Barracuda's bite × %.2f on a LV 10, × %.2f on a LV 18, × %.2f on a LV 28",
+		f10,
+		f18,
+		f28
+	)
+)
+
+-- A player's bites to kill one, by the biter's level against its own
+local function bitesToKill(id: string, level: number): (number, boolean, number)
+	local predator = only(id)
+	predator.mode = "roam"
+	predator.health = predator.maxHealth
+	predator.hitBy = {}
+	predator.target = nil
+	local player = { Name = "Biter", UserId = 9, Parent = true }
+	local character, root = sim.fish(4, predator.position)
+	character:SetAttribute("FishLevel", level)
+	sim.sessions = { [player] = { alive = true, inHub = false, safeUntil = 0 } }
+	sim.characters = { [player] = { character = character, root = root } }
+	sim.mouth = function()
+		return predator.position, 4, 0
+	end
+	table.clear(sim.events)
+	table.clear(sim.coral)
+	local bites, swallowed = 0, false
+	while predator.mode ~= "dead" and bites < 400 do
+		sim.now += 1
+		sim.requests.BitePredator(player, predator.index)
+		bites += 1
+	end
+	for _, event in sim.events do
+		if event.kind == "died" and event.payload.swallowed then
+			swallowed = true
+		end
+	end
+	local coral = 0
+	for _, amount in sim.coral do
+		coral += amount
+	end
+	sim.mouth = nil
+	predator.mode = "dead"
+	predator.respawnAt = math.huge
+	return bites, swallowed, coral
+end
+local even, _, evenCoral = bitesToKill("Barracuda", 18)
+local up10 = bitesToKill("Barracuda", 28)
+local up20, swallowed20, upCoral = bitesToKill("Barracuda", 38)
+local down10 = bitesToKill("Barracuda", 8)
+print(
+	string.format(
+		"   bites to kill a Barracuda (LV 18): LV 8 %d, LV 18 %d, LV 28 %d, LV 38 %d%s · coral LV 18 %.0f, LV 38 %.0f",
+		down10,
+		even,
+		up10,
+		up20,
+		if swallowed20 then " (swallowed whole)" else "",
+		evenCoral,
+		upCoral
+	)
+)
+expect(even >= 6 and even <= 10, "levels: a fish of its level kills it in about 8 bites")
+expect(up10 <= even * 0.65, "levels: 10 levels up chunks it in a few bites")
+expect(up20 == 1 and swallowed20, "levels: 20 levels up swallows it whole in one bite")
+expect(down10 >= even * 1.6, "levels: 10 levels under barely scratches it")
+expect(upCoral <= evenCoral * 0.2, "levels: a kill pays a fish far above it little")
+
+-- Sea Lion, the kelp's harrier (LV 6)
+print("-- Sea Lion: harrier")
+local kelp = at(30, 380, 12)
+local n6 = fishAt("Nibbler", 6)
+local lStill = case("SeaLion", n6, "water", kelp, "still", 40)
+expect(lStill.caught >= TRIALS * 0.9, "Sea Lion: a still fish is nipped")
+expect(
+	math.abs(lStill.fraction - Config.Predators.byId.SeaLion.biteFraction) < 1e-6,
+	"Sea Lion: a light nip at its level"
+)
+local lFlee = case("SeaLion", n6, "water", kelp, "flee", 40)
+expect(lFlee.caught >= TRIALS * 0.6, "Sea Lion: runs a fleeing LV 6 fish down")
+-- It's where a new fish learns to juke: one in time beats its nip, one late doesn't
+local lJuke = case("SeaLion", n6, "water", kelp, "juke", 40)
+expect(rate(lJuke) <= 0.35, "Sea Lion: a juke in time beats its nip")
+reactNext = 0.6
+local lLate = case("SeaLion", n6, "water", kelp, "juke", 40)
+print("   (that last juke came 0.6 s after its tell began)")
+expect(rate(lLate) >= 0.5, "Sea Lion: a juke too late is nipped")
+local lDash = case("SeaLion", n6, "water", kelp, "stillDash", 40)
+-- (a Dash beats the nip it's used on; a harrier comes round again before the fish's
+-- Dash would have recharged, and the sim's fish only dashes once every 2.5 s)
+expect(rate(lDash) <= 0.55, "Sea Lion: a Dash beats the nip it's used on")
+sim.data = { tutorial = { done = false } }
+local lLearner = case("SeaLion", n6, "water", kelp, "still", 40)
+sim.data = {}
+expect(lLearner.tells == 0, "Sea Lion: leaves a fish in the tutorial alone")
+
+-- Goliath Grouper, the wreck bay's gulper (LV 18)
+print("-- Goliath Grouper: lurker, gulps")
+local bay = at(180, 650, 6)
+local n18 = fishAt("Nibbler", 18)
+local gStill = case("GoliathGrouper", n18, "water", bay, "still", 22)
+expect(
+	gStill.caught >= TRIALS * 0.75 and gStill.pulled > 0,
+	"Grouper: its gulp pulls a still fish in and bites it"
+)
+local gDash = case("GoliathGrouper", n18, "water", bay, "stillDash", 22)
+expect(rate(gDash) <= 0.35, "Grouper: a Dash breaks the gulp")
+case("GoliathGrouper", n18, "water", bay, "flee", 22)
+case("GoliathGrouper", n18, "water", bay, "juke", 22)
+
+-- Giant Trevally, the reef's packs (LV 32)
+print("-- Giant Trevally: pack of three")
+local reef = at(300, 690, 30)
+local n32, c32 = fishAt("Nibbler", 32), fishAt("Cuda", 32)
+local tStill = case("GiantTrevally", n32, "water", reef, "still", 50)
+expect(tStill.caught >= TRIALS * 0.9 and tStill.biters >= 2, "Trevally: the pack bites, more than one of it")
+local tFlee = case("GiantTrevally", n32, "water", reef, "flee", 50)
+expect(tFlee.caught >= TRIALS * 0.6 and tFlee.biters >= 2, "Trevally: the pack runs a LV 32 Nibbler down")
+case("GiantTrevally", c32, "water", reef, "flee", 50)
+local tDash = case("GiantTrevally", n32, "water", reef, "dash", 50)
+expect(rate(tDash) <= 0.45, "Trevally: a Dash beats most strikes")
+local tHide = case("GiantTrevally", n32, "water", reef, "hide", 50)
+expect(tHide.bites == 0, "Trevally: no bite through rock (the arches hide you)")
+
+-- Mako, the Open Blue's missile (LV 45)
+print("-- Mako: missile from below")
+local mStill = case("MakoShark", n45, "water", blueWater, "still", 70)
+expect(mStill.caught >= TRIALS * 0.9, "Mako: a still fish is bitten")
+local mFlee = case("MakoShark", c45, "water", blueWater, "flee", 60)
+expect(mFlee.caught >= TRIALS * 0.6, "Mako: runs even a LV 45 'Cuda down")
+-- It turns wide: a juke the moment its jaw flashes beats it, a late one doesn't
+local mJuke = case("MakoShark", n45, "water", blueWater, "juke", 60)
+expect(rate(mJuke) <= 0.35, "Mako: a juke in time beats it")
+reactNext = 0.5
+local mLate = case("MakoShark", n45, "water", blueWater, "juke", 60)
+print("   (that last juke came 0.5 s into its 0.8 s tell)")
+expect(rate(mLate) >= 0.4, "Mako: a late juke is caught")
+local mDash = case("MakoShark", n45, "water", blueWater, "stillDash", 60)
+expect(rate(mDash) <= 0.35, "Mako: a Dash beats it")
+
+-- Sixgill, the Ruins' patroller (LV 60)
+print("-- Sixgill: slow patroller, heavy bite")
+local ruins = at(8, 1180, 20)
+local n60 = fishAt("Nibbler", 60)
+local xStill = case("SixgillShark", n60, "water", ruins, "still", 60)
+expect(xStill.caught >= TRIALS * 0.9, "Sixgill: a still fish is bitten")
+expect(
+	math.abs(xStill.fraction - Config.Predators.byId.SixgillShark.biteFraction) < 1e-6,
+	"Sixgill: its heavy bite"
+)
+local xFlee = case("SixgillShark", n60, "water", ruins, "flee", 60)
+expect(xFlee.caught <= TRIALS * 0.3, "Sixgill: a fish of its level outswims it")
+
+-- Wolf Eel, the Vents' crevice striker (LV 75)
+print("-- Wolf Eel: lunges from its hole")
+local vents = at(175, 1150, 4)
+local n75 = fishAt("Nibbler", 75)
+local wStill = case("WolfEel", n75, "water", vents, "still", 22)
+expect(wStill.caught >= TRIALS * 0.9, "Wolf Eel: a fish by its hole is bitten")
+local wFar = case("WolfEel", n75, "water", vents, "still", 80)
+expect(wFar.bites == 0, "Wolf Eel: a fish well clear of its hole is left alone")
+local wFlee = case("WolfEel", n75, "water", vents, "flee", 22)
+local tether = (Config.Predators.byId.WolfEel.style :: any).tether
+expect(
+	wFlee.stray <= tether + 30,
+	`Wolf Eel: never strays far from its hole ({math.floor(wFlee.stray)} studs)`
+)
+local wDash = case("WolfEel", n75, "water", vents, "stillDash", 22)
+expect(rate(wDash) <= 0.35, "Wolf Eel: a Dash beats its lunge")
+
+-- Goblin Shark, the Trench's jaw launcher (LV 90)
+print("-- Goblin Shark: jaw throw")
+local n90 = fishAt("Nibbler", 90)
+local canyon = trenchAt(40)
+local oStill = case("GoblinShark", n90, "water", canyon, "still", 60)
+expect(oStill.caught >= TRIALS * 0.9, "Goblin: a still fish is bitten from far off")
+local oDodge = case("GoblinShark", n90, "water", canyon, "dodge", 60, "burst")
+expect(rate(oDodge) <= 0.35, "Goblin: dodging sideways in time beats its jaw throw")
+reactNext = 0.9
+local oLate = case("GoblinShark", n90, "water", canyon, "dodge", 60, "burst")
+print("   (that last dodge came 0.9 s into its 1.1 s tell)")
+expect(rate(oLate) >= 0.5, "Goblin: a dodge too late is caught")
+local oFlee = case("GoblinShark", n90, "water", canyon, "flee", 60)
+expect(oFlee.caught <= TRIALS * 0.5, "Goblin: too slow to run a fleeing fish down")
+
+-- Black Dragonfish, the Trench's lure (LV 88)
+print("-- Black Dragonfish: lure")
+local n88 = fishAt("Nibbler", 88)
+local deepWater = trenchAt(90)
+local dStill = case("BlackDragonfish", n88, "water", deepWater, "still", 40)
+expect(dStill.caught >= TRIALS * 0.9, "Dragonfish: a still fish is bitten")
+expect(dStill.pulled > 0 and dStill.lured > 0, "Dragonfish: its lure draws the fish in, with a warning")
+local dDash = case("BlackDragonfish", n88, "water", deepWater, "stillDash", 40)
+expect(rate(dDash) <= 0.55, "Dragonfish: a Dash beats the lunge it's used on")
 
 if failures > 0 then
 	error(`{failures} predator check(s) failed`)

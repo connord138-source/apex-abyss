@@ -43,12 +43,334 @@ local BODY_RADIUS = 0.18
 
 -- Each rig's jaw, radians past the model's own pose (+ opens; Tripo models a mouth a
 -- little open): as it cruises, the full gape of a tell, and snapped shut
-type JawRange = { cruise: number, wide: number, shut: number }
+-- `throw` (× its length): how far its jaws shoot forward at the end of a tell
+type JawRange = { cruise: number, wide: number, shut: number, throw: number? }
 local JAW: { [string]: JawRange } = {
 	Megalodon = { cruise = -0.05, wide = 0.5, shut = -0.2 },
 	ReefShark = { cruise = 0.07, wide = 0.36, shut = -0.08 },
 	Barracuda = { cruise = 0.03, wide = 0.42, shut = -0.12 },
+	SeaLion = { cruise = 0.04, wide = 0.35, shut = -0.08 },
+	GoliathGrouper = { cruise = 0.1, wide = 0.55, shut = -0.05 }, -- (a gulp: the widest mouth)
+	GiantTrevally = { cruise = 0.05, wide = 0.38, shut = -0.08 },
+	MakoShark = { cruise = 0.08, wide = 0.42, shut = -0.1 },
+	SixgillShark = { cruise = 0.06, wide = 0.45, shut = -0.1 },
+	WolfEel = { cruise = 0.05, wide = 0.5, shut = -0.1 },
+	GoblinShark = { cruise = 0.05, wide = 0.7, shut = -0.1, throw = 0.1 }, -- (the jaw throw)
+	BlackDragonfish = { cruise = 0.1, wide = 0.65, shut = -0.05 },
 	default = { cruise = 0.05, wide = 0.4, shut = -0.1 },
+}
+
+-- A rigged model is drawn centred on its box; where its box isn't centred on its
+-- body this moves it back (× its length: the Black Dragonfish's chin barbel hangs
+-- far under it, so its box sits ~0.21 of its length under its body)
+local DRAW_SHIFT: { [string]: number } = {
+	BlackDragonfish = -0.21,
+}
+
+-- The part-built body until a predator's model is imported (Config/Predators
+-- `model`), from each model's own proportions: its body (`w`, `h` × its length),
+-- tail (× its length) and tail colour, and the pieces that make it read (head, jaw,
+-- fins, snout, eyes, a lure), each sized and placed × its length (forward is -Z),
+-- turned `rot` degrees. `rig` pieces go on the imported model too (a lure's glow, a
+-- Sixgill's eye glow).
+type Piece = {
+	shape: string, -- "ball" | "block" | "wedge"
+	size: Vector3,
+	at: Vector3,
+	rot: Vector3?,
+	color: string?, -- "back" | "belly" | "dark" | "eye" | "white" | "glow" (default back)
+	glow: Color3?, -- a Neon piece in this colour (and `light` gives it a PointLight)
+	light: number?, -- the light's range × its length
+	rig: boolean?,
+	jaw: boolean?, -- a jaw that's thrown forward with the Goblin Shark's (JawRange `throw`)
+}
+type StandIn = { w: number, h: number, tail: Vector3, tailColor: Color3?, pieces: { Piece } }
+local CYAN = Color3.fromRGB(90, 230, 255)
+local STAND_INS: { [string]: StandIn } = {
+	SeaLion = {
+		w = 0.25,
+		h = 0.26,
+		tail = Vector3.new(0.26, 0.025, 0.14), -- (its hind flippers, flat)
+		pieces = {
+			{ shape = "ball", size = Vector3.new(0.2, 0.2, 0.24), at = Vector3.new(0, 0.04, -0.42) },
+			{
+				shape = "ball",
+				size = Vector3.new(0.1, 0.08, 0.1),
+				at = Vector3.new(0, 0, -0.54),
+				color = "belly",
+			},
+			{ shape = "ball", size = Vector3.one * 0.04, at = Vector3.new(0.08, 0.08, -0.47), color = "eye" },
+			{
+				shape = "ball",
+				size = Vector3.one * 0.04,
+				at = Vector3.new(-0.08, 0.08, -0.47),
+				color = "eye",
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.34, 0.025, 0.12),
+				at = Vector3.new(0.2, -0.07, -0.16),
+				rot = Vector3.new(0, -15, -25),
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.34, 0.025, 0.12),
+				at = Vector3.new(-0.2, -0.07, -0.16),
+				rot = Vector3.new(0, 15, 25),
+			},
+		},
+	},
+	GoliathGrouper = {
+		w = 0.42,
+		h = 0.5,
+		tail = Vector3.new(0.04, 0.34, 0.16),
+		pieces = {
+			{
+				shape = "ball",
+				size = Vector3.new(0.28, 0.22, 0.08),
+				at = Vector3.new(0, -0.03, -0.42),
+				color = "dark",
+			},
+			{ shape = "wedge", size = Vector3.new(0.03, 0.14, 0.42), at = Vector3.new(0, 0.28, 0.05) },
+			{
+				shape = "block",
+				size = Vector3.new(0.16, 0.02, 0.1),
+				at = Vector3.new(0.21, -0.06, -0.14),
+				rot = Vector3.new(0, 0, -20),
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.16, 0.02, 0.1),
+				at = Vector3.new(-0.21, -0.06, -0.14),
+				rot = Vector3.new(0, 0, 20),
+			},
+			{ shape = "ball", size = Vector3.one * 0.045, at = Vector3.new(0.15, 0.1, -0.33), color = "eye" },
+			{
+				shape = "ball",
+				size = Vector3.one * 0.045,
+				at = Vector3.new(-0.15, 0.1, -0.33),
+				color = "eye",
+			},
+		},
+	},
+	GiantTrevally = {
+		w = 0.2,
+		h = 0.52,
+		tail = Vector3.new(0.03, 0.44, 0.18),
+		tailColor = Color3.fromRGB(206, 186, 92),
+		pieces = {
+			{ shape = "ball", size = Vector3.new(0.17, 0.44, 0.22), at = Vector3.new(0, 0.02, -0.32) },
+			{ shape = "wedge", size = Vector3.new(0.02, 0.15, 0.3), at = Vector3.new(0, 0.28, 0.06) },
+			{ shape = "ball", size = Vector3.one * 0.05, at = Vector3.new(0.07, 0.07, -0.38), color = "eye" },
+			{
+				shape = "ball",
+				size = Vector3.one * 0.05,
+				at = Vector3.new(-0.07, 0.07, -0.38),
+				color = "eye",
+			},
+		},
+	},
+	MakoShark = {
+		w = 0.2,
+		h = 0.22,
+		tail = Vector3.new(0.03, 0.44, 0.14),
+		pieces = {
+			{ shape = "ball", size = Vector3.new(0.12, 0.1, 0.24), at = Vector3.new(0, 0, -0.46) },
+			{ shape = "wedge", size = Vector3.new(0.03, 0.22, 0.16), at = Vector3.new(0, 0.19, -0.02) },
+			{
+				shape = "block",
+				size = Vector3.new(0.32, 0.02, 0.12),
+				at = Vector3.new(0.17, -0.07, -0.12),
+				rot = Vector3.new(0, -20, -15),
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.32, 0.02, 0.12),
+				at = Vector3.new(-0.17, -0.07, -0.12),
+				rot = Vector3.new(0, 20, 15),
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.035,
+				at = Vector3.new(0.07, 0.04, -0.38),
+				color = "eye",
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.035,
+				at = Vector3.new(-0.07, 0.04, -0.38),
+				color = "eye",
+			},
+		},
+	},
+	SixgillShark = {
+		w = 0.26,
+		h = 0.24,
+		tail = Vector3.new(0.03, 0.28, 0.2),
+		pieces = {
+			{ shape = "ball", size = Vector3.new(0.24, 0.18, 0.26), at = Vector3.new(0, 0, -0.36) },
+			{ shape = "wedge", size = Vector3.new(0.03, 0.12, 0.14), at = Vector3.new(0, 0.15, 0.22) },
+			{
+				shape = "block",
+				size = Vector3.new(0.3, 0.02, 0.12),
+				at = Vector3.new(0.16, -0.08, -0.14),
+				rot = Vector3.new(0, -15, -15),
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.3, 0.02, 0.12),
+				at = Vector3.new(-0.16, -0.08, -0.14),
+				rot = Vector3.new(0, 15, 15),
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.045,
+				at = Vector3.new(0.11, 0.05, -0.43),
+				glow = Color3.fromRGB(110, 255, 140),
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.045,
+				at = Vector3.new(-0.11, 0.05, -0.43),
+				glow = Color3.fromRGB(110, 255, 140),
+				light = 0.5,
+			},
+		},
+	},
+	WolfEel = {
+		w = 0.15,
+		h = 0.17,
+		tail = Vector3.new(0.02, 0.13, 0.16),
+		pieces = {
+			{ shape = "ball", size = Vector3.new(0.18, 0.18, 0.2), at = Vector3.new(0, 0.01, -0.4) },
+			{
+				shape = "ball",
+				size = Vector3.new(0.15, 0.06, 0.12),
+				at = Vector3.new(0, -0.07, -0.46),
+				color = "dark",
+			},
+			{ shape = "block", size = Vector3.new(0.02, 0.05, 0.7), at = Vector3.new(0, 0.09, 0.05) },
+			{
+				shape = "ball",
+				size = Vector3.one * 0.032,
+				at = Vector3.new(0.075, 0.07, -0.44),
+				color = "eye",
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.032,
+				at = Vector3.new(-0.075, 0.07, -0.44),
+				color = "eye",
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.045,
+				at = Vector3.new(0.07, 0.02, -0.18),
+				color = "dark",
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.045,
+				at = Vector3.new(-0.07, 0.03, 0.02),
+				color = "dark",
+			},
+			{
+				shape = "ball",
+				size = Vector3.one * 0.045,
+				at = Vector3.new(0.065, -0.01, 0.2),
+				color = "dark",
+			},
+		},
+	},
+	GoblinShark = {
+		w = 0.17,
+		h = 0.19,
+		tail = Vector3.new(0.03, 0.3, 0.2),
+		pieces = {
+			{
+				shape = "block",
+				size = Vector3.new(0.07, 0.02, 0.34),
+				at = Vector3.new(0, 0.04, -0.6),
+				color = "belly",
+			},
+			{
+				shape = "wedge",
+				size = Vector3.new(0.12, 0.06, 0.13),
+				at = Vector3.new(0, -0.08, -0.36),
+				rot = Vector3.new(180, 0, 0),
+				color = "dark",
+				jaw = true,
+			},
+			{ shape = "wedge", size = Vector3.new(0.025, 0.12, 0.14), at = Vector3.new(0, 0.15, 0.05) },
+			{
+				shape = "block",
+				size = Vector3.new(0.26, 0.02, 0.1),
+				at = Vector3.new(0.13, -0.07, -0.1),
+				rot = Vector3.new(0, -15, -15),
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.26, 0.02, 0.1),
+				at = Vector3.new(-0.13, -0.07, -0.1),
+				rot = Vector3.new(0, 15, 15),
+			},
+			{ shape = "ball", size = Vector3.one * 0.03, at = Vector3.new(0.06, 0.05, -0.38), color = "eye" },
+			{
+				shape = "ball",
+				size = Vector3.one * 0.03,
+				at = Vector3.new(-0.06, 0.05, -0.38),
+				color = "eye",
+			},
+		},
+	},
+	BlackDragonfish = {
+		w = 0.1,
+		h = 0.15,
+		tail = Vector3.new(0.02, 0.17, 0.14),
+		pieces = {
+			{ shape = "ball", size = Vector3.new(0.11, 0.15, 0.16), at = Vector3.new(0, 0.01, -0.38) },
+			{
+				shape = "wedge",
+				size = Vector3.new(0.012, 0.05, 0.02),
+				at = Vector3.new(0.03, -0.05, -0.45),
+				color = "white",
+			},
+			{
+				shape = "wedge",
+				size = Vector3.new(0.012, 0.05, 0.02),
+				at = Vector3.new(-0.03, -0.05, -0.45),
+				color = "white",
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.012, 0.42, 0.012),
+				at = Vector3.new(0, -0.27, -0.38),
+				color = "dark",
+			},
+			{ shape = "ball", size = Vector3.one * 0.03, at = Vector3.new(0.05, 0.04, -0.42), glow = CYAN },
+			{ shape = "ball", size = Vector3.one * 0.03, at = Vector3.new(-0.05, 0.04, -0.42), glow = CYAN },
+			{ shape = "ball", size = Vector3.one * 0.02, at = Vector3.new(0.052, -0.03, -0.2), glow = CYAN },
+			{ shape = "ball", size = Vector3.one * 0.02, at = Vector3.new(0.052, -0.03, -0.05), glow = CYAN },
+			{ shape = "ball", size = Vector3.one * 0.02, at = Vector3.new(0.052, -0.03, 0.1), glow = CYAN },
+			{ shape = "ball", size = Vector3.one * 0.02, at = Vector3.new(-0.052, -0.03, -0.2), glow = CYAN },
+			{
+				shape = "ball",
+				size = Vector3.one * 0.02,
+				at = Vector3.new(-0.052, -0.03, -0.05),
+				glow = CYAN,
+			},
+			{ shape = "ball", size = Vector3.one * 0.02, at = Vector3.new(-0.052, -0.03, 0.1), glow = CYAN },
+			-- The lure, the barbel's glowing tip (on the imported model too)
+			{
+				shape = "ball",
+				size = Vector3.one * 0.06,
+				at = Vector3.new(0, -0.5, -0.38),
+				glow = CYAN,
+				light = 1.4,
+				rig = true,
+			},
+		},
+	},
 }
 local TAU = 2 * math.pi
 
@@ -122,6 +444,8 @@ type Motion = {
 	reachUntil: number, -- a squid's grab tell (arms curling up to reach)
 	nextChomp: number, -- the Megalodon's frenzy chomps
 	jawRange: JawRange,
+	throw: number, -- the jaws shot forward (studs)
+	throwVelocity: number,
 }
 
 type Visual = {
@@ -166,7 +490,18 @@ type Visual = {
 	tag: BillboardGui,
 	healthFill: Frame,
 	status: TextLabel,
+	levelLine: TextLabel?, -- LV n · STRONGER / WEAKER / EVEN FIGHT (not on a boss)
+	level: number, -- its group's level (streamed; 0 = none)
+	extras: { Extra }, -- a stand-in's pieces, a model's `rig` pieces, a gulper's suction
+	lights: { { light: PointLight, brightness: number } }, -- the pieces' own lights
+	lure: PointLight?, -- a dragonfish's lure
+	suction: ParticleEmitter?, -- a gulper's pull, streaming into its mouth through a tell
+	drawShift: number, -- studs a rigged body's mesh is moved up or down (DRAW_SHIFT)
 }
+
+-- A piece drawn with the body: at the body's frame × `offset`; a `jaw` piece is
+-- thrown forward with the jaws, a `hidden` one (an emitter's holder) never shows
+type Extra = { part: BasePart, offset: CFrame, jaw: boolean, hidden: boolean }
 
 local visuals: { [number]: Visual } = {}
 local parts: { BasePart } = {}
@@ -343,7 +678,10 @@ local function makeTag(visual: Visual)
 	local def = visual.def
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "PredatorTag"
-	gui.Size = if visual.boss then UDim2.fromOffset(320, 56) else UDim2.fromOffset(220, 46)
+	-- (a plain predator's tag has its level line under its name, like a player's)
+	local levelled = not visual.boss
+	local below = if levelled then 16 else 0
+	gui.Size = if visual.boss then UDim2.fromOffset(320, 56) else UDim2.fromOffset(220, 46 + below)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, def.length * (if visual.boss then 0.3 else 0.45) + 2, 0)
 	gui.AlwaysOnTop = false
 	gui.LightInfluence = 0
@@ -368,15 +706,30 @@ local function makeTag(visual: Visual)
 		if visual.boss then 14 else 12,
 		Ui.color.text,
 		UDim2.new(1, 0, 0, 16),
-		UDim2.fromOffset(0, if visual.boss then 26 else 20)
+		UDim2.fromOffset(0, if visual.boss then 26 else 20 + below)
 	)
 	status.TextXAlignment = Enum.TextXAlignment.Center
 	status.TextStrokeTransparency = 0.6
+	if levelled then
+		local line = Ui.label(
+			gui,
+			"Level",
+			"",
+			Ui.FONT_HEAVY,
+			13,
+			Ui.color.text,
+			UDim2.new(1, 0, 0, 16),
+			UDim2.fromOffset(0, 20)
+		)
+		line.TextXAlignment = Enum.TextXAlignment.Center
+		line.TextStrokeTransparency = 0.5
+		visual.levelLine = line
+	end
 	local _, fill = Ui.bar(
 		gui,
 		"Health",
 		UDim2.new(0.6, 0, 0, 5),
-		UDim2.new(0.2, 0, 0, if visual.boss then 46 else 38),
+		UDim2.new(0.2, 0, 0, if visual.boss then 46 else 38 + below),
 		Ui.color.danger
 	)
 	fill.Size = UDim2.fromScale(1, 1)
@@ -432,7 +785,59 @@ local function newMotion(def: Def): Motion
 		reachUntil = 0,
 		nextChomp = 0,
 		jawRange = range,
+		throw = 0,
+		throwVelocity = 0,
 	}
+end
+
+local function pieceColor(def: Def, name: string?): Color3
+	if name == "belly" then
+		return def.belly
+	elseif name == "dark" then
+		return def.back:Lerp(Color3.fromRGB(26, 22, 22), 0.6)
+	elseif name == "eye" then
+		return Color3.fromRGB(16, 16, 20)
+	elseif name == "white" then
+		return Color3.fromRGB(235, 235, 230)
+	end
+	return def.back
+end
+
+-- One piece of a stand-in (STAND_INS), sized to the creature: SmoothPlastic, or Neon
+-- with a light for a glowing one
+local function makePiece(parent: Instance, def: Def, piece: Piece): (BasePart, PointLight?)
+	local length = def.length
+	local part: BasePart
+	if piece.shape == "ball" then
+		part = makePart(parent, pieceColor(def, piece.color))
+	else
+		part = if piece.shape == "wedge" then Instance.new("WedgePart") else Instance.new("Part")
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = pieceColor(def, piece.color)
+		part.Parent = parent
+	end
+	part.Name = "Piece"
+	part.Size = piece.size * length
+	local light: PointLight? = nil
+	if piece.glow then
+		part.Material = Enum.Material.Neon
+		part.Color = piece.glow
+		if piece.light then
+			local made = Instance.new("PointLight")
+			made.Color = piece.glow
+			made.Range = math.min(piece.light * length, 60)
+			made.Brightness = 0
+			made.Shadows = false
+			made.Parent = part
+			light = made
+		end
+	end
+	return part, light
 end
 
 local function build(index: number, def: Def, boss: boolean): Visual
@@ -492,9 +897,18 @@ local function build(index: number, def: Def, boss: boolean): Visual
 			body = clone
 			flip = SwimWave.needsFlip(mesh)
 		else
+			-- (a predator's own shape until its model is in: STAND_INS)
+			local shape = if boss then nil else STAND_INS[def.model]
+			if shape then
+				bodySize = Vector3.new(length * shape.w, length * shape.h, length * 0.8)
+				tailSize = shape.tail * length
+			end
 			local made = makePart(folder, def.back)
 			made.Size = bodySize
-			local fin = makePart(folder, def.back:Lerp(def.belly, 0.3))
+			local fin = makePart(
+				folder,
+				if shape and shape.tailColor then shape.tailColor else def.back:Lerp(def.belly, 0.3)
+			)
 			fin.Name = "Tail"
 			fin.Size = tailSize
 			tail = fin
@@ -502,6 +916,81 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		end
 	end
 	local part = body :: BasePart
+	-- Its pieces: every one on a stand-in, the `rig` ones (a lure) on a model; a
+	-- gulper's suction stream ahead of its mouth
+	local extras: { Extra } = {}
+	local lights: { { light: PointLight, brightness: number } } = {}
+	local lure: PointLight? = nil
+	local shape = if boss then nil else STAND_INS[def.model]
+	local standing = tail ~= nil
+	if shape then
+		for _, piece in shape.pieces do
+			if not standing and not piece.rig then
+				continue
+			end
+			local made, light = makePiece(model or part, def, piece)
+			local turn = piece.rot or Vector3.zero
+			table.insert(extras, {
+				part = made,
+				offset = CFrame.new(piece.at * length)
+					* CFrame.Angles(math.rad(turn.X), math.rad(turn.Y), math.rad(turn.Z)),
+				jaw = piece.jaw == true,
+				hidden = false,
+			})
+			if light then
+				local brightness = if piece.rig then 1.6 else 0.9
+				table.insert(lights, { light = light, brightness = brightness })
+				if piece.rig then
+					lure = light
+				end
+			end
+		end
+	end
+	local suction: ParticleEmitter? = nil
+	local gulp = def.style and def.style.gulp
+	if gulp then
+		-- (water drawn in from up to its reach ahead, faster near the mouth)
+		local holder = Instance.new("Part")
+		holder.Name = "Suction"
+		holder.Anchored = true
+		holder.CanCollide = false
+		holder.CanQuery = false
+		holder.CanTouch = false
+		holder.CastShadow = false
+		holder.Transparency = 1
+		local reach = gulp.reach * 0.8
+		holder.Size = Vector3.new(length * 0.35, length * 0.35, reach)
+		holder.Parent = model or part
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Shape = Enum.ParticleEmitterShape.Box
+		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		emitter.EmissionDirection = Enum.NormalId.Back -- (toward the mouth)
+		emitter.Rate = 70
+		emitter.Speed = NumberRange.new(reach * 1.4, reach * 2)
+		emitter.Lifetime = NumberRange.new(0.25, 0.55)
+		emitter.Acceleration = Vector3.zero
+		emitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.15),
+			NumberSequenceKeypoint.new(0.3, 0.45),
+			NumberSequenceKeypoint.new(1, 0.1),
+		})
+		emitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.2, 0.35),
+			NumberSequenceKeypoint.new(1, 0.9),
+		})
+		emitter.LightEmission = 0.35
+		emitter.Color = ColorSequence.new(Color3.fromRGB(215, 245, 255))
+		emitter.Enabled = false
+		emitter.Parent = holder
+		suction = emitter
+		table.insert(extras, {
+			part = holder :: BasePart,
+			offset = CFrame.new(0, 0, -(length * (def.mouth or 0.45) + reach * 0.5)),
+			jaw = false,
+			hidden = true,
+		})
+	end
 	part.Name = def.id
 	-- The jaw tell and hurt flash: a highlight that's off until needed
 	local jaw = Instance.new("Highlight")
@@ -563,6 +1052,13 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		tag = nil :: any,
 		healthFill = nil :: any,
 		status = nil :: any,
+		levelLine = nil,
+		level = def.level or 0,
+		extras = extras,
+		lights = lights,
+		lure = lure,
+		suction = suction,
+		drawShift = if model then (DRAW_SHIFT[def.model] or 0) * length else 0,
 	}
 	makeTag(visual)
 	visual.tag.Enabled = false
@@ -581,6 +1077,9 @@ local function setTransparency(visual: Visual, transparency: number)
 	end
 	if visual.tail then
 		visual.tail.Transparency = transparency
+	end
+	for _, extra in visual.extras do
+		extra.part.Transparency = if extra.hidden then 1 else transparency
 	end
 end
 
@@ -952,7 +1451,7 @@ local function animateRig(visual: Visual, dt: number, now: number, yawRate: numb
 		end
 		motion.gape, motion.gapeVelocity =
 			Spring.number(motion.gape, motion.gapeVelocity, want, stiffness, dt)
-		SwimWave.setBone(bones, "Jaw", CFrame.Angles(-motion.gape, 0, 0))
+		SwimWave.setBone(bones, "Jaw", CFrame.new(0, 0, -motion.throw) * CFrame.Angles(-motion.gape, 0, 0))
 	end
 	-- Pectoral fins (rig_fish.py --fins): flared down in a tell (a shark's threat
 	-- hunch), tucked back in a charge, angled into a dive or climb, the inside one
@@ -983,7 +1482,10 @@ local function bodyGap(visual: Visual, point: Vector3): number
 	local half = visual.heading * visual.def.length * 0.42
 	local tail, span = visual.position - half, half * 2
 	local t = math.clamp((point - tail):Dot(span) / math.max(span:Dot(span), 1e-4), 0, 1)
-	return math.max((point - (tail + span * t)).Magnitude - visual.def.length * BODY_RADIUS, 0)
+	return math.max(
+		(point - (tail + span * t)).Magnitude - visual.def.length * (visual.def.girth or BODY_RADIUS),
+		0
+	)
 end
 
 local function smoothstep(t: number): number
@@ -1004,7 +1506,7 @@ local function solid(visual: Visual)
 	-- fish held against the flank is always in bite range (the model's full width,
 	-- fins and all, held fish ~40 studs off a Megalodon's axis, out of reach of a
 	-- bite, playtest 2026-10-08)
-	local girth = visual.def.length * BODY_RADIUS
+	local girth = visual.def.length * (visual.def.girth or BODY_RADIUS)
 	local radius = girth * (0.45 + 0.55 * math.sin(math.pi * t)) + mine.Size.X * 0.4
 	local offset = point - (tail + span * t)
 	local distance = offset.Magnitude
@@ -1027,6 +1529,11 @@ local function step(dt: number)
 	table.clear(parts)
 	table.clear(frames)
 	local cameraAt = workspace.CurrentCamera.CFrame.Position
+	-- (our fish's level, for each predator's LV line: fights go by level)
+	local myFish = SwimController.character()
+	local mine = if myFish then myFish:GetAttribute("FishLevel") else nil
+	local myLevel = if typeof(mine) == "number" then mine else 1
+	local edge = Config.Pvp.fight.edge
 	for _, visual in visuals do
 		if not visual.hidden and now - visual.heardAt > STALE then
 			setHidden(visual, true)
@@ -1121,6 +1628,22 @@ local function step(dt: number)
 			wantRoll += math.sin((motion.shakeUntil - now) * 30) * 0.12
 		end
 		visual.roll, visual.rollVelocity = Spring.number(visual.roll, visual.rollVelocity, wantRoll, 6, dt)
+		-- The Goblin Shark's jaws shoot forward late in its tell and out to their full
+		-- reach on the bite, then fold back (JawRange `throw`)
+		local throwShare = motion.jawRange.throw
+		if throwShare then
+			local wantThrow = 0
+			if motion.snapUntil > now then
+				wantThrow = throwShare * visual.def.length
+			elseif visual.windupUntil > now then
+				local span = math.max(visual.windupUntil - motion.windupFrom, 0.2)
+				if (now - motion.windupFrom) / span > 0.7 then
+					wantThrow = throwShare * visual.def.length * 0.4
+				end
+			end
+			motion.throw, motion.throwVelocity =
+				Spring.number(motion.throw, motion.throwVelocity, wantThrow, 34, dt)
+		end
 		if visual.boss and not visual.hidden then
 			solid(visual)
 		end
@@ -1129,7 +1652,10 @@ local function step(dt: number)
 		if visual.model then
 			animateRig(visual, dt, now, yawRate, pitchRate)
 			table.insert(parts, visual.body)
-			table.insert(frames, frame)
+			table.insert(
+				frames,
+				if visual.drawShift ~= 0 then frame * CFrame.new(0, visual.drawShift, 0) else frame
+			)
 		else
 			local rate = 3 + math.min(relative, 1.5) * 5
 			visual.phase += dt * rate
@@ -1155,6 +1681,31 @@ local function step(dt: number)
 						* CFrame.new(0, 0, visual.bodySize.Z * 0.3)
 						* (if visual.flip then MESH_FLIP else CFrame.identity)
 				)
+			end
+		end
+		-- Its pieces (STAND_INS; a lure on its model) ride the body's frame
+		local thrown = CFrame.new(0, 0, -motion.throw)
+		for _, extra in visual.extras do
+			table.insert(parts, extra.part)
+			table.insert(frames, frame * (if extra.jaw then thrown * extra.offset else extra.offset))
+		end
+		-- Their own lights fade with the body; a dragonfish's lure breathes, and
+		-- brightens as it hunts
+		for _, own in visual.lights do
+			local pulse = if own.light == visual.lure
+				then (0.75 + 0.25 * math.sin(now * 1.8 + visual.index)) * (if visual.mode == "hunt"
+						or visual.mode == "windup"
+					then 1.6
+					else 1)
+				else 1
+			own.light.Brightness = own.brightness * pulse * visual.shown
+		end
+		-- A gulper's tell: water streams into its open mouth
+		local suction = visual.suction
+		if suction then
+			local pulling = visual.windupUntil > now and visual.shown > 0.5
+			if suction.Enabled ~= pulling then
+				suction.Enabled = pulling
 			end
 		end
 		-- The tells: a bite's jaw flashes red faster as it comes; a charge or sweep
@@ -1236,6 +1787,24 @@ local function step(dt: number)
 			and visual.bloodUntil <= now
 			and visual.presence > 0.5
 			and not StartController.isUp() -- (the start screen's shots: no tags over them)
+		-- Fights go by level, as between players (Config/Predators `fight`): its level
+		-- against ours
+		local line = visual.levelLine
+		if line then
+			if visual.level > 0 then
+				local gap = visual.level - myLevel
+				if gap >= edge then
+					line.Text, line.TextColor3 = `LV {visual.level} · STRONGER`, Ui.color.danger
+				elseif gap <= -edge then
+					line.Text, line.TextColor3 = `LV {visual.level} · WEAKER`, Ui.color.safe
+				else
+					line.Text, line.TextColor3 = `LV {visual.level} · EVEN FIGHT`, Ui.color.text
+				end
+			else
+				line.Text = ""
+			end
+		end
+		local style = visual.def.style
 		if visual.staggerUntil > now then
 			visual.status.Text = "STAGGERED · BITE IT"
 			visual.status.TextColor3 = Ui.color.haul
@@ -1244,11 +1813,18 @@ local function step(dt: number)
 			visual.status.Text = "STUNNED"
 			visual.status.TextColor3 = Ui.color.haul
 		elseif visual.target == me then
-			visual.status.Text = if visual.markedUntil > now then "MARKED YOU FOR DEATH" else "HUNTING YOU"
+			visual.status.Text = if visual.markedUntil > now
+				then "MARKED YOU FOR DEATH"
+				elseif style and style.pack then "PACK HUNTING YOU"
+				else "HUNTING YOU"
 			visual.status.TextColor3 = Ui.color.danger
 		elseif visual.mode == "hunt" or visual.mode == "windup" or visual.mode == "recover" then
 			visual.status.Text = "HUNTING"
 			visual.status.TextColor3 = Ui.color.haul
+		elseif visual.level > 0 and myLevel > visual.level + Predators.fight.shy then
+			-- (it won't hunt a fish this far above it: it shies off)
+			visual.status.Text = "WARY OF YOU"
+			visual.status.TextColor3 = Ui.color.safe
 		else
 			visual.status.Text = "ROAMING"
 			visual.status.TextColor3 = Ui.color.muted
@@ -1308,7 +1884,7 @@ local function step(dt: number)
 	end
 end
 
--- A stream packet: { at, list = { {index, x, y, z, hx, hy, hz, mode, hp01, targetUserId, defId, meter}, ... } }
+-- A stream packet: { at, list = { {index, x, y, z, hx, hy, hz, mode, hp01, targetUserId, defId, meter, level}, ... } }
 local function onState(packet: any)
 	if typeof(packet) ~= "table" or typeof(packet.at) ~= "number" or typeof(packet.list) ~= "table" then
 		return
@@ -1359,6 +1935,11 @@ local function onState(packet: any)
 		visual.target = if typeof(target) == "number" then target else 0
 		local meter = entry[12]
 		visual.meter = if typeof(meter) == "number" then math.clamp(meter, 0, 1) else 0
+		-- (its group's level: a fish of one kind can be a different level in other waters)
+		local level = entry[13]
+		if typeof(level) == "number" and level > 0 then
+			visual.level = level
+		end
 		-- Joined mid-life, or missed an event: the mode says whether it's there
 		if visual.mode == "dead" then
 			setHidden(visual, true)
@@ -1417,10 +1998,12 @@ local function onEvent(kind: any, index: any, payload: any)
 			-- or slipping aside gets clear; BossService BITE_COMMIT)
 			local bossDef = Bosses.byId[def.id]
 			local jaws = bossDef ~= nil and bossDef.kit == "shark" and seconds >= 0.8
+			-- (each predator's own words: GULP · DASH OUT, JAW THROW · DODGE SIDEWAYS, ...)
+			local words = def.style and def.style.warn
 			warn(
 				if jaws
 					then `{string.upper(def.name)} · JAWS OPEN · SWIM CLEAR`
-					else `{string.upper(def.name)} · INCOMING`,
+					else `{string.upper(def.name)} · {words or "INCOMING"}`,
 				seconds + 0.3
 			)
 			Sfx.play("Warning", { volume = 0.6 })
@@ -1440,7 +2023,13 @@ local function onEvent(kind: any, index: any, payload: any)
 		bubbles(visual.position - visual.heading * def.length * 0.4, def.length * 0.35)
 		visual.motion.rushUntil = now + (if typeof(payload.seconds) == "number" then payload.seconds else 1.5)
 		if payload.target == me then
-			warn(`{string.upper(def.name)} · BURSTING AT YOU · JUKE SIDEWAYS`, 1.6)
+			local words = def.style and def.style.warn
+			warn(`{string.upper(def.name)} · {words or "BURSTING AT YOU · JUKE SIDEWAYS"}`, 1.6)
+		end
+	elseif kind == "luring" then
+		-- A dragonfish's lure draws the fish it stalks in (Config/Predators `lure`)
+		if payload.target == me then
+			warn(`{string.upper(def.name)} · ITS LURE IS PULLING YOU IN · SWIM OFF`, 2)
 		end
 	elseif kind == "bite" then
 		visual.windupUntil = 0
@@ -1666,7 +2255,15 @@ local function onEvent(kind: any, index: any, payload: any)
 			warningUntil = 0
 		end
 		if payload.reason ~= "escaped" and payload.reason ~= "sunk" then
-			bubbles(visual.position, def.length * (if visual.boss then 0.5 else 0.9))
+			-- (swallowed whole by a fish 20 levels up: a gulp, not a kill)
+			bubbles(
+				visual.position,
+				def.length * (if visual.boss then 0.5 elseif payload.swallowed == true then 1.4 else 0.9)
+			)
+		end
+		if payload.swallowed == true and payload.by == me then
+			Sfx.play("Chomp", { volume = 0.9 })
+			CameraController.kick(0.3)
 		end
 		setHidden(visual, true)
 		if payload.gone == true then
@@ -1689,7 +2286,7 @@ function PredatorController.nearest(mouth: Vector3, reach: number): number?
 		local a, b = visual.position - half, visual.position + half
 		local ab = b - a
 		local t = math.clamp((mouth - a):Dot(ab) / math.max(ab:Dot(ab), 1e-4), 0, 1)
-		local gap = (a + ab * t - mouth).Magnitude - visual.def.length * BODY_RADIUS
+		local gap = (a + ab * t - mouth).Magnitude - visual.def.length * (visual.def.girth or BODY_RADIUS)
 		if gap <= reach and gap < bestGap then
 			best, bestGap = index, gap
 		end
