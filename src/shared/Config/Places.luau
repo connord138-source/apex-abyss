@@ -5,10 +5,10 @@
 -- ReefDress.luau, BlueDress.luau) and the Ruins' and Vents' own (Ruins.luau,
 -- VentsPlan.luau). Each builder publishes where its place ended up as a Vector3
 -- attribute named by the id on Workspace.Places (PlaceMarks.set), so the map, the
--- minimap's name bar and PlacesService all read one spot, whatever the layout did.
+-- minimap's name bar and LandmarkService all read one spot, whatever the layout did.
 --
 -- A fish whose middle comes within `radius` of a place for the first time finds it:
--- PlacesService marks `data.places[id]`, pays `reward` (RewardsService.grant) and
+-- LandmarkService marks `data.places[id]`, pays `reward` (RewardsService.grant) and
 -- toasts it; the LOG's Places page lists them ("Places 3/14"). `dig` names the
 -- treasure-map tiers whose dig site may be put here (TreasureService: a Captain's map
 -- to the Broken Galleon's cabin).
@@ -22,6 +22,7 @@ export type Place = {
 	blurb: string, -- the LOG's line
 	reward: Rewards.Reward,
 	dig: { string }?, -- Config/Treasure tiers that may bury their chest here
+	digHint: string?, -- the map's hint for a chest buried here
 }
 
 local list: { Place } = {
@@ -29,8 +30,8 @@ local list: { Place } = {
 		id = "KelpCathedral",
 		name = "The Kelp Cathedral",
 		biome = "KelpShallows",
-		radius = 70,
-		blurb = "A grove of giant kelp reaching the surface, its canopy a roof of light",
+		radius = 90,
+		blurb = "A ring of giant kelp round an open nave, the light coming down its middle",
 		reward = { coral = 150, shells = 10 },
 	},
 	{
@@ -49,6 +50,7 @@ local list: { Place } = {
 		blurb = "A galleon broken in two; its captain's cabin still burns its lamps",
 		reward = { coral = 300, shells = 15 },
 		dig = { "Weathered", "Captain" },
+		digHint = "Under the lit windows of the Broken Galleon's stern",
 	},
 	{
 		id = "FallenLighthouse",
@@ -148,9 +150,20 @@ end
 return {
 	list = list,
 	byId = byId,
-	checkSeconds = 1, -- how often PlacesService looks where everyone is
+	checkSeconds = 1, -- how often LandmarkService looks where everyone is
 	-- Every place found: a bonus on top of the last one's reward
 	allFound = { coral = 5000, shells = 100, spins = 2 } :: Rewards.Reward,
 	-- The chance a map whose tier a place lists buries its chest at that place
 	digChance = 0.3,
+	-- The landmarks' play (LandmarkService checks each on the server; the client's
+	-- LandmarkController sends them and draws what happens)
+	-- The Broken Galleon's bell: BITE it within `reach` studs and it rings for everyone
+	-- near (heard to `heard` studs); a fish rings it once a `cooldown`
+	bell = { reach = 9, heard = 260, cooldown = 3 },
+	-- The Bay Cannon: swim into its muzzle (within `reach`) and it fires you `speed`
+	-- studs a second along its aim for `seconds`; once a `cooldown` a fish
+	cannon = { reach = 9, speed = 95, seconds = 1.3, cooldown = 6 },
+	-- The Clam Garden's pearls: BITE one within `reach` for `reward`; it's gone for
+	-- that fish for `regrow` seconds (kept in the save, so leaving doesn't reset it)
+	pearl = { reach = 6, regrow = 900, reward = { coral = 120, shells = 6 } :: Rewards.Reward },
 }

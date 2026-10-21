@@ -136,6 +136,11 @@ export type PlayerData = {
 	-- Achievements done (Config/Achievements id → true), each opening a den
 	-- furniture set; marked once, for good (AchievementService)
 	achievements: { [string]: boolean },
+	-- Named places found (Config/Places id → true; PlacesService), and when each of the
+	-- Clam Garden's pearls grows back for this player (its index → Unix time;
+	-- LandmarkService)
+	places: { [string]: boolean },
+	pearls: { [string]: number },
 	codes: { [string]: boolean }, -- redeem codes used (Config/Codes)
 	-- Monetization
 	passes: { [string]: boolean },
@@ -217,6 +222,8 @@ local TEMPLATE: PlayerData = {
 	playtime = { day = 0, seconds = 0, claimed = 0, premiumDay = 0 },
 	pass = { season = 0, xp = 0, claimedFree = 0, claimedPaid = 0, paid = false },
 	achievements = {},
+	places = {},
+	pearls = {},
 	codes = {},
 	passes = {},
 	groupRewarded = false,

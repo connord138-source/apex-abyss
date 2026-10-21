@@ -508,6 +508,7 @@ local function brokenGalleon(parent: Instance)
 	local post =
 		prop(m, "WreckWheelBell", wheelGround, yaw + HALF, Vector3.new(5.3, 15, 10.2), 0.04, nil, postStandin)
 	table.insert(Wrecks.bells, post:PointToWorldSpace(Vector3.new(0, 15 * 0.18, 10.2 * 0.32)))
+	PlaceMarks.set(`Bell{#Wrecks.bells}`, Wrecks.bells[#Wrecks.bells])
 	-- Lanterns on broken posts round the scene; the two by the break lit
 	for i, spot in
 		{ Vector3.new(-26, 0, -2), Vector3.new(26, 0, 24), Vector3.new(-30, 0, 70), Vector3.new(30, 0, -70) }
@@ -650,6 +651,8 @@ local function bayCannon(parent: Instance)
 	local muzzle = box:PointToWorldSpace(Vector3.new(-length * 0.55, length * 0.12, 0))
 	local direction = (flat + Vector3.new(0, 0.22, 0)).Unit
 	table.insert(Wrecks.cannons, { muzzle = muzzle, direction = direction })
+	PlaceMarks.set(`Cannon{#Wrecks.cannons}`, muzzle)
+	PlaceMarks.set(`Cannon{#Wrecks.cannons}Aim`, direction)
 	-- A lit lantern on each side so it's found
 	for side = -1, 1, 2 do
 		local p = box:PointToWorldSpace(Vector3.new(0, 0, side * 14))

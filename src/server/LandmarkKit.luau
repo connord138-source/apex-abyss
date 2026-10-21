@@ -188,6 +188,9 @@ function LandmarkKit.hero(
 	local opts: HeroOptions = options or {}
 	local holder = Instance.new("Model")
 	holder.Name = name
+	-- (its pivot is its box, so a client moving it (LandmarkController: bobbing,
+	-- drifting, ducking) moves it about its own middle)
+	holder.WorldPivot = box
 	holder.Parent = parent
 	local standin = Instance.new("Model")
 	standin.Name = "Standin"

@@ -289,6 +289,7 @@ local function build()
 		"CLEAR",
 		"secondary"
 	)
+	actionRow("Places: unfind every named place, regrow the pearls", "placesReset", "RESET", "secondary")
 	local charms: { { label: string, value: any } } = {}
 	for _, def in Config.Shop.charms do
 		table.insert(charms, { label = def.name, value = def.id })

@@ -245,6 +245,16 @@ local function clearShades(_admin: Player, targets: { Player }): string
 	return `Every skin taken off {names(targets)}'s current fish (rolls can give them again)`
 end
 
+-- Forgets the named places found and grows the Clam Garden's pearls back, to test
+-- the landmarks (Config/Places; LandmarkService pays each place again)
+local function placesReset(_admin: Player, targets: { Player }): string
+	each(targets, function(_player, data)
+		table.clear(data.places)
+		table.clear(data.pearls)
+	end)
+	return `{names(targets)}: every place unfound and every pearl back (the places pay again)`
+end
+
 local function giveMap(_admin: Player, targets: { Player }, tier: any): string
 	if typeof(tier) ~= "string" or Config.Treasure.byId[tier] == nil then
 		return "Pick a map tier"
@@ -779,6 +789,7 @@ AdminActions.byName = {
 	unlockSpecies = unlockSpecies :: Handler,
 	allShades = allShades :: Handler,
 	clearShades = clearShades :: Handler,
+	placesReset = placesReset :: Handler,
 	giveMap = giveMap :: Handler,
 	heal = heal :: Handler,
 	kill = kill :: Handler,

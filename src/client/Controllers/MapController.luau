@@ -51,6 +51,25 @@ local OTHER = Color3.fromRGB(226, 240, 248)
 local WHALE = Color3.fromRGB(150, 214, 230)
 local APEX = Color3.fromRGB(255, 204, 92)
 local PODMATE = Color3.fromRGB(110, 236, 220)
+local PLACE = Color3.fromRGB(240, 226, 170)
+
+-- A named place's spot (Config/Places; the builders publish them on Workspace.Places)
+local function placeSpot(id: string): Vector3?
+	local folder = workspace:FindFirstChild("Places")
+	local spot = if folder then folder:GetAttribute(id) else nil
+	return if typeof(spot) == "Vector3" then spot else nil
+end
+
+-- The named place a point is in, if any (its `radius`)
+local function placeAt(position: Vector3): typeof(Config.Places.list[1])?
+	for _, place in Config.Places.list do
+		local spot = placeSpot(place.id)
+		if spot and (spot - position).Magnitude <= place.radius then
+			return place
+		end
+	end
+	return nil
+end
 
 -- The treasure site being followed, if any (the Satchel's FOLLOW)
 local function treasureSite(): Vector3?
@@ -130,6 +149,21 @@ local function placeMarks(map: MapDraw.Map)
 				MapDraw.mark(map, id, Layout.mapPosition(root.Position), OTHER, "•", 16)
 			end
 			keep[id] = true
+		end
+	end
+	-- The named places found (the LOG's Places page): a mark on both maps, its name
+	-- on the full one
+	local found = if s and typeof(s.places) == "table" then s.places else nil
+	if found then
+		for _, id in found do
+			local place = Config.Places.byId[id]
+			local spot = placeSpot(id)
+			if place and spot then
+				local key = `Place_{id}`
+				local text = if map == full then `◆ {string.upper(place.name)}` else "◆"
+				MapDraw.mark(map, key, spot, PLACE, text, if map == full then 11 else 10)
+				keep[key] = true
+			end
 		end
 	end
 	MapDraw.prune(map, keep)
@@ -274,6 +308,13 @@ local function placeName(position: Vector3, long: boolean): string
 		return if long then `{name} · THE HUB · safe` else name
 	elseif Layout.inHub(position) then
 		return if long then "THE HUB · safe" else "THE HUB"
+	end
+	-- A named place before its biome (owner, 2026-10-21: the landmarks' names on the
+	-- map)
+	local place = placeAt(position)
+	if place then
+		local name = string.upper(place.name)
+		return if long then `{name} · {Format.distance(depth)} down` else name
 	elseif biome then
 		return if long
 			then `{string.upper(biome.name)} · LV {biome.minLevel}–{biome.maxLevel} · {Format.distance(

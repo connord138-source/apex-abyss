@@ -41,6 +41,7 @@ local passClaimed = makeEvent("PassClaimed") -- (summary) to the claimer: Tide P
 local achievement = makeEvent("Achievement") -- (summary) to the player: an achievement done and the den set it opened
 local chum = makeEvent("Chum") -- (kind, payload) to everyone: chum clouds and the Whale Fall (add, eat, remove, warn)
 local hooks = makeEvent("Hooks") -- ({ boats }) to everyone: the fishing boats and their lines, about once a second
+local landmark = makeEvent("Landmark") -- (kind, index, payload) the biome landmarks: a bell rang, a cannon fired (LandmarkService)
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
@@ -94,6 +95,7 @@ local REQUESTS: { [string]: number } = {
 	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
 	TutorialSaw = 1, -- ("Index") the tutorial's last step: the INDEX was opened
 	Companion = 1, -- ("turtle" | "ray") a sea turtle joined us, or we flushed a resting ray (Config/Companions)
+	Landmark = 0.25, -- ("bell" | "cannon" | "pearl", index) bit the galleon's bell or a clam's pearl, swam into the Bay Cannon (LandmarkService)
 	StartShot = 1.5, -- (shotIndex, schoolIndex, showingShot, showingSchool) the start screen's next shot: stream its water in (StartService)
 	StartDone = 1, -- () dived in from the start screen
 }
@@ -292,6 +294,16 @@ end
 
 function Net.hooks(payload: { [string]: any })
 	hooks:FireAllClients(payload)
+end
+
+-- A landmark event for everyone (a bell rang, a cannon boomed) or one player (their
+-- cannon shot: the aim and speed their client drives)
+function Net.landmark(kind: string, index: number, payload: { [string]: any })
+	landmark:FireAllClients(kind, index, payload)
+end
+
+function Net.landmarkTo(player: Player, kind: string, index: number, payload: { [string]: any })
+	landmark:FireClient(player, kind, index, payload)
 end
 
 function Net.onGetChum(handler: (Player) -> { [string]: any })

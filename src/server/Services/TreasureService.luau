@@ -106,6 +106,30 @@ local function pickSite(tier: MapTier, deepest: number?): Vector3
 	return Vector3.new(x, Seafloor.y(x, z), z)
 end
 
+-- A named place that may hide this tier's chest instead (Config/Places `dig`; owner,
+-- 2026-10-21: the Broken Galleon's cabin is a dig site): its `<id>_Dig` spot on
+-- Workspace.Places, at `digChance`, if it's above `deepest`. Returns the spot and the
+-- map's hint.
+local function placeSite(tier: MapTier, deepest: number?): (Vector3?, string?)
+	local marks = workspace:FindFirstChild("Places")
+	if marks == nil then
+		return nil, nil
+	end
+	for _, place in Config.Places.list do
+		if place.dig == nil or table.find(place.dig, tier.id) == nil then
+			continue
+		end
+		if rng:NextNumber() >= Config.Places.digChance then
+			continue
+		end
+		local spot = marks:GetAttribute(`{place.id}_Dig`)
+		if typeof(spot) == "Vector3" and spot.Y > (deepest or -math.huge) + 4 then
+			return spot, place.digHint or `At {place.name}`
+		end
+	end
+	return nil, nil
+end
+
 local COMPASS = { "east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east" }
 
 -- "About 320 studs north-east of the hub, among the boulders"
@@ -133,12 +157,14 @@ function TreasureService.give(player: Player, tierId: string): boolean
 		return false
 	end
 	local band = Pressure.limit(Size.level(Progress.mass(data)) + Perks.depth(data.upgrades))
-	local site = pickSite(tier, if band then band.y else nil)
+	local deepest = if band then band.y else nil
+	local placed, placeHint = placeSite(tier, deepest)
+	local site = placed or pickSite(tier, deepest)
 	table.insert(held, {
 		id = HttpService:GenerateGUID(false),
 		tier = tier.id,
 		site = { x = site.X, y = site.Y, z = site.Z },
-		hint = hintFor(tier, site),
+		hint = placeHint or hintFor(tier, site),
 		created = Timing.now(),
 	})
 	-- Follow it straight away when nothing else is being followed

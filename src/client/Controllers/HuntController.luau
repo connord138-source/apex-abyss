@@ -33,6 +33,9 @@ local HuntController = {
 	-- (mouth, reach) → the lane of a humpback in reach, set by AmbientLifeController
 	-- (the whales are edible: Config/Ambient `whale.feed`)
 	findWhale = nil :: ((Vector3, number) -> number?)?,
+	-- (mouth, reach) → a landmark a bite would take ("bell" or "pearl", its index), set
+	-- by LandmarkController (LandmarkService checks it)
+	findLandmark = nil :: ((Vector3, number) -> (string?, number?))?,
 }
 
 local function lengthOf(character: Model): number
@@ -147,6 +150,17 @@ local function onBite()
 					ClientState.request("BiteWhale", lane)
 					Sfx.play("Bite", { volume = 0.85, pitch = 0.8 + math.random() * 0.1 })
 					HuntController.snapped:fire(true)
+				end
+			end
+			-- ...or the Broken Galleon's bell, or a clam's pearl
+			local findLandmark = HuntController.findLandmark
+			if target == nil and findLandmark then
+				local kind, index = findLandmark(mouth, Size.reach(length) + length * 0.6 + 2)
+				if kind and index then
+					target = function()
+						ClientState.request("Landmark", kind, index)
+						HuntController.snapped:fire(true)
+					end
 				end
 			end
 		end

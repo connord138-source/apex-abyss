@@ -3766,7 +3766,7 @@ end
 -- The LOG (owner, 2026-10-10: "a factor that pulls people back over and over"):
 -- the Catch Logbook and its skin goals, today's bounties, the Catch of the Week
 -- with the weekly leaderboards, and the Tide Clock's forecast.
-local LOG_TABS = { "Catch Log", "Bounties", "Weekly", "Tides" }
+local LOG_TABS = { "Catch Log", "Bounties", "Weekly", "Tides", "Places" }
 local logBoards: { [string]: any }? = nil -- the last GetBoards answer
 local logBoardsAt = -math.huge
 local logBoard = "RareCatches"
@@ -4477,10 +4477,44 @@ local function tideRows(list: ScrollingFrame)
 	)
 end
 
+-- The LOG's Places page (Config/Places; owner, 2026-10-21: every landmark a named
+-- place with a first-visit reward): the ones found with their story, the rest as ???
+-- with their biome and what finding them pays, so there's something to go and look for
+local function placeRows(list: ScrollingFrame)
+	local s = state()
+	local found: { [string]: boolean } = {}
+	local count = 0
+	if typeof(s.places) == "table" then
+		for _, id in s.places do
+			found[id] = true
+			count += 1
+		end
+	end
+	local places = Config.Places.list
+	heading(list, 1, `PLACES {count}/{#places} · swim to one to find it; each pays once`)
+	for i, place in places do
+		local biome = Config.Biomes.byId[place.biome]
+		local biomeName = if biome then biome.name else place.biome
+		local got = found[place.id] == true
+		row(
+			list,
+			1 + i,
+			`Place{i}`,
+			if got then place.name else `??? · {biomeName}`,
+			if got then place.blurb else `Somewhere in the {biomeName}`,
+			if got then "FOUND ✓" else rewardText(place.reward :: any),
+			nil,
+			nil,
+			if biome then biome.color else nil
+		)
+	end
+	heading(list, 2 + #places, `Find all {#places}: {rewardText(Config.Places.allFound :: any)} more`)
+end
+
 function MenuController.openLog(tab: string?)
 	open(
 		"Log",
-		"Your Catch Logbook and its skin goals, bounties, the weekly race and the tides",
+		"Your Catch Logbook and its skin goals, bounties, the weekly race, the tides and the places you've found",
 		Vector2.new(900, 540),
 		function(window)
 			local shown = tab or "Catch Log"
@@ -4534,6 +4568,8 @@ function MenuController.openLog(tab: string?)
 							bountyRows(list)
 						elseif shown == "Weekly" then
 							weeklyRows(list)
+						elseif shown == "Places" then
+							placeRows(list)
 						else
 							tideRows(list)
 						end

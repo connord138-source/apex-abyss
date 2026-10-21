@@ -270,6 +270,7 @@ local function clamGarden(parent: Instance, rocks: { Rock })
 		bead:SetAttribute("Pearl", #ReefDress.pearls + 1)
 		CollectionService:AddTag(bead, "ClamPearl")
 		table.insert(ReefDress.pearls, pearl)
+		PlaceMarks.set(`Pearl{#ReefDress.pearls}`, pearl)
 	end
 	local glow = Kit.anchor(m, "GardenGlow", CFrame.new(ground + Vector3.new(0, 10, 0)))
 	Kit.light(stats, glow, PEARL, 30, 0.9)

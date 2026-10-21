@@ -41,6 +41,7 @@ local AchievementService = require(Services.AchievementService)
 local AbilityService = require(Services.AbilityService)
 local StartService = require(Services.StartService)
 local CompanionService = require(Services.CompanionService)
+local LandmarkService = require(Services.LandmarkService)
 local StateService = require(Services.StateService)
 local DataService = require(Services.DataService)
 
@@ -82,6 +83,7 @@ AchievementService.start() -- achievements: each opens a den furniture set
 AbilityService.start() -- signature abilities the server owns: Puff Up, Burrow, Lantern Flash
 StartService.start() -- the start screen's documentary shots: each one's water streamed in ahead
 CompanionService.start() -- sea life that helps: a turtle at your side, a ray's shells
+LandmarkService.start() -- the biome landmarks: named places found, the galleon's bell, the Bay Cannon, the clams' pearls
 StateService.start()
 DataService.start() -- last: fires loaded for players already in the server
 
