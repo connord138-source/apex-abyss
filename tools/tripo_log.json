@@ -193,6 +193,41 @@
   "task_id": "e5458516-352f-4918-af2a-6448edc9d703",
   "type": "generate_image"
  },
+ "biome_trench/BoneHeap": {
+  "status": "queued",
+  "task_id": "8170d1e6-1afc-4a8a-9eca-d7ce7f6c223c",
+  "type": "image_to_model"
+ },
+ "biome_trench/GlassSponge": {
+  "status": "queued",
+  "task_id": "4787a75e-6d6f-4927-9178-9d405e7a51ad",
+  "type": "image_to_model"
+ },
+ "biome_trench/GlowEggs": {
+  "status": "queued",
+  "task_id": "84255d5d-b96c-44d1-95cd-02a0e768c267",
+  "type": "image_to_model"
+ },
+ "biome_trench/LeviathanRibs": {
+  "status": "queued",
+  "task_id": "97edc55f-a1b7-4fef-933b-981202ceebdc",
+  "type": "text_to_model"
+ },
+ "biome_trench/LeviathanSkull": {
+  "status": "queued",
+  "task_id": "da41c9c6-5c50-4db8-962f-a2d7ec0a2f66",
+  "type": "image_to_model"
+ },
+ "biome_trench/TrenchCrystals": {
+  "status": "queued",
+  "task_id": "da3632ac-1d0b-4e90-9efa-92176477b477",
+  "type": "image_to_model"
+ },
+ "biome_trench/TrenchGlowTubes": {
+  "status": "queued",
+  "task_id": "7ee159c7-b2e8-4a9e-bde6-eba1d0d57aea",
+  "type": "image_to_model"
+ },
  "biome_wreck/GalleonBow": {
   "credits": 20,
   "files": [
