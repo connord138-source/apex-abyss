@@ -25,6 +25,8 @@ local Vents = require(script.Parent.Parent.Vents)
 local Cliff = require(script.Parent.Parent.Cliff)
 local Wrecks = require(script.Parent.Parent.Wrecks)
 local TrenchDress = require(script.Parent.Parent.TrenchDress)
+local KelpDress = require(script.Parent.Parent.KelpDress)
+local LandmarkKit = require(script.Parent.Parent.LandmarkKit)
 local PlaceMarks = require(script.Parent.Parent.PlaceMarks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 
@@ -1364,6 +1366,27 @@ local function buildBiomes(parent: Instance)
 		print(
 			`[Trench] the Leviathan's Spine: {trenchStats.parts} parts ({trenchStats.solid} solid, {trenchStats.glow} glowing), {trenchStats.models} models and {trenchStats.standins} stand-ins, {trenchStats.lights} lights`
 		)
+	end
+
+	-- The Kelp Shallows', the Coral Reef's and the Open Blue's landmarks (owner,
+	-- 2026-10-21: the biome detail boards), each builder on its own Random; then the
+	-- scatter above is taken out of the ground its landmarks stand on
+	do
+		local scatter: { Instance } = { kelpFolder, rocks, corals }
+		for _, name in { "Seeps", "PlanktonMats" } do
+			local found = parent:FindFirstChild(name)
+			if found then
+				table.insert(scatter, found)
+			end
+		end
+		local function landmarks(label: string, s: LandmarkKit.Stats)
+			local cleared = LandmarkKit.clearAround(scatter, s.clearings)
+			print(
+				`[{label}] landmarks: {s.parts} parts ({s.solid} solid, {s.glow} glowing), {s.models} models and {s.standins} stand-ins, {s.lights} lights; {cleared} scattered pieces cleared`
+			)
+		end
+		-- the Kelp Cathedral and Otter Meadow (KelpDress.luau)
+		landmarks("Kelp", KelpDress.build(kelpFolder, folder("KelpLandmarks", rocks), groundAt))
 	end
 
 	-- The drop-off's reef wall (owner, 2026-10-19: "The cliff edge needs to be dialed

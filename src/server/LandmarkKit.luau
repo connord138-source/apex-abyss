@@ -23,6 +23,9 @@ export type Stats = {
 	models: number, -- imported models placed
 	standins: number, -- stand-ins left (their model isn't imported)
 	heroes: { [string]: number }, -- placements by model name
+	-- Ground a landmark stands on, kept clear of the biome's other scatter
+	-- (LandmarkKit.clearAround, called by WorldService after the scatter)
+	clearings: { { center: Vector3, radius: number } },
 }
 
 export type Ground = (x: number, z: number) -> (Vector3?, Vector3?)
@@ -34,7 +37,17 @@ local HALF = math.pi / 2
 LandmarkKit.GLB_FRONT = CFrame.Angles(0, -HALF, 0)
 
 function LandmarkKit.stats(): Stats
-	return { parts = 0, solid = 0, glow = 0, lights = 0, emitters = 0, models = 0, standins = 0, heroes = {} }
+	return {
+		parts = 0,
+		solid = 0,
+		glow = 0,
+		lights = 0,
+		emitters = 0,
+		models = 0,
+		standins = 0,
+		heroes = {},
+		clearings = {},
+	}
 end
 
 -- An anchored part; `solid` pieces collide and take rays, the rest are decor
@@ -313,6 +326,73 @@ function LandmarkKit.lantern(stats: Stats, parent: Instance, at: CFrame, size: n
 		false
 	)
 	return glass
+end
+
+-- A beam of light down from the surface (as WorldService's shafts): `strength` 0..1
+function LandmarkKit.shaft(parent: Instance, top: Vector3, bottom: Vector3, width: number, strength: number)
+	local holder = LandmarkKit.anchor(parent, "LightShaft", CFrame.new(top))
+	local a0 = Instance.new("Attachment")
+	a0.Parent = holder
+	a0.WorldPosition = top
+	local a1 = Instance.new("Attachment")
+	a1.Parent = holder
+	a1.WorldPosition = bottom
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = a0
+	beam.Attachment1 = a1
+	beam.Width0 = width
+	beam.Width1 = width * 1.7
+	beam.FaceCamera = true
+	beam.LightEmission = 1
+	beam.LightInfluence = 0
+	beam.Color = ColorSequence.new(Color3.fromRGB(200, 244, 255))
+	beam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1 - strength),
+		NumberSequenceKeypoint.new(0.6, 1 - strength * 0.5),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	beam.Parent = holder
+end
+
+-- Marks ground a landmark stands on (`radius` across from `center`)
+function LandmarkKit.clearing(stats: Stats, center: Vector3, radius: number)
+	table.insert(stats.clearings, { center = center, radius = radius })
+end
+
+-- Takes the scatter other loops dropped out of a landmark's clearings: every part
+-- or model directly in `folders` whose middle lies in one (folders inside them, the
+-- landmarks' own, are left alone). Returns how many went.
+function LandmarkKit.clearAround(
+	folders: { Instance },
+	clearings: { { center: Vector3, radius: number } }
+): number
+	local removed = 0
+	if #clearings == 0 then
+		return 0
+	end
+	for _, holder in folders do
+		for _, child in holder:GetChildren() do
+			local at: Vector3? = nil
+			if child:IsA("BasePart") then
+				at = child.Position
+			elseif child:IsA("Model") then
+				local part = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart", true)
+				at = if part then part.Position else nil
+			end
+			if at == nil then
+				continue
+			end
+			for _, c in clearings do
+				local dx, dz = at.X - c.center.X, at.Z - c.center.Z
+				if dx * dx + dz * dz <= c.radius * c.radius then
+					child:Destroy()
+					removed += 1
+					break
+				end
+			end
+		end
+	end
+	return removed
 end
 
 return LandmarkKit

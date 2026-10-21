@@ -124,7 +124,7 @@ elseif BIOME == "Trench" then
 	summary = TrenchDress.build(folder, groundAt, features.lair)
 	views = TrenchDress.views
 elseif BIOME == "Kelp" then
-	summary = KelpDress.build(folder, groundAt)
+	summary = KelpDress.build(folder, folder, groundAt)
 	views = KelpDress.views
 elseif BIOME == "Reef" then
 	summary = ReefDress.build(folder, groundAt)
