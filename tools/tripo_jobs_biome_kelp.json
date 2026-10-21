@@ -4,44 +4,65 @@
    "name": "LobsterTrap",
    "group": "biome_kelp",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/LobsterTrap.png"
+   "image": "assets/tripo/biome_models/refs/LobsterTrap.png",
+   "settings": {
+    "face_limit": 5000
+   }
   },
   {
    "name": "SunkenRowboat",
    "group": "biome_kelp",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/SunkenRowboat.png"
+   "image": "assets/tripo/biome_models/refs/SunkenRowboat.png",
+   "settings": {
+    "face_limit": 6000
+   }
   },
   {
    "name": "SeaOtter",
    "group": "biome_kelp",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/SeaOtter.png"
+   "image": "assets/tripo/biome_models/refs/SeaOtter.png",
+   "settings": {
+    "face_limit": 5000
+   }
   },
   {
    "name": "UrchinRock",
    "group": "biome_kelp",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/UrchinRock.png"
+   "image": "assets/tripo/biome_models/refs/UrchinRock.png",
+   "settings": {
+    "face_limit": 4000
+   }
   },
   {
    "name": "KelpBuoy",
    "group": "biome_kelp",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/KelpBuoy.png"
+   "image": "assets/tripo/biome_models/refs/KelpBuoy.png",
+   "settings": {
+    "face_limit": 4000
+   }
   },
   {
    "name": "SeaGrass",
    "group": "biome_kelp",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/SeaGrass.png"
+   "image": "assets/tripo/biome_models/refs/SeaGrass.png",
+   "settings": {
+    "face_limit": 3000
+   }
   },
   {
    "name": "KelpCanopy",
    "group": "biome_kelp",
    "type": "text_to_model",
    "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: a wide floating canopy of giant kelp at the sea's surface, one broad flat mat: dozens of long golden-green leafy kelp blades and round olive gas bladders spreading out flat in every direction, with a few thick stalks and blades hanging down from its underside. Golden olive and kelp green. Chunky faceted. A single object, flat and wide, no water, no text.",
-   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person"
+   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person",
+   "settings": {
+    "face_limit": 6000
+   }
   }
  ]
 }

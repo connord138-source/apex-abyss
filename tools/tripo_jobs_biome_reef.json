@@ -4,25 +4,37 @@
    "name": "TableCoral",
    "group": "biome_reef",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/TableCoral.png"
+   "image": "assets/tripo/biome_models/refs/TableCoral.png",
+   "settings": {
+    "face_limit": 5000
+   }
   },
   {
    "name": "GiantClam",
    "group": "biome_reef",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/GiantClam.png"
+   "image": "assets/tripo/biome_models/refs/GiantClam.png",
+   "settings": {
+    "face_limit": 6000
+   }
   },
   {
    "name": "GardenEels",
    "group": "biome_reef",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/GardenEels.png"
+   "image": "assets/tripo/biome_models/refs/GardenEels.png",
+   "settings": {
+    "face_limit": 4000
+   }
   },
   {
    "name": "PillarCoral",
    "group": "biome_reef",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/PillarCoral.png"
+   "image": "assets/tripo/biome_models/refs/PillarCoral.png",
+   "settings": {
+    "face_limit": 5000
+   }
   }
  ]
 }

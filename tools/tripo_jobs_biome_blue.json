@@ -4,25 +4,37 @@
    "name": "WhaleSkeleton",
    "group": "biome_blue",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/WhaleSkeleton.png"
+   "image": "assets/tripo/biome_models/refs/WhaleSkeleton.png",
+   "settings": {
+    "face_limit": 10000
+   }
   },
   {
    "name": "Sargassum",
    "group": "biome_blue",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/Sargassum.png"
+   "image": "assets/tripo/biome_models/refs/Sargassum.png",
+   "settings": {
+    "face_limit": 5000
+   }
   },
   {
    "name": "JellyChain",
    "group": "biome_blue",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/JellyChain.png"
+   "image": "assets/tripo/biome_models/refs/JellyChain.png",
+   "settings": {
+    "face_limit": 4000
+   }
   },
   {
    "name": "CoralPinnacle",
    "group": "biome_blue",
    "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/CoralPinnacle.png"
+   "image": "assets/tripo/biome_models/refs/CoralPinnacle.png",
+   "settings": {
+    "face_limit": 8000
+   }
   }
  ]
 }
