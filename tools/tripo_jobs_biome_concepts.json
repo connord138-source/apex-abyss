@@ -1,0 +1,84 @@
+{
+ "jobs": [
+  {
+   "name": "WreckScene",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeShipwreck.jpg",
+   "prompt": "Using the attached image only as a STYLE and MOOD reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft underwater light, a touch more realistic than a toy), paint a NEW underwater game environment, seen from a fish's eye height a little above the seabed. Copy the style only, not the layout. A ship graveyard in murky green-teal water. The hero: a huge old wooden galleon broken clean in two on the sand. The bow half lies on its side; the stern half stands tilted up, its carved captain's cabin windows glowing warm amber lantern light. The break opens the decks so a fish could swim through the hull. Fallen masts trail torn rigging nets. Heavy iron chains run across the sand from the wreck to a giant anchor. Bronze cannons spill from the gun deck; barrels and crates lie half buried. Behind, a toppled striped stone lighthouse lies across the seabed, and a rusty iron steamer and a small fishing trawler fade into the haze. Barnacles, a kelp fringe, small silver fish. Palette: dark wood, rust, bronze, teal, amber glow. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "WreckKit",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeShipwreck.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, a touch more realistic than a toy), draw EXACTLY six different props for this underwater place, each drawn once, in a grid of three across and two down with wide empty space so nothing touches, each whole in a three-quarter view from slightly above, on a plain flat muted teal background. Copy the style only. Solid chunky shapes, rich detail. Top row: (1) a bronze ship's cannon on a broken wooden carriage, crusted with barnacles; (2) a giant iron anchor with a coil of heavy chain; (3) a carved wooden sea-serpent figurehead, weathered teal paint. Bottom row: (4) a ship's wheel and a green-bronze bell on a broken post; (5) a heap of barrels and crates tangled in a torn rope net; (6) an iron ship's lantern on a short chain, amber glass. Palette: dark wood, rust, bronze, teal, amber. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "TrenchScene",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeAbyssalTrench.jpg",
+   "prompt": "Using the attached image only as a STYLE and MOOD reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft underwater light, a touch more realistic than a toy), paint a NEW underwater game environment, seen from a fish's eye height a little above the seabed. Copy the style only, not the layout. A narrow deep-sea canyon in creepy murky green-teal water, dim but readable. The hero: the colossal ancient skeleton of a sea serpent arching across the canyon, its spine and huge curved ribs forming a long archway a fish swims through, a great horned skull resting on a ledge, the bones crusted with glowing cyan tube worms. Cyan and violet crystal clusters grow out of the canyon walls and glow. Pale glass sponges like lattice vases stand on the floor. A dark cave mouth in one wall holds faintly glowing teal egg clusters. Lines of glowing growth lead down the canyon into the dark. Marine snow drifts. Palette: deep teal, slate, bone white, cyan and violet glow. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "TrenchKit",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeAbyssalTrench.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, a touch more realistic than a toy), draw EXACTLY six different props for this underwater place, each drawn once, in a grid of three across and two down with wide empty space so nothing touches, each whole in a three-quarter view from slightly above, on a plain flat muted teal background. Copy the style only. Solid chunky shapes, rich detail. Top row: (1) a cluster of tall glowing cyan crystals on a rock base; (2) a cluster of glowing violet crystals on a rock base; (3) a pale glass sponge, a tall lattice vase shape. Bottom row: (4) the giant horned skull of an ancient sea serpent, bone white, crusted with cyan tube worms; (5) a clutch of round teal glowing eggs in a rocky hollow; (6) a heap of huge old bones with glowing worm tufts. Palette: slate, bone white, cyan, violet, deep teal. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "KelpScene",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeKelpShallows.jpg",
+   "prompt": "Using the attached image only as a STYLE and MOOD reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft underwater light, a touch more realistic than a toy), paint a NEW underwater game environment, seen from a fish's eye height a little above the seabed. Copy the style only, not the layout. A sunlit kelp forest in clear turquoise shallows. The hero: a kelp cathedral, a grove of giant golden-green kelp stalks rising to the bright surface, their tops spreading into a leafy canopy roof with sun shafts streaming through gaps, the open space between them like a great nave. Around it: a meadow of short swaying sea grass, rippled sand, a patch of round purple sea urchins on grey rocks, an old wooden lobster trap and a sunken rowboat, a buoy chain rising to the surface, and two sea otters floating on their backs at the surface seen from below. Starfish and small fish. Palette: turquoise, golden kelp, sand, grey rock, purple urchins. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "KelpKit",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeKelpShallows.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, a touch more realistic than a toy), draw EXACTLY six different props for this underwater place, each drawn once, in a grid of three across and two down with wide empty space so nothing touches, each whole in a three-quarter view from slightly above, on a plain flat muted teal background. Copy the style only. Solid chunky shapes, rich detail. Top row: (1) an old wooden lobster trap with rope and a cork float; (2) a small sunken wooden rowboat, half full of sand, one oar; (3) a sea otter floating on its back holding a shell, natural brown fur, realistic simple eyes. Bottom row: (4) a clump of round purple sea urchins on a grey rock; (5) a red and white buoy with a rusty chain hanging down; (6) a clump of tall swaying green sea grass. Palette: wood, rope, brown fur, purple, red, white, green. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "ReefScene",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeCoralReef.jpg",
+   "prompt": "Using the attached image only as a STYLE and MOOD reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft underwater light, a touch more realistic than a toy), paint a NEW underwater game environment, seen from a fish's eye height a little above the seabed. Copy the style only, not the layout. A vivid coral reef in bright turquoise water. The hero: a ring of reef around a huge round blue hole, a deep circular sinkhole dropping into dark blue water, its rim lined with coral. Around it: table corals stacked on pillars like flat plates, giant brain corals, a sandy pathway with ripples winding between the corals, a giant clam lying open with a glowing pearl, garden eels poking up from the sand. The reef is in color districts: orange and red fire corals on one side, blue and violet on the other, yellow and green between. Small reef fish. Palette: turquoise, orange, red, violet, blue, yellow, sand. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "ReefKit",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeCoralReef.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, a touch more realistic than a toy), draw EXACTLY six different props for this underwater place, each drawn once, in a grid of three across and two down with wide empty space so nothing touches, each whole in a three-quarter view from slightly above, on a plain flat muted teal background. Copy the style only. Solid chunky shapes, rich detail. Top row: (1) a table coral, wide flat stacked plates on a thick pillar; (2) a giant clam lying open, wavy blue lips, a glowing pearl inside; (3) a patch of sand with five thin spotted garden eels poking up. Bottom row: (4) a huge round brain coral, deep orange; (5) a cluster of tall violet pillar coral fingers; (6) a wide red sea fan on a rock. Palette: orange, red, violet, blue, yellow, sand. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "BlueScene",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeOpenBlue.jpg",
+   "prompt": "Using the attached image only as a STYLE and MOOD reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft underwater light, a touch more realistic than a toy), paint a NEW underwater game environment, seen from a fish's eye height a little above the seabed. Copy the style only, not the layout. Open deep blue ocean, mostly empty water with strong sun rays from above. Far below on a pale blue-grey floor lies the giant skeleton of a whale, ribs and long jaw bones. At the surface, golden-brown sargassum seaweed rafts float with small fish hiding under them. Long glowing jellyfish chains drift in the water. In the far haze one tall rocky pinnacle rises from the deep with hammerhead sharks circling it. A school of tuna passes. Palette: deep blue, cyan, pale bone, golden sargassum, faint violet glow. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  },
+  {
+   "name": "BlueKit",
+   "group": "biome_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/concepts/BiomeOpenBlue.jpg",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game art, flat-shaded facets, bold clean colors, a touch more realistic than a toy), draw EXACTLY six different props for this underwater place, each drawn once, in a grid of three across and two down with wide empty space so nothing touches, each whole in a three-quarter view from slightly above, on a plain flat muted teal background. Copy the style only. Solid chunky shapes, rich detail. Top row: (1) the giant skeleton of a whale lying on the sand, skull, ribs and spine; (2) a floating raft of golden-brown sargassum seaweed seen from the side with its bladders and fronds hanging down; (3) a long chain of glowing jellyfish-like bells (a siphonophore). Bottom row: (4) a tall jagged rocky pinnacle with coral on it; (5) a big clear jellyfish with long trailing arms, faint blue glow; (6) a rusty old shipping buoy with weed. Palette: bone, golden brown, blue, violet glow, rust. No people, text, letters, numbers or watermark. No pale pink, peach or beige."
+  }
+ ]
+}
