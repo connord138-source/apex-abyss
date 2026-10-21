@@ -1719,19 +1719,35 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     shared Random and hands each spot to `Wrecks.scatter` (hulls, sterns, steamers,
     debris fields; never within 120 studs of a set piece). ~120 parts with the models in,
     46 models, 7 lights.
-  - **Abyssal Trench** (`src/server/TrenchDress.luau`, under `World.Biomes.Rocks.Trench`):
-    the Leviathan's Spine down the canyon's middle from r 1100 (seven LeviathanRibs arches
-    130 → 72 across, 0.2 of a span apart, so it reads as one ribcage to swim down; each
-    keeps its stand-in's rods as invisible colliders, `keepColliders`; glowing worm tufts
-    on them, a light every other arch), the horned skull 90 long at the head end, bone
-    heaps for a tail; Shelf.luau's `landmarkOps` clears the basalt pillars standing in
-    its way (r 1010–1410, ±76 across; their draws are kept). The Squid's Lair: a cave Shelf
-    bites into the wall at r 1330 (`Features.lair`), eggs, bones, beaks, a teal light;
-    the squid rises in front of it (`PlaceMarks` `SquidLair_Rise`, BossService
-    `summon`). Crystal clusters, glow tubes and glass sponges on the floor, a trail of
-    worm tufts down the middle. WorldService's old Neon ball specks are crystal shards
-    (`TrenchDress.speck`, same draws) and the glow gardens' tips flat caps. ~350 parts
-    with the models in, 44 models, 18 lights.
+  - **Abyssal Trench** (`src/server/TrenchDress.luau`, under `World.Biomes.Rocks.Trench`;
+    rebuilt 2026-10-21 to read like its scene, `assets/tripo/biome_concepts/TrenchScene.png`,
+    after the owner's "look how much different your hole looks from the mockup"): the
+    Leviathan's Spine is one serpent skeleton. Its horned skull (LeviathanSkull, snout on the
+    model's own +Z, so its box is turned half round) rests on a craggy rock Shelf builds
+    against the right wall at r 1240 (`SKULL_LEDGE`: slate lumps, a seat, basalt columns,
+    boulders; `Features.skullLedge`), looking back up the canyon; its neck curves off the rock
+    into a Catmull-Rom spine (`SPINE` points: r, across, height) of ~34 LeviathanVertebra
+    ~110 over the floor (a cyan light every 4th), with LeviathanRib pairs every 12 studs
+    hanging to the floor (a bone bent into a quarter ellipse by `tools/props/trench_prep.py`,
+    `rib()`; each keeps its stand-in's rods as invisible colliders) and the tail tapering to
+    the floor at the canyon's end. Loose ribs, bone heaps and glass sponges lie up the canyon
+    toward it. Walls: crystal clusters and glow tubes in cyan and violet (TrenchCrystals,
+    TrenchCrystalsViolet, TrenchGlowTubes, TrenchGlowTubesCyan: hue-turned copies) seated by
+    rays against the Terrain at 2–3 heights every 12 studs (`WALL`, `wall` ray passed in by
+    WorldService), egg clutches in pockets, big clusters along both walls' feet, two trails of
+    small growth down the floor. The Squid's Lair (`LAIR` r 1112, the right wall, the outer
+    side of the first bend, radius 36): clutches in and out, hanging egg strands, SquidBeak
+    models, bones, five tentacle drag marks with sucker rings, a teal glow and mist; the squid
+    rises in front of it. Glow: every glowing model carries a glow map (`shine` sets its
+    `EmissiveStrength`), the bones and sponges a faint all-over one (`BASE_GLOW` 0.3 in
+    trench_prep) so they read pale in the dark; GlowEggs' glow map is its own colour map
+    (teal eggs over black scored 0.32 on the classifier). ~300 parts and ~400 models,
+    `MAX_LIGHTS` 28. The concept's view is the `spine` view (from r 1070 looking down the
+    canyon); the canyon is ~2.5× the concept's width, so its walls sit in the haze at the
+    frame's edges. Preview: `PROPS=1 VIEWS=spine,ribcage,skull,walls,lair bash
+    tools/preview/run_biome.sh Trench <dir>` with the Trench's haze (`FOG_COLOR=28,66,66
+    FOG=200`) and `EMIT_BY` the `shine` values (`tools/preview/render_hub.py` `EMIT`/`EMIT_BY`);
+    `tools/props/concept_compare.py` puts a render beside its concept.
   - **Kelp Shallows** (`src/server/KelpDress.luau`; rebuilt 2026-10-21 to read like its
     scene, `assets/tripo/biome_concepts/KelpScene.png`, after the owner's "really everything
     other than the whale, ship and lighthouse needs more detail and more intricacy ... the
@@ -1782,10 +1798,27 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     260); garden eel patches (`GardenEels`). Views `bluehole` (the scene's camera),
     `holeabove`, `holedown`, `clams`; preview `PROPS=1 VIEWS=bluehole
     BOUNDS=260,660,-280,80,100,430 bash tools/preview/run_biome.sh Reef <dir>`.
-  - **Open Blue** (`BlueDress.luau`, under `Rocks.OpenBlue`): the Whale's Rest (a skeleton
-    120 long on the floor at 268°, r 1120, a light shaft); Hammerhead Pinnacle (a solid
-    240-stud CoralPinnacle at 296°, r 1455, past the Megalodon's patrol band); 9 sargassum
-    rafts at the surface (`Bobbing`, `Sargassum`) and 7 jelly chains (`Drifting`).
+  - **Open Blue** (`BlueDress.luau`, under `Rocks.OpenBlue`; rebuilt 2026-10-21 to read like
+    `assets/tripo/biome_concepts/BlueScene.png`): the floor stays bare, the life is in the
+    water. The Whale's Rest unchanged (268°, r 1120, a light shaft). Hammerhead Pinnacle at
+    274°, r 1,400 (behind the whale from the hub's side), 160 tall so its tip stays under the
+    Megalodon's lowest patrol (170 over the floor; boss steering ignores solids): nine Slate
+    ledges up its faces with table corals, barrel sponges, sea whips and fans (the cliff's
+    and reef's WorldProps, tinted cool), more fans and whips on its faces, boulders and a coral
+    garden round its foot, two light shafts. Things sit on its faces by `PROFILE`, the
+    CoralPinnacle GLB's radius by tenth of height and 45° direction (no ray reaches a model in
+    the previewer). Six invisible `FishSchool` models tagged `Sargassum` round it give little
+    schools circling it (the client's shelter fish swim 9–14 under a tagged pivot). Seven
+    fields of 2–4 sargassum rafts at the surface (`Bobbing`, `Sargassum`) with part-built
+    golden fronds hanging in each raft's holder (they bob with it); two RustyBuoy models among
+    them on short chains (`Bobbing`); ten JellyChains (glow map, `EmissiveStrength` 2) and 26
+    part-built jellyfish (two stepped translucent discs and a cap, a Neon rim, six Neon
+    tentacles, three oral arms; `Drifting`) at every depth. ~700 parts, 93 models, no lights.
+    The concept's view is `concept` (beside the whale's skull, the pinnacle beyond); the
+    surface is 870 studs over the floor, so the concept's rafts overhead can't share the frame
+    (`surface` and `buoy` views show them). Preview: `PROPS=1 VIEWS=concept,pinnacle,surface,buoy
+    BOUNDS=-260,300,-470,-250,-1560,-900 CELL=4 FOG_COLOR=22,84,140 FOG=420 bash
+    tools/preview/run_biome.sh Blue <dir>`.
   - **Clearings:** each builder marks its landmarks' ground (`Kit.clearing`) and
     WorldService takes the biome's random scatter (rocks, corals, kelp, seeps, plankton
     mats) out of it afterwards (`LandmarkKit.clearAround`), so no boulder stands in the

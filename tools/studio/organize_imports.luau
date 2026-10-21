@@ -84,7 +84,8 @@ local PROPS = {
 	-- BlueDress fit them over their stand-ins)
 	GalleonBow = true, GalleonStern = true, IronSteamer = true, ToppledLighthouse = true, WreckCannon = true,
 	WreckAnchor = true, WreckFigurehead = true, WreckWheelBell = true, WreckBarrels = true,
-	LeviathanRibs = true, LeviathanSkull = true, TrenchCrystals = true, TrenchGlowTubes = true, GlassSponge = true,
+	LeviathanVertebra = true, LeviathanRib = true, LeviathanSkull = true, SquidBeak = true, TrenchCrystals = true,
+	TrenchCrystalsViolet = true, TrenchGlowTubes = true, TrenchGlowTubesCyan = true, GlassSponge = true,
 	GlowEggs = true, BoneHeap = true,
 	LobsterTrap = true, SunkenRowboat = true, SeaOtter = true, UrchinRock = true, KelpBuoy = true, SeaGrass = true,
 	KelpCanopy = true,
@@ -94,7 +95,7 @@ local PROPS = {
 	BranchFanRed = true, BranchFanOrange = true, BranchFanYellow = true, BranchFanViolet = true,
 	TableCoralOrange = true, TableCoralRed = true, TableCoralBlue = true, TableCoralViolet = true,
 	PillarCoralOrange = true, PillarCoralBlue = true,
-	WhaleSkeleton = true, Sargassum = true, JellyChain = true, CoralPinnacle = true,
+	WhaleSkeleton = true, Sargassum = true, JellyChain = true, CoralPinnacle = true, RustyBuoy = true,
 	-- Den props, batch 2 (den_props2_glb; Config/Dens items of the same names)
 	DriftwoodTable = true, KelpBed = true, PearlPedestal = true, BubbleColumn = true, SpongeSofa = true,
 	ShipwreckBookshelf = true, JellyLamp = true, SeaGlassLantern = true, CoralLamp = true, Banner = true,

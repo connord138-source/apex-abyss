@@ -10,26 +10,26 @@ Apex Tide — PC brief (2026-10-21): the five biome landmarks the owner approved
 ## What changed
 
 - **Shipwreck Graveyard** (`src/server/Wrecks.luau`): the Broken Galleon in the middle of the bay (two halves to swim between, the stern's cabin lit, anchors on chains, cannons, barrels, the figurehead, the wheel-and-bell post behind the stern), the Fallen Lighthouse at 196°, a steamer and a trawler, the Bay Cannon at the bay's inner end, and the bay's 14 scattered wrecks as real hulls, sterns, steamers and debris fields.
-- **Abyssal Trench** (`TrenchDress.luau`): the Leviathan's Spine (seven rib arches down the canyon from r 1100, a horned skull, bone heaps), the Squid's Lair (a cave in the canyon wall with glowing eggs; the Giant Squid now rises in front of it), crystal clusters, glow tubes, glass sponges and a trail of glowing worm tufts.
+- **Abyssal Trench** (`TrenchDress.luau`, rebuilt the same day to read like `assets/tripo/biome_concepts/TrenchScene.png`): the Leviathan's Spine is one serpent skeleton: its horned skull on a craggy rock jutting from the canyon's right wall at r 1240 (looking back up the canyon), its neck curving off the rock into a spine of ~34 vertebrae ~110 studs over the floor (glowing tube worms on each dorsal spine, a cyan light every 4th), ~40 bent bone ribs hanging from it to the floor either side as a ribcage to swim down, the tail tapering to the floor at the canyon's end; loose ribs, bone heaps and pale glass sponges up the canyon toward it. Bones and sponges glow faintly so they read pale in the dark. Glowing crystal clusters and glow tubes in cyan and violet grow out of both walls at two or three heights every 12 studs, big clusters line the foot of both walls, two trails of small glowing growth run down the floor. The Squid's Lair is a bigger cave (radius 36) in the outer wall of the canyon's first bend (r 1112, right wall): egg clutches inside and spilling out, strands of eggs hanging from its roof, squid beaks and bones, five tentacle drag marks with sucker rings across the floor, a cold teal glow and mist; the Giant Squid rises in front of it.
 - **Kelp Shallows** (`KelpDress.luau`, rebuilt the same day to read like `assets/tripo/biome_concepts/KelpScene.png`: the first cathedral read as one kelp tower from outside): the Kelp Cathedral is a wide open nave (~165 studs across) in a grove of three loose rings of slim giant kelp stepping down outward (220–300, 150–240 and 90–160 tall, two gaps to swim in by, one facing the hub), the tallest ring's crowns fanning in over the nave as a leafy roof with its middle open and five light shafts; young kelp and kelp clumps round its edge; on its floor sea-grass patches, sand ripples, grey rocks with purple urchins and orange starfish, a lobster trap at the way in, a sunken rowboat whose red float hangs on its chain over it, two otters at the surface. Otter Meadow: a dense sea-grass meadow, an urchin barren on a pavement of low grey boulders, starfish, otters floating at the surface, a red buoy. A trail of lobster traps and rowboats toward the Wreck bay, and 40 patches of sea grass with urchin rocks and starfish across the rest of the Kelp Shallows' floor.
 - **Coral Reef** (`ReefDress.luau`, rebuilt the same day to read like `assets/tripo/biome_concepts/ReefScene.png`: the owner's "look how much different your hole looks from the mockup"): the Blue Hole (near 37°, about 640 out) is a wide sinkhole (132 across, 248 deep) whose deep blue walls step down in bands with overhangs, alcoves and ledges (a new Terrain material, Glacier, on the toon rock plates), a raised crater lip with a thin pale stone edge, and a tunnel from its floor out through the drop-off's face, the shortcut down. A sandy highway 32 wide winds 190 studs up to it from the hub side between walls of reef. Its rim is packed three rows deep with coral in colour districts (fire red and orange on the left, blue and violet on the right, yellow and green across), the highway's walls rise from the sand with big brain corals along its edge, plate corals grow on the ledges, a clam and garden eels sit by the road, light shafts come down, a glow lights the floor and the tunnel. The Clam Garden (seven giant clams with glowing pearls) is ringed three deep with coral, tufts between the clams; garden eel patches.
-- **Open Blue** (`BlueDress.luau`): the Whale's Rest (a great whale's skeleton on the floor far below), Hammerhead Pinnacle (a coral spire at the sector's far edge with hammerheads circling), golden sargassum rafts at the surface with little fish under them, glowing jelly chains drifting mid-water.
+- **Open Blue** (`BlueDress.luau`, rebuilt the same day to read like `assets/tripo/biome_concepts/BlueScene.png`): the Whale's Rest unchanged (268°, r 1120); Hammerhead Pinnacle moved in to 274°, r 1,400 (behind the whale seen from the hub's side) and 160 tall (its tip under the Megalodon's lowest patrol, 170 over the floor), with nine rock ledges up its faces carrying table corals, barrel sponges, sea whips and fans, more fans and whips on its faces, boulders and a coral garden round its foot, six little schools circling it and two light shafts; seven fields of 2–4 sargassum rafts at the surface, golden fronds hanging under each; two rusty navigation buoys among them on short chains; ten glowing jelly chains and 26 jellyfish (translucent bells, glowing rims and long tentacles) drifting at every depth.
 - **Named places** (`Config/Places`, `LandmarkService`): 14, two a biome (the Ruins' Great Temple and Sunken Theatre, the Vents' Forge and Brine Pool too). The first visit toasts "Discovered … (n/14)" and pays coral and shells; all 14 pay 5,000 coral, 100 shells and 2 spins more. The LOG has a **Places** tab; the maps mark found places (names on the full map); the minimap's name bar names the place you're in.
 - **Play:** BITE the galleon's bell (it rings for everyone near); swim into the Bay Cannon's muzzle (it fires you over the bay); BITE a clam's pearl (120 coral, 6 shells; gone for you for 15 minutes); a Weathered or Captain's map may bury its chest under the galleon's lit cabin windows (30%); eels duck as you swim over; otters, the buoy and the rafts bob; jelly chains drift.
 - Every model has a part-built stand-in, so everything works before the import. Each landmark clears the biome's random scatter (rocks, corals, kelp, seeps) off its ground.
-- **Terrain changed** (the Blue Hole, the Squid's Lair, the Trench pillars cleared from the spine): the map chart is regenerated and needs a re-upload.
+- **Terrain changed** (the Blue Hole, the Squid's Lair, the skull's rock, the Trench pillars cleared from the spine): the map chart is regenerated and needs a re-upload.
 
 ## 1. Sync and import
 
 1. Merge `origin/claude/world` into `claude/core-systems`, `rokit install`, `rojo serve`, connect the plugin.
 2. Format with `stylua --line-endings Windows src --glob "!**/Packages/**"`.
 3. `python tools/fetch_assets.py` (fetches `biome_wreck_glb`, `biome_trench_glb`, `biome_kelp_glb`, `biome_reef_glb`, `biome_reef2_glb`, `biome_blue_glb` into `assets/glb/props/`). Every image in them was screened with the classifier (highest 0.023); no normal maps.
-4. **File → Import 3D**, no rig, **Import All**, these 30 GLBs from `assets/glb/props/` (in small batches, one biome at a time, waiting for each to finish):
+4. **File → Import 3D**, no rig, **Import All**, these 35 GLBs from `assets/glb/props/` (in small batches, one biome at a time, waiting for each to finish):
    1. Wreck: GalleonBow, GalleonStern, IronSteamer, ToppledLighthouse, WreckCannon, WreckAnchor, WreckFigurehead, WreckWheelBell, WreckBarrels.
-   2. Trench: LeviathanRibs, LeviathanSkull, TrenchCrystals, TrenchGlowTubes, GlassSponge, GlowEggs, BoneHeap.
+   2. Trench (`biome_trench_glb` v2; if v1 was imported, delete its WorldProps first, LeviathanRibs included): LeviathanVertebra, LeviathanRib, LeviathanSkull, SquidBeak, TrenchCrystals, TrenchCrystalsViolet, TrenchGlowTubes, TrenchGlowTubesCyan, GlassSponge, GlowEggs, BoneHeap. They carry glow maps (no normal maps; every image screened, highest 0.166).
    3. Kelp: LobsterTrap, SunkenRowboat, SeaOtter, UrchinRock, KelpBuoy, SeaGrass (skip KelpCanopy: it isn't used).
    4. Reef: TableCoral, GiantClam, GardenEels, PillarCoral, and from `biome_reef2_glb` 14 more on top of the count above (colourways: every image screened, highest 0.004): DomeCoralRed, DomeCoralOrange, DomeCoralYellow, DomeCoralGreen, BranchFanRed, BranchFanOrange, BranchFanYellow, BranchFanViolet, TableCoralOrange, TableCoralRed, TableCoralBlue, TableCoralViolet, PillarCoralOrange, PillarCoralBlue.
-   5. Blue: WhaleSkeleton, Sargassum, JellyChain, CoralPinnacle.
+   5. Blue (`biome_blue_glb` v2): WhaleSkeleton, Sargassum, JellyChain (now with a glow map; replace v1's), CoralPinnacle, RustyBuoy.
 5. Paste `tools/studio/organize_imports.luau` into the Command Bar. Each should be filed as `ReplicatedStorage.WorldProps.<Name>`; note anything it leaves in Workspace.
    Then paste `tools/studio/make_toon_materials.luau` (edit mode): `Config/Materials` has a new toon entry, **Glacier** (the Blue Hole's walls, Rock's plate image in deep blue). WorldService warns at start if it's missing.
 6. **Map chart:** screen `assets/textures/map_chart.png` (`python tools/shades/screen_shades.py assets/textures --quiet`, exit 0), upload it, and paste the new id into `src/shared/Config/Textures.luau` `mapChart`. Commit that.
@@ -51,12 +51,14 @@ Use the admin panel's biome teleport to get round; screenshot every landmark fro
 5. Swim into the Bay Cannon's muzzle (its two lanterns mark it): a boom, and you're fired over the bay toward the galleon for ~1.3 s. No `[SpeedCheck]` lines in the Output after.
 6. Admin: give Captain's maps (5–6, using each); about one in three should read "Under the lit windows of the Broken Galleon's stern" and dig there. Note how many tries it took.
 
-**BT — Abyssal Trench.**
-1. The rib arches stand across the canyon one after another; swim down the ribcage under them. No invisible walls in the arches' openings, no basalt pillars through them.
-2. The skull lies at the head end; the bone heaps trail off the other way.
-3. The Squid's Lair: a cave in the canyon wall with glowing eggs and a teal light.
-4. Summon the Giant Squid (`_G.ApexBoss.summon()` until it's the squid's turn, or the admin panel): it rises in front of the lair.
-5. Crystals, glow tubes and sponges glow on the floor; the worm-tuft trail runs down the middle.
+**BT — Abyssal Trench.** Compare with `assets/tripo/biome_concepts/TrenchScene.png`.
+1. From the canyon's head (about r 1,070, looking down the canyon), the view of the concept: the horned skull on its rock to the right, the spine and ribcage running away down the canyon, glowing crystals on both walls. Screenshot it.
+2. The skull sits on its rock facing back up the canyon (snout and teeth toward you, horns behind), not floating, not sunk in the rock.
+3. Swim down the ribcage under the spine: the ribs reach the floor either side, no invisible walls between them (each rib keeps thin invisible rods as its collider), nothing snags. The bones read pale, the dorsal worms glow cyan.
+4. The walls: cyan and violet crystals and glow tubes at several heights, not floating off the rock or buried in it; egg clutches in a few wall pockets.
+5. The Squid's Lair (r ~1,112, the right wall at the first bend): a big cave mouth, glowing egg clutches in and out of it, hanging strands of eggs, beaks and bones, drag marks across the floor, a teal glow. Swim in and out: no snags.
+6. Summon the Giant Squid (`_G.ApexBoss.summon()` until it's the squid's turn, or the admin panel): it rises in front of the lair.
+7. Light count: the Trench's landmarks use at most 28 lights; note the FPS in the ribcage.
 
 **BK — Kelp Shallows.**
 Compare with `assets/tripo/biome_concepts/KelpScene.png`.
@@ -77,11 +79,13 @@ Compare with `assets/tripo/biome_concepts/ReefScene.png`.
 6. The Clam Garden (near 320°, about 660 out): three rings of coral and tufts between the clams. BITE a pearl. A toast, +120 coral and +6 shells, and that pearl disappears for you. BITE the same spot again: nothing. Admin **Places: unfind every named place, regrow the pearls** brings it back.
 7. Garden eel patches by the hole and the clams duck into the sand as you swim low over them and rise again after.
 
-**BB — Open Blue.**
+**BB — Open Blue.** Compare with `assets/tripo/biome_concepts/BlueScene.png`.
 1. The Whale's Rest (268°, about 1,120 out, on the deep floor): the skeleton lies on the floor, a light shaft above it.
-2. Hammerhead Pinnacle (296°, about 1,455 out, past the Megalodon's patrol band): the spire stands on the floor, solid; four hammerheads circle it at different heights. Note whether they read as hammerheads.
-3. Sargassum rafts at the surface bob; little fish circle under each when you're near.
-4. Jelly chains drift slowly mid-water.
+2. From just beside the whale's skull on the hub's side, the concept's view: the skeleton in front, the pinnacle beyond it (274°, about 1,400 out). Screenshot it.
+3. Hammerhead Pinnacle: solid; its ledges are solid and carry corals; fans and whips sit on its faces (not floating off them, not buried); boulders and coral round its foot; little fish circle it in a few places; four hammerheads circle it.
+4. Summon the Megalodon and watch it patrol near the pinnacle: note if it ever swims through the spire (its tip is meant to stay under the boss's lowest patrol).
+5. Sargassum rafts in fields at the surface bob, golden fronds hanging under them; little fish circle under each when you're near. The two rusty buoys bob among them, chains hanging.
+6. Jelly chains glow and drift; single jellyfish (translucent bells, glowing rims, long tentacles) drift at every depth and read as jellyfish.
 
 **PL — Named places.**
 1. Swim to each of the 14 places (the 10 above plus the Great Temple, Sunken Theatre, the Forge and the Brine Pool). Each pays once with "Discovered … (n/14)". Note any that didn't trigger.
