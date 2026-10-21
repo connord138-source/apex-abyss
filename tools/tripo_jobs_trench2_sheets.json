@@ -1,0 +1,28 @@
+{
+ "jobs": [
+  {
+   "name": "LeviathanVertebra",
+   "group": "trench2_refs",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/biome_models/refs/LeviathanSkull.png",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game asset, flat-shaded facets, bold clean colors, a touch more realistic than a toy), draw ONE single object alone in the middle of a plain flat muted teal background, whole, in a clean side view, nothing else in the picture. Copy the style only. One vertebra from the spine of a colossal ancient sea serpent: a thick round bone body (centrum) seen from the side, a tall slightly backward-curving dorsal spine rising from its top, two short sturdy side wings, small notches and cracks in the old bone, and a little clump of three glowing cyan tube worms with flat caps at the very tip of the dorsal spine. Bone colour: cool off-white with grey-green shading in the creases, never cream, beige, peach or pink. No ground, no shadow, no other bones, no text, letters or watermark."
+  },
+  {
+   "name": "LeviathanRib",
+   "group": "trench2_refs",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/biome_models/refs/LeviathanSkull.png",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game asset, flat-shaded facets, bold clean colors), draw ONE single object alone in the middle of a plain flat muted teal background, whole, nothing else in the picture. Copy the style only. One rib bone of a colossal sea serpent: a long thin bone bent in a deep smooth curve like a crescent moon or a sickle blade, the curve as deep as a half circle, about ten times as long as it is thick, round in section, thick at the top end where a small knob joint sits, tapering evenly to a blunt point at the bottom end, not straight anywhere, no knobs at the bottom end. Two small clumps of glowing cyan tube worms with flat caps on its outer edge. Bone colour: cool off-white with grey-green shading in the creases, never cream, beige, peach or pink. No ground, no shadow, no other bones, no text, letters or watermark."
+  },
+  {
+   "name": "SquidBeak",
+   "group": "trench2_refs",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/biome_models/refs/LeviathanSkull.png",
+   "prompt": "Using the attached image only as a STYLE reference (chunky stylized low-poly game asset, flat-shaded facets, bold clean colors, a touch more realistic than a toy), draw ONE single object alone in the middle of a plain flat muted teal background, whole, in a three-quarter view, nothing else in the picture. Copy the style only. The huge discarded beak of a giant squid lying on the sea floor: two hooked parrot-like halves, glossy very dark violet-black, the upper half curving down over the lower like a hawk's bill, sharp edges, a few scratches. Never pink, red, peach or beige. No ground, no shadow, no other objects, no text, letters or watermark."
+  }
+ ]
+}

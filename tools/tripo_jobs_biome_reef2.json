@@ -1,0 +1,22 @@
+{
+ "jobs": [
+  {
+   "name": "DomeCoral",
+   "group": "biome_reef",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/DomeCoral.png",
+   "settings": {
+    "face_limit": 5000
+   }
+  },
+  {
+   "name": "BranchFan",
+   "group": "biome_reef",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/BranchFan.png",
+   "settings": {
+    "face_limit": 6000
+   }
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "jobs": [
+  {
+   "name": "LeviathanVertebra",
+   "group": "biome_trench2",
+   "type": "image_to_model",
+   "image": "assets/tripo/trench2_refs/LeviathanVertebra.png"
+  },
+  {
+   "name": "LeviathanRib",
+   "group": "biome_trench2",
+   "type": "image_to_model",
+   "image": "assets/tripo/trench2_refs/LeviathanRib.png"
+  },
+  {
+   "name": "SquidBeak",
+   "group": "biome_trench2",
+   "type": "image_to_model",
+   "image": "assets/tripo/trench2_refs/SquidBeak.png"
+  }
+ ]
+}
