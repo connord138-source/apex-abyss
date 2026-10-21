@@ -65,9 +65,7 @@ local BLUE = Color3.fromRGB(60, 110, 230)
 local VIOLET = Color3.fromRGB(140, 90, 225)
 local YELLOW = Color3.fromRGB(240, 196, 50)
 local GREEN = Color3.fromRGB(70, 180, 70)
-local ROAD = Color3.fromRGB(206, 182, 130)
-local CREST = Color3.fromRGB(226, 208, 162)
-local GROOVE = Color3.fromRGB(162, 132, 88)
+local GROOVE = Color3.fromRGB(184, 164, 122)
 local SHELL = Color3.fromRGB(70, 110, 170)
 local PEARL = Color3.fromRGB(255, 236, 170)
 local DEEP = Color3.fromRGB(80, 160, 255)
@@ -222,66 +220,73 @@ local function grow(parent: Instance, district: string, ground: Vector3, scale: 
 	coral(parent, p.kind, ground, rng:NextNumber(p.height[1], p.height[2]) * scale, nil, cap)
 end
 
--- The highway's sand, smooth and rippled as the scene draws it (the toon Sand's plates
--- read as paving under a road): a pale carpet over each stretch (the road's sand is
--- level at the shelf's top, Shelf cut it so), then wavy ripple lines across it, each
--- a dark groove with a lit crest beside it, in three kinked thirds
-local function road(parent: Instance, from: Vector3, to: Vector3, width: number, spacing: number)
-	local along = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
-	local length = along.Magnitude
-	if length < 1 then
-		return
+-- The highway's sand as the scene draws it: long soft ripple lines curving across the
+-- road, every one continuous from one segment of the path to the next. The road is
+-- the Terrain's own Sand (its toon map is a soft ripple too, with lit crests, and
+-- paler than the old carpet part was; Shelf levels the road), so a line is only the
+-- shaded trough, a little darker than the sand: lit crests beside them read as rails.
+-- Lines are laid at even steps of distance along the path, bowed into arcs and
+-- leaning across it, each with its own wobble.
+local function road(parent: Instance, path: { Vector3 }, width: number, spacing: number)
+	-- (the path's points as distance along it)
+	local marks = { 0 }
+	for k = 2, #path do
+		local a, b = path[k - 1], path[k]
+		marks[k] = marks[k - 1] + Vector3.new(b.X - a.X, 0, b.Z - a.Z).Magnitude
 	end
-	along = along.Unit
-	local middle = (from + to) / 2
-	local base = floorAt(middle.X, middle.Z)
-	local frame = CFrame.lookAt(
-		Vector3.new(middle.X, base.Y, middle.Z),
-		Vector3.new(middle.X, base.Y, middle.Z) + along
-	)
-	local carpet = Kit.part(
-		stats,
-		parent,
-		"Road",
-		Vector3.new(width, 0.4, length + 1.5),
-		frame * CFrame.new(0, 0.1, 0),
-		ROAD,
-		false
-	)
-	carpet.CastShadow = false
-	local n = math.floor(length / spacing)
-	for k = 0, n - 1 do
-		local centre = frame * CFrame.new(0, 0, -(k + 0.5) * spacing + length / 2)
-		local phase = rng:NextNumber(0, 6.28)
-		local swing = rng:NextNumber(0.8, 1.6)
-		local pieces = 5
-		local seg = width / pieces
+	local total = marks[#marks]
+	local function along(d: number): (Vector3, Vector3)
+		d = math.clamp(d, 0, total)
+		for k = 2, #path do
+			if d <= marks[k] or k == #path then
+				local a, b = path[k - 1], path[k]
+				local span = math.max(marks[k] - marks[k - 1], 1e-3)
+				local t = math.clamp((d - marks[k - 1]) / span, 0, 1)
+				local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Unit
+				return a:Lerp(b, t), dir
+			end
+		end
+		return path[#path], Vector3.zAxis
+	end
+	local pieces = 6
+	local lines = math.floor(total / spacing)
+	for j = -4, lines + 4 do
+		local base = j * spacing
+		local phase = j * 0.31 + rng:NextNumber(-0.6, 0.6)
+		local swell = rng:NextNumber(3, 4.6)
+		local points: { [number]: Vector3 } = {}
+		for i = 0, pieces do
+			local x = (i / pieces - 0.5) * width
+			-- (an S-shaped wave and a lean across the road, so the bands sweep over it
+			-- diagonally as the scene's do, not rungs straight across; a point off
+			-- either end of the path is left out)
+			local bow = (x * 2 / width) ^ 2
+			local d = base + bow * swell * 1.6 + math.sin(phase + x * 0.14) * 1.2 + x * 0.22
+			if d > 0.5 and d < total - 0.5 then
+				local p, dir = along(d)
+				local across = Vector3.new(-dir.Z, 0, dir.X)
+				local q = p + across * x
+				points[i] = floorAt(q.X, q.Z)
+			end
+		end
 		for i = 1, pieces do
-			-- (a wave across the road: each piece turned along the curve)
-			local x = (i - 0.5) / pieces * width - width / 2
-			local z = math.sin(phase + x * 0.22) * swing
-			local slope = math.cos(phase + x * 0.22) * swing * 0.22
-			local piece = centre * CFrame.new(x, 0, z) * CFrame.Angles(0, -math.atan(slope), 0)
+			local a, b = points[i - 1], points[i]
+			if not (a and b) then
+				continue
+			end
+			local span = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+			local mid = (a + b) / 2
+			local frame = CFrame.lookAt(mid, mid + span)
 			local groove = Kit.part(
 				stats,
 				parent,
 				"Groove",
-				Vector3.new(seg + 0.3, 0.06, 0.32),
-				piece * CFrame.new(0, 0.33, 0),
+				Vector3.new(0.55, 0.06, span.Magnitude + 0.35),
+				frame * CFrame.new(0, 0.03, 0),
 				GROOVE,
 				false
 			)
 			groove.CastShadow = false
-			local crest = Kit.part(
-				stats,
-				parent,
-				"Crest",
-				Vector3.new(seg + 0.3, 0.06, 0.4),
-				piece * CFrame.new(0, 0.33, 0.42),
-				CREST,
-				false
-			)
-			crest.CastShadow = false
 		end
 	end
 end
@@ -426,9 +431,7 @@ local function blueHole(parent: Instance, hole: Hole)
 	local sand = Instance.new("Model")
 	sand.Name = "Sand"
 	sand.Parent = m
-	for k = 2, #path do
-		road(sand, path[k - 1], path[k], hw * 2 + 2, 3.2)
-	end
+	road(sand, path, hw * 2 + 2, 4.6)
 	local clamAt = math.min(5, #path)
 	do
 		local here, back = path[clamAt], path[clamAt - 1]
@@ -488,17 +491,53 @@ local function blueHole(parent: Instance, hole: Hole)
 		)
 	end
 
-	-- Light down into it, and a glow on its floor so it reads as deep, not empty
+	-- Light down over it, as the scene's soft rays: slanting in from the right as you
+	-- come up the highway, fading out at the rim (the hole stays deep blue under its
+	-- veils); and a glow on its floor so it reads as deep, not empty
 	local surface = World.surfaceY - 2
-	for k = 1, 4 do
-		local offset = Vector3.new(math.cos(k * 1.6) * R * 0.45, 0, math.sin(k * 1.6) * R * 0.45)
-		Kit.shaft(
+	local right = Vector3.new(entry.Z, 0, -entry.X)
+	for k = 1, 5 do
+		local offset = Vector3.new(math.cos(k * 1.3) * R * 0.45, 0, math.sin(k * 1.3) * R * 0.45)
+		local foot = center + offset + Vector3.new(0, -30, 0)
+		local drop = surface - foot.Y
+		Kit.softShaft(
 			m,
-			Vector3.new(center.X, surface, center.Z) + offset,
-			center + offset * 1.2 + Vector3.new(0, -60, 0),
-			26 + k * 4,
-			0.3
+			Vector3.new(foot.X, surface, foot.Z) + (right * 0.24 - entry * 0.08) * drop,
+			foot,
+			22 + (k % 3) * 10,
+			if k % 2 == 0 then 0.5 else 0.4
 		)
+	end
+	-- The deep blue down its walls: a veil across the hole in each of its lower bands,
+	-- each a navy disc drawn only from above (a SurfaceGui on a part's top face; from
+	-- below and edge-on there's nothing), so looking down every band sits under one
+	-- more and the hole grades from the reef's turquoise to a deep navy at the bottom.
+	-- Their edges are buried in the walls; fish swim through (no collision).
+	for i, band in hole.bands do
+		if i == 1 then
+			continue -- (the rim's own band stays clear)
+		end
+		local y = (band.top + band.bottom) / 2
+		local r = R + band.out + 3
+		local t = (i - 2) / math.max(1, #hole.bands - 2)
+		local veil =
+			Kit.anchor(m, "HoleVeil", CFrame.new(center.X, y, center.Z), Vector3.new(r * 2, 0.2, r * 2))
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Top
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 2
+		gui.LightInfluence = 0
+		gui.Adornee = veil
+		local disc = Instance.new("Frame")
+		disc.Size = UDim2.fromScale(1, 1)
+		disc.BorderSizePixel = 0
+		disc.BackgroundColor3 = Color3.fromRGB(26, 74, 160):Lerp(Color3.fromRGB(6, 18, 64), t)
+		disc.BackgroundTransparency = 0.8 - t * 0.12
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(0.5, 0)
+		round.Parent = disc
+		disc.Parent = gui
+		gui.Parent = veil
 	end
 	local bottom = Vector3.new(center.X, hole.bottom, center.Z)
 	for k = 1, 9 do

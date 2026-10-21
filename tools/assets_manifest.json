@@ -209,6 +209,13 @@
       "contents": "props/<Name>.glb: the Kelp Shallows' landmarks (2026-10-21, owner approved assets/concepts/biome_detail/BoardKelp.jpg): LobsterTrap, SunkenRowboat, SeaOtter (floating on its back; toned a darker brown), UrchinRock, KelpBuoy (red and white, chain hanging), SeaGrass, KelpCanopy (a floating kelp mat; not placed: from below it read as a spiky tuft, so the cathedral's roof is fronds off the kelp's crowns). Kit crops of assets/tripo/biome_concepts/KelpKit.png through image_to_model; UrchinRock and KelpCanopy text_to_model (the urchin crop was refused by Tripo's content filter). KelpDress.luau fits each over its part-built stand-in. Import into ReplicatedStorage.WorldProps.<Name>.",
       "clean": "Normal maps stripped; base colours through safe_colors.py (the rowboat's and otter's warm browns 58-76% skin tone -> 0.0%); SeaOtter's fur toned to 62% and flecked (tools/props/biome_tint.py: it scored 0.33 on the classifier, 0.003 after); all 7 colour maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.023 (SunkenRowboat)."
     },
+    "shallows_v2_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/f0f774e8-e6bc-4d44-be04-924447012ce4.zip",
+      "into": "assets/glb",
+      "sha256": "4b7139503c70f54a910464dbdda2198c9ebd8d4f1a5914ee9f7a5fe67d513134",
+      "contents": "props/<Name>.glb, replacing the older copies of the same names (fetched after props_glb and biome_kelp_glb, so it overwrites them): GiantKelp, KelpClump, SeaGrass recoloured to the Kelp Shallows' scene (2026-10-21, assets/tripo/biome_concepts/KelpScene.png: golden yellow-olive kelp with paler leaf edges, pale yellow-green sea grass; they read dark teal and dark green) and made matte (metal 0, roughness at least 0.72: Tripo's metal ~0.67 / roughness ~0.34 mirrored the blue water) by tools/props/shallows_recolor.py. Import into ReplicatedStorage.WorldProps.<Name> (organize_imports replaces the old ones). Used by the whole Kelp Shallows (WorldService's kelp forests), the Kelp Cathedral and Otter Meadow, and the reef's weed tufts.",
+      "clean": "Normal maps stripped (strip_normals.py) before the recolour, none written back (the recolour refuses a material with one); colours keep blue well under red (no beige or skin tones); the 3 colour maps and 3 roughness/metal maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.004."
+    },
     "biome_reef_glb": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/9cfd3f6d-79f8-4e29-a388-a1fe0338cba1.zip",
       "into": "assets/glb",

@@ -119,6 +119,9 @@ def build_mesh(grid, name):
     for mat_id, color in COLORS.items():
         flat[mats == mat_id] = (*color, 1.0)
     colors.data.foreach_set("color", flat.ravel())
+    # (the material per vertex too: render_hub.py draws Sand with its real toon map)
+    ids = mesh.attributes.new("MatId", "FLOAT", "POINT")
+    ids.data.foreach_set("value", mats.astype(np.float32))
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     for poly in mesh.polygons:

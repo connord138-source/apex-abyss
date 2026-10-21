@@ -331,8 +331,17 @@ function LandmarkKit.lantern(stats: Stats, parent: Instance, at: CFrame, size: n
 	return glass
 end
 
--- A beam of light down from the surface (as WorldService's shafts): `strength` 0..1
-function LandmarkKit.shaft(parent: Instance, top: Vector3, bottom: Vector3, width: number, strength: number)
+-- A beam of light down from the surface (as WorldService's shafts): `strength` 0..1;
+-- `foot` the share of it still showing at the bottom (0 by default: it fades out)
+function LandmarkKit.shaft(
+	parent: Instance,
+	top: Vector3,
+	bottom: Vector3,
+	width: number,
+	strength: number,
+	foot: number?
+)
+	local kept = foot or 0
 	local holder = LandmarkKit.anchor(parent, "LightShaft", CFrame.new(top))
 	local a0 = Instance.new("Attachment")
 	a0.Parent = holder
@@ -351,10 +360,24 @@ function LandmarkKit.shaft(parent: Instance, top: Vector3, bottom: Vector3, widt
 	beam.Color = ColorSequence.new(Color3.fromRGB(200, 244, 255))
 	beam.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1 - strength),
-		NumberSequenceKeypoint.new(0.6, 1 - strength * 0.5),
-		NumberSequenceKeypoint.new(1, 1),
+		NumberSequenceKeypoint.new(0.6, 1 - strength * math.max(0.5, kept)),
+		NumberSequenceKeypoint.new(1, 1 - strength * kept),
 	})
 	beam.Parent = holder
+end
+
+-- A sun shaft that reads soft-edged, as the scenes paint them: a Beam is a hard-edged
+-- ribbon, so a wide faint one round a narrow brighter core along the same line
+function LandmarkKit.softShaft(
+	parent: Instance,
+	top: Vector3,
+	bottom: Vector3,
+	width: number,
+	strength: number,
+	foot: number?
+)
+	LandmarkKit.shaft(parent, top, bottom, width, strength * 0.5, foot)
+	LandmarkKit.shaft(parent, top, bottom, width * 0.42, strength * 0.7, foot)
 end
 
 -- Marks ground a landmark stands on (`radius` across from `center`)

@@ -245,12 +245,60 @@ def part_material(color, mat_name, transparency, reflectance):
     return mat
 
 
+def sand_pattern(nodes, links, color_socket):
+    """Multiplies `color_socket` by the real toon Sand map (assets/textures/toon_Sand.png:
+    soft ripple bands), laid flat in world space at its studsPerTile (Config/Materials
+    Sand 16), as the game's Terrain wears it."""
+    path = os.path.join(REPO, "assets/textures/toon_Sand.png")
+    if not os.path.exists(path):
+        return toon_pattern(nodes, links, color_socket, 16, "plates")
+    pos = world_pos(nodes)
+    scale = nodes.new("ShaderNodeVectorMath")
+    scale.operation = "SCALE"
+    links.new(pos, scale.inputs[0])
+    scale.inputs["Scale"].default_value = 1.0 / 16
+    tex = nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(path, check_existing=True)
+    tex.image.colorspace_settings.name = "Non-Color"
+    tex.extension = "REPEAT"
+    links.new(scale.outputs[0], tex.inputs["Vector"])
+    mul = nodes.new("ShaderNodeMix")
+    mul.data_type = "RGBA"
+    mul.blend_type = "MULTIPLY"
+    mul.inputs["Factor"].default_value = 1.0
+    links.new(color_socket, mul.inputs["A"])
+    links.new(tex.outputs["Color"], mul.inputs["B"])
+    # (the game lifts a Terrain colour x1.22 while its toon map is on: Cave.paint
+    # `terrainLift`, since the grey map darkens it)
+    lift = nodes.new("ShaderNodeMix")
+    lift.data_type = "RGBA"
+    lift.blend_type = "MULTIPLY"
+    lift.inputs["Factor"].default_value = 1.0
+    links.new(mul.outputs["Result"], lift.inputs["A"])
+    lift.inputs["B"].default_value = (1.22, 1.22, 1.22, 1)
+    return lift.outputs["Result"]
+
+
 def terrain_material(obj):
     mat, nodes, links = node_mat("TerrainToon")
     bsdf = nodes["Principled BSDF"]
     attr = nodes.new("ShaderNodeVertexColor")
     attr.layer_name = "Col"
-    color = toon_pattern(nodes, links, attr.outputs["Color"], 14, "plates")
+    plates = toon_pattern(nodes, links, attr.outputs["Color"], 14, "plates")
+    # Sand (material 4) wears its own ripple map; the rest the plate pattern
+    ids = nodes.new("ShaderNodeAttribute")
+    ids.attribute_name = "MatId"
+    is_sand = nodes.new("ShaderNodeMath")
+    is_sand.operation = "COMPARE"
+    is_sand.inputs[1].default_value = 4
+    is_sand.inputs[2].default_value = 0.5
+    links.new(ids.outputs["Fac"], is_sand.inputs[0])
+    pick = nodes.new("ShaderNodeMix")
+    pick.data_type = "RGBA"
+    links.new(is_sand.outputs[0], pick.inputs["Factor"])
+    links.new(plates, pick.inputs["A"])
+    links.new(sand_pattern(nodes, links, attr.outputs["Color"]), pick.inputs["B"])
+    color = pick.outputs["Result"]
     links.new(color, bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = 0.92
     add_ambient(nodes, links, bsdf, color)
@@ -885,12 +933,12 @@ def load_parts(meshes):
             add_part(f, meshes)
         elif tag == "L":
             add_light(f)
+        elif tag == "B":
+            add_beam(f)
         elif tag == "E":
             add_particles(f, meshes)
         elif tag == "R":
             add_prop(f)
-        elif tag == "B":
-            add_beam(f)
         elif tag == "G":
             pos, rot = frame_matrix(f, 2)
             w, h = (float(v) for v in f[7].split(","))

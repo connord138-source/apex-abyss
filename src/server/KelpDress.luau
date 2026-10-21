@@ -70,9 +70,11 @@ local FLOOR = { patches = 40, from = 175, to = 465 }
 -- (the most models and parts this module places)
 local CAP = 900
 
-local KELP = Color3.fromRGB(78, 116, 52)
-local GRASS = Color3.fromRGB(64, 132, 84)
-local FROND = Color3.fromRGB(150, 156, 58)
+-- (golden yellow-olive kelp and pale yellow-green grass, as KelpScene has them; the
+-- models' own colour maps were lightened to match, tools/props/shallows_recolor.py)
+local KELP = Color3.fromRGB(150, 134, 46)
+local GRASS = Color3.fromRGB(150, 170, 78)
+local FROND = Color3.fromRGB(196, 178, 58)
 local ROCK = Color3.fromRGB(116, 120, 126)
 local URCHIN = Color3.fromRGB(70, 40, 110)
 local STAR = Color3.fromRGB(236, 110, 36)
@@ -81,8 +83,7 @@ local BROWN = Color3.fromRGB(70, 48, 34)
 local RED = Color3.fromRGB(180, 44, 40)
 local IRON = Color3.fromRGB(64, 58, 52)
 local CHAIN = Color3.fromRGB(96, 92, 88)
-local CREST = Color3.fromRGB(226, 214, 176)
-local GROOVE = Color3.fromRGB(170, 152, 112)
+local GROOVE = Color3.fromRGB(184, 164, 122)
 
 local stats: Kit.Stats = Kit.stats()
 local groundOf: Kit.Ground = function(_x: number, _z: number): (Vector3?, Vector3?)
@@ -165,7 +166,7 @@ local function giantKelp(parent: Instance, base: Vector3, height: number): (Mode
 					* lean
 					* CFrame.new(0, height * (b / (blades + 1)), 0)
 					* CFrame.Angles(0, b * 2.1, math.rad(26)),
-				Color3.fromRGB(122, 150, 64),
+				FROND,
 				false
 			)
 		end
@@ -298,8 +299,11 @@ local function ripples(parent: Instance, center: Vector3, radius: number, count:
 		local length = rng:NextNumber(20, 34)
 		local phase = rng:NextNumber(0, 6.28)
 		local previous: Vector3? = nil
-		for k = 0, 5 do
-			local t = k / 5 - 0.5
+		-- (only the shaded trough, a little darker than the sand, in short pieces so it
+		-- curves: the Terrain's toon Sand carries its own lit crests, and a lit strip
+		-- beside each line read as rails)
+		for k = 0, 7 do
+			local t = k / 7 - 0.5
 			local p = mid + across * (t * length) + along * math.sin(phase + t * 5) * 1.6
 			local g = floorAt(p.X, p.Z)
 			if previous then
@@ -310,18 +314,9 @@ local function ripples(parent: Instance, center: Vector3, radius: number, count:
 				Kit.part(
 					stats,
 					parent,
-					"Crest",
-					Vector3.new(0.5, 0.08, span.Magnitude + 0.4),
-					frame * CFrame.new(0, 0.04, 0),
-					CREST,
-					false
-				)
-				Kit.part(
-					stats,
-					parent,
 					"Groove",
-					Vector3.new(0.4, 0.06, span.Magnitude + 0.4),
-					frame * CFrame.new(0.55, 0.02, 0),
+					Vector3.new(0.5, 0.06, span.Magnitude + 0.35),
+					frame * CFrame.new(0, 0.03, 0),
 					GROOVE,
 					false
 				)
@@ -435,16 +430,12 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 
 	-- The floor: patches of sea grass (thicker toward the edge), rippled sand between,
 	-- rocks with urchins and starfish
-	for k = 1, 12 do
-		local a = rng:NextNumber(0, 2 * math.pi)
-		local d = rng:NextNumber(18, nave - 10)
-		local p = ground + Vector3.new(math.cos(a), 0, math.sin(a)) * d
-		grassPatch(m, p, rng:NextNumber(7, 12), if k % 3 == 0 then 6 else 10, 5, 10)
-	end
-	for k = 1, 28 do
-		local a = k / 28 * 2 * math.pi + rng:NextNumber(-0.1, 0.1)
+	-- (small tufts scattered evenly, sand showing between, as the scene's sparse blades)
+	grassPatch(m, ground, nave - 6, 120, 3, 5.5)
+	for k = 1, 16 do
+		local a = k / 16 * 2 * math.pi + rng:NextNumber(-0.1, 0.1)
 		local p = ground + Vector3.new(math.cos(a), 0, math.sin(a)) * rng:NextNumber(nave - 14, nave + 4)
-		grass(m, floorAt(p.X, p.Z), rng:NextNumber(7, 12))
+		grass(m, floorAt(p.X, p.Z), rng:NextNumber(5, 8))
 	end
 	ripples(m, ground, nave - 16, 12, side)
 	for k = 1, 6 do
@@ -510,14 +501,20 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 		end)
 		CollectionService:AddTag(holder, "Bobbing")
 	end
-	for k = 1, 5 do
-		local offset = Vector3.new(math.cos(k * 1.3) * 22, 0, math.sin(k * 1.3) * 22)
-		Kit.shaft(
+	-- Sun shafts fanning down through the roof's gap, as the scene's: their tops close
+	-- together over the nave, their feet spread over its floor, all slanting the same
+	-- way (from the left of the way in), fading out just above the floor
+	local sky = Vector3.new(ground.X, World.surfaceY - 2, ground.Z) - side * 70
+	for k = 1, 6 do
+		local a = k * 2.4 + 0.3
+		local out = Vector3.new(math.cos(a), 0, math.sin(a))
+		Kit.softShaft(
 			m,
-			Vector3.new(ground.X, World.surfaceY - 2, ground.Z) + offset,
-			ground + Vector3.new(0, 4, 0) + offset * 1.8,
-			16 + k * 4,
-			0.36
+			sky + out * (4 + k * 2),
+			ground + Vector3.new(0, 2, 0) + out * (18 + k * 7) + side * 20,
+			18 + (k % 3) * 12,
+			if k % 2 == 0 then 0.55 else 0.44,
+			0.12
 		)
 	end
 
@@ -553,8 +550,8 @@ local function meadow(parent: Instance)
 	m.Parent = parent
 	Kit.clearing(stats, ground, MEADOW.spread + 6)
 	-- The meadow: sea grass thick across it
-	grassPatch(m, ground, MEADOW.spread, 150, 7, 13)
-	grassPatch(m, ground, MEADOW.spread + 14, 30, 5, 9)
+	grassPatch(m, ground, MEADOW.spread + 6, 110, 4, 7.5)
+	grassPatch(m, ground, MEADOW.spread + 20, 22, 3.5, 6)
 	-- The urchin barren on one side: a pavement of low grey rock, urchins all over it
 	local side = Vector3.new(math.cos(math.rad(MEADOW.angle + 90)), 0, math.sin(math.rad(MEADOW.angle + 90)))
 	local barren = ground + side * (MEADOW.spread + 12)
@@ -707,7 +704,7 @@ local function litterTrail(parent: Instance)
 			end)
 		end
 		-- (sea grass round each)
-		grassPatch(m, g, 9, 4, 5, 9)
+		grassPatch(m, g, 10, 3, 3.5, 6.5)
 		r += TRAIL.step + rng:NextNumber(-8, 8)
 	end
 end
@@ -734,7 +731,7 @@ local function floorFill(parent: Instance)
 			continue
 		end
 		local g = floorAt(spot.X, spot.Z)
-		grassPatch(m, g, rng:NextNumber(8, 14), rng:NextInteger(5, 9), 5, 11)
+		grassPatch(m, g, rng:NextNumber(10, 16), rng:NextInteger(3, 5), 3.5, 7)
 		if k % 3 == 0 then
 			local p = g + Vector3.new(rng:NextNumber(-10, 10), 0, rng:NextNumber(-10, 10))
 			urchinRock(m, floorAt(p.X, p.Z), rng:NextNumber(7, 12))

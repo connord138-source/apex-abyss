@@ -1758,14 +1758,14 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     models in World.Biomes.Kelp (they sway). A plant is a GiantKelp piece every `SEGMENT` 52
     studs at the model's own shape (Props.place scales uniformly, so a slimmer box only
     shrinks it): slim plants with blades a fish's size. The tall ring's crowns fan 4 fronds
-    in over the nave, a leafy roof with the middle open and five light shafts; young kelp
-    (40–80, sway) and KelpClumps round the nave's edge; sea-grass patches, sand ripples
-    (Crest/Groove strips), grey BoulderRound rocks with UrchinRocks and part-built orange
+    in over the nave, a leafy roof with the middle open and six soft sun shafts; young kelp
+    (40–80, sway) and KelpClumps round the nave's edge; 120 small sea-grass tufts, sand
+    ripples (trough strips), grey BoulderRound rocks with UrchinRocks and part-built orange
     starfish (a disc and five arms), a LobsterTrap at the way in from the hub, a
     SunkenRowboat whose KelpBuoy float hangs on a chain 78 studs over it, two otters at the
     surface. The swayed parts in reach of the nave stay about where they were (~230).
     KelpCanopy is in the bundle but unused (from below it read as a spiky tuft). Otter
-    Meadow at 300°: 180 sea-grass clumps, an urchin barren of 16 UrchinRocks on a pavement
+    Meadow at 300°: 132 sea-grass tufts with sand between, an urchin barren of 16 UrchinRocks on a pavement
     of low grey boulders, starfish, otters and a buoy at the surface (tag `Bobbing`); a
     lobster-trap and rowboat trail toward the Wreck bay with grass round each; and
     `floorFill`: 40 patches of sea grass with urchin rocks and starfish across the rest of
@@ -1788,8 +1788,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     and ledges. ReefDress dresses it in colour districts as the scene has them seen from the
     highway: the rim three rows deep, fire red and orange on the left, blue and violet on
     the right, yellow and green across; the highway's walls rows rising from the sand with
-    big brain corals and anemones along its edge (`WALL_ROWS`, `DISTRICTS`); road sand with
-    ripple strips; a clam and garden eels by the road; plate corals on the ledges, light
+    big brain corals and anemones along its edge (`WALL_ROWS`, `DISTRICTS`); the road's
+    Terrain sand with ripple arcs; a clam and garden eels by the road; plate corals on the ledges, light
     shafts, a floor glow, tunnel glows. The corals are models: biome_reef2_glb (DomeCoral,
     BranchFan and 14 colourways from `tools/props/coral_colorways.py`) plus TableCoral,
     PillarCoral and the cliff growth; `HOLE_CAP` 950. The Clam Garden near 320°, r 660 (the
@@ -1798,6 +1798,48 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     260); garden eel patches (`GardenEels`). Views `bluehole` (the scene's camera),
     `holeabove`, `holedown`, `clams`; preview `PROPS=1 VIEWS=bluehole
     BOUNDS=260,660,-280,80,100,430 bash tools/preview/run_biome.sh Reef <dir>`.
+  - **The shallows' colour and finish** (2026-10-21, after the Kelp and Reef layouts
+    matched their scenes and the colours didn't; no Tripo credits, image edits and code):
+    - **Kelp and grass textures** (`shallows_v2_glb`, sha256 4b713950…: GiantKelp,
+      KelpClump, SeaGrass, the same names, replacing the old WorldProps): the kelp read
+      dark teal in game because Tripo gave it metal ~0.67 and roughness ~0.34, so it
+      mirrored the blue water, over a deep over-saturated olive. `tools/props/
+      shallows_recolor.py` (python3.11; GLBs already through strip_normals.py, it refuses
+      one with a normal map) pulls each colour map to the scene's hue band, lifts its value
+      and paler leaf edges, keeps blue well under red (no beige), leaves greys alone, and
+      makes the finish matte (metal 0, roughness ≥ 0.72). GiantKelp (136, 135, 15) →
+      (180, 164, 56), KelpClump (97, 109, 31) → (146, 142, 60), SeaGrass a dark teal-green
+      (46, 80, 64) → pale yellow-green (157, 174, 89); all six maps screened, highest 0.004.
+      A SurfaceAppearance colour only darkens, so the lighter colour has to be in the map.
+      The whole Kelp Shallows' forest and the reef's weed tufts change with it. Stand-in
+      colours follow (`KelpDress` `KELP`, `GRASS`, `FROND`).
+    - **Grass**: small tufts (3–8 studs) with sand between instead of patches of 7–13-stud
+      clumps: the nave 120 evenly scattered plus 16 round its edge, the meadow 132,
+      `floorFill` 3–5 a patch; SeaGrass models 571 → 422 (Kelp builder parts 1,152 → 968).
+    - **Sand**: the game's toon Sand was already soft ripple bands (`toon_Sand.png`); the
+      "plate lines" were the previewer drawing every Terrain material with plates (it now
+      draws Sand with the real map and the game's ×1.22 `terrainLift`). The ripple strips
+      read as rails or paving, so they're only the shaded trough now (lit crests come from
+      the toon map), a little darker than the sand: in the nave (`ripples`, 7 pieces a line)
+      and as arcs bowed across the Blue Hole's highway, continuous along the whole path
+      (`road`; the old per-segment carpet part was darker than the sand and went). Reef
+      builder parts 1,283 → 1,057.
+    - **Light**: `Kit.softShaft` is a wide faint Beam round a narrow brighter core along
+      the same line (a Beam is hard-edged); `Kit.shaft` takes an optional `foot` (the share
+      still showing at the bottom). The Kelp Cathedral has six that fan out from over the
+      nave and slant the same way (`sky` 70 studs off to the left of the way in), fading
+      just above the floor; the Blue Hole five slanting in from the right as you come up the
+      highway, fading at the rim. **The Blue Hole's deep blue gradient** is six veils, one
+      per band below the rim: a navy disc (a SurfaceGui Frame with a round UICorner on an
+      invisible part's top face, `LightInfluence` 0, edges buried 3 studs in the walls)
+      drawn only from above, so every band seen from the rim sits under one more and the
+      hole darkens to navy at the bottom; from below and edge-on there's nothing.
+    - **What's left is the water, not content:** the scenes' bright turquoise is the
+      water's colour and light (`OceanController` grades, `Config/Biomes` `water`), and the
+      Kelp's haze (56, 124, 106) is greener than the scene's. Left as is (the owner said
+      2026-10-18 the kelp water "read best"); a bluer kelp haze is the lever if the owner
+      wants the scene's colour. The previewer's haze (34, 104, 128) is darker than both;
+      `FOG_COLOR` set to a biome's `haze` shows the game's.
   - **Open Blue** (`BlueDress.luau`, under `Rocks.OpenBlue`; rebuilt 2026-10-21 to read like
     `assets/tripo/biome_concepts/BlueScene.png`): the floor stays bare, the life is in the
     water. The Whale's Rest unchanged (268°, r 1120, a light shaft). Hammerhead Pinnacle at
