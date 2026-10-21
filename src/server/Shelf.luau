@@ -69,6 +69,8 @@ export type Features = {
 	lair: { mouth: Vector3, into: Vector3, radius: number, depth: number }?,
 	-- The Blue Hole: a sinkhole through the reef's sand into a lined shaft (ReefDress)
 	blueHole: { center: Vector3, radius: number, bottom: number }?,
+	-- The shelf's rock outcrops (their middles and rough radii; ReefDress keeps clear)
+	outcrops: { { center: Vector3, radius: number } }?,
 }
 
 local Shelf = {}
@@ -1106,7 +1108,25 @@ local function landmarkOps(
 	-- The Blue Hole: the shelf's drum is hollow under its 80-stud top, so the shaft is
 	-- lined with rock down into the hollow first and floored, then cut, with a stepped
 	-- lip in the sand
-	local center = at(BLUE_HOLE.angle, BLUE_HOLE.r, 0)
+	-- (in the reef's most open stretch near its spot: the reef heads Shelf laid stand
+	-- round it, not cut through by it)
+	local best, bestRoom = at(BLUE_HOLE.angle, BLUE_HOLE.r, 0), -math.huge
+	for a = BLUE_HOLE.angle - 25, BLUE_HOLE.angle + 25, 5 do
+		for r = BLUE_HOLE.r - 50, BLUE_HOLE.r + 60, 22 do
+			local spot = at(a, r, 0)
+			local room = math.huge
+			for _, list in { features.reefRocks, features.outcrops or {} } do
+				for _, rock in list do
+					local dx, dz = rock.center.X - spot.X, rock.center.Z - spot.Z
+					room = math.min(room, math.sqrt(dx * dx + dz * dz) - rock.radius)
+				end
+			end
+			if room > bestRoom then
+				best, bestRoom = spot, room
+			end
+		end
+	end
+	local center = best
 	local lined = BLUE_HOLE.radius + BLUE_HOLE.lining
 	local liningTop, liningBottom = -60, BLUE_HOLE.bottom - 22
 	cylinder(
@@ -1136,6 +1156,8 @@ function Shelf.ops(): ({ Op }, Features)
 	local features: Features = { chimneys = {}, pinnacles = {}, chutes = {}, reefRocks = {} }
 	local pillars: { { r: number, across: number, x: number, z: number, radius: number, height: number } } =
 		{}
+	local outcrops: { { center: Vector3, radius: number } } = {}
+	features.outcrops = outcrops
 	local floor = deep.floorY
 	local hubClear = World.hub.radius + World.hub.wallThickness + World.hub.tunnelLength + 20
 	local deepInner = shelf.radius + shelf.edge -- the foot of the drop-off
@@ -1227,6 +1249,7 @@ function Shelf.ops(): ({ Op }, Features)
 		local frame = CFrame.new(at(angle, r, -size.Y * 0.35))
 			* CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 6.28), rng:NextNumber(-0.3, 0.3))
 		Cave.pebble(ops, ROCK, frame, size) -- rounded, not a tilted box (owner, 2026-10-11)
+		table.insert(outcrops, { center = frame.Position, radius = math.max(size.X, size.Z) / 2 })
 	end
 	for _ = 1, 26 do
 		local angle = rng:NextNumber(0, 360)

@@ -208,6 +208,13 @@
       "sha256": "6feff3464bb46f8e99fa77a95a429cbe9b7f1bd4eb1eac4e1b6922e7306131b3",
       "contents": "props/<Name>.glb: the Kelp Shallows' landmarks (2026-10-21, owner approved assets/concepts/biome_detail/BoardKelp.jpg): LobsterTrap, SunkenRowboat, SeaOtter (floating on its back; toned a darker brown), UrchinRock, KelpBuoy (red and white, chain hanging), SeaGrass, KelpCanopy (a floating kelp mat; not placed: from below it read as a spiky tuft, so the cathedral's roof is fronds off the kelp's crowns). Kit crops of assets/tripo/biome_concepts/KelpKit.png through image_to_model; UrchinRock and KelpCanopy text_to_model (the urchin crop was refused by Tripo's content filter). KelpDress.luau fits each over its part-built stand-in. Import into ReplicatedStorage.WorldProps.<Name>.",
       "clean": "Normal maps stripped; base colours through safe_colors.py (the rowboat's and otter's warm browns 58-76% skin tone -> 0.0%); SeaOtter's fur toned to 62% and flecked (tools/props/biome_tint.py: it scored 0.33 on the classifier, 0.003 after); all 7 colour maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.023 (SunkenRowboat)."
+    },
+    "biome_reef_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/9cfd3f6d-79f8-4e29-a388-a1fe0338cba1.zip",
+      "into": "assets/glb",
+      "sha256": "edbdb6ac886cc4e5d2f438b14e5519f3d73babf67b6302e4bdabfd79cce0f739",
+      "contents": "props/<Name>.glb: the Coral Reef's landmarks (2026-10-21, owner approved assets/concepts/biome_detail/BoardReef.jpg): TableCoral (plates on a pillar), GiantClam (open, a pearl inside; its warm inside cooled by safe_colors), GardenEels (a sand patch of spotted eels; ReefDress ducks the patch client-side), PillarCoral. Kit crops of assets/tripo/biome_concepts/ReefKit.png through image_to_model. ReefDress.luau fits each over its part-built stand-in. Import into ReplicatedStorage.WorldProps.<Name>.",
+      "clean": "Normal maps stripped; base colours through safe_colors.py (the eels' beige sand 99.6% skin tone -> 0.0%); all 4 colour maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.004 (GiantClam)."
     }
   }
 }

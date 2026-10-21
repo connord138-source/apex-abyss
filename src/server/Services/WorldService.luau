@@ -26,6 +26,7 @@ local Cliff = require(script.Parent.Parent.Cliff)
 local Wrecks = require(script.Parent.Parent.Wrecks)
 local TrenchDress = require(script.Parent.Parent.TrenchDress)
 local KelpDress = require(script.Parent.Parent.KelpDress)
+local ReefDress = require(script.Parent.Parent.ReefDress)
 local LandmarkKit = require(script.Parent.Parent.LandmarkKit)
 local PlaceMarks = require(script.Parent.Parent.PlaceMarks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
@@ -1387,6 +1388,18 @@ local function buildBiomes(parent: Instance)
 		end
 		-- the Kelp Cathedral and Otter Meadow (KelpDress.luau)
 		landmarks("Kelp", KelpDress.build(kelpFolder, folder("KelpLandmarks", rocks), groundAt))
+		-- the Blue Hole Shelf.luau sank and the Clam Garden, clear of the reef heads
+		-- (ReefDress.luau)
+		local reefRocks: { { center: Vector3, radius: number } } = {}
+		for _, list in { features.reefRocks, features.outcrops or {} } do
+			for _, rock in list do
+				table.insert(reefRocks, { center = rock.center, radius = rock.radius })
+			end
+		end
+		landmarks(
+			"Reef",
+			ReefDress.build(folder("ReefLandmarks", corals), groundAt, features.blueHole, reefRocks)
+		)
 	end
 
 	-- The drop-off's reef wall (owner, 2026-10-19: "The cliff edge needs to be dialed

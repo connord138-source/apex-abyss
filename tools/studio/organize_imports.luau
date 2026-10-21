@@ -82,6 +82,7 @@ local PROPS = {
 	GlowEggs = true, BoneHeap = true,
 	LobsterTrap = true, SunkenRowboat = true, SeaOtter = true, UrchinRock = true, KelpBuoy = true, SeaGrass = true,
 	KelpCanopy = true,
+	TableCoral = true, GiantClam = true, GardenEels = true, PillarCoral = true,
 	-- Den props, batch 2 (den_props2_glb; Config/Dens items of the same names)
 	DriftwoodTable = true, KelpBed = true, PearlPedestal = true, BubbleColumn = true, SpongeSofa = true,
 	ShipwreckBookshelf = true, JellyLamp = true, SeaGlassLantern = true, CoralLamp = true, Banner = true,

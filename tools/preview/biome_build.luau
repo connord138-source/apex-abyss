@@ -127,7 +127,13 @@ elseif BIOME == "Kelp" then
 	summary = KelpDress.build(folder, folder, groundAt)
 	views = KelpDress.views
 elseif BIOME == "Reef" then
-	summary = ReefDress.build(folder, groundAt)
+	local rocks = {}
+	for _, list in { features.reefRocks, features.outcrops or {} } do
+		for _, rock in list do
+			table.insert(rocks, rock)
+		end
+	end
+	summary = ReefDress.build(folder, groundAt, features.blueHole, rocks)
 	views = ReefDress.views
 elseif BIOME == "Blue" then
 	summary = BlueDress.build(folder, groundAt)
