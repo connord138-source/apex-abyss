@@ -64,6 +64,11 @@ export type Features = {
 	reefRocks: { { center: Vector3, radius: number } }, -- heads and ridges the corals grow on
 	cliff: Cliff?, -- the drop-off's wall (Cliff.luau dresses it)
 	vents: VentsPlan.Plan?, -- the Vents' field between the basins (Vents.luau dresses it)
+	-- The Giant Squid's lair: a cave bitten into the Trench's wall at its foot (`mouth`
+	-- on the canyon's side, `into` the way it runs into the rock; TrenchDress.luau)
+	lair: { mouth: Vector3, into: Vector3, radius: number, depth: number }?,
+	-- The Blue Hole: a sinkhole through the reef's sand into a lined shaft (ReefDress)
+	blueHole: { center: Vector3, radius: number, bottom: number }?,
 }
 
 local Shelf = {}
@@ -1032,10 +1037,105 @@ local function ventsField(ops: { Op }, plan: VentsPlan.Plan)
 	end
 end
 
+-- Where the Squid's Lair is bitten into the Trench's wall and the Blue Hole sunk in
+-- the reef (the dressing modules read them from Features)
+local LAIR = { r = 1330, side = 1, radius = 24, depth = 66, rise = 26 }
+local BLUE_HOLE = { angle = 40, r = 640, radius = 56, bottom = -212, lining = 26 }
+-- The stretch of the canyon the Leviathan's Spine lies in (studs from the hub) and
+-- how far either side of its line it reaches
+local SPINE_CLEAR = { from = 1010, to = 1410, half = 76 }
+
+local function landmarkOps(
+	ops: { Op },
+	features: Features,
+	pillars: {
+		{
+			r: number,
+			across: number,
+			x: number,
+			z: number,
+			radius: number,
+			height: number,
+		}
+	}
+)
+	-- The Leviathan's Spine lies down the canyon's middle (TrenchDress.luau): basalt
+	-- pillars standing in its way go (Air over each, twice)
+	for _, pillar in pillars do
+		if
+			pillar.r > SPINE_CLEAR.from
+			and pillar.r < SPINE_CLEAR.to
+			and math.abs(pillar.across) < SPINE_CLEAR.half
+		then
+			for _ = 1, 2 do
+				cylinder(
+					ops,
+					AIR,
+					Vector3.new(pillar.x, trench.floorY + pillar.height / 2 + 4, pillar.z),
+					math.max(pillar.radius + 6, 18),
+					pillar.height + 24
+				)
+			end
+		end
+	end
+
+	-- The lair: a cave from the canyon's foot into its wall, its mouth rounded off.
+	-- Air ops go in twice (an Air fill takes occupancy away rather than clearing it,
+	-- the dens' lesson)
+	local angle, width = Seafloor.trenchAxis(LAIR.r)
+	local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
+	local radial = outward(angle)
+	local into = Vector3.new(-radial.Z, 0, radial.X) * LAIR.side
+	local x, z = Seafloor.trenchPoint(LAIR.r, LAIR.side * (halfBottom - 4))
+	local mouth = Vector3.new(x, trench.floorY + LAIR.rise, z)
+	local middle = mouth + into * (LAIR.depth / 2 - 6)
+	for _ = 1, 2 do
+		cylinder(ops, AIR, middle, LAIR.radius, LAIR.depth, CFrame.fromMatrix(middle, radial, into))
+		ball(ops, AIR, mouth, LAIR.radius + 4)
+		ball(ops, AIR, mouth + into * (LAIR.depth - 10), LAIR.radius - 2)
+	end
+	-- (a basalt floor under it, so its eggs sit on rock, not on the cut)
+	block(
+		ops,
+		BASALT,
+		CFrame.fromMatrix(middle - Vector3.new(0, LAIR.radius - 3, 0), radial, Vector3.yAxis),
+		Vector3.new(LAIR.radius * 1.6, 6, LAIR.depth)
+	)
+	features.lair = { mouth = mouth, into = into, radius = LAIR.radius, depth = LAIR.depth }
+
+	-- The Blue Hole: the shelf's drum is hollow under its 80-stud top, so the shaft is
+	-- lined with rock down into the hollow first and floored, then cut, with a stepped
+	-- lip in the sand
+	local center = at(BLUE_HOLE.angle, BLUE_HOLE.r, 0)
+	local lined = BLUE_HOLE.radius + BLUE_HOLE.lining
+	local liningTop, liningBottom = -60, BLUE_HOLE.bottom - 22
+	cylinder(
+		ops,
+		ROCK,
+		Vector3.new(center.X, (liningTop + liningBottom) / 2, center.Z),
+		lined,
+		liningTop - liningBottom
+	)
+	for _ = 1, 2 do
+		cylinder(
+			ops,
+			AIR,
+			Vector3.new(center.X, (8 + BLUE_HOLE.bottom) / 2, center.Z),
+			BLUE_HOLE.radius,
+			8 - BLUE_HOLE.bottom
+		)
+		cylinder(ops, AIR, Vector3.new(center.X, -3, center.Z), BLUE_HOLE.radius + 9, 14)
+	end
+	cylinder(ops, SAND, Vector3.new(center.X, BLUE_HOLE.bottom - 2, center.Z), BLUE_HOLE.radius + 2, 6)
+	features.blueHole = { center = center, radius = BLUE_HOLE.radius, bottom = BLUE_HOLE.bottom }
+end
+
 function Shelf.ops(): ({ Op }, Features)
 	local ops: { Op } = {}
 	local rng = Random.new(World.seed + 7)
 	local features: Features = { chimneys = {}, pinnacles = {}, chutes = {}, reefRocks = {} }
+	local pillars: { { r: number, across: number, x: number, z: number, radius: number, height: number } } =
+		{}
 	local floor = deep.floorY
 	local hubClear = World.hub.radius + World.hub.wallThickness + World.hub.tunnelLength + 20
 	local deepInner = shelf.radius + shelf.edge -- the foot of the drop-off
@@ -1258,15 +1358,12 @@ function Shelf.ops(): ({ Op }, Features)
 		local r = rng:NextNumber(trench.radii[1] + 60, trench.radii[2] - 60)
 		local _, width = Seafloor.trenchAxis(r)
 		local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
-		local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-halfBottom * 0.6, halfBottom * 0.6))
+		local across = rng:NextNumber(-halfBottom * 0.6, halfBottom * 0.6)
+		local x, z = Seafloor.trenchPoint(r, across)
 		local height = rng:NextNumber(70, 170)
-		cylinder(
-			ops,
-			BASALT,
-			Vector3.new(x, trench.floorY + height / 2 - 6, z),
-			rng:NextNumber(8, 16),
-			height
-		)
+		local radius = rng:NextNumber(8, 16)
+		cylinder(ops, BASALT, Vector3.new(x, trench.floorY + height / 2 - 6, z), radius, height)
+		table.insert(pillars, { r = r, across = across, x = x, z = z, radius = radius, height = height })
 		ball(ops, BASALT, Vector3.new(x, trench.floorY + height - 8, z), rng:NextNumber(9, 15))
 	end
 
@@ -1393,6 +1490,10 @@ function Shelf.ops(): ({ Op }, Features)
 	ventsField(ops, field)
 	field.opsTo = #ops
 	features.vents = field
+
+	-- The landmarks' own Terrain (owner, 2026-10-21: the biome detail boards), after
+	-- everything else so nothing above moves: the Squid's Lair and the Blue Hole
+	landmarkOps(ops, features, pillars)
 
 	return ops, features
 end

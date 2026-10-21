@@ -1719,6 +1719,19 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     shared Random and hands each spot to `Wrecks.scatter` (hulls, sterns, steamers,
     debris fields; never within 120 studs of a set piece). ~120 parts with the models in,
     46 models, 7 lights.
+  - **Abyssal Trench** (`src/server/TrenchDress.luau`, under `World.Biomes.Rocks.Trench`):
+    the Leviathan's Spine down the canyon's middle from r 1100 (seven LeviathanRibs arches
+    130 → 72 across, 0.2 of a span apart, so it reads as one ribcage to swim down; each
+    keeps its stand-in's rods as invisible colliders, `keepColliders`; glowing worm tufts
+    on them, a light every other arch), the horned skull 90 long at the head end, bone
+    heaps for a tail; Shelf.luau's `landmarkOps` clears the basalt pillars standing in
+    its way (r 1010–1410, ±76 across; their draws are kept). The Squid's Lair: a cave Shelf
+    bites into the wall at r 1330 (`Features.lair`), eggs, bones, beaks, a teal light;
+    the squid rises in front of it (`PlaceMarks` `SquidLair_Rise`, BossService
+    `summon`). Crystal clusters, glow tubes and glass sponges on the floor, a trail of
+    worm tufts down the middle. WorldService's old Neon ball specks are crystal shards
+    (`TrenchDress.speck`, same draws) and the glow gardens' tips flat caps. ~350 parts
+    with the models in, 44 models, 18 lights.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

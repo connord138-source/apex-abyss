@@ -7,7 +7,7 @@
 local World = Config.World
 local floorY = World.deep.floorY
 
-local ops = Shelf.ops()
+local ops, features = Shelf.ops()
 local near = {}
 for _, op in ops do
 	local c = op.center
@@ -121,7 +121,7 @@ if BIOME == "Wreck" then
 	views = Wrecks.views
 	table.insert(views, { name = "bay", from = Vector3.new(-380, 150, 120), to = Vector3.new(-660, -10, -10), fov = 70 })
 elseif BIOME == "Trench" then
-	summary = TrenchDress.build(folder, groundAt)
+	summary = TrenchDress.build(folder, groundAt, features.lair)
 	views = TrenchDress.views
 elseif BIOME == "Kelp" then
 	summary = KelpDress.build(folder, groundAt)

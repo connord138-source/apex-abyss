@@ -1188,7 +1188,12 @@ end
 
 local function summon(def: BossDef, now: number)
 	local depth = if def.squid then def.squid.lurkDepth else def.patrol.depth
-	local predator = PredatorService.add(def.predator, patrolPoint(def, depth))
+	-- The squid rises from its lair (TrenchDress.luau publishes the spot in front of
+	-- the cave), anywhere along the canyon if the lair isn't built
+	local places = workspace:FindFirstChild("Places")
+	local lair = if def.squid and places then places:GetAttribute("SquidLair_Rise") else nil
+	local start = if typeof(lair) == "Vector3" then lair else patrolPoint(def, depth)
+	local predator = PredatorService.add(def.predator, start)
 	predator.onHit = onHit
 	predator.maxHealth = def.baseHealth
 	predator.health = def.baseHealth

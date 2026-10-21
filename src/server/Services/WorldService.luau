@@ -24,6 +24,7 @@ local Shelf = require(script.Parent.Parent.Shelf)
 local Vents = require(script.Parent.Parent.Vents)
 local Cliff = require(script.Parent.Parent.Cliff)
 local Wrecks = require(script.Parent.Parent.Wrecks)
+local TrenchDress = require(script.Parent.Parent.TrenchDress)
 local PlaceMarks = require(script.Parent.Parent.PlaceMarks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 
@@ -1112,28 +1113,18 @@ local function buildBiomes(parent: Instance)
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
 		local x, z = Seafloor.trenchPoint(r, side * rng:NextNumber(halfBottom + 6, halfTop - 30))
 		local position = Vector3.new(x, rng:NextNumber(trench.floorY + 10, World.deep.floorY - 15), z)
-		-- A glowing cluster: one bright bead and a few small ones round it. Never
+		-- A glowing cluster: one bright crystal shard and a few small ones round it
+		-- (Neon balls until 2026-10-21: no sphere lumps in built scenery). Never
 		-- dressed as a prop: the CrystalCluster mesh doesn't glow, and swapping it in
-		-- hid every speck in the dark (playtest 2026-10-08)
+		-- hid every speck in the dark (playtest 2026-10-08). The draws are the old
+		-- beads', so nothing after it on the shared Random moves.
 		local color = if i % 4 == 0 then Color3.fromRGB(150, 120, 255) else Color3.fromRGB(110, 230, 255)
 		local size = rng:NextNumber(0.8, 2.2)
-		local speck = Instance.new("Part")
-		speck.Name = "Glow"
-		speck.Anchored = true
-		speck.CanCollide = false
-		speck.CanQuery = false
-		speck.CanTouch = false
-		speck.Shape = Enum.PartType.Ball
-		speck.Size = Vector3.one * size
-		speck.CFrame = CFrame.new(position)
-		speck.Color = color
-		speck.Material = Enum.Material.Neon
-		speck.Parent = trenchGlow
-		for _ = 1, rng:NextInteger(2, 4) do
-			local bead = speck:Clone()
-			bead.Size = Vector3.one * size * rng:NextNumber(0.25, 0.5)
-			bead.CFrame = CFrame.new(position + rng:NextUnitVector() * size * rng:NextNumber(1.2, 2.4))
-			bead.Parent = trenchGlow
+		local speck = TrenchDress.speck(trenchGlow, position, size, color, i)
+		for b = 1, rng:NextInteger(2, 4) do
+			local scale = rng:NextNumber(0.25, 0.5)
+			local offset = rng:NextUnitVector() * size * rng:NextNumber(1.2, 2.4)
+			TrenchDress.speck(trenchGlow, position + offset, size * scale, color, i * 7 + b)
 		end
 		if i % 3 == 0 then
 			local light = Instance.new("PointLight")
@@ -1189,9 +1180,14 @@ local function buildBiomes(parent: Instance)
 			tip.CanCollide = false
 			tip.CanQuery = false
 			tip.CanTouch = false
-			tip.Shape = Enum.PartType.Ball
-			tip.Size = Vector3.one * rng:NextNumber(0.7, 1.2)
-			tip.CFrame = CFrame.new(foot) * tilt * CFrame.new(0, height, 0)
+			-- (a flat glowing cap, not a ball)
+			tip.Shape = Enum.PartType.Cylinder
+			local tipSize = rng:NextNumber(0.7, 1.2)
+			tip.Size = Vector3.new(0.3, tipSize * 1.3, tipSize * 1.3)
+			tip.CFrame = CFrame.new(foot)
+				* tilt
+				* CFrame.new(0, height, 0)
+				* CFrame.Angles(0, 0, math.rad(90))
 			tip.Color = color
 			tip.Material = Enum.Material.Neon
 			tip.Parent = trenchGlow
@@ -1357,6 +1353,17 @@ local function buildBiomes(parent: Instance)
 		if field.brine then
 			PlaceMarks.set("BrinePool", field.brine.center + Vector3.new(0, 12, 0))
 		end
+	end
+
+	-- The Abyssal Trench's landmarks (owner, 2026-10-21: the Leviathan's Spine board):
+	-- the serpent's skeleton across the canyon, the Squid's Lair in the cave Shelf.luau
+	-- bit into its wall, crystals, glow tubes, glass sponges and the glowing trail
+	-- (TrenchDress.luau, its own Random); under Rocks, so Shared/Ground sees the bones
+	do
+		local trenchStats = TrenchDress.build(folder("Trench", rocks), groundAt, features.lair)
+		print(
+			`[Trench] the Leviathan's Spine: {trenchStats.parts} parts ({trenchStats.solid} solid, {trenchStats.glow} glowing), {trenchStats.models} models and {trenchStats.standins} stand-ins, {trenchStats.lights} lights`
+		)
 	end
 
 	-- The drop-off's reef wall (owner, 2026-10-19: "The cliff edge needs to be dialed
