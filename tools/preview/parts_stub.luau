@@ -426,6 +426,31 @@ game = {
 	end,
 }
 workspace = new("Workspace")
+-- Terrain: a repaint (Terrain:ReplaceMaterial, BlueDress's pale sand) prints a T line,
+-- T|replace|min|max|from|to, which render_hub.py applies to the voxels before meshing
+do
+	local terrain = new("Terrain")
+	terrain.Name = "Terrain"
+	terrain.ReplaceMaterial = function(_, region, _resolution, from, to)
+		local a, b = region.Min, region.Max
+		print(
+			string.format("T|replace|%.1f,%.1f,%.1f|%.1f,%.1f,%.1f|%s|%s", a.X, a.Y, a.Z, b.X, b.Y, b.Z, from.Name, to.Name)
+		)
+	end
+	terrain.Parent = workspace
+end
+Region3 = {
+	new = function(low, high)
+		local region = { Min = low, Max = high }
+		region.ExpandToGrid = function(me, grid)
+			local function snap(v, f)
+				return Vector3.new(f(v.X / grid) * grid, f(v.Y / grid) * grid, f(v.Z / grid) * grid)
+			end
+			return Region3.new(snap(me.Min, math.floor), snap(me.Max, math.ceil))
+		end
+		return region
+	end,
+}
 -- (no scheduler: what a builder defers, like DenDoor seating a nameplate on the rock
 -- by raycast, is skipped here)
 task = {

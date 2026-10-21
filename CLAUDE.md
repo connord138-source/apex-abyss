@@ -1727,7 +1727,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     against the right wall at r 1240 (`SKULL_LEDGE`: slate lumps, a seat, basalt columns,
     boulders; `Features.skullLedge`), looking back up the canyon; its neck curves off the rock
     into a Catmull-Rom spine (`SPINE` points: r, across, height) of ~34 LeviathanVertebra
-    ~110 over the floor (a cyan light every 4th), with LeviathanRib pairs every 12 studs
+    ~110 over the floor (Neon cyan mouths over each dorsal worm tuft, `WORM_TIPS`, measured
+    off the model's glow map; a cyan light every 8th, two more inside the ribcage), with
+    LeviathanRib pairs every 12 studs
     hanging to the floor (a bone bent into a quarter ellipse by `tools/props/trench_prep.py`,
     `rib()`; each keeps its stand-in's rods as invisible colliders) and the tail tapering to
     the floor at the canyon's end. Loose ribs, bone heaps and glass sponges lie up the canyon
@@ -1737,17 +1739,31 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     WorldService), egg clutches in pockets, big clusters along both walls' feet, two trails of
     small growth down the floor. The Squid's Lair (`LAIR` r 1112, the right wall, the outer
     side of the first bend, radius 36): clutches in and out, hanging egg strands, SquidBeak
-    models, bones, five tentacle drag marks with sucker rings, a teal glow and mist; the squid
-    rises in front of it. Glow: every glowing model carries a glow map (`shine` sets its
+    models, bones, five tentacle drag marks with sucker rings, a dark broken rim of rock round the
+    mouth's arch and a short teal glow low over the clutches (no mist: it read as a hazy
+    blob), so the cave reads as a dark niche with glowing eggs; the squid rises in front of it. Glow: every glowing model carries a glow map (`shine` sets its
     `EmissiveStrength`), the bones and sponges a faint all-over one (`BASE_GLOW` 0.3 in
     trench_prep) so they read pale in the dark; GlowEggs' glow map is its own colour map
-    (teal eggs over black scored 0.32 on the classifier). ~300 parts and ~400 models,
-    `MAX_LIGHTS` 28. The concept's view is the `spine` view (from r 1070 looking down the
+    (teal eggs over black scored 0.32 on the classifier). **Glow pass** (owner's follow-up,
+    2026-10-21: the previews were "murky and flat where TrenchScene.png glows"): the pale
+    glowing models are tinted saturated in game (Kit.hero `tint` = SurfaceAppearance Color,
+    and `shine(model, strength, tint)` sets EmissiveTint): `CYAN_TINT`/`VIOLET_TINT` (violet's
+    red kept low: a bright violet clips toward magenta) at EmissiveStrength 3–3.6 (×1.25 over
+    30 tall); `HEROES`, nine clusters 30–54 tall (3–4× a wall cluster) framing the way to
+    the skull and the ribcage's sides, two more flanking the lair, each with a range-60
+    light that washes the rock round it; wall clusters 10–32 tall; a foot row 18–32 tall at
+    0.68–0.92 of the floor's half-width, so the wide canyon reads narrower (Terrain unchanged).
+    Bones wear `BONE_WARM` with a cyan worm glow (`WORM_TINT`; the skull's tubes `WORM` at
+    3); eggs 3.4 in teal. Lights, first come: spine 4, skull 1, ribcage 2, heroes and lair
+    flanks 10, lair 2, walls the rest: 28. `shine` also sets `Glow`/`GlowTint` attributes,
+    which the previewer reads. ~420 parts and ~400 models, `MAX_LIGHTS` 28. The concept's view is the `spine` view (from r 1070 looking down the
     canyon); the canyon is ~2.5× the concept's width, so its walls sit in the haze at the
     frame's edges. Preview: `PROPS=1 VIEWS=spine,ribcage,skull,walls,lair bash
     tools/preview/run_biome.sh Trench <dir>` with the Trench's haze (`FOG_COLOR=28,66,66
-    FOG=200`) and `EMIT_BY` the `shine` values (`tools/preview/render_hub.py` `EMIT`/`EMIT_BY`);
-    `tools/props/concept_compare.py` puts a render beside its concept.
+    FOG=200 AMBIENT=0.045,0.075,0.085 SUN=0.8`) and `HDR=1` (`render_hub.py`: linear light,
+    haze, then the game's OceanBloom, threshold 1.1 and intensity 0.9 in the dark; without
+    it glow clips flat); a model's `Glow`/`GlowTint` attributes ride its R line (over `EMIT`/
+    `EMIT_BY`); `tools/props/concept_compare.py` puts a render beside its concept.
   - **Kelp Shallows** (`src/server/KelpDress.luau`; rebuilt 2026-10-21 to read like its
     scene, `assets/tripo/biome_concepts/KelpScene.png`, after the owner's "really everything
     other than the whale, ship and lighthouse needs more detail and more intricacy ... the
@@ -1842,25 +1858,40 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
       `FOG_COLOR` set to a biome's `haze` shows the game's.
   - **Open Blue** (`BlueDress.luau`, under `Rocks.OpenBlue`; rebuilt 2026-10-21 to read like
     `assets/tripo/biome_concepts/BlueScene.png`): the floor stays bare, the life is in the
-    water. The Whale's Rest unchanged (268°, r 1120, a light shaft). Hammerhead Pinnacle at
+    water. The Whale's Rest (268°, r 1120) lies on pale sand: `paleSand` repaints the floor's
+    Mud as Sand round it (r 110) and round the pinnacle's foot (Terrain:ReplaceMaterial in rows
+    of 8-stud grid boxes, a ragged disc; the floor's shape is untouched); the bones are tinted
+    warm with a sunlight PointLight over them. Hammerhead Pinnacle at
     274°, r 1,400 (behind the whale from the hub's side), 160 tall so its tip stays under the
     Megalodon's lowest patrol (170 over the floor; boss steering ignores solids): nine Slate
     ledges up its faces with table corals, barrel sponges, sea whips and fans (the cliff's
     and reef's WorldProps, tinted cool), more fans and whips on its faces, boulders and a coral
-    garden round its foot, two light shafts. Things sit on its faces by `PROFILE`, the
+    garden round its foot, six SUNLIGHT lights (range 60) on its whale-facing side so its
+    facets read pale and sculpted against the blue; its stand-in rock and ledges are paler. Things sit on its faces by `PROFILE`, the
     CoralPinnacle GLB's radius by tenth of height and 45° direction (no ray reaches a model in
-    the previewer). Six invisible `FishSchool` models tagged `Sargassum` round it give little
+    the previewer). Ten invisible `FishSchool` models tagged `Sargassum` round it give little
     schools circling it (the client's shelter fish swim 9–14 under a tagged pivot). Seven
     fields of 2–4 sargassum rafts at the surface (`Bobbing`, `Sargassum`) with part-built
     golden fronds hanging in each raft's holder (they bob with it); two RustyBuoy models among
-    them on short chains (`Bobbing`); ten JellyChains (glow map, `EmissiveStrength` 2) and 26
-    part-built jellyfish (two stepped translucent discs and a cap, a Neon rim, six Neon
-    tentacles, three oral arms; `Drifting`) at every depth. ~700 parts, 93 models, no lights.
+    them on short chains (`Bobbing`); ten JellyChains (glow map at 3.2, tinted blue-violet) and
+    35 part-built jellyfish glowing through (two stepped Neon discs and a cap, translucent, a
+    bright rim, eight Neon tentacles, three oral arms; `Drifting`; violet to blue with the red
+    kept low, never pink) at every depth, nine of them over the way from the whale to the
+    pinnacle. Sunlight (`sunlight`, `SHAFTS`): six wide soft shafts slanting down between the
+    whale and the pinnacle, each three nested beams (`sunShaft`: a beam is a hard-edged ribbon).
+    ~1,000 parts, 99 models, 7 lights.
     The concept's view is `concept` (beside the whale's skull, the pinnacle beyond); the
     surface is 870 studs over the floor, so the concept's rafts overhead can't share the frame
     (`surface` and `buoy` views show them). Preview: `PROPS=1 VIEWS=concept,pinnacle,surface,buoy
-    BOUNDS=-260,300,-470,-250,-1560,-900 CELL=4 FOG_COLOR=22,84,140 FOG=420 bash
-    tools/preview/run_biome.sh Blue <dir>`.
+    BOUNDS=-260,300,-470,-250,-1560,-900 CELL=4 FOG_COLOR=22,84,140 FOG=420 HDR=1
+    BLOOM_THRESHOLD=1.35 BLOOM_INTENSITY=0.55 bash tools/preview/run_biome.sh Blue <dir>` (the
+    previewer draws Beams as camera-facing ribbons in a pass of their own and applies
+    `Terrain:ReplaceMaterial` repaints, printed as T lines by its stub). Left to the game's
+    grade, not the build: the concept's bright turquoise water under the surface fading to navy
+    is OceanController's Open Blue Atmosphere (haze (52,122,168) toward the sun, decay
+    (16,60,104)), which the previewer's single flat fog colour can't show; its tuna, hammerheads
+    and little schools are client-side (SchoolController, LandmarkController) and its rafts
+    overhead are 870 studs up.
   - **Clearings:** each builder marks its landmarks' ground (`Kit.clearing`) and
     WorldService takes the biome's random scatter (rocks, corals, kelp, seeps, plankton
     mats) out of it afterwards (`LandmarkKit.clearAround`), so no boulder stands in the

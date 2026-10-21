@@ -76,6 +76,12 @@ EMIT = float(os.environ.get("EMIT", "1"))  # imported glow maps' strength
 EMIT_BY = {k: float(v) for k, v in (kv.split("=") for kv in os.environ.get("EMIT_BY", "").split(",") if "=" in kv)}
 # A model's own Glow attribute (TrenchDress `shine`, BlueDress) wins over both, times this
 GLOW_SCALE = float(os.environ.get("GLOW_SCALE", "1"))
+# HDR=1: the picture is rendered in linear light (EXR), hazed there, bloomed as the
+# game's OceanBloom blooms (what passes BLOOM_THRESHOLD, at BLOOM_INTENSITY: the dark
+# biomes' 1.1 and 0.9), then rolled off and encoded. Without it, glow over 1 clips flat.
+HDR = os.environ.get("HDR") == "1"
+BLOOM_THRESHOLD = float(os.environ.get("BLOOM_THRESHOLD", "1.1"))
+BLOOM_INTENSITY = float(os.environ.get("BLOOM_INTENSITY", "0.9"))
 FONTS = {
     "lucky": os.path.join(REPO, "tools/marketing/fonts/LuckiestGuy-Regular.ttf"),
     "black": "/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf",
@@ -680,10 +686,15 @@ def render_beams(scene, name, cam_pos):
     scene.view_layers[0].material_override = None
     scene.cycles.samples = 8
     scene.cycles.use_denoising = False
-    path = os.path.join(DIR, f"_beams_{name}.png")
+    path = os.path.join(DIR, f"_beams_{name}.{'exr' if HDR else 'png'}")
     scene.render.filepath = path
-    scene.render.image_settings.color_depth = "8"
+    if HDR:
+        scene.render.image_settings.file_format = "OPEN_EXR"
+        scene.render.image_settings.color_depth = "16"
+    else:
+        scene.render.image_settings.color_depth = "8"
     bpy.ops.render.render(write_still=True)
+    scene.render.image_settings.file_format = "PNG"
     for o in others:
         o.is_holdout = False
     for o in beams:
@@ -691,6 +702,43 @@ def render_beams(scene, name, cam_pos):
     scene.render.film_transparent = False
     bg.inputs["Strength"].default_value = 0.6
     return path
+
+
+def read_exr(path):
+    """An EXR's linear RGB as a (height, width, 3) array, top row first."""
+    img = bpy.data.images.load(path)
+    w, h = img.size
+    px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[::-1, :, :3]
+    bpy.data.images.remove(img)
+    return px
+
+
+def finish_hdr(beauty_exr, depth_path, beam_path, out_png):
+    """Haze, the shafts and bloom in linear light, as the game composes them, then a
+    soft shoulder and sRGB."""
+    from scipy.ndimage import gaussian_filter
+
+    im = read_exr(beauty_exr)
+    d = np.asarray(Image.open(depth_path).convert("F")).astype(np.float32) / 65535.0 * 1000.0
+    d[d <= 0.01] = 1000.0
+    f = 1 - np.exp(-d / FOG)
+    fog = np.array(lin(FOG_COLOR), dtype=np.float32)
+    out = im * (1 - f[..., None]) + fog * f[..., None]
+    if beam_path:
+        out = out + read_exr(beam_path)
+    # OceanBloom: what passes the threshold spreads (Size 28 at 1280 wide)
+    bright = np.maximum(out - BLOOM_THRESHOLD, 0)
+    scale = out.shape[1] / 1280
+    glow = np.zeros_like(out)
+    for sigma, weight in ((4, 0.45), (12, 0.35), (28, 0.2)):
+        for c in range(3):
+            glow[..., c] += gaussian_filter(bright[..., c], sigma * scale) * weight
+    out = out + glow * BLOOM_INTENSITY * 2.5
+    knee = 0.8
+    out = np.where(out < knee, out, knee + (1 - knee) * (1 - np.exp(-(out - knee) / (1 - knee))))
+    out = np.clip(out, 0, 1)
+    srgb = np.where(out <= 0.0031308, out * 12.92, 1.055 * out ** (1 / 2.4) - 0.055)
+    Image.fromarray((srgb * 255).astype(np.uint8)).save(out_png)
 
 
 def add_beam_image(beauty_path, beam_path):
@@ -1075,6 +1123,11 @@ def main():
         import json
 
         ops = [json.loads(line) for line in open(os.path.join(DIR, "cave_ops.jsonl")) if line.strip()]
+        # the builders' repaints (T|replace|min|max|from|to), after every fill
+        for line in open(os.path.join(DIR, "hub_parts.txt")):
+            f = line.rstrip("\n").split("|")
+            if f[0] == "T" and f[1] == "replace":
+                ops.append({"kind": "replace", "min": list(vec(f[2])), "max": list(vec(f[3])), "from": f[4], "to": f[5]})
         grid = cave_render.rasterize(ops)
         cave_render.COLORS.update({k: lin(v) for k, v in TERRAIN.items()})
         terrain = cave_render.build_mesh(grid, "Cave")
@@ -1103,8 +1156,16 @@ def main():
         scene.view_layers[0].material_override = None
         scene.cycles.samples = SAMPLES
         scene.cycles.use_denoising = True
-        scene.render.image_settings.color_depth = "8"
+        beauty = out
+        if HDR:
+            beauty = os.path.join(DIR, f"_beauty_{name}.exr")
+            scene.render.filepath = beauty
+            scene.render.image_settings.file_format = "OPEN_EXR"
+            scene.render.image_settings.color_depth = "16"
+        else:
+            scene.render.image_settings.color_depth = "8"
         bpy.ops.render.render(write_still=True)
+        scene.render.image_settings.file_format = "PNG"
         # depth pass: every surface emits its distance
         dpath = os.path.join(DIR, f"_depth_{name}.png")
         scene.view_layers[0].material_override = depth
@@ -1126,7 +1187,9 @@ def main():
             scene.view_settings.view_transform = "Standard"
         except TypeError:
             pass
-        if name != "top":
+        if HDR:
+            finish_hdr(beauty, dpath, render_beams(scene, name, position), out)
+        elif name != "top":
             haze(out, dpath)
             bpath = render_beams(scene, name, position)
             if bpath:

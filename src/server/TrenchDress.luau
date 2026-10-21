@@ -58,10 +58,18 @@ local BONE_DARK = Color3.fromRGB(120, 128, 122)
 local ROCK = Color3.fromRGB(46, 56, 64)
 local DRAG = Color3.fromRGB(22, 28, 34)
 local BEAK = Color3.fromRGB(34, 30, 40)
-local CYAN = Color3.fromRGB(80, 240, 230)
-local VIOLET = Color3.fromRGB(170, 120, 255)
-local TEAL = Color3.fromRGB(70, 210, 190)
-local WORM = Color3.fromRGB(90, 255, 220)
+-- (saturated, as the concept's glow: its crystals light the walls round them)
+local CYAN = Color3.fromRGB(40, 255, 236)
+local VIOLET = Color3.fromRGB(124, 72, 255)
+local TEAL = Color3.fromRGB(50, 240, 200)
+local WORM = Color3.fromRGB(60, 255, 230)
+-- What the glowing models' pale colour maps are multiplied by (SurfaceAppearance
+-- Color and EmissiveTint) to come out saturated, and the bones' warm white
+local CYAN_TINT = Color3.fromRGB(70, 255, 240)
+-- (red kept low: a bright violet glow clips toward magenta)
+local VIOLET_TINT = Color3.fromRGB(136, 96, 255)
+local WORM_TINT = Color3.fromRGB(110, 255, 240)
+local BONE_WARM = Color3.fromRGB(255, 232, 196)
 local GLASS = Color3.fromRGB(196, 214, 220)
 
 -- Each model's box in its own axes, as Props.place fits it (tools/props/trench_prep.py
@@ -94,6 +102,24 @@ local RIB_EVERY = 12 -- studs of spine between rib pairs
 local WALL = { from = 1000, to = 1425, every = 12, reach = 360 }
 local TRAIL = { from = 1000, to = 1425, every = 13 }
 local MAX_LIGHTS = 28
+-- The worm tubes' mouths on a vertebra (the model's glowing tuft, measured off its
+-- glow map in its own fitted box, -0.5..0.5): Neon tips over them, so the spine's
+-- crest reads bright cyan from down the canyon as in the concept
+local WORM_TIPS = { Vector3.new(0.18, 0.49, 0), Vector3.new(0.27, 0.43, -0.07), Vector3.new(0.1, 0.45, 0.08) }
+-- The big clusters that frame the way (3-4 times a wall cluster): along the canyon
+-- (studs from the hub), across it (of the floor's half-width; + toward the skull's
+-- wall), height, kind (GROWTH index)
+local HEROES = {
+	{ 1104, 0.3, 30, 1 },
+	{ 1132, 0.5, 46, 1 },
+	{ 1108, -0.56, 40, 3 },
+	{ 1150, -0.78, 54, 1 },
+	{ 1176, 0.62, 44, 4 },
+	{ 1214, -0.66, 48, 2 },
+	{ 1300, -0.94, 50, 1 },
+	{ 1338, 0.96, 46, 4 },
+	{ 1392, -0.9, 52, 2 },
+}
 
 local stats: Kit.Stats = Kit.stats()
 local groundOf: Kit.Ground = function(_x: number, _z: number): (Vector3?, Vector3?)
@@ -134,15 +160,23 @@ local function light(holder: Instance, color: Color3, range: number, brightness:
 	end
 end
 
--- A model's glow map at full strength (the imported SurfaceAppearances keep their
--- emissive map; its strength is the game's to set)
-local function shine(model: Model?, strength: number)
+-- A model's glow map at `strength`, tinted `tint` (the imported SurfaceAppearances
+-- keep their emissive map; its strength and tint are the game's to set). The model
+-- carries them as Glow / GlowTint attributes too, which the cloud previewer reads.
+local function shine(model: Model?, strength: number, tint: Color3?)
 	if model == nil then
 		return
+	end
+	model:SetAttribute("Glow", strength)
+	if tint then
+		model:SetAttribute("GlowTint", tint)
 	end
 	for _, d in model:GetDescendants() do
 		if d:IsA("SurfaceAppearance") then
 			d.EmissiveStrength = strength
+			if tint then
+				d.EmissiveTint = tint
+			end
 		elseif d:IsA("BasePart") then
 			d.CastShadow = false
 		end
@@ -218,10 +252,17 @@ end
 
 -- The glowing growth kinds, their colours and boxes
 local GROWTH = {
-	{ name = "TrenchCrystals", color = CYAN, box = CRYSTALS, weight = 0.32 },
-	{ name = "TrenchCrystalsViolet", color = VIOLET, box = CRYSTALS, weight = 0.2 },
-	{ name = "TrenchGlowTubes", color = VIOLET, box = TUBES, weight = 0.26 },
-	{ name = "TrenchGlowTubesCyan", color = CYAN, box = TUBES, weight = 0.22 },
+	{ name = "TrenchCrystals", color = CYAN, tint = CYAN_TINT, glow = 3.6, box = CRYSTALS, weight = 0.32 },
+	{
+		name = "TrenchCrystalsViolet",
+		color = VIOLET,
+		tint = VIOLET_TINT,
+		glow = 3.6,
+		box = CRYSTALS,
+		weight = 0.2,
+	},
+	{ name = "TrenchGlowTubes", color = VIOLET, tint = VIOLET_TINT, glow = 3, box = TUBES, weight = 0.26 },
+	{ name = "TrenchGlowTubesCyan", color = CYAN, tint = CYAN_TINT, glow = 3, box = TUBES, weight = 0.22 },
 }
 local function pickGrowth()
 	local roll = rng:NextNumber()
@@ -234,17 +275,23 @@ local function pickGrowth()
 	return GROWTH[1]
 end
 
--- One glowing cluster standing on `frame` (its foot), `height` tall
+-- One glowing cluster standing on `frame` (its foot), `height` tall, in its kind's
+-- saturated colour; `lit` gives it a light that washes the rock round it (a big one's
+-- reaches further)
 local function growth(parent: Instance, frame: CFrame, height: number, kind: any, lit: boolean)
 	local size = kind.box * height
 	local box = frame * CFrame.new(0, size.Y * 0.44, 0) * Kit.GLB_FRONT
 	local _, model = Kit.hero(stats, parent, kind.name, box, size, function(sm)
 		prisms(sm, frame, height * 0.8, kind.color, math.floor(frame.Position.X * 7 + frame.Position.Z))
-	end)
-	shine(model, 1.6)
+	end, { tint = kind.tint })
+	shine(model, if height > 30 then kind.glow * 1.25 else kind.glow, kind.color)
 	if lit then
-		local holder = Kit.anchor(parent, "GrowthLight", frame * CFrame.new(0, height * 0.7, 0))
-		light(holder, kind.color, 30, 1.2)
+		local holder = Kit.anchor(parent, "GrowthLight", frame * CFrame.new(0, height * 0.55, 0))
+		if height > 30 then
+			light(holder, kind.color, 60, 2.6)
+		else
+			light(holder, kind.color, 40, 1.8)
+		end
 	end
 end
 
@@ -326,11 +373,27 @@ local function vertebra(parent: Instance, at: Vector3, tangent: Vector3, scale: 
 			false
 		)
 		wormTuft(sm, frame * CFrame.new(0, height * 0.78, height * 0.08), height * 0.14, WORM)
-	end, { solid = true })
-	shine(model, 1.3)
+	end, { solid = true, tint = BONE_WARM })
+	shine(model, 1.6, WORM_TINT)
+	if model then
+		-- bright Neon mouths on the model's own worm tubes
+		for k, tip in WORM_TIPS do
+			local mouth = box:PointToWorldSpace(Vector3.new(tip.X * size.X, tip.Y * size.Y, tip.Z * size.Z))
+			local tube = height * (if k == 1 then 0.11 else 0.085)
+			Kit.glow(
+				stats,
+				parent,
+				"WormTip",
+				Vector3.new(tube * 1.3, tube, tube),
+				CFrame.new(mouth + UP * tube * 0.3) * CFrame.Angles(0, 0, HALF),
+				WORM,
+				Enum.PartType.Cylinder
+			)
+		end
+	end
 	if lit then
 		local holder = Kit.anchor(parent, "SpineLight", frame * CFrame.new(0, height * 1.2, 0))
-		light(holder, CYAN, 46, 1.3)
+		light(holder, CYAN, 50, 1.6)
 	end
 end
 
@@ -362,9 +425,9 @@ local function rib(parent: Instance, at: Vector3, height: number, toward: Vector
 			end
 			previous = p
 		end
-	end, { solid = true, keepColliders = true })
-	-- (the bone glows faintly in its own colour, the worms on it fully: the glow map)
-	shine(model, 1)
+	end, { solid = true, keepColliders = true, tint = BONE_WARM })
+	-- (the bone glows faintly, the worms on it fully: the glow map)
+	shine(model, 1.2, WORM_TINT)
 end
 
 -- A rib lying loose on the floor
@@ -384,8 +447,8 @@ local function looseRib(parent: Instance, at: Vector3, length: number, yaw: numb
 			BONE,
 			false
 		)
-	end)
-	shine(model, 1)
+	end, { tint = BONE_WARM })
+	shine(model, 1.2, WORM_TINT)
 end
 
 local function boneHeap(parent: Instance, at: Vector3, size: number, yaw: number)
@@ -400,8 +463,8 @@ local function boneHeap(parent: Instance, at: Vector3, size: number, yaw: number
 			BONE,
 			false
 		)
-	end)
-	shine(model, 1.2)
+	end, { tint = BONE_WARM })
+	shine(model, 1.3, WORM_TINT)
 end
 
 -- A pale glass sponge standing on `ground`, `height` tall (its glow map lifts it in the dark)
@@ -419,7 +482,7 @@ local function sponge(parent: Instance, ground: Vector3, height: number)
 			Enum.PartType.Cylinder
 		)
 	end)
-	shine(model, 1)
+	shine(model, 1.3, Color3.fromRGB(200, 240, 255))
 end
 
 local function leviathan(parent: Instance, ledge: Ledge?)
@@ -476,10 +539,11 @@ local function leviathan(parent: Instance, ledge: Ledge?)
 				)
 			end
 		end,
-		{ solid = true, blocksCamera = true }
+		{ solid = true, blocksCamera = true, tint = BONE_WARM }
 	)
-	shine(skull, 1.2)
-	light(Kit.anchor(m, "SkullLight", skullBox * CFrame.new(0, 30, 10)), WORM, 50, 1.4)
+	-- (its tube worms glow bright cyan, the bone round them faintly)
+	shine(skull, 3, WORM)
+	light(Kit.anchor(m, "SkullLight", skullBox * CFrame.new(0, 30, 10)), WORM, 54, 1.8)
 
 	-- The spine: the neck from the back of the skull, then the body and the tail
 	local points = { skullCenter - look * (skullSize.Z * 0.46) + Vector3.new(0, 6, 0) }
@@ -508,7 +572,7 @@ local function leviathan(parent: Instance, ledge: Ledge?)
 		local scale = spineScale(u)
 		local at, tangent = sample(s)
 		count += 1
-		vertebra(m, at, tangent, scale, count % 4 == 2)
+		vertebra(m, at, tangent, scale, count % 8 == 3)
 		s += VERTEBRA_HEIGHT * scale * 0.38 + 0.6
 	end
 
@@ -542,6 +606,13 @@ local function leviathan(parent: Instance, ledge: Ledge?)
 			end
 		end
 		s += RIB_EVERY
+	end
+
+	-- A cyan glow inside the ribcage, so it reads as a lit tunnel down the canyon
+	for _, u in { 0.34, 0.6 } do
+		local at = sample(total * u)
+		local below = floorAt(at.X, at.Z)
+		light(Kit.anchor(m, "RibcageGlow", CFrame.new(below + UP * 22)), WORM, 60, 2)
 	end
 
 	-- Under the ribcage: glass sponges, crystals at the ribs' feet, a heap of bones
@@ -597,9 +668,9 @@ local function leviathan(parent: Instance, ledge: Ledge?)
 	-- ledge to the right, the ribcage running away down the canyon
 	table.insert(TrenchDress.views, {
 		name = "spine",
-		from = point(1070, 10, 40),
-		to = point(1330, 20, 84),
-		fov = 70,
+		from = point(1074, 26, 36),
+		to = point(1370, 14, 74),
+		fov = 68,
 	})
 	table.insert(TrenchDress.views, {
 		name = "ribcage",
@@ -643,8 +714,9 @@ local function eggs(parent: Instance, ground: Vector3, size: number, yaw: number
 			)
 		end
 	end)
-	-- (its glow map is its whole colour map, the dark rock included: kept low)
-	shine(model, 1.1)
+	-- (its glow map is its whole colour map, the dark rock included: the teal tint keeps
+	-- the rock dark and the eggs bright)
+	shine(model, 3.4, TEAL)
 end
 
 local function beak(parent: Instance, ground: Vector3, size: number)
@@ -774,7 +846,13 @@ local function squidLair(parent: Instance, lair: Lair)
 		local b = lair.mouth - into * rng:NextNumber(70, 130) + side * ((k - 3) * rng:NextNumber(14, 26))
 		dragMark(m, a, b, side * rng:NextNumber(-22, 22), rng:NextNumber(3.5, 5.5), floorHere)
 	end
-	-- Glowing growth round the mouth so it's found from down the canyon
+	-- Two big clusters flanking the mouth (each lighting the rock round it) and smaller
+	-- growth round it, so it's found from down the canyon
+	for k = 1, 2 do
+		local sign = if k == 1 then 1 else -1
+		local spot = lair.mouth + side * sign * (lair.radius + 16) - into * 8
+		growth(m, upright(ground(spot), UP, rng:NextNumber(0, 6.28)), 40 - k * 6, GROWTH[k], true)
+	end
 	for k = 1, 6 do
 		local spot = lair.mouth
 			+ side * ((if k % 2 == 0 then 1 else -1) * (lair.radius + rng:NextNumber(2, 14)))
@@ -782,33 +860,47 @@ local function squidLair(parent: Instance, lair: Lair)
 		growth(
 			m,
 			upright(ground(spot), UP, rng:NextNumber(0, 6.28)),
-			rng:NextNumber(8, 14),
+			rng:NextNumber(10, 18),
 			pickGrowth(),
 			false
 		)
 	end
-	-- A cold teal glow in the dark of the cave and a haze at its mouth
-	light(Kit.anchor(m, "LairGlow", CFrame.new(lair.mouth + into * 40 + UP * 8)), TEAL, 56, 1.6)
-	light(Kit.anchor(m, "LairGlowDeep", CFrame.new(lair.mouth + into * 72 + UP * 4)), TEAL, 40, 1.2)
-	light(Kit.anchor(m, "LairMouth", CFrame.new(lair.mouth - into * 8 + UP * 4)), WORM, 36, 0.9)
-	local haze =
-		Kit.anchor(m, "LairHaze", CFrame.new(lair.mouth + UP * 2), Vector3.new(lair.radius * 1.4, 4, 18))
-	local mist = Instance.new("ParticleEmitter")
-	mist.Name = "LairMist"
-	mist.Color = ColorSequence.new(TEAL)
-	mist.LightEmission = 0.6
-	mist.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.3, 0.82),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	mist.Size = NumberSequence.new(8, 22)
-	mist.Lifetime = NumberRange.new(5, 8)
-	mist.Rate = 3
-	mist.Speed = NumberRange.new(0.6, 1.6)
-	mist.SpreadAngle = Vector2.new(60, 60)
-	mist.Parent = haze
-	stats.emitters += 1
+	-- A dark rim of rock round the mouth's arch, so the cave reads as a clear dark
+	-- shape against the lit wall with its eggs glowing inside (no haze at the mouth)
+	-- (broken: each block its own size, reach and tilt, a few doubled)
+	local rim = Color3.fromRGB(24, 30, 36)
+	for k = 0, 13 do
+		local a = k / 13 * math.pi + rng:NextNumber(-0.06, 0.06)
+		local out = side * math.cos(a) + UP * math.sin(a)
+		local at = lair.mouth + out * (lair.radius + rng:NextNumber(1, 7)) - into * rng:NextNumber(0, 4)
+		local tangent = side * -math.sin(a) + UP * math.cos(a)
+		local frame = CFrame.fromMatrix(at, tangent, out)
+			* CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(-0.3, 0.3), rng:NextNumber(-0.2, 0.2))
+		Kit.part(
+			stats,
+			m,
+			"LairRim",
+			Vector3.new(lair.radius * rng:NextNumber(0.3, 0.45), rng:NextNumber(5, 11), rng:NextNumber(7, 12)),
+			frame,
+			rim,
+			false
+		)
+		if k % 3 == 1 then
+			Kit.part(
+				stats,
+				m,
+				"LairRim",
+				Vector3.new(lair.radius * 0.22, rng:NextNumber(4, 7), 8),
+				frame * CFrame.new(rng:NextNumber(-2, 2), rng:NextNumber(4, 7), 2) * CFrame.Angles(0, 0, 0.4),
+				rim,
+				false
+			)
+		end
+	end
+	-- A cold teal glow low over the clutches inside (short, so the cave's walls stay dark
+	-- round the glowing eggs, as the concept's egg niche)
+	light(Kit.anchor(m, "LairGlow", CFrame.new(lair.mouth + into * 30 + UP * 4)), TEAL, 40, 2.2)
+	light(Kit.anchor(m, "LairGlowDeep", CFrame.new(lair.mouth + into * 64 + UP * 3)), TEAL, 34, 1.6)
 
 	PlaceMarks.set("SquidLair", lair.mouth + UP * 10)
 	PlaceMarks.set("SquidLair_Rise", lair.mouth - into * 30 + UP * 70)
@@ -823,6 +915,25 @@ end
 -- ---------------------------------------------------------------------------
 -- The walls, the floor and the glowing trail
 -- ---------------------------------------------------------------------------
+
+-- The big clusters framing the way down the canyon (HEROES), each lighting the rock
+-- round it: they close the wide canyon in to the concept's narrow one
+local function heroes(parent: Instance, ledge: Ledge?)
+	local m = Instance.new("Model")
+	m.Name = "TrenchHeroes"
+	m.Parent = parent
+	for _, h in HEROES do
+		local r, across, height = h[1], h[2], h[3]
+		local ground = canyonAt(r, across * halfBottom(r))
+		if ledge then
+			local flat = Vector3.new(ground.X - ledge.top.X, 0, ground.Z - ledge.top.Z)
+			if flat.Magnitude < 60 then
+				continue
+			end
+		end
+		growth(m, upright(ground, UP, rng:NextNumber(0, 6.28)), height, GROWTH[h[4]], true)
+	end
+end
 
 local function walls(parent: Instance, lair: Lair?, ledge: Ledge?)
 	local m = Instance.new("Model")
@@ -861,14 +972,14 @@ local function walls(parent: Instance, lair: Lair?, ledge: Ledge?)
 				-- out of the wall and up, leaning out a little
 				local up = (normal * 0.55 + UP).Unit
 				local size = if h < 40
-					then rng:NextNumber(13, 24)
-					elseif h < 100 then rng:NextNumber(10, 19)
-					else rng:NextNumber(8, 15)
+					then rng:NextNumber(18, 32)
+					elseif h < 100 then rng:NextNumber(14, 25)
+					else rng:NextNumber(10, 18)
 				local frame = upright(hit - normal * size * 0.12, up, rng:NextNumber(0, 6.28))
 				if placed % 9 == 4 and h < 70 then
 					eggs(m, hit - normal * 2, size * 0.9, rng:NextNumber(0, 6.28), up)
 				else
-					growth(m, frame, size, pickGrowth(), placed % 7 == 0)
+					growth(m, frame, size, pickGrowth(), placed % 5 == 0)
 				end
 			end
 		end
@@ -902,23 +1013,23 @@ local function floorGrowth(parent: Instance, lair: Lair?, ledge: Ledge?)
 			local ground = canyonAt(r + rng:NextNumber(-3, 3), across)
 			local kind = if k % 2 == 0 then GROWTH[4] else GROWTH[1]
 			if clear(ground) then
-				growth(m, upright(ground, UP, rng:NextNumber(0, 6.28)), rng:NextNumber(4.5, 8), kind, false)
+				growth(m, upright(ground, UP, rng:NextNumber(0, 6.28)), rng:NextNumber(7, 12), kind, false)
 			end
 		end
 		r += TRAIL.every
 	end
-	-- Big clusters thick along the foot of both walls, so the canyon's floor is lined
-	-- with glow like the concept's
+	-- Big clusters thick along the foot of both walls and in toward the middle, so the
+	-- canyon's floor is lined with glow and reads as narrow as the concept's
 	r = TRAIL.from + 6
 	while r <= TRAIL.to do
 		for _, sign in { -1, 1 } do
-			local across = sign * halfBottom(r) * rng:NextNumber(0.78, 0.94)
+			local across = sign * halfBottom(r) * rng:NextNumber(0.68, 0.92)
 			local ground = canyonAt(r + rng:NextNumber(-6, 6), across)
 			if clear(ground) then
 				growth(
 					m,
 					upright(ground, UP, rng:NextNumber(0, 6.28)),
-					rng:NextNumber(12, 24),
+					rng:NextNumber(18, 32),
 					pickGrowth(),
 					false
 				)
@@ -975,6 +1086,7 @@ function TrenchDress.build(
 	rng = Random.new(World.seed + 1210)
 	table.clear(TrenchDress.views)
 	leviathan(parent, ledge)
+	heroes(parent, ledge)
 	if lair then
 		squidLair(parent, lair)
 	end

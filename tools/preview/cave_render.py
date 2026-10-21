@@ -57,6 +57,14 @@ def rasterize(ops):
     xs, ys, zs = grid_axes()
     grid = np.zeros((len(xs), len(ys), len(zs)), dtype=np.uint8)
     for op in ops:
+        if op["kind"] == "replace":  # Terrain:ReplaceMaterial over a box (a repaint)
+            (x0, y0, z0), (x1, y1, z1) = op["min"], op["max"]
+            i0, i1 = np.searchsorted(xs, x0), np.searchsorted(xs, x1, side="right")
+            j0, j1 = np.searchsorted(ys, y0), np.searchsorted(ys, y1, side="right")
+            k0, k1 = np.searchsorted(zs, z0), np.searchsorted(zs, z1, side="right")
+            sub = grid[i0:i1, j0:j1, k0:k1]
+            sub[sub == MATERIALS[op["from"]]] = MATERIALS[op["to"]]
+            continue
         material = MATERIALS[op["material"]]
         cx, cy, cz = op["center"]
         # Only the cells the op can touch (a big world has hundreds of ops)

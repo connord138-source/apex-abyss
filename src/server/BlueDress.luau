@@ -73,13 +73,30 @@ local PINNACLE_BOX = Vector3.new(0.79, 1, 0.8)
 local BUOY_BOX = Vector3.new(0.643, 1, 0.757)
 
 local BONE = Color3.fromRGB(196, 200, 196)
-local ROCK = Color3.fromRGB(96, 116, 140)
-local LEDGE = Color3.fromRGB(84, 102, 126)
+-- (pale, as the concept's sunlit spire stands out against the blue)
+local ROCK = Color3.fromRGB(134, 152, 174)
+local LEDGE = Color3.fromRGB(122, 140, 164)
+local SUNLIGHT = Color3.fromRGB(206, 236, 255)
 local GOLD = Color3.fromRGB(176, 140, 60)
 local FROND = Color3.fromRGB(196, 150, 54)
-local JELLY = Color3.fromRGB(190, 160, 255)
-local JELLY_PINK = Color3.fromRGB(226, 150, 255)
-local JELLY_BLUE = Color3.fromRGB(150, 196, 255)
+-- The jellies glow violet to blue, never pink (it reads as skin to moderation)
+-- (a bright violet blooms toward pink-white, its blue clipping before its red, so the
+-- violets keep their red low: they come out lavender-blue)
+local JELLY = Color3.fromRGB(104, 88, 255)
+local JELLY_PERIWINKLE = Color3.fromRGB(86, 124, 255)
+local JELLY_BLUE = Color3.fromRGB(64, 164, 255)
+local CHAIN_TINT = Color3.fromRGB(170, 176, 255)
+local CHAIN_GLOW = Color3.fromRGB(96, 104, 255)
+-- Shafts of sun down the water between the whale and the pinnacle: (how far along
+-- from the whale to the pinnacle, studs to the side, width, strength)
+local SHAFTS = {
+	{ -0.08, 18, 78, 0.5 },
+	{ 0.18, -56, 64, 0.42 },
+	{ 0.4, 34, 90, 0.46 },
+	{ 0.64, -26, 70, 0.42 },
+	{ 0.9, 40, 80, 0.44 },
+	{ 1.08, -40, 60, 0.38 },
+}
 local RUST = Color3.fromRGB(122, 52, 30)
 local CHAIN = Color3.fromRGB(70, 46, 36)
 local CORALS = {
@@ -285,6 +302,31 @@ end
 -- The Whale's Rest
 -- ---------------------------------------------------------------------------
 
+-- Pale sand round a spot, as the concept's whale lies on pale sand while the deep floor
+-- round it is darker mud: the floor's Mud repainted Sand in rows of grid boxes, a
+-- ragged disc. Only the material changes (Terrain:ReplaceMaterial), never its shape.
+local function paleSand(center: Vector3, radius: number)
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain == nil then
+		return
+	end
+	local z = -radius
+	while z < radius do
+		local half = math.sqrt(math.max(radius * radius - (z + 4) ^ 2, 0)) + rng:NextNumber(-8, 8)
+		if half > 6 then
+			local low = Vector3.new(center.X - half, center.Y - 24, center.Z + z)
+			local high = Vector3.new(center.X + half, center.Y + 24, center.Z + z + 8)
+			terrain:ReplaceMaterial(
+				Region3.new(low, high):ExpandToGrid(4),
+				4,
+				Enum.Material.Mud,
+				Enum.Material.Sand
+			)
+		end
+		z += 8
+	end
+end
+
 local function whalesRest(parent: Instance): Vector3
 	local spot = at(WHALE.angle, WHALE.r)
 	local ground = floorAt(spot.X, spot.Z)
@@ -295,6 +337,7 @@ local function whalesRest(parent: Instance): Vector3
 	local size = Vector3.new(0.37, 0.31, 1) * WHALE.length
 	local yaw = math.rad(WHALE.angle + 70)
 	local box = Kit.standing(ground, yaw, size, 0.12)
+	paleSand(ground, 110)
 	Kit.hero(stats, m, "WhaleSkeleton", box, size, function(sm)
 		-- a spine down its length and ribs arching off it
 		local a = box:PointToWorldSpace(Vector3.new(0, -size.Y * 0.1, -size.Z * 0.45))
@@ -307,14 +350,14 @@ local function whalesRest(parent: Instance): Vector3
 				Kit.rod(stats, sm, "Rib", p, tip, 0.8, BONE, false)
 			end
 		end
-	end)
-	-- A long shaft of light down onto it, and its bones' scatter
-	Kit.shaft(
-		m,
-		Vector3.new(ground.X, World.surfaceY - 2, ground.Z) + Vector3.new(30, 0, -20),
-		ground + Vector3.new(0, 20, 0),
-		40,
-		0.22
+	end, { tint = Color3.fromRGB(255, 246, 228) })
+	-- The sun on its bones (the shafts down onto it are sunlight()'s)
+	Kit.light(
+		stats,
+		Kit.anchor(m, "WhaleLight", CFrame.new(ground + Vector3.new(-10, 46, 20))),
+		SUNLIGHT,
+		60,
+		1.2
 	)
 	PlaceMarks.set("WhalesRest", ground + Vector3.new(0, 30, 0))
 	local out = Vector3.new(math.cos(math.rad(WHALE.angle)), 0, math.sin(math.rad(WHALE.angle)))
@@ -434,8 +477,9 @@ local function pinnacle(parent: Instance, whale: Vector3)
 			whips(m, upright(point, (out * 0.6 + UP).Unit, rng:NextNumber(0, TAU)), size2)
 		end
 	end
-	-- Its foot: boulders and a garden of coral round it
+	-- Its foot: pale sand, boulders and a garden of coral round it
 	local footRadius = height * 0.42
+	paleSand(base, footRadius + 50)
 	for k = 1, 10 do
 		local angle = k / 10 * TAU + rng:NextNumber(-0.2, 0.2)
 		local reach = footRadius + rng:NextNumber(2, 14)
@@ -448,22 +492,20 @@ local function pinnacle(parent: Instance, whale: Vector3)
 		local p = base + Vector3.new(math.cos(angle) * reach, 0, math.sin(angle) * reach)
 		gardenPiece(m, floorAt(p.X, p.Z), rng:NextNumber(3.5, 7) * (if k % 4 == 0 then 1.6 else 1))
 	end
-	-- Little schools circling it
-	for k = 1, 6 do
-		local t = 0.2 + k * 0.1
-		local point, out = face(box, height, t, k * 1.9, -22)
+	-- Little schools circling it at every height
+	for k = 1, 10 do
+		local t = 0.12 + k * 0.075
+		local point, out = face(box, height, t, k * 1.9, -22 - (k % 3) * 8)
 		school(m, point + out * 2)
 	end
-	-- Light down onto it
-	for k = 1, 2 do
-		local off = Vector3.new(math.cos(k * 2.5) * 40, 0, math.sin(k * 2.5) * 40)
-		Kit.shaft(
-			m,
-			Vector3.new(base.X, World.surfaceY - 2, base.Z) + off,
-			base + Vector3.new(0, height * 0.6, 0) + off * 0.4,
-			36,
-			0.2
-		)
+	-- The sun on its whale-facing side, so its facets read pale and sculpted against
+	-- the blue (lights a little out from the face)
+	local toWhale = Vector3.new(whale.X - base.X, 0, whale.Z - base.Z).Unit
+	for k = 1, 6 do
+		local t = 0.08 + k * 0.13
+		local theta = math.atan2(toWhale.Z, toWhale.X) + (if k % 2 == 0 then 0.55 else -0.35)
+		local point, out = face(box, height, t, theta, -24)
+		Kit.light(stats, Kit.anchor(m, "SunSide", CFrame.new(point + out * 2)), SUNLIGHT, 60, 3.6)
 	end
 
 	PlaceMarks.set("HammerheadPinnacle", base + Vector3.new(0, size.Y * 0.55, 0))
@@ -485,6 +527,34 @@ local function pinnacle(parent: Instance, whale: Vector3)
 		to = base + UP * 70,
 		fov = 66,
 	})
+end
+
+-- A wide, soft shaft of sunlight: three beams nested on one line (a wide faint one, a
+-- middle, a brighter core), so its edges fade instead of ending
+local function sunShaft(parent: Instance, top: Vector3, bottom: Vector3, width: number, strength: number)
+	Kit.shaft(parent, top, bottom, width, strength * 0.3)
+	Kit.shaft(parent, top, bottom, width * 0.6, strength * 0.32)
+	Kit.shaft(parent, top, bottom, width * 0.28, strength * 0.38)
+end
+
+-- Sunlight down the clear water between the whale and the pinnacle (SHAFTS), all
+-- slanting the same way, as the concept's fan of shafts from the surface
+local function sunlight(parent: Instance, whale: Vector3)
+	local m = Instance.new("Model")
+	m.Name = "SunShafts"
+	m.Parent = parent
+	local spot = at(PINNACLE.angle, PINNACLE.r)
+	local pin = floorAt(spot.X, spot.Z)
+	local toward = Vector3.new(pin.X - whale.X, 0, pin.Z - whale.Z).Unit
+	local side = toward:Cross(UP)
+	-- (the sun's way down: in from behind the whale and to one side)
+	local slant = toward * 0.14 + side * 0.1
+	for _, shaft in SHAFTS do
+		local flat = whale:Lerp(pin, shaft[1]) + side * shaft[2]
+		local foot = floorAt(flat.X, flat.Z) + UP * 14
+		local top = Vector3.new(foot.X, World.surfaceY - 2, foot.Z) - slant * (World.surfaceY - foot.Y)
+		sunShaft(m, top, foot, shaft[3], shaft[4])
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -655,11 +725,15 @@ local function chains(parent: Instance)
 					Enum.PartType.Cylinder
 				)
 			end
-		end)
+		end, { tint = CHAIN_TINT })
 		if model then
+			-- (Glow / GlowTint: what the cloud previewer reads)
+			model:SetAttribute("Glow", 3.2)
+			model:SetAttribute("GlowTint", CHAIN_GLOW)
 			for _, d in model:GetDescendants() do
 				if d:IsA("SurfaceAppearance") then
-					d.EmissiveStrength = 2
+					d.EmissiveStrength = 3.2
+					d.EmissiveTint = CHAIN_GLOW
 				elseif d:IsA("BasePart") then
 					d.CastShadow = false
 				end
@@ -669,10 +743,11 @@ local function chains(parent: Instance)
 	end
 end
 
--- A jellyfish: a faceted translucent bell (two stepped discs and a cap), a glowing
--- rim and long trailing tentacles and oral arms (parts; no sphere lumps)
+-- A jellyfish: a faceted bell glowing through (two stepped discs and a cap, Neon and
+-- translucent), a bright rim and long glowing tentacles and oral arms (parts; no
+-- sphere lumps)
 local function jellyfish(parent: Instance, spot: Vector3, size: number)
-	local color = pick({ JELLY, JELLY_PINK, JELLY_BLUE })
+	local color = pick({ JELLY, JELLY_PERIWINKLE, JELLY_BLUE })
 	local frame = CFrame.new(spot)
 		* CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(0, TAU), rng:NextNumber(-0.25, 0.25))
 	local holder = Instance.new("Model")
@@ -680,54 +755,54 @@ local function jellyfish(parent: Instance, spot: Vector3, size: number)
 	holder.WorldPivot = frame
 	holder.Parent = parent
 	local function disc(name: string, diameter: number, thick: number, y: number, transparency: number)
-		local p = Kit.part(
+		local p = Kit.glow(
 			stats,
 			holder,
 			name,
 			Vector3.new(thick, diameter, diameter),
 			frame * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, HALF),
 			color,
-			false,
 			Enum.PartType.Cylinder
 		)
 		p.Transparency = transparency
 		p.CastShadow = false
 		return p
 	end
-	disc("Bell", size, size * 0.22, 0, 0.38)
-	disc("BellTop", size * 0.72, size * 0.2, size * 0.2, 0.34)
-	disc("BellCap", size * 0.4, size * 0.14, size * 0.36, 0.3)
+	disc("Bell", size, size * 0.22, 0, 0.55)
+	disc("BellTop", size * 0.72, size * 0.2, size * 0.2, 0.5)
+	disc("BellCap", size * 0.4, size * 0.14, size * 0.36, 0.42)
+	local glowColor = color:Lerp(Color3.new(0.8, 0.9, 1), 0.2)
 	local rim = Kit.glow(
 		stats,
 		holder,
 		"Rim",
-		Vector3.new(size * 0.06, size * 1.02, size * 1.02),
+		Vector3.new(size * 0.07, size * 1.04, size * 1.04),
 		frame * CFrame.new(0, -size * 0.1, 0) * CFrame.Angles(0, 0, HALF),
-		color,
+		glowColor,
 		Enum.PartType.Cylinder
 	)
-	rim.Transparency = 0.45
-	local glowColor = color:Lerp(Color3.new(1, 1, 1), 0.25)
-	for k = 1, 6 do
-		local a = k / 6 * TAU
-		local long = size * rng:NextNumber(2.2, 3.6)
+	rim.Transparency = 0.2
+	local thick = math.max(0.22, size * 0.026)
+	for k = 1, 8 do
+		local a = k / 8 * TAU
+		local long = size * rng:NextNumber(2.4, 4)
 		local top = frame * CFrame.new(math.cos(a) * size * 0.42, -size * 0.12, math.sin(a) * size * 0.42)
 		local tentacle = Kit.glow(
 			stats,
 			holder,
 			"Tentacle",
-			Vector3.new(0.18, long, 0.18),
+			Vector3.new(thick, long, thick),
 			top
 				* CFrame.new(0, -long / 2, 0)
 				* CFrame.Angles(rng:NextNumber(-0.12, 0.12), 0, rng:NextNumber(-0.12, 0.12)),
 			glowColor
 		)
-		tentacle.Transparency = 0.5
+		tentacle.Transparency = 0.3
 	end
 	for k = 1, 3 do
 		local a = k / 3 * TAU + 0.5
-		local long = size * rng:NextNumber(1.1, 1.6)
-		local arm = Kit.part(
+		local long = size * rng:NextNumber(1.1, 1.7)
+		local arm = Kit.glow(
 			stats,
 			holder,
 			"OralArm",
@@ -735,10 +810,9 @@ local function jellyfish(parent: Instance, spot: Vector3, size: number)
 			frame
 				* CFrame.new(math.cos(a) * size * 0.1, -size * 0.12 - long / 2, math.sin(a) * size * 0.1)
 				* CFrame.Angles(0, a, 0.15),
-			color,
-			false
+			color
 		)
-		arm.Transparency = 0.35
+		arm.Transparency = 0.45
 		arm.CastShadow = false
 	end
 	CollectionService:AddTag(holder, "Drifting")
@@ -755,7 +829,17 @@ local function jellies(parent: Instance)
 		)
 		local floor = floorAt(spot.X, spot.Z)
 		local y = math.min(floor.Y + rng:NextNumber(40, 420), World.surfaceY - 30)
-		jellyfish(m, Vector3.new(spot.X, y, spot.Z), rng:NextNumber(7, 14))
+		jellyfish(m, Vector3.new(spot.X, y, spot.Z), rng:NextNumber(9, 17))
+	end
+	-- A drift of them over the whale's way to the pinnacle, at a fish's height
+	local whale = at(WHALE.angle, WHALE.r)
+	local pin = at(PINNACLE.angle, PINNACLE.r)
+	for k = 1, 9 do
+		local flat = whale:Lerp(pin, rng:NextNumber(-0.1, 0.9))
+			+ Vector3.new(rng:NextNumber(-70, 70), 0, rng:NextNumber(-70, 70))
+		local floor = floorAt(flat.X, flat.Z)
+		local y = floor.Y + rng:NextNumber(60, 230)
+		jellyfish(m, Vector3.new(flat.X, y, flat.Z), rng:NextNumber(10, 18))
 	end
 end
 
@@ -767,6 +851,7 @@ function BlueDress.build(parent: Instance, ground: Kit.Ground): Kit.Stats
 	table.clear(BlueDress.views)
 	local whale = whalesRest(parent)
 	pinnacle(parent, whale)
+	sunlight(parent, whale)
 	sargassum(parent)
 	chains(parent)
 	jellies(parent)
