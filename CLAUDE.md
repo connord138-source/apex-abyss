@@ -1668,6 +1668,33 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Old normal maps:** 1,804 SurfaceAppearances in the place carry a NormalMap, all
     on Tripo props imported before the 2026-10-13 rule (garden corals, shells, …).
     They stay until a model needs replacing; nothing new carries one.
+- **Rolled parts and variants, real models and bonuses (owner, 2026-10-21: the parts
+  board's legendary sheet B and the variants board approved; built):**
+  - **Models:** `parts_glb` (sha256 0e448695…: AnglerLure, NarwhalHorn, SawSnout,
+    SailFin, VeilTail; squared up by `tools/props/parts_prep.py`, front on glTF -Z so
+    they import facing +Z, emissive maps on the cyan bits) and `variants_fbx` (sha256
+    ea4f358e…: Puffball, Sabrecuda, Porcupine, DragonMoray, Hammerhead, Deepfang,
+    rigged like the species; Sabrecuda and Hammerhead with a Jaw). Pipeline in
+    docs/ASSETS.md; references by `tools/props/parts_variants_refs.py`; every image
+    cleared by the classifier (highest 0.035). `safe_colors.py --olive` (new) turns tan
+    and beige olive-khaki instead of vivid orange (the Porcupine). `organize_imports`
+    files `PartModels.<PartId>` (MeshPart, `Facing` "+Z") and `VariantModels.<VariantId>`.
+  - **Code:** `Cosmetics` `PART_MODELS` hangs a part's model by its attach point
+    (`box`/`attach` from `parts.json`; `FishPlans` `mesh`, `FishBuilder.partModel`),
+    the part-built pieces until imported; a variant with a model swaps the body's mesh
+    (`swapMesh`, `FishBuilder.variantTemplate`; MeshPlan = the variant, so species
+    skins don't fit it: a shade tints its own texture) and `Cosmetics.apply` returns
+    true so FishAnimator re-reads the bones (`rigOf`).
+  - **Bonuses** (`Config/Exotics` `bonus`, read by `Perks.exotic(character)` from the
+    server-set Parts/Variant attributes, so client and server agree; never bite
+    damage): Angler Lure +25% swallow reach (HuntService/ForageService suction, the
+    clients' eats) and its light; Narwhal Horn Dash/Torpedo ×1.2 long (SwimController);
+    Sawblade Snout shell reach and the treasure arrow/X ×1.5 (`Perks.shellReach`
+    `find`, ShellService); Sail Fin +5% top speed (SpeedService allows it); Veil Tail
+    turns ×1.15; Puffball Dash recharge ×1.2; Sabrecuda Torpedo ×1.25 long; Porcupine
+    Puff Up ×1.25 long (AbilityService); Dragon Moray Burrow recharge ×1.25
+    (AbilityService `cooldownOf`); Hammerhead Blood Sense prey range ×1.25; Deepfang
+    Lantern Flash stun and dazzle reach ×1.25. Shown in the Wardrobe and the Index.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

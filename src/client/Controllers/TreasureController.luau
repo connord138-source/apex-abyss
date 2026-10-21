@@ -18,6 +18,7 @@ local Ui = require(script.Parent.Parent.Ui)
 local MenuController = require(script.Parent.MenuController)
 local RollController = require(script.Parent.RollController)
 local SwimController = require(script.Parent.SwimController)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 
 local Treasure = Config.Treasure
 
@@ -286,8 +287,10 @@ local function step(dt: number)
 		pulse.BackgroundTransparency = 0.1
 		Ui.tween(pulse, period * 0.9, { Size = UDim2.fromOffset(64, 64), BackgroundTransparency = 1 })
 	end
-	-- The arrow, relative to where the camera looks, inside the arrow range
-	if flat <= Treasure.sonar.arrow then
+	-- The arrow, relative to where the camera looks, inside the arrow range (a
+	-- Sawblade Snout finds treasure from further, Perks.exotic)
+	local find = Perks.exotic(SwimController.character()).find
+	if flat <= Treasure.sonar.arrow * find then
 		arrow.Visible = true
 		local look = workspace.CurrentCamera.CFrame.LookVector
 		local cameraYaw = math.atan2(-look.X, -look.Z)
@@ -304,7 +307,7 @@ local function step(dt: number)
 	end
 	wordLabel.Text = word
 	-- The X, inside the mark range
-	if distance <= Treasure.sonar.mark then
+	if distance <= Treasure.sonar.mark * find then
 		if marker == nil then
 			buildMarker(site, if tier then tier.color else Ui.color.haul)
 		end

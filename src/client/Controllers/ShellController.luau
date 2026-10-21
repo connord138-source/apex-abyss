@@ -181,7 +181,8 @@ local function step(dt: number)
 		length,
 		if state then state.upgrades else nil,
 		if state then state.boosts else nil,
-		workspace:GetServerTimeNow()
+		workspace:GetServerTimeNow(),
+		Perks.exotic(SwimController.character()).find -- (a Sawblade Snout)
 	)
 	local mouth = if root then root.CFrame:PointToWorldSpace(Size.mouthOffset(length)) else nil
 	table.clear(parts)

@@ -74,11 +74,19 @@ end
 
 local Abilities = Config.Abilities.byId
 
+-- This fish's part and variant bonuses (Perks.exotic: a Dragon Moray's quicker Burrow,
+-- a Sabrecuda's longer Torpedo, a Hammerhead's wider Blood Sense, ...)
+local function exotic(): Perks.Exotic
+	return Perks.exotic(Players.LocalPlayer.Character)
+end
+
 -- An ability's cooldown for this player: the Outfitter's Quick Recovery shortens every
--- fish's own (Perks.boost; AbilityService does the same)
-local function recharge(seconds: number): number
+-- fish's own (Perks.boost), and a variant may shorten its own (`id`; AbilityService
+-- does the same)
+local function recharge(seconds: number, id: string?): number
 	local s = ClientState.current
-	return seconds / Perks.boost(if s then s.upgrades else nil)
+	local variant = if id then Perks.of(exotic().recharge, id) else 1
+	return seconds / (Perks.boost(if s then s.upgrades else nil) * variant)
 end
 
 -- The other signature abilities' cooldowns and runs (os.clock)
@@ -123,7 +131,7 @@ function AbilityController.charge(): number
 		if now >= senseReadyAt then
 			return 1
 		end
-		return math.clamp(1 - (senseReadyAt - now) / recharge(SENSE_COOLDOWN), 0, 0.999)
+		return math.clamp(1 - (senseReadyAt - now) / recharge(SENSE_COOLDOWN, id), 0, 0.999)
 	elseif id == "Dash" then
 		return SwimController.dashCharge
 	elseif id == "Burrow" and burrowed() then
@@ -133,7 +141,7 @@ function AbilityController.charge(): number
 	if now >= ready then
 		return 1
 	end
-	local cooldown = recharge((Abilities[id] and Abilities[id].cooldown) or 1)
+	local cooldown = recharge((Abilities[id] and Abilities[id].cooldown) or 1, id)
 	return math.clamp(1 - (ready - now) / cooldown, 0, 0.999)
 end
 
@@ -187,7 +195,12 @@ local function targets(): ({ Instance }, { [Instance]: boolean })
 	end
 	local prey: { [Instance]: boolean } = {}
 	for _, entry in
-		SchoolController.edibleNear(from, SwimController.length(), PREY_RANGE, HIGHLIGHT_CAP - #list)
+		SchoolController.edibleNear(
+			from,
+			SwimController.length(),
+			PREY_RANGE * Perks.of(exotic().range, "BloodSense"), -- (a Hammerhead's reaches further)
+			HIGHLIGHT_CAP - #list
+		)
 	do
 		table.insert(list, entry.instance)
 		prey[entry.instance] = true
@@ -269,7 +282,7 @@ local function bloodSense(): boolean
 		return false
 	end
 	senseUntil = now + SENSE_SECONDS
-	senseReadyAt = now + recharge(SENSE_COOLDOWN)
+	senseReadyAt = now + recharge(SENSE_COOLDOWN, "BloodSense")
 	nextRefresh = 0
 	Sfx.play("Warning", { volume = 0.45, pitch = 0.8 })
 	return true
@@ -283,10 +296,14 @@ local function take(id: string): boolean
 		return false
 	end
 	local ability = Abilities[id]
-	readyAt[id] = now + recharge(ability.cooldown or 1)
+	readyAt[id] = now + recharge(ability.cooldown or 1, id)
 	if ability.seconds then
-		runUntil[id] = now + ability.seconds
-		runFor[id] = ability.seconds
+		-- (a variant may make it last longer, and a Narwhal Horn carries a Torpedo further)
+		local seconds = ability.seconds
+			* Perks.of(exotic().duration, id)
+			* (if id == "Torpedo" then exotic().dash else 1)
+		runUntil[id] = now + seconds
+		runFor[id] = seconds
 	end
 	return true
 end
@@ -303,7 +320,12 @@ local function fire()
 	elseif id == "Torpedo" then
 		local ability = Abilities.Torpedo
 		if take("Torpedo") then
-			SwimController.dash(ability.seconds, ability.turn, true)
+			-- (a Sabrecuda's runs longer; SwimController adds a Narwhal Horn's)
+			SwimController.dash(
+				(ability.seconds or 1.4) * Perks.of(exotic().duration, "Torpedo"),
+				ability.turn,
+				true
+			)
 		end
 	elseif id == "PuffUp" then
 		if take("PuffUp") then
@@ -357,7 +379,9 @@ local function flash(character: Model)
 		return
 	end
 	local offset = root.Position - workspace.CurrentCamera.CFrame.Position
-	if (root.Position - mine.Position).Magnitude > (ability.reach or 48) then
+	-- (a Deepfang Angler's flash reaches further, Perks.exotic: AbilityService stuns as far)
+	local reach = (ability.reach or 48) * Perks.of(Perks.exotic(character).range, "LanternFlash")
+	if (root.Position - mine.Position).Magnitude > reach then
 		return
 	end
 	local facing = if offset.Magnitude > 1e-3
@@ -406,7 +430,7 @@ local function abilityStep()
 		end
 		Sfx.play("Forage", { volume = 0.5, pitch = 0.6 })
 	elseif wasBurrowed and not hiding then
-		readyAt.Burrow = os.clock() + recharge(Abilities.Burrow.cooldown or 8)
+		readyAt.Burrow = os.clock() + recharge(Abilities.Burrow.cooldown or 8, "Burrow")
 	end
 	wasBurrowed = hiding
 	if hiding and os.clock() - endAskedAt > 0.3 then

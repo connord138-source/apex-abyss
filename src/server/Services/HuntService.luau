@@ -221,12 +221,13 @@ local function addHaul(player: Player, amount: number, how: Gain?): number
 	return added
 end
 
--- The Reef Shark's Blood Sense draws prey in from further (Perks.sense); the server
--- keeps it on half a second longer, since it sees the fish a little in the past
+-- The Reef Shark's Blood Sense draws prey in from further (Perks.sense), and so does
+-- an Angler Lure part (Perks.exotic); the server keeps the sense on half a second
+-- longer, since it sees the fish a little in the past
 local function suctionOf(player: Player): number
 	local character = FishService.character(player)
 	local _, suction = Perks.sense(character, Timing.clock(), 0.5)
-	return suction
+	return suction * Perks.exotic(character).reach
 end
 
 -- A Haul lost to being eaten, for a Second Chance bought on the eaten screen.

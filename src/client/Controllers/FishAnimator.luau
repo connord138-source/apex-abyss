@@ -88,6 +88,22 @@ local function bonesOf(body: Model): ({ [string]: Bone }, { string })
 	return bones, spine
 end
 
+-- A body's bones, each one's rest rotation in the fish's own axes, and its spine.
+-- Imported bones point their own Y down the spine (Blender's bone axis), so a turn
+-- about a bone's Y rolled the body instead of swinging the tail (playtest
+-- 2026-10-07). Keep each bone's rest rotation in the fish's axes to turn the
+-- animation's fish-axis rotations into the bone's own.
+local function rigOf(body: Model, root: BasePart): ({ [string]: Bone }, { [string]: CFrame }, { string })
+	local bones, boneSpine = bonesOf(body)
+	local boneFrames: { [string]: CFrame } = {}
+	for name, bone in bones do
+		local rest = root.CFrame:ToObjectSpace(bone.WorldCFrame * bone.Transform:Inverse())
+		boneFrames[name] = rest.Rotation
+	end
+	local spine = if #boneSpine > 0 then boneSpine else FishPlans.spine(body:GetAttribute("Plan") :: string?)
+	return bones, boneFrames, spine
+end
+
 local function stateOf(character: Model): FishState?
 	local existing = states[character]
 	if existing then
@@ -100,23 +116,14 @@ local function stateOf(character: Model): FishState?
 	end
 	local length = character:GetAttribute("Length")
 	local start = if typeof(length) == "number" then length else 2
-	local bones, boneSpine = bonesOf(body)
-	-- Imported bones point their own Y down the spine (Blender's bone axis), so a turn
-	-- about a bone's Y rolled the body instead of swinging the tail (playtest
-	-- 2026-10-07). Keep each bone's rest rotation in the fish's axes to turn the
-	-- animation's fish-axis rotations into the bone's own.
-	local boneFrames: { [string]: CFrame } = {}
-	for name, bone in bones do
-		local rest = root.CFrame:ToObjectSpace(bone.WorldCFrame * bone.Transform:Inverse())
-		boneFrames[name] = rest.Rotation
-	end
+	local bones, boneFrames, spine = rigOf(body, root)
 	local state: FishState = {
 		body = body,
 		root = root,
 		joints = FishBuilder.joints(body),
 		bones = bones,
 		boneFrames = boneFrames,
-		spine = if #boneSpine > 0 then boneSpine else FishPlans.spine(body:GetAttribute("Plan") :: string?),
+		spine = spine,
 		length = start,
 		lengthVelocity = 0,
 		applied = -1,
@@ -231,7 +238,11 @@ local function dress(character: Model, state: FishState)
 	end
 	state.dressKey = key
 	state.dressLength = state.length
-	Cosmetics.apply(state.body, look, Cosmetics.dressOf(character), state.length, SkinLoader.ready)
+	if Cosmetics.apply(state.body, look, Cosmetics.dressOf(character), state.length, SkinLoader.ready) then
+		-- A variant's own model went on (or came off): its bones are new
+		state.bones, state.boneFrames, state.spine = rigOf(state.body, state.root)
+		state.joints = FishBuilder.joints(state.body)
+	end
 	state.applied = -1 -- re-scale everything, new parts included
 end
 

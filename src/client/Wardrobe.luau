@@ -1084,10 +1084,8 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 				end
 			end
 		elseif item.kind == "part" then
-			if r.id == "AnglerLure" then
-				add("Lights up dark water like an Anglerfish's lure.", Color3.fromRGB(150, 236, 255))
-			end
-			add(`Worn in the <b>{esc(r.slot)}</b> slot, one part a slot, on any fish. Looks only: no stats.`)
+			add(`<b>Bonus:</b> {esc(r.bonus.text)}.`, FX_COLOR)
+			add(`Worn in the <b>{esc(r.slot)}</b> slot, one part a slot, on any fish. Never bite damage.`)
 			if not item.has then
 				add(
 					`<b>How to get:</b> roll it as any fish · about {RollOdds.oneIn(1 / r.chance)}. A duplicate turns into {Ui.number(
@@ -1097,9 +1095,10 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			end
 		elseif item.kind == "variant" then
 			local fish = esc(fishName(r.species))
+			add(`<b>Bonus:</b> {esc(r.bonus.text)}.`, FX_COLOR)
 			add(
 				if r.species == current
-					then `Reshapes your {fish}. One variant is worn at a time.`
+					then `A rare form of your {fish}. One variant is worn at a time.`
 					else `<b>{fish} only:</b> it shows when you swim as the {fish}. One variant is worn at a time.`
 			)
 			if not item.has then
@@ -1799,8 +1798,10 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 			note.Size = UDim2.fromOffset(filterLeft - gridX - 8, 26)
 		else
 			note.Text = if tab == "Parts"
-				then "LOOKS ONLY  ·  ONE A SLOT  ·  FROM ROLLS AS ANY FISH"
-				elseif tab == "Variants" then "EACH RESHAPES ONE FISH  ·  FROM ROLLS AS THAT FISH"
+				then "A SMALL BONUS EACH  ·  ONE A SLOT  ·  FROM ROLLS AS ANY FISH"
+				elseif
+					tab == "Variants"
+				then "A RARE FORM OF ONE FISH  ·  BOOSTS ITS ABILITY  ·  FROM ROLLS"
 				else "EVERY FISH'S  ·  ONE AT A TIME  ·  EARNED ON THE TIDE PASS"
 			note.Size = UDim2.fromOffset(gridW, 26)
 		end

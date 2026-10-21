@@ -103,6 +103,26 @@
   "task_id": "dc6a527a-c95f-4401-81f3-9cb074639b0d",
   "type": "generate_image"
  },
+ "biome_blue/CoralPinnacle": {
+  "status": "queued",
+  "task_id": "1fd87856-7ddf-4a5b-8f2d-007907059ea9",
+  "type": "image_to_model"
+ },
+ "biome_blue/JellyChain": {
+  "status": "queued",
+  "task_id": "51a3e3a1-77fe-440c-afdb-88b856a7d838",
+  "type": "image_to_model"
+ },
+ "biome_blue/Sargassum": {
+  "status": "queued",
+  "task_id": "d9e380d7-138e-41e2-b1b3-a9c70c0cf4af",
+  "type": "image_to_model"
+ },
+ "biome_blue/WhaleSkeleton": {
+  "status": "queued",
+  "task_id": "66ee275f-75a5-4ef3-bb7e-a7eed6d17cf4",
+  "type": "image_to_model"
+ },
  "biome_concepts/BlueKit": {
   "credits": 10,
   "files": [
@@ -193,38 +213,177 @@
   "task_id": "e5458516-352f-4918-af2a-6448edc9d703",
   "type": "generate_image"
  },
+ "biome_kelp/KelpBuoy": {
+  "credits": 30,
+  "files": [
+   "KelpBuoy.glb",
+   "KelpBuoy_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "cea960da-5cbe-415c-8ff3-888b142ae02d",
+  "type": "image_to_model"
+ },
+ "biome_kelp/KelpCanopy": {
+  "credits": 20,
+  "files": [
+   "KelpCanopy.glb",
+   "KelpCanopy_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "e4924129-3468-4b3f-a286-2103f1109ed7",
+  "type": "text_to_model"
+ },
+ "biome_kelp/LobsterTrap": {
+  "credits": 30,
+  "files": [
+   "LobsterTrap.glb",
+   "LobsterTrap_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "b2b454dd-9ee7-48a8-8640-916344caaf76",
+  "type": "image_to_model"
+ },
+ "biome_kelp/SeaGrass": {
+  "credits": 30,
+  "files": [
+   "SeaGrass.glb",
+   "SeaGrass_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "ad206249-8547-41e1-bbff-caa3e31024bd",
+  "type": "image_to_model"
+ },
+ "biome_kelp/SeaOtter": {
+  "credits": 30,
+  "files": [
+   "SeaOtter.glb",
+   "SeaOtter_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "46c8f482-782d-43e2-a6f7-e61fed773879",
+  "type": "image_to_model"
+ },
+ "biome_kelp/SunkenRowboat": {
+  "credits": 30,
+  "files": [
+   "SunkenRowboat.glb",
+   "SunkenRowboat_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "d2e46a66-7c0f-46b2-9937-f4e5619c810c",
+  "type": "image_to_model"
+ },
+ "biome_kelp/UrchinRock": {
+  "error": "2008: The input is rejected due to violation of content policy Please modify your input and retry",
+  "status": "submit_failed"
+ },
+ "biome_reef/GardenEels": {
+  "credits": 30,
+  "files": [
+   "GardenEels.glb",
+   "GardenEels_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "459c9403-5809-4d92-93ab-fe9af44eba6f",
+  "type": "image_to_model"
+ },
+ "biome_reef/GiantClam": {
+  "credits": 30,
+  "files": [
+   "GiantClam.glb",
+   "GiantClam_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "6bdc07e3-b1f0-496f-b6e3-6229afa2317d",
+  "type": "image_to_model"
+ },
+ "biome_reef/PillarCoral": {
+  "credits": 30,
+  "files": [
+   "PillarCoral.glb",
+   "PillarCoral_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "68dea277-ee87-467b-9dab-d2c90d54f2f6",
+  "type": "image_to_model"
+ },
+ "biome_reef/TableCoral": {
+  "credits": 30,
+  "files": [
+   "TableCoral.glb",
+   "TableCoral_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "53a44432-047f-4d31-a097-e2156797de4e",
+  "type": "image_to_model"
+ },
  "biome_trench/BoneHeap": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "BoneHeap.glb",
+   "BoneHeap_preview.webp"
+  ],
+  "status": "success",
   "task_id": "8170d1e6-1afc-4a8a-9eca-d7ce7f6c223c",
   "type": "image_to_model"
  },
  "biome_trench/GlassSponge": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "GlassSponge.glb",
+   "GlassSponge_preview.webp"
+  ],
+  "status": "success",
   "task_id": "4787a75e-6d6f-4927-9178-9d405e7a51ad",
   "type": "image_to_model"
  },
  "biome_trench/GlowEggs": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "GlowEggs.glb",
+   "GlowEggs_preview.webp"
+  ],
+  "status": "success",
   "task_id": "84255d5d-b96c-44d1-95cd-02a0e768c267",
   "type": "image_to_model"
  },
  "biome_trench/LeviathanRibs": {
-  "status": "queued",
+  "credits": 20,
+  "files": [
+   "LeviathanRibs.glb",
+   "LeviathanRibs_preview.webp"
+  ],
+  "status": "success",
   "task_id": "97edc55f-a1b7-4fef-933b-981202ceebdc",
   "type": "text_to_model"
  },
  "biome_trench/LeviathanSkull": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "LeviathanSkull.glb",
+   "LeviathanSkull_preview.webp"
+  ],
+  "status": "success",
   "task_id": "da41c9c6-5c50-4db8-962f-a2d7ec0a2f66",
   "type": "image_to_model"
  },
  "biome_trench/TrenchCrystals": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "TrenchCrystals.glb",
+   "TrenchCrystals_preview.webp"
+  ],
+  "status": "success",
   "task_id": "da3632ac-1d0b-4e90-9efa-92176477b477",
   "type": "image_to_model"
  },
  "biome_trench/TrenchGlowTubes": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "TrenchGlowTubes.glb",
+   "TrenchGlowTubes_preview.webp"
+  ],
+  "status": "success",
   "task_id": "7ee159c7-b2e8-4a9e-bde6-eba1d0d57aea",
   "type": "image_to_model"
  },
@@ -239,8 +398,14 @@
   "type": "text_to_model"
  },
  "biome_wreck/GalleonStern": {
-  "error": "2008: The input is rejected due to violation of content policy Please modify your input and retry",
-  "status": "submit_failed"
+  "credits": 20,
+  "files": [
+   "GalleonStern.glb",
+   "GalleonStern_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "89272a42-810c-4b2c-8a85-cb908da43682",
+  "type": "text_to_model"
  },
  "biome_wreck/IronSteamer": {
   "credits": 20,

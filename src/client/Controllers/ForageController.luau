@@ -474,8 +474,10 @@ local function step()
 	local root = SwimController.root()
 	local length = SwimController.length()
 	local mouth = if root then root.CFrame:PointToWorldSpace(Size.mouthOffset(length)) else nil
-	-- (× a Reef Shark's Blood Sense frenzy, Perks.sense: ForageService allows the same)
-	local _, suction = Perks.sense(SwimController.character(), now)
+	-- (× a Reef Shark's Blood Sense frenzy, Perks.sense, and an Angler Lure part,
+	-- Perks.exotic: ForageService allows the same)
+	local _, sense = Perks.sense(SwimController.character(), now)
+	local suction = sense * Perks.exotic(SwimController.character()).reach
 	local reach = (Size.reach(length) * Forage.REACH_SCALE + Forage.REACH_BONUS) * suction
 	local pullRange = reach * Forage.PULL
 	table.clear(moveParts)

@@ -260,7 +260,11 @@ end
 function SwimController.turnRate(): number
 	local length = SwimController.length()
 	local eased = Size.raw(length) / math.max(length, 1e-3)
-	return Size.turnRate(length) * SwimController.stats().turn * eased ^ swim.bigTurn
+	-- (× a Veil Tail's tighter turns, Perks.exotic)
+	return Size.turnRate(length)
+		* SwimController.stats().turn
+		* eased ^ swim.bigTurn
+		* Perks.exotic(character).turn
 end
 
 function SwimController.root(): BasePart?
@@ -289,7 +293,8 @@ function SwimController.dash(seconds: number?, turn: number?, free: boolean?): b
 	if not free then
 		SwimController.dashCharge = 0
 	end
-	dashUntil = clock + (seconds or swim.dashSeconds)
+	-- (a Narwhal Horn carries a Dash or a Torpedo further, Perks.exotic)
+	dashUntil = clock + (seconds or swim.dashSeconds) * Perks.exotic(character).dash
 	dashTurn = swim.dashTurn * (turn or 1)
 	dashStarted = true
 	local length = SwimController.length()
@@ -430,7 +435,9 @@ local function step(dt: number)
 	local upgrades = if ClientState.current then ClientState.current.upgrades else nil
 	local stats = SwimController.stats()
 	local turnRate = SwimController.turnRate()
-	local top = Size.topSpeed(length) * Perks.speed(upgrades) * stats.speed
+	local exotic = Perks.exotic(character)
+	-- (× a Sail Fin's top speed, Perks.exotic: SpeedService allows the same)
+	local top = Size.topSpeed(length) * Perks.speed(upgrades) * stats.speed * exotic.speed
 	-- A Kelp Wrap slows you while it heals (the PvP counterplay)
 	local healing = if character then character:GetAttribute("Healing") else nil
 	if typeof(healing) == "number" and healing > Timing.clock() then
@@ -493,11 +500,12 @@ local function step(dt: number)
 		intent = 0
 	end
 
-	-- The Dash: a burst that recharges (Quick Recovery makes it recharge faster)
+	-- The Dash: a burst that recharges (Quick Recovery makes it recharge faster, and a
+	-- Puffball Nibbler faster again, Perks.exotic)
 	local boosting = clock < dashUntil
 	if not boosting then
-		SwimController.dashCharge =
-			math.min(1, SwimController.dashCharge + dt * Perks.boost(upgrades) / swim.dashRecharge)
+		local rate = Perks.boost(upgrades) * Perks.of(exotic.recharge, "Dash")
+		SwimController.dashCharge = math.min(1, SwimController.dashCharge + dt * rate / swim.dashRecharge)
 	end
 	SwimController.boosting = boosting
 	-- A stick pulled back with nothing else held: brake, then back up, still facing

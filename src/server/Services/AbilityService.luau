@@ -45,10 +45,12 @@ local readyAt: { [Player]: { [string]: number } } = {}
 local burrows: { [Player]: Burrow } = {}
 
 -- An ability's cooldown for this player (the Outfitter's Quick Recovery shortens every
--- fish's own: Perks.boost), a little short of the client's for latency
-local function cooldownOf(player: Player, seconds: number): number
+-- fish's own: Perks.boost, and a variant its own ability's: Perks.exotic), a little
+-- short of the client's for latency
+local function cooldownOf(player: Player, id: string, seconds: number): number
 	local data = DataService.get(player)
-	return seconds * SLACK / Perks.boost(if data then data.upgrades else nil)
+	local variant = Perks.of(Perks.exotic((FishService.character(player))).recharge, id)
+	return seconds * SLACK / (Perks.boost(if data then data.upgrades else nil) * variant)
 end
 
 -- The signature ability of the fish a player swims as
@@ -93,7 +95,7 @@ local function endBurrow(player: Player)
 	local now = Timing.clock()
 	local mine: { [string]: number } = readyAt[player] or {}
 	readyAt[player] = mine
-	mine.Burrow = now + cooldownOf(player, Abilities.Burrow.cooldown or 8)
+	mine.Burrow = now + cooldownOf(player, "Burrow", Abilities.Burrow.cooldown or 8)
 	local character = FishService.character(player)
 	if character then
 		character:SetAttribute("Burrowed", nil)
@@ -121,8 +123,10 @@ local function use(player: Player, id: any)
 	if now < (mine[id] or 0) then
 		return
 	end
+	-- (a variant may make its ability last longer or reach further, Perks.exotic)
+	local exotic = Perks.exotic(character)
 	if id == "PuffUp" then
-		character:SetAttribute("Puffed", now + (ability.seconds or 4))
+		character:SetAttribute("Puffed", now + (ability.seconds or 4) * Perks.of(exotic.duration, id))
 	elseif id == "Burrow" then
 		local length = lengthOf(character)
 		if not againstCover(character, root, length * (ability.reach or 0.9) + length * 0.3) then
@@ -138,12 +142,12 @@ local function use(player: Player, id: any)
 		character:SetAttribute("FlashAt", now)
 		local stun = (PredatorService :: any).stun
 		if typeof(stun) == "function" then
-			stun(root.Position, ability.reach or 48, ability.stun or 2.5)
+			stun(root.Position, (ability.reach or 48) * Perks.of(exotic.range, id), ability.stun or 2.5)
 		end
 	else
 		return
 	end
-	mine[id] = now + cooldownOf(player, ability.cooldown or 0)
+	mine[id] = now + cooldownOf(player, id, ability.cooldown or 0)
 end
 
 function AbilityService.start()

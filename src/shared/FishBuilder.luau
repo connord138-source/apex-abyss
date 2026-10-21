@@ -38,7 +38,17 @@ function FishBuilder.makePart(
 	length: number
 ): BasePart
 	local part: BasePart
-	if spec.shape == "Wedge" then
+	local model = if spec.mesh then FishBuilder.partModel(spec.mesh) else nil
+	if model then
+		-- (an import comes in anchored: one anchored piece would pin the whole fish)
+		part = model:Clone()
+		part.Anchored = false
+		for _, child in part:GetChildren() do
+			if not child:IsA("SurfaceAppearance") then
+				child:Destroy()
+			end
+		end
+	elseif spec.shape == "Wedge" then
 		part = Instance.new("WedgePart")
 	elseif spec.shape == "Block" then
 		part = Instance.new("Part")
@@ -53,12 +63,14 @@ function FishBuilder.makePart(
 		mesh.Parent = part
 	end
 	part.Name = spec.name
-	part.Material = spec.material or Enum.Material.SmoothPlastic
-	part.Color = if spec.color == "eye"
-		then EYE
-		elseif spec.color == "fixed" then spec.fixed or Color3.new(1, 1, 1)
-		else (look :: any)[spec.color]
-	part.Reflectance = if spec.color == "eye" then 0.25 else 0.04
+	if model == nil then
+		part.Material = spec.material or Enum.Material.SmoothPlastic
+		part.Color = if spec.color == "eye"
+			then EYE
+			elseif spec.color == "fixed" then spec.fixed or Color3.new(1, 1, 1)
+			else (look :: any)[spec.color]
+		part.Reflectance = if spec.color == "eye" then 0.25 else 0.04
+	end
 	part.Transparency = spec.transparency or 0
 	part.CanCollide = false
 	part.CanQuery = false
@@ -124,6 +136,26 @@ function FishBuilder.build(
 	character:SetAttribute("LookFin", look.fin)
 	body.Parent = character
 	return body
+end
+
+-- A rolled part's imported model (parts_glb, docs/ASSETS.md): the MeshPart filed as
+-- ReplicatedStorage.PartModels.<PartId>, stamped Facing "+Z" (Cosmetics turns it round).
+-- Nil while it isn't imported, and the part-built piece is drawn.
+function FishBuilder.partModel(name: string): MeshPart?
+	local folder = ReplicatedStorage:FindFirstChild("PartModels")
+	local model = if folder then folder:FindFirstChild(name) else nil
+	return if model and model:IsA("MeshPart") then model else nil
+end
+
+-- An exotic variant's imported, rigged model (variants_fbx): a Model like a species'
+-- in ReplicatedStorage.VariantModels.<VariantId>, nil while it isn't imported
+function FishBuilder.variantTemplate(name: string): Model?
+	local folder = ReplicatedStorage:FindFirstChild("VariantModels")
+	local template = if folder then folder:FindFirstChild(name) else nil
+	if template and template:IsA("Model") and template:FindFirstChildWhichIsA("MeshPart", true) then
+		return template
+	end
+	return nil
 end
 
 -- The imported, rigged model for a species (docs/ASSETS.md):

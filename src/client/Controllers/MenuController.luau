@@ -1838,20 +1838,17 @@ function MenuController.openIndex(startTab: string?)
 						denSection(
 							list,
 							next(),
-							"Body parts · one per slot, from rolls, on any fish · looks only, no stats"
+							"Body parts · one per slot, from rolls, on any fish · each with a small bonus, never bite damage"
 						)
 						for _, part in Config.Exotics.parts do
 							local status, color = owned((s.parts or {})[part.id] == true)
-							local extra = if part.id == "AnglerLure"
-								then " Lights up dark water like an Anglerfish's lure."
-								else ""
 							infoRow(
 								list,
 								next(),
 								`{part.name} · {part.slot}`,
-								`{part.blurb}{extra} Roll it · about {RollOdds.oneIn(1 / part.chance)}. Duplicates turn into {Ui.number(
-									part.refund
-								)} coral.`,
+								`{part.blurb} Bonus: {part.bonus.text}. Roll it · about {RollOdds.oneIn(
+									1 / part.chance
+								)}. Duplicates turn into {Ui.number(part.refund)} coral.`,
 								Tiers.byId.Abyssal.color,
 								status,
 								color
@@ -1861,7 +1858,7 @@ function MenuController.openIndex(startTab: string?)
 						denSection(
 							list,
 							next(),
-							"Exotic variants · each reshapes one fish, from rolls as that fish"
+							"Exotic variants · each a rare form of one fish, from rolls as that fish, with a small bonus to its ability"
 						)
 						for _, variant in Config.Exotics.variants do
 							local fish = Config.Species.byId[variant.species]
@@ -1870,9 +1867,9 @@ function MenuController.openIndex(startTab: string?)
 								list,
 								next(),
 								`{variant.name} · {if fish then fish.name else variant.species} only`,
-								`{variant.blurb} Roll it as {if fish then fish.name else "that fish"} · about {RollOdds.oneIn(
-									1 / variant.chance
-								)}.`,
+								`{variant.blurb} Bonus: {variant.bonus.text}. Roll it as {if fish
+									then fish.name
+									else "that fish"} · about {RollOdds.oneIn(1 / variant.chance)}.`,
 								Tiers.byId.Abyssal.color,
 								status,
 								color

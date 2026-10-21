@@ -12,6 +12,11 @@
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
 --   props, food and den furniture (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
+--   rolled parts (GLB, parts_glb: AnglerLure, NarwhalHorn, SawSnout, SailFin, VeilTail)
+--       -> ReplicatedStorage.PartModels.<PartId>       (the MeshPart, stamped Facing "+Z")
+--   exotic variants (rigged FBX, variants_fbx: Puffball, Sabrecuda, Porcupine,
+--   DragonMoray, Hammerhead, Deepfang)
+--       -> ReplicatedStorage.VariantModels.<VariantId> (a Model holding the skinned MeshPart)
 --   sea life (rigged FBX, ambient_fbx: Turtle, Manta, Stingray, Humpback, Crab)
 --       -> ReplicatedStorage.AmbientModels.<Name>     (a Model with bones; each is given a
 --          SurfaceAppearance from its texture, so the game can tint it: the edible crab
@@ -40,6 +45,11 @@ local PREY = {
 	Opaleye = true, KelpBass = true, BlueTang = true, Lingcod = true, Rattail = true, Viperfish = true,
 	Hatchetfish = true, HumpheadWrasse = true,
 }
+-- The rolled parts and the exotic variants (parts_glb, variants_fbx, 2026-10-21), worn
+-- by Shared/Cosmetics
+local PARTS = { AnglerLure = true, NarwhalHorn = true, SawSnout = true, SailFin = true, VeilTail = true }
+local VARIANTS =
+	{ Puffball = true, Sabrecuda = true, Porcupine = true, DragonMoray = true, Hammerhead = true, Deepfang = true }
 -- The sea life (ambient_fbx, 2026-10-19), read by AmbientLifeController and the
 -- edible crabs (ForageController)
 local AMBIENT = { Turtle = true, Manta = true, Stingray = true, Humpback = true, Crab = true }
@@ -149,6 +159,18 @@ for _, item in workspace:GetChildren() do
 				item:Destroy()
 			end
 			moved += 1
+		elseif VARIANTS[name] and rigged then
+			print(`[organize_imports] {name}: rigged variant{if item:FindFirstChild("Jaw", true) then ", Jaw" else ""}`)
+			replaceIn(folder("VariantModels"), name, item)
+			moved += 1
+		elseif PARTS[name] and primary then
+			-- A part is one static mesh: keep the MeshPart, which faces +Z (the code turns it round)
+			primary.Name = name
+			primary:SetAttribute("Facing", "+Z")
+			replaceIn(folder("PartModels"), name, primary)
+			item:Destroy()
+			print(`[organize_imports] {name}: part`)
+			moved += 1
 		elseif AMBIENT[name] and rigged then
 			replaceIn(folder("AmbientModels"), name, item)
 			print(`[organize_imports] {name}: rigged sea life`)
@@ -158,7 +180,12 @@ for _, item in workspace:GetChildren() do
 			moved += 1
 		end
 	elseif item:IsA("MeshPart") then
-		if PREY[name] then
+		if PARTS[name] then
+			item:SetAttribute("Facing", "+Z")
+			replaceIn(folder("PartModels"), name, item)
+			print(`[organize_imports] {name}: part`)
+			moved += 1
+		elseif PREY[name] then
 			item:SetAttribute("Facing", "+Z") -- a static GLB: the code turns it round
 			replaceIn(folder("PreyModels"), name, item)
 			moved += 1

@@ -1499,15 +1499,15 @@ local function step(dt: number)
 	local mouth: Vector3? = nil
 	local reach = Size.reach(length)
 	local inHub = false
-	-- A Reef Shark's Blood Sense frenzy draws prey in from further (Perks.sense; the
-	-- server allows the same)
+	-- A Reef Shark's Blood Sense frenzy draws prey in from further (Perks.sense), and
+	-- so does an Angler Lure part (Perks.exotic; the server allows the same)
 	local suction = 1
 	if root then
 		mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
 		local character = SwimController.character()
 		inHub = character ~= nil and character:GetAttribute("InHub") == true
 		local _, pull = Perks.sense(character, now)
-		suction = pull
+		suction = pull * Perks.exotic(character).reach
 	end
 
 	table.clear(parts)

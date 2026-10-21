@@ -422,6 +422,57 @@ Import on the PC:
    out from it; the bookshelf's back against the wall when snapped. A piece facing the
    wrong way is its `front` in `Config/Dens` (90 for a GLB facing +X, 180 for -Z).
 
+### Rolled parts and variants (`parts_glb`, `variants_fbx`, 2026-10-21)
+
+The approved boards (`assets/concepts/PartsBoard.jpg`, sheet B; `VariantsBoard.jpg`)
+as real models: five parts (AnglerLure, NarwhalHorn, SawSnout, SailFin, VeilTail) and
+every fish's variant (Puffball, Sabrecuda, Porcupine, DragonMoray, Hammerhead,
+Deepfang).
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/`):
+
+1. `python3 tools/props/parts_variants_refs.py`: each part's crop of PartsSheetB, large
+   (`assets/tripo/parts_refs/`), and each variant's crop over its species' own model
+   sheet (`variant_refs/`).
+2. `python tools/tripo.py run tools/tripo_jobs_parts_sheets.json` and
+   `..._variant_sheets.json` (Nano Banana, 5 credits each): the part alone, no fish (the
+   lure, sail and tail took a redo: a lamp base, a plank and a whole betta), each
+   variant side-on and straight (the Dragon Moray redone for its horns and crest).
+   `parts_variants_refs.py --fix` touches up two: the Sabrecuda's sheet drew the fish
+   twice (top copy cut out), the Veil Tail's stem came out terracotta (recoloured).
+3. `..._parts_models.json`, `..._variant_models.json`: image_to_model (30 each).
+4. `tools/props/strip_normals.py` (one each), `safe_colors.py` (Deepfang and DragonMoray
+   with `--plum`, the Porcupine with the new `--olive`: its tan body went vivid orange
+   and read as the Puffball).
+5. Parts: `python3.11 tools/props/parts_prep.py <safe> <out>` squares each up (front,
+   toward the fish's nose, on Blender +Y = glTF -Z; up +Z; centred on its box), adds an
+   emissive map from its cyan texels and writes `parts.json` (each one's box and
+   attach point, in units of its longest side, the game's frame), which
+   `Cosmetics` `PART_MODELS` copies. Variants: `rig_fish.py` like the species
+   (`--jaw` Hammerhead, `--jaw --flip` Sabrecuda, `--segments 7` DragonMoray), checked
+   with `fish_check.py` and `jaw_check.py`.
+6. Screened: 14 part images (Color, ORM, Emissive) and 6 variant colour maps, as
+   packed, with the classifier: none flagged, highest 0.035.
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (`parts_glb` into `assets/glb/parts/`, `variants_fbx`
+   into `assets/fbx/variants/`).
+2. **File → Import 3D**: the five GLBs (no rig), then the six FBX with the rig and
+   textures on, **Import All**.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar: parts go to
+   `ReplicatedStorage.PartModels.<PartId>` (the MeshPart, `Facing` "+Z"), variants to
+   `ReplicatedStorage.VariantModels.<VariantId>`; it prints each. **Save the place.**
+
+What the code does with them: `Cosmetics` hangs a part's model on its anchor (Head,
+Body1, Stalk) by its attach point, riding the bone like the part-built pieces, and
+turns a "+Z" model round; until it's imported the part-built piece is drawn. A
+variant with a model replaces the body's mesh on every client (the species' mesh comes
+back when it's taken off); a shade tints the variant's own texture (the shade skins are
+made per species texture). Facing check: a horn or saw pointing back, or a sail whose
+tall end trails, is a model whose `Facing` should be "-Z" (set it on the MeshPart in
+`PartModels`).
+
 ## Shade skins (tools/shades)
 
 Every shade is a texture per fish, made offline from the fish's own texture

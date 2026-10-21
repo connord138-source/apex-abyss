@@ -99,7 +99,8 @@ local function collect(player: Player, index: any)
 	end
 	local length = character:GetAttribute("Length")
 	local fishLength = if typeof(length) == "number" then length else 2
-	local reach = Perks.shellReach(fishLength, data.upgrades, data.boosts, Timing.now())
+	local reach =
+		Perks.shellReach(fishLength, data.upgrades, data.boosts, Timing.now(), Perks.exotic(character).find)
 	-- Slack for the server seeing the fish a little in the past
 	local slack = Size.topSpeed(fishLength) * Perks.speed(data.upgrades) * 2 * 0.35 + 4
 	if (root.Position - spot.position).Magnitude > reach + fishLength * 0.5 + slack then

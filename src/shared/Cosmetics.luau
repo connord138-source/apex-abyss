@@ -297,6 +297,88 @@ local PARTS: { [string]: Cosmetic } = {
 	},
 }
 
+-- The rolled parts' Tripo models (owner, 2026-10-21: the approved PartsBoard's
+-- legendary sheet; parts_glb, ReplicatedStorage.PartModels.<PartId>). Each hangs on
+-- `parent` like the part-built pieces above, its longest side `length` of the fish's
+-- length, its attach point (where it meets the fish) at `c0` there. `box` and
+-- `attach` are the model's own proportions and that point, in units of its longest
+-- side (tools/props/parts_prep.py's parts.json). Until it's imported the part-built
+-- piece is drawn.
+type PartFit = {
+	parent: string,
+	length: number,
+	c0: CFrame,
+	box: Vector3,
+	attach: Vector3,
+	light: Color3?,
+}
+local PART_MODELS: { [string]: PartFit } = {
+	-- A segmented stalk from the top of the head to a crystal bulb dangling ahead of
+	-- the mouth
+	AnglerLure = {
+		parent = "Head",
+		length = 0.42,
+		c0 = CFrame.new(0, 0.13, 0.02),
+		box = Vector3.new(0.3424, 0.9738, 1),
+		attach = Vector3.new(-0.0457, -0.0229, 0.5),
+		light = Color3.fromRGB(120, 235, 255),
+	},
+	NarwhalHorn = {
+		parent = "Head",
+		length = 0.56,
+		c0 = CFrame.new(0, 0.03, -0.13) * CFrame.Angles(math.rad(8), 0, 0),
+		box = Vector3.new(0.3269, 0.3213, 1),
+		attach = Vector3.new(0.0037, -0.0046, 0.5),
+	},
+	SawSnout = {
+		parent = "Head",
+		length = 0.42,
+		c0 = CFrame.new(0, -0.02, -0.12),
+		box = Vector3.new(0.358, 0.1295, 1),
+		attach = Vector3.new(0.0045, -0.0005, 0.5),
+	},
+	-- Its foot a little into the back, the tall end forward
+	SailFin = {
+		parent = "Body1",
+		length = 0.52,
+		c0 = CFrame.new(0, 0.13, 0.08),
+		box = Vector3.new(0.1204, 0.4918, 1),
+		attach = Vector3.new(0, -0.2459, 0.0002),
+	},
+	-- Its stem round the tail stalk, the veil flowing out behind the fish's own tail
+	VeilTail = {
+		parent = "Stalk",
+		length = 0.48,
+		c0 = CFrame.new(0, 0, -0.02),
+		box = Vector3.new(0.3083, 0.8497, 1),
+		attach = Vector3.new(0.07, 0.0079, -0.5),
+	},
+}
+-- (a static GLB faces +Z, the fish -Z: turned round about its own middle)
+local MODEL_TURN = CFrame.Angles(0, math.pi, 0)
+
+-- A rolled part's model as one piece to hang (nil until it's imported)
+local function modelSpecs(id: string): { PartSpec }?
+	local fit = PART_MODELS[id]
+	local template = if fit then FishBuilder.partModel(id) else nil
+	if fit == nil or template == nil then
+		return nil
+	end
+	local turn = if template:GetAttribute("Facing") == "-Z" then CFrame.new() else MODEL_TURN
+	local spec: PartSpec = {
+		name = id,
+		parent = fit.parent,
+		size = fit.box * fit.length,
+		c0 = fit.c0,
+		c1 = turn * CFrame.new(fit.attach * fit.length),
+		shape = "Block",
+		color = "fixed",
+		mesh = id,
+		light = fit.light,
+	}
+	return { spec }
+end
+
 local VARIANTS: { [string]: VariantShape } = {
 	Puffball = {
 		scale = {
@@ -1347,32 +1429,71 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 	aura(core, shade, length)
 end
 
+-- An exotic variant with its own model (variants_fbx, VariantModels.<VariantId>) is
+-- drawn as that mesh instead of its species' (owner, 2026-10-21: "a whole new model,
+-- not pieces stuck on"), and the species' comes back when it's taken off. The new
+-- mesh is built like any (FishBuilder.buildMesh, its MeshPlan the variant's id, so
+-- the species' skins don't go on it: a shade tints its own texture). Returns the mesh
+-- now on the body.
+local function swapMesh(body: Model, mesh: Model, variant: string?, length: number): Model
+	local want = if variant then FishBuilder.variantTemplate(variant) else nil
+	if want == nil then
+		local current = body:GetAttribute("MeshPlan")
+		if typeof(current) ~= "string" or Config.Exotics.variantsById[current] == nil then
+			return mesh
+		end
+		local plan = body:GetAttribute("Plan")
+		want = FishBuilder.meshTemplate(if typeof(plan) == "string" then plan else nil)
+	end
+	if want == nil or body:GetAttribute("MeshPlan") == want.Name then
+		return mesh
+	end
+	local _, joint = primaryOf(mesh)
+	local root = if joint then joint.Part0 else nil
+	if root == nil then
+		return mesh
+	end
+	stripMesh(body, mesh)
+	mesh:Destroy()
+	FishBuilder.buildMesh(body, root, want, length)
+	local built = body:FindFirstChild("Mesh")
+	return if built and built:IsA("Model") then built else mesh
+end
+
+-- Dresses a body (see above). Returns true when a variant's own model replaced the
+-- mesh (or the species' came back), so an animator must find the bones again.
 function Cosmetics.apply(
 	body: Model,
 	look: FishBuilder.Look,
 	dress: Dress,
 	length: number,
 	skinReady: ((Instance) -> boolean)?
-)
-	local mesh = body:FindFirstChild("Mesh")
-	if body:GetAttribute("Mesh") and mesh and mesh:IsA("Model") then
+): boolean
+	local found = body:FindFirstChild("Mesh")
+	if body:GetAttribute("Mesh") and found and found:IsA("Model") then
+		local mesh = swapMesh(body, found, dress.variant, length)
+		local rebuilt = mesh ~= found
 		stripMesh(body, mesh)
 		paintMesh(body, dress.shade, length, skinReady)
 		local anchors, dims, partScale = meshAnchors(body)
 		local bones = meshBones(mesh)
 		local variant = if dress.variant then VARIANTS[dress.variant] else nil
 		if variant then
-			addMeshParts(body, mesh, extrasOf(variant, dims), look, anchors, bones)
+			-- (a variant drawn as its own model has its horns and fangs already)
+			if body:GetAttribute("MeshPlan") ~= dress.variant then
+				addMeshParts(body, mesh, extrasOf(variant, dims), look, anchors, bones)
+			end
 			body:SetAttribute("MeshScale", variant.meshScale or 1)
 		end
 		for _, slot in Config.Exotics.SLOTS do
 			local id = dress.parts[slot]
 			local cosmetic = if id then PARTS[id] else nil
-			if cosmetic then
-				addMeshParts(body, mesh, scaledSpecs(cosmetic.parts, partScale), look, anchors, bones)
+			if cosmetic and id then
+				local specs = modelSpecs(id) or cosmetic.parts
+				addMeshParts(body, mesh, scaledSpecs(specs, partScale), look, anchors, bones)
 			end
 		end
-		return
+		return rebuilt
 	end
 	strip(body)
 	local variant = if dress.variant then VARIANTS[dress.variant] else nil
@@ -1383,8 +1504,8 @@ function Cosmetics.apply(
 	for _, slot in Config.Exotics.SLOTS do
 		local id = dress.parts[slot]
 		local cosmetic = if id then PARTS[id] else nil
-		if cosmetic then
-			addParts(body, cosmetic.parts, look)
+		if cosmetic and id then
+			addParts(body, modelSpecs(id) or cosmetic.parts, look)
 			hide(body, cosmetic.hides)
 		end
 	end
@@ -1393,6 +1514,7 @@ function Cosmetics.apply(
 		reshape(body, variant)
 	end
 	paint(body, look, dress.shade, length)
+	return false
 end
 
 -- Window skins in the world, every frame once the camera has moved (FishAnimator binds
