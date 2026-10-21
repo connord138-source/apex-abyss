@@ -1364,7 +1364,23 @@ local function buildBiomes(parent: Instance)
 	-- bit into its wall, crystals, glow tubes, glass sponges and the glowing trail
 	-- (TrenchDress.luau, its own Random); under Rocks, so Shared/Ground sees the bones
 	do
-		local trenchStats = TrenchDress.build(folder("Trench", rocks), groundAt, features.lair)
+		-- (the walls' crystals are seated by rays against the rock alone)
+		local terrainOnly = RaycastParams.new()
+		terrainOnly.FilterType = Enum.RaycastFilterType.Include
+		terrainOnly.FilterDescendantsInstances = { workspace.Terrain }
+		local trenchStats = TrenchDress.build(
+			folder("Trench", rocks),
+			groundAt,
+			features.lair,
+			function(origin: Vector3, direction: Vector3): (Vector3?, Vector3?)
+				local hit = workspace:Raycast(origin, direction, terrainOnly)
+				if hit then
+					return hit.Position, hit.Normal
+				end
+				return nil, nil
+			end,
+			features.skullLedge
+		)
 		print(
 			`[Trench] the Leviathan's Spine: {trenchStats.parts} parts ({trenchStats.solid} solid, {trenchStats.glow} glowing), {trenchStats.models} models and {trenchStats.standins} stand-ins, {trenchStats.lights} lights`
 		)

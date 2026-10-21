@@ -71,6 +71,9 @@ if os.environ.get("FOG_COLOR"):
 if os.environ.get("AMBIENT"):
     AMBIENT = tuple(float(v) for v in os.environ["AMBIENT"].split(","))
 SUN = float(os.environ.get("SUN", "3.0"))
+EMIT = float(os.environ.get("EMIT", "1"))  # imported glow maps' strength
+# ...per model (EMIT_BY=LeviathanRib=0.3,GlowEggs=1.8)
+EMIT_BY = {k: float(v) for k, v in (kv.split("=") for kv in os.environ.get("EMIT_BY", "").split(",") if "=" in kv)}
 FONTS = {
     "lucky": os.path.join(REPO, "tools/marketing/fonts/LuckiestGuy-Regular.ttf"),
     "black": "/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf",
@@ -443,6 +446,9 @@ def glb(name):
                     for link in list(node.inputs["Metallic"].links):
                         mat.node_tree.links.remove(link)
                     node.inputs["Metallic"].default_value = 0.0
+                    # a glow map's strength as the game sets it (EMIT=, TrenchDress `shine`)
+                    if node.inputs["Emission Strength"].default_value > 0:
+                        node.inputs["Emission Strength"].default_value *= EMIT_BY.get(name, EMIT)
     for o in new:
         bpy.data.objects.remove(o, do_unlink=True)
     GLB_CACHE[name] = (data, (ext.x, ext.z, ext.y))

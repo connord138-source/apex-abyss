@@ -88,6 +88,68 @@ local function groundAt(x, z)
 	return Vector3.new(x, known, z), Vector3.new(0, 1, 0)
 end
 
+-- A ray against the fill ops (the Trench's wall growth, TrenchDress `wall`): marches 2
+-- studs at a time, a point solid when the last op holding it isn't Air (Terrain's fills
+-- apply in order), then bisects the step it crossed. The normal points back along the
+-- ray (good enough to seat a cluster).
+local function inside(op, p)
+	if op.kind == "ball" then
+		return (p - op.center).Magnitude < op.radius
+	end
+	local l = op.cframe:PointToObjectSpace(p)
+	if op.kind == "cylinder" then
+		return math.abs(l.Y) <= op.height / 2 and l.X * l.X + l.Z * l.Z <= op.radius * op.radius
+	end
+	local h = op.size / 2
+	return math.abs(l.X) <= h.X and math.abs(l.Y) <= h.Y and math.abs(l.Z) <= h.Z
+end
+local function reach(op)
+	if op.kind == "ball" then
+		return op.radius
+	elseif op.kind == "cylinder" then
+		return math.sqrt(op.radius ^ 2 + (op.height / 2) ^ 2)
+	end
+	return op.size.Magnitude / 2
+end
+local function wallRay(origin, direction)
+	local length = direction.Magnitude
+	local unit = direction.Unit
+	local list = {}
+	for _, op in near do
+		local to = op.center - origin
+		local t = math.clamp(to:Dot(unit), 0, length)
+		if (origin + unit * t - op.center).Magnitude <= reach(op) then
+			table.insert(list, op)
+		end
+	end
+	local function solid(p)
+		for i = #list, 1, -1 do
+			local op = list[i]
+			if inside(op, p) then
+				return op.material.Name ~= "Air"
+			end
+		end
+		return false
+	end
+	local t = 0
+	while t <= length do
+		if solid(origin + unit * t) then
+			local a, b = math.max(t - 2, 0), t
+			for _ = 1, 5 do
+				local m = (a + b) / 2
+				if solid(origin + unit * m) then
+					b = m
+				else
+					a = m
+				end
+			end
+			return origin + unit * b, -unit
+		end
+		t += 2
+	end
+	return nil, nil
+end
+
 USE_PROPS = USE_PROPS_ENV
 local root = Instance.new("Folder")
 root.Name = "World"
@@ -121,7 +183,7 @@ if BIOME == "Wreck" then
 	views = Wrecks.views
 	table.insert(views, { name = "bay", from = Vector3.new(-380, 150, 120), to = Vector3.new(-660, -10, -10), fov = 70 })
 elseif BIOME == "Trench" then
-	summary = TrenchDress.build(folder, groundAt, features.lair)
+	summary = TrenchDress.build(folder, groundAt, features.lair, wallRay, features.skullLedge)
 	views = TrenchDress.views
 elseif BIOME == "Kelp" then
 	summary = KelpDress.build(folder, folder, groundAt)

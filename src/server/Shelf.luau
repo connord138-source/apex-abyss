@@ -78,6 +78,8 @@ export type Features = {
 	-- The Giant Squid's lair: a cave bitten into the Trench's wall at its foot (`mouth`
 	-- on the canyon's side, `into` the way it runs into the rock; TrenchDress.luau)
 	lair: { mouth: Vector3, into: Vector3, radius: number, depth: number }?,
+	-- The ledge the Leviathan's skull rests on (`top` its middle, `into` toward its wall)
+	skullLedge: { top: Vector3, into: Vector3 }?,
 	-- The Blue Hole: a sinkhole through the reef's sand into a lined shaft, its
 	-- highway's centreline (`path`, rim first, `halfWidth` either side) and the
 	-- tunnel out through the drop-off (ReefDress dresses all three)
@@ -1058,7 +1060,12 @@ end
 
 -- Where the Squid's Lair is bitten into the Trench's wall and the Blue Hole sunk in
 -- the reef (the dressing modules read them from Features)
-local LAIR = { r = 1330, side = 1, radius = 24, depth = 66, rise = 26 }
+local LAIR = { r = 1112, side = 1, radius = 36, depth = 92, rise = 34 }
+-- The rock the Leviathan's horned skull rests on, a promontory jutting from the
+-- canyon's right wall at the spine's head end (TrenchDress reads
+-- Features.skullLedge): `height` its top over the floor, `out` how far it juts from
+-- the wall, `along` its length down the canyon, `seat` the skull's spot in from its tip
+local SKULL_LEDGE = { r = 1240, side = 1, height = 80, out = 140, along = 88, seat = 30 }
 -- The Blue Hole (owner, 2026-10-21: "look how much different your hole looks from the
 -- mockup"; assets/tripo/biome_concepts/ReefScene.png): a wide sinkhole whose sheer
 -- walls step down in bands (a band wider than the one above it leaves an overhang, a
@@ -1088,7 +1095,7 @@ local BLUE_HOLE = {
 }
 -- The stretch of the canyon the Leviathan's Spine lies in (studs from the hub) and
 -- how far either side of its line it reaches
-local SPINE_CLEAR = { from = 1010, to = 1410, half = 76 }
+local SPINE_CLEAR = { from = 1010, to = 1440, half = 110 }
 
 local function landmarkOps(
 	ops: { Op },
@@ -1147,6 +1154,72 @@ local function landmarkOps(
 		Vector3.new(LAIR.radius * 1.6, 6, LAIR.depth)
 	)
 	features.lair = { mouth = mouth, into = into, radius = LAIR.radius, depth = LAIR.depth }
+
+	-- The skull's rock: a craggy mass of slate against the right wall, a flatter seat on
+	-- top, basalt columns stood round its tip and its up-canyon face and boulders at its
+	-- foot, like the concept's dark rock under the skull
+	do
+		local ledgeAngle, ledgeWidth = Seafloor.trenchAxis(SKULL_LEDGE.r)
+		local _, _, ledgeHalf = Seafloor.trenchHalfWidths(ledgeWidth)
+		local ledgeRadial = outward(ledgeAngle)
+		local ledgeInto = Vector3.new(-ledgeRadial.Z, 0, ledgeRadial.X) * SKULL_LEDGE.side
+		local function spot(across: number, along: number, height: number): Vector3
+			local sx, sz = Seafloor.trenchPoint(SKULL_LEDGE.r, SKULL_LEDGE.side * across)
+			return Vector3.new(sx, trench.floorY + height, sz) + ledgeRadial * along
+		end
+		local function frameAt(position: Vector3, tilt: number?): CFrame
+			return CFrame.fromMatrix(position, ledgeInto, Vector3.yAxis) * CFrame.Angles(tilt or 0, 0, 0)
+		end
+		local tip = ledgeHalf - SKULL_LEDGE.out
+		local height = SKULL_LEDGE.height
+		local along = SKULL_LEDGE.along
+		-- the mass, in three tilted lumps stepping up toward the wall
+		Cave.pebble(
+			ops,
+			SLATE,
+			frameAt(spot(tip + 44, 0, height * 0.32), 0.08),
+			Vector3.new(84, height * 0.7, along)
+		)
+		Cave.pebble(
+			ops,
+			SLATE,
+			frameAt(spot(tip + 76, along * 0.1, height * 0.5), -0.06),
+			Vector3.new(SKULL_LEDGE.out - 10, height, along * 0.86)
+		)
+		Cave.pebble(
+			ops,
+			SLATE,
+			frameAt(spot(tip + 104, -along * 0.12, height * 0.62)),
+			Vector3.new(60, height * 1.2, along * 0.7)
+		)
+		-- the seat
+		Cave.pebble(
+			ops,
+			SLATE,
+			frameAt(spot(tip + SKULL_LEDGE.out * 0.45, 0, height - 7)),
+			Vector3.new(SKULL_LEDGE.out * 0.8, 14, along - 14)
+		)
+		-- basalt columns round the tip and up the canyon-facing side, in steps
+		local columns = {
+			{ 4, -0.3, 0.7, 10 },
+			{ 2, -0.05, 0.86, 12 },
+			{ 6, 0.22, 0.62, 9 },
+			{ 14, 0.42, 0.5, 8 },
+			{ 22, -0.52, 0.8, 11 },
+			{ 46, -0.6, 0.92, 12 },
+			{ 72, -0.58, 1.02, 10 },
+			{ 98, -0.55, 1.12, 13 },
+		}
+		for _, c in columns do
+			local tall = height * c[3]
+			cylinder(ops, BASALT, spot(tip + c[1], along * c[2], tall / 2 - 2), c[4], tall + 2)
+		end
+		-- fallen boulders at its foot
+		for k = 1, 4 do
+			ball(ops, SLATE, spot(tip - 8 + k * 9, along * (k % 2 - 0.5) * 1.1, 4), 9 + k * 2)
+		end
+		features.skullLedge = { top = spot(tip + SKULL_LEDGE.seat, -along * 0.16, height), into = ledgeInto }
+	end
 
 	-- The Blue Hole (BLUE_HOLE, above), on its own Random. The shelf's drum is hollow
 	-- under its top, so the shaft is lined with rock down into the hollow first, then

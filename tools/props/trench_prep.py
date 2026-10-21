@@ -18,7 +18,11 @@ LeviathanRib and SquidBeak). Run strip_normals.py and the screen on the output.
 - LeviathanVertebra, SquidBeak: centred on their boxes.
 - Glow: the bright cyan, teal or violet texels become an emissive map (the colour
   itself over black, opened up a little so no thin bright line sits alone on black,
-  the screen's rule), as tools/props/parts_prep.py does for the rolled parts.
+  the screen's rule), as tools/props/parts_prep.py does for the rolled parts. The
+  bones (the Leviathan's and the heap) and the glass sponges also glow faintly all
+  over in their own colour (BASE_GLOW), so pale bone and glass read pale in the
+  Trench's dark like the concept's, not as grey rock; the egg clutch's glow map is its
+  colour map (for the screen's sake, BASE_GLOW).
 - Variants: TrenchCrystalsViolet (the cyan crystals turned violet, rock unchanged)
   and TrenchGlowTubesCyan (the violet tubes turned cyan), so the walls carry both
   colours like the concept without new models.
@@ -50,7 +54,21 @@ JOBS = {
     "TrenchGlowTubes": ("TrenchGlowTubes", "violet", None),
     "TrenchGlowTubesCyan": ("TrenchGlowTubes", "cyan", ("violet", 0.5)),
     "GlowEggs": ("GlowEggs", "teal", None),
+    "GlassSponge": ("GlassSponge", "pale", None),
     "JellyChain": ("JellyChain", "violet", None),
+}
+# A faint glow all over, as a share of the model's own colour: the bones and sponges
+# read pale in the dark. 1 makes the glow map the colour map itself: the egg clutch's
+# teal eggs over black scored 0.32 on the classifier, and darker bases 0.08-0.26 (its
+# own colour map scores 0.006), so the whole clutch glows in its own colours, the dark
+# rock faintly
+BASE_GLOW = {
+    "LeviathanVertebra": 0.3,
+    "LeviathanRib": 0.3,
+    "LeviathanSkull": 0.3,
+    "BoneHeap": 0.3,
+    "GlassSponge": 0.3,
+    "GlowEggs": 1.0,
 }
 RIB_ASPECT = 0.82  # width / height of the bent rib's box
 RIB_THIN = 0.55  # its cross-section, thinned: Tripo's bone was a femur's girth for a rib
@@ -185,7 +203,7 @@ def glow_map(material, rule: str, name: str) -> float:
     px = pixels(image)
     pick = masks(px)[rule]
     share = float(pick.mean())
-    if share < 0.002:
+    if share < 0.002 and name not in BASE_GLOW:
         return share
     try:
         from scipy import ndimage
@@ -195,8 +213,14 @@ def glow_map(material, rule: str, name: str) -> float:
     except ImportError:
         soft = pick.astype(np.float32)
     rgb = px[..., :3]
-    tint = rgb[pick].mean(0)
-    out = np.where(pick[..., None], rgb, tint) * soft[..., None]
+    if pick.any():
+        tint = rgb[pick].mean(0)
+        out = np.where(pick[..., None], rgb, tint) * soft[..., None]
+    else:
+        out = np.zeros_like(rgb)
+    if name in BASE_GLOW:
+        base = BASE_GLOW[name]
+        out = rgb.copy() if base >= 1 else np.maximum(out, rgb * base)
     h, w = out.shape[:2]
     glow = bpy.data.images.new(f"{name}_Glow", w, h)
     glow.pixels[:] = np.concatenate([out, np.ones((h, w, 1), np.float32)], -1).ravel()
