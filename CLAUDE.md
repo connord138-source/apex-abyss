@@ -1757,6 +1757,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     UnreliableRemoteEvent; `PredatorController` interpolates 0.15 s behind, draws the
     `PreyModels` mesh (parts until imported) with a red PREDATOR tag and health bar.
     A predator with `custom` set skips the plain behaviour (bosses drive it).
+    **Every shelf biome has its own (owner, 2026-10-21: "we need more predator fish
+    too that felt pretty scattered"; there were 8 in all):** a def's `also` lists more
+    waters, each its own group of the same fish (`Predators.groups`, one spawn group
+    per water): Barracuda 6 in the Wreck bay (home), 5 over the Reef, 3 on the kelp's
+    outer edge (respawn 60 s); Reef Shark 7 in the Open Blue and 5 cruising the Reef's
+    outer half (respawn 100 s), 26 in all. Each player is streamed only the creatures
+    within `streamRange` 700 studs of their fish, any hunting them and every boss
+    (`Net.predatorStateTo`); a client hides one it hasn't heard of for `STALE` 1.5 s and
+    starts its path afresh when it's back. The ambusher's lurk spots keep to its
+    sector. New species for every biome are on `assets/concepts/PredatorsBoard.jpg`
+    (sheets `tools/tripo_jobs_predator_concepts.json`), waiting on the owner.
     **Real ground and fluid swimming (owner, 2026-10-13: "the predator fish will
     phase through the sand in the ground ... Their tracking should also be more
     fluid and realistic"):** `Shared/Ground.luau` gives the real ground's top in a

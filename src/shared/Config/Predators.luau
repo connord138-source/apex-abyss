@@ -94,6 +94,10 @@ export type Swim = {
 	under: number?, -- studs under a far fish it comes up from (a lunge from below)
 }
 
+-- A group's water: its band round the hub, its sector, its height off the floor and
+-- how many of it are alive at once
+export type Water = { band: { number }, angles: { number }?, depth: { number }, count: number }
+
 export type PredatorDef = {
 	id: string,
 	name: string,
@@ -113,6 +117,10 @@ export type PredatorDef = {
 	angles: { number }?, -- the sector it keeps to (degrees from +X toward +Z, clockwise; nil = all round)
 	depth: { number }, -- height above the local floor it roams in (min, max; Shared/Seafloor)
 	count: number, -- alive at once
+	-- More waters it hunts, each its own group of the same fish (owner, 2026-10-21:
+	-- "we need more predator fish too that felt pretty scattered": 4 Barracuda had
+	-- roamed the whole shelf ring and 4 Reef Sharks the Open Blue, 8 in all)
+	also: { Water }?,
 	respawn: number, -- seconds after a kill
 	-- A kill's loot, split by damage share (PredatorService): `hauls` in full Hauls of
 	-- each fish's own (Shared/Size haulCap, the same share of a dive at every level;
@@ -180,10 +188,17 @@ local list: { PredatorDef } = {
 		biteCooldown = 1.4,
 		telegraph = 0.7,
 		ignoreBelow = 0.25,
-		band = { 300, 820 },
-		depth = { 8, 120 },
-		count = 4,
-		respawn = 90,
+		-- The wrecks are its home water (an ambusher among the hulls), the Reef's
+		-- heads and arches too, and a few on the kelp's outer edge
+		band = { 500, 830 },
+		angles = { 135, 225 },
+		depth = { 6, 80 },
+		count = 6,
+		also = {
+			{ band = { 500, 830 }, angles = { 225, 135 }, depth = { 6, 90 }, count = 5 } :: Water,
+			{ band = { 320, 480 }, depth = { 8, 60 }, count = 3 } :: Water,
+		},
+		respawn = 60,
 		loot = { hauls = 0.3, dna = 3, coral = 40 }, -- (a solo kill ~1 min of hunting)
 		back = Color3.fromRGB(176, 192, 204),
 		belly = Color3.fromRGB(248, 250, 252),
@@ -242,8 +257,10 @@ local list: { PredatorDef } = {
 		band = { 980, 1440 },
 		angles = { 228, 312 }, -- the Open Blue is shark water (owner, 2026-10-08)
 		depth = { 150, 430 }, -- open water, well off the floor (owner, 2026-10-09)
-		count = 4,
-		respawn = 150,
+		count = 7,
+		-- ...and its namesake: cruising the Coral Reef's outer half, over the heads
+		also = { { band = { 600, 840 }, angles = { 225, 135 }, depth = { 18, 90 }, count = 5 } },
+		respawn = 100,
 		loot = { hauls = 0.6, dna = 6, coral = 120 }, -- (a solo kill ~2 min of hunting)
 		back = Color3.fromRGB(110, 124, 138),
 		belly = Color3.fromRGB(230, 236, 240),
@@ -255,9 +272,26 @@ for _, def in list do
 	byId[def.id] = def
 end
 
+-- Every group to spawn: each kind in its home water, then a copy of it for each of
+-- its `also` waters (the same id, so clients draw it the same)
+local groups: { PredatorDef } = {}
+for _, def in list do
+	table.insert(groups, def)
+	for _, water in (def.also or {}) :: { Water } do
+		local copy = table.clone(def)
+		copy.band, copy.angles, copy.depth, copy.count = water.band, water.angles, water.depth, water.count
+		copy.also = nil
+		table.insert(groups, copy)
+	end
+end
+
 return {
 	list = list,
 	byId = byId,
+	groups = groups,
+	-- A player is streamed the creatures within this many studs of their fish (and
+	-- any hunting them, and every boss); past it the water hides them anyway
+	streamRange = 700,
 	tickSeconds = 0.1, -- the server simulates and streams at this rate
 	roamSpeed = 0.55, -- × speed while roaming
 	-- No creature comes within this many studs of the hub's center (plus half its

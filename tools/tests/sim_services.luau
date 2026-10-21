@@ -73,7 +73,7 @@ sim.Net = {
 	predatorEvent = function(kind: string, index: number, payload: any)
 		table.insert(sim.events, { kind = kind, index = index, payload = payload, at = sim.now })
 	end,
-	predatorState = noop,
+	predatorStateTo = noop,
 	onRequest = noop,
 	notify = noop,
 	-- (the world bosses: boss_sim.luau)

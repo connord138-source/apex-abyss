@@ -86,6 +86,9 @@ local HISTORY = 8 -- stream samples kept per creature
 local MESH_FLIP = CFrame.Angles(0, math.pi, 0)
 local EXTRAPOLATE = 0.25 -- seconds we keep moving past the last sample
 local FADE_SECONDS = 0.7
+-- A creature the stream stops sending (it swam out of range, or we did: the server
+-- sends each player only the creatures near their fish) fades out after this long
+local STALE = 1.5
 local TAG_DISTANCE = 240
 
 type Sample = {
@@ -134,6 +137,7 @@ type Visual = {
 	bodySize: Vector3,
 	tailSize: Vector3,
 	samples: { Sample },
+	heardAt: number, -- the server clock of the last stream entry or spawn heard for it
 	position: Vector3, -- where it's drawn this frame
 	heading: Vector3,
 	mode: string,
@@ -529,6 +533,7 @@ local function build(index: number, def: Def, boss: boolean): Visual
 		bodySize = bodySize,
 		tailSize = tailSize,
 		samples = {},
+		heardAt = 0,
 		position = Vector3.new(0, -500, 0),
 		heading = Vector3.new(1, 0, 0),
 		mode = "dead",
@@ -1023,6 +1028,9 @@ local function step(dt: number)
 	table.clear(frames)
 	local cameraAt = workspace.CurrentCamera.CFrame.Position
 	for _, visual in visuals do
+		if not visual.hidden and now - visual.heardAt > STALE then
+			setHidden(visual, true)
+		end
 		-- Fade in and out
 		local goal = if visual.hidden then 0 else 1
 		if visual.fade ~= goal then
@@ -1328,6 +1336,11 @@ local function onState(packet: any)
 			heading = Vector3.xAxis
 		end
 		local samples = visual.samples
+		-- Back in range after a gap: start its path afresh (no slide from where it was)
+		if at - visual.heardAt > STALE then
+			table.clear(samples)
+		end
+		visual.heardAt = math.max(visual.heardAt, at)
 		local last = samples[#samples]
 		if last == nil or at > last.at then
 			table.insert(samples, { at = at, position = Vector3.new(x, y, z), heading = heading.Unit })
@@ -1385,6 +1398,7 @@ local function onEvent(kind: any, index: any, payload: any)
 		then (myRoot.Position - visual.position).Magnitude
 		else math.huge
 	if kind == "spawned" then
+		visual.heardAt = now
 		if at then
 			table.clear(visual.samples)
 			visual.position = at

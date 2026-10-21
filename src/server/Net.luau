@@ -234,8 +234,8 @@ function Net.treasureResult(player: Player, result: { [string]: any })
 	treasureResult:FireClient(player, result)
 end
 
-function Net.predatorState(packet: { [string]: any })
-	predatorState:FireAllClients(packet)
+function Net.predatorStateTo(player: Player, packet: { [string]: any })
+	predatorState:FireClient(player, packet)
 end
 
 function Net.predatorEvent(kind: string, index: number, payload: { [string]: any })

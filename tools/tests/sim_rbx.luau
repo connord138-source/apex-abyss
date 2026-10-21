@@ -274,6 +274,14 @@ rbx.game = {
 				end,
 			}
 		end
+		if name == "Players" then
+			-- (the sim streams to no one: PredatorService only sends each player what's near)
+			return {
+				GetPlayers = function()
+					return {}
+				end,
+			}
+		end
 		return {}
 	end,
 }

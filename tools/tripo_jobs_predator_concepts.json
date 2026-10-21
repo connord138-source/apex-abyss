@@ -1,0 +1,20 @@
+{
+ "jobs": [
+  {
+   "name": "PredatorSheetA",
+   "group": "predator_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/prey_concepts/RefPreyC.jpg",
+   "prompt": "Using the attached sheets only as a STYLE reference (chunky stylized low-poly 3D game models, visible flat facets, bold clean colors, small simple eyes with a dark pupil and a white glint, never googly or cartoon eyes; a touch more realistic than a toy; menacing but never gory), paint four new predator sea creatures, none of the reference fish, in a grid of two across and two down with wide empty teal space between and around them, on one plain flat soft teal background, each whole in a three-quarter side view, head to the right, its mouth a little open showing its teeth. Top left: a California sea lion, sleek dark chocolate-brown body, long front flippers swept back, small ears, whiskers, a sharp-toothed grin, lithe and fast. Top right: a goliath grouper, huge heavy rounded body, mottled olive and brown with dark vertical bands, a cavernous wide mouth, small eyes. Bottom left: a giant trevally, a deep slab-sided silver-grey body, a steep blunt forehead, dark grey fins, a forked yellowish tail. Bottom right: a mako shark, a sleek torpedo body, metallic indigo-blue back, white belly, pointed snout, long curved white teeth, a tall crescent tail. The inside of every open mouth is dark grey, never pink. No pink, peach, beige or red anywhere. No blood, no text, letters, numbers or watermark, no ground or shadows."
+  },
+  {
+   "name": "PredatorSheetB",
+   "group": "predator_concepts",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/prey_concepts/RefPreyC.jpg",
+   "prompt": "Using the attached sheets only as a STYLE reference (chunky stylized low-poly 3D game models, visible flat facets, bold clean colors, small simple eyes with a dark pupil and a white glint, never googly or cartoon eyes; a touch more realistic than a toy; menacing but never gory), paint four new predator sea creatures, none of the reference fish, in a grid of two across and two down with wide empty teal space between and around them, on one plain flat soft teal background, each whole in a three-quarter side view, head to the right, its mouth a little open showing its teeth. Top left: a bluntnose sixgill shark, a heavy dark brown-grey body, a broad blunt head, glowing green eyes, six gill slits, one small dorsal fin far back. Top right: a wolf eel, a long thick grey-blue eel body with dark round spots, a huge blunt head with heavy jaws and crushing teeth. Bottom left: a goblin shark, a cold steel grey-blue body, a long flat blade-like snout, its jaws thrust far forward out of its mouth showing needle teeth. Bottom right: a black dragonfish, a slender jet-black eel-like fish with huge glassy fangs, a long chin barbel ending in a glowing cyan lure bulb, glowing cyan dots along its side. The inside of every open mouth is dark grey, never pink. No pink, peach, beige or red anywhere. No blood, no text, letters, numbers or watermark, no ground or shadows."
+  }
+ ]
+}

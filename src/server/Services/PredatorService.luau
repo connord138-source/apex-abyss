@@ -18,6 +18,7 @@
 -- at it": both now bite a fish darting in and out at them. A burrowed fish (character attribute `Burrowed`) is never prey, a
 -- puffed one (`Puffed`) takes half a bite and spines the biter, and the Anglerfish's
 -- Lantern Flash stuns them (`PredatorService.stun`).
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -224,6 +225,11 @@ local function randomWaypoint(def: Def): Vector3
 		local bestCover = -1
 		for _ = 1, 6 do
 			local angle = rng:NextNumber(0, 2 * math.pi)
+			local sector = def.angles
+			if sector then
+				local span = (sector[2] - sector[1]) % 360
+				angle = math.rad(sector[1] + rng:NextNumber(0, if span == 0 then 360 else span))
+			end
 			local distance = rng:NextNumber(def.band[1], def.band[2])
 			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 			if not Seafloor.inTrench(x, z, 30) then
@@ -1220,6 +1226,7 @@ end
 
 local function stream(now: number)
 	local list: { { any } } = {}
+	local where: { Predator } = {}
 	for _, predator in predators do
 		local entry: { any } = {
 			predator.index,
@@ -1236,13 +1243,31 @@ local function stream(now: number)
 			math.floor(predator.meter * 100) / 100,
 		}
 		table.insert(list, entry)
+		table.insert(where, predator)
 	end
+	-- Each player gets the creatures near their fish, any hunting them and every boss
+	-- (owner, 2026-10-21: more predators; all ~26 to everyone would be ~35 KB/s each).
 	-- An unreliable packet over its size limit is dropped whole (playtest 2026-10-08:
 	-- with the bigger map's predators and a boss up, every update was dropped), so the
 	-- list goes out a few creatures at a time; the client takes each entry on its own
-	for first = 1, #list, STREAM_BATCH do
-		local last = math.min(first + STREAM_BATCH - 1, #list)
-		Net.predatorState({ at = now, list = table.move(list, first, last, 1, {}) })
+	-- and hides a creature it stops hearing about (PredatorController `STALE`)
+	local range = Predators.streamRange
+	for _, player in Players:GetPlayers() do
+		local _, root = FishService.character(player)
+		local near: { { any } } = {}
+		for i, predator in where do
+			if
+				predator.custom
+				or predator.target == player
+				or (root and (predator.position - root.Position).Magnitude <= range)
+			then
+				table.insert(near, list[i])
+			end
+		end
+		for first = 1, #near, STREAM_BATCH do
+			local last = math.min(first + STREAM_BATCH - 1, #near)
+			Net.predatorStateTo(player, { at = now, list = table.move(near, first, last, 1, {}) })
+		end
 	end
 end
 
@@ -1417,7 +1442,7 @@ PredatorService.orbitWay = orbitWay
 PredatorService.rotateToward = rotateToward
 
 function PredatorService.start()
-	for _, def in Predators.list do
+	for _, def in Predators.groups do
 		for _ = 1, def.count do
 			spawn(make(def, false))
 		end
