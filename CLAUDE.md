@@ -1732,20 +1732,56 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     worm tufts down the middle. WorldService's old Neon ball specks are crystal shards
     (`TrenchDress.speck`, same draws) and the glow gardens' tips flat caps. ~350 parts
     with the models in, 44 models, 18 lights.
-  - **Kelp Shallows** (`src/server/KelpDress.luau`): the Kelp Cathedral at 45°, r 345: 24
-    giant kelp 210 tall in a ring 80 across round an open nave (ordinary `Kelp` models in
-    World.Biomes.Kelp, so they sway), their crowns' fronds reaching in as a roof with the
-    middle open, three light shafts (`Kit.shaft`), sea grass. A tall plant is two GiantKelp
-    stacked: the model is half as wide as tall, so one fitted to 210 drew a plant half as
-    tall. KelpCanopy is in the bundle but unused (from below it read as a spiky tuft).
-    Otter Meadow at 300°: grass, a solid urchin barren, otters and a buoy at the surface
-    (tag `Bobbing`); a lobster-trap and rowboat trail toward the Wreck bay.
-  - **Coral Reef** (`ReefDress.luau`, under `Coral.ReefLandmarks`): the Blue Hole Shelf
-    sinks in the reef's most open stretch near 40°, r 640 (scored against the reef heads
-    and `Features.outcrops`): a coral rim in three colour districts, plate corals down its
-    wall, a glow at the bottom. The Clam Garden near 320°, r 660 (the most open spot): 7
-    solid GiantClams, each a Neon pearl (`ClamPearl`, `Pearl` index, `PlaceMarks`
-    `Pearl<n>`); garden eel patches (`GardenEels`).
+  - **Kelp Shallows** (`src/server/KelpDress.luau`; rebuilt 2026-10-21 to read like its
+    scene, `assets/tripo/biome_concepts/KelpScene.png`, after the owner's "really everything
+    other than the whale, ship and lighthouse needs more detail and more intricacy ... the
+    world should feel full"; the old tight ring of fat plants read as one kelp tower from
+    outside): the Kelp Cathedral at 45°, r 345 is a wide open nave (`nave` 82, ~165 across)
+    in a grove of three loose rings stepping down outward (`CATHEDRAL.rings`: 220–300,
+    150–240, 90–160 tall; `doors` gaps at 180° and 20° from the way out), ordinary `Kelp`
+    models in World.Biomes.Kelp (they sway). A plant is a GiantKelp piece every `SEGMENT` 52
+    studs at the model's own shape (Props.place scales uniformly, so a slimmer box only
+    shrinks it): slim plants with blades a fish's size. The tall ring's crowns fan 4 fronds
+    in over the nave, a leafy roof with the middle open and five light shafts; young kelp
+    (40–80, sway) and KelpClumps round the nave's edge; sea-grass patches, sand ripples
+    (Crest/Groove strips), grey BoulderRound rocks with UrchinRocks and part-built orange
+    starfish (a disc and five arms), a LobsterTrap at the way in from the hub, a
+    SunkenRowboat whose KelpBuoy float hangs on a chain 78 studs over it, two otters at the
+    surface. The swayed parts in reach of the nave stay about where they were (~230).
+    KelpCanopy is in the bundle but unused (from below it read as a spiky tuft). Otter
+    Meadow at 300°: 180 sea-grass clumps, an urchin barren of 16 UrchinRocks on a pavement
+    of low grey boulders, starfish, otters and a buoy at the surface (tag `Bobbing`); a
+    lobster-trap and rowboat trail toward the Wreck bay with grass round each; and
+    `floorFill`: 40 patches of sea grass with urchin rocks and starfish across the rest of
+    the Kelp Shallows' floor, clear of the landmarks. All static decor, shadows off on the
+    small pieces (`quiet`), at most `CAP` 900 pieces. Views `nave` (the scene's camera),
+    `cathedral` (from outside), `roof`, `meadow`, `otters`.
+  - **Coral Reef** (`ReefDress.luau`, under `Coral.ReefLandmarks`; rebuilt 2026-10-21 to
+    read like its scene, `assets/tripo/biome_concepts/ReefScene.png`, after the owner's "look
+    how much different your hole looks from the mockup"): Shelf sinks the Blue Hole in the
+    reef's most open stretch near 37°, r 640 (centre ≈ (516, 286); `BLUE_HOLE`, its own
+    Random): a shaft of radius 66 to a sand floor at −248 whose walls step down in `bands`
+    (wider ones leave overhangs), with alcoves and 14 ledges, all in Glacier, a Terrain
+    material nothing else uses wearing Rock's toon plates in deep blue (`Shelf.COLORS`
+    (38, 92, 184), `Config/Materials` `Glacier`; the PC runs `make_toon_materials.luau`
+    again); blue from the rim down (a Glacier ring under the sand cap and on the crater's
+    inside), a raised crater lip with a thin pale Sandstone edge, the reef heads round it
+    cleared. A sandy highway 32 wide winds 190 studs up to it from the hub side between rock
+    mounds (`path`, `halfWidth` 16), and a lined tunnel runs from the floor out through the
+    drop-off's face (the shortcut down). `Features.blueHole` carries the bands, path, tunnel
+    and ledges. ReefDress dresses it in colour districts as the scene has them seen from the
+    highway: the rim three rows deep, fire red and orange on the left, blue and violet on
+    the right, yellow and green across; the highway's walls rows rising from the sand with
+    big brain corals and anemones along its edge (`WALL_ROWS`, `DISTRICTS`); road sand with
+    ripple strips; a clam and garden eels by the road; plate corals on the ledges, light
+    shafts, a floor glow, tunnel glows. The corals are models: biome_reef2_glb (DomeCoral,
+    BranchFan and 14 colourways from `tools/props/coral_colorways.py`) plus TableCoral,
+    PillarCoral and the cliff growth; `HOLE_CAP` 950. The Clam Garden near 320°, r 660 (the
+    most open spot): 7 solid GiantClams, each a Neon pearl (`ClamPearl`, `Pearl` index,
+    `PlaceMarks` `Pearl<n>`), three coral rings and tufts between the clams (`GARDEN_CAP`
+    260); garden eel patches (`GardenEels`). Views `bluehole` (the scene's camera),
+    `holeabove`, `holedown`, `clams`; preview `PROPS=1 VIEWS=bluehole
+    BOUNDS=260,660,-280,80,100,430 bash tools/preview/run_biome.sh Reef <dir>`.
   - **Open Blue** (`BlueDress.luau`, under `Rocks.OpenBlue`): the Whale's Rest (a skeleton
     120 long on the floor at 268°, r 1120, a light shaft); Hammerhead Pinnacle (a solid
     240-stud CoralPinnacle at 296°, r 1455, past the Megalodon's patrol band); 9 sargassum
