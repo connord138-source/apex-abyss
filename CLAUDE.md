@@ -1732,6 +1732,42 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     worm tufts down the middle. WorldService's old Neon ball specks are crystal shards
     (`TrenchDress.speck`, same draws) and the glow gardens' tips flat caps. ~350 parts
     with the models in, 44 models, 18 lights.
+  - **Kelp Shallows** (`src/server/KelpDress.luau`): the Kelp Cathedral at 45°, r 345: 24
+    giant kelp 210 tall in a ring 80 across round an open nave (ordinary `Kelp` models in
+    World.Biomes.Kelp, so they sway), their crowns' fronds reaching in as a roof with the
+    middle open, three light shafts (`Kit.shaft`), sea grass. A tall plant is two GiantKelp
+    stacked: the model is half as wide as tall, so one fitted to 210 drew a plant half as
+    tall. KelpCanopy is in the bundle but unused (from below it read as a spiky tuft).
+    Otter Meadow at 300°: grass, a solid urchin barren, otters and a buoy at the surface
+    (tag `Bobbing`); a lobster-trap and rowboat trail toward the Wreck bay.
+  - **Coral Reef** (`ReefDress.luau`, under `Coral.ReefLandmarks`): the Blue Hole Shelf
+    sinks in the reef's most open stretch near 40°, r 640 (scored against the reef heads
+    and `Features.outcrops`): a coral rim in three colour districts, plate corals down its
+    wall, a glow at the bottom. The Clam Garden near 320°, r 660 (the most open spot): 7
+    solid GiantClams, each a Neon pearl (`ClamPearl`, `Pearl` index, `PlaceMarks`
+    `Pearl<n>`); garden eel patches (`GardenEels`).
+  - **Open Blue** (`BlueDress.luau`, under `Rocks.OpenBlue`): the Whale's Rest (a skeleton
+    120 long on the floor at 268°, r 1120, a light shaft); Hammerhead Pinnacle (a solid
+    240-stud CoralPinnacle at 296°, r 1455, past the Megalodon's patrol band); 9 sargassum
+    rafts at the surface (`Bobbing`, `Sargassum`) and 7 jelly chains (`Drifting`).
+  - **Clearings:** each builder marks its landmarks' ground (`Kit.clearing`) and
+    WorldService takes the biome's random scatter (rocks, corals, kelp, seeps, plankton
+    mats) out of it afterwards (`LandmarkKit.clearAround`), so no boulder stands in the
+    nave or the hole. `Kit.hero` sets each holder's `WorldPivot` to its box.
+  - **The play** (`LandmarkService`, `LandmarkController`, `Config/Places`): named places
+    found by swimming within their `radius` (checked once a second, `data.places`, paid by
+    `RewardsService.grant`, all 14 pay `allFound`; state `places`); the LOG's Places tab;
+    found places marked on both maps (names on the full one) and named on the minimap's
+    bar. BITE the galleon's bell (`Bell<n>` mark; rings for everyone, `Net.landmark`) or a
+    pearl (120 coral, 6 shells, gone for that fish 15 min, `data.pearls` in Unix time,
+    state `pearls`) through `HuntController.findLandmark`; the Bay Cannon (`Cannon<n>`,
+    `Cannon<n>Aim`) fires a fish at its muzzle 95 studs/s for 1.3 s, the client driving the
+    flight while the server stamps `MovedAt` each second (SpeedService resets on it). A
+    Weathered or Captain's map buries its chest at `BrokenGalleon_Dig` 30% of the time
+    (`TreasureService` `placeSite`, the place's `digHint`). The client bobs, drifts, ducks
+    the eels, builds fish under rafts near the camera and circles 4 hammerheads
+    (VariantModels.Hammerhead or part-built) round the pinnacle. Admin "Places: unfind
+    every named place, regrow the pearls". PC brief: `docs/playtests/2026-10-21-biomes-brief.md`.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
