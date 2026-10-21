@@ -36,6 +36,8 @@ RECIPES = {
     "BranchFanOrange": ("BranchFan", 20, 0.8, 1.0),
     "BranchFanYellow": ("BranchFan", 46, 0.75, 1.0),
     "BranchFanViolet": ("BranchFan", 272, 0.55, 0.85),
+    "TableCoralOrange": ("TableCoral", 24, 0.8, 1.0),
+    "TableCoralRed": ("TableCoral", 6, 0.78, 0.95),
     "TableCoralBlue": ("TableCoral", 222, 0.62, 0.86),
     "TableCoralViolet": ("TableCoral", 266, 0.5, 0.82),
     "PillarCoralOrange": ("PillarCoral", 18, 0.74, 0.98),

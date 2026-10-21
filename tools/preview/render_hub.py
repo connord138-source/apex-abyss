@@ -44,6 +44,7 @@ TERRAIN = {
     5: (88, 98, 110),  # Basalt
     6: (60, 80, 100),  # Mud
     7: (255, 110, 40),  # CrackedLava
+    8: (38, 92, 184),  # Glacier (the Blue Hole's walls)
 }
 # Config/Materials toon overrides: studs per tile, and plank (Regular) or plate (Organic)
 TOON = {
@@ -59,6 +60,7 @@ TOON = {
     "WoodPlanks": (8, "planks"),
     "Wood": (8, "planks"),
     "Limestone": (12, "plates"),
+    "Glacier": (14, "plates"),
 }
 AMBIENT = (0.085, 0.12, 0.15)  # Lighting.Ambient's flat fill (linear), lifted to read
 FOG_COLOR = (34, 104, 128)

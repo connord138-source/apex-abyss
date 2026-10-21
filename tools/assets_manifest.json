@@ -216,6 +216,13 @@
       "contents": "props/<Name>.glb: the Coral Reef's landmarks (2026-10-21, owner approved assets/concepts/biome_detail/BoardReef.jpg): TableCoral (plates on a pillar), GiantClam (open, a pearl inside; its warm inside cooled by safe_colors), GardenEels (a sand patch of spotted eels; ReefDress ducks the patch client-side), PillarCoral. Kit crops of assets/tripo/biome_concepts/ReefKit.png through image_to_model. ReefDress.luau fits each over its part-built stand-in. Import into ReplicatedStorage.WorldProps.<Name>.",
       "clean": "Normal maps stripped; base colours through safe_colors.py (the eels' beige sand 99.6% skin tone -> 0.0%); all 4 colour maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.004 (GiantClam)."
     },
+    "biome_reef2_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/a600af75-1266-4629-bcd2-72d76bf387e9.zip",
+      "into": "assets/glb",
+      "sha256": "ed60dc8e18583a72531db4a44aadd03633b94e52c16732b0a173facbed230864",
+      "contents": "props/<Name>.glb: the Coral Reef's colour districts (2026-10-21, owner: \"look how much different your hole looks from the mockup\"; assets/tripo/biome_concepts/ReefScene.png). DomeCoral (a round brain coral) and BranchFan (a branching sea fan) are kit crops of assets/tripo/biome_concepts/ReefKit.png through image_to_model (tools/tripo_jobs_biome_reef2.json); every model here is a colourway made by tools/props/coral_colorways.py (hue turned, saturation lifted): DomeCoralRed/Orange/Yellow/Green, BranchFanRed/Orange/Yellow/Violet, and TableCoralOrange/Red/Blue/Violet and PillarCoralOrange/Blue from biome_reef_glb's TableCoral and PillarCoral. ReefDress.luau fits each over its part-built stand-in. Import into ReplicatedStorage.WorldProps.<Name>.",
+      "clean": "Normal maps stripped (strip_normals.py) before the colourways; base colours through safe_colors.py (PillarCoralOrange 22.2% skin tone -> 0.0%, the rest under 0.6% -> 0.0%); all 14 colour maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.004 (DomeCoralRed). Each GLB holds a colour map and a metal/roughness map only."
+    },
     "biome_blue_glb": {
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/4d87cfb6-f095-4b93-b155-61aa88de6607.zip",
       "into": "assets/glb",

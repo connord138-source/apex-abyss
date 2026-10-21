@@ -34,7 +34,7 @@ SPAN = 1600  # studs from the middle to the chart's edge (the map's wall is at 1
 CELL = 4.0
 Y_RANGE = (-960.0, 220.0)
 PIXELS = 1024  # Roblox shows images at most 1024 across
-MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7}
+MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7, "Glacier": 8}
 
 # Height (studs) → colour: a nautical chart, shallow pale teal down to deep navy
 RAMP = [

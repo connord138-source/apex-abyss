@@ -30,7 +30,7 @@ if os.environ.get("BOUNDS"):
     BOUNDS = ((_b[0], _b[1]), (_b[2], _b[3]), (_b[4], _b[5]))
     CELL = float(os.environ.get("CELL", CELL))
 
-MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7}
+MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7, "Glacier": 8}
 # Roughly Cave.COLORS and Shelf.COLORS, in linear-ish RGB
 COLORS = {
     1: (0.33, 0.44, 0.47),
@@ -40,6 +40,7 @@ COLORS = {
     5: (0.20, 0.25, 0.29),
     6: (0.17, 0.24, 0.33),
     7: (1.0, 0.42, 0.12),
+    8: (0.019, 0.107, 0.48),
 }
 
 M = mathutils.Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))  # Roblox (x, y, z) -> Blender (x, -z, y)

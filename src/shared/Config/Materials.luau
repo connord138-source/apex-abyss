@@ -62,5 +62,14 @@ return {
 			studsPerTile = 12,
 			pattern = "Organic",
 		},
+		-- The Blue Hole's walls (owner, 2026-10-21: "look how much different your hole
+		-- looks from the mockup"): Rock's plates (the same image) in the hole's deep
+		-- blue, on a material nothing else uses (a Terrain colour is per material)
+		Glacier = {
+			base = Enum.Material.Glacier,
+			id = 89603876982877,
+			studsPerTile = 14,
+			pattern = "Organic",
+		},
 	} :: { [string]: Toon },
 }

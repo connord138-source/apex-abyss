@@ -41,6 +41,8 @@ CROPS = [
     ("Reef", (377, 93, 661, 332), "GiantClam"),
     ("Reef", (699, 77, 1003, 349), "GardenEels"),
     ("Reef", (407, 666, 634, 966), "PillarCoral"),
+    ("Reef", (23, 679, 348, 953), "DomeCoral"),
+    ("Reef", (714, 665, 1000, 963), "BranchFan"),
     ("Blue", (21, 102, 557, 366), "WhaleSkeleton"),
     ("Blue", (597, 54, 961, 351), "Sargassum"),
     ("Blue", (572, 369, 986, 578), "JellyChain"),

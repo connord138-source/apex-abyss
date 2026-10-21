@@ -57,6 +57,17 @@ export type Cliff = {
 	bands: { { y: number, thick: number, out: number } }, -- the strata, top down (their middles)
 }
 
+export type BlueHole = {
+	center: Vector3,
+	radius: number,
+	bottom: number,
+	bands: { { top: number, bottom: number, out: number } },
+	path: { Vector3 },
+	halfWidth: number,
+	tunnel: { from: Vector3, to: Vector3, radius: number },
+	ledges: { CFrame },
+}
+
 export type Features = {
 	chimneys: { VentsPlan.Chimney },
 	pinnacles: { Vector3 },
@@ -67,8 +78,10 @@ export type Features = {
 	-- The Giant Squid's lair: a cave bitten into the Trench's wall at its foot (`mouth`
 	-- on the canyon's side, `into` the way it runs into the rock; TrenchDress.luau)
 	lair: { mouth: Vector3, into: Vector3, radius: number, depth: number }?,
-	-- The Blue Hole: a sinkhole through the reef's sand into a lined shaft (ReefDress)
-	blueHole: { center: Vector3, radius: number, bottom: number }?,
+	-- The Blue Hole: a sinkhole through the reef's sand into a lined shaft, its
+	-- highway's centreline (`path`, rim first, `halfWidth` either side) and the
+	-- tunnel out through the drop-off (ReefDress dresses all three)
+	blueHole: BlueHole?,
 	-- The shelf's rock outcrops (their middles and rough radii; ReefDress keeps clear)
 	outcrops: { { center: Vector3, radius: number } }?,
 }
@@ -80,6 +93,9 @@ local Shelf = {}
 -- water over a blue floor (owner, 2026-10-08: "a large black wasteland")
 Shelf.COLORS = {
 	[Enum.Material.Mud] = Color3.fromRGB(44, 60, 84),
+	-- The Blue Hole's walls (a material nothing else in the world uses, on Rock's toon
+	-- plates: Config/Materials): the scene's deep blue faceted shaft
+	[Enum.Material.Glacier] = Color3.fromRGB(38, 92, 184),
 	[Enum.Material.CrackedLava] = Color3.fromRGB(255, 120, 40),
 }
 
@@ -91,6 +107,7 @@ local BASALT = Enum.Material.Basalt
 local MUD = Enum.Material.Mud
 local LAVA = Enum.Material.CrackedLava
 local AIR = Enum.Material.Air
+local GLACIER = Enum.Material.Glacier
 
 local function ball(ops: { Op }, material: Enum.Material, center: Vector3, radius: number)
 	table.insert(ops, { kind = "ball", material = material, center = center, radius = radius })
@@ -1042,7 +1059,33 @@ end
 -- Where the Squid's Lair is bitten into the Trench's wall and the Blue Hole sunk in
 -- the reef (the dressing modules read them from Features)
 local LAIR = { r = 1330, side = 1, radius = 24, depth = 66, rise = 26 }
-local BLUE_HOLE = { angle = 40, r = 640, radius = 56, bottom = -212, lining = 26 }
+-- The Blue Hole (owner, 2026-10-21: "look how much different your hole looks from the
+-- mockup"; assets/tripo/biome_concepts/ReefScene.png): a wide sinkhole whose sheer
+-- walls step down in bands (a band wider than the one above it leaves an overhang, a
+-- narrower one a ledge), a raised reef lip round it, a sandy highway winding up to it
+-- between walls of reef, and a tunnel from its floor out through the drop-off's face:
+-- the shortcut down
+local BLUE_HOLE = {
+	angle = 37,
+	r = 640,
+	radius = 66,
+	bottom = -248,
+	lining = 34, -- rock round the widest band (the shelf's drum is hollow under its top)
+	bands = { -- (top, bottom, studs wider than `radius`)
+		{ 44, -14, 0 },
+		{ -14, -48, 7 },
+		{ -48, -84, 12 },
+		{ -84, -120, 15 },
+		{ -120, -156, 9 },
+		{ -156, -196, 15 },
+		{ -196, -248, 6 },
+	},
+	path = { length = 190, halfWidth = 16, sway = 14, step = 8 },
+	-- The reef round it stands as a raised lip, `crater` studs over the sand at its
+	-- highest, across from the highway's notch, down to the sand at the notch
+	crater = 7,
+	tunnel = { radius = 18, lining = 16, rise = 19 },
+}
 -- The stretch of the canyon the Leviathan's Spine lies in (studs from the hub) and
 -- how far either side of its line it reaches
 local SPINE_CLEAR = { from = 1010, to = 1410, half = 76 }
@@ -1105,13 +1148,13 @@ local function landmarkOps(
 	)
 	features.lair = { mouth = mouth, into = into, radius = LAIR.radius, depth = LAIR.depth }
 
-	-- The Blue Hole: the shelf's drum is hollow under its 80-stud top, so the shaft is
-	-- lined with rock down into the hollow first and floored, then cut, with a stepped
-	-- lip in the sand
-	-- (in the reef's most open stretch near its spot: the reef heads Shelf laid stand
-	-- round it, not cut through by it)
+	-- The Blue Hole (BLUE_HOLE, above), on its own Random. The shelf's drum is hollow
+	-- under its top, so the shaft is lined with rock down into the hollow first, then
+	-- cut band by band; in the reef's most open stretch near its spot (the reef heads
+	-- Shelf laid stand round it). Air ops go in twice (the dens' lesson).
+	local hr = Random.new(World.seed + 1411)
 	local best, bestRoom = at(BLUE_HOLE.angle, BLUE_HOLE.r, 0), -math.huge
-	for a = BLUE_HOLE.angle - 25, BLUE_HOLE.angle + 25, 5 do
+	for a = BLUE_HOLE.angle - 8, BLUE_HOLE.angle + 8, 4 do
 		for r = BLUE_HOLE.r - 50, BLUE_HOLE.r + 60, 22 do
 			local spot = at(a, r, 0)
 			local room = math.huge
@@ -1127,27 +1170,236 @@ local function landmarkOps(
 		end
 	end
 	local center = best
-	local lined = BLUE_HOLE.radius + BLUE_HOLE.lining
-	local liningTop, liningBottom = -60, BLUE_HOLE.bottom - 22
+	local R = BLUE_HOLE.radius
+	local widest = 0
+	for _, band in BLUE_HOLE.bands do
+		widest = math.max(widest, band[3])
+	end
+	local out = Vector3.new(center.X - World.hub.center.X, 0, center.Z - World.hub.center.Z).Unit
+	local across = Vector3.new(-out.Z, 0, out.X)
+	local liningTop, liningBottom = -34, BLUE_HOLE.bottom - 24
 	cylinder(
 		ops,
-		ROCK,
+		GLACIER, -- (the hole's own deep blue rock)
 		Vector3.new(center.X, (liningTop + liningBottom) / 2, center.Z),
-		lined,
+		R + widest + BLUE_HOLE.lining,
 		liningTop - liningBottom
 	)
+
+	-- The highway: a winding sandy floor from the rim back toward the hub, cut clear of
+	-- whatever reef heads stood on it, between two walls of rock mounds the reef grows on
+	local pathCfg = BLUE_HOLE.path
+	local path: { Vector3 } = {}
+	local steps = math.floor(pathCfg.length / pathCfg.step)
+	for k = 0, steps do
+		local t = k / steps
+		local lateral = pathCfg.sway * math.sin(math.pi * 1.5 * t)
+		table.insert(path, center - out * (R + 2 + pathCfg.length * t) + across * lateral)
+	end
+	local hw = pathCfg.halfWidth
+	-- (the reef heads, ridges and outcrops round the hole and its highway go: the scene
+	-- has open water over the far rim and walls of coral, not rock, either side)
 	for _ = 1, 2 do
+		cylinder(ops, AIR, Vector3.new(center.X, 40, center.Z), R + 110, 79)
+		for k = 1, #path, 2 do
+			cylinder(ops, AIR, Vector3.new(path[k].X, 40, path[k].Z), hw + 44, 79)
+		end
+	end
+	cylinder(ops, SAND, Vector3.new(center.X, -4, center.Z), R + 112, 8)
+	for k = 1, #path, 2 do
+		cylinder(ops, SAND, Vector3.new(path[k].X, -4, path[k].Z), hw + 46, 8)
+	end
+	for _ = 1, 2 do
+		for _, point in path do
+			cylinder(ops, AIR, Vector3.new(point.X, 30, point.Z), hw + 2, 59)
+		end
+	end
+	for _, point in path do
+		cylinder(ops, SAND, Vector3.new(point.X, -4, point.Z), hw + 4, 8)
+	end
+	for k = 2, #path do
+		local here, back = path[k], path[k - 1]
+		local along = Vector3.new(here.X - back.X, 0, here.Z - back.Z).Unit
+		local side = Vector3.new(-along.Z, 0, along.X)
+		for _, sign in { -1, 1 } do
+			-- (an inner row low, an outer row taller behind it)
+			ball(
+				ops,
+				ROCK,
+				here
+					+ side * sign * (hw + 9 + hr:NextNumber(-1.5, 2))
+					+ Vector3.new(0, hr:NextNumber(-4.5, -2.5), 0),
+				hr:NextNumber(6, 8)
+			)
+			ball(
+				ops,
+				ROCK,
+				here
+					+ side * sign * (hw + 23 + hr:NextNumber(-2, 3))
+					+ Vector3.new(0, hr:NextNumber(-4, -1), 0),
+				hr:NextNumber(8, 10)
+			)
+		end
+	end
+
+	-- The crater lip round the hole: rows of rock mounds rising from the sand at the
+	-- highway's notch to `crater` across from it
+	local entry = path[1]
+	local toEntry = Vector3.new(entry.X - center.X, 0, entry.Z - center.Z).Unit
+	local function offRoad(spot: Vector3): number -- (studs from the road's centreline)
+		local nearest = math.huge
+		for _, point in path do
+			nearest = math.min(nearest, Vector3.new(spot.X - point.X, 0, spot.Z - point.Z).Magnitude)
+		end
+		return nearest
+	end
+	local function lipTop(turn: number): number
+		local d = Vector3.new(math.cos(turn), 0, math.sin(turn))
+		local apart = math.acos(math.clamp(d:Dot(toEntry), -1, 1)) -- (0 at the notch)
+		local f = math.clamp((apart - 0.32) / 1.0, 0, 1)
+		return 3 + BLUE_HOLE.crater * (f * f * (3 - 2 * f))
+	end
+	for _, row in
+		{
+			{ r = R + 13, size = { 8, 10 } },
+			{ r = R + 27, size = { 9, 12 } },
+			{ r = R + 41, size = { 7, 9 } },
+		}
+	do
+		local count = math.floor(2 * math.pi * row.r / 8)
+		for k = 1, count do
+			local turn = k / count * 2 * math.pi + hr:NextNumber(-0.02, 0.02)
+			local spot = center
+				+ Vector3.new(math.cos(turn), 0, math.sin(turn)) * (row.r + hr:NextNumber(-2, 2))
+			local radius = hr:NextNumber(row.size[1], row.size[2])
+			if offRoad(spot) > hw + radius * 0.8 + 3 then
+				local top = lipTop(turn) * (if row.r > R + 35 then 0.7 else 1) + hr:NextNumber(-2, 2)
+				ball(ops, ROCK, spot + Vector3.new(0, top - radius * 0.6, 0), radius)
+				if top > 12 then
+					-- (filled underneath, so the crater is a wall, not a row of boulders)
+					ball(ops, ROCK, spot + Vector3.new(0, top * 0.35 - radius * 0.7, 0), radius * 1.1)
+				end
+			end
+		end
+	end
+
+	-- (the deep blue rock reaches up under the lip and faces the crater's inside, so the
+	-- shaft is blue from its rim down; the sand cap and the crater's grey feet would read
+	-- as a pale band)
+	cylinder(ops, GLACIER, Vector3.new(center.X, -19.5, center.Z), R + widest + 6, 33)
+	do
+		local count = math.floor(2 * math.pi * (R + 7) / 6)
+		for k = 1, count do
+			local turn = k / count * 2 * math.pi
+			local spot = center + Vector3.new(math.cos(turn), 0, math.sin(turn)) * (R + 7)
+			if offRoad(spot) > hw + 5 then
+				ball(ops, GLACIER, spot + Vector3.new(0, lipTop(turn) - 7, 0), 7)
+			end
+		end
+	end
+
+	-- The shaft, band by band, then alcoves bitten into its walls
+	for _ = 1, 2 do
+		for _, band in BLUE_HOLE.bands do
+			cylinder(
+				ops,
+				AIR,
+				Vector3.new(center.X, (band[1] + band[2]) / 2, center.Z),
+				R + band[3],
+				band[1] - band[2]
+			)
+		end
+	end
+	-- A pale stone lip along the crater's inner edge (the scene's rim line)
+	do
+		local count = math.floor(2 * math.pi * (R + 4) / 6)
+		for k = 1, count do
+			local turn = k / count * 2 * math.pi
+			local spot = center + Vector3.new(math.cos(turn), 0, math.sin(turn)) * (R + 3.5)
+			if offRoad(spot) > hw + 3 then
+				ball(ops, SANDSTONE, spot + Vector3.new(0, lipTop(turn) - 0.5, 0), 3.2)
+			end
+		end
+	end
+	local function bandAt(y: number): number
+		for _, band in BLUE_HOLE.bands do
+			if y <= band[1] and y >= band[2] then
+				return band[3]
+			end
+		end
+		return 0
+	end
+	for _ = 1, 10 do
+		local turn = hr:NextNumber(0, 2 * math.pi)
+		local y = hr:NextNumber(BLUE_HOLE.bottom + 40, -24)
+		local facing = Vector3.new(math.cos(turn), 0, math.sin(turn))
+		local spot = Vector3.new(center.X, y, center.Z) + facing * (R + bandAt(y) + 5)
+		for _ = 1, 2 do
+			ball(ops, AIR, spot, hr:NextNumber(9, 14))
+		end
+	end
+	-- Ledges jutting from the walls (where plate corals grow down the hole)
+	local ledges: { CFrame } = {}
+	for k = 1, 14 do
+		local turn = (k / 14) * 2 * math.pi + hr:NextNumber(-0.15, 0.15)
+		local y = -64 - (k % 7) * 26 - hr:NextNumber(0, 10)
+		local facing = Vector3.new(math.cos(turn), 0, math.sin(turn))
+		local wall = R + bandAt(y)
+		local spot = Vector3.new(center.X, y, center.Z) + facing * (wall - 5)
+		local frame = CFrame.lookAt(spot, spot - facing)
+		block(ops, GLACIER, frame, Vector3.new(hr:NextNumber(22, 32), 5, 16))
+		table.insert(ledges, frame * CFrame.new(0, 2.5, -2))
+	end
+	cylinder(
+		ops,
+		SAND,
+		Vector3.new(center.X, BLUE_HOLE.bottom - 3, center.Z),
+		R + bandAt(BLUE_HOLE.bottom + 1) + 2,
+		6
+	)
+
+	-- The shortcut down: a lined tunnel from the hole's floor out through the drum's
+	-- wall and the drop-off's face, coming out ~200 studs over the deep floor
+	local tun = BLUE_HOLE.tunnel
+	local y = BLUE_HOLE.bottom + tun.rise
+	local rc = Vector3.new(center.X - World.hub.center.X, 0, center.Z - World.hub.center.Z).Magnitude
+	local from = Vector3.new(center.X, y, center.Z) + out * (R - 6)
+	local to = Vector3.new(center.X, y, center.Z) + out * (FACE + REACH + 14 - rc)
+	local function tube(material: Enum.Material, a: Vector3, b: Vector3, radius: number)
+		local mid = (a + b) / 2
 		cylinder(
 			ops,
-			AIR,
-			Vector3.new(center.X, (8 + BLUE_HOLE.bottom) / 2, center.Z),
-			BLUE_HOLE.radius,
-			8 - BLUE_HOLE.bottom
+			material,
+			mid,
+			radius,
+			(b - a).Magnitude,
+			CFrame.fromMatrix(mid, Vector3.yAxis, (b - a).Unit)
 		)
-		cylinder(ops, AIR, Vector3.new(center.X, -3, center.Z), BLUE_HOLE.radius + 9, 14)
 	end
-	cylinder(ops, SAND, Vector3.new(center.X, BLUE_HOLE.bottom - 2, center.Z), BLUE_HOLE.radius + 2, 6)
-	features.blueHole = { center = center, radius = BLUE_HOLE.radius, bottom = BLUE_HOLE.bottom }
+	local liningEnd = Vector3.new(center.X, y, center.Z) + out * (shelf.radius + 40 - 110 + 24 - rc)
+	tube(ROCK, from - out * 4, liningEnd, tun.radius + tun.lining)
+	for _ = 1, 2 do
+		tube(AIR, from - out * 8, to, tun.radius)
+		ball(ops, AIR, to - out * 6, tun.radius + 8)
+		ball(ops, AIR, from, tun.radius + 4)
+	end
+
+	features.blueHole = {
+		center = center,
+		radius = R,
+		bottom = BLUE_HOLE.bottom,
+		bands = (function()
+			local list = {}
+			for _, band in BLUE_HOLE.bands do
+				table.insert(list, { top = band[1], bottom = band[2], out = band[3] })
+			end
+			return list
+		end)(),
+		path = path,
+		halfWidth = hw,
+		tunnel = { from = from, to = to, radius = tun.radius },
+		ledges = ledges,
+	}
 end
 
 function Shelf.ops(): ({ Op }, Features)

@@ -89,6 +89,11 @@ local PROPS = {
 	LobsterTrap = true, SunkenRowboat = true, SeaOtter = true, UrchinRock = true, KelpBuoy = true, SeaGrass = true,
 	KelpCanopy = true,
 	TableCoral = true, GiantClam = true, GardenEels = true, PillarCoral = true,
+	-- (the reef's colourways, biome_reef2_glb: ReefDress's colour districts)
+	DomeCoralRed = true, DomeCoralOrange = true, DomeCoralYellow = true, DomeCoralGreen = true,
+	BranchFanRed = true, BranchFanOrange = true, BranchFanYellow = true, BranchFanViolet = true,
+	TableCoralOrange = true, TableCoralRed = true, TableCoralBlue = true, TableCoralViolet = true,
+	PillarCoralOrange = true, PillarCoralBlue = true,
 	WhaleSkeleton = true, Sargassum = true, JellyChain = true, CoralPinnacle = true,
 	-- Den props, batch 2 (den_props2_glb; Config/Dens items of the same names)
 	DriftwoodTable = true, KelpBed = true, PearlPedestal = true, BubbleColumn = true, SpongeSofa = true,
