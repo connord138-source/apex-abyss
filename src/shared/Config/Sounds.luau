@@ -27,7 +27,7 @@ local Sounds: {
 	legacy: Pack,
 } =
 	{
-		id = 0, -- the uploaded v3 apex_sfx.ogg (Creator Hub → Development Items → Audio); 0 plays `legacy`
+		id = 76355431920138, -- the uploaded v3 apex_sfx.ogg (Creator Hub → Development Items → Audio); 0 plays `legacy`
 		regions = {
 			-- BEGIN REGIONS (written by tools/audio/make_sfx.py; { start, length } in seconds)
 			AmbientShallow = { 0.100, 14.500 },
