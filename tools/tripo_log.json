@@ -143,6 +143,16 @@
   "task_id": "66ee275f-75a5-4ef3-bb7e-a7eed6d17cf4",
   "type": "image_to_model"
  },
+ "biome_blue2/RustyBuoy": {
+  "credits": 30,
+  "files": [
+   "RustyBuoy.glb",
+   "RustyBuoy_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "80278b10-deaf-4526-bd6a-384905549e5a",
+  "type": "image_to_model"
+ },
  "biome_concepts/BlueKit": {
   "credits": 10,
   "files": [

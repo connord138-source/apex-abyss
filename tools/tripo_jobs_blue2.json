@@ -1,0 +1,13 @@
+{
+ "jobs": [
+  {
+   "name": "RustyBuoy",
+   "group": "biome_blue2",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/RustyBuoy.png",
+   "settings": {
+    "face_limit": 6000
+   }
+  }
+ ]
+}
