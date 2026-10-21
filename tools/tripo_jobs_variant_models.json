@@ -1,0 +1,40 @@
+{
+ "jobs": [
+  {
+   "name": "Puffball",
+   "group": "variant_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/variant_sheets/Puffball.png"
+  },
+  {
+   "name": "Sabrecuda",
+   "group": "variant_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/variant_sheets/Sabrecuda_fix.png"
+  },
+  {
+   "name": "Porcupine",
+   "group": "variant_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/variant_sheets/Porcupine.png"
+  },
+  {
+   "name": "DragonMoray",
+   "group": "variant_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/variant_sheets/DragonMoray.png"
+  },
+  {
+   "name": "Hammerhead",
+   "group": "variant_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/variant_sheets/Hammerhead.png"
+  },
+  {
+   "name": "Deepfang",
+   "group": "variant_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/variant_sheets/Deepfang.png"
+  }
+ ]
+}

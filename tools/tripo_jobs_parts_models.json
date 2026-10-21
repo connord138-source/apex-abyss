@@ -1,0 +1,34 @@
+{
+ "jobs": [
+  {
+   "name": "AnglerLure",
+   "group": "parts_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/parts_sheets/AnglerLure.png"
+  },
+  {
+   "name": "NarwhalHorn",
+   "group": "parts_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/parts_sheets/NarwhalHorn.png"
+  },
+  {
+   "name": "SawSnout",
+   "group": "parts_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/parts_sheets/SawSnout.png"
+  },
+  {
+   "name": "SailFin",
+   "group": "parts_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/parts_sheets/SailFin.png"
+  },
+  {
+   "name": "VeilTail",
+   "group": "parts_models",
+   "type": "image_to_model",
+   "image": "assets/tripo/parts_sheets/VeilTail_fix.png"
+  }
+ ]
+}

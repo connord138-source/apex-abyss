@@ -1,0 +1,52 @@
+{
+ "jobs": [
+  {
+   "name": "Puffball",
+   "group": "variant_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/variant_refs/Puffball.png",
+   "prompt": "The TOP of the attached image is the approved design of the PUFFBALL NIBBLER; the strip at the BOTTOM is the base fish it is a rare form of (keep that fish's look, colors and eyes where the design does not change them). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, the same shape, colors and markings as the design at the top. It is the starter Nibbler blown up into a near-perfect ball: bright orange upper body, a pale lemon-yellow belly (never cream, beige or peach), short blunt pearly-white spikes spread evenly all over, the Nibbler's big round googly eyes with dark pupils, small orange fins and a small fan tail. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its round body level, every fin spread and fully visible, the whole body in frame. No pink, peach or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Sabrecuda",
+   "group": "variant_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/variant_refs/Sabrecuda.png",
+   "prompt": "The TOP of the attached image is the approved design of the SABRECUDA; the strip at the BOTTOM is the base fish it is a rare form of (keep that fish's look, colors and eyes where the design does not change them). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, the same shape, colors and markings as the design at the top. It is a long slim barracuda like the base fish: steel-blue back, bright silver belly, yellow fins and tail, two long curved sabre fangs hanging down from its upper jaw past its chin, a ridge of short yellow spines along its back, its mouth closed so only the two fangs show. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), every fin spread and fully visible, the whole body in frame. No pink, peach or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Porcupine",
+   "group": "variant_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/variant_refs/Porcupine.png",
+   "prompt": "The TOP of the attached image is the approved design of the PORCUPINE PUFFER; the strip at the BOTTOM is the base fish it is a rare form of (keep that fish's look, colors and eyes where the design does not change them). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, the same shape, colors and markings as the design at the top. It is a pufferfish puffed up for good into a ball, covered all over in long sharp bone-white quills, a warm brown back with darker brown spots, a pale grey-white belly (never tan, beige or cream), round dark eyes with a small white glint, small brown fins and a short rounded tail. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its round body level, every fin spread and fully visible, the whole body in frame. No pink, peach or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "DragonMoray",
+   "group": "variant_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/variant_refs/DragonMoray.png",
+   "prompt": "The TOP of the attached image is the approved design of the DRAGON MORAY; the strip at the BOTTOM is the base fish it is a rare form of (keep that fish's look, colors and eyes where the design does not change them). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, the same shape, colors and markings as the design at the top. It is a long moray eel like the base fish: olive-green with dark green mottling, two BIG curved horns sweeping back from the top of its head, clearly visible and darker olive like antlers of a dragon, and a TALL frilled crest of spines (taller than the body is thick at the front) running along the whole length of its back like a dragon's, its mouth a little open showing small white teeth with the inside of the mouth very dark navy-grey (never pink, red or plum). One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), every fin spread and fully visible, the whole body in frame. No pink, peach or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Hammerhead",
+   "group": "variant_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/variant_refs/Hammerhead.png",
+   "prompt": "The TOP of the attached image is the approved design of the HAMMERHEAD; the strip at the BOTTOM is the base fish it is a rare form of (keep that fish's look, colors and eyes where the design does not change them). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, the same shape, colors and markings as the design at the top. It is a hammerhead shark: slate-grey back, white belly, a wide flat hammer-shaped head with an eye at each tip, a tall pointed dorsal fin, long swept pectoral fins and a tall crescent tail, its mouth closed. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), every fin spread and fully visible, the whole body in frame. No pink, peach or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "Deepfang",
+   "group": "variant_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/variant_refs/Deepfang.png",
+   "prompt": "The TOP of the attached image is the approved design of the DEEPFANG ANGLER; the strip at the BOTTOM is the base fish it is a rare form of (keep that fish's look, colors and eyes where the design does not change them). Redraw the fish from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, the same shape, colors and markings as the design at the top. It is a deep-sea anglerfish like the base fish: a dark navy-blue body with lighter steel-blue facets, a crown of THREE thin lure stalks arching forward from the top of its head, each ending in a glowing pale yellow bulb, huge bone-white fangs it can't close its mouth over, the inside of its mouth very dark navy (never pink, red or plum), a glowing cyan eye and spiky dark fins. One fish alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its round body level, every fin spread and fully visible, the whole body in frame. No pink, peach or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  }
+ ]
+}

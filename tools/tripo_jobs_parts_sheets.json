@@ -1,0 +1,44 @@
+{
+ "jobs": [
+  {
+   "name": "AnglerLure",
+   "group": "parts_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/parts_refs/AnglerLure.png",
+   "prompt": "The attached image shows the approved design of a rare body part worn by a small orange fish. Draw ONLY the part, alone, with NO fish at all, as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, the same shape, colors and style as the design. The part is an ABYSSAL ANGLER LURE: a chunky segmented stalk in dark slate-teal, its foot on the RIGHT ending in a short plain stub (NO base plate, no stand, no foot disc: it grows from a fish's forehead), arching up and over to the LEFT, then hanging down to end in a faceted glowing bright cyan crystal bulb, with two short thick trailing filaments in pale cyan-grey hanging under the bulb. Solid, chunky and faceted, one single connected object, large and centered, filling most of the frame, seen from the side, turned only very slightly toward the viewer, the whole part in frame. No pink, red, peach, flesh or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "NarwhalHorn",
+   "group": "parts_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/parts_refs/NarwhalHorn.png",
+   "prompt": "The attached image shows the approved design of a rare body part worn by a small orange fish. Draw ONLY the part, alone, with NO fish at all, as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, the same shape, colors and style as the design. The part is a NARWHAL HORN: a long straight spiral tusk lying level, pearly white with a cool blue-grey shine and a deep spiral groove, its flat round base on the RIGHT wrapped in two gold bands, tapering to a sharp point on the LEFT. Solid, chunky and faceted, one single connected object, large and centered, filling most of the frame, seen from the side, turned only very slightly toward the viewer, the whole part in frame. No pink, red, peach, flesh or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "SawSnout",
+   "group": "parts_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/parts_refs/SawSnout.png",
+   "prompt": "The attached image shows the approved design of a rare body part worn by a small orange fish. Draw ONLY the part, alone, with NO fish at all, as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, the same shape, colors and style as the design. The part is a SAWFISH BLADE: a long flat blade lying level, dark slate grey-blue, a thin glowing teal line down its middle, chunky bone-white teeth along both its top and bottom edges, its flat square base on the RIGHT and its blunt rounded tip on the LEFT. Solid, chunky and faceted, one single connected object, large and centered, filling most of the frame, seen from the side, turned only very slightly toward the viewer, the whole part in frame. No pink, red, peach, flesh or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "SailFin",
+   "group": "parts_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/parts_refs/SailFin.png",
+   "prompt": "The attached image shows the approved design of a rare body part worn by a small orange fish. Draw ONLY the part, alone, with NO fish at all, as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, the same shape, colors and style as the design. The part is a SAILFISH SAIL: a tall dorsal sail standing upright, its straight bottom edge the deep navy membrane itself (NO base, no stand, no plank, no board under it: it grows from a fish's back), taller at the front (LEFT) and lower toward the back (RIGHT), its stiff spines glowing bright cyan and leaning back, the membrane between them deep navy with small gold spots, the top edge cut into points at the spine tips. Solid, chunky and faceted, one single connected object, large and centered, filling most of the frame, seen from the side, turned only very slightly toward the viewer, the whole part in frame. No pink, red, peach, flesh or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "VeilTail",
+   "group": "parts_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/parts_refs/VeilTail.png",
+   "prompt": "The attached image shows the approved design of a rare TAIL FIN, cut off a small fish. Draw ONLY that tail fin, alone, as ONE clean model sheet for 3D conversion: chunky stylized low-poly 3D game art, flat-shaded facets, bold clean colors, soft even lighting, the same shape, colors and style as the design. A BETTA VEIL TAIL: a long flowing triple tail fin fanning out from one short, thick, round stem stub on the LEFT (the stub is only as long as it is thick, cut flat where a fish's body would be), into three long rippling lobes: one sweeping up and back, one straight back, one sweeping down and back, in deep blue and violet with a glowing bright cyan edge and a few cyan rays. There is NO fish: no head, no eyes, no gills, no body, no pectoral or side fins, nothing but the tail fin and its stub. One single connected object, large and centered, filling most of the frame, seen from the side, the whole tail in frame. No pink, red, peach, flesh or beige anywhere. Plain flat pale grey background, no ground shadow, no glow halo, no water, no bubbles, no other objects, no text, no watermark."
+  }
+ ]
+}

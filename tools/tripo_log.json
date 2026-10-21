@@ -103,6 +103,96 @@
   "task_id": "dc6a527a-c95f-4401-81f3-9cb074639b0d",
   "type": "generate_image"
  },
+ "biome_concepts/BlueKit": {
+  "credits": 10,
+  "files": [
+   "BlueKit.png"
+  ],
+  "status": "success",
+  "task_id": "a1774e54-c21b-438b-a465-c14b9d83722d",
+  "type": "generate_image"
+ },
+ "biome_concepts/BlueScene": {
+  "credits": 10,
+  "files": [
+   "BlueScene.png"
+  ],
+  "status": "success",
+  "task_id": "7373dd3e-be07-4f48-9c43-e05aa0ae7dd9",
+  "type": "generate_image"
+ },
+ "biome_concepts/KelpKit": {
+  "credits": 10,
+  "files": [
+   "KelpKit.png"
+  ],
+  "status": "success",
+  "task_id": "a649f3ec-89f3-43c1-a3a2-221be1bc6831",
+  "type": "generate_image"
+ },
+ "biome_concepts/KelpScene": {
+  "credits": 10,
+  "files": [
+   "KelpScene.png"
+  ],
+  "status": "success",
+  "task_id": "9f41e3c8-b363-4382-8382-06868a2409b9",
+  "type": "generate_image"
+ },
+ "biome_concepts/ReefKit": {
+  "credits": 10,
+  "files": [
+   "ReefKit.png"
+  ],
+  "status": "success",
+  "task_id": "0be1139d-8f4d-443d-ac0e-dfd480ba2c30",
+  "type": "generate_image"
+ },
+ "biome_concepts/ReefScene": {
+  "credits": 10,
+  "files": [
+   "ReefScene.png"
+  ],
+  "status": "success",
+  "task_id": "f0158057-34c4-4eab-9f57-1d5ce91bef15",
+  "type": "generate_image"
+ },
+ "biome_concepts/TrenchKit": {
+  "credits": 10,
+  "files": [
+   "TrenchKit.png"
+  ],
+  "status": "success",
+  "task_id": "c4a9b8ec-03e8-4ed8-b1a9-97de31472a15",
+  "type": "generate_image"
+ },
+ "biome_concepts/TrenchScene": {
+  "credits": 10,
+  "files": [
+   "TrenchScene.png"
+  ],
+  "status": "success",
+  "task_id": "69c65e89-db36-489c-9211-95dbc324a11a",
+  "type": "generate_image"
+ },
+ "biome_concepts/WreckKit": {
+  "credits": 10,
+  "files": [
+   "WreckKit.png"
+  ],
+  "status": "success",
+  "task_id": "31bb2669-afdb-4c95-b62f-526d8dae35fb",
+  "type": "generate_image"
+ },
+ "biome_concepts/WreckScene": {
+  "credits": 10,
+  "files": [
+   "WreckScene.png"
+  ],
+  "status": "success",
+  "task_id": "e5458516-352f-4918-af2a-6448edc9d703",
+  "type": "generate_image"
+ },
  "bosses/GiantSquid": {
   "credits": 30,
   "files": [
@@ -1214,6 +1304,101 @@
   "task_id": "7a1e4266-f007-4369-babe-fc6a6cca7a86",
   "type": "generate_image"
  },
+ "parts_models/AnglerLure": {
+  "credits": 30,
+  "files": [
+   "AnglerLure.glb",
+   "AnglerLure_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "03be0d9f-e41f-466f-9ad5-99715cf0858a",
+  "type": "image_to_model"
+ },
+ "parts_models/NarwhalHorn": {
+  "credits": 30,
+  "files": [
+   "NarwhalHorn.glb",
+   "NarwhalHorn_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "6c3b8d1c-f7cd-4308-93fe-5bcdc8e273be",
+  "type": "image_to_model"
+ },
+ "parts_models/SailFin": {
+  "credits": 30,
+  "files": [
+   "SailFin.glb",
+   "SailFin_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "313ca21f-60bb-4475-a2f2-f0f542b967ab",
+  "type": "image_to_model"
+ },
+ "parts_models/SawSnout": {
+  "credits": 30,
+  "files": [
+   "SawSnout.glb",
+   "SawSnout_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "60ae7056-396d-4be4-8a07-fc32d624b305",
+  "type": "image_to_model"
+ },
+ "parts_models/VeilTail": {
+  "credits": 30,
+  "files": [
+   "VeilTail.glb",
+   "VeilTail_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "504f9e4b-346b-4ca4-870f-d5447d353a1a",
+  "type": "image_to_model"
+ },
+ "parts_sheets/AnglerLure": {
+  "credits": 5,
+  "files": [
+   "AnglerLure.png"
+  ],
+  "status": "success",
+  "task_id": "b381a886-20b6-4880-9df7-d45956ce70f6",
+  "type": "generate_image"
+ },
+ "parts_sheets/NarwhalHorn": {
+  "credits": 5,
+  "files": [
+   "NarwhalHorn.png"
+  ],
+  "status": "success",
+  "task_id": "9eededd3-f18b-4987-baf6-3cf3022c1c11",
+  "type": "generate_image"
+ },
+ "parts_sheets/SailFin": {
+  "credits": 5,
+  "files": [
+   "SailFin.png"
+  ],
+  "status": "success",
+  "task_id": "480a5c4b-fe66-4eb5-9a84-a726e047fb4f",
+  "type": "generate_image"
+ },
+ "parts_sheets/SawSnout": {
+  "credits": 5,
+  "files": [
+   "SawSnout.png"
+  ],
+  "status": "success",
+  "task_id": "613d20b9-ae43-4338-ac79-6ba8bf8bf1f6",
+  "type": "generate_image"
+ },
+ "parts_sheets/VeilTail": {
+  "credits": 5,
+  "files": [
+   "VeilTail.png"
+  ],
+  "status": "success",
+  "task_id": "4a4fc1c3-30ad-4798-8ce1-6ac321d2291d",
+  "type": "generate_image"
+ },
  "prey/Grouper": {
   "credits": 20,
   "files": [
@@ -2095,6 +2280,120 @@
   ],
   "status": "success",
   "task_id": "db0c8a8c-123e-41bf-8f28-0fa013d434ac",
+  "type": "generate_image"
+ },
+ "variant_models/Deepfang": {
+  "credits": 30,
+  "files": [
+   "Deepfang.glb",
+   "Deepfang_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "8b215932-d819-45c9-acdf-6da21bc5a374",
+  "type": "image_to_model"
+ },
+ "variant_models/DragonMoray": {
+  "credits": 30,
+  "files": [
+   "DragonMoray.glb",
+   "DragonMoray_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "7427eff2-af60-4723-b057-e62795641de3",
+  "type": "image_to_model"
+ },
+ "variant_models/Hammerhead": {
+  "credits": 30,
+  "files": [
+   "Hammerhead.glb",
+   "Hammerhead_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "daa67295-0f8d-4271-8a3d-de80562be4a4",
+  "type": "image_to_model"
+ },
+ "variant_models/Porcupine": {
+  "credits": 30,
+  "files": [
+   "Porcupine.glb",
+   "Porcupine_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "dabf70b3-3c67-43dc-84a7-7e3025c1ec06",
+  "type": "image_to_model"
+ },
+ "variant_models/Puffball": {
+  "credits": 30,
+  "files": [
+   "Puffball.glb",
+   "Puffball_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "acf7c73f-bf58-4d5e-9d9a-047b274db0a5",
+  "type": "image_to_model"
+ },
+ "variant_models/Sabrecuda": {
+  "credits": 30,
+  "files": [
+   "Sabrecuda.glb",
+   "Sabrecuda_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "c4b074e0-bcc9-4f69-a27e-d2663294a2ec",
+  "type": "image_to_model"
+ },
+ "variant_sheets/Deepfang": {
+  "credits": 5,
+  "files": [
+   "Deepfang.png"
+  ],
+  "status": "success",
+  "task_id": "2271e135-4b0e-4845-8c53-927c2b2a1fa6",
+  "type": "generate_image"
+ },
+ "variant_sheets/DragonMoray": {
+  "credits": 5,
+  "files": [
+   "DragonMoray.png"
+  ],
+  "status": "success",
+  "task_id": "8ba889f3-6f0a-4a4e-ba76-4f728a9b157c",
+  "type": "generate_image"
+ },
+ "variant_sheets/Hammerhead": {
+  "credits": 5,
+  "files": [
+   "Hammerhead.png"
+  ],
+  "status": "success",
+  "task_id": "0e4d0411-dd63-4d26-b670-db0641add57e",
+  "type": "generate_image"
+ },
+ "variant_sheets/Porcupine": {
+  "credits": 5,
+  "files": [
+   "Porcupine.png"
+  ],
+  "status": "success",
+  "task_id": "6d6d95ce-ef7c-4958-903f-26c919c3b53a",
+  "type": "generate_image"
+ },
+ "variant_sheets/Puffball": {
+  "credits": 5,
+  "files": [
+   "Puffball.png"
+  ],
+  "status": "success",
+  "task_id": "9df39c39-09ce-4b20-83c2-fd5b853ffb53",
+  "type": "generate_image"
+ },
+ "variant_sheets/Sabrecuda": {
+  "credits": 5,
+  "files": [
+   "Sabrecuda.png"
+  ],
+  "status": "success",
+  "task_id": "fcd65b1d-f806-4054-ae55-2a2582824459",
   "type": "generate_image"
  },
  "vendor_sheets/KeeperCharms": {
