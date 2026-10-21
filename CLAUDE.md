@@ -1852,9 +1852,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
       hole darkens to navy at the bottom; from below and edge-on there's nothing.
     - **What's left is the water, not content:** the scenes' bright turquoise is the
       water's colour and light (`OceanController` grades, `Config/Biomes` `water`), and the
-      Kelp's haze (56, 124, 106) is greener than the scene's. Left as is (the owner said
-      2026-10-18 the kelp water "read best"); a bluer kelp haze is the lever if the owner
-      wants the scene's colour. The previewer's haze (34, 104, 128) is darker than both;
+      Kelp's haze (56, 124, 106) was greener than the scene's. **Bluer and brighter
+      since 2026-10-21** (owner: "Make the shallows water bluer and brighter, like the
+      concepts? yes"): `Config/Biomes` Kelp `water` haze (46, 152, 160), decay
+      (14, 78, 88), density −0.02, exposure +0.08, saturation +0.04; Reef haze
+      (44, 162, 188), decay (12, 84, 108), density −0.05, exposure +0.1, saturation
+      +0.06. The light's `tint` stays near white so skins read true; the Wreck keeps
+      its grey-green murk (its scene is murky). The previewer's haze (34, 104, 128) is darker than both;
       `FOG_COLOR` set to a biome's `haze` shows the game's.
   - **Open Blue** (`BlueDress.luau`, under `Rocks.OpenBlue`; rebuilt 2026-10-21 to read like
     `assets/tripo/biome_concepts/BlueScene.png`): the floor stays bare, the life is in the

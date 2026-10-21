@@ -71,13 +71,17 @@ local list: { Biome } = {
 		color = Color3.fromRGB(150, 220, 120),
 		deep = false,
 		-- Green-teal, a little thicker among the fronds (it read best already)
+		-- Bright turquoise like its scene (owner, 2026-10-21: "Make the shallows water
+		-- bluer and brighter, like the concepts? yes"; it was a green-teal haze
+		-- (56, 124, 106) the owner had liked on 2026-10-18); the light's tint stays
+		-- near white so skins read true
 		water = {
-			haze = Color3.fromRGB(56, 124, 106),
-			decay = Color3.fromRGB(18, 62, 52),
-			tint = Color3.fromRGB(255, 255, 248),
-			density = 0.02,
-			exposure = 0,
-			saturation = 0.02,
+			haze = Color3.fromRGB(46, 152, 160),
+			decay = Color3.fromRGB(14, 78, 88),
+			tint = Color3.fromRGB(255, 255, 250),
+			density = -0.02,
+			exposure = 0.08,
+			saturation = 0.04,
 		},
 	},
 	{
@@ -116,13 +120,14 @@ local list: { Biome } = {
 		color = Color3.fromRGB(255, 130, 170),
 		deep = false,
 		-- Clear, bright turquoise (the grade stays white: a cyan grade greens skins)
+		-- Bright clear turquoise like its scene (owner, 2026-10-21, as the Kelp's)
 		water = {
-			haze = Color3.fromRGB(42, 138, 158),
-			decay = Color3.fromRGB(12, 70, 90),
+			haze = Color3.fromRGB(44, 162, 188),
+			decay = Color3.fromRGB(12, 84, 108),
 			tint = Color3.fromRGB(255, 255, 255),
-			density = -0.03,
-			exposure = 0.04,
-			saturation = 0.05,
+			density = -0.05,
+			exposure = 0.1,
+			saturation = 0.06,
 		},
 	},
 	{
