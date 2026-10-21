@@ -1695,6 +1695,30 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Puff Up ×1.25 long (AbilityService); Dragon Moray Burrow recharge ×1.25
     (AbilityService `cooldownOf`); Hammerhead Blood Sense prey range ×1.25; Deepfang
     Lantern Flash stun and dazzle reach ×1.25. Shown in the Wardrobe and the Index.
+- **The biome landmarks (owner, 2026-10-21: the five boards in
+  `assets/concepts/biome_detail/`, "all of that works for me", the Open Blue pinnacle
+  included):** a landmark and a prop kit for each of the Graveyard, Trench, Kelp, Reef and
+  Open Blue, each its own builder module on its own Random (shared helpers
+  `src/server/LandmarkKit.luau`: parts, rods, chains, lanterns, `hero` = a model over its
+  part-built stand-in, `keepColliders` for arches). Models: kit crops off the boards'
+  kit sheets (`tools/props/biome_kit_crops.py`) through image_to_model, heroes
+  text_to_model (`tools/tripo_jobs_biome_<biome>.json`), then strip_normals, safe_colors,
+  `tools/props/biome_tint.py` where the classifier flags, the screen; bundles
+  `biome_<biome>_glb`. Named places: `Config/Places` (14, two a biome, the Ruins' temple
+  and theatre and the Vents' Forge and brine pool too); builders publish where each ended
+  up as Vector3 attributes on `Workspace.Places` (`PlaceMarks.set`). Preview:
+  `PROPS=1 bash tools/preview/run_biome.sh <Wreck|Trench|Kelp|Reef|Blue> <dir>`.
+  - **Shipwreck Graveyard** (`src/server/Wrecks.luau`): the Broken Galleon at 180°, r 650
+    (bow listing and stern nose-down 24 studs apart, snapped ribs and planks between, the
+    stern's lit cabin with a warm light and the dig spot `BrokenGalleon_Dig` under its
+    windows, anchors out on part-built chains, cannons and barrels spilled, the figurehead
+    fallen, the wheel-and-bell post behind the stern, lanterns on broken posts), the Fallen
+    Lighthouse at 196° (the GLB's tower leans 42°: `CFrame.fromAxisAngle` lays its line
+    level), a steamer and a trawler, and the Bay Cannon at 151° aimed over the bay at the
+    galleon (`Wrecks.cannons`). WorldService's `wreck` still takes its 44 draws on the
+    shared Random and hands each spot to `Wrecks.scatter` (hulls, sterns, steamers,
+    debris fields; never within 120 studs of a set piece). ~120 parts with the models in,
+    46 models, 7 lights.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

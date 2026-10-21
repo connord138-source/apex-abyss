@@ -395,7 +395,7 @@ GLB_CACHE = {}
 # The shipped bundles first (fetch_assets.py unpacks them into assets/glb/props), then
 # the raw Tripo outputs (the same geometry)
 PROP_DIRS = [os.path.join(REPO, "assets/glb/props")] + [
-    os.path.join(REPO, "assets/tripo", d) for d in ("props", "vendors", "furniture", "whalefall", "ruins", "cliff")
+    os.path.join(REPO, "assets/tripo", d) for d in ("props", "vendors", "furniture", "whalefall", "ruins", "cliff", "biome_wreck", "biome_trench", "biome_kelp", "biome_reef", "biome_blue")
 ]
 
 

@@ -74,6 +74,12 @@ local PROPS = {
 	RuinHead = true, RuinHand = true, RuinGuardian = true, RuinUrn = true, RuinCapital = true, RuinStele = true,
 	-- The drop-off's reef wall growth (cliff_glb; Cliff.luau fits them over their stand-ins)
 	PlateCoral = true, BarrelSponge = true, SeaWhips = true, LaceFan = true,
+	-- The biome landmarks (biome_*_glb; Wrecks, TrenchDress, KelpDress, ReefDress and
+	-- BlueDress fit them over their stand-ins)
+	GalleonBow = true, GalleonStern = true, IronSteamer = true, ToppledLighthouse = true, WreckCannon = true,
+	WreckAnchor = true, WreckFigurehead = true, WreckWheelBell = true, WreckBarrels = true,
+	LeviathanRibs = true, LeviathanSkull = true, TrenchCrystals = true, TrenchGlowTubes = true, GlassSponge = true,
+	GlowEggs = true, BoneHeap = true,
 	-- Den props, batch 2 (den_props2_glb; Config/Dens items of the same names)
 	DriftwoodTable = true, KelpBed = true, PearlPedestal = true, BubbleColumn = true, SpongeSofa = true,
 	ShipwreckBookshelf = true, JellyLamp = true, SeaGlassLantern = true, CoralLamp = true, Banner = true,

@@ -104,22 +104,42 @@
   "type": "generate_image"
  },
  "biome_blue/CoralPinnacle": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "CoralPinnacle.glb",
+   "CoralPinnacle_preview.webp"
+  ],
+  "status": "success",
   "task_id": "1fd87856-7ddf-4a5b-8f2d-007907059ea9",
   "type": "image_to_model"
  },
  "biome_blue/JellyChain": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "JellyChain.glb",
+   "JellyChain_preview.webp"
+  ],
+  "status": "success",
   "task_id": "51a3e3a1-77fe-440c-afdb-88b856a7d838",
   "type": "image_to_model"
  },
  "biome_blue/Sargassum": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "Sargassum.glb",
+   "Sargassum_preview.webp"
+  ],
+  "status": "success",
   "task_id": "d9e380d7-138e-41e2-b1b3-a9c70c0cf4af",
   "type": "image_to_model"
  },
  "biome_blue/WhaleSkeleton": {
-  "status": "queued",
+  "credits": 30,
+  "files": [
+   "WhaleSkeleton.glb",
+   "WhaleSkeleton_preview.webp"
+  ],
+  "status": "success",
   "task_id": "66ee275f-75a5-4ef3-bb7e-a7eed6d17cf4",
   "type": "image_to_model"
  },
@@ -274,8 +294,14 @@
   "type": "image_to_model"
  },
  "biome_kelp/UrchinRock": {
-  "error": "2008: The input is rejected due to violation of content policy Please modify your input and retry",
-  "status": "submit_failed"
+  "credits": 20,
+  "files": [
+   "UrchinRock.glb",
+   "UrchinRock_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "a4183288-4a2b-4f1b-8f9e-0c2e887ba967",
+  "type": "text_to_model"
  },
  "biome_reef/GardenEels": {
   "credits": 30,

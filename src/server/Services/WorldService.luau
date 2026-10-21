@@ -23,6 +23,8 @@ local TreasureWheel = require(script.Parent.Parent.TreasureWheel)
 local Shelf = require(script.Parent.Parent.Shelf)
 local Vents = require(script.Parent.Parent.Vents)
 local Cliff = require(script.Parent.Parent.Cliff)
+local Wrecks = require(script.Parent.Parent.Wrecks)
+local PlaceMarks = require(script.Parent.Parent.PlaceMarks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 
 local World = Config.World
@@ -461,9 +463,6 @@ function WorldService.vendorPosition(id: string): Vector3?
 	return vendorPositions[id]
 end
 
-local WOOD = Color3.fromRGB(132, 96, 66)
-local WRECK_WOOD = Color3.fromRGB(70, 52, 38)
-local WRECK_WOOD_LIGHT = Color3.fromRGB(110, 86, 60)
 local CORAL_COLORS = {
 	Color3.fromRGB(240, 110, 120),
 	Color3.fromRGB(255, 160, 80),
@@ -633,109 +632,20 @@ local function coralGarden(parent: Instance, rng: Random, center: Vector3, count
 	end
 end
 
--- A wreck: a listing hull with ribs, a broken mast, a scatter of crates and a lantern
+-- A wreck in the Graveyard (owner, 2026-10-21: the Broken Galleon board): its length,
+-- heading and list are drawn here, then Wrecks.luau builds a hull, stern, steamer or
+-- debris field there from the bay's models. The old part-built hull's draws are still
+-- taken (44 a wreck), so everything after it on the shared Random keeps its place.
+local wreckCount = 0
 local function wreck(parent: Instance, rng: Random, ground: Vector3)
-	local model = Instance.new("Model")
-	model.Name = "Wreck"
-	model.Parent = parent
 	local length = rng:NextNumber(60, 110)
-	local beam = length * 0.28
-	local base = CFrame.new(ground)
-		* CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
-		* CFrame.Angles(0, 0, math.rad(rng:NextNumber(-28, 28)))
-	block(
-		model,
-		"Keel",
-		Vector3.new(length, 5, beam * 0.55),
-		base * CFrame.new(0, 2.5, 0),
-		WOOD,
-		Enum.Material.WoodPlanks
-	)
-	for side = -1, 1, 2 do
-		block(
-			model,
-			"Hull",
-			Vector3.new(length * 0.92, beam * 0.55, 2.5),
-			base * CFrame.new(0, beam * 0.24, side * beam * 0.34) * CFrame.Angles(math.rad(side * -30), 0, 0),
-			WOOD,
-			Enum.Material.WoodPlanks
-		)
+	local yaw = rng:NextNumber(0, 6.28)
+	local tilt = math.rad(rng:NextNumber(-28, 28))
+	for _ = 1, 41 do
+		rng:NextNumber()
 	end
-	for i = 1, 7 do
-		local x = -length * 0.42 + (i - 1) * (length * 0.84 / 6)
-		for side = -1, 1, 2 do
-			block(
-				model,
-				"Rib",
-				Vector3.new(2, beam * 0.7, 2),
-				base
-					* CFrame.new(x, beam * 0.4, side * beam * 0.46)
-					* CFrame.Angles(math.rad(side * -22), 0, 0),
-				WRECK_WOOD_LIGHT,
-				Enum.Material.Wood
-			)
-		end
-	end
-	for _ = 1, 3 do
-		block(
-			model,
-			"Plank",
-			Vector3.new(rng:NextNumber(10, 24), 1, rng:NextNumber(3, 6)),
-			base
-				* CFrame.new(
-					rng:NextNumber(-length * 0.4, length * 0.4),
-					beam * 0.55,
-					rng:NextNumber(-beam * 0.3, beam * 0.3)
-				)
-				* CFrame.Angles(0, rng:NextNumber(-0.3, 0.3), 0),
-			WRECK_WOOD_LIGHT,
-			Enum.Material.WoodPlanks
-		)
-	end
-	local mast = Instance.new("Part")
-	mast.Name = "Mast"
-	mast.Anchored = true
-	mast.Shape = Enum.PartType.Cylinder
-	mast.Size = Vector3.new(beam * 1.5, 2.6, 2.6)
-	mast.CFrame = base
-		* CFrame.new(length * 0.1, beam * 0.9, 0)
-		* CFrame.Angles(0, 0, math.rad(rng:NextNumber(55, 80)))
-	mast.Color = WRECK_WOOD
-	mast.Material = Enum.Material.Wood
-	mast.Parent = model
-	for _ = 1, 5 do
-		local x = ground.X + rng:NextNumber(-length * 0.6, length * 0.6)
-		local z = ground.Z + rng:NextNumber(-length * 0.6, length * 0.6)
-		local crateGround = groundAt(x, z) or Vector3.new(x, ground.Y, z)
-		local size = rng:NextNumber(4, 7)
-		block(
-			model,
-			"Crate",
-			Vector3.one * size,
-			CFrame.new(crateGround + Vector3.new(0, size * 0.4, 0))
-				* CFrame.Angles(0, rng:NextNumber(0, 6.28), rng:NextNumber(-0.3, 0.3)),
-			WRECK_WOOD_LIGHT,
-			Enum.Material.WoodPlanks
-		)
-	end
-	local lanternPart = block(
-		model,
-		"Lantern",
-		Vector3.new(2, 3, 2),
-		base * CFrame.new(-length * 0.3, beam * 0.6 + 1.5, 0),
-		Color3.fromRGB(255, 200, 120),
-		Enum.Material.Neon
-	)
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 190, 110)
-	light.Brightness = 1.4
-	light.Range = 26
-	light.Parent = lanternPart
-	Props.dress(lanternPart, "Lantern", {
-		cframe = lanternPart.CFrame,
-		size = Vector3.new(3, 4.5, 3),
-		solid = true, -- the lantern itself, not an invisible box round it (playtest 2026-10-10)
-	})
+	wreckCount += 1
+	Wrecks.scatter(parent, ground, length, yaw, tilt * 0.5, wreckCount)
 end
 
 -- A vent chimney's dressing: the glow at its cap and the black smoke it breathes
@@ -1118,13 +1028,19 @@ local function buildBiomes(parent: Instance)
 		end
 	end
 
-	-- Shipwreck Graveyard: wrecks in a kelp fringe, dark rocks
+	-- Shipwreck Graveyard: the Broken Galleon, the Fallen Lighthouse, two steamers and
+	-- the Bay Cannon (Wrecks.luau, on its own Random), then wrecks in a kelp fringe, dark
+	-- rocks
+	local wreckStats = Wrecks.build(wrecks, groundAt)
 	for _ = 1, 14 do
 		local ground = spotIn(rng, "ShipwreckGraveyard", 70)
 		if ground then
 			wreck(wrecks, rng, ground)
 		end
 	end
+	print(
+		`[Wrecks] the bay: {wreckStats.parts} parts ({wreckStats.solid} solid, {wreckStats.glow} glowing), {wreckStats.models} models and {wreckStats.standins} stand-ins, {wreckStats.lights} lights`
+	)
 	for _ = 1, 18 do
 		local ground = spotIn(rng, "ShipwreckGraveyard", 40)
 		if ground then
@@ -1417,6 +1333,15 @@ local function buildBiomes(parent: Instance)
 	-- parts (Ruins.luau, Config/Ruins); last, so it clears the seeps and plankton the
 	-- loops above scattered into its stones
 	Ruins.build(ruins, groundAt)
+	-- (its named places: the temple at the city's middle, the theatre beside the avenue)
+	do
+		local out =
+			Vector3.new(math.cos(math.rad(Config.Ruins.angle)), 0, math.sin(math.rad(Config.Ruins.angle)))
+		local side = out:Cross(Vector3.yAxis)
+		local middle = out * Config.Ruins.radius + Vector3.new(0, World.deep.floorY + 30, 0)
+		PlaceMarks.set("GreatTemple", middle)
+		PlaceMarks.set("SunkenTheatre", middle - out * 140 + side * 172 - Vector3.new(0, 10, 0))
+	end
 
 	-- The Hydrothermal Vents' field (owner, 2026-10-19: "The vents part of the map
 	-- needs more substance too"): the Forge, black smokers, basalt columns, mineral
@@ -1426,6 +1351,12 @@ local function buildBiomes(parent: Instance)
 	local field = features.vents
 	if field then
 		Vents.build(vents, field, groundAt)
+		if field.forge then
+			PlaceMarks.set("TheForge", field.forge.center + Vector3.new(0, 60, 0))
+		end
+		if field.brine then
+			PlaceMarks.set("BrinePool", field.brine.center + Vector3.new(0, 12, 0))
+		end
 	end
 
 	-- The drop-off's reef wall (owner, 2026-10-19: "The cliff edge needs to be dialed

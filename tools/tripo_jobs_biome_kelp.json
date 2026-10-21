@@ -30,8 +30,9 @@
   {
    "name": "UrchinRock",
    "group": "biome_kelp",
-   "type": "image_to_model",
-   "image": "assets/tripo/biome_models/refs/UrchinRock.png",
+   "type": "text_to_model",
+   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: a rounded grey boulder with a cluster of five round sea urchins sitting on and beside it, each urchin a ball covered in long straight thin dark purple spines pointing out in every direction. Grey rock, deep violet-purple urchins. Chunky faceted. A single object, no water, no seabed, no text.",
+   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh",
    "settings": {
     "face_limit": 4000
    }

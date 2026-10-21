@@ -44,7 +44,7 @@
    "name": "GalleonStern",
    "group": "biome_wreck",
    "type": "text_to_model",
-   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: the rear half of an old wooden sailing galleon, broken clean off across its middle: a tall carved stern castle holding the captain's cabin, a row of big square leaded windows glowing warm amber, carved railings and an iron lantern on the stern, the rudder below, a broken mast stump, the broken front end open and jagged showing the decks and curved ribs inside, barnacles and teal-green weed. Dark brown weathered wood, green-bronze trim, amber glowing window glass. Chunky faceted. A single object, no water, no seabed, no text.",
+   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: the back end of an old wooden sailing ship, sunk on the sea floor: a tall carved stern with a row of big square windows glowing warm amber, carved wooden railings, an iron lantern, the rudder below, a broken mast stump; its front end finishes in jagged broken planks and curved wooden ribs. Dark brown weathered wood, green-bronze trim, barnacles and teal-green weed. Chunky faceted. A single object, no water, no seabed, no text.",
    "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person",
    "settings": {
     "face_limit": 12000
