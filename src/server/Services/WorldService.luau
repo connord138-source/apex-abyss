@@ -27,6 +27,7 @@ local Wrecks = require(script.Parent.Parent.Wrecks)
 local TrenchDress = require(script.Parent.Parent.TrenchDress)
 local KelpDress = require(script.Parent.Parent.KelpDress)
 local ReefDress = require(script.Parent.Parent.ReefDress)
+local BlueDress = require(script.Parent.Parent.BlueDress)
 local LandmarkKit = require(script.Parent.Parent.LandmarkKit)
 local PlaceMarks = require(script.Parent.Parent.PlaceMarks)
 local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
@@ -1400,6 +1401,8 @@ local function buildBiomes(parent: Instance)
 			"Reef",
 			ReefDress.build(folder("ReefLandmarks", corals), groundAt, features.blueHole, reefRocks)
 		)
+		-- the Whale's Rest and Hammerhead Pinnacle (BlueDress.luau)
+		landmarks("Blue", BlueDress.build(folder("OpenBlue", rocks), groundAt))
 	end
 
 	-- The drop-off's reef wall (owner, 2026-10-19: "The cliff edge needs to be dialed

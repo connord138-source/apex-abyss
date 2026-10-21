@@ -215,6 +215,13 @@
       "sha256": "edbdb6ac886cc4e5d2f438b14e5519f3d73babf67b6302e4bdabfd79cce0f739",
       "contents": "props/<Name>.glb: the Coral Reef's landmarks (2026-10-21, owner approved assets/concepts/biome_detail/BoardReef.jpg): TableCoral (plates on a pillar), GiantClam (open, a pearl inside; its warm inside cooled by safe_colors), GardenEels (a sand patch of spotted eels; ReefDress ducks the patch client-side), PillarCoral. Kit crops of assets/tripo/biome_concepts/ReefKit.png through image_to_model. ReefDress.luau fits each over its part-built stand-in. Import into ReplicatedStorage.WorldProps.<Name>.",
       "clean": "Normal maps stripped; base colours through safe_colors.py (the eels' beige sand 99.6% skin tone -> 0.0%); all 4 colour maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.004 (GiantClam)."
+    },
+    "biome_blue_glb": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3064wa0TplLG2iNgb80G3unfKiu/4d87cfb6-f095-4b93-b155-61aa88de6607.zip",
+      "into": "assets/glb",
+      "sha256": "a1f8ec6ed4eb68430155b32e23f438fc47446029df456f8211334f3188998f31",
+      "contents": "props/<Name>.glb: the Open Blue's landmarks (2026-10-21, owner approved assets/concepts/biome_detail/BoardBlue.jpg, the pinnacle included): WhaleSkeleton (lying on a sand bed, long along Z), Sargassum (a floating golden raft, fronds hanging), JellyChain (a siphonophore, long along Z), CoralPinnacle (a tall rock spire with coral). Kit crops of assets/tripo/biome_concepts/BlueKit.png through image_to_model. BlueDress.luau fits each over its part-built stand-in. Import into ReplicatedStorage.WorldProps.<Name>.",
+      "clean": "Normal maps stripped; base colours through safe_colors.py (the whale's bone and sand 42% skin / 57% pale -> 0.0%, the sargassum's tan 99.9% -> 0.0%); all 4 colour maps cleared by screen_shades.py with the classifier: exit 0, none flagged, highest 0.001."
     }
   }
 }
