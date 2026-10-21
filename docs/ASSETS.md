@@ -17,6 +17,7 @@ parts until its model is imported (`FishBuilder.meshTemplate`, `Props.dress`,
 | `prey2_fbx` | Garibaldi, WreckCod, Parrotfish, YellowfinTuna, MahiMahi, Lionfish, GhostShrimp, Lanternfish (2026-10-18, the second prey batch from the approved PreySheetA concept; rigged FBX like `prey_fbx`, 4 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.025; see "The second prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey3_fbx` | Butterflyfish, Triggerfish, Swordfish, OceanSunfish, Coelacanth, VentEelpout, GulperEel, Oarfish (2026-10-19, the third prey batch from the approved PreySheetB concept; rigged FBX like `prey_fbx`: 4 spine segments, the Sunfish 2, the Eelpout 5, the Gulper Eel 6, the Oarfish 7; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.094; see "The third prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `prey4_fbx` | Opaleye, KelpBass, BlueTang, Lingcod, Rattail, Viperfish, Hatchetfish, HumpheadWrasse (2026-10-19, the fourth prey batch from the approved PreySheetC concept; rigged FBX like `prey_fbx`: 4 spine segments, the Lingcod 5, the Rattail and Viperfish 6, the Hatchetfish 2; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.002; see "The fourth prey batch" below) | `ReplicatedStorage.PreyModels.<PreyId>` |
+| `predators_fbx` | SeaLion, GoliathGrouper, GiantTrevally, MakoShark, SixgillShark, WolfEel, GoblinShark, BlackDragonfish (2026-10-21, the eight new AI predators from the approved PredatorsBoard; rigged FBX with a Jaw bone on each, 4–7 spine segments; normal maps stripped, colours made safe, the 8 embedded colour maps screened, highest 0.026; see "The new predators" below) | `ReplicatedStorage.PreyModels.<Id>` |
 | `ambient_fbx` | `ambient/<Name>.fbx`: Turtle, Manta, Stingray, Humpback, Crab (2026-10-19, the sea life; rigged by `tools/blender/rig_ambient.py`: flippers, wings, disc edges, flukes, legs and claws; normal maps stripped, colours made safe, the 5 embedded colour maps screened, highest 0.006; see "Sea life" below) | `ReplicatedStorage.AmbientModels.<Name>` |
 | `prey_glb` | the older static GLB prey (still drawn if that's what is imported; turned round in code) | `ReplicatedStorage.PreyModels.<PreyId>` |
 | `props_glb` | GiantKelp, KelpClump, BoulderRound, BoulderJagged, BrainCoral, FanCoral, StaghornCoral, TubeSponge, Anemone, Shrimp, Starfish, Shell, Lantern, CrystalCluster, MarketStall (GLB) | `ReplicatedStorage.WorldProps.<Name>` |
@@ -285,6 +286,66 @@ the three nearest Viperfish carry the faint cyan light like the Lanternfish. On 
 part-built stand-in those spots sit inside the body, and `SHAPES` paints cyan dots on
 its outline instead. If a spot floats off or sinks into an imported fish, nudge `at`
 in `viperSpots` / `hatchetSpots` (x across, y up, z along, in half-extents of the box).
+
+### The new predators (`predators_fbx`, 2026-10-21)
+
+Eight AI predators from the approved board `assets/concepts/PredatorsBoard.jpg` (concept
+sheets `assets/tripo/predator_concepts/PredatorSheet{A,B}.png`, from
+`tools/tripo_jobs_predator_concepts.json`), one or two for every biome: SeaLion (Kelp
+Shallows), GoliathGrouper (Shipwreck Graveyard), GiantTrevally (Coral Reef), MakoShark
+(Open Blue), SixgillShark (Sunken Ruins), WolfEel (Hydrothermal Vents), GoblinShark and
+BlackDragonfish (Abyssal Trench).
+
+How they were made (repeatable, outputs in the gitignored `assets/tripo/`):
+
+1. `python3.11 tools/props/predator_refs.py`: each creature's crop of its concept sheet,
+   mirrored to face left, over the prey style strip (`assets/tripo/predator_refs/`).
+2. `python tools/tripo.py run tools/tripo_jobs_predator_sheets.json`: a clean side-on model
+   sheet each, mouth a little open (Nano Banana, 5 credits). Nano Banana copied the sea
+   lion's sitting pose, so it was redrawn swimming (`SeaLionSwim`, Nano Banana Pro, 10).
+   Every open mouth came out mauve inside, (70, 48, 53) to (117, 81, 89), whatever the
+   prompt said, and the goblin shark's thrust-out jaws pale mauve-grey:
+   `predator_refs.py --fix GoliathGrouper GiantTrevally MakoShark SixgillShark GoblinShark
+   SeaLionSwim` turns them navy-grey at the same brightness (`FIXES`; the sea lion's only in
+   its mouth and ear, since its fur's mauve shadows would turn blue). The dragonfish's lure
+   hangs from a chin barbel, so it doesn't read as the playable Anglerfish.
+3. `python tools/tripo.py run tools/tripo_jobs_predator_models.json`: image_to_model
+   (30 credits each, 240; 290 in all).
+4. `tools/props/strip_normals.py` (one each), then `tools/props/safe_colors.py --plum`
+   (`--olive` too for the grouper: skin-tone texels GoliathGrouper 5.8%, SeaLion 3.4%; pale
+   WolfEel 3.3%, MakoShark 2.4%, GoblinShark 2.1%; all to 0%, and no plum left).
+5. `python3.11 tools/blender/rig_fish.py <safe>.glb assets/fbx/predators/<Id>.fbx --segments N --jaw`
+   with N = 5 (SeaLion `--head 0.3`, MakoShark, SixgillShark, GoblinShark `--head 0.34`: the
+   long snout), 4 (GoliathGrouper, GiantTrevally), 7 (WolfEel `--head 0.2`), 6
+   (BlackDragonfish `--head 0.22`). `fish_check.py`: every head on the left, no `--flip`;
+   `jaw_check.py`: every jaw opens cleanly (the sea lion's whiskers and the dragonfish's
+   barbel go with the jaw, as they grow from it).
+6. Each FBX embeds only its colour map (`fbx_strip_normals.py --noop` drops nothing); the 8
+   embedded images were extracted and screened with `screen_shades.py` and the classifier:
+   exit 0, none flagged, highest 0.026 (SeaLion).
+
+Their shapes, for the code (once imported each faces -Z, Y up; width : height : length, and
+the jaw's hinge from the nose as a share of the length):
+
+| Id | W : H : L | Jaw hinge | Notes |
+|---|---|---|---|
+| SeaLion | 0.95 : 0.26 : 1 | 0.11 | the front flippers spread wide; the body itself ~0.25 wide |
+| GoliathGrouper | 0.45 : 0.54 : 1 | 0.22 | deep, a cavernous mouth |
+| GiantTrevally | 0.54 : 0.59 : 1 | 0.14 | a deep slab |
+| MakoShark | 0.59 : 0.45 : 1 | 0.22 | wide pectorals |
+| SixgillShark | 0.48 : 0.35 : 1 | 0.22 | |
+| WolfEel | 0.32 : 0.32 : 1 | 0.20 | 7 spine segments |
+| GoblinShark | 0.41 : 0.33 : 1 | 0.33 | the snout runs a third of the length ahead of the mouth |
+| BlackDragonfish | 0.26 : 0.64 : 1 | 0.17 | the chin barbel hangs ~0.4 below the body (~0.22 tall); its bulb is cyan |
+
+Import on the PC:
+
+1. `python tools/fetch_assets.py` (fetches `predators_fbx` into `assets/fbx/predators/`).
+2. **File → Import 3D**, the eight files in `assets/fbx/predators/`, rig on and textures on
+   like the prey, **Import All**.
+3. Paste `tools/studio/organize_imports.luau` into the Command Bar (it knows the eight
+   names: they go to `ReplicatedStorage.PreyModels.<Id>` with their bones), then **save
+   the place**.
 
 ### Sea life (`ambient_fbx`, 2026-10-19)
 

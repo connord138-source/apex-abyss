@@ -8,7 +8,9 @@
 --   Lanternfish, the third Butterflyfish, Triggerfish, Swordfish, OceanSunfish,
 --   Coelacanth, VentEelpout, GulperEel, Oarfish, the fourth Opaleye, KelpBass, BlueTang,
 --   Lingcod, Rattail, Viperfish, Hatchetfish, HumpheadWrasse; the Barracuda and ReefShark
---   prey are copies of the 'Cuda and Reef Shark species models)
+--   prey are copies of the 'Cuda and Reef Shark species models; the AI predators of
+--   predators_fbx: SeaLion, GoliathGrouper, GiantTrevally, MakoShark, SixgillShark,
+--   WolfEel, GoblinShark, BlackDragonfish)
 --       -> ReplicatedStorage.PreyModels.<PreyId>      (a Model with bones; an old static MeshPart still works)
 --   props, food and den furniture (GLB)
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
@@ -44,6 +46,10 @@ local PREY = {
 	-- The fourth batch (prey4_fbx, 2026-10-19)
 	Opaleye = true, KelpBass = true, BlueTang = true, Lingcod = true, Rattail = true, Viperfish = true,
 	Hatchetfish = true, HumpheadWrasse = true,
+	-- The new AI predators (predators_fbx, 2026-10-21), each with a Jaw bone; PredatorController
+	-- draws them from PreyModels like the Barracuda and Reef Shark
+	SeaLion = true, GoliathGrouper = true, GiantTrevally = true, MakoShark = true, SixgillShark = true,
+	WolfEel = true, GoblinShark = true, BlackDragonfish = true,
 }
 -- The rolled parts and the exotic variants (parts_glb, variants_fbx, 2026-10-21), worn
 -- by Shared/Cosmetics

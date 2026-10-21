@@ -1,0 +1,52 @@
+{
+ "jobs": [
+  {
+   "name": "SeaLion",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/SeaLionSwim_fix.png"
+  },
+  {
+   "name": "GoliathGrouper",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/GoliathGrouper_fix.png"
+  },
+  {
+   "name": "GiantTrevally",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/GiantTrevally_fix.png"
+  },
+  {
+   "name": "MakoShark",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/MakoShark_fix.png"
+  },
+  {
+   "name": "SixgillShark",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/SixgillShark_fix.png"
+  },
+  {
+   "name": "WolfEel",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/WolfEel.png"
+  },
+  {
+   "name": "GoblinShark",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/GoblinShark_fix.png"
+  },
+  {
+   "name": "BlackDragonfish",
+   "group": "predators",
+   "type": "image_to_model",
+   "image": "assets/tripo/predator_sheets/BlackDragonfish.png"
+  }
+ ]
+}

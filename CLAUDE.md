@@ -1867,7 +1867,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (`Net.predatorStateTo`); a client hides one it hasn't heard of for `STALE` 1.5 s and
     starts its path afresh when it's back. The ambusher's lurk spots keep to its
     sector. New species for every biome are on `assets/concepts/PredatorsBoard.jpg`
-    (sheets `tools/tripo_jobs_predator_concepts.json`), waiting on the owner.
+    (sheets `tools/tripo_jobs_predator_concepts.json`; owner, 2026-10-21: "I like those new
+    predators"). **Their models are made** (`predators_fbx`, sha256 30600df5…; rigged with a
+    Jaw, every colour map cleared, highest 0.026): SeaLion, GoliathGrouper, GiantTrevally,
+    MakoShark, SixgillShark, WolfEel, GoblinShark, BlackDragonfish, filed into
+    `PreyModels.<Id>` by `organize_imports`; their shapes and jaw hinges are in docs/ASSETS.md
+    "The new predators". Every Tripo sheet paints an open mouth mauve inside: recolour it
+    (`tools/props/predator_refs.py --fix`) before 3D, and run `safe_colors.py --plum` after.
     **Real ground and fluid swimming (owner, 2026-10-13: "the predator fish will
     phase through the sand in the ground ... Their tracking should also be more
     fluid and realistic"):** `Shared/Ground.luau` gives the real ground's top in a

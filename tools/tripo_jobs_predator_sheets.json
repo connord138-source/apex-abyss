@@ -1,0 +1,76 @@
+{
+ "jobs": [
+  {
+   "name": "SeaLion",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/SeaLion.png",
+   "prompt": "The TOP of the attached image is the approved design of a CALIFORNIA SEA LION; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A sleek sea lion SWIMMING underwater, never sitting or propped up: its body stretched long and torpedo-shaped, head forward on a short thick neck, long front flippers spread out to the sides and swept a little back like wings, the two hind flippers together trailing straight behind like a tail; smooth dark chocolate-brown fur all over, a slightly lighter brown muzzle, small dark brown ear flaps (the same brown, never pink), long pale whiskers, small white pointed teeth. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "GoliathGrouper",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/GoliathGrouper.png",
+   "prompt": "The TOP of the attached image is the approved design of a GOLIATH GROUPER; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A huge heavy goliath grouper: a deep, massive rounded body, a broad flat head with a cavernous wide mouth, small eyes set high, mottled olive and brown with darker brown vertical bands and blotches, rounded olive fins, a big rounded tail, a few small white teeth. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "GiantTrevally",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/GiantTrevally.png",
+   "prompt": "The TOP of the attached image is the approved design of a GIANT TREVALLY; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A powerful giant trevally: a deep, slab-sided silver-grey body, a steep blunt forehead, a big eye, a downturned mouth, dark grey fins and a long sickle-shaped pectoral fin, a deeply forked yellowish tail, faint darker speckles on its back. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "MakoShark",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/MakoShark.png",
+   "prompt": "The TOP of the attached image is the approved design of a MAKO SHARK; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A sleek mako shark: a torpedo body, a pointed conical snout, a metallic indigo-blue back, a clean white belly, a tall crescent tail with both lobes nearly equal, long curved white teeth showing in a slightly open mouth, a black eye. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "SixgillShark",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/SixgillShark.png",
+   "prompt": "The TOP of the attached image is the approved design of a BLUNTNOSE SIXGILL SHARK; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A heavy bluntnose sixgill shark: a long thick dark brown-grey body, a broad rounded blunt head, glowing green eyes, six long gill slits on its side, ONE small dorsal fin set far back near the tail, a long upper tail lobe, small comb-like white teeth. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "WolfEel",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/WolfEel.png",
+   "prompt": "The TOP of the attached image is the approved design of a WOLF EEL; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A long wolf eel: a thick EEL body at least seven times as long as it is tall, grey-blue with dark round spots all over, a long low fin running along its back to a pointed tail, a huge blunt rounded head with heavy jaws and big white crushing teeth, small round eyes. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "GoblinShark",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/GoblinShark.png",
+   "prompt": "The TOP of the attached image is the approved design of a GOBLIN SHARK; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A goblin shark: a slender soft-looking cold steel grey-blue body (never pink), a long flat blade-shaped snout sticking out far in front of its head, its jaws thrust a little forward under the snout showing rows of thin white needle teeth, small dark eyes, small rounded fins, a long low tail. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "BlackDragonfish",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_2.5_flash_image_preview",
+   "ref": "assets/tripo/predator_refs/BlackDragonfish.png",
+   "prompt": "The TOP of the attached image is the approved design of a BLACK DRAGONFISH; the strip at the BOTTOM only shows the game's art style (do not copy its fish). Redraw the creature from the top as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic in proportion than a toy, with the same shape, colors and markings as the design at the top. A slender black dragonfish: a long eel-like jet-black body with a glossy sheen, huge long glassy white fangs in a big jaw, ONE long thin barbel hanging DOWN from its CHIN (from under the lower jaw, never from the top of its head) and trailing back below its body, ending in a small glowing cyan bulb; a row of small glowing cyan dots along its lower side, small dark fins set far back near a small tail, small glowing cyan eye. Its eye simple, a dark pupil with a tiny white glint, never a googly cartoon eye. ONE creature alone, large and centered, filling most of the frame, in a side view facing the viewer's LEFT, turned only very slightly toward the viewer, its body held perfectly STRAIGHT and level from head to tail (no bend, no curl, no twist), its mouth only a little open, the inside of the mouth dark slate grey (never pink, red or maroon), every fin spread and fully visible, the whole body in frame. No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground shadow, no water, no bubbles, no other objects, no text, no watermark."
+  },
+  {
+   "name": "SeaLionSwim",
+   "group": "predator_sheets",
+   "type": "generate_image",
+   "model": "gemini_3_pro_image_preview",
+   "ref": "assets/tripo/predator_refs/SeaLion.png",
+   "prompt": "The TOP of the attached image shows the approved LOOK of a California sea lion (its colors, fur, face and style) but NOT its pose: it sits propped up there, and that pose must NOT be copied. The strip at the BOTTOM only shows the game's art style. Draw the SAME sea lion SWIMMING underwater as ONE clean model sheet for 3D conversion: chunky stylized low-poly game art, flat-shaded facets, bold clean colors, soft even lighting, a touch more realistic than a toy. Its whole body lies HORIZONTAL and STRAIGHT like a torpedo, seen exactly from the side, head on the LEFT pointing straight left, the neck stretched forward level with the back (never raised), the long front flippers held out from the chest and swept back along the sides like wings, the two hind flippers pressed together and trailing straight behind as a tail on the RIGHT, nothing touching any ground. Smooth dark chocolate-brown fur all over, a slightly lighter brown muzzle, small dark brown ear flaps (never pink), long pale whiskers, small simple dark eyes with a tiny glint, its mouth a little open with small white pointed teeth and a dark slate grey inside (never pink or red). No pink, peach, beige or red anywhere. Plain flat pale grey background, no ground, no shadow, no water, no bubbles, no other objects, no text, no watermark."
+  }
+ ]
+}

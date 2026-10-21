@@ -303,6 +303,26 @@
   "task_id": "a4183288-4a2b-4f1b-8f9e-0c2e887ba967",
   "type": "text_to_model"
  },
+ "biome_reef/BranchFan": {
+  "credits": 30,
+  "files": [
+   "BranchFan.glb",
+   "BranchFan_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f7f24a2a-d79a-47c8-925b-b5d61baf8e5e",
+  "type": "image_to_model"
+ },
+ "biome_reef/DomeCoral": {
+  "credits": 30,
+  "files": [
+   "DomeCoral.glb",
+   "DomeCoral_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "9a681b89-b330-48ae-a7e0-7f396aec62cf",
+  "type": "image_to_model"
+ },
  "biome_reef/GardenEels": {
   "credits": 30,
   "files": [
@@ -411,6 +431,36 @@
   ],
   "status": "success",
   "task_id": "7ee159c7-b2e8-4a9e-bde6-eba1d0d57aea",
+  "type": "image_to_model"
+ },
+ "biome_trench2/LeviathanRib": {
+  "credits": 30,
+  "files": [
+   "LeviathanRib.glb",
+   "LeviathanRib_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "18e981e1-e556-4c1e-bf43-3d9a9a419406",
+  "type": "image_to_model"
+ },
+ "biome_trench2/LeviathanVertebra": {
+  "credits": 30,
+  "files": [
+   "LeviathanVertebra.glb",
+   "LeviathanVertebra_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "0323b762-ddd5-4e0b-bd2a-83f069bd15f5",
+  "type": "image_to_model"
+ },
+ "biome_trench2/SquidBeak": {
+  "credits": 30,
+  "files": [
+   "SquidBeak.glb",
+   "SquidBeak_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "24a8da8f-ccbc-4f6d-bb75-5ac628c20eb6",
   "type": "image_to_model"
  },
  "biome_wreck/GalleonBow": {
@@ -1727,6 +1777,167 @@
   "task_id": "056bea43-dfb4-4b27-a8a5-21bf1d301fa2",
   "type": "generate_image"
  },
+ "predator_sheets/BlackDragonfish": {
+  "credits": 5,
+  "files": [
+   "BlackDragonfish.png"
+  ],
+  "status": "success",
+  "task_id": "be1cb799-af4c-4e2d-8b58-b16b8466e774",
+  "type": "generate_image"
+ },
+ "predator_sheets/GiantTrevally": {
+  "credits": 5,
+  "files": [
+   "GiantTrevally.png"
+  ],
+  "status": "success",
+  "task_id": "03429edc-0234-4d38-8d3e-b7958c581907",
+  "type": "generate_image"
+ },
+ "predator_sheets/GoblinShark": {
+  "credits": 5,
+  "files": [
+   "GoblinShark.png"
+  ],
+  "status": "success",
+  "task_id": "2459fdc9-9ad2-4f3e-b9b0-7c6f085249f4",
+  "type": "generate_image"
+ },
+ "predator_sheets/GoliathGrouper": {
+  "credits": 5,
+  "files": [
+   "GoliathGrouper.png"
+  ],
+  "status": "success",
+  "task_id": "bac2d9cd-8eaa-46d2-8a83-5183deafc66a",
+  "type": "generate_image"
+ },
+ "predator_sheets/MakoShark": {
+  "credits": 5,
+  "files": [
+   "MakoShark.png"
+  ],
+  "status": "success",
+  "task_id": "98227e6f-72a0-4193-814d-a1587e7f9a9a",
+  "type": "generate_image"
+ },
+ "predator_sheets/SeaLion": {
+  "credits": 5,
+  "files": [
+   "SeaLion.png"
+  ],
+  "status": "success",
+  "task_id": "ab1b66e6-0380-4c2e-8807-2866e2fb363b",
+  "type": "generate_image"
+ },
+ "predator_sheets/SeaLionSwim": {
+  "credits": 10,
+  "files": [
+   "SeaLionSwim.png"
+  ],
+  "status": "success",
+  "task_id": "a1d779cb-9192-4d6a-b63e-853b700ef59a",
+  "type": "generate_image"
+ },
+ "predator_sheets/SixgillShark": {
+  "credits": 5,
+  "files": [
+   "SixgillShark.png"
+  ],
+  "status": "success",
+  "task_id": "65692263-8aeb-49c5-99fa-ef2ce24fcba8",
+  "type": "generate_image"
+ },
+ "predator_sheets/WolfEel": {
+  "credits": 5,
+  "files": [
+   "WolfEel.png"
+  ],
+  "status": "success",
+  "task_id": "2151f1a4-cc1b-4ac5-a060-536c8cb9d75e",
+  "type": "generate_image"
+ },
+ "predators/BlackDragonfish": {
+  "credits": 30,
+  "files": [
+   "BlackDragonfish.glb",
+   "BlackDragonfish_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f3461c3d-0c9e-4a5e-8acb-71ec49fef487",
+  "type": "image_to_model"
+ },
+ "predators/GiantTrevally": {
+  "credits": 30,
+  "files": [
+   "GiantTrevally.glb",
+   "GiantTrevally_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "6bd0e516-b5f3-45b6-b3f7-5e7175e01f2c",
+  "type": "image_to_model"
+ },
+ "predators/GoblinShark": {
+  "credits": 30,
+  "files": [
+   "GoblinShark.glb",
+   "GoblinShark_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "56b386be-d729-436d-8be8-844ec97416a5",
+  "type": "image_to_model"
+ },
+ "predators/GoliathGrouper": {
+  "credits": 30,
+  "files": [
+   "GoliathGrouper.glb",
+   "GoliathGrouper_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "5bc63cb9-fc58-4750-a70f-03ef3676edfe",
+  "type": "image_to_model"
+ },
+ "predators/MakoShark": {
+  "credits": 30,
+  "files": [
+   "MakoShark.glb",
+   "MakoShark_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f09cf954-d08f-4d3d-aa47-87c6d699170a",
+  "type": "image_to_model"
+ },
+ "predators/SeaLion": {
+  "credits": 30,
+  "files": [
+   "SeaLion.glb",
+   "SeaLion_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "200db4a0-67ea-48be-8b5a-cee2fee55c60",
+  "type": "image_to_model"
+ },
+ "predators/SixgillShark": {
+  "credits": 30,
+  "files": [
+   "SixgillShark.glb",
+   "SixgillShark_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "2fbb6a21-2432-4623-b7a9-f38f4197d513",
+  "type": "image_to_model"
+ },
+ "predators/WolfEel": {
+  "credits": 30,
+  "files": [
+   "WolfEel.glb",
+   "WolfEel_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "5808883a-8c61-4d5e-9a45-df5ec3cd9a30",
+  "type": "image_to_model"
+ },
  "prey/Grouper": {
   "credits": 20,
   "files": [
@@ -2599,6 +2810,33 @@
   ],
   "status": "success",
   "task_id": "a2f96c21-dac9-42f2-9d50-25abb92f68f1",
+  "type": "generate_image"
+ },
+ "trench2_refs/LeviathanRib": {
+  "credits": 5,
+  "files": [
+   "LeviathanRib.png"
+  ],
+  "status": "success",
+  "task_id": "93bffa18-0244-4dab-b588-bcbd30d77501",
+  "type": "generate_image"
+ },
+ "trench2_refs/LeviathanVertebra": {
+  "credits": 5,
+  "files": [
+   "LeviathanVertebra.png"
+  ],
+  "status": "success",
+  "task_id": "6baa6df1-8d8f-441e-a97c-adb140a19cdd",
+  "type": "generate_image"
+ },
+ "trench2_refs/SquidBeak": {
+  "credits": 5,
+  "files": [
+   "SquidBeak.png"
+  ],
+  "status": "success",
+  "task_id": "028be4ed-6801-4447-a7d0-b16f313a9475",
   "type": "generate_image"
  },
  "variant_concepts/VariantSheet": {
