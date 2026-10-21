@@ -99,6 +99,11 @@ Compare with `assets/tripo/biome_concepts/ReefScene.png`.
 4. Finding the 14th pays the bonus (5,000 coral, 100 shells, 2 spins).
 5. Rejoin: found places stay found, a pearl taken stays gone until it grows back.
 
+**WC — Shallows water colour** (d3204de: the Kelp and Reef water is now bright turquoise like their scenes).
+1. Kelp nave and the Blue Hole's highway: screenshot each beside `KelpScene.png` / `ReefScene.png`. The water should read turquoise and bright, not green-teal.
+2. Wear Golden, Lilac and Bumblebee on the Nibbler in the Kelp and the Reef: they should keep their colours (gold not lime, lilac not blue). If a skin shifts, say which and where.
+3. Swim Kelp → Wreck → Reef: the water should ease from turquoise to the Wreck's grey-green murk and back, with no pop.
+
 **PF — Frame time.** Stand in each landmark (the cathedral's nave, the galleon's break, the hole's rim, the ribcage, the pinnacle) and read FPS and the Script Profiler's `LandmarkController` and `KelpController`. Note anything over ~5 ms/s.
 
 ## 3. Report
