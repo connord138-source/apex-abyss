@@ -442,17 +442,23 @@ PROP_PLACEMENTS = {}
 PropsStub = {
 	dress = function(part, name, options)
 		local opts = options or {}
-		table.insert(PROP_PLACEMENTS, {
+		local record = {
 			name = name,
 			cframe = opts.cframe or part.CFrame,
 			size = opts.size or part.Size,
 			tint = opts.tint,
-		})
+		}
+		table.insert(PROP_PLACEMENTS, record)
 		if USE_PROPS then
 			if not opts.keepVisible then
 				part.Transparency = 1
 			end
-			return new("Model")
+			-- (the model the builder gets back: its Glow / GlowTint attributes, which
+			-- the builders set as they set the real model's EmissiveStrength and
+			-- EmissiveTint, ride the R line so the preview glows as the game does)
+			local model = new("Model")
+			record.model = model
+			return model
 		end
 		return nil
 	end,
@@ -661,6 +667,47 @@ function dumpParts(root)
 					)
 				elseif child.ClassName == "SurfaceGui" then
 					dumpGui(child, d)
+				elseif child.ClassName == "Beam" then
+					-- B|from|to|width0|width1|color|transparency at 0, 0.6 and 1 (a light
+					-- shaft: LightEmission 1, so it adds)
+					local a0, a1 = child.Attachment0, child.Attachment1
+					local keys = child.Transparency and child.Transparency.Keypoints
+					local function at(t)
+						if type(keys) ~= "table" then
+							return 0
+						end
+						local before, after = keys[1], keys[#keys]
+						for _, k in keys do
+							if k.Time <= t then
+								before = k
+							end
+							if k.Time >= t and after.Time > k.Time then
+								after = k
+							end
+						end
+						if after.Time <= before.Time then
+							return before.Value
+						end
+						local u = (t - before.Time) / (after.Time - before.Time)
+						return before.Value + (after.Value - before.Value) * u
+					end
+					local ck = child.Color and child.Color.Keypoints
+					local c = (ck and ck[1] and ck[1].Value) or Color3.new(1, 1, 1)
+					if a0 and a1 and a0.WorldPosition and a1.WorldPosition then
+						print(
+							string.format(
+								"B|%s|%s|%.2f|%.2f|%s|%.3f|%.3f|%.3f",
+								v3(a0.WorldPosition),
+								v3(a1.WorldPosition),
+								child.Width0 or 1,
+								child.Width1 or 1,
+								col(c),
+								at(0),
+								at(0.6),
+								at(1)
+							)
+						)
+					end
 				end
 			end
 		end
@@ -668,14 +715,18 @@ function dumpParts(root)
 	for _, r in PROP_PLACEMENTS do
 		local cf = r.cframe
 		local tint = r.tint
+		local glow = r.model and r.model:GetAttribute("Glow")
+		local glowTint = r.model and r.model:GetAttribute("GlowTint")
 		print(
 			string.format(
-				"R|%s|%s|%s|%s|%s",
+				"R|%s|%s|%s|%s|%s|%s|%s",
 				r.name,
 				if r.height then "height" else "box",
 				frame(cf),
 				v3(r.size),
-				if tint then col(tint) else ""
+				if tint then col(tint) else "",
+				if type(glow) == "number" then string.format("%.2f", glow) else "",
+				if glowTint then col(glowTint) else ""
 			)
 		)
 	end

@@ -74,6 +74,8 @@ SUN = float(os.environ.get("SUN", "3.0"))
 EMIT = float(os.environ.get("EMIT", "1"))  # imported glow maps' strength
 # ...per model (EMIT_BY=LeviathanRib=0.3,GlowEggs=1.8)
 EMIT_BY = {k: float(v) for k, v in (kv.split("=") for kv in os.environ.get("EMIT_BY", "").split(",") if "=" in kv)}
+# A model's own Glow attribute (TrenchDress `shine`, BlueDress) wins over both, times this
+GLOW_SCALE = float(os.environ.get("GLOW_SCALE", "1"))
 FONTS = {
     "lucky": os.path.join(REPO, "tools/marketing/fonts/LuckiestGuy-Regular.ttf"),
     "black": "/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf",
@@ -474,28 +476,188 @@ def add_prop(f):
     obj = bpy.data.objects.new(name, data)
     bpy.context.scene.collection.objects.link(obj)
     obj.matrix_world = world @ mathutils.Matrix.Scale(scale, 4)
-    if len(f) > 8 and f[8]:
-        tint = lin([float(v) for v in f[8].split(",")])
-        for slot in obj.material_slots:
-            src = slot.material
-            if src is None:
+    tint = lin([float(v) for v in f[8].split(",")]) if len(f) > 8 and f[8] else None
+    # the model's own glow as the builder set it (the Glow / GlowTint attributes beside
+    # EmissiveStrength / EmissiveTint): replaces the EMIT / EMIT_BY guess for this one
+    glow = float(f[9]) if len(f) > 9 and f[9] else None
+    glow_tint = lin([float(v) for v in f[10].split(",")]) if len(f) > 10 and f[10] else None
+    if tint is None and glow is None and glow_tint is None:
+        return
+    for slot in obj.material_slots:
+        src = slot.material
+        if src is None:
+            continue
+        copy = src.copy()
+        tree = copy.node_tree
+        for node in list(tree.nodes):
+            if node.type != "BSDF_PRINCIPLED":
                 continue
-            copy = src.copy()
-            tree = copy.node_tree
-            for node in list(tree.nodes):
-                if node.type != "BSDF_PRINCIPLED":
-                    continue
-                basec = node.inputs["Base Color"]
-                if not basec.links:
-                    continue
+            basec = node.inputs["Base Color"]
+            if tint is not None and basec.links:
                 source = basec.links[0].from_socket
                 mult = tree.nodes.new("ShaderNodeVectorMath")
                 mult.operation = "MULTIPLY"
                 mult.inputs[1].default_value = tint
                 tree.links.new(source, mult.inputs[0])
                 tree.links.new(mult.outputs[0], basec)
-            slot.link = "OBJECT"
-            slot.material = copy
+            strength = node.inputs["Emission Strength"]
+            if glow is not None and strength.default_value > 0:
+                strength.default_value *= glow * GLOW_SCALE / EMIT_BY.get(name, EMIT)
+            ecol = node.inputs["Emission Color"]
+            if glow_tint is not None and ecol.links:
+                source = ecol.links[0].from_socket
+                mult = tree.nodes.new("ShaderNodeVectorMath")
+                mult.operation = "MULTIPLY"
+                mult.inputs[1].default_value = glow_tint
+                tree.links.new(source, mult.inputs[0])
+                tree.links.new(mult.outputs[0], ecol)
+        slot.link = "OBJECT"
+        slot.material = copy
+
+
+# ---------------------------------------------------------------------------
+# Beams (light shafts): camera-facing ribbons that add their light, drawn in a pass
+# of their own (everything else held out) and added over the hazed picture
+# ---------------------------------------------------------------------------
+
+BEAMS = []
+
+
+def add_beam(f):
+    BEAMS.append(
+        {
+            "a": vec(f[1]),
+            "b": vec(f[2]),
+            "w0": float(f[3]),
+            "w1": float(f[4]),
+            "color": lin([float(v) for v in f[5].split(",")]),
+            "alpha": [1 - float(f[6]), 1 - float(f[7]), 1 - float(f[8])],
+        }
+    )
+
+
+def beam_material(beam):
+    mat, nodes, links = node_mat("Beam")
+    out = nodes["Material Output"]
+    for n in list(nodes):
+        if n.type == "BSDF_PRINCIPLED":
+            nodes.remove(n)
+    uv = nodes.new("ShaderNodeUVMap")
+    sep = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(uv.outputs["UV"], sep.inputs[0])
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.interpolation = "LINEAR"
+    els = ramp.color_ramp.elements
+    els[0].position, els[1].position = 0.0, 1.0
+    els[0].color = (beam["alpha"][0],) * 3 + (1,)
+    els[1].color = (beam["alpha"][2],) * 3 + (1,)
+    mid = els.new(0.6)
+    mid.color = (beam["alpha"][1],) * 3 + (1,)
+    links.new(sep.outputs["X"], ramp.inputs["Fac"])
+    # the water between the camera and the shaft takes its light away
+    cam = nodes.new("ShaderNodeCameraData")
+    neg = nodes.new("ShaderNodeMath")
+    neg.operation = "MULTIPLY"
+    neg.inputs[1].default_value = -1.0 / FOG
+    links.new(cam.outputs["View Distance"], neg.inputs[0])
+    att = nodes.new("ShaderNodeMath")
+    att.operation = "EXPONENT"
+    links.new(neg.outputs[0], att.inputs[0])
+    mul = nodes.new("ShaderNodeMixRGB")
+    mul.blend_type = "MULTIPLY"
+    mul.inputs["Fac"].default_value = 1.0
+    links.new(ramp.outputs["Color"], mul.inputs[1])
+    links.new(att.outputs[0], mul.inputs[2])
+    tint = nodes.new("ShaderNodeMixRGB")
+    tint.blend_type = "MULTIPLY"
+    tint.inputs["Fac"].default_value = 1.0
+    links.new(mul.outputs[0], tint.inputs[1])
+    tint.inputs[2].default_value = (*beam["color"], 1)
+    em = nodes.new("ShaderNodeEmission")
+    links.new(tint.outputs[0], em.inputs["Color"])
+    tr = nodes.new("ShaderNodeBsdfTransparent")
+    add = nodes.new("ShaderNodeAddShader")
+    links.new(tr.outputs[0], add.inputs[0])
+    links.new(em.outputs[0], add.inputs[1])
+    links.new(add.outputs[0], out.inputs["Surface"])
+    return mat
+
+
+def build_beams(cam_pos):
+    """Ribbons turned to face `cam_pos` (Roblox axes), as a FaceCamera Beam is."""
+    objs = []
+    for i, beam in enumerate(BEAMS):
+        a, b = beam["a"], beam["b"]
+        axis = b - a
+        mid = (a + b) / 2
+        side = axis.cross(mathutils.Vector(cam_pos) - mid)
+        if side.length < 1e-6:
+            continue
+        side.normalize()
+        steps = 10
+        verts, faces, uvs = [], [], []
+        for s in range(steps + 1):
+            t = s / steps
+            p = a + axis * t
+            half = (beam["w0"] + (beam["w1"] - beam["w0"]) * t) / 2
+            verts.append(M @ (p - side * half))
+            verts.append(M @ (p + side * half))
+        for s in range(steps):
+            faces.append((2 * s, 2 * s + 1, 2 * s + 3, 2 * s + 2))
+        mesh = bpy.data.meshes.new(f"Beam{i}")
+        mesh.from_pydata([tuple(v) for v in verts], [], faces)
+        layer = mesh.uv_layers.new(name="UVMap")
+        for poly in mesh.polygons:
+            for li in poly.loop_indices:
+                vi = mesh.loops[li].vertex_index
+                layer.data[li].uv = ((vi // 2) / steps, vi % 2)
+        mesh.materials.append(beam_material(beam))
+        obj = bpy.data.objects.new(f"Beam{i}", mesh)
+        bpy.context.scene.collection.objects.link(obj)
+        objs.append(obj)
+    return objs
+
+
+def render_beams(scene, name, cam_pos):
+    """The shafts alone, everything else held out; returns the image path or None."""
+    if not BEAMS:
+        return None
+    others = [o for o in scene.objects if o.type in ("MESH", "CURVE", "FONT")]
+    beams = build_beams(cam_pos)
+    for o in others:
+        o.is_holdout = True
+    bg = scene.world.node_tree.nodes["Background"]
+    bg.inputs["Strength"].default_value = 0.0
+    scene.render.film_transparent = True
+    scene.view_layers[0].material_override = None
+    scene.cycles.samples = 8
+    scene.cycles.use_denoising = False
+    path = os.path.join(DIR, f"_beams_{name}.png")
+    scene.render.filepath = path
+    scene.render.image_settings.color_depth = "8"
+    bpy.ops.render.render(write_still=True)
+    for o in others:
+        o.is_holdout = False
+    for o in beams:
+        bpy.data.objects.remove(o, do_unlink=True)
+    scene.render.film_transparent = False
+    bg.inputs["Strength"].default_value = 0.6
+    return path
+
+
+def add_beam_image(beauty_path, beam_path):
+    """Adds the shafts' light (in linear light) over the hazed picture."""
+    def to_lin(x):
+        return np.where(x <= 0.04045, x / 12.92, ((x + 0.055) / 1.055) ** 2.4)
+
+    def to_srgb(x):
+        x = np.clip(x, 0, 1)
+        return np.where(x <= 0.0031308, x * 12.92, 1.055 * x ** (1 / 2.4) - 0.055)
+
+    im = np.asarray(Image.open(beauty_path).convert("RGB")).astype(np.float32) / 255
+    bm = np.asarray(Image.open(beam_path).convert("RGB")).astype(np.float32) / 255
+    out = to_srgb(to_lin(im) + to_lin(bm))
+    Image.fromarray((out * 255).astype(np.uint8)).save(beauty_path)
 
 
 # ---------------------------------------------------------------------------
@@ -727,6 +889,8 @@ def load_parts(meshes):
             add_particles(f, meshes)
         elif tag == "R":
             add_prop(f)
+        elif tag == "B":
+            add_beam(f)
         elif tag == "G":
             pos, rot = frame_matrix(f, 2)
             w, h = (float(v) for v in f[7].split(","))
@@ -916,6 +1080,9 @@ def main():
             pass
         if name != "top":
             haze(out, dpath)
+            bpath = render_beams(scene, name, position)
+            if bpath:
+                add_beam_image(out, bpath)
         print("wrote", out)
 
 
