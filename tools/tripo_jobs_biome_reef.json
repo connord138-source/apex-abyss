@@ -1,0 +1,28 @@
+{
+ "jobs": [
+  {
+   "name": "TableCoral",
+   "group": "biome_reef",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/TableCoral.png"
+  },
+  {
+   "name": "GiantClam",
+   "group": "biome_reef",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/GiantClam.png"
+  },
+  {
+   "name": "GardenEels",
+   "group": "biome_reef",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/GardenEels.png"
+  },
+  {
+   "name": "PillarCoral",
+   "group": "biome_reef",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/PillarCoral.png"
+  }
+ ]
+}

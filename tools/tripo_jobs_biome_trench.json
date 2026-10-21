@@ -1,0 +1,47 @@
+{
+ "jobs": [
+  {
+   "name": "TrenchCrystals",
+   "group": "biome_trench",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/TrenchCrystals.png"
+  },
+  {
+   "name": "TrenchGlowTubes",
+   "group": "biome_trench",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/TrenchGlowTubes.png"
+  },
+  {
+   "name": "GlassSponge",
+   "group": "biome_trench",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/GlassSponge.png"
+  },
+  {
+   "name": "LeviathanSkull",
+   "group": "biome_trench",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/LeviathanSkull.png"
+  },
+  {
+   "name": "GlowEggs",
+   "group": "biome_trench",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/GlowEggs.png"
+  },
+  {
+   "name": "BoneHeap",
+   "group": "biome_trench",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/BoneHeap.png"
+  },
+  {
+   "name": "LeviathanRibs",
+   "group": "biome_trench",
+   "type": "text_to_model",
+   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: one segment of a colossal ancient sea serpent's skeleton: a single huge bone vertebra at the top with a pair of long thick curved ribs sweeping out and down from both sides, together forming a tall rounded archway like an upside-down U, pale weathered bone white with grey cracks, small cyan glowing tube worms growing in clusters on the bone. Chunky faceted. A single object, symmetric, standing upright as an arch, no water, no seabed, no text.",
+   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person"
+  }
+ ]
+}

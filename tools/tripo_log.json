@@ -193,6 +193,90 @@
   "task_id": "e5458516-352f-4918-af2a-6448edc9d703",
   "type": "generate_image"
  },
+ "biome_wreck/GalleonBow": {
+  "credits": 20,
+  "files": [
+   "GalleonBow.glb",
+   "GalleonBow_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "19456aa2-3d74-41a7-aadd-2996bc6e38c2",
+  "type": "text_to_model"
+ },
+ "biome_wreck/GalleonStern": {
+  "error": "2008: The input is rejected due to violation of content policy Please modify your input and retry",
+  "status": "submit_failed"
+ },
+ "biome_wreck/IronSteamer": {
+  "credits": 20,
+  "files": [
+   "IronSteamer.glb",
+   "IronSteamer_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "2eb6e928-9984-47c6-881b-3174c92a1619",
+  "type": "text_to_model"
+ },
+ "biome_wreck/ToppledLighthouse": {
+  "credits": 20,
+  "files": [
+   "ToppledLighthouse.glb",
+   "ToppledLighthouse_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "0f0d7271-cb0b-4730-a5bb-3952a8cbbba5",
+  "type": "text_to_model"
+ },
+ "biome_wreck/WreckAnchor": {
+  "credits": 30,
+  "files": [
+   "WreckAnchor.glb",
+   "WreckAnchor_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "091abd3d-1409-408d-a353-41263fbdaaf0",
+  "type": "image_to_model"
+ },
+ "biome_wreck/WreckBarrels": {
+  "credits": 30,
+  "files": [
+   "WreckBarrels.glb",
+   "WreckBarrels_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "f36dda57-6dd1-4ac7-8b77-fa5daf39475a",
+  "type": "image_to_model"
+ },
+ "biome_wreck/WreckCannon": {
+  "credits": 30,
+  "files": [
+   "WreckCannon.glb",
+   "WreckCannon_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "13a1f827-383d-4184-95c9-d6d65c1c9bc8",
+  "type": "image_to_model"
+ },
+ "biome_wreck/WreckFigurehead": {
+  "credits": 30,
+  "files": [
+   "WreckFigurehead.glb",
+   "WreckFigurehead_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "a87974dd-141a-40db-b629-55ba4d40870f",
+  "type": "image_to_model"
+ },
+ "biome_wreck/WreckWheelBell": {
+  "credits": 30,
+  "files": [
+   "WreckWheelBell.glb",
+   "WreckWheelBell_preview.webp"
+  ],
+  "status": "success",
+  "task_id": "7bbd5106-30e1-4ee9-8028-292a357c77f7",
+  "type": "image_to_model"
+ },
  "bosses/GiantSquid": {
   "credits": 30,
   "files": [
@@ -1397,6 +1481,24 @@
   ],
   "status": "success",
   "task_id": "4a4fc1c3-30ad-4798-8ce1-6ac321d2291d",
+  "type": "generate_image"
+ },
+ "predator_concepts/PredatorSheetA": {
+  "credits": 10,
+  "files": [
+   "PredatorSheetA.png"
+  ],
+  "status": "success",
+  "task_id": "472da375-d701-491c-93bc-d005a70e5b65",
+  "type": "generate_image"
+ },
+ "predator_concepts/PredatorSheetB": {
+  "credits": 10,
+  "files": [
+   "PredatorSheetB.png"
+  ],
+  "status": "success",
+  "task_id": "056bea43-dfb4-4b27-a8a5-21bf1d301fa2",
   "type": "generate_image"
  },
  "prey/Grouper": {

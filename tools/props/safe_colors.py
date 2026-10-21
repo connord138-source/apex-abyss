@@ -28,6 +28,13 @@ scored 0.99 on the classifier though no texel was skin tone; a truer red scored 
 strong orange-reds lose most of their yellow and 15% of their brightness, a scarlet to
 crimson red (never pink: the red keeps its chroma), before the rules above.
 
+`--olive` (2026-10-21, the Porcupine Puffer variant: its tan body, 62% of the atlas in
+the skin box, went vivid orange under the rule for "the rest", and read as the orange
+Puffball beside it): tan, beige and salmon texels that aren't bright or dark become an
+olive-khaki of the same brightness (yellow kept, red cast taken to a hair over
+neutral), the colour of a real porcupinefish; brown spots still darken and cream still
+goes cool white.
+
 `--plum` (2026-10-19, the fourth prey batch: Tripo painted the Hatchetfish's unseen mouth
 inside a plum-maroon, (110, 43, 73), though its sheet's mouth was closed; the prey
 concepts' mouths had been plum too, a colour the screen distrusts): a plum, maroon or
@@ -67,6 +74,7 @@ K_YELLOW = 6.0  # --vivid: how far a pale yellow's chroma may be raised
 CRIMSON = (0.4, 3.0, 0.85)  # --crimson: Cb offset kept, Cb added, brightness kept
 PLUM = (30.0, 10.0)  # --plum: red over green, blue over green, at least
 NAVY = (8.0, -5.0)  # --plum: (dCb, dCr) of the navy-grey it becomes
+OLIVE = (12.0, 32.0, 1.0)  # --olive: the least and most yellow (-dCb) it keeps, and its dCr
 
 
 def to_ycc(rgb: np.ndarray):
@@ -104,7 +112,7 @@ def plum(rgb: np.ndarray) -> np.ndarray:
     return np.where(zone[..., None], to_rgb(y, np.full_like(y, 128 + NAVY[0]), np.full_like(y, 128 + NAVY[1])), rgb)
 
 
-def recolor(rgb: np.ndarray, vivid_yellow: bool = False) -> tuple[np.ndarray, dict]:
+def recolor(rgb: np.ndarray, vivid_yellow: bool = False, olive: bool = False) -> tuple[np.ndarray, dict]:
     out = rgb.copy()
     before = [m.mean() * 100 for m in skin_masks(rgb)]
     for _ in range(3):  # clipping at the gamut edge can leave a few; go again
@@ -130,6 +138,12 @@ def recolor(rgb: np.ndarray, vivid_yellow: bool = False) -> tuple[np.ndarray, di
             k_cb = np.where(dcb < 0, (128 - CB_EXIT) / -dcb, np.inf)
         k = np.where(vivid, np.clip(np.minimum(k_cr, k_cb), 1.0, np.where(yellow, K_YELLOW, K_MAX)), 1.0)
         cb2, cr2 = 128 + dcb * k, 128 + dcr * k
+        if olive:
+            khaki = zone & ~bright & ~dark
+            chroma = np.clip(np.hypot(dcb, dcr) * 0.9, OLIVE[0], OLIVE[1])
+            cb2 = np.where(khaki, 128 - chroma, cb2)
+            cr2 = np.where(khaki, 128 + OLIVE[2], cr2)
+            dull &= ~khaki
         cb2 = np.where(bright, 128 + COOL[0], cb2)
         cb2 = np.where(dull, 128 + dcb * GREIGE[0], cb2)
         cr2 = np.where(bright, 128 + COOL[1], np.where(dull, 128 + GREIGE[1], cr2))
@@ -195,6 +209,7 @@ def main() -> int:
     ap.add_argument("--images", help="also write each new base color here as <Model>/baseColor.png, for the screen")
     ap.add_argument("--vivid", action="store_true", help="yellows get more chroma instead of turning white (see above)")
     ap.add_argument("--crimson", action="store_true", help="orange-reds toward a true red first (see above)")
+    ap.add_argument("--olive", action="store_true", help="tan and beige to olive-khaki instead of vivid orange (see above)")
     ap.add_argument("--plum", action="store_true", help="plum and maroon (a mouth's inside) to navy-grey first (see above)")
     args = ap.parse_args()
     out_dir = pathlib.Path(args.out)
@@ -213,7 +228,7 @@ def main() -> int:
                 rgb = crimson(rgb)
             if args.plum:
                 rgb = plum(rgb)
-            safe, report = recolor(rgb, args.vivid)
+            safe, report = recolor(rgb, args.vivid, args.olive)
             buffer = io.BytesIO()
             if image.get("mimeType") == "image/png":
                 Image.fromarray(safe).save(buffer, "PNG", optimize=True)

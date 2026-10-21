@@ -1,0 +1,74 @@
+{
+ "jobs": [
+  {
+   "name": "WreckCannon",
+   "group": "biome_wreck",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/WreckCannon.png"
+  },
+  {
+   "name": "WreckAnchor",
+   "group": "biome_wreck",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/WreckAnchor.png"
+  },
+  {
+   "name": "WreckFigurehead",
+   "group": "biome_wreck",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/WreckFigurehead.png"
+  },
+  {
+   "name": "WreckWheelBell",
+   "group": "biome_wreck",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/WreckWheelBell.png"
+  },
+  {
+   "name": "WreckBarrels",
+   "group": "biome_wreck",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/WreckBarrels.png"
+  },
+  {
+   "name": "GalleonBow",
+   "group": "biome_wreck",
+   "type": "text_to_model",
+   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: the front half of an old wooden sailing galleon, sunk and broken clean off across its middle: a pointed bow with a bowsprit and a carved sea-serpent figurehead, two decks of dark weathered planks with a row of square gun ports, the stump of a broken mast, the broken back end open and jagged showing the decks and curved ribs inside, barnacles and teal-green weed on the hull. Dark brown weathered wood, rusty iron bands, green-bronze trim. Chunky faceted. A single object lying upright as if on the sand, no water, no seabed, no text.",
+   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person",
+   "settings": {
+    "face_limit": 12000
+   }
+  },
+  {
+   "name": "GalleonStern",
+   "group": "biome_wreck",
+   "type": "text_to_model",
+   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: the rear half of an old wooden sailing galleon, broken clean off across its middle: a tall carved stern castle holding the captain's cabin, a row of big square leaded windows glowing warm amber, carved railings and an iron lantern on the stern, the rudder below, a broken mast stump, the broken front end open and jagged showing the decks and curved ribs inside, barnacles and teal-green weed. Dark brown weathered wood, green-bronze trim, amber glowing window glass. Chunky faceted. A single object, no water, no seabed, no text.",
+   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person",
+   "settings": {
+    "face_limit": 12000
+   }
+  },
+  {
+   "name": "ToppledLighthouse",
+   "group": "biome_wreck",
+   "type": "text_to_model",
+   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: an old stone lighthouse tower fallen over and lying on its side, broken off at its base: a tall round tapering tower of stone blocks painted in wide faded brick-red and cool grey stripes, its lantern room at the top end with a domed copper roof gone green and broken glass panes, a railed gallery round it, cracks, chipped blocks and barnacles. Chunky faceted. A single object lying horizontally, no water, no seabed, no text.",
+   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person",
+   "settings": {
+    "face_limit": 12000
+   }
+  },
+  {
+   "name": "IronSteamer",
+   "group": "biome_wreck",
+   "type": "text_to_model",
+   "prompt": "Stylized low-poly game asset, flat-shaded facets, bold clean colors, slightly realistic proportions, in the style of a cozy underwater adventure game: a small rusty sunken iron steamship, sitting upright: a long riveted iron hull with a straight bow, one tall black and rust smokestack, a small wooden wheelhouse with empty windows, round portholes along the side, a bent railing, a broken mast and rust streaks everywhere, green weed. Rust orange-brown, dark iron grey, faded teal paint. Chunky faceted. A single object, no water, no seabed, no text.",
+   "negative_prompt": "photo, realistic, blurry, scene, background, ground plane, water, multiple objects, text, pink, peach, beige, cream, skin, flesh, people, skeleton of a person",
+   "settings": {
+    "face_limit": 12000
+   }
+  }
+ ]
+}

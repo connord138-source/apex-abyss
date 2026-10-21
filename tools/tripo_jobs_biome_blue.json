@@ -1,0 +1,28 @@
+{
+ "jobs": [
+  {
+   "name": "WhaleSkeleton",
+   "group": "biome_blue",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/WhaleSkeleton.png"
+  },
+  {
+   "name": "Sargassum",
+   "group": "biome_blue",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/Sargassum.png"
+  },
+  {
+   "name": "JellyChain",
+   "group": "biome_blue",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/JellyChain.png"
+  },
+  {
+   "name": "CoralPinnacle",
+   "group": "biome_blue",
+   "type": "image_to_model",
+   "image": "assets/tripo/biome_models/refs/CoralPinnacle.png"
+  }
+ ]
+}
