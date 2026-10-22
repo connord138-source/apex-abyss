@@ -291,7 +291,34 @@ local function trenchWaypoint(def: Def): Vector3
 	return Vector3.new(x, ground + rng:NextNumber(def.depth[1], def.depth[2]), z)
 end
 
-local function randomWaypoint(def: Def): Vector3
+-- How far round the ring the next roaming spot may lie from where it is (PC
+-- 2026-10-22: a spot anywhere in a wide sector had the Reef's trevally packs swim
+-- straight chords across the Kelp Shallows, down to the hub's keep-out at r 213)
+local ROAM_ARC = math.rad(50)
+
+-- An angle round the hub in its sector: anywhere in it, or within ROAM_ARC of `near`
+-- (an angle past an end of the sector goes back to that end)
+local function pickAngle(def: Def, near: number?): number
+	local sector = def.angles
+	local span = if sector then (sector[2] - sector[1]) % 360 else 0
+	if near == nil then
+		if sector then
+			return math.rad(sector[1] + rng:NextNumber(0, if span == 0 then 360 else span))
+		end
+		return rng:NextNumber(0, 2 * math.pi)
+	end
+	local angle = near + rng:NextNumber(-ROAM_ARC, ROAM_ARC)
+	if sector and span ~= 0 then
+		local into = (math.deg(angle) - sector[1]) % 360
+		if into > span then
+			into = if into - span < 360 - into then span else 0
+		end
+		angle = math.rad(sector[1] + into)
+	end
+	return angle
+end
+
+local function randomWaypoint(def: Def, near: number?): Vector3
 	local style = styleOf(def)
 	if style.trench then
 		return trenchWaypoint(def)
@@ -303,12 +330,7 @@ local function randomWaypoint(def: Def): Vector3
 		local best: Vector3? = nil
 		local bestCover = -1
 		for _ = 1, 6 do
-			local angle = rng:NextNumber(0, 2 * math.pi)
-			local sector = def.angles
-			if sector then
-				local span = (sector[2] - sector[1]) % 360
-				angle = math.rad(sector[1] + rng:NextNumber(0, if span == 0 then 360 else span))
-			end
+			local angle = pickAngle(def, near)
 			local distance = rng:NextNumber(def.band[1], def.band[2])
 			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 			if not Seafloor.inTrench(x, z, 30) then
@@ -324,12 +346,7 @@ local function randomWaypoint(def: Def): Vector3
 		end
 	end
 	for _ = 1, 20 do
-		local angle = rng:NextNumber(0, 2 * math.pi)
-		local sector = def.angles
-		if sector then
-			local span = (sector[2] - sector[1]) % 360
-			angle = math.rad(sector[1] + rng:NextNumber(0, if span == 0 then 360 else span))
-		end
+		local angle = pickAngle(def, near)
 		local distance = rng:NextNumber(def.band[1], def.band[2])
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 		if not Seafloor.inTrench(x, z, 30) then
@@ -343,14 +360,16 @@ local function randomWaypoint(def: Def): Vector3
 	return Vector3.new(x, Seafloor.y(x, z) + def.depth[1] + 10, z)
 end
 
--- Where it roams to next: a tethered hunter hovers by its hole, the rest roam
+-- Where it roams to next: a tethered hunter hovers by its hole, the rest roam on
+-- round their ring from where they are
 local function waypointFor(predator: Predator): Vector3
 	local home = predator.home
 	if home then
 		local wander = rng:NextUnitVector() * rng:NextNumber(2, 8)
 		return home + Vector3.new(wander.X, math.abs(wander.Y) * 0.5, wander.Z)
 	end
-	return randomWaypoint(predator.def)
+	local at = predator.position
+	return randomWaypoint(predator.def, math.atan2(at.Z, at.X))
 end
 
 -- A pack's leader: its first member that's alive (nil for a lone hunter)
