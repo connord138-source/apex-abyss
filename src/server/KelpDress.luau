@@ -46,10 +46,14 @@ KelpDress.views = {} :: { View }
 local World = Config.World
 -- The cathedral: its nave's radius, then the rings of kelp round it (radius band,
 -- plants, height band), the inner ring's crowns roofing the nave; `doors` are gaps in
--- the inner two rings (degrees from the way out from the hub) to swim in by
+-- the inner two rings (degrees from the way out from the hub) to swim in by. It
+-- stands at 135°, between the 90° and 180° tunnels (PC 2026-10-22: at 45°, r 345 the
+-- Blue Hole's highway, which runs back toward the hub along 45° to r ~332, ended in
+-- its nave, reef corals and all), its outer ring inside r 470, short of where the
+-- wreck bay's and the reef's hunters may follow a fish (their band less 60)
 local CATHEDRAL = {
-	angle = 45,
-	r = 345,
+	angle = 135,
+	r = 330,
 	nave = 82,
 	rings = {
 		{ r = { 86, 100 }, count = 14, height = { 220, 300 }, crown = true },

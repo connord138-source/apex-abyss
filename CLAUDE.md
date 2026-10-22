@@ -1768,7 +1768,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     scene, `assets/tripo/biome_concepts/KelpScene.png`, after the owner's "really everything
     other than the whale, ship and lighthouse needs more detail and more intricacy ... the
     world should feel full"; the old tight ring of fat plants read as one kelp tower from
-    outside): the Kelp Cathedral at 45°, r 345 is a wide open nave (`nave` 82, ~165 across)
+    outside): the Kelp Cathedral at 135°, r 330 (moved from 45°, r 345 on 2026-10-22: the Blue Hole's highway ended in its nave) is a wide open nave (`nave` 82, ~165 across)
     in a grove of three loose rings stepping down outward (`CATHEDRAL.rings`: 220–300,
     150–240, 90–160 tall; `doors` gaps at 180° and 20° from the way out), ordinary `Kelp`
     models in World.Biomes.Kelp (they sway). A plant is a GiantKelp piece every `SEGMENT` 52
