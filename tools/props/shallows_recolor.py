@@ -9,9 +9,12 @@ Two things made the kelp read dark in the water. Its colour map was a deep, very
 saturated olive, and its metal map was ~0.67 with roughness ~0.34 (Tripo's guess), so in
 game it mirrored the blue water round it. Every recipe here lifts the colour map toward
 the scene's colours (hue held in a narrow band, saturation and value lifted, the map's
-own light and dark kept) and makes the finish matte: metal 0 (the map's blue channel and
-`metallicFactor`), roughness at least 0.72. A SurfaceAppearance colour only darkens, so
-the map itself has to carry the lighter colour.
+own light and dark kept) and makes the finish matte: metal 0 and roughness 0.85 as plain
+factors, with no roughness/metal map at all (2026-10-22: GiantKelp's roughness map, flat
+matte anyway, never cleared Roblox's moderation and the kelp drew grey until the PC
+cleared it; the occlusion map Tripo packs into the same image goes too, Roblox doesn't
+use it). A SurfaceAppearance colour only darkens, so the colour map itself has to carry
+the lighter colour.
 
 Grey texels (little saturation: the clump's rock and holdfast) are left as they are.
 Yellow stays clear of the moderation screen's skin rules by keeping blue low (Cb well
@@ -40,7 +43,7 @@ RECIPES = {
     # SeaGrass: pale yellow-green blades (it was a dark teal-green, hue ~150)
     "grass": {"hue": 74, "keep": 0.25, "sat": (0.75, 0.42, 0.62), "val": (0.40, 0.85), "edge": 0.06},
 }
-ROUGH_FLOOR = 0.72
+ROUGHNESS = 0.85
 
 
 def rgb_to_hsv(rgb):
@@ -112,21 +115,46 @@ def png(rgb: np.ndarray) -> bytes:
     return buf.getvalue()
 
 
+def prune_images(doc: dict, colour_images: set) -> set:
+    """Drops textures and images no material uses (the finish map once its references
+    are gone), renumbering the rest; returns the colour images' new indices."""
+    used_textures = set()
+    for material in doc.get("materials", []):
+        for holder in (material, material.get("pbrMetallicRoughness", {})):
+            for value in holder.values():
+                if isinstance(value, dict) and "index" in value:
+                    used_textures.add(value["index"])
+    textures = doc.get("textures", [])
+    keep_textures = [i for i in range(len(textures)) if i in used_textures]
+    texture_map = {old: new for new, old in enumerate(keep_textures)}
+    used_images = {textures[i]["source"] for i in keep_textures}
+    images = doc.get("images", [])
+    keep_images = [i for i in range(len(images)) if i in used_images]
+    image_map = {old: new for new, old in enumerate(keep_images)}
+    doc["textures"] = [dict(textures[i], source=image_map[textures[i]["source"]]) for i in keep_textures]
+    doc["images"] = [images[i] for i in keep_images]
+    for material in doc.get("materials", []):
+        for holder in (material, material.get("pbrMetallicRoughness", {})):
+            for value in holder.values():
+                if isinstance(value, dict) and "index" in value:
+                    value["index"] = texture_map[value["index"]]
+    return {image_map[i] for i in colour_images if i in image_map}
+
+
 def main() -> int:
     src, dst, name = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
     recipe = RECIPES[name]
     doc, blob = read_glb(src)
     views = views_of(doc, blob)
     colour_images = base_color_images(doc)
-    orm_images = set()
     for material in doc.get("materials", []):
         assert "normalTexture" not in material, f"{src}: strip its normal map first"
         pbr = material.setdefault("pbrMetallicRoughness", {})
         pbr["metallicFactor"] = 0.0
-        pbr["roughnessFactor"] = 1.0
-        info = pbr.get("metallicRoughnessTexture")
-        if info is not None:
-            orm_images.add(doc["textures"][info["index"]]["source"])
+        pbr["roughnessFactor"] = ROUGHNESS
+        if pbr.pop("metallicRoughnessTexture", None) is not None or material.pop("occlusionTexture", None) is not None:
+            print(f"[recolor] {src.name} finish: matte factors (metal 0, roughness {ROUGHNESS}), no finish map")
+    colour_images = prune_images(doc, colour_images)
     for index, image in enumerate(doc.get("images", [])):
         view = image["bufferView"]
         pixels = np.asarray(Image.open(io.BytesIO(views[view])).convert("RGB")).astype(np.float32) / 255
@@ -135,10 +163,6 @@ def main() -> int:
             pixels = recolor(pixels, recipe)
             after = pixels.reshape(-1, 3).mean(0)
             print(f"[recolor] {src.name} colour {np.round(before * 255)} -> {np.round(after * 255)}")
-        elif index in orm_images:
-            pixels[..., 1] = np.maximum(pixels[..., 1], ROUGH_FLOOR)
-            pixels[..., 2] = 0.0
-            print(f"[recolor] {src.name} finish: roughness >= {ROUGH_FLOOR}, metal 0")
         else:
             continue
         views[view] = png(pixels)

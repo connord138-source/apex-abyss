@@ -1914,6 +1914,42 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the eels, builds fish under rafts near the camera and circles 4 hammerheads
     (VariantModels.Hammerhead or part-built) round the pinnacle. Admin "Places: unfind
     every named place, regrow the pearls". PC brief: `docs/playtests/2026-10-21-biomes-brief.md`.
+- **The 2026-10-21 PC round (reports `docs/playtests/2026-10-21-pc*.md`; the PC fixed two
+  blockers, f42d126, 2a619a0 and 2551f74, and published v20 from `claude/core-systems`,
+  which didn't have the spread and no-mob change yet; the rest built on `claude/world`
+  2026-10-22):**
+  - **Predators keep to their own water** (PC: the Reef's LV 32 trevally packs followed LV
+    1-8 fish to r 213 and ate them at the Kelp Cathedral): a plain hunter takes and keeps
+    only a fish within `CHASE_SLACK` 60 studs of its band and in its sector
+    (`PredatorService` `inRange` with slack), and roams on round its ring: its next spot
+    lies within `ROAM_ARC` 50° of where it is, inside its own patch, picked evenly
+    (`pickAngle`). Sim: a pack after a LV 8 fish swimming for the hub stops at r 443 (the
+    kelp's outer edge); a fish that flees out of a predator's water is let go, so the sim's
+    spots stand in each one's water (the Barracuda's in the wreck bay).
+  - **Landmark remotes:** two remotes were both named "Landmark", so in some sessions the
+    bell, pearls and cannon did nothing; the broadcast is `LandmarkEvent`.
+  - **Wolf Eels** sat nose-down by a rock and never hunted: a lurker's hole was picked at
+    the foot of the rock giving it cover, the 22-stud body reached over it, and the floor
+    clamp held it above the rock's top pointing down at the hole. The hole is picked with
+    the rock just past the body (`coverAt(x, z, half + 4)`) at a height the body can rest
+    at (the ground under its footprint), every plain predator's pitch is capped at
+    `MAX_PITCH` 0.8, and a tethered hunter circles its hole 10-18 studs out. Sim: an eel by
+    a 24-stud rock pointed fully down before, 0.8 now, and bites a fish by its hole.
+  - **The Kelp Cathedral moved to 135°, r 330** (the Blue Hole's highway ran along 45° to
+    r ~332, into its nave): parts only, no map re-upload.
+  - **Client cost near landmarks** (PC: KelpController 37.8 ms/s in the nave,
+    LandmarkController 7-8 ms/s): kelp plants are filed in a 64-stud grid so a rescan visits
+    only nearby cells, a plant's part count is re-checked only 10 s after it's collected,
+    and past `THIRD_RATE` 90 studs an unpushed plant is posed every third frame;
+    floaters past 160 studs move every third frame, garden eels are looked at within 140,
+    the cannon checked at 10 Hz.
+  - **Variants wait for their model** (PC: a shade on a fresh variant drew a flat
+    silhouette in its colour for 6-14 s): `SkinLoader` waits on a Model's meshes and
+    textures, and FishAnimator keeps the fish in its own body until the variant's model
+    has arrived (at most 12 s).
+  - **GiantKelp's roughness map** never cleared moderation (the kelp drew grey); the PC
+    cleared it in the place. `shallows_recolor.py` writes no finish map now (metal 0,
+    roughness 0.85 as factors; the occlusion map Tripo packs with it goes too).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells

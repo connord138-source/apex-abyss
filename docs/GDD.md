@@ -1023,7 +1023,9 @@ The owner's "aggressive AI predators worth more" are the base the bosses stand o
   roams, lurks and respawns there, easing off any other creature within 70 studs. At
   most two hunt one fish at once (a pack or a boss counts as one; a fish that bites
   one is always fair game for it); the rest keep 60 studs clear of a fish that's
-  taken, and at most two go to one chum cloud.
+  taken, and at most two go to one chum cloud. A predator hunts only in and near its own water (60 studs past
+  its band, in its sector) and roams on round its ring, so a reef pack never follows a
+  small fish into the Kelp Shallows (PC 2026-10-22).
 - **Hunting like a real predator (owner, 2026-10-19: "If he misses the player he just
   slowly turns around and goes at them again. It needs to feel like a real predator
   ... Same with other predator fish. Needs to be fun to fight them not robotic"):**
