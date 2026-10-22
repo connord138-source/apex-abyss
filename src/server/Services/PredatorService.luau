@@ -445,13 +445,20 @@ local function nearHub(position: Vector3, margin: number): boolean
 	return Vector3.new(position.X - hub.X, 0, position.Z - hub.Z).Magnitude < Predators.hubKeepOut + margin
 end
 
+-- A plain hunter takes and keeps only fish this close to its own water (studs of
+-- band past its edges; PC 2026-10-22: the Reef's LV 32 trevally packs followed LV 1-8
+-- fish 300 studs into the Kelp Shallows, to r 213, and ate them at the Kelp Cathedral)
+local CHASE_SLACK = 60
+
 -- Whether a point is in a creature's own water: its band round the hub and its
--- sector (chum doesn't draw a reef shark into the kelp)
-local function inRange(def: Def, position: Vector3): boolean
+-- sector, give or take `slack` studs of band (chum doesn't draw a reef shark into
+-- the kelp)
+local function inRange(def: Def, position: Vector3, slack: number?): boolean
 	local hub = World.hub.center
 	local offset = Vector3.new(position.X - hub.X, 0, position.Z - hub.Z)
 	local r = offset.Magnitude
-	if r < def.band[1] - 40 or r > def.band[2] + 40 then
+	local give = slack or 40
+	if r < def.band[1] - give or r > def.band[2] + give then
 		return false
 	end
 	local sector = def.angles
@@ -531,6 +538,10 @@ local function keepsHunting(predator: Predator, player: Player, now: number): bo
 	if home and (root.Position - home).Magnitude > (style.tether or 0) + predator.def.aggroRange * 0.6 then
 		return false
 	end
+	-- (and every plain hunter lets a fish go once it's swum out of its water)
+	if not predator.custom and not inRange(predator.def, root.Position, CHASE_SLACK) then
+		return false
+	end
 	local leash = style.leash or Predators.loseRange
 	return (root.Position - predator.position).Magnitude <= senseRange(predator, character) * leash
 end
@@ -564,6 +575,9 @@ local function pickTarget(predator: Predator, now: number): Player?
 			continue
 		end
 		if not inReach(predator, player, character, root, now) then
+			continue
+		end
+		if not predator.custom and not inRange(def, root.Position, CHASE_SLACK) then
 			continue
 		end
 		local distance = (root.Position - predator.position).Magnitude
