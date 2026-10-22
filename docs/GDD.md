@@ -1017,6 +1017,13 @@ The owner's "aggressive AI predators worth more" are the base the bosses stand o
   other player who bit it in the last 2.5 s), × upgrades and species. Everyone who
   dealt damage gets a share of the loot (at least 10%; the killer +10%).
 - **Respawn** 90 s / 150 s after a kill, somewhere else in the band.
+- **Spread out, no mobbing (owner, 2026-10-22: "Predators should be more spread out.
+  And they shouldn't mob a player either"):** each of a group's creatures has its own
+  patch of the group's water (the sector cut into one arc each, a little overlap) and
+  roams, lurks and respawns there, easing off any other creature within 70 studs. At
+  most two hunt one fish at once (a pack or a boss counts as one; a fish that bites
+  one is always fair game for it); the rest keep 60 studs clear of a fish that's
+  taken, and at most two go to one chum cloud.
 - **Hunting like a real predator (owner, 2026-10-19: "If he misses the player he just
   slowly turns around and goes at them again. It needs to feel like a real predator
   ... Same with other predator fish. Needs to be fun to fight them not robotic"):**

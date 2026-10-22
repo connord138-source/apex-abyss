@@ -2012,7 +2012,18 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     within `streamRange` 700 studs of their fish, any hunting them and every boss
     (`Net.predatorStateTo`); a client hides one it hasn't heard of for `STALE` 1.5 s and
     starts its path afresh when it's back. The ambusher's lurk spots keep to its
-    sector. New species for every biome are on `assets/concepts/PredatorsBoard.jpg`
+    sector. **Spread out, no mobbing (owner, 2026-10-22: "Predators should be more
+    spread out. And they shouldn't mob a player either"; `Config/Predators` `spread`,
+    `mob`):** a group's `count` share its water, a patch each (the sector or ring cut
+    into `count` arcs, 15% overlap; the Trench's canyon cut along its length;
+    `patchOf`, `slot`/`slots` set at start), roaming, lurking and respawning in it; a
+    roamer eases off any other creature within 70 studs (packmates aside, not a
+    tethered one); at most 2 hunt one fish at once (a pack or a boss counts as one; a
+    fish that bit it is always fair game; `huntersOn`), the rest keep 60 studs clear of
+    a taken fish (`crowdFrom`), and at most 2 make for one chum cloud (`atChum`). Sim
+    (`run_predators.sh` Spread and Mob): nearest other creature median 97 → 186 studs,
+    within 40 studs 18% → 2.3% of the time; the bay's 9 hunters round one still fish
+    9 → 2 on it at once. New species for every biome are on `assets/concepts/PredatorsBoard.jpg`
     (sheets `tools/tripo_jobs_predator_concepts.json`; owner, 2026-10-21: "I like those new
     predators"). **Their models are made** (`predators_fbx`, sha256 30600df5…; rigged with a
     Jaw, every colour map cleared, highest 0.026): SeaLion, GoliathGrouper, GiantTrevally,

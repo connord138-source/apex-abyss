@@ -441,6 +441,104 @@ local function rate(r: Result): number
 	return if r.tells > 0 then r.hits / r.tells else 0
 end
 
+-- Spread (owner, 2026-10-22: "Predators should be more spread out"): every plain
+-- creature roams its water for 3 minutes with no fish about; past the first 30 s,
+-- every 5 s, how far each is from the nearest other (its packmates aside)
+print("-- Spread: every creature roaming, no fish about")
+do
+	local nearest: { number } = {}
+	local close = 0
+	for step = 1, 1800 do
+		sim.now += DT
+		heartbeat(DT)
+		if step > 300 and step % 50 == 0 then
+			for _, a in PredatorService.list() do
+				if a.mode == "dead" then
+					continue
+				end
+				local best = math.huge
+				for _, b in PredatorService.list() do
+					if b ~= a and b.mode ~= "dead" and not (a.pack and b.pack == a.pack) then
+						local flat = Vector3.new(a.position.X - b.position.X, 0, a.position.Z - b.position.Z)
+						best = math.min(best, flat.Magnitude)
+					end
+				end
+				table.insert(nearest, best)
+				if best < 40 then
+					close += 1
+				end
+			end
+		end
+	end
+	table.sort(nearest)
+	local share = close / #nearest
+	print(
+		string.format(
+			"   nearest other: median %.0f studs, lowest tenth %.0f; within 40 studs %.1f%% of the time",
+			nearest[math.ceil(#nearest / 2)],
+			nearest[math.ceil(#nearest / 10)],
+			share * 100
+		)
+	)
+	expect(share <= 0.05, "spread: creatures are rarely within 40 studs of each other")
+end
+
+-- No mobbing (owner, 2026-10-22: "they shouldn't mob a player either"): every
+-- Barracuda and Goliath Grouper in the wreck bay starts 40 studs round one still
+-- LV 18 fish; at most Config/Predators `mob.hunters` may hunt it at once
+print("-- Mob: the bay's hunters round one still fish")
+do
+	local cap = (Config.Predators :: any).mob and (Config.Predators :: any).mob.hunters or 2
+	local bx, bz = -650, 0
+	local spot = Vector3.new(bx, Seafloor.y(bx, bz) + 20, bz)
+	local fish = fishAt("Nibbler", 18)
+	local player = { Name = "Mobbed", UserId = 9, Parent = true }
+	local character, root = sim.fish(fish.length, spot)
+	character:SetAttribute("FishLevel", 18)
+	character:SetAttribute("MaxHealth", 100)
+	character:SetAttribute("Health", 100)
+	sim.sessions = { [player] = { alive = true, inHub = false, safeUntil = 0 } }
+	sim.characters = { [player] = { character = character, root = root } }
+	local crowd = 0
+	for _, predator in PredatorService.list() do
+		if predator.def.id == "Barracuda" or predator.def.id == "GoliathGrouper" then
+			crowd += 1
+			local angle = crowd * 0.7
+			predator.position = spot + Vector3.new(math.cos(angle), 0.05, math.sin(angle)) * 40
+			predator.velocity = Vector3.zero
+			predator.mode = "roam"
+			predator.target = nil
+			predator.waypoint = spot
+			predator.waypointUntil = sim.now + 30
+		end
+	end
+	local most, hunted = 0, 0
+	for _ = 1, 400 do
+		sim.now += DT
+		heartbeat(DT)
+		local units: { [any]: boolean } = {}
+		local count = 0
+		for _, predator in PredatorService.list() do
+			if predator.target == player and predator.mode ~= "dead" then
+				local unit: any = predator.pack or predator
+				if not units[unit] then
+					units[unit] = true
+					count += 1
+				end
+			end
+		end
+		most = math.max(most, count)
+		if count > 0 then
+			hunted += 1
+		end
+	end
+	print(`   {crowd} round it: at most {most} hunting it at once, hunted {hunted * DT} s of 40`)
+	expect(most <= cap, `mob: at most {cap} hunt one fish at once (saw {most})`)
+	expect(hunted * DT >= 20, "mob: the fish is still hunted")
+	sim.sessions = {}
+	sim.characters = {}
+end
+
 print(`{TRIALS} runs × {SECONDS} s each; a fish reacts {REACT} s after it sees a burst or a tell`)
 
 -- Barracuda, the ambush sprinter, on the shelf (LV 1–40 water)

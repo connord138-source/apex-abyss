@@ -110,6 +110,10 @@ export type Predator = {
 	role: number,
 	-- A tethered hunter's hole (`tether`): where it spawned
 	home: Vector3?,
+	-- Its patch of its group's water (Config/Predators `spread`): number `slot`
+	-- (from 0) of `slots`; nil for a boss or one added on its own (the whole water)
+	slot: number?,
+	slots: number?,
 	-- A gulper's pull is broken for this tell (the fish swam off too fast)
 	gulpFree: boolean,
 	-- When a lure last told its fish it's being drawn in
@@ -278,12 +282,36 @@ end
 
 -- A spot down in the Trench's canyon (a `trench` hunter): along its winding line,
 -- across its floor, at the hunter's depth over the real ground
-local function trenchWaypoint(def: Def): Vector3
+-- Its own patch of its group's water (Config/Predators `spread`): the sector (or
+-- the whole ring) cut into `slots` arcs, `overlap` of an arc either side. Its first
+-- angle and its span, in degrees.
+local function patchOf(predator: Predator): (number, number)
+	local def = predator.def
+	local from = if def.angles then def.angles[1] else 0
+	local span = if def.angles then (def.angles[2] - def.angles[1]) % 360 else 360
+	span = if span == 0 then 360 else span
+	local slot, slots = predator.slot, predator.slots
+	if slot == nil or slots == nil or slots <= 1 then
+		return from, span
+	end
+	local arc = span / slots
+	local overlap = arc * Predators.spread.overlap
+	return from + arc * slot - overlap, arc + overlap * 2
+end
+
+local function trenchWaypoint(predator: Predator): Vector3
+	local def = predator.def
 	local trench = World.trench
-	local r = rng:NextNumber(
-		math.max(def.band[1], trench.radii[1] + 15),
-		math.max(math.min(def.band[2], trench.radii[2] - 15), trench.radii[1] + 16)
-	)
+	local lo = math.max(def.band[1], trench.radii[1] + 15)
+	local hi = math.max(math.min(def.band[2], trench.radii[2] - 15), trench.radii[1] + 16)
+	-- (its patch is a stretch of the canyon)
+	local slot, slots = predator.slot, predator.slots
+	if slot and slots and slots > 1 then
+		local step = (hi - lo) / slots
+		local overlap = step * Predators.spread.overlap
+		lo, hi = math.max(lo, lo + step * slot - overlap), math.min(hi, lo + step * (slot + 1) + overlap)
+	end
+	local r = rng:NextNumber(lo, hi)
 	local _, width = Seafloor.trenchAxis(r)
 	local _, _, halfBottom = Seafloor.trenchHalfWidths(width)
 	local x, z = Seafloor.trenchPoint(r, rng:NextNumber(-1, 1) * math.max(halfBottom - 12, 4))
@@ -291,24 +319,21 @@ local function trenchWaypoint(def: Def): Vector3
 	return Vector3.new(x, ground + rng:NextNumber(def.depth[1], def.depth[2]), z)
 end
 
-local function randomWaypoint(def: Def): Vector3
+local function randomWaypoint(predator: Predator): Vector3
+	local def = predator.def
 	local style = styleOf(def)
 	if style.trench then
-		return trenchWaypoint(def)
+		return trenchWaypoint(predator)
 	end
+	local from, span = patchOf(predator)
 	local lurk = style.lurk
 	if lurk then
 		-- An ambusher lurks low by a rock, a coral head or the kelp: the best cover of a
-		-- few spots in its water
+		-- few spots in its patch
 		local best: Vector3? = nil
 		local bestCover = -1
 		for _ = 1, 6 do
-			local angle = rng:NextNumber(0, 2 * math.pi)
-			local sector = def.angles
-			if sector then
-				local span = (sector[2] - sector[1]) % 360
-				angle = math.rad(sector[1] + rng:NextNumber(0, if span == 0 then 360 else span))
-			end
+			local angle = math.rad(from + rng:NextNumber(0, span))
 			local distance = rng:NextNumber(def.band[1], def.band[2])
 			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 			if not Seafloor.inTrench(x, z, 30) then
@@ -324,12 +349,7 @@ local function randomWaypoint(def: Def): Vector3
 		end
 	end
 	for _ = 1, 20 do
-		local angle = rng:NextNumber(0, 2 * math.pi)
-		local sector = def.angles
-		if sector then
-			local span = (sector[2] - sector[1]) % 360
-			angle = math.rad(sector[1] + rng:NextNumber(0, if span == 0 then 360 else span))
-		end
+		local angle = math.rad(from + rng:NextNumber(0, span))
 		local distance = rng:NextNumber(def.band[1], def.band[2])
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 		if not Seafloor.inTrench(x, z, 30) then
@@ -338,7 +358,7 @@ local function randomWaypoint(def: Def): Vector3
 			return Vector3.new(x, ground + rng:NextNumber(def.depth[1], def.depth[2]), z)
 		end
 	end
-	local fallback = math.rad(if def.angles then (def.angles[1] + def.angles[2]) / 2 else 0)
+	local fallback = math.rad(from + span / 2)
 	local x, z = math.cos(fallback) * def.band[1], math.sin(fallback) * def.band[1]
 	return Vector3.new(x, Seafloor.y(x, z) + def.depth[1] + 10, z)
 end
@@ -350,7 +370,7 @@ local function waypointFor(predator: Predator): Vector3
 		local wander = rng:NextUnitVector() * rng:NextNumber(2, 8)
 		return home + Vector3.new(wander.X, math.abs(wander.Y) * 0.5, wander.Z)
 	end
-	return randomWaypoint(predator.def)
+	return randomWaypoint(predator)
 end
 
 -- A pack's leader: its first member that's alive (nil for a lone hunter)
@@ -385,7 +405,7 @@ local function spawn(predator: Predator, at: Vector3?)
 	if at == nil and leader and leader ~= predator then
 		at = stationOf(predator, leader)
 	end
-	predator.position = at or randomWaypoint(predator.def)
+	predator.position = at or randomWaypoint(predator)
 	predator.home = if styleOf(predator.def).tether then predator.position else nil
 	predator.velocity = Vector3.zero
 	predator.heading = Vector3.new(1, 0, 0)
@@ -550,6 +570,27 @@ local function packTarget(predator: Predator, now: number): Player?
 	return nil
 end
 
+-- How many hunt this fish now, leaving out `self` and its pack: a pack counts once,
+-- and so does a boss (Config/Predators `mob`)
+local function huntersOn(player: Player, self: Predator): number
+	local seen: { [any]: boolean } = {}
+	local count = 0
+	for _, other in predators do
+		if other.target ~= player or other == self or other.mode == "dead" then
+			continue
+		end
+		if self.pack and other.pack == self.pack then
+			continue
+		end
+		local unit: any = other.pack or other
+		if not seen[unit] then
+			seen[unit] = true
+			count += 1
+		end
+	end
+	return count
+end
+
 -- The fish worth hunting: alive, not safe, in range, big enough (or it bit us).
 local function pickTarget(predator: Predator, now: number): Player?
 	local def = predator.def
@@ -592,6 +633,11 @@ local function pickTarget(predator: Predator, now: number): Player?
 		if home and (root.Position - home).Magnitude > (style.tether or 0) + def.aggroRange * 0.5 then
 			continue
 		end
+		-- (a fish that already has its share of hunters is left to them, unless it
+		-- bit this one: no mobbing)
+		if not provoked and huntersOn(player, predator) >= Predators.mob.hunters then
+			continue
+		end
 		local score = fishLength + (if provoked then 50 else 0) - distance * 0.05
 		if score > bestScore then
 			best, bestScore = player, score
@@ -619,6 +665,63 @@ local function shyFrom(predator: Predator): Vector3?
 		end
 	end
 	return best
+end
+
+-- The nearest fish within `mob.gap` that already has its share of hunters, or nil:
+-- a roamer gives that hunt room
+local function crowdFrom(predator: Predator): Vector3?
+	local mob = Predators.mob
+	local best: Vector3? = nil
+	local bestGap = mob.gap
+	for player, record in HuntService.sessions() do
+		local _, root = FishService.character(player)
+		if root == nil or not record.alive or record.inHub then
+			continue
+		end
+		local gap = (root.Position - predator.position).Magnitude
+		if gap < bestGap and huntersOn(player, predator) >= mob.hunters then
+			best, bestGap = root.Position, gap
+		end
+	end
+	return best
+end
+
+-- Room to itself (Config/Predators `spread.spacing`): which way a roamer eases off
+-- the creatures too close to it (its packmates aside), stronger the closer they are
+local function crowding(predator: Predator): Vector3
+	local spacing = Predators.spread.spacing
+	local push = Vector3.zero
+	for _, other in predators do
+		if other == predator or other.mode == "dead" or (predator.pack and other.pack == predator.pack) then
+			continue
+		end
+		local away = predator.position - other.position
+		local flat = Vector3.new(away.X, 0, away.Z)
+		local gap = flat.Magnitude
+		if gap < spacing and gap > 1e-3 then
+			push += flat.Unit * (1 - gap / spacing)
+		end
+	end
+	return push
+end
+
+-- How many others are making for this chum cloud (a pack counts once)
+local function atChum(predator: Predator, chum: Vector3): number
+	local seen: { [any]: boolean } = {}
+	local count = 0
+	for _, other in predators do
+		if other == predator or other.mode ~= "roam" or (predator.pack and other.pack == predator.pack) then
+			continue
+		end
+		if (other.waypoint - chum).Magnitude < 12 + other.def.length then
+			local unit: any = other.pack or other
+			if not seen[unit] then
+				seen[unit] = true
+				count += 1
+			end
+		end
+	end
+	return count
 end
 
 local function targetRoot(predator: Predator): (BasePart?, number)
@@ -1140,7 +1243,13 @@ local function simulate(predator: Predator, dt: number, now: number)
 		if reached or now >= predator.lureAt then
 			predator.lureAt = now + 1
 			local chum = ChumService.nearest(predator.position, Config.Chum.lure)
-			if chum and not nearHub(chum, def.length) and inRange(def, chum) then
+			-- (no more than `mob.chum` to one cloud)
+			if
+				chum
+				and not nearHub(chum, def.length)
+				and inRange(def, chum)
+				and atChum(predator, chum) < Predators.mob.chum
+			then
 				if reached or (predator.waypoint - chum).Magnitude > def.length * 1.5 then
 					local around = rng:NextUnitVector() * def.length * 0.6
 					predator.waypoint = chum + Vector3.new(around.X, math.abs(around.Y) + 3, around.Z)
@@ -1159,6 +1268,13 @@ local function simulate(predator: Predator, dt: number, now: number)
 			* speed
 			* (style.roam or Predators.roamSpeed)
 			* rhythm(predator, now, math.max(style.glide or 0.2, 0.2), style.beat or 2.6)
+		-- It keeps its distance from the others (not a tethered one: its hole holds it)
+		if predator.home == nil then
+			local push = crowding(predator)
+			if push.Magnitude > 1e-3 then
+				desired = (desired.Unit + push * 1.5).Unit * desired.Magnitude
+			end
+		end
 		-- A pack member keeps station by its leader (it catches up when behind)
 		local leader = leaderOf(predator)
 		if leader and leader ~= predator then
@@ -1169,8 +1285,9 @@ local function simulate(predator: Predator, dt: number, now: number)
 				desired = toStation.Unit * pace
 			end
 		end
-		-- ...and it shies off a fish far above its level (Config/Predators `fight`)
-		local bully = shyFrom(predator)
+		-- ...and it shies off a fish far above its level (Config/Predators `fight`) and
+		-- gives room to a fish that's already being hunted (`mob`)
+		local bully = shyFrom(predator) or crowdFrom(predator)
 		if bully then
 			local away = predator.position - bully
 			away = Vector3.new(away.X, math.max(away.Y, 0) * 0.3, away.Z)
@@ -1690,6 +1807,8 @@ local function make(def: Def, custom: boolean?): Predator
 		pack = nil,
 		role = 1,
 		home = nil,
+		slot = nil,
+		slots = nil,
 		gulpFree = false,
 		luredAt = -math.huge,
 	}
@@ -1785,7 +1904,8 @@ PredatorService.rotateToward = rotateToward
 function PredatorService.start()
 	for _, def in Predators.groups do
 		local pack = styleOf(def).pack
-		for _ = 1, def.count do
+		-- (each of the group's `count` takes its own patch of the water, a pack as one)
+		for slot = 0, def.count - 1 do
 			if pack then
 				-- (`count` packs, each `size` together: the leader first, the rest at
 				-- their stations beside it)
@@ -1794,11 +1914,14 @@ function PredatorService.start()
 					local member = make(def, false)
 					member.pack = members
 					member.role = role
+					member.slot, member.slots = slot, def.count
 					table.insert(members, member)
 					spawn(member)
 				end
 			else
-				spawn(make(def, false))
+				local predator = make(def, false)
+				predator.slot, predator.slots = slot, def.count
+				spawn(predator)
 			end
 		end
 	end

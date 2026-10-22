@@ -52,6 +52,7 @@ Sixgills, Vents 6 Wolf Eels, Trench 3 Goblin Sharks + 5 Black Dragonfish.
 | QR11 | Black Dragonfish (Trench, LV 88) | A cyan lure glows under its chin and brightens as it hunts. `ITS LURE IS PULLING YOU IN · SWIM OFF` shows and you drift toward it; then it bursts (`IT'S A LURE · DASH OFF`). |
 | QR12 | Body size | Your bite lands at each one's body, not at the sea lion's flipper tips or the dragonfish's barbel. A boss bumped into still stops you at its flank. |
 | QR13 | Full, not slow | In the Reef with the packs, and in the Trench, FPS stays where round 3 had it (Reef ~46, Trench ~43). Any `[Guard]` error naming PredatorService goes in the report. |
+| QR15 | Spread, no mob | Swim the Wreck bay and the Reef's outer half: predators turn up one or two at a time, spread round the water, not in clumps. Let one start on you in the bay and sit still: no more than **two** hunt you at once (a Trevally pack counts as one); the rest hang back about 60 studs. Bite a third one and it fights back (fair game). Note any clump of 3+ you see and where. |
 | QR14 | Words | INDEX → GUIDE has a **Predators** entry, and FISH's subtitle says fights go by level. |
 
 ## 4. Report

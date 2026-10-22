@@ -753,6 +753,17 @@ return {
 	-- A player is streamed the creatures within this many studs of their fish (and
 	-- any hunting them, and every boss); past it the water hides them anyway
 	streamRange = 700,
+	-- Spread and crowding (owner, 2026-10-22: "Predators should be more spread out.
+	-- And they shouldn't mob a player either"). A group's `count` share its water out,
+	-- a patch each: the sector (or the whole ring) cut into `count` arcs with `overlap`
+	-- of an arc either side (the Trench's canyon is cut along its length), and each
+	-- roams and lurks in its own. Roaming, it eases off any other creature within
+	-- `spacing` studs (its packmates aside).
+	spread = { overlap = 0.15, spacing = 70 },
+	-- At most `hunters` hunt one fish at a time (a pack counts as one, a boss too; a
+	-- fish that bit it is always fair game); the rest keep `gap` studs clear of a fish
+	-- that's taken, and at most `chum` make for one chum cloud.
+	mob = { hunters = 2, gap = 60, chum = 2 },
 	tickSeconds = 0.1, -- the server simulates and streams at this rate
 	roamSpeed = 0.55, -- × speed while roaming
 	-- No creature comes within this many studs of the hub's center (plus half its
