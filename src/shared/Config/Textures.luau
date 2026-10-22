@@ -34,7 +34,7 @@ return {
 	logo = 129818407566312, -- marketing/logo.png
 	-- the sea chart behind the minimap and the full map (tools/map/make_chart.py;
 	-- src/client/MapDraw)
-	mapChart = 80041452202646, -- assets/textures/map_chart.png
+	mapChart = 102792114289670, -- assets/textures/map_chart.png
 	-- rug*: the den rugs' top-down art (tools/props/rug_textures.py; Shared/DenItems)
 	rugBraidedKelpRug = 135571701796831, -- assets/textures/rug_BraidedKelpRug.png
 	rugCoralRug = 73878696309005, -- assets/textures/rug_CoralRug.png

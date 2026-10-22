@@ -280,8 +280,6 @@ local function coverAt(x: number, z: number): number
 	return raised
 end
 
--- A spot down in the Trench's canyon (a `trench` hunter): along its winding line,
--- across its floor, at the hunter's depth over the real ground
 -- Its own patch of its group's water (Config/Predators `spread`): the sector (or
 -- the whole ring) cut into `slots` arcs, `overlap` of an arc either side. Its first
 -- angle and its span, in degrees.
@@ -299,6 +297,8 @@ local function patchOf(predator: Predator): (number, number)
 	return from + arc * slot - overlap, arc + overlap * 2
 end
 
+-- A spot down in the Trench's canyon (a `trench` hunter): along its winding line,
+-- across its floor, at the hunter's depth over the real ground
 local function trenchWaypoint(predator: Predator): Vector3
 	local def = predator.def
 	local trench = World.trench
@@ -319,13 +319,36 @@ local function trenchWaypoint(predator: Predator): Vector3
 	return Vector3.new(x, ground + rng:NextNumber(def.depth[1], def.depth[2]), z)
 end
 
-local function randomWaypoint(predator: Predator): Vector3
+-- How far round the ring the next roaming spot may lie from where it is (PC
+-- 2026-10-22: a spot anywhere in a wide sector had the Reef's trevally packs swim
+-- straight chords across the Kelp Shallows, down to the hub's keep-out at r 213)
+local ROAM_ARC = math.rad(50)
+
+-- An angle round the hub in its patch: anywhere in it, or within ROAM_ARC of `near`
+-- and in the patch (from outside it, the patch's nearer end; never piled on an edge)
+local function pickAngle(predator: Predator, near: number?): number
+	local from, span = patchOf(predator)
+	if near == nil then
+		return math.rad(from + rng:NextNumber(0, span))
+	end
+	if span >= 360 then
+		return near + rng:NextNumber(-ROAM_ARC, ROAM_ARC)
+	end
+	local arc = math.deg(ROAM_ARC)
+	local into = (math.deg(near) - from) % 360
+	if into > span then
+		-- (outside the patch: back in from its nearer end)
+		into = if into - span < 360 - into then span else 0
+	end
+	return math.rad(from + rng:NextNumber(math.max(into - arc, 0), math.min(into + arc, span)))
+end
+
+local function randomWaypoint(predator: Predator, near: number?): Vector3
 	local def = predator.def
 	local style = styleOf(def)
 	if style.trench then
 		return trenchWaypoint(predator)
 	end
-	local from, span = patchOf(predator)
 	local lurk = style.lurk
 	if lurk then
 		-- An ambusher lurks low by a rock, a coral head or the kelp: the best cover of a
@@ -333,7 +356,7 @@ local function randomWaypoint(predator: Predator): Vector3
 		local best: Vector3? = nil
 		local bestCover = -1
 		for _ = 1, 6 do
-			local angle = math.rad(from + rng:NextNumber(0, span))
+			local angle = pickAngle(predator, near)
 			local distance = rng:NextNumber(def.band[1], def.band[2])
 			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 			if not Seafloor.inTrench(x, z, 30) then
@@ -349,7 +372,7 @@ local function randomWaypoint(predator: Predator): Vector3
 		end
 	end
 	for _ = 1, 20 do
-		local angle = math.rad(from + rng:NextNumber(0, span))
+		local angle = pickAngle(predator, near)
 		local distance = rng:NextNumber(def.band[1], def.band[2])
 		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 		if not Seafloor.inTrench(x, z, 30) then
@@ -358,19 +381,22 @@ local function randomWaypoint(predator: Predator): Vector3
 			return Vector3.new(x, ground + rng:NextNumber(def.depth[1], def.depth[2]), z)
 		end
 	end
+	local from, span = patchOf(predator)
 	local fallback = math.rad(from + span / 2)
 	local x, z = math.cos(fallback) * def.band[1], math.sin(fallback) * def.band[1]
 	return Vector3.new(x, Seafloor.y(x, z) + def.depth[1] + 10, z)
 end
 
--- Where it roams to next: a tethered hunter hovers by its hole, the rest roam
+-- Where it roams to next: a tethered hunter hovers by its hole, the rest roam on
+-- round their patch from where they are
 local function waypointFor(predator: Predator): Vector3
 	local home = predator.home
 	if home then
 		local wander = rng:NextUnitVector() * rng:NextNumber(2, 8)
 		return home + Vector3.new(wander.X, math.abs(wander.Y) * 0.5, wander.Z)
 	end
-	return randomWaypoint(predator)
+	local at = predator.position
+	return randomWaypoint(predator, math.atan2(at.Z, at.X))
 end
 
 -- A pack's leader: its first member that's alive (nil for a lone hunter)
@@ -465,13 +491,20 @@ local function nearHub(position: Vector3, margin: number): boolean
 	return Vector3.new(position.X - hub.X, 0, position.Z - hub.Z).Magnitude < Predators.hubKeepOut + margin
 end
 
+-- A plain hunter takes and keeps only fish this close to its own water (studs of
+-- band past its edges; PC 2026-10-22: the Reef's LV 32 trevally packs followed LV 1-8
+-- fish 300 studs into the Kelp Shallows, to r 213, and ate them at the Kelp Cathedral)
+local CHASE_SLACK = 60
+
 -- Whether a point is in a creature's own water: its band round the hub and its
--- sector (chum doesn't draw a reef shark into the kelp)
-local function inRange(def: Def, position: Vector3): boolean
+-- sector, give or take `slack` studs of band (chum doesn't draw a reef shark into
+-- the kelp)
+local function inRange(def: Def, position: Vector3, slack: number?): boolean
 	local hub = World.hub.center
 	local offset = Vector3.new(position.X - hub.X, 0, position.Z - hub.Z)
 	local r = offset.Magnitude
-	if r < def.band[1] - 40 or r > def.band[2] + 40 then
+	local give = slack or 40
+	if r < def.band[1] - give or r > def.band[2] + give then
 		return false
 	end
 	local sector = def.angles
@@ -551,6 +584,10 @@ local function keepsHunting(predator: Predator, player: Player, now: number): bo
 	if home and (root.Position - home).Magnitude > (style.tether or 0) + predator.def.aggroRange * 0.6 then
 		return false
 	end
+	-- (and every plain hunter lets a fish go once it's swum out of its water)
+	if not predator.custom and not inRange(predator.def, root.Position, CHASE_SLACK) then
+		return false
+	end
 	local leash = style.leash or Predators.loseRange
 	return (root.Position - predator.position).Magnitude <= senseRange(predator, character) * leash
 end
@@ -605,6 +642,9 @@ local function pickTarget(predator: Predator, now: number): Player?
 			continue
 		end
 		if not inReach(predator, player, character, root, now) then
+			continue
+		end
+		if not predator.custom and not inRange(def, root.Position, CHASE_SLACK) then
 			continue
 		end
 		local distance = (root.Position - predator.position).Magnitude
