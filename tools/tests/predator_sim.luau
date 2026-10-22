@@ -931,6 +931,65 @@ expect(
 )
 local wDash = case("WolfEel", n75, "water", vents, "stillDash", 22)
 expect(rate(wDash) <= 0.35, "Wolf Eel: a Dash beats its lunge")
+-- By a rock (PC 2026-10-22: three of four sat nose-down at their holes and never
+-- hunted): its hole at the foot of a 24-stud rock its body reaches over; roaming 20 s
+-- it never points more than MAX_PITCH (0.8) down, and a still fish 18 studs out from
+-- the hole, away from the rock, is bitten
+do
+	local eel = only("WolfEel")
+	local hole = Vector3.new(vents.X, Seafloor.y(vents.X, vents.Z) + 4, vents.Z)
+	local flatGround = sim.groundY
+	sim.groundY = function(x: number, z: number): number
+		local base = Seafloor.y(x, z)
+		if math.abs(x - (hole.X + 14)) < 6 and math.abs(z - hole.Z) < 6 then
+			return base + 24
+		end
+		return base
+	end
+	eel.position, eel.home = hole, hole
+	eel.velocity = Vector3.zero
+	eel.heading = Vector3.new(1, 0, 0)
+	eel.mode, eel.target = "roam", nil
+	eel.waypoint, eel.waypointUntil = hole, 0
+	sim.sessions, sim.characters = {}, {}
+	local lowest = 1
+	for _ = 1, 200 do
+		sim.now += DT
+		heartbeat(DT)
+		lowest = math.min(lowest, eel.heading.Y)
+	end
+	local fish = fishAt("Nibbler", 75)
+	local player = { Name = "Beside", UserId = 12, Parent = true }
+	local spot = hole + Vector3.new(-18, 0, 0)
+	local character, root = sim.fish(fish.length, spot)
+	character:SetAttribute("FishLevel", 75)
+	character:SetAttribute("MaxHealth", 100)
+	character:SetAttribute("Health", 100)
+	sim.sessions = { [player] = { alive = true, inHub = false, safeUntil = 0 } }
+	sim.characters = { [player] = { character = character, root = root } }
+	table.clear(sim.events)
+	local hits = 0
+	for _ = 1, 200 do
+		sim.now += DT
+		heartbeat(DT)
+	end
+	for _, event in sim.events do
+		if event.kind == "bite" and event.payload.hit then
+			hits += 1
+		end
+	end
+	print(
+		string.format(
+			"   by a rock: steepest nose-down %.2f, then %d bites on a still fish by its hole in 20 s",
+			-lowest,
+			hits
+		)
+	)
+	expect(lowest >= -0.81, `Wolf Eel: never stands on its nose by a rock ({string.format("%.2f", lowest)})`)
+	expect(hits > 0, "Wolf Eel: hunts a fish by its hole when a rock stands beside it")
+	sim.groundY = flatGround
+	sim.sessions, sim.characters = {}, {}
+end
 
 -- Goblin Shark, the Trench's jaw launcher (LV 90)
 print("-- Goblin Shark: jaw throw")

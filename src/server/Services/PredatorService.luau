@@ -131,6 +131,14 @@ local rng = Random.new(World.seed + 41)
 local lastBite: { [Player]: number } = {}
 local accumulator = 0
 local STREAM_BATCH = 4 -- creatures per position packet (an entry is ~130 bytes)
+-- A body's half-height as a share of its length (its belly under its middle)
+local BODY_HALF = 0.12
+-- Water kept between the belly and the ground, at the least (studs)
+local BELLY_GAP = 1.5
+-- How steeply a plain predator may point up or down (sine of the pitch): a fish
+-- doesn't stand on its nose (PC 2026-10-22: three of four Wolf Eels sat nose-down by
+-- a rock, heading (0, -1, 0))
+local MAX_PITCH = 0.8
 
 -- A Blood Tide's hunters: faster and keener (Config/Tides `hunters`; never bosses)
 local function hunters(predator: Predator): (number, number)
@@ -266,11 +274,12 @@ local function inKelp(position: Vector3): boolean
 end
 
 -- How far rock or kelp stands round a spot (an ambusher lurks by it)
-local function coverAt(x: number, z: number): number
+local function coverAt(x: number, z: number, away: number?): number
 	local floor = Seafloor.y(x, z)
 	local raised = 0
+	local d = away or 10
 	for _, offset in
-		{ Vector3.new(10, 0, 0), Vector3.new(-10, 0, 0), Vector3.new(0, 0, 10), Vector3.new(0, 0, -10) }
+		{ Vector3.new(d, 0, 0), Vector3.new(-d, 0, 0), Vector3.new(0, 0, d), Vector3.new(0, 0, -d) }
 	do
 		raised = math.max(raised, Ground.y(x + offset.X, z + offset.Z) - floor)
 	end
@@ -352,18 +361,34 @@ local function randomWaypoint(predator: Predator, near: number?): Vector3
 	local lurk = style.lurk
 	if lurk then
 		-- An ambusher lurks low by a rock, a coral head or the kelp: the best cover of a
-		-- few spots in its patch
+		-- few spots in its patch, the rock just past its body's reach, and at a height
+		-- its body can rest at over the ground under it (a Wolf Eel's hole had been at
+		-- the foot of a rock its body overlapped: held up over the rock's top, it
+		-- pointed itself down at the hole; PC 2026-10-22)
 		local best: Vector3? = nil
 		local bestCover = -1
+		local half = def.length * 0.5
+		local clear = def.length * BODY_HALF + BELLY_GAP
 		for _ = 1, 6 do
 			local angle = pickAngle(predator, near)
 			local distance = rng:NextNumber(def.band[1], def.band[2])
 			local x, z = math.cos(angle) * distance, math.sin(angle) * distance
 			if not Seafloor.inTrench(x, z, 30) then
-				local cover = coverAt(x, z)
+				local cover = coverAt(x, z, half + 4)
 				if cover > bestCover then
 					local ground = math.max(Seafloor.y(x, z), Ground.y(x, z))
-					best, bestCover = Vector3.new(x, ground + rng:NextNumber(lurk[1], lurk[2]), z), cover
+					for _, offset in
+						{
+							Vector3.new(half, 0, 0),
+							Vector3.new(-half, 0, 0),
+							Vector3.new(0, 0, half),
+							Vector3.new(0, 0, -half),
+						}
+					do
+						ground = math.max(ground, Ground.y(x + offset.X, z + offset.Z))
+					end
+					local up = math.max(rng:NextNumber(lurk[1], lurk[2]), clear + 0.5)
+					best, bestCover = Vector3.new(x, ground + up, z), cover
 				end
 			end
 		end
@@ -387,13 +412,15 @@ local function randomWaypoint(predator: Predator, near: number?): Vector3
 	return Vector3.new(x, Seafloor.y(x, z) + def.depth[1] + 10, z)
 end
 
--- Where it roams to next: a tethered hunter hovers by its hole, the rest roam on
--- round their patch from where they are
+-- Where it roams to next: a tethered hunter circles its hole, level with it, the
+-- rest roam on round their patch from where they are
 local function waypointFor(predator: Predator): Vector3
 	local home = predator.home
 	if home then
-		local wander = rng:NextUnitVector() * rng:NextNumber(2, 8)
-		return home + Vector3.new(wander.X, math.abs(wander.Y) * 0.5, wander.Z)
+		local tether = styleOf(predator.def).tether or 16
+		local angle = rng:NextNumber(0, 2 * math.pi)
+		local out = rng:NextNumber(10, math.max(tether * 0.5, 12))
+		return home + Vector3.new(math.cos(angle) * out, rng:NextNumber(0, 2), math.sin(angle) * out)
 	end
 	local at = predator.position
 	return randomWaypoint(predator, math.atan2(at.Z, at.X))
@@ -780,10 +807,6 @@ end
 -- How far below the surface a creature's middle must stay, as a share of its length
 -- (its back plus a dorsal fin)
 local CEILING_SHARE = 0.3
--- A body's half-height as a share of its length (its belly under its middle)
-local BODY_HALF = 0.12
--- Water kept between the belly and the ground, at the least (studs)
-local BELLY_GAP = 1.5
 -- How far ahead (seconds of travel) the ground is read, so a creature climbs over a
 -- reef head before it reaches it instead of popping up on top of it
 local LOOK_AHEAD = 1.4
@@ -982,6 +1005,17 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 		local tilt = -math.max(roomDown, 0)
 		local level = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.xAxis
 		predator.heading = (level * math.sqrt(math.max(1 - tilt * tilt, 0)) + Vector3.yAxis * tilt).Unit
+	end
+	-- ...and a plain predator never stands on its nose or tail (MAX_PITCH)
+	if not predator.custom and math.abs(predator.heading.Y) > MAX_PITCH then
+		local flat = Vector3.new(predator.heading.X, 0, predator.heading.Z)
+		local moving = Vector3.new(predator.velocity.X, 0, predator.velocity.Z)
+		local level = if flat.Magnitude > 1e-3
+			then flat.Unit
+			elseif moving.Magnitude > 1e-3 then moving.Unit
+			else Vector3.xAxis
+		local tilt = math.clamp(predator.heading.Y, -MAX_PITCH, MAX_PITCH)
+		predator.heading = (level * math.sqrt(1 - tilt * tilt) + Vector3.yAxis * tilt).Unit
 	end
 	-- ...and its nose and tail stay under too: near the surface it can only tilt so far
 	local reach = def.length * 0.45
