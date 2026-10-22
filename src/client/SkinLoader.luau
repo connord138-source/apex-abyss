@@ -13,6 +13,9 @@
 -- that out on purpose: the skin counts as failing for TEST_SECONDS, logging each
 -- pretend retry as `[SkinLoader] test:`, so it shows the stand-in, goes on at
 -- GIVE_UP and is put on afresh when the pretence ends.
+-- A Model (an exotic variant's own model, VariantModels.<id>) waits the same way for
+-- its meshes and textures (PC 2026-10-22: a shade on a fresh variant drew it a flat
+-- silhouette in the shade's colour for 6-14 s while its texture downloaded).
 local ContentProvider = game:GetService("ContentProvider")
 
 local SkinLoader = {}
@@ -57,10 +60,21 @@ local function textures(skin: Instance): { string }
 		return cached
 	end
 	local ids: { string } = {}
-	for _, property in MAPS do
-		local uri = contentUri(skin, property)
+	local function add(source: Instance, property: string)
+		local uri = contentUri(source, property)
 		if uri and not table.find(ids, uri) then
 			table.insert(ids, uri)
+		end
+	end
+	local sources: { Instance } = if skin:IsA("Model") then skin:GetDescendants() else { skin }
+	for _, source in sources do
+		if source:IsA("SurfaceAppearance") then
+			for _, property in MAPS do
+				add(source, property)
+			end
+		elseif source:IsA("MeshPart") then
+			add(source, "MeshContent")
+			add(source, "TextureContent")
 		end
 	end
 	texturesOf[skin] = ids
@@ -88,7 +102,7 @@ local function fetch(uri: string)
 end
 
 -- Whether every texture of `skin` has arrived (starting or retrying the downloads
--- that haven't). Anything that isn't a SurfaceAppearance is loaded.
+-- that haven't). Anything that isn't a SurfaceAppearance or a Model is loaded.
 local function allLoaded(skin: Instance): boolean
 	local pretend = pretending[skin]
 	if pretend then
@@ -112,7 +126,7 @@ local function allLoaded(skin: Instance): boolean
 			`[SkinLoader] test: {skin.Parent and skin.Parent.Name or "?"}.{skin.Name} arrived, put on afresh`
 		)
 	end
-	if not skin:IsA("SurfaceAppearance") then
+	if not (skin:IsA("SurfaceAppearance") or skin:IsA("Model")) then
 		return true
 	end
 	local all = true

@@ -221,9 +221,17 @@ local function dress(character: Model, state: FishState)
 			SkinLoader.claimTest(skin)
 		end
 	end
+	-- A variant with its own model waits for that model's meshes and textures the
+	-- same way: until they've arrived the fish keeps its own body (PC 2026-10-22: a
+	-- shade on a fresh variant drew it a flat silhouette for 6-14 s)
+	local variant = character:GetAttribute("Variant")
+	local variantModel = if typeof(variant) == "string" and variant ~= ""
+		then FishBuilder.variantTemplate(variant)
+		else nil
+	local variantState = if variantModel then SkinLoader.state(variantModel) else ""
 	-- Its state is in the key, so it's put on when it stops waiting and put on
 	-- afresh when a skin worn anyway has all its textures at last
-	local key = `{shade}|{character:GetAttribute("Parts")}|{character:GetAttribute("Variant")}|{if skin
+	local key = `{shade}|{character:GetAttribute("Parts")}|{variant}|{variantState}|{if skin
 		then SkinLoader.state(skin)
 		else ""}`
 	-- (not mid growth sequence: it dips and pops, and would re-dress twice)
@@ -238,7 +246,11 @@ local function dress(character: Model, state: FishState)
 	end
 	state.dressKey = key
 	state.dressLength = state.length
-	if Cosmetics.apply(state.body, look, Cosmetics.dressOf(character), state.length, SkinLoader.ready) then
+	local wear = Cosmetics.dressOf(character)
+	if variantState == "waiting" then
+		wear.variant = nil
+	end
+	if Cosmetics.apply(state.body, look, wear, state.length, SkinLoader.ready) then
 		-- A variant's own model went on (or came off): its bones are new
 		state.bones, state.boneFrames, state.spine = rigOf(state.body, state.root)
 		state.joints = FishBuilder.joints(state.body)
