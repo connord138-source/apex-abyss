@@ -411,7 +411,7 @@ function LandmarkController.start()
 	HuntController.findLandmark = function(mouth: Vector3, reach: number): (string?, number?)
 		return findLandmark(mouth, reach)
 	end
-	local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Landmark") :: RemoteEvent
+	local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LandmarkEvent") :: RemoteEvent
 	remote.OnClientEvent:Connect(onLandmark)
 	ClientState.changed:connect(showPearls)
 	CollectionService:GetInstanceAddedSignal("ClamPearl"):Connect(showPearls)

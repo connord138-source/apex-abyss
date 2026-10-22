@@ -41,7 +41,11 @@ local passClaimed = makeEvent("PassClaimed") -- (summary) to the claimer: Tide P
 local achievement = makeEvent("Achievement") -- (summary) to the player: an achievement done and the den set it opened
 local chum = makeEvent("Chum") -- (kind, payload) to everyone: chum clouds and the Whale Fall (add, eat, remove, warn)
 local hooks = makeEvent("Hooks") -- ({ boats }) to everyone: the fishing boats and their lines, about once a second
-local landmark = makeEvent("Landmark") -- (kind, index, payload) the biome landmarks: a bell rang, a cannon fired (LandmarkService)
+-- (kind, index, payload) the biome landmarks: a bell rang, a cannon fired (LandmarkService).
+-- Not "Landmark": that's the request's name, and two remotes of one name let a client's
+-- WaitForChild find either (PC 2026-10-22: bites on the bell and swims into the cannon
+-- went to this event, which no server code hears)
+local landmark = makeEvent("LandmarkEvent")
 -- Predator positions stream ~10 times a second; a dropped packet doesn't matter
 local predatorState = Instance.new("UnreliableRemoteEvent")
 predatorState.Name = "PredatorState"
