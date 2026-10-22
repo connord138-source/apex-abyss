@@ -50,14 +50,24 @@ type Plant = {
 	shownFade: number, -- the one last written to its parts
 	posed: boolean, -- moved off its rest pose
 	seen: number, -- the rescan that last found it in reach
+	recheckUntil: number, -- while its parts may still be streaming in, its part count is checked
 }
 
 local REACH = 120 -- studs from the camera a plant still sways ...
 local BLEND = 40 -- ... easing to stillness over the last this many
 -- (180 and 50 until 2026-10-20: the sway moved as many parts as all the prey, and
 -- moving parts is what the renderer's prepare step pays for, PC 2026-10-20 round 2)
--- Past HALF_RATE studs a plant no fish is pushing is posed every other frame
+-- Past HALF_RATE studs a plant no fish is pushing is posed every other frame, past
+-- THIRD_RATE every third (PC 2026-10-22: the Kelp Cathedral's tall rings put ~665
+-- pieces in reach of its nave, 37.8 ms/s)
 local HALF_RATE = 60
+local THIRD_RATE = 90
+-- Plants are kept in a grid of CELL-stud cells by where they stand, so a rescan
+-- looks only at the cells round the camera (it had walked every plant in the
+-- Shallows twice a second); a plant's part count is re-checked only for RECHECK s
+-- after it's collected (its parts stream in after its Model)
+local CELL = 64
+local RECHECK = 10
 local SCAN_REACH = REACH + 80 -- plants a rescan keeps (the camera moves between scans)
 local RESCAN = 0.5 -- seconds between picking the plants in reach
 local GIVE = 2.5 -- studs round the stalk's fronds a fish touches it (plus its radius)
@@ -76,6 +86,8 @@ local FADE_RATE = 7 -- how fast it fades (per second)
 local KelpController = {}
 
 local folder: Instance? = nil
+local grid: { [number]: { Model } } = {}
+local indexed: { [Model]: boolean } = {}
 local known: { [Model]: Plant } = {}
 local active: { Plant } = {}
 local settle: { Plant } = {} -- left reach while posed: put back at rest
@@ -138,6 +150,7 @@ local function collect(plant: Model, old: Plant?): Plant?
 		shownFade = -1, -- parts that just streamed in need it written
 		posed = true, -- write its pose at once
 		seen = scan,
+		recheckUntil = clock + RECHECK,
 	}
 	for _, part in partsOf(plant) do
 		table.insert(entry.parts, part)
@@ -152,6 +165,27 @@ local function collect(plant: Model, old: Plant?): Plant?
 	return entry
 end
 
+local function cellKey(cx: number, cz: number): number
+	return (cx + 32768) * 65536 + (cz + 32768)
+end
+
+-- Files a plant in the grid by its pivot (known even before its parts stream in)
+local function filePlant(child: Instance)
+	if not child:IsA("Model") or indexed[child :: Model] then
+		return
+	end
+	local plant = child :: Model
+	indexed[plant] = true
+	local at = plant:GetPivot().Position
+	local key = cellKey(math.floor(at.X / CELL), math.floor(at.Z / CELL))
+	local list = grid[key]
+	if list == nil then
+		list = {}
+		grid[key] = list
+	end
+	table.insert(list, plant)
+end
+
 local function rescan()
 	scan += 1
 	local holder = folder
@@ -161,28 +195,42 @@ local function rescan()
 	local camera = Workspace.CurrentCamera.CFrame.Position
 	local previous = table.clone(active)
 	table.clear(active)
-	for _, child in holder:GetChildren() do
-		if not child:IsA("Model") then
-			continue
-		end
-		local plant = child :: Model
-		-- (a Model's pivot is known even before its parts stream in)
-		if (plant:GetPivot().Position - camera).Magnitude > SCAN_REACH then
-			continue
-		end
-		local entry: Plant? = known[plant]
-		local first: BasePart? = if entry then entry.parts[1] else nil
-		local stale = entry == nil
-			or first == nil
-			or first.Parent == nil
-			or #(entry :: Plant).parts ~= #partsOf(plant)
-		if stale then
-			entry = collect(plant, entry)
-			known[plant] = entry :: any
-		end
-		if entry and #entry.parts > 0 then
-			entry.seen = scan
-			table.insert(active, entry)
+	local x0, x1 = math.floor((camera.X - SCAN_REACH) / CELL), math.floor((camera.X + SCAN_REACH) / CELL)
+	local z0, z1 = math.floor((camera.Z - SCAN_REACH) / CELL), math.floor((camera.Z + SCAN_REACH) / CELL)
+	for cx = x0, x1 do
+		for cz = z0, z1 do
+			local list = grid[cellKey(cx, cz)]
+			if list == nil then
+				continue
+			end
+			for i = #list, 1, -1 do
+				local plant = list[i]
+				-- (a plant streamed out is dropped from its cell; it's filed again if it
+				-- comes back)
+				if plant.Parent ~= holder then
+					indexed[plant] = nil
+					list[i] = list[#list]
+					list[#list] = nil
+					continue
+				end
+				if (plant:GetPivot().Position - camera).Magnitude > SCAN_REACH then
+					continue
+				end
+				local entry: Plant? = known[plant]
+				local first: BasePart? = if entry then entry.parts[1] else nil
+				local stale = entry == nil
+					or first == nil
+					or first.Parent == nil
+					or (clock < (entry :: Plant).recheckUntil and #(entry :: Plant).parts ~= #partsOf(plant))
+				if stale then
+					entry = collect(plant, entry)
+					known[plant] = entry :: any
+				end
+				if entry and #entry.parts > 0 then
+					entry.seen = scan
+					table.insert(active, entry)
+				end
+			end
 		end
 	end
 	-- Plants that left reach still leaning go back to rest; gone plants are dropped
@@ -350,10 +398,11 @@ local function step(dt: number)
 			continue
 		end
 		plant.posed = true
+		local every = if distance <= HALF_RATE then 1 elseif distance <= THIRD_RATE then 2 else 3
 		if
-			distance > HALF_RATE
+			every > 1
 			and math.abs(plant.leanX) + math.abs(plant.leanZ) < 0.01
-			and (index + frameCount) % 2 == 1
+			and (index + frameCount) % every ~= 0
 		then
 			continue
 		end
@@ -381,6 +430,11 @@ function KelpController.start()
 		if folder == nil then
 			return
 		end
+		local holder = folder :: Instance
+		for _, child in holder:GetChildren() do
+			filePlant(child)
+		end
+		holder.ChildAdded:Connect(filePlant)
 		RunService.RenderStepped:Connect(step)
 	end)
 end

@@ -32,7 +32,10 @@ local Places = Config.Places
 
 local LandmarkController = {}
 
-local NEAR = 500 -- studs from the camera that floating things move
+local NEAR = 500 -- studs from the camera that floating things move ...
+local NEAR_EVERY = 160 -- ... every frame within this; past it, every third frame (they bob
+-- slowly: PC 2026-10-22, 7-8 ms/s near the landmarks, the Kelp's otters 440 studs up)
+local EEL_LOOK = 140 -- studs from the camera a garden eel patch is checked
 local EEL_NEAR = 26 -- studs across a fish makes a garden eel patch duck
 local EEL_DOWN = 3.2 -- studs it sinks
 local SHELTER_NEAR = 320 -- studs from the camera a raft's fish are built
@@ -309,15 +312,24 @@ end
 
 -- ---------------------------------------------------------------------------
 
+local frameCount = 0
+local cannonCheck = 0
+
+-- Whether a floater this far off moves this frame (every third past NEAR_EVERY)
+local function due(gap: number, salt: number): boolean
+	return gap < NEAR_EVERY or (gap < NEAR and (frameCount + salt) % 3 == 0)
+end
+
 local function step(dt: number)
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return
 	end
+	frameCount += 1
 	local eye = camera.CFrame.Position
 	local now = Workspace:GetServerTimeNow()
 	for model, entry in floaters do
-		if model.Parent and (entry.base.Position - eye).Magnitude < NEAR then
+		if model.Parent and due((entry.base.Position - eye).Magnitude, math.floor(entry.phase * 10)) then
 			local t = now * 0.8 + entry.phase
 			model:PivotTo(
 				entry.base
@@ -327,7 +339,7 @@ local function step(dt: number)
 		end
 	end
 	for model, entry in drifters do
-		if model.Parent and (entry.base.Position - eye).Magnitude < NEAR then
+		if model.Parent and due((entry.base.Position - eye).Magnitude, math.floor(entry.phase * 10)) then
 			local t = now * 0.25 + entry.phase
 			model:PivotTo(
 				entry.base
@@ -339,7 +351,7 @@ local function step(dt: number)
 	local root = SwimController.root()
 	local fishAt = if root then root.Position else nil
 	for model, entry in eels do
-		if model.Parent == nil then
+		if model.Parent == nil or (entry.down == 0 and (entry.base.Position - eye).Magnitude > EEL_LOOK) then
 			continue
 		end
 		local want = 0
@@ -392,7 +404,11 @@ local function step(dt: number)
 			SwimController.shove((want - SwimController.velocity) * math.min(1, dt * 8))
 		end
 	end
-	checkCannon(os.clock())
+	cannonCheck += dt
+	if cannonCheck >= 0.1 then
+		cannonCheck = 0
+		checkCannon(os.clock())
+	end
 end
 
 function LandmarkController.start()
