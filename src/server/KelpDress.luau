@@ -484,13 +484,16 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 		end)
 		local bow = (box * CFrame.new(0, 0, -length * 0.4)).Position
 		local float = bow + Vector3.new(4, 78, 2)
-		Kit.chain(stats, m, bow + Vector3.new(0, 1, 0), float - Vector3.new(0, 4, 0), 3, 1.8, CHAIN)
+		-- (the chain stands still, so the float on it bobs a quarter as much, `Bob`, and
+		-- the top link reaches well into it: PC 2026-10-23, a full bob opened a 1-stud gap)
+		Kit.chain(stats, m, bow + Vector3.new(0, 1, 0), float - Vector3.new(0, 3.4, 0), 3, 1.8, CHAIN)
 		local buoyHeight = 9
 		local buoySize = Vector3.new(0.45, 1, 0.48) * buoyHeight
 		local buoy = CFrame.new(float) * CFrame.Angles(0.15, 0, 0.1)
 		local buoyHolder = Kit.hero(stats, m, "KelpBuoy", buoy, buoySize, function(sm)
 			Kit.part(stats, sm, "Float", Vector3.new(4, 4, 4), buoy, RED, false, Enum.PartType.Cylinder)
 		end)
+		buoyHolder:SetAttribute("Bob", 0.25)
 		CollectionService:AddTag(buoyHolder, "Bobbing")
 	end
 
@@ -634,12 +637,13 @@ local function meadow(parent: Instance)
 			Enum.PartType.Cylinder
 		)
 	end)
+	buoyHolder:SetAttribute("Bob", 0.25)
 	CollectionService:AddTag(buoyHolder, "Bobbing")
 	Kit.rod(
 		stats,
 		m,
 		"BuoyLine",
-		Vector3.new(b.X, World.surfaceY - buoyHeight, b.Z),
+		Vector3.new(b.X, World.surfaceY - buoyHeight + 0.6, b.Z),
 		floor + Vector3.new(0, 2, 0),
 		0.25,
 		IRON,

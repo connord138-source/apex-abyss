@@ -51,8 +51,11 @@ type Plant = {
 	fade: number, -- its LocalTransparencyModifier now
 	shownFade: number, -- the one last written to its parts
 	posed: boolean, -- moved off its rest pose
+	tilt: CFrame, -- the lean it was last posed at
+	leaving: number, -- when it left reach still posed (it eases back to rest)
 	seen: number, -- the rescan that last found it in reach
-	recheckUntil: number, -- while its parts may still be streaming in, its part count is checked
+	stale: boolean, -- a part streamed in since it was collected: collect it again
+	watch: RBXScriptConnection?,
 }
 
 local REACH = 120 -- studs from the camera a plant still sways ...
@@ -64,14 +67,23 @@ local BLEND = 40 -- ... easing to stillness over the last this many
 -- pieces in reach of its nave, 37.8 ms/s; then 42.5: a plant skipped this frame had
 -- still worked out its push, spring and fade first, so now a resting plant with no
 -- fish by it does nothing on the frames it isn't posed)
-local HALF_RATE = 50
-local THIRD_RATE = 85
--- Plants are kept in a grid of CELL-stud cells by where they stand, so a rescan
--- looks only at the cells round the camera (it had walked every plant in the
--- Shallows twice a second); a plant's part count is re-checked only for RECHECK s
--- after it's collected (its parts stream in after its Model)
+-- (since 2026-10-23, PC: still 31.6 ms/s in the nave, 17.7 of it the move: every
+-- other frame past HALF_RATE, every third past THIRD_RATE, every fourth past
+-- FOURTH_RATE; a plant sways about a stud a second at its top)
+local HALF_RATE = 45
+local THIRD_RATE = 75
+local FOURTH_RATE = 100
+-- Plants are kept in a grid of CELL-stud cells by where their stalk stands, so a
+-- rescan looks only at the cells round the camera (it had walked every plant in
+-- the Shallows twice a second). A plant is filed once its stalk is in: its Model
+-- streams in first, and filed by the Model's pivot then, some went in the hub's
+-- cell and dropped out of every rescan ~280 studs from the hub, snapping back to
+-- rest in the Kelp Cathedral's nave (PC 2026-10-23, KC3). A plant that leaves reach
+-- still leaning eases back to rest over SETTLE s.
 local CELL = 64
-local RECHECK = 10
+local SETTLE = 0.6
+-- The plants a rescan drops for good (streamed out) are swept every SWEEP scans
+local SWEEP = 8
 local SCAN_REACH = REACH + 80 -- plants a rescan keeps (the camera moves between scans)
 local RESCAN = 0.5 -- seconds between picking the plants in reach
 local GIVE = 2.5 -- studs round the stalk's fronds a fish touches it (plus its radius)
@@ -92,9 +104,11 @@ local KelpController = {}
 local folder: Instance? = nil
 local grid: { [number]: { Model } } = {}
 local indexed: { [Model]: boolean } = {}
+local filedAt: { [Model]: Vector3 } = {} -- (its stalk's middle)
+local waitingStalk: { [Model]: RBXScriptConnection } = {}
 local known: { [Model]: Plant } = {}
 local active: { Plant } = {}
-local settle: { Plant } = {} -- left reach while posed: put back at rest
+local settle: { Plant } = {} -- left reach while posed: eased back to rest
 local parts: { BasePart } = {}
 local frames: { CFrame } = {}
 local clock = 0
@@ -155,15 +169,27 @@ local function collect(plant: Model, old: Plant?): Plant?
 		fade = if old then old.fade else 0,
 		shownFade = -1, -- parts that just streamed in need it written
 		posed = true, -- write its pose at once
+		tilt = CFrame.identity,
+		leaving = 0,
 		seen = scan,
-		recheckUntil = clock + RECHECK,
+		stale = false,
+		watch = nil,
 	}
+	if old and old.watch then
+		old.watch:Disconnect()
+	end
+	entry.watch = plant.DescendantAdded:Connect(function(descendant)
+		if descendant:IsA("BasePart") then
+			entry.stale = true
+		end
+	end)
 	for _, part in partsOf(plant) do
-		table.insert(entry.parts, part)
 		local offset = base:ToObjectSpace(restOf(part))
-		table.insert(entry.offsets, offset)
 		entry.height = math.max(entry.height, offset.Y + part.Size.Y / 2)
+		-- (an invisible part, the dressed stalk, isn't moved: nothing to see)
 		if part.Transparency < 1 then
+			table.insert(entry.parts, part)
+			table.insert(entry.offsets, offset)
 			local across = math.sqrt(offset.X * offset.X + offset.Z * offset.Z)
 			entry.spread = math.max(entry.spread, across + math.max(part.Size.X, part.Size.Z) / 2)
 		end
@@ -171,18 +197,21 @@ local function collect(plant: Model, old: Plant?): Plant?
 	return entry
 end
 
+local function forget(plant: Model)
+	local entry = known[plant]
+	if entry and entry.watch then
+		entry.watch:Disconnect()
+	end
+	known[plant] = nil
+end
+
 local function cellKey(cx: number, cz: number): number
 	return (cx + 32768) * 65536 + (cz + 32768)
 end
 
--- Files a plant in the grid by its pivot (known even before its parts stream in)
-local function filePlant(child: Instance)
-	if not child:IsA("Model") or indexed[child :: Model] then
-		return
-	end
-	local plant = child :: Model
+local function fileAt(plant: Model, at: Vector3)
 	indexed[plant] = true
-	local at = plant:GetPivot().Position
+	filedAt[plant] = at
 	local key = cellKey(math.floor(at.X / CELL), math.floor(at.Z / CELL))
 	local list = grid[key]
 	if list == nil then
@@ -190,6 +219,38 @@ local function filePlant(child: Instance)
 		grid[key] = list
 	end
 	table.insert(list, plant)
+end
+
+-- Files a plant in the grid by its stalk, once its stalk has streamed in
+local function filePlant(child: Instance)
+	if not child:IsA("Model") or indexed[child :: Model] or waitingStalk[child :: Model] then
+		return
+	end
+	local plant = child :: Model
+	local stalk = plant:FindFirstChild("Stalk")
+	if stalk and stalk:IsA("BasePart") then
+		fileAt(plant, restOf(stalk).Position)
+		return
+	end
+	waitingStalk[plant] = plant.ChildAdded:Connect(function(added)
+		if added.Name == "Stalk" and added:IsA("BasePart") then
+			local connection = waitingStalk[plant]
+			if connection then
+				connection:Disconnect()
+			end
+			waitingStalk[plant] = nil
+			fileAt(plant, restOf(added).Position)
+		end
+	end)
+end
+
+local function unfilePlant(child: Instance)
+	local plant = child :: Model
+	local connection = waitingStalk[plant]
+	if connection then
+		connection:Disconnect()
+		waitingStalk[plant] = nil
+	end
 end
 
 local function rescan()
@@ -215,19 +276,19 @@ local function rescan()
 				-- comes back)
 				if plant.Parent ~= holder then
 					indexed[plant] = nil
+					filedAt[plant] = nil
 					list[i] = list[#list]
 					list[#list] = nil
 					continue
 				end
-				if (plant:GetPivot().Position - camera).Magnitude > SCAN_REACH then
+				local at = filedAt[plant]
+				local dx, dz = at.X - camera.X, at.Z - camera.Z
+				if dx * dx + dz * dz > SCAN_REACH * SCAN_REACH then
 					continue
 				end
 				local entry: Plant? = known[plant]
 				local first: BasePart? = if entry then entry.parts[1] else nil
-				local stale = entry == nil
-					or first == nil
-					or first.Parent == nil
-					or (clock < (entry :: Plant).recheckUntil and #(entry :: Plant).parts ~= #partsOf(plant))
+				local stale = entry == nil or entry.stale or first == nil or first.Parent == nil
 				if stale then
 					entry = collect(plant, entry)
 					known[plant] = entry :: any
@@ -239,15 +300,18 @@ local function rescan()
 			end
 		end
 	end
-	-- Plants that left reach still leaning go back to rest; gone plants are dropped
+	-- Plants that left reach still leaning ease back to rest; gone plants are dropped
 	for _, entry in previous do
-		if entry.seen ~= scan and entry.posed then
+		if entry.seen ~= scan and entry.posed and entry.leaving == 0 then
+			entry.leaving = clock
 			table.insert(settle, entry)
 		end
 	end
-	for plant in known do
-		if plant.Parent == nil then
-			known[plant] = nil
+	if scan % SWEEP == 0 then
+		for plant in known do
+			if plant.Parent == nil then
+				forget(plant)
+			end
 		end
 	end
 end
@@ -375,14 +439,25 @@ local function step(dt: number)
 	gatherSwimmers(camera)
 	table.clear(parts)
 	table.clear(frames)
-	for _, plant in settle do
-		if plant.seen ~= scan and plant.posed then
-			plant.posed = false
-			plant.leanX, plant.leanZ, plant.spinX, plant.spinZ = 0, 0, 0, 0
-			pose(plant, plant.base)
+	for i = #settle, 1, -1 do
+		local plant = settle[i]
+		local left = if plant.seen == scan or not plant.posed
+			then -1
+			else 1 - (clock - plant.leaving) / SETTLE
+		if left <= 0 then
+			if plant.seen ~= scan and plant.posed then
+				plant.posed = false
+				plant.leanX, plant.leanZ, plant.spinX, plant.spinZ = 0, 0, 0, 0
+				plant.tilt = CFrame.identity
+				pose(plant, plant.base)
+			end
+			plant.leaving = 0
+			settle[i] = settle[#settle]
+			settle[#settle] = nil
+		else
+			pose(plant, plant.base * CFrame.identity:Lerp(plant.tilt, smooth(left)))
 		end
 	end
-	table.clear(settle)
 	-- The spring's steps stay short however long the frame
 	local steps = math.max(1, math.ceil(dt * 60))
 	local h = dt / steps
@@ -401,7 +476,11 @@ local function step(dt: number)
 		local resting = math.abs(plant.leanX) + math.abs(plant.leanZ) < 1e-3
 			and math.abs(plant.spinX) + math.abs(plant.spinZ) < 1e-3
 		local pushed = weight > 0 and touched(plant)
-		local every = if distance <= HALF_RATE then 1 elseif distance <= THIRD_RATE then 2 else 3
+		local every = if distance <= HALF_RATE
+			then 1
+			elseif distance <= THIRD_RATE then 2
+			elseif distance <= FOURTH_RATE then 3
+			else 4
 		-- A resting plant no fish is near, with the camera nowhere inside it, does
 		-- nothing on the frames it isn't posed
 		if
@@ -443,11 +522,13 @@ local function step(dt: number)
 			if plant.posed then
 				plant.posed = false
 				plant.leanX, plant.leanZ, plant.spinX, plant.spinZ = 0, 0, 0, 0
+				plant.tilt = CFrame.identity
 				pose(plant, plant.base)
 			end
 			continue
 		end
 		plant.posed = true
+		plant.leaving = 0
 		if
 			every > 1
 			and math.abs(plant.leanX) + math.abs(plant.leanZ) < 0.01
@@ -463,6 +544,7 @@ local function step(dt: number)
 			0,
 			a * 0.7 * math.sin(clock * plant.rate * 0.73 + plant.phase * 1.3) - plant.leanX
 		)
+		plant.tilt = tilt
 		pose(plant, plant.base * tilt)
 	end
 	if #parts > 0 then
@@ -484,6 +566,7 @@ function KelpController.start()
 			filePlant(child)
 		end
 		holder.ChildAdded:Connect(filePlant)
+		holder.ChildRemoved:Connect(unfilePlant)
 		RunService.RenderStepped:Connect(step)
 	end)
 end

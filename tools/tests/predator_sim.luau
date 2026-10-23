@@ -1022,12 +1022,29 @@ do
 		heartbeat(DT)
 		highest = math.max(highest, eel.position.Y - hole.Y)
 	end
-	-- (found up on the column, its hole at the foot)
+	-- (found up on the column, its hole at the foot: it takes the nearest spot by the
+	-- floor as its hole and goes down to it, then hunts a fish by that hole)
 	local top = Vector3.new(hole.X + 22, Seafloor.y(hole.X, hole.Z) + 110 + 22 * 0.12 + 2, hole.Z)
 	reset(top)
+	local down: number? = nil
+	for step = 1, 200 do
+		sim.now += DT
+		heartbeat(DT)
+		local home = eel.home :: Vector3
+		if
+			down == nil
+			and home.Y - Seafloor.y(home.X, home.Z) < 20
+			and eel.position.Y - Seafloor.y(eel.position.X, eel.position.Z) < 20
+		then
+			down = step * DT
+		end
+	end
+	local home = eel.home :: Vector3
 	local fish = fishAt("Nibbler", 75)
 	local player = { Name = "Beside", UserId = 13, Parent = true }
-	local spot = top + Vector3.new(-15, 0, 0)
+	local away = Vector3.new(home.X - (hole.X + 22), 0, home.Z - hole.Z)
+	away = if away.Magnitude > 1e-3 then away.Unit else Vector3.new(-1, 0, 0)
+	local spot = home + away * 15
 	local character, root = sim.fish(fish.length, spot)
 	character:SetAttribute("FishLevel", 75)
 	character:SetAttribute("MaxHealth", 100)
@@ -1051,17 +1068,63 @@ do
 	end
 	print(
 		string.format(
-			"   by a 110-stud column: rose at most %.0f studs off its hole in 40 s; found on top, hunted after %s s, %d bites in 20 s",
+			"   by a 110-stud column: rose at most %.0f studs off its hole in 40 s; found on top, back by the floor after %s s, then hunted after %s s, %d bites in 20 s",
 			highest,
+			if down then string.format("%.1f", down) else "never",
 			if hunted then string.format("%.1f", hunted) else "never",
 			hits
 		)
 	)
 	expect(highest < 40, `Wolf Eel: doesn't climb the column beside its hole ({math.floor(highest)} studs)`)
-	expect(hunted ~= nil and hunted < 8, "Wolf Eel: one stranded on a column hunts a fish beside it")
-	expect(hits > 0, "Wolf Eel: one stranded on a column bites a fish beside it")
+	expect(down ~= nil and down < 12, "Wolf Eel: one stranded on a column goes back down by the floor")
+	expect(hunted ~= nil and hunted < 8, "Wolf Eel: then hunts a fish by its new hole")
+	expect(hits > 0, "Wolf Eel: then bites a fish by its new hole")
 	sim.groundY = flatGround
 	sim.sessions, sim.characters = {}, {}
+end
+-- Its holes are by the floor (PC 2026-10-23: four held holes 69-121 studs up beside
+-- basalt columns, one sat on the drop-off's crest at shelf height): in a field of
+-- 100-stud columns every 40 studs, and with the real drop-off's lip standing at
+-- shelf height out to r 940, every eel's new hole stands within LURK_RISE (14) plus
+-- its lurk height of the nominal floor
+do
+	local flatGround = sim.groundY
+	sim.groundY = function(x: number, z: number): number
+		local base = Seafloor.y(x, z)
+		local r = math.sqrt(x * x + z * z)
+		if r < 940 then
+			return math.max(base, Config.World.seabedY)
+		end
+		local cx, cz = (x % 40) - 20, (z % 40) - 20
+		return if math.abs(cx) < 7 and math.abs(cz) < 7 then base + 100 else base
+	end
+	local worst = 0
+	local count = 0
+	for _, predator in PredatorService.list() do
+		if predator.def.id == "WolfEel" then
+			for _ = 1, 8 do
+				predator.mode = "dead"
+				predator.respawnAt = sim.now
+				heartbeat(DT)
+				local home = predator.home :: Vector3
+				worst = math.max(worst, home.Y - Seafloor.y(home.X, home.Z))
+				count += 1
+			end
+		end
+	end
+	print(
+		string.format(
+			"   holes: %d picked among columns and the drop-off's lip, highest %.1f studs over the floor",
+			count,
+			worst
+		)
+	)
+	local lurk = (Config.Predators.byId.WolfEel.style :: any).lurk
+	expect(
+		count > 0 and worst <= 14 + lurk[2] + 0.5,
+		`Wolf Eel: every hole is by the floor ({string.format("%.1f", worst)} studs up)`
+	)
+	sim.groundY = flatGround
 end
 
 -- Goblin Shark, the Trench's jaw launcher (LV 90)

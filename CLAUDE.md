@@ -1990,6 +1990,55 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Left as is: the two pending TexturePacks (115928472559188, 72289755529119) are unused
     in the place; the Void window's stars read faint beside its vortex and its ribbons
     zig-zag with the eel's wave on a straight run (nits).
+- **The 2026-10-23 PC round (report `docs/playtests/2026-10-23-pc.md`, published as v24
+  from 2d54623; the variants' first swap (0.77 s, textured) and the floaters' shape
+  passed; built on `claude/world` 2026-10-23):**
+  - **Wolf Eels by the floor** (PC: four held holes 69–121 studs up and hunted but never
+    closed in; #41 sat on the drop-off's crest at r 920, by the Wreck bay's LV 10–25
+    water): a lurker's spot took the highest ground within its body's reach, so a hole
+    beside a basalt column hung at the column's top. A lurker's spot now stands within
+    `LURK_RISE` 14 studs of the nominal floor (`Seafloor.y`; the lowest of 12 tries if
+    none does), so never on a rock's top or the drop-off's lip, and a stranded eel takes
+    the nearest such spot within 48 studs as its hole (`holeNear`) and swims down to it.
+    The sim showed why a high eel never closed in: facing its rock as it came round, its
+    nose went over the rock and the climb-ahead lifted it onto the top, where it couldn't
+    point down at the fish (`MAX_PITCH`) and went hunt, recover, hunt. A tethered hunter
+    now measures a wall from the ground at its middle and never climbs one, in any mode,
+    and turns round on a fish beside or behind it nearly on the spot (`TETHER_WHIP` 2.5,
+    `TETHER_PIVOT` 0.08 of its speed; swimming out to come round, its usual move, ran
+    into the rock, and a whip at the Barracuda's pace carried the 22-stud body's middle
+    onto the fish). Sim: an eel by a 24-stud rock bites a still fish 6 times in 20 s (was
+    0–1), beside a 110-stud column it rises at most 5 studs, one found on top is back by
+    the floor in ~6 s and hunts there, and 48 holes picked among 100-stud columns and the
+    drop-off's lip sit at most 6 studs over the floor. A fleeing fish takes one snap now
+    before it's clear (the eel turns faster).
+  - **Kelp snap in the nave** (PC KC3: 45–55 stalk pieces 70–95 studs off jumped up to 6
+    studs to rest in one frame, at the same spot every run): plants were filed in the
+    grid by their Model's pivot as it streamed in, before its parts, and some went in
+    the hub's cell; ~280 studs from the hub the rescan dropped them and the settle put
+    them straight back at rest. A plant is filed by its stalk once the stalk is in
+    (`filePlant`, `waitingStalk`), a rescan reads the filed spot (no `GetPivot`), and a
+    plant leaving reach eases to rest over `SETTLE` 0.6 s (its last `tilt`).
+  - **KelpController cost** (31.6 ms/s in the nave: BulkMoveTo 17.7, rescan 6.4): the
+    dressed stalk (invisible) isn't moved, tiers are every frame to 45 studs, every other
+    to 75, every third to 100 and every fourth past it, a plant's parts are re-collected
+    only when one streams in (`DescendantAdded`, `stale`; no part count every rescan),
+    and gone plants are swept every 8th rescan.
+  - **LandmarkController at the pinnacle** (52.7 ms/s, BulkMoveTo 39.6: ~150 jelly parts
+    a frame, most 200–500 out, plus 80 raft fish): drifting jellies ease to still from
+    `DRIFT_FADE` 150 to `DRIFT_STILL` 220 studs and bobbing things from 260 to 360
+    (one last rest pose as they stop); posed every other frame within 60, every fourth
+    to 200, every sixth past; raft fish 6 a raft, built within 180 (cleared 30 further
+    out), every frame within 70, every other to 120, every third past; the hammerheads
+    join the same batch (no `PivotTo`), and the floater loops no longer read `.Parent`.
+  - **Kelp buoys on a line** (PC: the cathedral's float bobbed 2.3 studs over a chain
+    that doesn't move, a 1-stud gap): a floater's `Bob` attribute scales its bob; both
+    kelp buoys bob a quarter as much, and the chain's and the meadow line's tops reach
+    0.6 studs further into the float.
+  - Not changed: the variants' texture flicking Loading/Success four times after a swap
+    (nothing shows; the mesh is rebuilt and repainted as the dress key settles). The
+    spread sim's median nearest other is 142 studs (191 last round, 97 before the spread
+    change): the eels' new holes moved the shared random sequence.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3017,8 +3066,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` and `2026-10-22-pc.md`
-  (biome landmarks, new predators, spread and no mob; published v20 and v22);
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md`, `2026-10-22-pc.md` and
+  `2026-10-23-pc.md` (biome landmarks, new predators, spread and no mob, frame time near
+  the landmarks; published v20, v22 and v24);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

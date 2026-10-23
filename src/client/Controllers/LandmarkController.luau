@@ -32,20 +32,29 @@ local Places = Config.Places
 
 local LandmarkController = {}
 
-local NEAR = 500 -- studs from the camera that floating things move: every frame within
--- NEAR_EVERY, every other within NEAR_HALF, every fourth past it (they bob and drift
--- about a stud a second: PC 2026-10-22, 7-8 ms/s near the landmarks, then 66.7 ms/s at
--- Hammerhead Pinnacle, 40 of it a PivotTo on each part-built jelly every frame; all of
--- them now go in one BulkMoveTo)
+-- Floating things bob and drift about a stud a second, so they're posed every other
+-- frame within NEAR_EVERY, every fourth within NEAR_HALF and every sixth past it,
+-- all in one BulkMoveTo with the raft fish and the hammerheads. Their motion eases
+-- out with distance and they hold still past it: a jelly past DRIFT_STILL, a raft,
+-- buoy or otter past BOB_STILL (PC 2026-10-22, 66.7 ms/s at Hammerhead Pinnacle, 40
+-- of it a PivotTo on each part-built jelly every frame; 2026-10-23, 52.7 with them
+-- batched, 39.6 of it the move: ~150 jelly parts a frame, most of them 200-500 out)
 local NEAR_EVERY = 60
 local NEAR_HALF = 200
+local DRIFT_FADE = 150
+local DRIFT_STILL = 220
+local BOB_FADE = 260
+local BOB_STILL = 360
 local EEL_LOOK = 140 -- studs from the camera a garden eel patch is checked
 local EEL_NEAR = 26 -- studs across a fish makes a garden eel patch duck
 local EEL_DOWN = 3.2 -- studs it sinks
-local SHELTER_NEAR = 240 -- studs from the camera a raft's fish are built (they swim
--- every frame within SHELTER_EVERY, every other past it)
-local SHELTER_EVERY = 110
-local SHELTER_FISH = 8
+local SHELTER_NEAR = 180 -- studs from the camera a raft's fish are built (cleared
+-- SHELTER_KEEP further out, so they don't flicker on the edge); they swim every frame
+-- within SHELTER_EVERY, every other to SHELTER_HALF, every third past it
+local SHELTER_KEEP = 30
+local SHELTER_EVERY = 70
+local SHELTER_HALF = 120
+local SHELTER_FISH = 6
 local SHARKS = 4
 local SHARK_NEAR = 900
 local SHARK_HALF = 300
@@ -58,6 +67,9 @@ type Floater = {
 	model: Model,
 	base: CFrame,
 	phase: number,
+	salt: number, -- (which frames it moves on)
+	bob: number, -- its bob's share (the `Bob` attribute: a buoy on a chain bobs less)
+	moved: boolean, -- off its rest pose
 	offsets: { [BasePart]: CFrame },
 	connections: { RBXScriptConnection },
 }
@@ -123,10 +135,15 @@ end
 
 local function floater(model: Model): Floater
 	local base = model:GetPivot()
+	local bob = model:GetAttribute("Bob")
+	local phase = seedOf(base.Position)
 	local entry: Floater = {
 		model = model,
 		base = base,
-		phase = seedOf(base.Position),
+		phase = phase,
+		salt = math.floor(phase * 10),
+		bob = if typeof(bob) == "number" then bob else 1,
+		moved = false,
 		offsets = {},
 		connections = {},
 	}
@@ -185,7 +202,11 @@ end
 -- Hammerheads round the pinnacle
 -- ---------------------------------------------------------------------------
 
-local sharks: { Model } = {}
+type Shark = { model: Model, parts: { BasePart }, offsets: { CFrame } }
+-- What moves this frame, in one BulkMoveTo
+local moveParts: { BasePart } = {}
+local moveFrames: { CFrame } = {}
+local sharks: { Shark } = {}
 local frameCount = 0
 
 local function partShark(): Model
@@ -242,15 +263,23 @@ local function stepSharks(now: number, camera: Vector3)
 	local center, base = mark("HammerheadPinnacle"), mark("HammerheadPinnacle_Base")
 	if center == nil or base == nil or (camera - center).Magnitude > SHARK_NEAR then
 		for _, shark in sharks do
-			shark:Destroy()
+			shark.model:Destroy()
 		end
 		table.clear(sharks)
 		return
 	end
 	if #sharks == 0 then
 		for _ = 1, SHARKS do
-			local shark = sharkModel()
-			shark.Parent = folder
+			local model = sharkModel()
+			local pivot = model:GetPivot()
+			local shark: Shark = { model = model, parts = {}, offsets = {} }
+			for _, part in model:GetDescendants() do
+				if part:IsA("BasePart") then
+					table.insert(shark.parts, part)
+					table.insert(shark.offsets, pivot:ToObjectSpace(part.CFrame))
+				end
+			end
+			model.Parent = folder
 			table.insert(sharks, shark)
 		end
 	end
@@ -266,7 +295,11 @@ local function stepSharks(now: number, camera: Vector3)
 		local height = base.Y + 50 + k * 34 + math.sin(now * 0.3 + k) * 8
 		local at = Vector3.new(base.X + math.cos(angle) * radius, height, base.Z + math.sin(angle) * radius)
 		local ahead = Vector3.new(-math.sin(angle) * way, 0, math.cos(angle) * way)
-		shark:PivotTo(CFrame.lookAt(at, at + ahead) * CFrame.Angles(0, 0, way * 0.18))
+		local frame = CFrame.lookAt(at, at + ahead) * CFrame.Angles(0, 0, way * 0.18)
+		for i, part in shark.parts do
+			table.insert(moveParts, part)
+			table.insert(moveFrames, frame * shark.offsets[i])
+		end
 	end
 end
 
@@ -377,17 +410,18 @@ local cannonCheck = 0
 
 -- Whether a floater this far off moves this frame
 local function due(gap: number, salt: number): boolean
-	if gap < NEAR_EVERY then
-		return true
-	elseif gap < NEAR_HALF then
-		return (frameCount + salt) % 2 == 0
-	end
-	return gap < NEAR and (frameCount + salt) % 4 == 0
+	local every = if gap < NEAR_EVERY then 2 elseif gap < NEAR_HALF then 4 else 6
+	return (frameCount + salt) % every == 0
 end
 
--- Every floater due this frame, posed by `pose`, in one batch
-local moveParts: { BasePart } = {}
-local moveFrames: { CFrame } = {}
+-- How much of its motion a floater keeps this far off: all of it to `fade`, none
+-- past `still`
+local function reach(gap: number, fade: number, still: number): number
+	local x = math.clamp((still - gap) / (still - fade), 0, 1)
+	return x * x * (3 - 2 * x)
+end
+
+-- Every floater due this frame, posed by `pose`, in the batch
 local function queue(entry: Floater, pose: CFrame)
 	for part, offset in entry.offsets do
 		table.insert(moveParts, part)
@@ -403,25 +437,42 @@ local function step(dt: number)
 	frameCount += 1
 	local eye = camera.CFrame.Position
 	local now = Workspace:GetServerTimeNow()
-	for model, entry in floaters do
-		if model.Parent and due((entry.base.Position - eye).Magnitude, math.floor(entry.phase * 10)) then
+	-- (a floater streamed out is dropped by its tag; its parts by DescendantRemoving)
+	for _, entry in floaters do
+		local gap = (entry.base.Position - eye).Magnitude
+		local k = reach(gap, BOB_FADE, BOB_STILL) * entry.bob
+		if k <= 0 then
+			if entry.moved then
+				entry.moved = false
+				queue(entry, entry.base)
+			end
+		elseif due(gap, entry.salt) then
+			entry.moved = true
 			local t = now * 0.8 + entry.phase
 			queue(
 				entry,
 				entry.base
-					* CFrame.new(0, math.sin(t) * 1.2, 0)
-					* CFrame.Angles(math.sin(t * 0.7) * 0.05, 0, math.cos(t * 0.6) * 0.05)
+					* CFrame.new(0, math.sin(t) * 1.2 * k, 0)
+					* CFrame.Angles(math.sin(t * 0.7) * 0.05 * k, 0, math.cos(t * 0.6) * 0.05 * k)
 			)
 		end
 	end
-	for model, entry in drifters do
-		if model.Parent and due((entry.base.Position - eye).Magnitude, math.floor(entry.phase * 10)) then
+	for _, entry in drifters do
+		local gap = (entry.base.Position - eye).Magnitude
+		local k = reach(gap, DRIFT_FADE, DRIFT_STILL)
+		if k <= 0 then
+			if entry.moved then
+				entry.moved = false
+				queue(entry, entry.base)
+			end
+		elseif due(gap, entry.salt) then
+			entry.moved = true
 			local t = now * 0.25 + entry.phase
 			queue(
 				entry,
 				entry.base
-					* CFrame.new(math.sin(t) * 4, math.sin(t * 1.3) * 3, math.cos(t * 0.8) * 4)
-					* CFrame.Angles(0, math.sin(t * 0.5) * 0.3, math.sin(t) * 0.08)
+					* CFrame.new(math.sin(t) * 4 * k, math.sin(t * 1.3) * 3 * k, math.cos(t * 0.8) * 4 * k)
+					* CFrame.Angles(0, math.sin(t * 0.5) * 0.3 * k, math.sin(t) * 0.08 * k)
 			)
 		end
 	end
@@ -448,7 +499,8 @@ local function step(dt: number)
 	end
 	for model, entry in shelters do
 		local raft = entry.base.Position
-		if model.Parent == nil or (raft - eye).Magnitude > SHELTER_NEAR then
+		local gap = (raft - eye).Magnitude
+		if model.Parent == nil or gap > SHELTER_NEAR + (if #entry.fish > 0 then SHELTER_KEEP else 0) then
 			if #entry.fish > 0 then
 				clearShelter(entry)
 			end
@@ -457,10 +509,8 @@ local function step(dt: number)
 		if #entry.fish == 0 then
 			buildShelter(entry)
 		end
-		if
-			(raft - eye).Magnitude > SHELTER_EVERY
-			and (frameCount + math.floor(entry.phase * 10)) % 2 == 1
-		then
+		local every = if gap <= SHELTER_EVERY then 1 elseif gap <= SHELTER_HALF then 2 else 3
+		if (frameCount + math.floor(entry.phase * 10)) % every ~= 0 then
 			continue
 		end
 		for k, fish in entry.fish do
@@ -474,12 +524,12 @@ local function step(dt: number)
 			table.insert(moveFrames, CFrame.lookAt(at, at + ahead))
 		end
 	end
+	stepSharks(now, eye)
 	if #moveParts > 0 then
 		Workspace:BulkMoveTo(moveParts, moveFrames, Enum.BulkMoveMode.FireCFrameChanged)
 		table.clear(moveParts)
 		table.clear(moveFrames)
 	end
-	stepSharks(now, eye)
 	local live = flight
 	if live then
 		if os.clock() > live.untilAt or SwimController.root() == nil then
