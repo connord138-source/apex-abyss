@@ -108,8 +108,11 @@ export type Predator = {
 	-- Its pack (Config/Predators `pack`): every member, and its place in it (1 leads)
 	pack: { Predator }?,
 	role: number,
-	-- A tethered hunter's hole (`tether`): where it spawned
+	-- A tethered hunter's hole (`tether`): where it spawned, or where it was last
+	-- stranded (`strayed`: when it went past its tether while roaming, math.huge
+	-- while it's in)
 	home: Vector3?,
+	strayed: number,
 	-- Its patch of its group's water (Config/Predators `spread`): number `slot`
 	-- (from 0) of `slots`; nil for a boss or one added on its own (the whole water)
 	slot: number?,
@@ -139,6 +142,10 @@ local BELLY_GAP = 1.5
 -- doesn't stand on its nose (PC 2026-10-22: three of four Wolf Eels sat nose-down by
 -- a rock, heading (0, -1, 0))
 local MAX_PITCH = 0.8
+-- Seconds a tethered hunter may roam past its tether before that spot becomes its
+-- hole (PC 2026-10-22: two Wolf Eels climbed a basalt column ~110 studs over their
+-- holes; measured from the hole, every fish beside them was out of reach)
+local REHOME_AFTER = 4
 
 -- A Blood Tide's hunters: faster and keener (Config/Tides `hunters`; never bosses)
 local function hunters(predator: Predator): (number, number)
@@ -412,15 +419,37 @@ local function randomWaypoint(predator: Predator, near: number?): Vector3
 	return Vector3.new(x, Seafloor.y(x, z) + def.depth[1] + 10, z)
 end
 
--- Where it roams to next: a tethered hunter circles its hole, level with it, the
--- rest roam on round their patch from where they are
+-- Where it roams to next: a tethered hunter circles its hole, level with it, over
+-- ground no higher than the hole's (never onto the rock beside it: a spot inside the
+-- rock had it climb the rock's face to its top), the rest roam on round their patch
+-- from where they are
 local function waypointFor(predator: Predator): Vector3
 	local home = predator.home
 	if home then
-		local tether = styleOf(predator.def).tether or 16
-		local angle = rng:NextNumber(0, 2 * math.pi)
-		local out = rng:NextNumber(10, math.max(tether * 0.5, 12))
-		return home + Vector3.new(math.cos(angle) * out, rng:NextNumber(0, 2), math.sin(angle) * out)
+		local def = predator.def
+		local tether = styleOf(def).tether or 16
+		local clear = def.length * BODY_HALF + BELLY_GAP
+		local below = home.Y - clear
+		local room = def.length * 0.3
+		for _ = 1, 8 do
+			local angle = rng:NextNumber(0, 2 * math.pi)
+			local out = rng:NextNumber(10, math.max(tether * 0.5, 12))
+			local x, z = home.X + math.cos(angle) * out, home.Z + math.sin(angle) * out
+			-- (the rock round the spot, with room for its body, and halfway back)
+			local ground = math.max(
+				Ground.y(x, z),
+				Ground.y(x + room, z),
+				Ground.y(x - room, z),
+				Ground.y(x, z + room),
+				Ground.y(x, z - room),
+				Ground.y((x + home.X) * 0.5, (z + home.Z) * 0.5),
+				Seafloor.y(x, z)
+			)
+			if ground <= below + 3 then
+				return Vector3.new(x, math.max(home.Y, ground + clear) + rng:NextNumber(0, 2), z)
+			end
+		end
+		return home
 	end
 	local at = predator.position
 	return randomWaypoint(predator, math.atan2(at.Z, at.X))
@@ -460,6 +489,7 @@ local function spawn(predator: Predator, at: Vector3?)
 	end
 	predator.position = at or randomWaypoint(predator)
 	predator.home = if styleOf(predator.def).tether then predator.position else nil
+	predator.strayed = math.huge
 	predator.velocity = Vector3.zero
 	predator.heading = Vector3.new(1, 0, 0)
 	predator.health = predator.maxHealth
@@ -810,13 +840,20 @@ local CEILING_SHARE = 0.3
 -- How far ahead (seconds of travel) the ground is read, so a creature climbs over a
 -- reef head before it reaches it instead of popping up on top of it
 local LOOK_AHEAD = 1.4
+-- Ground rising more than this ahead of a tethered hunter roaming by its hole is a
+-- wall it turns along, not a rock it climbs (studs, or half its length if more)
+local WALL_CLIMB = 12
 
 -- The highest ground under a creature's body (tail to nose) and along the stretch
 -- of water it's about to cross: the real ground (Shared/Ground: the Terrain and the
 -- solid dressing), not the nominal floor, which reef heads, ridges, wrecks and
 -- chimneys rise far above (owner, 2026-10-13: "the predator fish will phase through
 -- the sand in the ground")
-local function groundAround(predator: Predator, position: Vector3, velocity: Vector3): (number, number)
+local function groundAround(
+	predator: Predator,
+	position: Vector3,
+	velocity: Vector3
+): (number, number, Vector3)
 	local def = predator.def
 	local flat = Vector3.new(velocity.X, 0, velocity.Z)
 	local facing = Vector3.new(predator.heading.X, 0, predator.heading.Z)
@@ -836,7 +873,7 @@ local function groundAround(predator: Predator, position: Vector3, velocity: Vec
 		local at = position + direction * (half + (reach - half) * share)
 		ahead = math.max(ahead, Ground.y(at.X, at.Z))
 	end
-	return under, ahead
+	return under, ahead, direction
 end
 
 -- The height above the ground a creature likes to keep: its roaming band's floor
@@ -884,9 +921,23 @@ local BOSS_SWIM: PredatorsConfig.Swim = {
 -- Both read the real ground ahead and climb over it, and never sink into it.
 local function steer(predator: Predator, desired: Vector3, dt: number, turnRate: number?, direct: boolean?)
 	local def = predator.def
-	-- Climb over the ground ahead before reaching it
-	local _, ahead = groundAround(predator, predator.position, predator.velocity)
+	-- Climb over the ground ahead before reaching it...
+	local under, ahead, direction = groundAround(predator, predator.position, predator.velocity)
 	local want = ahead + preferredGap(predator)
+	-- ...unless it's a tethered hunter roaming by its hole and the ground ahead is a
+	-- wall: it slides along it instead (PC 2026-10-22: Wolf Eels turning by their
+	-- holes climbed a basalt column ~110 studs and stayed up there)
+	if
+		predator.home
+		and predator.mode == "roam"
+		and ahead > under + math.max(WALL_CLIMB, def.length * 0.5)
+	then
+		local into = desired:Dot(direction)
+		if into > 0 then
+			desired -= direction * into
+		end
+		want = under + preferredGap(predator)
+	end
 	if predator.position.Y < want then
 		local climb = math.min((want - predator.position.Y) * 1.6, def.speed * 0.9)
 		desired = Vector3.new(desired.X, math.max(desired.Y, climb), desired.Z)
@@ -978,7 +1029,37 @@ local function steer(predator: Predator, desired: Vector3, dt: number, turnRate:
 	-- Never into the ground: the belly stays over the highest ground under the body.
 	-- A boss also keeps its old height off the nominal floor, which its fight was
 	-- tuned on (the Megalodon stays up in the blue; a fish on the sand is out of reach)
-	local under = groundAround(predator, position, predator.velocity)
+	local under, _, direction = groundAround(predator, position, predator.velocity)
+	-- A tethered hunter by its hole meets a tall rock as a wall: its nose (or tail)
+	-- stops against it instead of the whole body being lifted onto its top (PC
+	-- 2026-10-22: a Wolf Eel turning by its hole was set on a basalt column ~110
+	-- studs up in one step)
+	if predator.home and not predator.custom then
+		local middle = Ground.y(position.X, position.Z)
+		local wall = middle + math.max(WALL_CLIMB, def.length * 0.5)
+		if under > wall then
+			local half = def.length * 0.5
+			local step = position - predator.position
+			under = middle
+			for _, side in { 1, -1 } do
+				local at = position + direction * half * side
+				local ground = Ground.y(at.X, at.Z)
+				if ground <= wall then
+					under = math.max(under, ground)
+				else
+					-- (no further that way)
+					local into = Vector3.new(step.X, 0, step.Z):Dot(direction * side)
+					if into > 0 then
+						position -= direction * side * into
+					end
+					local push = predator.velocity:Dot(direction * side)
+					if push > 0 then
+						predator.velocity -= direction * side * push
+					end
+				end
+			end
+		end
+	end
 	local floor = under + def.length * BODY_HALF + BELLY_GAP
 	if predator.custom then
 		floor = math.max(floor, Seafloor.y(position.X, position.Z) + math.max(def.depth[1] * 0.6, 5))
@@ -1705,11 +1786,23 @@ local function simulate(predator: Predator, dt: number, now: number)
 		return
 	end
 	-- A tethered hunter never strays far from its hole: past its tether it swims back
-	-- (a lunge or a tell may carry it out a little)
+	-- (a lunge or a tell may carry it out a little). One held out past it while
+	-- roaming (rock between, a ledge it was lifted onto) takes where it is as its
+	-- hole after REHOME_AFTER, so it hunts from where it lies
 	local home = predator.home
 	if home and predator.mode ~= "windup" and predator.burstUntil <= now then
 		local back = home - predator.position
-		if back.Magnitude > (style.tether or 0) then
+		if back.Magnitude <= (style.tether or 0) or predator.mode ~= "roam" then
+			predator.strayed = math.huge
+		elseif predator.strayed == math.huge then
+			predator.strayed = now
+		end
+		if now - predator.strayed > REHOME_AFTER then
+			predator.home = predator.position
+			predator.strayed = math.huge
+			predator.waypoint = waypointFor(predator)
+			predator.waypointUntil = now + 12
+		elseif back.Magnitude > (style.tether or 0) then
 			desired = back.Unit * def.speed * 0.8
 		end
 	end
@@ -1881,6 +1974,7 @@ local function make(def: Def, custom: boolean?): Predator
 		pack = nil,
 		role = 1,
 		home = nil,
+		strayed = math.huge,
 		slot = nil,
 		slots = nil,
 		gulpFree = false,

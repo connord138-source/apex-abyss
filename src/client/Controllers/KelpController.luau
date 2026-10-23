@@ -35,6 +35,8 @@ local Workspace = game:GetService("Workspace")
 type Plant = {
 	model: Model,
 	base: CFrame, -- the stalk's foot, upright
+	at: Vector3, -- (its position)
+	salt: number, -- which frames it's posed on when it isn't posed every frame
 	parts: { BasePart },
 	offsets: { CFrame }, -- each part from the base
 	phase: number,
@@ -59,9 +61,11 @@ local BLEND = 40 -- ... easing to stillness over the last this many
 -- moving parts is what the renderer's prepare step pays for, PC 2026-10-20 round 2)
 -- Past HALF_RATE studs a plant no fish is pushing is posed every other frame, past
 -- THIRD_RATE every third (PC 2026-10-22: the Kelp Cathedral's tall rings put ~665
--- pieces in reach of its nave, 37.8 ms/s)
-local HALF_RATE = 60
-local THIRD_RATE = 90
+-- pieces in reach of its nave, 37.8 ms/s; then 42.5: a plant skipped this frame had
+-- still worked out its push, spring and fade first, so now a resting plant with no
+-- fish by it does nothing on the frames it isn't posed)
+local HALF_RATE = 50
+local THIRD_RATE = 85
 -- Plants are kept in a grid of CELL-stud cells by where they stand, so a rescan
 -- looks only at the cells round the camera (it had walked every plant in the
 -- Shallows twice a second); a plant's part count is re-checked only for RECHECK s
@@ -135,6 +139,8 @@ local function collect(plant: Model, old: Plant?): Plant?
 	local entry: Plant = {
 		model = plant,
 		base = base,
+		at = at,
+		salt = math.floor(hash(at, 4) * 12),
 		parts = {},
 		offsets = {},
 		phase = hash(at, 1) * 2 * math.pi,
@@ -266,6 +272,21 @@ local function gatherSwimmers(camera: Vector3)
 	end
 end
 
+-- Whether any fish is near enough round a plant's stalk to push it (a quick look
+-- before the plant's own axes are worked out)
+local function touched(plant: Plant): boolean
+	local at = plant.at
+	for _, swimmer in swimmers do
+		local reach = plant.spread * CORE + GIVE + swimmer.radius + 2
+		local p = swimmer.position
+		local dx, dz = p.X - at.X, p.Z - at.Z
+		if dx * dx + dz * dz < reach * reach and p.Y > at.Y - reach and p.Y < at.Y + plant.height + reach then
+			return true
+		end
+	end
+	return false
+end
+
 -- Where the fish in a plant push its top (radians toward +X and +Z in its own
 -- axes): out of the way near the stalk's edge, along the swim through its middle.
 -- Smooth everywhere, so a fish crossing the stalk never flips it.
@@ -366,29 +387,58 @@ local function step(dt: number)
 	local steps = math.max(1, math.ceil(dt * 60))
 	local h = dt / steps
 	frameCount += 1
-	for index, plant in active do
-		local eye = plant.base:PointToObjectSpace(camera)
-		local along = math.clamp(eye.Y, 0, plant.height)
-		local across = math.sqrt(eye.X * eye.X + eye.Z * eye.Z)
-		local distance = math.sqrt(across * across + (eye.Y - along) * (eye.Y - along))
+	for _, plant in active do
+		-- (how far the camera is from its stalk, in the world's axes: a plant stands
+		-- within a few degrees of upright)
+		local at = plant.at
+		local dx, dz = camera.X - at.X, camera.Z - at.Z
+		local across = math.sqrt(dx * dx + dz * dz)
+		local up = camera.Y - at.Y
+		local over = up - math.clamp(up, 0, plant.height)
+		local distance = math.sqrt(across * across + over * over)
 		local weight = smooth((REACH - distance) / BLEND)
+		local radius = FADE_RADIUS + plant.spread * 0.25 + (if plant.fade > 0 then FADE_OUT else 0)
+		local resting = math.abs(plant.leanX) + math.abs(plant.leanZ) < 1e-3
+			and math.abs(plant.spinX) + math.abs(plant.spinZ) < 1e-3
+		local pushed = weight > 0 and touched(plant)
+		local every = if distance <= HALF_RATE then 1 elseif distance <= THIRD_RATE then 2 else 3
+		-- A resting plant no fish is near, with the camera nowhere inside it, does
+		-- nothing on the frames it isn't posed
+		if
+			every > 1
+			and resting
+			and not pushed
+			and plant.fade == 0
+			and across > radius + 4
+			and (plant.salt + frameCount) % every ~= 0
+		then
+			continue
+		end
 		-- Give way to fish through a damped spring
 		local wantX, wantZ = 0, 0
-		if weight > 0 then
+		if pushed then
 			wantX, wantZ = pushFor(plant)
 		end
-		for _ = 1, steps do
-			plant.spinX += ((wantX - plant.leanX) * STIFF - plant.spinX * DAMP) * h
-			plant.spinZ += ((wantZ - plant.leanZ) * STIFF - plant.spinZ * DAMP) * h
-			plant.leanX += plant.spinX * h
-			plant.leanZ += plant.spinZ * h
+		if not (resting and wantX == 0 and wantZ == 0) then
+			for _ = 1, steps do
+				plant.spinX += ((wantX - plant.leanX) * STIFF - plant.spinX * DAMP) * h
+				plant.spinZ += ((wantZ - plant.leanZ) * STIFF - plant.spinZ * DAMP) * h
+				plant.leanX += plant.spinX * h
+				plant.leanZ += plant.spinZ * h
+			end
 		end
 		local still = weight <= 0
 			and math.abs(plant.leanX) + math.abs(plant.leanZ) < 1e-3
 			and math.abs(plant.spinX) + math.abs(plant.spinZ) < 1e-3
 		-- The camera inside it fades it (a little further out before it comes back)
-		local radius = FADE_RADIUS + plant.spread * 0.25 + (if plant.fade > 0 then FADE_OUT else 0)
-		setFade(plant, dt, eye.Y > -1 and eye.Y < plant.height + 1 and across < radius)
+		if across < radius + 4 or plant.fade > 0 then
+			local eye = plant.base:PointToObjectSpace(camera)
+			setFade(
+				plant,
+				dt,
+				eye.Y > -1 and eye.Y < plant.height + 1 and math.sqrt(eye.X * eye.X + eye.Z * eye.Z) < radius
+			)
+		end
 		if still then
 			if plant.posed then
 				plant.posed = false
@@ -398,11 +448,10 @@ local function step(dt: number)
 			continue
 		end
 		plant.posed = true
-		local every = if distance <= HALF_RATE then 1 elseif distance <= THIRD_RATE then 2 else 3
 		if
 			every > 1
 			and math.abs(plant.leanX) + math.abs(plant.leanZ) < 0.01
-			and (index + frameCount) % every ~= 0
+			and (plant.salt + frameCount) % every ~= 0
 		then
 			continue
 		end

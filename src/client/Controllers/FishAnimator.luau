@@ -221,9 +221,10 @@ local function dress(character: Model, state: FishState)
 			SkinLoader.claimTest(skin)
 		end
 	end
-	-- A variant with its own model waits for that model's meshes and textures the
-	-- same way: until they've arrived the fish keeps its own body (PC 2026-10-22: a
-	-- shade on a fresh variant drew it a flat silhouette for 6-14 s)
+	-- A variant with its own model waits for that model's textures the same way
+	-- (SkinLoader draws it hidden so they download): until they've arrived, at most
+	-- 30 s, the fish keeps its own body (PC 2026-10-22: a shade on a fresh variant
+	-- drew it a flat silhouette for 6-14 s)
 	local variant = character:GetAttribute("Variant")
 	local variantModel = if typeof(variant) == "string" and variant ~= ""
 		then FishBuilder.variantTemplate(variant)

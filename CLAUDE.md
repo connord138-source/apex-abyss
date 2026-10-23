@@ -1946,10 +1946,50 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Variants wait for their model** (PC: a shade on a fresh variant drew a flat
     silhouette in its colour for 6-14 s): `SkinLoader` waits on a Model's meshes and
     textures, and FishAnimator keeps the fish in its own body until the variant's model
-    has arrived (at most 12 s).
+    has arrived (at most 12 s; 30 s and drawn hidden since the next round).
   - **GiantKelp's roughness map** never cleared moderation (the kelp drew grey); the PC
     cleared it in the place. `shallows_recolor.py` writes no finish map now (metal 0,
     roughness 0.85 as factors; the occlusion map Tripo packs with it goes too).
+- **The 2026-10-22 PC round (report `docs/playtests/2026-10-22-pc.md`, published as v22
+  from a59ac19; spread, no mob, own water, the cathedral's move, the Diamond and Void
+  windows and QR12 passed; built on `claude/world` 2026-10-23):**
+  - **Wolf Eels stranded up a column** (PC: two sat ~110 studs over the floor at the pitch
+    cap and never hunted a fish 13–16 studs off them): the hole's best cover is often a
+    tall basalt column; turning by the hole, the eel's nose sample went over the column
+    and the floor clamp set the whole body on its top in one step. Hunting is measured
+    from the hole, so every fish beside it was out of reach. Now a tethered hunter
+    meets tall rock as a wall: ground more than `WALL_CLIMB` 12 studs (or half its
+    length) over the ground at its middle stops its nose or tail instead of lifting it
+    (`steer`), it doesn't climb a wall ahead while roaming, its circling spots keep
+    clear of rock by 0.3 of its length (`waypointFor`), and one held past its tether
+    while roaming for `REHOME_AFTER` 4 s takes where it is as its hole (`strayed`).
+    Sim: beside a 110-stud column it rises at most 12 studs in 40 s; one placed on top
+    hunts a fish 15 studs off after 4.2 s and bites.
+  - **Landmarks at Hammerhead Pinnacle** (PC: LandmarkController 66.7 ms/s, 40 of it a
+    `PivotTo` on each part-built jelly, raft and buoy every frame): every floater and
+    drifter keeps its parts' places against its rest pivot (assembly roots only, kept
+    up to date as parts stream in and out) and they all go in one `BulkMoveTo` with the
+    raft fish; every frame within `NEAR_EVERY` 60 studs, every other to `NEAR_HALF` 200,
+    every fourth to 500. Raft fish are built within 240 (was 320) and swim every other
+    frame past 110; the hammerheads every other frame past 300.
+  - **Kelp in the nave** (PC: 42.5 ms/s, up from 37.8): a plant skipped on a frame had
+    still worked out its push, spring and fade, so the rate cut saved only the move. A
+    resting plant with no fish near its stalk (`touched`, a quick look in world axes)
+    and the camera not inside it now does nothing on its off frames; distance is
+    measured in world axes (a plant stands within a few degrees of upright) and the
+    plant's own axes only when the camera is by its stalk; tiers every frame to
+    `HALF_RATE` 50, every other to `THIRD_RATE` 85, every third past it.
+  - **Variants wait for their textures** (PC: every first swap waited the full 12 s, and
+    the Sabrecuda in CatchGolden then drew flat glowing gold ~13 s more): a model in
+    ReplicatedStorage downloads nothing until something draws it (its mesh's fetch status
+    never read Success), so `SkinLoader` draws it in a hidden corner viewport (CardPhoto's
+    98.5% warm-up) until its textures are in and it has been drawn `WARM_HOLD` 0.7 s,
+    and counts textures only; a variant waits up to `MODEL_GIVE_UP` 30 s. A shade has no
+    skin for a variant's model, so the variant wears its own texture tinted toward the
+    shade; untextured, a glowing shade read as a flat body in its colour.
+  - Left as is: the two pending TexturePacks (115928472559188, 72289755529119) are unused
+    in the place; the Void window's stars read faint beside its vortex and its ribbons
+    zig-zag with the eel's wave on a straight run (nits).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -2977,7 +3017,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers);
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` and `2026-10-22-pc.md`
+  (biome landmarks, new predators, spread and no mob; published v20 and v22);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with

@@ -178,6 +178,7 @@ local function run(
 			member.fails = {}
 			member.ignore = {}
 			member.nipped = {}
+			member.strayed = math.huge
 			-- (a tethered hunter's hole is where it starts)
 			if member.home then
 				member.home = member.position
@@ -987,6 +988,78 @@ do
 	)
 	expect(lowest >= -0.81, `Wolf Eel: never stands on its nose by a rock ({string.format("%.2f", lowest)})`)
 	expect(hits > 0, "Wolf Eel: hunts a fish by its hole when a rock stands beside it")
+	sim.groundY = flatGround
+	sim.sessions, sim.characters = {}, {}
+end
+-- By a tall column (PC 2026-10-22 round 2: two eels sat ~110 studs over the floor at
+-- the pitch cap, their holes at the column's foot, and never hunted a fish 13–16
+-- studs off them): roaming 40 s from its hole it stays near the floor; one found up
+-- on the column takes it as its hole and hunts a still fish 15 studs off it
+do
+	local eel = only("WolfEel")
+	local hole = Vector3.new(vents.X, Seafloor.y(vents.X, vents.Z) + 4, vents.Z)
+	local flatGround = sim.groundY
+	local function column(x: number, z: number): boolean
+		return math.abs(x - (hole.X + 22)) < 10 and math.abs(z - hole.Z) < 10
+	end
+	sim.groundY = function(x: number, z: number): number
+		local base = Seafloor.y(x, z)
+		return if column(x, z) then base + 110 else base
+	end
+	local function reset(at: Vector3)
+		eel.position, eel.home = at, hole
+		eel.velocity = Vector3.zero
+		eel.heading = Vector3.new(1, 0, 0)
+		eel.mode, eel.target = "roam", nil
+		eel.waypoint, eel.waypointUntil = at, 0
+		eel.strayed = math.huge
+	end
+	reset(hole)
+	sim.sessions, sim.characters = {}, {}
+	local highest = 0
+	for _ = 1, 400 do
+		sim.now += DT
+		heartbeat(DT)
+		highest = math.max(highest, eel.position.Y - hole.Y)
+	end
+	-- (found up on the column, its hole at the foot)
+	local top = Vector3.new(hole.X + 22, Seafloor.y(hole.X, hole.Z) + 110 + 22 * 0.12 + 2, hole.Z)
+	reset(top)
+	local fish = fishAt("Nibbler", 75)
+	local player = { Name = "Beside", UserId = 13, Parent = true }
+	local spot = top + Vector3.new(-15, 0, 0)
+	local character, root = sim.fish(fish.length, spot)
+	character:SetAttribute("FishLevel", 75)
+	character:SetAttribute("MaxHealth", 100)
+	character:SetAttribute("Health", 100)
+	sim.sessions = { [player] = { alive = true, inHub = false, safeUntil = 0 } }
+	sim.characters = { [player] = { character = character, root = root } }
+	table.clear(sim.events)
+	local hunted: number? = nil
+	for step = 1, 200 do
+		sim.now += DT
+		heartbeat(DT)
+		if hunted == nil and eel.target == player then
+			hunted = step * DT
+		end
+	end
+	local hits = 0
+	for _, event in sim.events do
+		if event.kind == "bite" and event.payload.hit then
+			hits += 1
+		end
+	end
+	print(
+		string.format(
+			"   by a 110-stud column: rose at most %.0f studs off its hole in 40 s; found on top, hunted after %s s, %d bites in 20 s",
+			highest,
+			if hunted then string.format("%.1f", hunted) else "never",
+			hits
+		)
+	)
+	expect(highest < 40, `Wolf Eel: doesn't climb the column beside its hole ({math.floor(highest)} studs)`)
+	expect(hunted ~= nil and hunted < 8, "Wolf Eel: one stranded on a column hunts a fish beside it")
+	expect(hits > 0, "Wolf Eel: one stranded on a column bites a fish beside it")
 	sim.groundY = flatGround
 	sim.sessions, sim.characters = {}, {}
 end

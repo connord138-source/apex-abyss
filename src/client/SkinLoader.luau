@@ -14,9 +14,16 @@
 -- pretend retry as `[SkinLoader] test:`, so it shows the stand-in, goes on at
 -- GIVE_UP and is put on afresh when the pretence ends.
 -- A Model (an exotic variant's own model, VariantModels.<id>) waits the same way for
--- its meshes and textures (PC 2026-10-22: a shade on a fresh variant drew it a flat
--- silhouette in the shade's colour for 6-14 s while its texture downloaded).
+-- its textures (PC 2026-10-22: a shade on a fresh variant drew it a flat silhouette
+-- in the shade's colour for 6-14 s while its texture downloaded). A model sitting in
+-- ReplicatedStorage downloads nothing until something draws it, so it's drawn in a
+-- hidden corner viewport (CardPhoto's warm-up) until its textures are in and it has
+-- been on screen WARM_HOLD s (its meshes come with that: a mesh's fetch status never
+-- read Success while it sat there, so every first swap waited the full 12 s, PC
+-- 2026-10-22 round 2); it waits up to MODEL_GIVE_UP s before it goes on anyway (at
+-- 12 s the Sabrecuda went on untextured and read flat gold for ~13 s more).
 local ContentProvider = game:GetService("ContentProvider")
+local Players = game:GetService("Players")
 
 local SkinLoader = {}
 
@@ -30,6 +37,8 @@ local MAPS = {
 local RETRY_MOST = 30 -- seconds between tries at most
 local TRIES_MOST = 8
 local GIVE_UP = 12 -- seconds a skin waits before it goes on anyway
+local MODEL_GIVE_UP = 30 -- ... and a variant's model
+local WARM_HOLD = 0.7 -- seconds a model is drawn hidden before it counts as in
 local TEST_SECONDS = 18 -- how long `claimTest` pretends a skin's download fails
 
 local texturesOf: { [Instance]: { string } } = {} -- skins live in ReplicatedStorage, so strong keys
@@ -40,6 +49,12 @@ local retryAt: { [string]: number } = {}
 local firstAsked: { [Instance]: number } = {}
 type Pretend = { untilAt: number, tries: number, retryAt: number }
 local pretending: { [Instance]: Pretend } = {}
+type Warm = { clone: Model, since: number }
+local warming: { [Instance]: Warm } = {}
+local warmed: { [Instance]: boolean } = {}
+local warmGui: ScreenGui? = nil
+local warmWorld: WorldModel? = nil
+local warmCamera: Camera? = nil
 
 local function contentUri(skin: Instance, property: string): string?
 	local ok, content = pcall(function()
@@ -73,7 +88,6 @@ local function textures(skin: Instance): { string }
 				add(source, property)
 			end
 		elseif source:IsA("MeshPart") then
-			add(source, "MeshContent")
 			add(source, "TextureContent")
 		end
 	end
@@ -99,6 +113,67 @@ local function fetch(uri: string)
 		end)
 		fetching[uri] = false
 	end)
+end
+
+-- Draws a model in the hidden corner viewport (at 98.5%: a hidden or fully
+-- transparent viewport isn't drawn) so its meshes and textures download
+local function warm(model: Model)
+	if warmed[model] or warming[model] then
+		return
+	end
+	local player = Players.LocalPlayer
+	local playerGui = if player then player:FindFirstChild("PlayerGui") else nil
+	if playerGui == nil then
+		return
+	end
+	if warmGui == nil or warmGui.Parent == nil then
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "SkinWarmup"
+		gui.ResetOnSpawn = false
+		gui.IgnoreGuiInset = true
+		gui.DisplayOrder = -50
+		local frame = Instance.new("ViewportFrame")
+		frame.BackgroundTransparency = 1
+		frame.ImageTransparency = 0.985
+		frame.AnchorPoint = Vector2.new(1, 1)
+		frame.Position = UDim2.new(1, -2, 1, -2)
+		frame.Size = UDim2.fromOffset(96, 64)
+		frame.Parent = gui
+		local world = Instance.new("WorldModel")
+		world.Parent = frame
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 40
+		camera.Parent = frame
+		frame.CurrentCamera = camera
+		gui.Parent = playerGui
+		warmGui, warmWorld, warmCamera = gui, world, camera
+	end
+	local clone = model:Clone()
+	clone:PivotTo(CFrame.new())
+	clone.Parent = warmWorld
+	warming[model] = { clone = clone, since = os.clock() }
+	-- (framed on the biggest one warming)
+	local most = 1
+	for _, entry in warming do
+		local _, size = entry.clone:GetBoundingBox()
+		most = math.max(most, size.Magnitude)
+	end
+	if warmCamera then
+		warmCamera.CFrame = CFrame.lookAt(Vector3.new(most * 0.4, most * 0.3, most * 1.4), Vector3.zero)
+	end
+end
+
+local function cool(model: Instance)
+	local entry = warming[model]
+	if entry then
+		entry.clone:Destroy()
+		warming[model] = nil
+	end
+	warmed[model] = true
+	if next(warming) == nil and warmGui then
+		warmGui:Destroy()
+		warmGui, warmWorld, warmCamera = nil, nil, nil
+	end
 end
 
 -- Whether every texture of `skin` has arrived (starting or retrying the downloads
@@ -130,6 +205,13 @@ local function allLoaded(skin: Instance): boolean
 		return true
 	end
 	local all = true
+	if skin:IsA("Model") and not warmed[skin] then
+		warm(skin)
+		local entry = warming[skin]
+		if entry == nil or os.clock() - entry.since < WARM_HOLD then
+			all = false
+		end
+	end
 	for _, uri in textures(skin) do
 		if loaded[uri] then
 			continue
@@ -157,6 +239,9 @@ end
 function SkinLoader.state(skin: Instance): string
 	if allLoaded(skin) then
 		firstAsked[skin] = nil
+		if warming[skin] then
+			cool(skin)
+		end
 		return "loaded"
 	end
 	local since = firstAsked[skin]
@@ -164,7 +249,8 @@ function SkinLoader.state(skin: Instance): string
 		since = os.clock()
 		firstAsked[skin] = since
 	end
-	return if os.clock() - since < GIVE_UP then "waiting" else "trying"
+	local cap = if skin:IsA("Model") then MODEL_GIVE_UP else GIVE_UP
+	return if os.clock() - since < cap then "waiting" else "trying"
 end
 
 -- Admin test: `skin` pretends its download fails for TEST_SECONDS from now
