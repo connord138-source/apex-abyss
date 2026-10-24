@@ -749,7 +749,8 @@ local function huntersOn(player: Player, self: Predator): number
 end
 
 -- The fish worth hunting: alive, not safe, in range, big enough (or it bit us).
-local function pickTarget(predator: Predator, now: number): Player?
+-- `keep` leaves out fish where the caller won't follow (a boss's own water)
+local function pickTarget(predator: Predator, now: number, keep: ((Vector3) -> boolean)?): Player?
 	local def = predator.def
 	local best: Player? = nil
 	local bestScore = -math.huge
@@ -759,6 +760,9 @@ local function pickTarget(predator: Predator, now: number): Player?
 			continue
 		end
 		if record.safeUntil > now or nearHub(root.Position, 0) then
+			continue
+		end
+		if keep and not keep(root.Position) then
 			continue
 		end
 		if not inReach(predator, player, character, root, now) then

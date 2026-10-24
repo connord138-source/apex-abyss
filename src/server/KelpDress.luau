@@ -496,6 +496,7 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 			Kit.part(stats, sm, "Float", Vector3.new(4, 4, 4), buoy, RED, false, Enum.PartType.Cylinder)
 		end)
 		buoyHolder:SetAttribute("Bob", 0.25)
+		Kit.oneBody(buoyHolder)
 		CollectionService:AddTag(buoyHolder, "Bobbing")
 	end
 
@@ -508,6 +509,7 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 		local holder = Kit.hero(stats, m, "SeaOtter", box, size, function(sm)
 			Kit.part(stats, sm, "Body", size * Vector3.new(0.8, 0.6, 0.9), box, BROWN, false)
 		end)
+		Kit.oneBody(holder)
 		CollectionService:AddTag(holder, "Bobbing")
 	end
 	-- Sun shafts fanning down through the roof's gap, as the scene's: their tops close
@@ -619,6 +621,7 @@ local function meadow(parent: Instance)
 		local holder = Kit.hero(stats, m, "SeaOtter", box, size, function(sm)
 			Kit.part(stats, sm, "Body", size * Vector3.new(0.8, 0.6, 0.9), box, BROWN, false)
 		end)
+		Kit.oneBody(holder)
 		CollectionService:AddTag(holder, "Bobbing")
 	end
 	-- A red buoy at the surface on its line down to a block on the floor
@@ -640,6 +643,7 @@ local function meadow(parent: Instance)
 		)
 	end)
 	buoyHolder:SetAttribute("Bob", 0.25)
+	Kit.oneBody(buoyHolder)
 	CollectionService:AddTag(buoyHolder, "Bobbing")
 	Kit.rod(
 		stats,

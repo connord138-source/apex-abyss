@@ -414,6 +414,90 @@ local surface = Vector3.new(blue.X, World.surfaceY - 3, blue.Z)
 local mSurface = case("Megalodon", n45, surface, "surface", 220)
 expect(mSurface.hits > 0, "Megalodon: reaches a fish hugging the surface")
 
+-- Its leash (PC 2026-10-25: a Megalodon hunting a fish followed it to the Kelp
+-- Shallows and circled at the hub's keep-out for 5 minutes): once it's hunting a
+-- fish in the Open Blue, the fish swims flat out for the hub or is put down in the
+-- shallows (an admin goTo). It gives up at the drop-off, never comes over the shelf,
+-- and isn't hunting that fish at the end.
+local function leash(how: "swim" | "teleport"): (number, number, boolean)
+	local fish = fishAt(55, 1.25)
+	local nearest, giveUp, hunting = math.huge, math.huge, false
+	for trial = 1, TRIALS do
+		sim.now = 900000 + 5000 * trial
+		local player = { Name = "Fish", UserId = 7, Parent = true, DisplayName = "Fish" }
+		local character, root = sim.fish(fish.length, water)
+		character:SetAttribute("MaxHealth", 100)
+		character:SetAttribute("Health", 100)
+		sim.sessions = { [player] = { alive = true, inHub = false, safeUntil = 0 } }
+		sim.characters = { [player] = { character = character, root = root } }
+		if BossService.active() then
+			BossService.dismiss()
+		end
+		BossService.summon("Megalodon")
+		local predator = (BossService.active() :: any).predator
+		local angle = (trial - 1) / TRIALS * 2 * math.pi
+		predator.position = water + Vector3.new(math.cos(angle) * 150, 10, math.sin(angle) * 150)
+		predator.velocity = Vector3.zero
+		local position = water
+		local hunted = false
+		local leftAt: number? = nil
+		for step = 1, math.floor(150 / DT) do
+			sim.now += DT
+			if step * DT > 15 and hunted then
+				if how == "teleport" and leftAt == nil then
+					-- The Otter Meadow, where the PC's fish was
+					local a = math.rad(291)
+					local x, z = math.cos(a) * 328, math.sin(a) * 328
+					position = Vector3.new(x, Seafloor.y(x, z) + 30, z)
+					leftAt = sim.now
+				elseif how == "swim" then
+					leftAt = leftAt or sim.now
+					local flat = Vector3.new(position.X, 0, position.Z)
+					if flat.Magnitude > 330 then
+						position -= flat.Unit * fish.top * DT
+						position = Vector3.new(
+							position.X,
+							math.max(position.Y, Seafloor.y(position.X, position.Z) + 30),
+							position.Z
+						)
+					end
+				end
+			end
+			root.Position = position
+			root.AssemblyLinearVelocity = Vector3.zero
+			character:SetAttribute("Health", 100)
+			heartbeat(DT)
+			hunted = hunted or predator.target == player
+			local at = predator.position
+			nearest = math.min(nearest, math.sqrt(at.X * at.X + at.Z * at.Z))
+			if leftAt and predator.target ~= player and giveUp == math.huge then
+				giveUp = sim.now - leftAt
+			end
+		end
+		expect(hunted, `Megalodon: hunts the fish before it leaves ({how}, run {trial})`)
+		hunting = hunting or predator.target == player
+	end
+	BossService.dismiss()
+	return nearest, giveUp, hunting
+end
+for _, how in { "swim", "teleport" } :: { "swim" | "teleport" } do
+	local nearest, giveUp, hunting = leash(how)
+	print(
+		string.format(
+			"Megalodon leash (%s for the hub): nearest it came to the hub r %.0f (the shelf's edge is %d), gave up the fish within %.1f s",
+			how,
+			nearest,
+			World.shelf.radius,
+			giveUp
+		)
+	)
+	expect(
+		nearest > World.shelf.radius - 40,
+		`Megalodon: never over the shelf when a fish leads it home ({how})`
+	)
+	expect(not hunting, `Megalodon: not still hunting a fish that left its water ({how})`)
+end
+
 local squid = Config.Bosses.byId.GiantSquid
 local trench = Config.World.trench
 local r = (trench.radii[1] + trench.radii[2]) / 2

@@ -5,7 +5,11 @@
 -- draw ranges Schools gives each fish (`range`, `wave`, a school's `reach`) the way
 -- SchoolController uses them; an older Schools without them is measured the old
 -- way (every fish of a school within 520 studs moved, waves within 160, every fish
--- built at start).
+-- built at start). Per frame (at 60 fps, full detail) it counts what
+-- SchoolController does now (moves by MOVE_STEP, waves by WAVE_NEAR / WAVE_HALF,
+-- a built fish out of range looked at every CULL_EVERY) against the 2026-10-24 rules
+-- (every drawn fish moved every frame, waves every frame within 60 and every other
+-- past it, CULL_EVERY 4); keep these in step with SchoolController.
 local Config = require("./Config")
 local Seafloor = require("./Seafloor")
 local Schools = require("./Schools")
@@ -56,6 +60,11 @@ local HEIGHTS: { [string]: { number } } = {
 
 local newModel = Schools.fish[1].range ~= nil
 local OLD_DRAW, OLD_WAVE = 520, 160
+-- SchoolController's tiers
+local FPS = 60
+local WAVE_DISTANCE, WAVE_NEAR, WAVE_HALF = 160, 30, 60
+local MOVE_STEP, MOVE_MAX, MOVE_NEAR = 0.003, 4, 40
+local CULL_EVERY, OLD_CULL_EVERY = 6, 4
 
 -- The schools and fish per biome (a tide's schools apart)
 local schoolsIn: { [string]: number } = {}
@@ -103,6 +112,13 @@ type Stat = {
 	wavedMax: number,
 	built: number,
 	builtMax: number,
+	frame: number, -- fish moved + waves set + paths looked at, a frame (now)
+	frameMax: number,
+	oldFrame: number, -- the same by the 2026-10-24 rules
+	oldFrameMax: number,
+	moves: number, -- fish moved a frame (now)
+	waves: number, -- waves set a frame (now)
+	oldWaves: number,
 	near100: number,
 	near150: number,
 	busiest: string,
@@ -116,7 +132,11 @@ for gx = -1500, 1500, SPACING do
 			continue
 		end
 		local biome = biomeAt(gx, gz)
-		if biome == "AbyssalTrench" and Seafloor.inTrench(gx, gz, 0) and Seafloor.y(gx, gz) < World.deep.floorY - 200 then
+		if
+			biome == "AbyssalTrench"
+			and Seafloor.inTrench(gx, gz, 0)
+			and Seafloor.y(gx, gz) < World.deep.floorY - 200
+		then
 			biome = "TrenchCanyon" -- down in the canyon, apart from its rim
 		end
 		local heights = HEIGHTS[biome]
@@ -127,6 +147,7 @@ for gx = -1500, 1500, SPACING do
 		for _, h in heights do
 			local cx, cy, cz = gx, floor + h, gz
 			local drawn, waved, nearest = 0, 0, math.huge
+			local moves, waves, oldWaves = 0, 0, 0
 			local builtSchools: { [number]: boolean } = {}
 			local bx, bz = math.floor(cx / BIN), math.floor(cz / BIN)
 			local span = math.ceil(600 / BIN)
@@ -152,6 +173,16 @@ for gx = -1500, 1500, SPACING do
 								if d <= fish.wave then
 									waved += 1
 								end
+								local speed = math.max(Config.Prey.byId[fish.prey].speed, 1)
+								local cadence = if d > MOVE_NEAR
+									then math.clamp(math.floor(d * MOVE_STEP * FPS / speed), 1, MOVE_MAX)
+									else 1
+								moves += 1 / cadence
+								if d < math.min(fish.wave, WAVE_DISTANCE) then
+									local want = if d < WAVE_NEAR then 1 elseif d < WAVE_HALF then 2 else 3
+									waves += 1 / (cadence * math.ceil(want / cadence))
+									oldWaves += if d < WAVE_HALF then 1 else 0.5
+								end
 							end
 						else
 							local sd = (school.center - Vector3.new(cx, cy, cz)).Magnitude
@@ -173,6 +204,8 @@ for gx = -1500, 1500, SPACING do
 			else
 				built = Schools.COUNT
 			end
+			local frame = moves + waves + math.max(built - drawn, 0) / CULL_EVERY
+			local oldFrame = drawn + oldWaves + math.max(built - drawn, 0) / OLD_CULL_EVERY
 			local stat = stats[biome]
 			if stat == nil then
 				stat = {
@@ -183,6 +216,13 @@ for gx = -1500, 1500, SPACING do
 					wavedMax = 0,
 					built = 0,
 					builtMax = 0,
+					frame = 0,
+					frameMax = 0,
+					oldFrame = 0,
+					oldFrameMax = 0,
+					moves = 0,
+					waves = 0,
+					oldWaves = 0,
 					near100 = 0,
 					near150 = 0,
 					busiest = "",
@@ -199,6 +239,13 @@ for gx = -1500, 1500, SPACING do
 			end
 			stat.wavedMax = math.max(stat.wavedMax, waved)
 			stat.builtMax = math.max(stat.builtMax, built)
+			stat.frame += frame
+			stat.frameMax = math.max(stat.frameMax, frame)
+			stat.oldFrame += oldFrame
+			stat.oldFrameMax = math.max(stat.oldFrameMax, oldFrame)
+			stat.moves += moves
+			stat.waves += waves
+			stat.oldWaves += oldWaves
 			if nearest <= 100 then
 				stat.near100 += 1
 			end
@@ -245,6 +292,32 @@ for _, biome in ORDER do
 			stat.busiest
 		)
 	)
+end
+if newModel then
+	print(
+		"a frame (60 fps):    moves now (was) | waves now (was) | moves + waves + path looks now (was), avg / max"
+	)
+	for _, biome in ORDER do
+		local stat = stats[biome]
+		if stat == nil then
+			continue
+		end
+		local n = stat.samples
+		print(
+			string.format(
+				"%-19s %5.0f (%4.0f)    | %4.0f (%4.0f)     | %5.0f / %4.0f  (%5.0f / %4.0f)",
+				biome,
+				stat.moves / n,
+				stat.drawn / n,
+				stat.waves / n,
+				stat.oldWaves / n,
+				stat.frame / n,
+				stat.frameMax,
+				stat.oldFrame / n,
+				stat.oldFrameMax
+			)
+		)
+	end
 end
 for _, biome in ORDER do
 	local mix = mixIn[biome]

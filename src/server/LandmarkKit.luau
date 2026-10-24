@@ -147,6 +147,34 @@ function LandmarkKit.light(
 	return light
 end
 
+-- Welds everything in a holder the client moves (LandmarkController's bobbing and
+-- drifting things) to one anchored part, `root` or its first, so it moves as one
+-- assembly and the client's batch moves that root alone (PC 2026-10-25: a
+-- part-built jellyfish was 15 anchored parts, ~40 moved a frame at the pinnacle)
+function LandmarkKit.oneBody(holder: Instance, root: BasePart?)
+	local base = root
+	local parts = {}
+	for _, d in holder:GetDescendants() do
+		if d:IsA("BasePart") then
+			base = base or d
+			table.insert(parts, d)
+		end
+	end
+	if base == nil then
+		return
+	end
+	base.Anchored = true
+	for _, part in parts do
+		if part ~= base then
+			part.Anchored = false
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = base
+			weld.Part1 = part
+			weld.Parent = part
+		end
+	end
+end
+
 -- An invisible holder for a light (or a sound, an emitter) at a point
 function LandmarkKit.anchor(parent: Instance, name: string, at: CFrame, size: Vector3?): Part
 	local p = Instance.new("Part")

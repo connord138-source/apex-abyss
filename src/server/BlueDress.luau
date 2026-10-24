@@ -561,8 +561,9 @@ end
 -- The water column: sargassum, buoys, jelly chains, jellyfish
 -- ---------------------------------------------------------------------------
 
--- Fronds hanging under a raft: strands of golden leaves (in the raft's holder, so
--- they bob with it)
+-- Fronds hanging under a raft: strands of golden leaves (the stand-in's: the
+-- Sargassum model has its own, and these flat plates read as grey boards under it
+-- from below, PC 2026-10-25 pf8_raft_from_below)
 local function fronds(holder: Instance, box: CFrame, width: number)
 	for k = 1, 6 do
 		local start = box
@@ -601,8 +602,9 @@ local function raft(parent: Instance, spot: Vector3, width: number)
 			false,
 			Enum.PartType.Cylinder
 		)
+		fronds(sm, box, width)
 	end)
-	fronds(holder, box, width)
+	Kit.oneBody(holder)
 	CollectionService:AddTag(holder, "Bobbing")
 	CollectionService:AddTag(holder, "Sargassum")
 end
@@ -661,6 +663,7 @@ local function buoy(parent: Instance, spot: Vector3)
 		2.2,
 		CHAIN
 	)
+	Kit.oneBody(holder)
 	CollectionService:AddTag(holder, "Bobbing")
 	if #BlueDress.views < 4 then
 		table.insert(BlueDress.views, {
@@ -739,6 +742,7 @@ local function chains(parent: Instance)
 				end
 			end
 		end
+		Kit.oneBody(holder)
 		CollectionService:AddTag(holder, "Drifting")
 	end
 end
@@ -768,7 +772,7 @@ local function jellyfish(parent: Instance, spot: Vector3, size: number)
 		p.CastShadow = false
 		return p
 	end
-	disc("Bell", size, size * 0.22, 0, 0.55)
+	local bell = disc("Bell", size, size * 0.22, 0, 0.55)
 	disc("BellTop", size * 0.72, size * 0.2, size * 0.2, 0.5)
 	disc("BellCap", size * 0.4, size * 0.14, size * 0.36, 0.42)
 	local glowColor = color:Lerp(Color3.new(0.8, 0.9, 1), 0.2)
@@ -815,6 +819,7 @@ local function jellyfish(parent: Instance, spot: Vector3, size: number)
 		arm.Transparency = 0.45
 		arm.CastShadow = false
 	end
+	Kit.oneBody(holder, bell)
 	CollectionService:AddTag(holder, "Drifting")
 end
 

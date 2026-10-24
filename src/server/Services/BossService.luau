@@ -147,6 +147,22 @@ local function patrolPoint(def: BossDef, depth: { number }?): Vector3
 	return Vector3.new(x, Seafloor.y(x, z) + rng:NextNumber(band[1], band[2]), z)
 end
 
+-- Whether a spot lies more than `margin` studs out of a boss's own water: the
+-- Trench's canyon for the squid, its patrol sector and band for the Megalodon
+local function outOfWater(def: BossDef, at: Vector3, margin: number): boolean
+	local patrol = def.patrol
+	if patrol.trench then
+		return not Seafloor.inTrench(at.X, at.Z, margin)
+	end
+	local r = math.sqrt(at.X * at.X + at.Z * at.Z)
+	if r < patrol.band[1] - margin or r > patrol.band[2] + margin then
+		return true
+	end
+	local base = math.atan2(patrol.direction.Z, patrol.direction.X)
+	local off = math.abs((math.atan2(at.Z, at.X) - base + math.pi) % (2 * math.pi) - math.pi)
+	return (off - patrol.spread) * r > margin
+end
+
 -- What the clients need to know about the event right now
 local function stateOf(): { [string]: any }
 	local boss = active
@@ -1528,7 +1544,13 @@ local function tick(boss: Boss, dt: number, now: number)
 		end
 	end
 	-- Pick a target now and then (the marked fish while a mark holds; never a fish
-	-- it already holds)
+	-- it already holds, nor one out past its leash)
+	local leash = def.patrol.leash
+	local keep = if leash
+		then function(at: Vector3): boolean
+			return not outOfWater(def, at, leash)
+		end
+		else nil
 	if mark then
 		predator.target = mark.target
 	elseif now >= boss.nextTargetAt then
@@ -1542,22 +1564,28 @@ local function tick(boss: Boss, dt: number, now: number)
 			or not session.alive
 			or session.inHub
 			or (current ~= nil and boss.grabs[current :: Player] ~= nil)
+			or (keep ~= nil and not keep(root.Position))
 		then
-			predator.target = PredatorService.pickTarget(predator, now)
+			predator.target = PredatorService.pickTarget(predator, now, keep)
 			if predator.target and boss.grabs[predator.target :: Player] then
 				predator.target = nil
 			end
 		end
 	end
-	-- A boss with a home (the squid's Trench) gives up a chase that leads it out and
-	-- swims back in for a while before it hunts again
-	local leash = def.patrol.leash
-	if leash and def.patrol.trench then
+	-- A boss gives up a chase that leads it out of its own water (the squid's
+	-- Trench, the Megalodon's Open Blue) and swims back in for a while before it
+	-- hunts again (PC 2026-10-25: a Megalodon followed a fish to the Kelp Shallows
+	-- and circled at the hub's keep-out for 5 minutes, among the LV 1-10 fish)
+	if leash then
 		local at = predator.position
-		if boss.homeUntil <= now and not Seafloor.inTrench(at.X, at.Z, leash) then
+		if boss.homeUntil <= now and outOfWater(def, at, leash) then
 			boss.homeUntil = now + 8
 			boss.waypoint = patrolPoint(def, depthBand(boss))
 			boss.waypointUntil = now + 8
+			if mark then
+				endMark(boss, now)
+				mark = nil
+			end
 		end
 		local target = predator.target
 		if boss.homeUntil > now and target and boss.grabs[target :: Player] == nil then

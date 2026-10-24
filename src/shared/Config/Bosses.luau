@@ -117,8 +117,10 @@ export type BossDef = {
 		band: { number }, -- distance from the hub's center
 		depth: { number },
 		-- Keeps to the Abyssal Trench's canyon (Seafloor.trenchPoint) instead of the
-		-- sector, and gives up a chase that takes it `leash` studs out of it
+		-- sector
 		trench: boolean?,
+		-- Gives up a chase that takes it `leash` studs out of its own water (the
+		-- canyon, or the sector and band) and never takes a fish out past it
 		leash: number?,
 	},
 	stagger: {
@@ -266,6 +268,10 @@ local megalodon: BossDef = {
 		-- where there's no ground or anything just open ocean"): 170–470 studs over
 		-- the deep floor, where the floor is lost in the blue below
 		depth = { 170, 470 },
+		-- Never over the shelf: a chase ends 160 studs out of the sector and band
+		-- (r 840, the drop-off; PC 2026-10-25: it followed a fish to the Kelp
+		-- Shallows and circled at the hub's keep-out)
+		leash = 160,
 	},
 	stagger = { need = 12, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
 	softSpots = { { from = 0.6, to = 0.8 }, { from = 0, to = 0.22 } }, -- gills, tail

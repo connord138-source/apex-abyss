@@ -53,10 +53,23 @@ local lastTooBig = 0
 -- wave can't be seen that far off, and there are many more small fish near the hub
 -- now (owner, 2026-10-10: "far too scarce"). Small fish stop sooner (Schools `wave`).
 local WAVE_DISTANCE = 160
--- Past this a spine's wave is set every other frame (half of them each frame), so
--- the fuller sea (Config/Prey `fill`, 2026-10-20: ~8,500 fish, up to ~300 waving at
--- once in a swarm) costs about half; the bones hold their pose in between
+-- Within WAVE_NEAR a spine's wave is set every frame, to WAVE_HALF every other and
+-- past it every third (the bones hold their pose in between; the wave runs on the
+-- clock), so the fuller sea (Config/Prey `fill`, 2026-10-20: ~8,500 fish, up to ~300
+-- waving at once in a swarm) costs a fraction (PC 2026-10-25: SwimWave.applyBones
+-- 38.6 ms/s in the Kelp Cathedral's nave at every other frame past 60)
+local WAVE_NEAR = 30
 local WAVE_HALF = 60
+-- A drawn fish is moved every few frames when it's far enough off for how fast it
+-- swims: its step between moves never turns more than MOVE_STEP radians as seen
+-- from the camera (~2.7 px on a 1080p screen), never past every MOVE_MAX frames,
+-- and every frame within MOVE_NEAR of the camera or our mouth, while it's rare,
+-- chased, sucked in, growing back or shrinking away (PC 2026-10-25: 155 ms/s in the
+-- nave, BulkMoveTo 55.7 of it, every drawn fish moved every frame; most are small
+-- slow fish 60-220 studs off)
+local MOVE_STEP = 0.003
+local MOVE_MAX = 4
+local MOVE_NEAR = 40
 -- A fish that respawns swims back in from behind its school as it grows, over
 -- RETURN_SECONDS from RETURN_LENGTHS of its own body lengths back (owner,
 -- 2026-10-20: respawns are ~⅓ as long now, so they're seen much more)
@@ -67,8 +80,8 @@ local RETURN_EDIBLE = 0.8
 local FADE_SHARE = 0.2
 -- A built fish past its draw range is looked at again only every CULL_EVERY frames
 -- (most built fish are: Kelp 472 built, 119 drawn, PC 2026-10-20; their path maths
--- was spent every frame for nothing)
-local CULL_EVERY = 4
+-- was spent every frame for nothing; 587 built, ~280 drawn in the nave, 2026-10-25)
+local CULL_EVERY = 6
 -- A school is let go this far past its reach (so one on the edge isn't rebuilt
 -- every few frames)
 local RELEASE_SLACK = 90
@@ -111,6 +124,8 @@ type Visual = {
 	cull: number, -- its LocalTransparencyModifier: 0 drawn .. 1 out of range
 	-- Part-built extras riding on it (SHAPES on a part body, GLOWS on any: makeExtras)
 	extras: { Extra }?,
+	at: Vector3?, -- where it was last drawn (how far off it is, between moves)
+	stepAt: number, -- clock when it was last moved (its wave runs on the clock)
 }
 
 -- (its part is made the first time it shows: a Lanternfish far off never builds spots)
@@ -1082,6 +1097,7 @@ local function makeVisual(index: number): Visual
 		spine = spine,
 		unitScale = unitScale,
 		phase = fish.phase * 3,
+		stepAt = 0,
 		flip = flip,
 		chase = nil,
 		parts = {},
@@ -1637,6 +1653,38 @@ local function step(dt: number)
 			then
 				continue
 			end
+			-- Far enough off for how fast it swims, it's moved every few frames (MOVE_STEP;
+			-- `cadence`), staying where it was in between (its glow light stays picked)
+			local cadence = 1
+			local at = visual.at
+			if
+				at
+				and visual.cull < 1
+				and not visual.hidden
+				and visual.chase == nil
+				and visual.suckFrom == nil
+				and visual.fadeIn >= 1
+				and fadeOut == nil
+				and rarities[index] == nil
+			then
+				local far = (at - camera).Magnitude
+				if far > MOVE_NEAR and (mouth == nil or (at - mouth).Magnitude > MOVE_NEAR) then
+					local speed = math.max(Config.Prey.byId[fish.prey].speed, 1)
+					cadence = math.clamp(math.floor(far * MOVE_STEP / (speed * smoothDt)), 1, MOVE_MAX)
+				end
+				if cadence > 1 and (index + frameCount) % cadence ~= 0 then
+					drawnCount += 1
+					local extras = visual.extras
+					if extras then
+						for _, extra in extras do
+							if extra.light and extra.shown then
+								pickLight(far, at, GLOWS[fish.prey].color)
+							end
+						end
+					end
+					continue
+				end
+			end
 			-- Respawned, or our eat wasn't confirmed: show it again
 			if visual.hidden and visual.suckFrom == nil then
 				if visual.pendingUntil > 0 and now > visual.pendingUntil then
@@ -1803,17 +1851,24 @@ local function step(dt: number)
 			end
 			if not visual.hidden then
 				drawnCount += 1
+				visual.at = frame.Position
+				local elapsed = math.min(now - visual.stepAt, 0.5)
+				visual.stepAt = now
 				local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
 				table.insert(parts, visual.body)
 				local tail = visual.tail
 				if visual.model then
 					-- A rigged body: the head holds still and the wave runs down the spine
 					-- (Shared/SwimWave), faster for the quick little ones
+					-- (on the clock: a fish moved every few frames keeps its pace; its wave is
+					-- set on frames it's moved, every WAVE_NEAR / WAVE_HALF tier's frames)
 					local prey = Config.Prey.byId[fish.prey]
-					visual.phase += dt * 2 * math.pi * (0.9 + prey.speed * 0.22)
+					visual.phase += elapsed * 2 * math.pi * (0.9 + prey.speed * 0.22)
+					local want = if far < WAVE_NEAR then 1 elseif far < WAVE_HALF then 2 else 3
+					local every = cadence * math.ceil(want / cadence)
 					if
 						far < math.min(fish.wave, WAVE_DISTANCE) * detail
-						and (far < WAVE_HALF or (index + frameCount) % 2 == 0)
+						and (every == 1 or (index + frameCount) % every == 0)
 					then
 						SwimWave.applyBones(visual.bones, visual.spine, visual.phase, 0.34, 0)
 					end

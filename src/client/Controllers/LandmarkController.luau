@@ -33,15 +33,17 @@ local Places = Config.Places
 local LandmarkController = {}
 
 -- Floating things bob and drift about a stud a second, so they're posed every other
--- frame within NEAR_EVERY, every fifth within NEAR_HALF and every sixth past it,
+-- frame within NEAR_EVERY, every fifth within NEAR_HALF and every eighth past it,
 -- all in one BulkMoveTo with the raft fish and the hammerheads. Their motion eases
 -- out with distance and they hold still past it: a jelly past DRIFT_STILL, a raft,
--- buoy or otter past BOB_STILL (PC 2026-10-22, 66.7 ms/s at Hammerhead Pinnacle, 40
--- of it a PivotTo on each part-built jelly every frame; 2026-10-23, 52.7 with them
--- batched, 39.6 of it the move: ~150 jelly parts a frame, most of them 200-500 out;
--- 2026-10-24, 19.5 with the far ones still: ~42 jelly parts and ~50 raft fish a frame)
+-- buoy or otter past BOB_STILL. Each is welded into one assembly on the server
+-- (LandmarkKit.oneBody), so only its anchored root is moved (PC 2026-10-22, 66.7
+-- ms/s at Hammerhead Pinnacle, 40 of it a PivotTo on each part-built jelly every
+-- frame; 2026-10-23, 52.7 with them batched, 39.6 of it the move: ~150 jelly parts
+-- a frame, most of them 200-500 out; 2026-10-24, 19.5 with the far ones still;
+-- 2026-10-25, 17.6 with 4 raft fish: ~40 jelly parts and ~12 raft fish a frame)
 local NEAR_EVERY = 60
-local NEAR_HALF = 200
+local NEAR_HALF = 120
 local DRIFT_FADE = 150
 local DRIFT_STILL = 220
 local BOB_FADE = 260
@@ -124,9 +126,11 @@ local function track(tag: string, into: { [Model]: any }, make: (Model) -> any)
 end
 
 -- A part that arrives is where the server put it (nothing bobs there), so its place
--- against the rest pivot is read straight off it
+-- against the rest pivot is read straight off it. Only anchored roots are kept: the
+-- parts welded to one ride with it (one that arrives before its weld would read as
+-- its own root)
 local function place(entry: Floater, part: Instance)
-	if part:IsA("BasePart") then
+	if part:IsA("BasePart") and part.Anchored then
 		local root: BasePart? = part.AssemblyRootPart
 		if root == nil or root == part then
 			entry.offsets[part] = entry.base:ToObjectSpace(part.CFrame)
@@ -411,7 +415,7 @@ local cannonCheck = 0
 
 -- Whether a floater this far off moves this frame
 local function due(gap: number, salt: number): boolean
-	local every = if gap < NEAR_EVERY then 2 elseif gap < NEAR_HALF then 5 else 6
+	local every = if gap < NEAR_EVERY then 2 elseif gap < NEAR_HALF then 5 else 8
 	return (frameCount + salt) % every == 0
 end
 

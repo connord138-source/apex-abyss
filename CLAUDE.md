@@ -2067,6 +2067,45 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Not changed: KelpController in the nave (20.3, at its aim). PlaceVersion has gone up
     by two a publish (22 → 24 → 26), likely a save to Roblox counting as a version
     too; nothing to fix.
+- **The 2026-10-25 PC round (report `docs/playtests/2026-10-25-pc.md`, published as v28
+  from 72ead9c; the edge eels (#40 took a fish 12 studs past the 130° line and gave up
+  85 studs from its hole), the buoy lines (0.7–1.3 studs past the eyelet through the
+  bob) and the 4 raft fish passed; built on `claude/world` 2026-10-25):**
+  - **The Megalodon keeps to the Open Blue** (PC: one hunting a fish at the pinnacle was
+    still hunting it 5 minutes later at the Otter Meadow, after an admin goTo, circling
+    at the hub's keep-out, r ≈ 298, among the LV 1–10 fish; a boss kept its target
+    until the fish died, left or reached the hub, wherever it went): `patrol.leash` 160
+    for the Megalodon too, and the leash is any boss's now (`BossService` `outOfWater`:
+    the canyon for the squid, the patrol sector and band for the Megalodon, so r 840 is
+    as near the hub as it comes, the drop-off): it gives up a chase that takes it out
+    and swims home 8 s, drops a target that's out (the mark too), and never takes one
+    out past it (`PredatorService.pickTarget`'s `keep`). Sim (`boss_sim.luau` leash):
+    a fish swimming flat out for the hub or put down at the Otter Meadow; it came no
+    nearer than r 917 / 959 and let the fish go within 7 s (the old code followed both
+    to r 297).
+  - **Floaters are one assembly each** (PC: LandmarkController at the pinnacle 17.6
+    ms/s, BulkMoveTo 13.2: ~40 jelly parts a frame, a part-built jellyfish being 15
+    anchored parts): `LandmarkKit.oneBody` welds every part of a holder the client moves
+    (jellyfish, jelly chains, sargassum rafts, rusty and kelp buoys, otters) to one
+    anchored part, and LandmarkController keeps only anchored parts as roots (a welded
+    part that arrives before its weld would read as its own root); floaters past
+    `NEAR_HALF` 120 studs move every eighth frame (was every sixth past 200). A new
+    floater needs `Kit.oneBody(holder)` before its tag. The rafts' part-built fronds are
+    the stand-in's only now (with the Sargassum model in they read as grey boards under
+    it from below, the PC's `pf8_raft_from_below`).
+  - **The prey move by how far and how fast** (PC: SchoolController 94–155 ms/s, the
+    biggest script at every spot; nave 155: BulkMoveTo 55.7, `SwimWave.applyBones` 38.6,
+    587 built, ~280 drawn): a drawn fish is moved every few frames when it's far enough
+    off for its speed that a step never turns more than `MOVE_STEP` 0.003 rad (~2.7 px
+    at 1080p) as seen from the camera, at most every `MOVE_MAX` 4th frame, and every
+    frame within `MOVE_NEAR` 40 studs of the camera or the mouth, while rare (glints),
+    chased, sucked in, growing back or shrinking away; a skipped fish keeps its glow
+    light picked. Its wave runs on the clock (`stepAt`), set every frame within
+    `WAVE_NEAR` 30, every other to `WAVE_HALF` 60 and every third past it, on frames it's
+    moved; built fish out of range are looked at every `CULL_EVERY` 6th frame (was 4th).
+    `run_density.sh` mirrors the tiers (a frame, 60 fps, full detail): Kelp moves 355 →
+    128, waves 45 → 26, moves + waves + path looks 556 → 258 (max 722 → 364); every
+    biome about halved.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3094,9 +3133,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-24-pc.md`
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-25-pc.md`
   (biome landmarks, new predators, spread and no mob, frame time near the landmarks;
-  published v20, v22, v24 and v26);
+  published v20, v22, v24, v26 and v28);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -3146,8 +3185,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - Keep Studio's Controller Emulator panel closed for keyboard tests.
 - In Play the game holds the mouse lock every frame (`Input.holdMouseLock`), so the
   cursor is clipped to the viewport's middle and clicks on Studio's panels don't land
-  (Alt goes to Studio's menu bar). Open a game menu (M for the map, or the Daily
-  panel) to free it before using the Explorer or the command bar (PC 2026-10-24).
+  (Alt goes to Studio's menu bar). A game menu only stops the game asserting it: with
+  the game focused (middle-click), Escape opens Roblox's menu and the engine drops the
+  lock, and the map (M) or the Daily panel then keeps it free after Resume (PC
+  2026-10-24/25).
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).
