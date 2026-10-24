@@ -33,12 +33,13 @@ local Places = Config.Places
 local LandmarkController = {}
 
 -- Floating things bob and drift about a stud a second, so they're posed every other
--- frame within NEAR_EVERY, every fourth within NEAR_HALF and every sixth past it,
+-- frame within NEAR_EVERY, every fifth within NEAR_HALF and every sixth past it,
 -- all in one BulkMoveTo with the raft fish and the hammerheads. Their motion eases
 -- out with distance and they hold still past it: a jelly past DRIFT_STILL, a raft,
 -- buoy or otter past BOB_STILL (PC 2026-10-22, 66.7 ms/s at Hammerhead Pinnacle, 40
 -- of it a PivotTo on each part-built jelly every frame; 2026-10-23, 52.7 with them
--- batched, 39.6 of it the move: ~150 jelly parts a frame, most of them 200-500 out)
+-- batched, 39.6 of it the move: ~150 jelly parts a frame, most of them 200-500 out;
+-- 2026-10-24, 19.5 with the far ones still: ~42 jelly parts and ~50 raft fish a frame)
 local NEAR_EVERY = 60
 local NEAR_HALF = 200
 local DRIFT_FADE = 150
@@ -50,11 +51,11 @@ local EEL_NEAR = 26 -- studs across a fish makes a garden eel patch duck
 local EEL_DOWN = 3.2 -- studs it sinks
 local SHELTER_NEAR = 180 -- studs from the camera a raft's fish are built (cleared
 -- SHELTER_KEEP further out, so they don't flicker on the edge); they swim every frame
--- within SHELTER_EVERY, every other to SHELTER_HALF, every third past it
+-- within SHELTER_EVERY, every other to SHELTER_HALF, every fourth past it
 local SHELTER_KEEP = 30
 local SHELTER_EVERY = 70
 local SHELTER_HALF = 120
-local SHELTER_FISH = 6
+local SHELTER_FISH = 4
 local SHARKS = 4
 local SHARK_NEAR = 900
 local SHARK_HALF = 300
@@ -410,7 +411,7 @@ local cannonCheck = 0
 
 -- Whether a floater this far off moves this frame
 local function due(gap: number, salt: number): boolean
-	local every = if gap < NEAR_EVERY then 2 elseif gap < NEAR_HALF then 4 else 6
+	local every = if gap < NEAR_EVERY then 2 elseif gap < NEAR_HALF then 5 else 6
 	return (frameCount + salt) % every == 0
 end
 
@@ -509,7 +510,7 @@ local function step(dt: number)
 		if #entry.fish == 0 then
 			buildShelter(entry)
 		end
-		local every = if gap <= SHELTER_EVERY then 1 elseif gap <= SHELTER_HALF then 2 else 3
+		local every = if gap <= SHELTER_EVERY then 1 elseif gap <= SHELTER_HALF then 2 else 4
 		if (frameCount + math.floor(entry.phase * 10)) % every ~= 0 then
 			continue
 		end

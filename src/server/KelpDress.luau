@@ -485,8 +485,10 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 		local bow = (box * CFrame.new(0, 0, -length * 0.4)).Position
 		local float = bow + Vector3.new(4, 78, 2)
 		-- (the chain stands still, so the float on it bobs a quarter as much, `Bob`, and
-		-- the top link reaches well into it: PC 2026-10-23, a full bob opened a 1-stud gap)
-		Kit.chain(stats, m, bow + Vector3.new(0, 1, 0), float - Vector3.new(0, 3.4, 0), 3, 1.8, CHAIN)
+		-- the top link ends inside the float's body, past the eyelet under its middle:
+		-- the KelpBuoy model's own side chain hangs to its box's bottom, and a chain
+		-- ending there stopped 2-3 studs short of the eyelet, PC 2026-10-23/24)
+		Kit.chain(stats, m, bow + Vector3.new(0, 1, 0), float + Vector3.new(0, 0.9, 0), 3, 1.8, CHAIN)
 		local buoyHeight = 9
 		local buoySize = Vector3.new(0.45, 1, 0.48) * buoyHeight
 		local buoy = CFrame.new(float) * CFrame.Angles(0.15, 0, 0.1)
@@ -643,7 +645,8 @@ local function meadow(parent: Instance)
 		stats,
 		m,
 		"BuoyLine",
-		Vector3.new(b.X, World.surfaceY - buoyHeight + 0.6, b.Z),
+		-- (into the float's body, past its eyelet: see the cathedral's buoy)
+		Vector3.new(b.X, World.surfaceY - buoyHeight * 0.35, b.Z),
 		floor + Vector3.new(0, 2, 0),
 		0.25,
 		IRON,

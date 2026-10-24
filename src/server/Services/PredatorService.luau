@@ -146,8 +146,9 @@ local MAX_PITCH = 0.8
 -- hole (PC 2026-10-22: two Wolf Eels climbed a basalt column ~110 studs over their
 -- holes; measured from the hole, every fish beside them was out of reach)
 local REHOME_AFTER = 4
--- Studs a lurker's spot may stand over the nominal floor (Seafloor): higher is a
--- rock's top or the drop-off's lip, not a hole by the floor
+-- Studs a lurker's spot may stand over the nominal floor (Seafloor) or over the
+-- lowest ground within its body's reach: higher is a rock's top, the drop-off's lip
+-- or a ledge's edge, not a hole by the floor
 local LURK_RISE = 14
 -- How much faster a tethered hunter turns round on a fish beside or behind it (its
 -- `whip`, unless its style sets one)
@@ -317,7 +318,16 @@ local function patchOf(predator: Predator): (number, number)
 	end
 	local arc = span / slots
 	local overlap = arc * Predators.spread.overlap
-	return from + arc * slot - overlap, arc + overlap * 2
+	local first, size = from + arc * slot - overlap, arc + overlap * 2
+	-- (never past its sector's ends: the overlap is for neighbours; a Wolf Eel holed
+	-- up 1° outside the Vents' 130-220° ignored every fish on its far side, PC
+	-- 2026-10-24)
+	if span < 360 then
+		local start = math.max(first, from)
+		size = math.min(first + size, from + span) - start
+		first = start
+	end
+	return first, size
 end
 
 -- A spot down in the Trench's canyon (a `trench` hunter): along its winding line,
@@ -397,7 +407,8 @@ local function randomWaypoint(predator: Predator, near: number?): Vector3
 			if not Seafloor.inTrench(x, z, 30) then
 				local cover = coverAt(x, z, half + 4)
 				local floor = Seafloor.y(x, z)
-				local ground = math.max(floor, Ground.y(x, z))
+				local here = Ground.y(x, z)
+				local ground, low = math.max(floor, here), here
 				for _, offset in
 					{
 						Vector3.new(half, 0, 0),
@@ -406,11 +417,14 @@ local function randomWaypoint(predator: Predator, near: number?): Vector3
 						Vector3.new(0, 0, -half),
 					}
 				do
-					ground = math.max(ground, Ground.y(x + offset.X, z + offset.Z))
+					local y = Ground.y(x + offset.X, z + offset.Z)
+					ground, low = math.max(ground, y), math.min(low, y)
 				end
 				local up = math.max(rng:NextNumber(lurk[1], lurk[2]), clear + 0.5)
 				local spot = Vector3.new(x, ground + up, z)
-				local rise = ground - floor
+				-- (nor on a ledge's edge: one at a vent basin's rim hunted a fish over the
+				-- basin but never closed in, PC 2026-10-24)
+				local rise = math.max(ground - floor, ground - low)
 				if rise <= LURK_RISE and cover > bestCover then
 					best, bestCover = spot, cover
 				elseif rise < lowestRise then
@@ -453,11 +467,13 @@ local function holeNear(predator: Predator, at: Vector3): Vector3
 			local a = k / count * 2 * math.pi
 			local x, z = at.X + math.cos(a) * ring * 12, at.Z + math.sin(a) * ring * 12
 			local floor = Seafloor.y(x, z)
-			local ground = math.max(floor, Ground.y(x, z))
+			local here = Ground.y(x, z)
+			local ground, low = math.max(floor, here), here
 			for _, offset in { { half, 0 }, { -half, 0 }, { 0, half }, { 0, -half } } do
-				ground = math.max(ground, Ground.y(x + offset[1], z + offset[2]))
+				local y = Ground.y(x + offset[1], z + offset[2])
+				ground, low = math.max(ground, y), math.min(low, y)
 			end
-			if ground - floor <= LURK_RISE and not Seafloor.inTrench(x, z, 30) then
+			if math.max(ground - floor, ground - low) <= LURK_RISE and not Seafloor.inTrench(x, z, 30) then
 				return Vector3.new(x, ground + up, z)
 			end
 		end
@@ -687,8 +703,9 @@ local function keepsHunting(predator: Predator, player: Player, now: number): bo
 	if home and (root.Position - home).Magnitude > (style.tether or 0) + predator.def.aggroRange * 0.6 then
 		return false
 	end
-	-- (and every plain hunter lets a fish go once it's swum out of its water)
-	if not predator.custom and not inRange(predator.def, root.Position, CHASE_SLACK) then
+	-- (and every plain hunter lets a fish go once it's swum out of its water; a
+	-- tethered one's water is round its hole, above)
+	if not predator.custom and home == nil and not inRange(predator.def, root.Position, CHASE_SLACK) then
 		return false
 	end
 	local leash = style.leash or Predators.loseRange
@@ -747,7 +764,9 @@ local function pickTarget(predator: Predator, now: number): Player?
 		if not inReach(predator, player, character, root, now) then
 			continue
 		end
-		if not predator.custom and not inRange(def, root.Position, CHASE_SLACK) then
+		-- (a tethered hunter's water is round its hole, below: by the sector's edge it
+		-- took no fish on the far side however close, PC 2026-10-24)
+		if not predator.custom and predator.home == nil and not inRange(def, root.Position, CHASE_SLACK) then
 			continue
 		end
 		local distance = (root.Position - predator.position).Magnitude

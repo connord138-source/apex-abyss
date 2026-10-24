@@ -1126,6 +1126,52 @@ do
 	)
 	sim.groundY = flatGround
 end
+-- At its sector's edge (PC 2026-10-24: an eel holed at 130.6° and one at 221.1° of the
+-- Vents' 130-220° ignored a fish 2-5 studs off on the far side of the line): an eel
+-- holed half a degree inside the edge hunts and bites a still fish ~19 studs off,
+-- a degree past the line
+do
+	local eel = only("WolfEel")
+	local hole = at(130.5, 1100, 4)
+	eel.position, eel.home = hole, hole
+	eel.velocity = Vector3.zero
+	eel.heading = Vector3.new(1, 0, 0)
+	eel.mode, eel.target = "roam", nil
+	eel.waypoint, eel.waypointUntil = hole, 0
+	eel.strayed = math.huge
+	local fish = fishAt("Nibbler", 75)
+	local player = { Name = "Over the line", UserId = 14, Parent = true }
+	local character, root = sim.fish(fish.length, at(129.5, 1100, 4))
+	character:SetAttribute("FishLevel", 75)
+	character:SetAttribute("MaxHealth", 100)
+	character:SetAttribute("Health", 100)
+	sim.sessions = { [player] = { alive = true, inHub = false, safeUntil = 0 } }
+	sim.characters = { [player] = { character = character, root = root } }
+	table.clear(sim.events)
+	local hunted: number? = nil
+	for step = 1, 150 do
+		sim.now += DT
+		heartbeat(DT)
+		if hunted == nil and eel.target == player then
+			hunted = step * DT
+		end
+	end
+	local hits = 0
+	for _, event in sim.events do
+		if event.kind == "bite" and event.payload.hit then
+			hits += 1
+		end
+	end
+	print(
+		string.format(
+			"   at its sector's edge: a fish a degree past the line hunted after %s s, %d bites in 15 s",
+			if hunted then string.format("%.1f", hunted) else "never",
+			hits
+		)
+	)
+	expect(hunted ~= nil and hits > 0, "Wolf Eel: at its sector's edge it hunts a fish just past the line")
+	sim.sessions, sim.characters = {}, {}
+end
 
 -- Goblin Shark, the Trench's jaw launcher (LV 90)
 print("-- Goblin Shark: jaw throw")

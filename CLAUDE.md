@@ -2039,6 +2039,34 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (nothing shows; the mesh is rebuilt and repainted as the dress key settles). The
     spread sim's median nearest other is 142 studs (191 last round, 97 before the spread
     change): the eels' new holes moved the shared random sequence.
+- **The 2026-10-24 PC round (report `docs/playtests/2026-10-24-pc.md`, published as v26
+  from 0cc2fa7; the kelp snap is gone (0 moves over 0.5 studs in two swims), every eel
+  sits 5–21 studs over the floor and hunts, tells, lunges and gives up, the jellies ease
+  in with no jump; FPS 54.8–59.9 at all five spots; KelpController in the nave 20.3 ms/s,
+  LandmarkController at the pinnacle 19.5; built on `claude/world` 2026-10-24):**
+  - **Wolf Eels at the sector's edge** (PC: #40 at 130.6° and #45 at 221.1°, just outside
+    the Vents' 130–220°, ignored a fish 2–5 studs off on the far side of the line): the
+    own-water rule (`inRange`, no slack on the sector) doesn't apply to a tethered hunter,
+    whose water is the tether round its hole; and a predator's patch never runs past its
+    sector's ends (`patchOf`: the 15% overlap is for neighbours). Sim: an eel holed half
+    a degree inside the edge hunts a fish a degree past it at once and bites it.
+  - **No hole on a ledge's edge** (PC: #43 sat on a vent basin's rim ~120 studs over the
+    basin floor, and on the first test hunted a fish off the rim but never closed in):
+    `LURK_RISE` also caps how far the ground falls away within the body's reach, in the
+    lurk pick and in `holeNear`.
+  - **Buoy lines end inside the float** (PC: both still stopped 2–3 studs short): the
+    KelpBuoy model's own short side chain hangs to its box's bottom and its eyelet sits
+    about halfway up, so the cathedral's chain ends 0.9 studs over the float's middle and
+    the meadow's line at 0.35 of the buoy's height under the surface, both inside the
+    float's body, past the eyelet, at every point of the bob.
+  - **Pinnacle** (19.5 ms/s, BulkMoveTo 15.8: ~42 jelly parts and ~50 raft fish a frame):
+    raft fish 4 a raft (was 6), every fourth frame past 120 studs (was every third);
+    floaters every fifth frame from 60 to 200 studs (was every fourth).
+  - **Next for frame time:** SchoolController (the prey) is now the biggest script at
+    every spot, 92–153 ms/s.
+  - Not changed: KelpController in the nave (20.3, at its aim). PlaceVersion has gone up
+    by two a publish (22 → 24 → 26), likely a save to Roblox counting as a version
+    too; nothing to fix.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3066,9 +3094,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md`, `2026-10-22-pc.md` and
-  `2026-10-23-pc.md` (biome landmarks, new predators, spread and no mob, frame time near
-  the landmarks; published v20, v22 and v24);
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-24-pc.md`
+  (biome landmarks, new predators, spread and no mob, frame time near the landmarks;
+  published v20, v22, v24 and v26);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -3116,6 +3144,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   & Snatch `rojo serve` on 34872 is closed. Never connect the plugin to the
   HatchAndSnatch project from this place.
 - Keep Studio's Controller Emulator panel closed for keyboard tests.
+- In Play the game holds the mouse lock every frame (`Input.holdMouseLock`), so the
+  cursor is clipped to the viewport's middle and clicks on Studio's panels don't land
+  (Alt goes to Studio's menu bar). Open a game menu (M for the map, or the Daily
+  panel) to free it before using the Explorer or the command bar (PC 2026-10-24).
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).
