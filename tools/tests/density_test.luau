@@ -6,8 +6,10 @@
 -- SchoolController uses them; an older Schools without them is measured the old
 -- way (every fish of a school within 520 studs moved, waves within 160, every fish
 -- built at start). Per frame (at 60 fps, full detail) it counts what
--- SchoolController does now (moves by MOVE_STEP, waves by WAVE_NEAR / WAVE_HALF,
--- a built fish out of range looked at every CULL_EVERY) against the 2026-10-24 rules
+-- SchoolController does now (moves by MOVE_STEP at each fish's `pace`: the most its
+-- path carries it and its ends turn, a 60th of a second at a time, over a second,
+-- sway and turns included; waves by WAVE_NEAR / WAVE_HALF, a built fish out of
+-- range looked at every CULL_EVERY) against the 2026-10-24 rules
 -- (every drawn fish moved every frame, waves every frame within 60 and every other
 -- past it, CULL_EVERY 4); keep these in step with SchoolController.
 local Config = require("./Config")
@@ -86,7 +88,7 @@ end
 
 -- Every fish where it is at T (plain numbers, binned by 100 studs across)
 local BIN = 100
-local px, py, pz, pschool = {}, {}, {}, {}
+local px, py, pz, pschool, ppace = {}, {}, {}, {}, {}
 local bins: { [number]: { number } } = {}
 local function key(bx: number, bz: number): number
 	return (bx + 100) * 1000 + (bz + 100)
@@ -99,6 +101,16 @@ for index = 1, Schools.COUNT do
 	end
 	local p = Schools.position(index, T)
 	px[index], py[index], pz[index], pschool[index] = p.X, p.Y, p.Z, fish.school
+	-- (its pace: SchoolController measures it as it's drawn)
+	local pace = 0
+	for k = 0, 11 do
+		local t = T + k / 12
+		local a = Schools.fishFrame(index, Schools.schoolFrame(fish.school, t), t)
+		local b = Schools.fishFrame(index, Schools.schoolFrame(fish.school, t + 1 / 60), t + 1 / 60)
+		local turned = math.acos(math.clamp(a.LookVector:Dot(b.LookVector), -1, 1))
+		pace = math.max(pace, ((b.Position - a.Position).Magnitude + turned * fish.length * 0.5) * 60)
+	end
+	ppace[index] = pace
 	local k = key(math.floor(p.X / BIN), math.floor(p.Z / BIN))
 	bins[k] = bins[k] or {}
 	table.insert(bins[k], index)
@@ -173,7 +185,7 @@ for gx = -1500, 1500, SPACING do
 								if d <= fish.wave then
 									waved += 1
 								end
-								local speed = math.max(Config.Prey.byId[fish.prey].speed, 1)
+								local speed = math.max(ppace[index], 1)
 								local cadence = if d > MOVE_NEAR
 									then math.clamp(math.floor(d * MOVE_STEP * FPS / speed), 1, MOVE_MAX)
 									else 1
@@ -318,6 +330,36 @@ if newModel then
 			)
 		)
 	end
+end
+if newModel then
+	-- Each prey's pace against its configured speed (median and most over its fish)
+	local paces: { [string]: { number } } = {}
+	for index, pace in ppace do
+		local prey = Schools.fish[index].prey
+		paces[prey] = paces[prey] or {}
+		table.insert(paces[prey], pace)
+	end
+	local names = {}
+	for prey in paces do
+		table.insert(names, prey)
+	end
+	table.sort(names)
+	local parts = {}
+	for _, prey in names do
+		local list = paces[prey]
+		table.sort(list)
+		table.insert(
+			parts,
+			string.format(
+				"%s %.0f (speed %g, most %.0f)",
+				prey,
+				list[math.ceil(#list / 2)],
+				Config.Prey.byId[prey].speed,
+				list[#list]
+			)
+		)
+	end
+	print("pace, studs/s on screen: " .. table.concat(parts, ", "))
 end
 for _, biome in ORDER do
 	local mix = mixIn[biome]

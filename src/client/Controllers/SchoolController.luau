@@ -61,15 +61,21 @@ local WAVE_DISTANCE = 160
 local WAVE_NEAR = 30
 local WAVE_HALF = 60
 -- A drawn fish is moved every few frames when it's far enough off for how fast it
--- swims: its step between moves never turns more than MOVE_STEP radians as seen
+-- moves: its step between moves never turns more than MOVE_STEP radians as seen
 -- from the camera (~2.7 px on a 1080p screen), never past every MOVE_MAX frames,
 -- and every frame within MOVE_NEAR of the camera or our mouth, while it's rare,
 -- chased, sucked in, growing back or shrinking away (PC 2026-10-25: 155 ms/s in the
 -- nave, BulkMoveTo 55.7 of it, every drawn fish moved every frame; most are small
--- slow fish 60-220 studs off)
+-- slow fish 60-220 studs off). How fast is its `pace`, measured as it's drawn: how
+-- far it went and its ends turned since it was last moved, a peak that settles over
+-- 1 / PACE_SETTLE s (PC 2026-10-26: by its `speed` a Butterflyfish was held 3 frames,
+-- but its sway and turns carry it ~19 studs/s at `speed` 5, so it stepped 4-5 px in
+-- the Reef); a gap longer than PACE_GAP (it was out of range or hidden) isn't measured
 local MOVE_STEP = 0.003
 local MOVE_MAX = 4
 local MOVE_NEAR = 40
+local PACE_SETTLE = 2
+local PACE_GAP = 0.25
 -- A fish that respawns swims back in from behind its school as it grows, over
 -- RETURN_SECONDS from RETURN_LENGTHS of its own body lengths back (owner,
 -- 2026-10-20: respawns are ~⅓ as long now, so they're seen much more)
@@ -124,8 +130,15 @@ type Visual = {
 	cull: number, -- its LocalTransparencyModifier: 0 drawn .. 1 out of range
 	-- Part-built extras riding on it (SHAPES on a part body, GLOWS on any: makeExtras)
 	extras: { Extra }?,
-	at: Vector3?, -- where it was last drawn (how far off it is, between moves)
+	at: Vector3?, -- where it was last drawn
+	facing: Vector3?, -- and which way it faced
 	stepAt: number, -- clock when it was last moved (its wave runs on the clock)
+	pace: number, -- studs a second it moves on screen (MOVE_STEP), its `speed` at first
+	swimRate: number, -- radians a second its spine wave runs
+	holdUntil: number, -- frameCount until which it's held where it is
+	far: number, -- how far off it was last drawn
+	lit: Color3?, -- its glow light's colour while it has one shown (GLOW_LIGHTS)
+	waveFrame: number, -- frameCount its wave was last set
 }
 
 -- (its part is made the first time it shows: a Lanternfish far off never builds spots)
@@ -176,6 +189,7 @@ local drawList: { number } = {}
 -- (a readout on the Prey folder for play tests: Detail, Built, Drawn, once a second)
 local builtCount = 0
 local drawnCount = 0
+local biggestRadius = 0 -- the biggest prey's radius (`eatLook`)
 local readoutAt = 0
 local parts: { BasePart } = {}
 local frames: { CFrame } = {}
@@ -1098,6 +1112,12 @@ local function makeVisual(index: number): Visual
 		unitScale = unitScale,
 		phase = fish.phase * 3,
 		stepAt = 0,
+		pace = prey.speed,
+		swimRate = 2 * math.pi * (0.9 + prey.speed * 0.22),
+		holdUntil = 0,
+		far = 0,
+		lit = nil,
+		waveFrame = 0,
 		flip = flip,
 		chase = nil,
 		parts = {},
@@ -1114,6 +1134,7 @@ local function setHidden(visual: Visual, hidden: boolean)
 		return
 	end
 	visual.hidden = hidden
+	visual.holdUntil = 0
 	local transparency = if hidden then 1 else 0
 	for _, part in visual.parts do
 		part.Transparency = transparency
@@ -1192,6 +1213,7 @@ local function setLook(index: number, rarityId: string?)
 		return
 	end
 	clearLook(index, visual)
+	visual.holdUntil = 0 -- (a rare fish is moved every frame)
 	local style = if rarityId then LOOKS[rarityId] else nil
 	local def = if rarityId then CatchConfig.byId[rarityId] else nil
 	if rarityId == nil or style == nil or def == nil then
@@ -1525,6 +1547,13 @@ local function step(dt: number)
 		local _, pull = Perks.sense(character, now)
 		suction = pull * Perks.exotic(character).reach
 	end
+	-- No fish further than this from our mouth can be pulled in or reached (the
+	-- biggest prey's reach and pull), so nearer ones alone are checked for an eat
+	local eat = Config.Prey.eat
+	local eatLook = (reach * math.max(eat.scale, 1) + math.max(eat.bonus, 0) + biggestRadius)
+			* math.max(eat.pull, 1)
+			* suction
+		+ 1
 
 	table.clear(parts)
 	table.clear(frames)
@@ -1653,37 +1682,15 @@ local function step(dt: number)
 			then
 				continue
 			end
-			-- Far enough off for how fast it swims, it's moved every few frames (MOVE_STEP;
-			-- `cadence`), staying where it was in between (its glow light stays picked)
-			local cadence = 1
-			local at = visual.at
-			if
-				at
-				and visual.cull < 1
-				and not visual.hidden
-				and visual.chase == nil
-				and visual.suckFrom == nil
-				and visual.fadeIn >= 1
-				and fadeOut == nil
-				and rarities[index] == nil
-			then
-				local far = (at - camera).Magnitude
-				if far > MOVE_NEAR and (mouth == nil or (at - mouth).Magnitude > MOVE_NEAR) then
-					local speed = math.max(Config.Prey.byId[fish.prey].speed, 1)
-					cadence = math.clamp(math.floor(far * MOVE_STEP / (speed * smoothDt)), 1, MOVE_MAX)
+			-- Held between moves (`holdUntil`, set as it's drawn below: MOVE_STEP), it stays
+			-- where it was, its glow light still picked
+			if visual.holdUntil > frameCount then
+				drawnCount += 1
+				local lit, at = visual.lit, visual.at
+				if lit and at then
+					pickLight(visual.far, at, lit)
 				end
-				if cadence > 1 and (index + frameCount) % cadence ~= 0 then
-					drawnCount += 1
-					local extras = visual.extras
-					if extras then
-						for _, extra in extras do
-							if extra.light and extra.shown then
-								pickLight(far, at, GLOWS[fish.prey].color)
-							end
-						end
-					end
-					continue
-				end
+				continue
 			end
 			-- Respawned, or our eat wasn't confirmed: show it again
 			if visual.hidden and visual.suckFrom == nil then
@@ -1726,6 +1733,7 @@ local function step(dt: number)
 			end
 			-- Out of its draw range it isn't drawn (or eaten); over the last of it, it fades
 			local far = (frame.Position - camera).Magnitude
+			local mouthGap = if mouth then (frame.Position - mouth).Magnitude else math.huge
 			local range = (if rarities[index] then math.max(fish.range, RARE_RANGE) else fish.range) * detail
 			local cull = 0
 			if visual.suckFrom == nil and visual.chase == nil and far > range * (1 - FADE_SHARE) then
@@ -1792,36 +1800,38 @@ local function step(dt: number)
 				-- hit the fish it doesn't eat it")
 				-- (a fish still swimming back in is drawn off its path, where the server
 				-- wouldn't find it: it's edible once nearly back, RETURN_EDIBLE)
+				-- (only near our mouth: `eatLook`)
 				local open = fadeOut == nil and mouth ~= nil and not inHub and visual.fadeIn >= RETURN_EDIBLE
-				local gap = if mouth then (frame.Position - mouth).Magnitude else math.huge
-				local swallow = Size.canSwallow(length, fish.length)
-				local inReach = false
-				if open and swallow then
-					local eatReach, pullRange = Schools.eatReach(length, fish.radius)
-					eatReach *= suction
-					pullRange *= suction
-					if gap < pullRange then
-						local share = (1 - gap / pullRange) * Config.Prey.eat.pullShare
-						frame = CFrame.new(frame.Position:Lerp(mouth :: Vector3, share)) * frame.Rotation
-						gap = (frame.Position - (mouth :: Vector3)).Magnitude
+				if open and mouthGap <= eatLook then
+					local gap = mouthGap
+					local swallow = Size.canSwallow(length, fish.length)
+					local inReach = false
+					if swallow then
+						local eatReach, pullRange = Schools.eatReach(length, fish.radius)
+						eatReach *= suction
+						pullRange *= suction
+						if gap < pullRange then
+							local share = (1 - gap / pullRange) * eat.pullShare
+							frame = CFrame.new(frame.Position:Lerp(mouth :: Vector3, share)) * frame.Rotation
+							gap = (frame.Position - (mouth :: Vector3)).Magnitude
+						end
+						inReach = gap <= eatReach
+					else
+						inReach = gap <= reach + fish.radius
 					end
-					inReach = gap <= eatReach
-				elseif open then
-					inReach = gap <= reach + fish.radius
-				end
-				if inReach and not swallow then
-					if now - lastTooBig > 1 then
-						lastTooBig = now
-						SchoolController.tooBig:fire(fish.prey)
+					if inReach and not swallow then
+						if now - lastTooBig > 1 then
+							lastTooBig = now
+							SchoolController.tooBig:fire(fish.prey)
+						end
+					elseif inReach then
+						visual.suckFrom = frame
+						visual.suckStart = now
+						visual.pendingUntil = now + CONFIRM_SECONDS
+						visual.backAt = math.huge
+						table.insert(batch, { index, now })
+						SchoolController.ate:fire(fish.prey, fish.mass, frame.Position, rarities[index])
 					end
-				elseif inReach then
-					visual.suckFrom = frame
-					visual.suckStart = now
-					visual.pendingUntil = now + CONFIRM_SECONDS
-					visual.backAt = math.huge
-					table.insert(batch, { index, now })
-					local prey = Config.Prey.byId[fish.prey]
-					SchoolController.ate:fire(prey.id, fish.mass, frame.Position, rarities[index])
 				end
 			end
 			local glintLook = glints[index]
@@ -1851,29 +1861,58 @@ local function step(dt: number)
 			end
 			if not visual.hidden then
 				drawnCount += 1
+				-- How fast it really moves on screen since it was last moved (`pace`)
+				local since = now - visual.stepAt
+				local last, facing = visual.at, visual.facing
+				if last and facing and since > 0 and since < PACE_GAP then
+					local turned = math.acos(math.clamp(facing:Dot(frame.LookVector), -1, 1))
+					local rate = ((frame.Position - last).Magnitude + turned * fish.length * 0.5) / since
+					visual.pace = if rate > visual.pace
+						then rate
+						else visual.pace + (rate - visual.pace) * math.min(1, since * PACE_SETTLE)
+				end
 				visual.at = frame.Position
-				local elapsed = math.min(now - visual.stepAt, 0.5)
+				visual.facing = frame.LookVector
 				visual.stepAt = now
-				local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
+				visual.far = far
+				-- Held a few frames when it's far enough off for that pace (MOVE_STEP)
+				local hold = 1
+				if
+					far > MOVE_NEAR
+					and mouthGap > MOVE_NEAR
+					and visual.suckFrom == nil
+					and visual.chase == nil
+					and visual.fadeIn >= 1
+					and fadeOut == nil
+					and rarities[index] == nil
+				then
+					hold = math.clamp(
+						math.floor(far * MOVE_STEP / (math.max(visual.pace, 1) * smoothDt)),
+						1,
+						MOVE_MAX
+					)
+				end
+				visual.holdUntil = frameCount + hold - 1
+				local elapsed = math.min(since, 0.5)
 				table.insert(parts, visual.body)
 				local tail = visual.tail
 				if visual.model then
 					-- A rigged body: the head holds still and the wave runs down the spine
 					-- (Shared/SwimWave), faster for the quick little ones
 					-- (on the clock: a fish moved every few frames keeps its pace; its wave is
-					-- set on frames it's moved, every WAVE_NEAR / WAVE_HALF tier's frames)
-					local prey = Config.Prey.byId[fish.prey]
-					visual.phase += elapsed * 2 * math.pi * (0.9 + prey.speed * 0.22)
+					-- set on frames it's moved, at most every WAVE_NEAR / WAVE_HALF tier's frames)
+					visual.phase += elapsed * visual.swimRate
 					local want = if far < WAVE_NEAR then 1 elseif far < WAVE_HALF then 2 else 3
-					local every = cadence * math.ceil(want / cadence)
 					if
 						far < math.min(fish.wave, WAVE_DISTANCE) * detail
-						and (every == 1 or (index + frameCount) % every == 0)
+						and frameCount - visual.waveFrame >= want
 					then
+						visual.waveFrame = frameCount
 						SwimWave.applyBones(visual.bones, visual.spine, visual.phase, 0.34, 0)
 					end
 					table.insert(frames, frame)
 				elseif tail then
+					local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
 					table.insert(frames, frame)
 					table.insert(parts, tail)
 					table.insert(
@@ -1885,6 +1924,7 @@ local function step(dt: number)
 					)
 				else
 					-- A one-piece static mesh: a small yaw wiggle about its head, turned round
+					local beat = math.sin(now * (6 + fish.phase) + fish.phase * 4) * 0.55
 					table.insert(
 						frames,
 						frame
@@ -1897,6 +1937,7 @@ local function step(dt: number)
 				-- Its extras ride on it (not while it's sucked in, growing back or shrinking
 				-- away: they don't scale); a glow only near the camera
 				local extras = visual.extras
+				visual.lit = nil
 				if extras then
 					local whole = visual.suckFrom == nil and fadeOut == nil and visual.fadeIn >= 1
 					for _, extra in extras do
@@ -1906,7 +1947,9 @@ local function step(dt: number)
 							table.insert(parts, extra.part :: BasePart)
 							table.insert(frames, frame * extra.offset)
 							if extra.light then
-								pickLight(far, frame.Position, GLOWS[fish.prey].color)
+								local color = GLOWS[fish.prey].color
+								visual.lit = color
+								pickLight(far, frame.Position, color)
 							end
 						end
 					end
@@ -1997,6 +2040,7 @@ local function onPreyChase(index: number, targetUserId: number, startAt: number,
 	glow.Adornee = visual.body
 	glow.Parent = visual.body
 	visual.chase = { target = target, startAt = startAt, endsAt = startAt + seconds, glow = glow }
+	visual.holdUntil = 0
 	if target == Players.LocalPlayer and chaseWarning then
 		local prey = Config.Prey.byId[Schools.fish[index].prey]
 		chaseWarning.Text = `{string.upper(prey.name)} · TOO BIG TO EAT · SWIM!`
@@ -2039,6 +2083,9 @@ function SchoolController.start()
 	made.Name = "Prey"
 	made.Parent = workspace
 	folder = made -- (each school's fish are built as it comes near: step)
+	for _, fish in Schools.fish do
+		biggestRadius = math.max(biggestRadius, fish.radius)
+	end
 	-- The few faint lights the nearest glowing fish carry (GLOWS `light`)
 	for _ = 1, GLOW_LIGHTS do
 		local anchor = Instance.new("Part")

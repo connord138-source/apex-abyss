@@ -22,6 +22,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local Bubbles = require(script.Parent.Parent.Bubbles)
 local ClientState = require(script.Parent.Parent.ClientState)
 local Sfx = require(script.Parent.Parent.Sfx)
@@ -80,7 +81,14 @@ local floaters: { [Model]: Floater } = {}
 local drifters: { [Model]: Floater } = {}
 type Eels = { model: Model, base: CFrame, down: number }
 local eels: { [Model]: Eels } = {}
-type Shelter = { model: Model, base: CFrame, fish: { BasePart }, phase: number }
+type Shelter = {
+	model: Model,
+	base: CFrame,
+	fish: { BasePart }, -- what moves (a model's body)
+	made: { Instance }, -- what goes when they're cleared
+	turn: { CFrame }, -- each one's own turn (a static mesh that came in facing +Z)
+	phase: number,
+}
 local shelters: { [Model]: Shelter } = {}
 
 local folder: Folder
@@ -111,9 +119,9 @@ local function track(tag: string, into: { [Model]: any }, make: (Model) -> any)
 	CollectionService:GetInstanceAddedSignal(tag):Connect(add)
 	CollectionService:GetInstanceRemovedSignal(tag):Connect(function(instance)
 		local entry = into[instance :: Model]
-		if entry and entry.fish then
-			for _, part in entry.fish do
-				part:Destroy()
+		if entry and entry.made then
+			for _, made in entry.made do
+				made:Destroy()
 			end
 		end
 		if entry and entry.connections then
@@ -179,28 +187,103 @@ end
 local SHELTER_COLORS =
 	{ Color3.fromRGB(230, 200, 70), Color3.fromRGB(150, 180, 200), Color3.fromRGB(240, 150, 60) }
 
+-- Raft fish are little copies of the prey models (SHELTER_PREY, about SHELTER_LENGTH
+-- long; PC 2026-10-26: coloured boxes read as chips floating under a raft), a box
+-- until PreyModels are in
+local SHELTER_PREY = { "Sardine", "Minnow" }
+local SHELTER_LENGTH = 1.8
+local MESH_FLIP = CFrame.Angles(0, math.pi, 0)
+local shelterTemplates: { [string]: Instance } = {}
+
+-- A prey model, anchored and scaled to a raft fish, to clone (nil until imported)
+local function shelterTemplate(id: string): Instance?
+	local made = shelterTemplates[id]
+	if made then
+		return made
+	end
+	local models = ReplicatedStorage:FindFirstChild("PreyModels")
+	local template = if models then models:FindFirstChild(id) else nil
+	if template == nil or not (template:IsA("Model") or template:IsA("MeshPart")) then
+		return nil
+	end
+	local copy = template:Clone()
+	local parts: { Instance } = if copy:IsA("BasePart") then { copy } else copy:GetDescendants()
+	for _, part in parts do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			part.CastShadow = false
+		end
+	end
+	if copy:IsA("Model") then
+		local extent = copy:GetExtentsSize()
+		local long = math.max(extent.X, extent.Y, extent.Z)
+		if long > 0 then
+			copy:ScaleTo(copy:GetScale() * SHELTER_LENGTH / long)
+		end
+	elseif copy:IsA("BasePart") then
+		local long = math.max(copy.Size.X, copy.Size.Y, copy.Size.Z)
+		if long > 0 then
+			copy.Size *= SHELTER_LENGTH / long
+		end
+	end
+	shelterTemplates[id] = copy
+	return copy
+end
+
 local function buildShelter(entry: Shelter)
 	for k = 1, SHELTER_FISH do
-		local fish = Instance.new("Part")
-		fish.Name = "ShelterFish"
-		fish.Anchored = true
-		fish.CanCollide = false
-		fish.CanQuery = false
-		fish.CanTouch = false
-		fish.CastShadow = false
-		fish.Material = Enum.Material.SmoothPlastic
-		fish.Color = SHELTER_COLORS[(k % #SHELTER_COLORS) + 1]
-		fish.Size = Vector3.new(0.45, 0.8, 1.6)
-		fish.Parent = folder
-		table.insert(entry.fish, fish)
+		local template = shelterTemplate(SHELTER_PREY[(k % #SHELTER_PREY) + 1])
+		local body: BasePart? = nil
+		local turn = CFrame.identity
+		if template then
+			local copy = template:Clone()
+			if copy:IsA("Model") then
+				-- (a rigged body faces -Z already: its mesh is what moves, as SchoolController's)
+				local mesh = copy.PrimaryPart or copy:FindFirstChildWhichIsA("MeshPart", true)
+				if mesh then
+					body = mesh :: BasePart
+				end
+			elseif copy:IsA("BasePart") then
+				body = copy
+				turn = if SwimWave.needsFlip(copy) then MESH_FLIP else CFrame.identity
+			end
+			if body then
+				copy.Parent = folder
+				table.insert(entry.made, copy)
+			else
+				copy:Destroy()
+			end
+		end
+		if body == nil then
+			local fish = Instance.new("Part")
+			fish.Name = "ShelterFish"
+			fish.Anchored = true
+			fish.CanCollide = false
+			fish.CanQuery = false
+			fish.CanTouch = false
+			fish.CastShadow = false
+			fish.Material = Enum.Material.SmoothPlastic
+			fish.Color = SHELTER_COLORS[(k % #SHELTER_COLORS) + 1]
+			fish.Size = Vector3.new(0.45, 0.8, 1.6)
+			fish.Parent = folder
+			table.insert(entry.made, fish)
+			body = fish
+		end
+		table.insert(entry.fish, body :: BasePart)
+		table.insert(entry.turn, turn)
 	end
 end
 
 local function clearShelter(entry: Shelter)
-	for _, part in entry.fish do
-		part:Destroy()
+	for _, made in entry.made do
+		made:Destroy()
 	end
 	table.clear(entry.fish)
+	table.clear(entry.made)
+	table.clear(entry.turn)
 end
 
 -- ---------------------------------------------------------------------------
@@ -526,7 +609,7 @@ local function step(dt: number)
 				+ Vector3.new(math.cos(angle) * radius, -9 - (k % 3) * 2.5, math.sin(angle) * radius)
 			local ahead = Vector3.new(-math.sin(angle) * way, 0, math.cos(angle) * way)
 			table.insert(moveParts, fish)
-			table.insert(moveFrames, CFrame.lookAt(at, at + ahead))
+			table.insert(moveFrames, CFrame.lookAt(at, at + ahead) * entry.turn[k])
 		end
 	end
 	stepSharks(now, eye)
@@ -562,7 +645,7 @@ function LandmarkController.start()
 	end)
 	track("Sargassum", shelters, function(model: Model)
 		local base = model:GetPivot()
-		return { model = model, base = base, fish = {}, phase = seedOf(base.Position) }
+		return { model = model, base = base, fish = {}, made = {}, turn = {}, phase = seedOf(base.Position) }
 	end)
 	HuntController.findLandmark = function(mouth: Vector3, reach: number): (string?, number?)
 		return findLandmark(mouth, reach)

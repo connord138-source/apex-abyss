@@ -2106,6 +2106,33 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `run_density.sh` mirrors the tiers (a frame, 60 fps, full detail): Kelp moves 355 →
     128, waves 45 → 26, moves + waves + path looks 556 → 258 (max 722 → 364); every
     biome about halved.
+- **The 2026-10-26 PC round (report `docs/playtests/2026-10-26-pc.md`, published as v30
+  from c4fac07; the Megalodon's leash (it let a fish go as it crossed r 840 and came no
+  nearer than r 933; 0.4 s after a teleport), floaters in one piece (77, each one
+  anchored part, 0.000 studs off), the pinnacle (LandmarkController 13.0 ms/s) and
+  SchoolController (35–45% less: nave 155 → 121, ribcage 127 → 81, while the adaptive
+  detail rose to 1.0) passed; built on `claude/world` 2026-10-26):**
+  - **Reef stepping** (PC PJ1: Butterflyfish, Opaleye and Lionfish jumped 4–5 px a
+    move at 100–150 studs, up to 41: their sway and turns carry them 2–4× their
+    `speed` on screen): a fish's move rate goes by its `pace`, measured as it's drawn
+    (how far it went plus its ends' turn since its last move, a peak settling at
+    `PACE_SETTLE` 2 a second, not measured across a gap over `PACE_GAP` 0.25 s), never its
+    configured `speed`. `run_density.sh` measures each fish's pace off its own path
+    (a 60th of a second at a time over a second) and prints it per prey: Butterflyfish
+    22 (speed 5), Blue Tang 31 (6), Opaleye 12 (5), Garibaldi 13 (5), Lionfish 10 (3);
+    tuna 19 (16). Moves a frame Kelp 192, Reef 189, Open Blue 148 (355 / 311 / 291
+    before the tiers, 128 / 110 / 106 by `speed`).
+  - **The per-fish loop** (PC: `step`'s own body 35–42 ms/s, the biggest piece left): a
+    held fish costs one compare (`holdUntil`, set when it's moved; cleared when it's
+    hidden or shown, turns rare or starts a chase), its glow light picked from its
+    last spot (`lit`, `far`); the eat check (`Size.canSwallow`, `Schools.eatReach`)
+    runs only within `eatLook` of our mouth (the biggest prey's reach and pull ×
+    suction); the wave keeps its own frame count (`waveFrame`), and the swim rate and
+    tail beat are worked out once or only where they're used.
+  - **Raft fish are little fish** (the PC's raft-from-below shots: coloured boxes read
+    as chips): LandmarkController clones `PreyModels.Sardine` / `Minnow`, anchored and
+    scaled to `SHELTER_LENGTH` 1.8 studs, moving its body mesh (a static mesh turned
+    if it faces +Z), the box until they're in.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3133,9 +3160,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-25-pc.md`
-  (biome landmarks, new predators, spread and no mob, frame time near the landmarks;
-  published v20, v22, v24, v26 and v28);
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-26-pc.md`
+  (biome landmarks, new predators, spread and no mob, frame time near the landmarks,
+  the Megalodon's leash; published v20 to v30);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -3186,9 +3213,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - In Play the game holds the mouse lock every frame (`Input.holdMouseLock`), so the
   cursor is clipped to the viewport's middle and clicks on Studio's panels don't land
   (Alt goes to Studio's menu bar). A game menu only stops the game asserting it: with
-  the game focused (middle-click), Escape opens Roblox's menu and the engine drops the
-  lock, and the map (M) or the Daily panel then keeps it free after Resume (PC
-  2026-10-24/25).
+  the game focused (middle-click), press M (the map), then Escape twice (Roblox's menu
+  open and shut): the engine drops the lock and the map keeps it free. Hide the map
+  with `PlayerGui.MapWindow.Enabled = false` to profile with the HUD showing; with the
+  Dev Console open, Escape closes it instead (PC 2026-10-24 to 26).
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).
