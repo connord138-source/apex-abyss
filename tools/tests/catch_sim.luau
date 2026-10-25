@@ -730,7 +730,42 @@ for _, kind in { HUNTER, CASUAL } do
 	end
 end
 
-local hunter, hunterPrism = rates(hunterTallies)
+-- More Prism Tides for the hunter: in HOURS a biome sees ~5, a few catches each, so
+-- the Prism figure swung with the seed (2026-10-27: 1.2 to 2.0 a tide over four
+-- seeds on the same rules). Each biome's hunter swims PRISM_EXTRA more, each from the
+-- tide's start on its own seed, and the Prism a tide pools them all.
+local PRISM_EXTRA = 6
+local prismTallies: { Tally } = {}
+do
+	local starts: { number } = {}
+	local slot = TideConfig.slotSeconds
+	local unix = START + math.ceil(HOURS * 3600 / slot) * slot
+	while #starts < PRISM_EXTRA do
+		local tideId, startsAt = tideAt(unix)
+		if tideId == TideConfig.prism.id and startsAt == unix then
+			table.insert(starts, unix)
+		end
+		unix += slot
+	end
+	for r, region in REGIONS do
+		if
+			args.quick
+			and region.id ~= "KelpShallows"
+			and region.id ~= "CoralReef"
+			and region.id ~= "SunkenRuins"
+		then
+			continue
+		end
+		for k, startsAt in starts do
+			local s = newSwimmer(region, HUNTER)
+			run(newModel(700 + r * 10 + k), { s }, slot / 3600, startsAt)
+			table.insert(prismTallies, s.tally)
+		end
+	end
+end
+local hunter = rates(hunterTallies)
+local _, hunterPrism =
+	rates(table.move(prismTallies, 1, #prismTallies, #hunterTallies + 1, table.clone(hunterTallies)))
 local casual, casualPrism = rates(casualTallies)
 print("\nALL BIOMES, minutes per catch (normal tides) · Prism per Prism Tide:")
 for _, id in RARITIES do

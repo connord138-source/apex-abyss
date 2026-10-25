@@ -2133,6 +2133,52 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     as chips): LandmarkController clones `PreyModels.Sardine` / `Minnow`, anchored and
     scaled to `SHELTER_LENGTH` 1.8 studs, moving its body mesh (a static mesh turned
     if it faces +Z), the box until they're in.
+- **The 2026-10-27 PC round (report `docs/playtests/2026-10-27-pc.md`, published as v32
+  from 6cb47ab; the Reef's stepping (no jump over 4 px anywhere, Butterflyfish, Opaleye
+  and Lionfish every 1–1.7 frames), the raft fish as models and eating near and far
+  passed; built on `claude/world` 2026-10-27):**
+  - **The jump budget** (PC: held fish jumped ~1 px of the ~2.3 allowed and far fish
+    moved nearly every frame, SchoolController +19–33%): `MOVE_STEP` 0.0042 (~3.2 px;
+    whole frames round it down, so most steps are ~2 px), `PACE_SETTLE` 4 (a 0.25 s
+    settle) and `PACE_TURN` 0.25 (a quarter of the length times the heading's turn).
+    **The jump sim** (`TEST=jump_test LUAU=<luau> bash tools/tests/run_density.sh`,
+    `tools/tests/jump_test.luau`) plays SchoolController's rule frame by frame at 60
+    fps from the three busiest camera spots of each biome, still and swimming, and
+    prints the jumps of held fish 60–200 studs off as 1080p px (median, 95th, over 3 and
+    4 px) and the moves a frame for the old rule, the current one and 0.0045. It showed
+    the turn term and the settle barely matter: whole-frame rounding is what left the
+    budget unused, so `MOVE_STEP` is the knob. Old rule: median 1.4–1.5 px, 95th 2.05;
+    now 2.0–2.1 and 2.9, over 4 px unchanged (0.1–0.5%), moves −20–25% (0.0045 saves 5%
+    more but puts 8–9% of jumps over 3 px). The PC measured ~0.7× the sim's median at
+    the same rule. `run_density.sh` moves a frame: Kelp 192 → 144, Reef 189 → 145, Open
+    Blue 148 → 110.
+  - **Schools never tumble** (found by the jump sim: a Blue Tang school's fish peaked at
+    350 studs/s on screen): a school faces along its loop, and on a small loop with a
+    big rise and fall (a Garibaldi school 6 studs round bobbing 13) its heading flipped
+    from steeply down to steeply up in a few tenths of a second at the bottom of each
+    dip, swinging the whole school round its middle (peak pitch rate 4 × height ×
+    angular speed ÷ radius: 95 of 931 schools over 2 rad/s, 15 over 8; mostly the
+    Reef's Butterflyfish and Blue Tang, so part of their 4–6× pace). Each school now
+    faces only `tilt` of its climb (`Schools` `TILT_RATE` 1 rad/s, `heading`, used by
+    `schoolFrame` and `settle`; the progress sim's inlined path mirrors it); its path,
+    rise and fall included, is unchanged. Worst school frame turn now 2.7 rad/s (a
+    small loop's yaw). Every school, progress, catch and start-shot check passes.
+  - **The catch sim's Prism figure** pools 6 more Prism Tides a biome for the hunter
+    (`PRISM_EXTRA`, each from the tide's start on its own seed): ~5 a biome left it
+    swinging 1.2–2.0 a tide over four seeds on the same rules (the tilt's reshuffle
+    landed the default seed at 1.2, a fail). Now 1.5–1.9 over three seeds.
+  - **Glow lights stay put** (PC: following a Lanternfish school the three lights moved
+    to another fish 12–37 times in 7.2 s): a light stays on its fish while that fish is
+    still among the three nearest (no swapping places), another takes it only when
+    `GLOW_KEEP` 8 studs nearer, and a held fish is ranked by where the camera is now.
+  - **Raft fish by their own speed** (PC: LandmarkController at the pinnacle 16.6 ms/s,
+    BulkMoveTo 11.5, with the rigged models): each raft fish is moved as often as its
+    own circling speed needs (`SHELTER_STEP` 0.0042, at most every `SHELTER_MAX` 6th
+    frame; the slowest circle at under half the fastest's), ~30% fewer moves at 70–120
+    studs; the shelter and garden eel loops no longer read `model.Parent` every frame
+    (`track` drops an entry when its model leaves; `Instance.Parent` was 0.9 ms/s).
+  - Left as is: a third pending asset, `rbxassetid://138869705317079`, logged on
+    switching to the Reef Shark (one of its textures; nothing in this round uploads).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3160,9 +3206,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-26-pc.md`
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-27-pc.md`
   (biome landmarks, new predators, spread and no mob, frame time near the landmarks,
-  the Megalodon's leash; published v20 to v30);
+  the Megalodon's leash, the prey's move rate; published v20 to v32);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -3216,7 +3262,12 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   the game focused (middle-click), press M (the map), then Escape twice (Roblox's menu
   open and shut): the engine drops the lock and the map keeps it free. Hide the map
   with `PlayerGui.MapWindow.Enabled = false` to profile with the HUD showing; with the
-  Dev Console open, Escape closes it instead (PC 2026-10-24 to 26).
+  Dev Console open, Escape closes it instead (PC 2026-10-24 to 26). Never press M
+  while MapWindow is disabled (the map is open but unseen, M closes it and the lock
+  comes back). To reach the command bar while locked: left-click the game view (a
+  middle-click didn't focus it), Escape (Roblox's menu), then click the command bar
+  twice. Switching species from the command bar: `Remotes.SelectSpecies:FireServer(id)`
+  in your den, then the admin's `setLevel` (PC 2026-10-27).
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).

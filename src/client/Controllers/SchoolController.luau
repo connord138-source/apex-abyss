@@ -62,19 +62,24 @@ local WAVE_NEAR = 30
 local WAVE_HALF = 60
 -- A drawn fish is moved every few frames when it's far enough off for how fast it
 -- moves: its step between moves never turns more than MOVE_STEP radians as seen
--- from the camera (~2.7 px on a 1080p screen), never past every MOVE_MAX frames,
+-- from the camera (~3.2 px on a 1080p screen; whole frames round it down, so most
+-- steps are ~2 px), never past every MOVE_MAX frames,
 -- and every frame within MOVE_NEAR of the camera or our mouth, while it's rare,
 -- chased, sucked in, growing back or shrinking away (PC 2026-10-25: 155 ms/s in the
 -- nave, BulkMoveTo 55.7 of it, every drawn fish moved every frame; most are small
 -- slow fish 60-220 studs off). How fast is its `pace`, measured as it's drawn: how
--- far it went and its ends turned since it was last moved, a peak that settles over
--- 1 / PACE_SETTLE s (PC 2026-10-26: by its `speed` a Butterflyfish was held 3 frames,
--- but its sway and turns carry it ~19 studs/s at `speed` 5, so it stepped 4-5 px in
--- the Reef); a gap longer than PACE_GAP (it was out of range or hidden) isn't measured
-local MOVE_STEP = 0.003
+-- far it went and a quarter of its length times the turn of its heading since it was
+-- last moved, a peak that settles over 1 / PACE_SETTLE s (PC 2026-10-26: by its
+-- `speed` a Butterflyfish was held 3 frames, but its sway and turns carry it ~19
+-- studs/s at `speed` 5, so it stepped 4-5 px in the Reef); a gap longer than PACE_GAP
+-- (it was out of range or hidden) isn't measured. Tuned with `TEST=jump_test
+-- run_density.sh` (PC 2026-10-27: at 0.003, half the turn's arc and a 0.5 s settle,
+-- held fish jumped ~1 px and moved nearly every frame, SchoolController +19-33%)
+local MOVE_STEP = 0.0042
 local MOVE_MAX = 4
 local MOVE_NEAR = 40
-local PACE_SETTLE = 2
+local PACE_SETTLE = 4
+local PACE_TURN = 0.25
 local PACE_GAP = 0.25
 -- A fish that respawns swims back in from behind its school as it grows, over
 -- RETURN_SECONDS from RETURN_LENGTHS of its own body lengths back (owner,
@@ -356,6 +361,11 @@ local SPOT_WHITE = Color3.fromRGB(226, 236, 232) -- the Opaleye's two back spots
 local TANG_YELLOW = Color3.fromRGB(250, 212, 28)
 local EMBER_EDGE = Color3.fromRGB(232, 110, 36) -- the Rattail's fin edges (orange, never pink)
 local GLOW_LIGHTS = 3
+-- A light stays on its fish while that fish is still among the nearest, and another
+-- takes it only when GLOW_KEEP studs nearer (PC 2026-10-27: following a Lanternfish
+-- school the three lights moved to another fish 12-37 times in 7.2 s as the nearest
+-- swapped places, and a held fish offered its distance from its last move)
+local GLOW_KEEP = 8
 local GLOW_LIGHT_RANGE = 7
 local GLOW_LIGHT_BRIGHTNESS = 0.7
 
@@ -851,8 +861,11 @@ local SHAPES: { [string]: { ExtraSpec } } = {
 	},
 }
 
-local glowLights: { { part: BasePart, light: PointLight } } = {} -- made in start
-local lightPicks: { { distance: number, at: Vector3, color: Color3 } } = {} -- this frame's nearest
+type LightPick = { distance: number, at: Vector3, color: Color3, index: number, used: boolean }
+-- (`index`: the fish it's on, 0 = none)
+local glowLights: { { part: BasePart, light: PointLight, index: number } } = {} -- made in start
+local lightPicks: { LightPick } = {} -- this frame's nearest
+local glowHeld: { [number]: boolean } = {} -- the fish holding a light last frame
 
 -- A fish's extras (nil = none): its SHAPES on a part body, its GLOWS on any body
 local function makeExtras(preyId: string, length: number, bodySize: Vector3, partBody: boolean): { Extra }?
@@ -909,8 +922,12 @@ local function showExtra(extra: Extra, shown: boolean)
 	end
 end
 
--- Keeps the GLOW_LIGHTS nearest glowing fish this frame (sorted, nearest first)
-local function pickLight(distance: number, at: Vector3, color: Color3)
+-- Keeps the GLOW_LIGHTS nearest glowing fish this frame (sorted, nearest first; a fish
+-- holding a light counts GLOW_KEEP nearer)
+local function pickLight(distance: number, at: Vector3, color: Color3, index: number)
+	if glowHeld[index] then
+		distance -= GLOW_KEEP
+	end
 	local count = #lightPicks
 	if count >= GLOW_LIGHTS and distance >= lightPicks[count].distance then
 		return
@@ -919,7 +936,11 @@ local function pickLight(distance: number, at: Vector3, color: Color3)
 	while i >= 1 and lightPicks[i].distance > distance do
 		i -= 1
 	end
-	table.insert(lightPicks, i + 1, { distance = distance, at = at, color = color })
+	table.insert(
+		lightPicks,
+		i + 1,
+		{ distance = distance, at = at, color = color, index = index, used = false }
+	)
 	if #lightPicks > GLOW_LIGHTS then
 		table.remove(lightPicks)
 	end
@@ -1683,12 +1704,12 @@ local function step(dt: number)
 				continue
 			end
 			-- Held between moves (`holdUntil`, set as it's drawn below: MOVE_STEP), it stays
-			-- where it was, its glow light still picked
+			-- where it was, its glow light still picked (by where the camera is now)
 			if visual.holdUntil > frameCount then
 				drawnCount += 1
 				local lit, at = visual.lit, visual.at
 				if lit and at then
-					pickLight(visual.far, at, lit)
+					pickLight((at - camera).Magnitude, at, lit, index)
 				end
 				continue
 			end
@@ -1866,7 +1887,8 @@ local function step(dt: number)
 				local last, facing = visual.at, visual.facing
 				if last and facing and since > 0 and since < PACE_GAP then
 					local turned = math.acos(math.clamp(facing:Dot(frame.LookVector), -1, 1))
-					local rate = ((frame.Position - last).Magnitude + turned * fish.length * 0.5) / since
+					local rate = ((frame.Position - last).Magnitude + turned * fish.length * PACE_TURN)
+						/ since
 					visual.pace = if rate > visual.pace
 						then rate
 						else visual.pace + (rate - visual.pace) * math.min(1, since * PACE_SETTLE)
@@ -1949,7 +1971,7 @@ local function step(dt: number)
 							if extra.light then
 								local color = GLOWS[fish.prey].color
 								visual.lit = color
-								pickLight(far, frame.Position, color)
+								pickLight(far, frame.Position, color, index)
 							end
 						end
 					end
@@ -1957,15 +1979,47 @@ local function step(dt: number)
 			end
 		end
 	end
-	-- The faint lights go to the nearest glowing fish (GLOW_LIGHTS)
-	for i, slot in glowLights do
-		local pick = lightPicks[i]
+	-- The faint lights go to the nearest glowing fish (GLOW_LIGHTS): first each light
+	-- whose fish is still among them, then the free ones to the rest
+	table.clear(glowHeld)
+	for _, slot in glowLights do
+		local kept = 0
+		for _, pick in lightPicks do
+			if pick.index == slot.index and not pick.used then
+				pick.used = true
+				kept = slot.index
+				break
+			end
+		end
+		slot.index = kept
+	end
+	for _, slot in glowLights do
+		local pick: LightPick? = nil
+		for _, candidate in lightPicks do
+			if candidate.index == slot.index and slot.index ~= 0 then
+				pick = candidate
+				break
+			end
+		end
+		if pick == nil then
+			for _, candidate in lightPicks do
+				if not candidate.used then
+					candidate.used = true
+					slot.index = candidate.index
+					pick = candidate
+					break
+				end
+			end
+		end
 		if pick then
+			glowHeld[pick.index] = true
 			table.insert(parts, slot.part)
 			table.insert(frames, CFrame.new(pick.at))
 			if slot.light.Color ~= pick.color then
 				slot.light.Color = pick.color
 			end
+		else
+			slot.index = 0
 		end
 		if slot.light.Enabled ~= (pick ~= nil) then
 			slot.light.Enabled = pick ~= nil
@@ -2104,7 +2158,7 @@ function SchoolController.start()
 		light.Enabled = false
 		light.Parent = anchor
 		anchor.Parent = made
-		table.insert(glowLights, { part = anchor :: BasePart, light = light })
+		table.insert(glowLights, { part = anchor :: BasePart, light = light, index = 0 })
 	end
 	-- The schools' lifts over the rocks and reefs, as the server worked them out
 	-- (Schools.settle), so we draw every fish where the server checks it

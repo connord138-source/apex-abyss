@@ -31,6 +31,7 @@ export type School = {
 	ellipse: number, -- z radius / x radius
 	height: number, -- figure-eight rise and fall
 	angularSpeed: number, -- radians/s round the loop (sign = direction)
+	tilt: number, -- how much of its rise and fall it faces along (≤ 1; TILT_RATE)
 	phase: number,
 	spread: number, -- studs: how far fish sit from the school's middle
 	first: number, -- its fish are Schools.fish[first .. first + count - 1]
@@ -91,6 +92,16 @@ local BUILD_MARGIN = 40 -- studs past a school's reach before a client builds it
 -- `deepSchools`)
 local DEEP_FROM = 900
 local SETTLE_SLICE = 0.02 -- seconds of lifting between the server's yields (Schools.settle)
+-- A school faces along its loop, but its nose never pitches faster than TILT_RATE
+-- radians a second: on a small loop with a big rise and fall (a reef school 6 studs
+-- round bobbing 13) the heading flipped from steeply down to steeply up in a few
+-- tenths of a second at the bottom of each dip, and the whole school swung round
+-- its middle with it, its fish flung at up to ~90 studs/s (the jump sim, 2026-10-27:
+-- 95 schools pitched over 2 rad/s, 15 over 8; the Reef's Butterflyfish and Blue
+-- Tang read 4-6× their speed on screen). Such a school faces only `tilt` of its
+-- climb (the peak pitch rate is 4 × height × angular speed ÷ radius); it still rises
+-- and falls as before.
+local TILT_RATE = 1
 
 local list: { School } = {}
 local fish: { Fish } = {}
@@ -183,6 +194,7 @@ local function build(rng: Random, prey: any, zone: Zone, tide: string?)
 			ellipse = rng:NextNumber(0.55, 1),
 			height = height,
 			angularSpeed = direction * prey.speed / radius,
+			tilt = math.min(1, TILT_RATE * radius * radius / (4 * height * prey.speed)),
 			phase = rng:NextNumber(0, 2 * math.pi),
 			spread = spread,
 			first = #fish + 1,
@@ -302,6 +314,11 @@ local function loopAt(school: School, a: number): (Vector3, Vector3)
 	return position, velocity
 end
 
+-- Which way a school faces moving at `velocity` on its loop (TILT_RATE)
+local function heading(school: School, velocity: Vector3): Vector3
+	return Vector3.new(velocity.X, velocity.Y * school.tilt, velocity.Z)
+end
+
 -- How far school `index` is lifted at loop angle `a` (between its samples)
 local function liftAt(index: number, a: number): number
 	local samples = lifts[index]
@@ -323,7 +340,7 @@ function Schools.schoolFrame(index: number, t: number): CFrame
 	local a = school.phase + school.angularSpeed * t
 	local position, velocity = loopAt(school, a)
 	position += Vector3.new(0, liftAt(index, a), 0)
-	return CFrame.lookAt(position, position + velocity)
+	return CFrame.lookAt(position, position + heading(school, velocity))
 end
 
 -- Lifting the schools over the real ground. Each fish keeps CLEAR_STUDS plus
@@ -398,7 +415,7 @@ function Schools.settle(groundY: (number, number) -> number, pause: (() -> ())?)
 		for k = 0, fine - 1 do
 			local a = k / fine * 2 * math.pi
 			local position, velocity = loopAt(school, a)
-			local frame = CFrame.lookAt(position, position + velocity)
+			local frame = CFrame.lookAt(position, position + heading(school, velocity))
 			local flat = Vector3.new(velocity.X, 0, velocity.Z)
 			local along = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.xAxis
 			local most = 0

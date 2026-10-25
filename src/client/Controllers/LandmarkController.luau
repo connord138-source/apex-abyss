@@ -42,7 +42,8 @@ local LandmarkController = {}
 -- ms/s at Hammerhead Pinnacle, 40 of it a PivotTo on each part-built jelly every
 -- frame; 2026-10-23, 52.7 with them batched, 39.6 of it the move: ~150 jelly parts
 -- a frame, most of them 200-500 out; 2026-10-24, 19.5 with the far ones still;
--- 2026-10-25, 17.6 with 4 raft fish: ~40 jelly parts and ~12 raft fish a frame)
+-- 2026-10-25, 17.6 with 4 raft fish: ~40 jelly parts and ~12 raft fish a frame;
+-- 2026-10-27, 16.6 with the raft fish as prey models, BulkMoveTo 11.5)
 local NEAR_EVERY = 60
 local NEAR_HALF = 120
 local DRIFT_FADE = 150
@@ -53,11 +54,14 @@ local EEL_LOOK = 140 -- studs from the camera a garden eel patch is checked
 local EEL_NEAR = 26 -- studs across a fish makes a garden eel patch duck
 local EEL_DOWN = 3.2 -- studs it sinks
 local SHELTER_NEAR = 180 -- studs from the camera a raft's fish are built (cleared
--- SHELTER_KEEP further out, so they don't flicker on the edge); they swim every frame
--- within SHELTER_EVERY, every other to SHELTER_HALF, every fourth past it
+-- SHELTER_KEEP further out, so they don't flicker on the edge). Each is moved as
+-- often as its own speed needs (SchoolController's rule): a step never turns more
+-- than SHELTER_STEP radians seen from the camera, at most every SHELTER_MAX frames
+-- (PC 2026-10-27: every frame within 70 studs and every other to 120 whatever its
+-- speed, and the slowest circle at under half the fastest's)
 local SHELTER_KEEP = 30
-local SHELTER_EVERY = 70
-local SHELTER_HALF = 120
+local SHELTER_STEP = 0.0042
+local SHELTER_MAX = 6
 local SHELTER_FISH = 4
 local SHARKS = 4
 local SHARK_NEAR = 900
@@ -87,6 +91,7 @@ type Shelter = {
 	fish: { BasePart }, -- what moves (a model's body)
 	made: { Instance }, -- what goes when they're cleared
 	turn: { CFrame }, -- each one's own turn (a static mesh that came in facing +Z)
+	next: { number }, -- the frame each is next moved on (SHELTER_STEP)
 	phase: number,
 }
 local shelters: { [Model]: Shelter } = {}
@@ -274,6 +279,7 @@ local function buildShelter(entry: Shelter)
 		end
 		table.insert(entry.fish, body :: BasePart)
 		table.insert(entry.turn, turn)
+		table.insert(entry.next, 0)
 	end
 end
 
@@ -284,6 +290,7 @@ local function clearShelter(entry: Shelter)
 	table.clear(entry.fish)
 	table.clear(entry.made)
 	table.clear(entry.turn)
+	table.clear(entry.next)
 end
 
 -- ---------------------------------------------------------------------------
@@ -296,6 +303,7 @@ local moveParts: { BasePart } = {}
 local moveFrames: { CFrame } = {}
 local sharks: { Shark } = {}
 local frameCount = 0
+local smoothDt = 1 / 60 -- the frame time, eased (the raft fish's SHELTER_STEP)
 
 local function partShark(): Model
 	local model = Instance.new("Model")
@@ -523,6 +531,7 @@ local function step(dt: number)
 		return
 	end
 	frameCount += 1
+	smoothDt += (math.min(dt, 0.1) - smoothDt) * math.min(1, dt * 0.6)
 	local eye = camera.CFrame.Position
 	local now = Workspace:GetServerTimeNow()
 	-- (a floater streamed out is dropped by its tag; its parts by DescendantRemoving)
@@ -567,7 +576,7 @@ local function step(dt: number)
 	local root = SwimController.root()
 	local fishAt = if root then root.Position else nil
 	for model, entry in eels do
-		if model.Parent == nil or (entry.down == 0 and (entry.base.Position - eye).Magnitude > EEL_LOOK) then
+		if entry.down == 0 and (entry.base.Position - eye).Magnitude > EEL_LOOK then
 			continue
 		end
 		local want = 0
@@ -585,10 +594,11 @@ local function step(dt: number)
 			model:PivotTo(entry.base * CFrame.new(0, -down, 0))
 		end
 	end
-	for model, entry in shelters do
+	-- (a model that leaves is dropped by `track`, so no Parent reads here)
+	for _, entry in shelters do
 		local raft = entry.base.Position
 		local gap = (raft - eye).Magnitude
-		if model.Parent == nil or gap > SHELTER_NEAR + (if #entry.fish > 0 then SHELTER_KEEP else 0) then
+		if gap > SHELTER_NEAR + (if #entry.fish > 0 then SHELTER_KEEP else 0) then
 			if #entry.fish > 0 then
 				clearShelter(entry)
 			end
@@ -597,14 +607,18 @@ local function step(dt: number)
 		if #entry.fish == 0 then
 			buildShelter(entry)
 		end
-		local every = if gap <= SHELTER_EVERY then 1 elseif gap <= SHELTER_HALF then 2 else 4
-		if (frameCount + math.floor(entry.phase * 10)) % every ~= 0 then
-			continue
-		end
+		-- (the nearest a fish of this raft can be: they circle up to ~15 studs out and under)
+		local near = math.max(gap - 15, 1)
 		for k, fish in entry.fish do
+			if entry.next[k] > frameCount then
+				continue
+			end
 			local radius = 5 + (k % 4) * 2.5
+			local rate = 0.7 + k * 0.05
+			entry.next[k] = frameCount
+				+ math.clamp(math.floor(near * SHELTER_STEP / (rate * radius * smoothDt)), 1, SHELTER_MAX)
 			local way = if k % 2 == 0 then 1 else -1
-			local angle = way * now * (0.7 + k * 0.05) + k * 0.8 + entry.phase
+			local angle = way * now * rate + k * 0.8 + entry.phase
 			local at = raft
 				+ Vector3.new(math.cos(angle) * radius, -9 - (k % 3) * 2.5, math.sin(angle) * radius)
 			local ahead = Vector3.new(-math.sin(angle) * way, 0, math.cos(angle) * way)
@@ -645,7 +659,15 @@ function LandmarkController.start()
 	end)
 	track("Sargassum", shelters, function(model: Model)
 		local base = model:GetPivot()
-		return { model = model, base = base, fish = {}, made = {}, turn = {}, phase = seedOf(base.Position) }
+		return {
+			model = model,
+			base = base,
+			fish = {},
+			made = {},
+			turn = {},
+			next = {},
+			phase = seedOf(base.Position),
+		}
 	end)
 	HuntController.findLandmark = function(mouth: Vector3, reach: number): (string?, number?)
 		return findLandmark(mouth, reach)

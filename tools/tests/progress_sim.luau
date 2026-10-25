@@ -52,15 +52,15 @@ local TUNNEL_Y = World.hub.denFloorY + World.hub.tunnelHeight / 2
 ---------------------------------------------------------------------------------
 local list, fish = Schools.list, Schools.fish
 local NS, NF = #list, Schools.COUNT
-local sCx, sCy, sCz, sRad, sEll, sH, sW, sPh, sFirst, sCount, sBound =
-	{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+local sCx, sCy, sCz, sRad, sEll, sH, sW, sPh, sFirst, sCount, sBound, sTilt =
+	{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
 local fS, fOx, fOy, fOz, fPh, fLen, fRaw, fRad, fMass, fBack = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
 local fMap = {} -- the chance a treasure map drops from it (TreasureService, by its species' mass)
 for s, school in list do
 	sCx[s], sCy[s], sCz[s] = school.center.X, school.center.Y, school.center.Z
 	sRad[s], sEll[s], sH[s], sW[s], sPh[s] =
 		school.radius, school.ellipse, school.height, school.angularSpeed, school.phase
-	sFirst[s], sCount[s] = school.first, school.count
+	sFirst[s], sCount[s], sTilt[s] = school.first, school.count, school.tilt or 1
 	local far = 0
 	for i = school.first, school.first + school.count - 1 do
 		far = math.max(far, fish[i].offset.Magnitude + fish[i].length)
@@ -83,7 +83,7 @@ local function fishPos(i: number, t: number): (number, number, number)
 	local ca, sa = math.cos(a), math.sin(a)
 	local a2 = 2 * a + sPh[s]
 	local px, py, pz = sCx[s] + ca * r, sCy[s] + math.sin(a2) * h, sCz[s] + sa * r * e
-	local vx, vy, vz = -sa * r * w, math.cos(a2) * 2 * h * w, ca * r * e * w
+	local vx, vy, vz = -sa * r * w, math.cos(a2) * 2 * h * w * sTilt[s], ca * r * e * w
 	local m = math.sqrt(vx * vx + vy * vy + vz * vz)
 	local lx, ly, lz = vx / m, vy / m, vz / m
 	local rx, rz = -lz, lx

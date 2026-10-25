@@ -65,7 +65,7 @@ local OLD_DRAW, OLD_WAVE = 520, 160
 -- SchoolController's tiers
 local FPS = 60
 local WAVE_DISTANCE, WAVE_NEAR, WAVE_HALF = 160, 30, 60
-local MOVE_STEP, MOVE_MAX, MOVE_NEAR = 0.003, 4, 40
+local MOVE_STEP, MOVE_MAX, MOVE_NEAR, PACE_TURN = 0.0042, 4, 40, 0.25
 local CULL_EVERY, OLD_CULL_EVERY = 6, 4
 
 -- The schools and fish per biome (a tide's schools apart)
@@ -108,7 +108,7 @@ for index = 1, Schools.COUNT do
 		local a = Schools.fishFrame(index, Schools.schoolFrame(fish.school, t), t)
 		local b = Schools.fishFrame(index, Schools.schoolFrame(fish.school, t + 1 / 60), t + 1 / 60)
 		local turned = math.acos(math.clamp(a.LookVector:Dot(b.LookVector), -1, 1))
-		pace = math.max(pace, ((b.Position - a.Position).Magnitude + turned * fish.length * 0.5) * 60)
+		pace = math.max(pace, ((b.Position - a.Position).Magnitude + turned * fish.length * PACE_TURN) * 60)
 	end
 	ppace[index] = pace
 	local k = key(math.floor(p.X / BIN), math.floor(p.Z / BIN))
