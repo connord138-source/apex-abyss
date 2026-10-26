@@ -62,9 +62,10 @@ local WAVE_NEAR = 30
 local WAVE_HALF = 60
 -- A drawn fish is moved every few frames when it's far enough off for how fast it
 -- moves: its step between moves never turns more than MOVE_STEP radians as seen
--- from the camera (~3.2 px on a 1080p screen; whole frames round it down, so most
+-- from the camera (~3.5 px on a 1080p screen; whole frames round it down, so most
 -- steps are ~2 px), never past every MOVE_MAX frames,
--- and every frame within MOVE_NEAR of the camera or our mouth, while it's rare,
+-- and every frame within MOVE_NEAR of the camera or our mouth (or within `eatLook` of
+-- the mouth, so a swallow is checked every frame), while it's rare,
 -- chased, sucked in, growing back or shrinking away (PC 2026-10-25: 155 ms/s in the
 -- nave, BulkMoveTo 55.7 of it, every drawn fish moved every frame; most are small
 -- slow fish 60-220 studs off). How fast is its `pace`, measured as it's drawn: how
@@ -74,10 +75,11 @@ local WAVE_HALF = 60
 -- studs/s at `speed` 5, so it stepped 4-5 px in the Reef); a gap longer than PACE_GAP
 -- (it was out of range or hidden) isn't measured. Tuned with `TEST=jump_test
 -- run_density.sh` (PC 2026-10-27: at 0.003, half the turn's arc and a 0.5 s settle,
--- held fish jumped ~1 px and moved nearly every frame, SchoolController +19-33%)
-local MOVE_STEP = 0.0042
+-- held fish jumped ~1 px and moved nearly every frame, SchoolController +19-33%;
+-- 2026-10-28 at 0.0042: median 1.5 px, 95th 2.0-2.4, so 0.0046 and MOVE_NEAR 25)
+local MOVE_STEP = 0.0046
 local MOVE_MAX = 4
-local MOVE_NEAR = 40
+local MOVE_NEAR = 25
 local PACE_SETTLE = 4
 local PACE_TURN = 0.25
 local PACE_GAP = 0.25
@@ -1575,6 +1577,7 @@ local function step(dt: number)
 			* math.max(eat.pull, 1)
 			* suction
 		+ 1
+	local mouthNear = math.max(MOVE_NEAR, eatLook)
 
 	table.clear(parts)
 	table.clear(frames)
@@ -1901,7 +1904,7 @@ local function step(dt: number)
 				local hold = 1
 				if
 					far > MOVE_NEAR
-					and mouthGap > MOVE_NEAR
+					and mouthGap > mouthNear
 					and visual.suckFrom == nil
 					and visual.chase == nil
 					and visual.fadeIn >= 1

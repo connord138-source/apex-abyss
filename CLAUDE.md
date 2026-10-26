@@ -2179,6 +2179,24 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (`track` drops an entry when its model leaves; `Instance.Parent` was 0.9 ms/s).
   - Left as is: a third pending asset, `rbxassetid://138869705317079`, logged on
     switching to the Reef Shark (one of its textures; nothing in this round uploads).
+- **The 2026-10-28 PC round (report `docs/playtests/2026-10-28-pc.md`, published as v34
+  from 04ff5fe; prey jumps (median 1.45–1.68 px, 95th 2.0–2.4, at most 0.7% over 4 px),
+  no tumbling schools (0 over 2 rad/s, was 15 Reef and 8 Kelp up to 9.75), glow lights
+  (3–4 moves in 7.2 s, was 12–37) and raft fish passed; LandmarkController at the
+  pinnacle 12.0 ms/s; SchoolController back to the 2026-10-26 level at the nave and the
+  pinnacle, 16–19% over at the galleon, rim (a Sardine Run) and ribcage (25% more fish
+  drawn); built on `claude/world` 2026-10-28):**
+  - **The PC's recs:** `MOVE_NEAR` 25 (was 40), and a fish within `eatLook` of the mouth
+    still moves every frame (`mouthNear`), so swallowing is checked every frame even with
+    Blood Sense's doubled reach; `MOVE_STEP` 0.0046 (was 0.0042; the PC offered 0.005).
+    The jump sim now also counts held fish 25–60 studs off and takes `near` per variant:
+    `MOVE_NEAR` 25 alone barely changes the moves (fish at 25–40 studs still need every
+    frame for their pace); 0.0046 is −7% moves, sim 95th 2.9 → 3.2 px (≈ 2.5 at the PC's
+    ~0.75× of the sim); 0.005 is −12% but 17–21% of jumps over 3 px (was 3%).
+    `run_density.sh` moves a frame: Kelp 144 → 135, Reef 145 → 137, Open Blue 110 → 103.
+  - **Raft fish by their own distance** (PC: within 70 studs 1.5% of still jumps went
+    over 4 px, at most 8.4): the hold comes from the fish's own place, not the raft's
+    less 15 studs (a fish 9–14 under and up to 12.5 out could be ~4 studs nearer).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3206,9 +3224,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-27-pc.md`
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-28-pc.md`
   (biome landmarks, new predators, spread and no mob, frame time near the landmarks,
-  the Megalodon's leash, the prey's move rate; published v20 to v32);
+  the Megalodon's leash, the prey's move rate; published v20 to v34);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -3267,7 +3285,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   comes back). To reach the command bar while locked: left-click the game view (a
   middle-click didn't focus it), Escape (Roblox's menu), then click the command bar
   twice. Switching species from the command bar: `Remotes.SelectSpecies:FireServer(id)`
-  in your den, then the admin's `setLevel` (PC 2026-10-27).
+  in your den, then the admin's `setLevel` (PC 2026-10-27). The Daily panel replaces an
+  open map (after `finishTutorial` the map closed under it and closing Daily relocked
+  the cursor): open the map again (M, visible) before hiding it. Run one heavy command
+  bar script at a time: a path check of thousands of samples stalls frames and spoils
+  any frame or jump measurement beside it (PC 2026-10-28).
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).

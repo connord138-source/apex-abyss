@@ -607,20 +607,20 @@ local function step(dt: number)
 		if #entry.fish == 0 then
 			buildShelter(entry)
 		end
-		-- (the nearest a fish of this raft can be: they circle up to ~15 studs out and under)
-		local near = math.max(gap - 15, 1)
 		for k, fish in entry.fish do
 			if entry.next[k] > frameCount then
 				continue
 			end
 			local radius = 5 + (k % 4) * 2.5
 			local rate = 0.7 + k * 0.05
-			entry.next[k] = frameCount
-				+ math.clamp(math.floor(near * SHELTER_STEP / (rate * radius * smoothDt)), 1, SHELTER_MAX)
 			local way = if k % 2 == 0 then 1 else -1
 			local angle = way * now * rate + k * 0.8 + entry.phase
 			local at = raft
 				+ Vector3.new(math.cos(angle) * radius, -9 - (k % 3) * 2.5, math.sin(angle) * radius)
+			-- (by its own distance: PC 2026-10-28, from the raft's, 1.5% of the steps within
+			-- 70 studs went over 4 px)
+			local hold = math.floor((at - eye).Magnitude * SHELTER_STEP / (rate * radius * smoothDt))
+			entry.next[k] = frameCount + math.clamp(hold, 1, SHELTER_MAX)
 			local ahead = Vector3.new(-math.sin(angle) * way, 0, math.cos(angle) * way)
 			table.insert(moveParts, fish)
 			table.insert(moveFrames, CFrame.lookAt(at, at + ahead) * entry.turn[k])

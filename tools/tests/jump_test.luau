@@ -16,15 +16,16 @@ local FPS = 60
 local DT = 1 / FPS
 local T0 = 137.25
 local PX_PER_RAD = 540 / math.tan(math.rad(35)) -- 1080p at the camera's 70° field of view
-local MOVE_MAX, MOVE_NEAR, PACE_GAP = 4, 40, 0.25
+local MOVE_MAX, PACE_GAP = 4, 0.25
+local CLOSE_NEAR = 25 -- (jumps are also counted 25-60 studs off: `near` 25 holds fish there)
 local BAND_NEAR, BAND_FAR = 60, 200
 local SECONDS = 2 -- still, then swimming as long
 
-type Variant = { name: string, turn: number, settle: number, step: number }
+type Variant = { name: string, turn: number, settle: number, step: number, near: number }
 local VARIANTS: { Variant } = {
-	{ name = "2026-10-26 rule (turn 0.5, settle 2, step 0.003)", turn = 0.5, settle = 2, step = 0.003 },
-	{ name = "current (turn 0.25, settle 4, step 0.0042)", turn = 0.25, settle = 4, step = 0.0042 },
-	{ name = "turn 0.25, settle 4, step 0.0045", turn = 0.25, settle = 4, step = 0.0045 },
+	{ name = "2026-10-27 rule (step 0.0042, near 40)", turn = 0.25, settle = 4, step = 0.0042, near = 40 },
+	{ name = "current (step 0.0046, near 25)", turn = 0.25, settle = 4, step = 0.0046, near = 25 },
+	{ name = "step 0.005, near 25", turn = 0.25, settle = 4, step = 0.005, near = 25 },
 }
 
 local function biomeAt(x: number, z: number): string
@@ -137,7 +138,13 @@ local function percentile(list: { number }, p: number): number
 	return list[math.clamp(math.ceil(#list * p), 1, #list)]
 end
 
-type Result = { jumps: { number }, moves: number, frames: number, slow: { [string]: { number } } }
+type Result = {
+	jumps: { number },
+	close: { number },
+	moves: number,
+	frames: number,
+	slow: { [string]: { number } },
+}
 
 -- Plays one spot under a variant: still for SECONDS, then swimming at 20 studs/s
 local function play(spot: Spot, variant: Variant, result: Result)
@@ -194,13 +201,14 @@ local function play(spot: Spot, variant: Variant, result: Result)
 			end
 			-- The jump seen from the camera, if it was held one or more frames
 			local shown = state.shown
-			if shown and since > DT * 1.5 and far >= BAND_NEAR and far <= BAND_FAR then
+			if shown and since > DT * 1.5 and far >= CLOSE_NEAR and far <= BAND_FAR then
 				local a, b = (shown - camera).Unit, (cf.Position - camera).Unit
-				table.insert(result.jumps, math.acos(math.clamp(a:Dot(b), -1, 1)) * PX_PER_RAD)
+				local jump = math.acos(math.clamp(a:Dot(b), -1, 1)) * PX_PER_RAD
+				table.insert(if far >= BAND_NEAR then result.jumps else result.close, jump)
 			end
 			state.at, state.facing, state.stepAt, state.shown = cf.Position, cf.LookVector, t, cf.Position
 			local hold = 1
-			if far > MOVE_NEAR then
+			if far > variant.near then
 				hold =
 					math.clamp(math.floor(far * variant.step / (math.max(state.pace, 1) * DT)), 1, MOVE_MAX)
 			end
@@ -230,34 +238,45 @@ print(
 )
 for _, variant in VARIANTS do
 	print(`\n{variant.name}`)
-	print("biome               jumps 60-200 studs: median  95th   over 4 px  over 3 px | moves a frame")
+	print(
+		"biome               60-200 studs: jumps  median  95th  over 4 px  over 3 px | 25-60: jumps  median  95th  over 4 px | moves a frame"
+	)
 	for _, biome in ORDER do
-		local result: Result = { jumps = {}, moves = 0, frames = 0, slow = {} }
+		local result: Result = { jumps = {}, close = {}, moves = 0, frames = 0, slow = {} }
 		for _, spot in spots do
 			if spot.biome == biome then
 				play(spot, variant, result)
 			end
 		end
-		table.sort(result.jumps)
-		local over4, over3 = 0, 0
-		for _, jump in result.jumps do
-			if jump > 4 then
-				over4 += 1
+		local function summary(list: { number }): (number, number, number, number)
+			table.sort(list)
+			local over4, over3 = 0, 0
+			for _, jump in list do
+				if jump > 4 then
+					over4 += 1
+				end
+				if jump > 3 then
+					over3 += 1
+				end
 			end
-			if jump > 3 then
-				over3 += 1
-			end
+			local n = math.max(#list, 1)
+			return percentile(list, 0.5), percentile(list, 0.95), 100 * over4 / n, 100 * over3 / n
 		end
-		local n = math.max(#result.jumps, 1)
+		local median, p95, over4, over3 = summary(result.jumps)
+		local cMedian, cP95, cOver4 = summary(result.close)
 		print(
 			string.format(
-				"%-19s %6d jumps:           %4.2f px  %4.2f   %5.1f%%     %5.1f%%   | %5.0f",
+				"%-19s %16d  %4.2f px %5.2f  %6.1f%%    %6.1f%%   | %12d  %4.2f px %5.2f  %6.1f%%   | %5.0f",
 				biome,
 				#result.jumps,
-				percentile(result.jumps, 0.5),
-				percentile(result.jumps, 0.95),
-				100 * over4 / n,
-				100 * over3 / n,
+				median,
+				p95,
+				over4,
+				over3,
+				#result.close,
+				cMedian,
+				cP95,
+				cOver4,
 				result.moves / math.max(result.frames, 1) * #spots / (SPOTS * #ORDER)
 			)
 		)
