@@ -2239,6 +2239,25 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     `Workspace.Prey` now also shows `TideBuilt` (a tide school's built fish), which falls
     to 0 within 1.5 s of a tide ending.
   - **PlaceVersion goes up by two a publish** (36 → 38): left as is (nothing to fix).
+- **The 2026-10-31 PC round (report `docs/playtests/2026-10-31-pc.md`, published as v40
+  from f0eedfe; no code changes after it, the prey's stepping is closed):**
+  - **`MOVE_NEAR` 40 passed:** at 25–40 studs every fish moves every frame (0–2
+    after-hold jumps a run, none over 4 px, Calm or Sardine Run); from 40 to 100 studs
+    no after-hold jump over 4 px in 17,408; 100–200 at most 3 a run (under 0.01%); 0
+    pops. What's still over 4 px at 25–40 is quick fish moved every frame across long
+    frames, not stepping. Kept (the PC's rec): the Blue Hole rim's `BulkMoveTo` is ~10%
+    more per drawn fish (2–4 ms/s), while SchoolController's own body and total fell
+    (nave 122 → 109 ms/s, rim 78 → 73; 0.25–0.28 ms/s a drawn fish).
+  - **The 25–40 after-hold share is no pass line any more** (nothing is held there):
+    count after-hold jumps over 4 px from 40 studs out. Part of the 2026-10-30 round's
+    25–40 tail was the PC's measuring helper counting each fish's first move after the
+    measurement began as an after-hold jump; its `pj7d` counts only holds after a move
+    it saw.
+  - **`TideBuilt`:** 252 in a Sardine Run at the nave, 180 at +0.1 s of Calm (the far
+    bait balls go at once), 0 at +2.1 s (the near ones after their 1.5 s shrink).
+  - **`Built` after a teleport** reads 360–660 for ~15 s while Detail dips to ~0.66
+    (streaming's slow frames ease the draw ranges in), then 836–893 by ~25 s; read it
+    25+ s after arriving.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3266,9 +3285,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-30-pc.md`
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-31-pc.md`
   (biome landmarks, new predators, spread and no mob, frame time near the landmarks,
-  the Megalodon's leash, the prey's move rate; published v20 to v38);
+  the Megalodon's leash, the prey's move rate; published v20 to v40);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -3334,7 +3353,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   any frame or jump measurement beside it (PC 2026-10-28). Measure with the tide in mind:
   a Sardine Run adds bait balls near the Kelp's and Reef's spots and changes every built
   count; admin `forceTide me Calm` (or `Sardine`) compares like for like and
-  `forceTide me ""` puts the tides back on the clock (PC 2026-10-29).
+  `forceTide me ""` puts the tides back on the clock (PC 2026-10-29). Count a prey jump
+  as after a hold only once that fish has been seen moving (a fish's first move after a
+  measurement starts isn't one), and read `Workspace.Prey` `Built` 25+ s after a teleport
+  (Detail dips for ~15 s while the new spot streams in; PC 2026-10-31).
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).
