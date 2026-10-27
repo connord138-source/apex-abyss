@@ -65,7 +65,7 @@ local OLD_DRAW, OLD_WAVE = 520, 160
 -- SchoolController's tiers
 local FPS = 60
 local WAVE_DISTANCE, WAVE_NEAR, WAVE_HALF = 160, 30, 60
-local MOVE_STEP, MOVE_MAX, MOVE_NEAR, PACE_TURN = 0.0046, 4, 25, 0.25
+local MOVE_STEP, MOVE_MAX, MOVE_NEAR, PACE_TURN = 0.0046, 4, 40, 0.25
 local CULL_EVERY, OLD_CULL_EVERY = 6, 4
 
 -- The schools and fish per biome (a tide's schools apart)

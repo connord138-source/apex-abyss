@@ -38,19 +38,20 @@ type Variant = {
 }
 local VARIANTS: { Variant } = {
 	{
-		name = "2026-10-28 rule (holds in frames, near 25)",
-		turn = 0.25,
-		settle = 4,
-		step = 0.0046,
-		near = 25,
-	},
-	{
-		name = "current (holds by the clock too, a tide school's near 40)",
+		name = "2026-10-29 rule (near 25, a tide school's 40)",
 		turn = 0.25,
 		settle = 4,
 		step = 0.0046,
 		near = 25,
 		tideNear = 40,
+		clock = true,
+	},
+	{
+		name = "current (near 40 for every fish)",
+		turn = 0.25,
+		settle = 4,
+		step = 0.0046,
+		near = 40,
 		clock = true,
 	},
 }

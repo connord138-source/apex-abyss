@@ -76,16 +76,16 @@ local WAVE_HALF = 60
 -- (it was out of range or hidden) isn't measured. Tuned with `TEST=jump_test
 -- run_density.sh` (PC 2026-10-27: at 0.003, half the turn's arc and a 0.5 s settle,
 -- held fish jumped ~1 px and moved nearly every frame, SchoolController +19-33%;
--- 2026-10-28 at 0.0042: median 1.5 px, 95th 2.0-2.4, so 0.0046 and MOVE_NEAR 25).
--- A hold also goes by the clock (`holdFor`): a fish moves as soon as one more frame
--- would carry it past its step, so a long frame doesn't stretch a hold (PC
--- 2026-10-29: in a Sardine Run 13-23% of frames ran over 25 ms, and a fish held
--- across one jumped 4-6 px); a tide school's fish (the Sardine Run's bait balls, tight
--- swarms of 30) are moved every frame within MOVE_NEAR_TIDE
+-- 2026-10-28 at 0.0042: median 1.5 px, 95th 2.0-2.4, so 0.0046). A hold also goes by
+-- the clock (`holdFor`): a fish moves as soon as one more frame would carry it past
+-- its step, so a long frame doesn't stretch a hold (PC 2026-10-29: in a Sardine Run
+-- 13-23% of frames ran over 25 ms, and a fish held across one jumped 4-6 px).
+-- MOVE_NEAR is 40 again (25 from 2026-10-28 to 10-30: fish held 25-40 studs off still
+-- jumped over 4 px 4-7% of the time, Sardine Run or Calm, PC 2026-10-30, and the
+-- shorter reach barely cut the moves, since fish that close need nearly every frame)
 local MOVE_STEP = 0.0046
 local MOVE_MAX = 4
-local MOVE_NEAR = 25
-local MOVE_NEAR_TIDE = 40
+local MOVE_NEAR = 40
 local PACE_SETTLE = 4
 local PACE_TURN = 0.25
 local PACE_GAP = 0.25
@@ -200,8 +200,9 @@ local smoothDt = 1 / 60
 local frameCount = 0
 local wanted: { { index: number, away: number } } = {}
 local drawList: { number } = {}
--- (a readout on the Prey folder for play tests: Detail, Built, Drawn, once a second)
+-- (a readout on the Prey folder for play tests: Detail, Built, TideBuilt, Drawn, once a second)
 local builtCount = 0
+local tideBuilt = 0 -- (of those, a tide school's: the Sardine Run's bait balls)
 local drawnCount = 0
 local biggestRadius = 0 -- the biggest prey's radius (`eatLook`)
 local readoutAt = 0
@@ -1513,6 +1514,9 @@ local function buildSchool(schoolIndex: number, now: number, started: number)
 		local visual = makeVisual(index)
 		visuals[index] = visual
 		builtCount += 1
+		if school.tide then
+			tideBuilt += 1
+		end
 		local back = backAts[index]
 		if back and back > now then
 			visual.backAt = back
@@ -1538,6 +1542,9 @@ local function releaseSchool(schoolIndex: number)
 		end
 		visuals[index] = nil
 		builtCount -= 1
+		if school.tide then
+			tideBuilt -= 1
+		end
 		clearLook(index, visual)
 		if visual.chase then
 			visual.chase.glow:Destroy()
@@ -1911,7 +1918,7 @@ local function step(dt: number)
 				-- Held a few frames when it's far enough off for that pace (MOVE_STEP)
 				local hold = 1
 				if
-					far > (if school.tide then MOVE_NEAR_TIDE else MOVE_NEAR)
+					far > MOVE_NEAR
 					and mouthGap > mouthNear
 					and visual.suckFrom == nil
 					and visual.chase == nil
@@ -2081,6 +2088,7 @@ local function step(dt: number)
 		readoutAt = now + 1
 		folder:SetAttribute("Detail", math.floor(detail * 100 + 0.5) / 100)
 		folder:SetAttribute("Built", builtCount)
+		folder:SetAttribute("TideBuilt", tideBuilt)
 		folder:SetAttribute("Drawn", drawnCount)
 	end
 	drawnCount = 0

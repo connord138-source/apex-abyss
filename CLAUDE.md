@@ -2219,6 +2219,26 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     raft fish moving less often than the round before (every 1.4 frames, was 1.1–1.3),
     so the rise isn't them; the pinnacle has read 13.0 / 16.6 / 12.0 / 14.2 over four
     rounds. A 2-frame floor would double the step of a fish 20–40 studs off (~6–9 px).
+- **The 2026-10-30 PC round (report `docs/playtests/2026-10-30-pc.md`, published as v38
+  from 0f847d2; bait balls 40–60 studs (0.8% over 4 px still, 0% swimming, was 1.5–3.6%),
+  prey jumps from 40 studs out everywhere (median 1.45–1.79 px, at most 0.5% over 4 px),
+  no pops, and SchoolController 0.20–0.30 ms/s a drawn fish passed; LandmarkController
+  at the pinnacle 10.4 ms/s; built on `claude/world` 2026-10-30):**
+  - **`MOVE_NEAR` 40 for every fish** (the PC's rec; `MOVE_NEAR_TIDE` folded back in):
+    held fish 25–40 studs off still jumped over 4 px 4.3–7.0% of the time on a forced
+    Calm and 5.1–5.3% in a Sardine Run (aim under ~2%), ordinary Minnows and Sardines
+    held across a long frame. The density sim's moves a frame are unchanged (Kelp 135,
+    Reef 137, Open Blue 103) and the jump sim's 130 / 215 / 148 (the 10-29 rule 129 /
+    215 / 148); fish that close need nearly every frame for their pace anyway.
+  - **Bait balls are let go** (the PC's 1,165 built at the nave on the Calm after a
+    Sardine Run, against 807–885 before): the tide release (`tideFade`, `releaseSchool`)
+    was already right. Only 3 bait balls (108 fish) lie within reach of the nave; the
+    rest is ordinary schools kept by `RELEASE_SLACK` 90 after the PJ5 swim (a sim of the
+    nave: ~1,000 fish on arriving, 1,025–1,180 after an 8 s swim at 20 studs/s, up to
+    1,557 within reach + 90). The earlier 807–885 came on arriving, at Detail 0.96–1.0.
+    `Workspace.Prey` now also shows `TideBuilt` (a tide school's built fish), which falls
+    to 0 within 1.5 s of a tide ending.
+  - **PlaceVersion goes up by two a publish** (36 → 38): left as is (nothing to fix).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3246,9 +3266,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-29-pc.md`
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-30-pc.md`
   (biome landmarks, new predators, spread and no mob, frame time near the landmarks,
-  the Megalodon's leash, the prey's move rate; published v20 to v36);
+  the Megalodon's leash, the prey's move rate; published v20 to v38);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
