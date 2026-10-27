@@ -6,7 +6,10 @@
 -- at 60 fps from busy camera spots in each biome and prints the median, 95th
 -- percentile and share over 4 px of those jumps, and the moves a frame, for the
 -- current rule and the variants in VARIANTS (keep `current` in step with
--- SchoolController).
+-- SchoolController). A second pass plays a Sardine Run (its bait balls are tide
+-- schools, left out of the first) at the Kelp's and Reef's spots nearest them, with
+-- frame hitches (every HITCH_EVERY-th frame twice as long), 25-40 and 40-60 studs
+-- apart (PC 2026-10-29: held there under `near` 25, the bait balls' fish stepped).
 local Config = require("./Config")
 local Seafloor = require("./Seafloor")
 local Schools = require("./Schools")
@@ -21,12 +24,38 @@ local CLOSE_NEAR = 25 -- (jumps are also counted 25-60 studs off: `near` 25 hold
 local BAND_NEAR, BAND_FAR = 60, 200
 local SECONDS = 2 -- still, then swimming as long
 
-type Variant = { name: string, turn: number, settle: number, step: number, near: number }
-local VARIANTS: { Variant } = {
-	{ name = "2026-10-27 rule (step 0.0042, near 40)", turn = 0.25, settle = 4, step = 0.0042, near = 40 },
-	{ name = "current (step 0.0046, near 25)", turn = 0.25, settle = 4, step = 0.0046, near = 25 },
-	{ name = "step 0.005, near 25", turn = 0.25, settle = 4, step = 0.005, near = 25 },
+-- (`tideNear`: the `near` of a tide school's fish, if not `near`; `clock`: a hold also
+-- ends as soon as one more frame would carry the fish past its step, SchoolController's
+-- `holdFor`)
+type Variant = {
+	name: string,
+	turn: number,
+	settle: number,
+	step: number,
+	near: number,
+	tideNear: number?,
+	clock: boolean?,
 }
+local VARIANTS: { Variant } = {
+	{
+		name = "2026-10-28 rule (holds in frames, near 25)",
+		turn = 0.25,
+		settle = 4,
+		step = 0.0046,
+		near = 25,
+	},
+	{
+		name = "current (holds by the clock too, a tide school's near 40)",
+		turn = 0.25,
+		settle = 4,
+		step = 0.0046,
+		near = 25,
+		tideNear = 40,
+		clock = true,
+	},
+}
+local TIDE = "Sardine" -- the tide the second pass plays
+local HITCH_EVERY = 5
 
 local function biomeAt(x: number, z: number): string
 	local r, angle = Seafloor.polar(x, z)
@@ -75,7 +104,8 @@ end
 local p0: { [number]: Vector3 } = {}
 for index = 1, Schools.COUNT do
 	local fish = Schools.fish[index]
-	if Schools.list[fish.school].tide then
+	local tide = Schools.list[fish.school].tide
+	if tide and tide ~= TIDE then
 		continue
 	end
 	local p = Schools.position(index, T0)
@@ -84,14 +114,18 @@ for index = 1, Schools.COUNT do
 	bins[k] = bins[k] or {}
 	table.insert(bins[k], index)
 end
-local function near(at: Vector3, radius: number): { number }
+-- (the fish within `radius`; a tide school's only with `tide`)
+local function near(at: Vector3, radius: number, tide: boolean?): { number }
 	local out = {}
 	local span = math.ceil(radius / BIN)
 	local bx, bz = math.floor(at.X / BIN), math.floor(at.Z / BIN)
 	for ix = bx - span, bx + span do
 		for iz = bz - span, bz + span do
 			for _, index in bins[key(ix, iz)] or {} do
-				if (p0[index] - at).Magnitude <= radius then
+				if
+					(p0[index] - at).Magnitude <= radius
+					and (tide or Schools.list[Schools.fish[index].school].tide == nil)
+				then
 					table.insert(out, index)
 				end
 			end
@@ -131,6 +165,37 @@ for _, biome in ORDER do
 	end
 end
 
+-- The Sardine Run's spots: in the Kelp and the Reef, the SPOTS with the most bait-ball
+-- fish 25-100 studs off
+local tideSpots: { Spot } = {}
+for _, biome in { "KelpShallows", "CoralReef" } do
+	local found: { { at: Vector3, fish: { number }, count: number } } = {}
+	for gx = -1500, 1500, 50 do
+		for gz = -1500, 1500, 50 do
+			local r = math.sqrt(gx * gx + gz * gz)
+			if r < 150 or r > 1480 or biomeAt(gx, gz) ~= biome then
+				continue
+			end
+			local at = Vector3.new(gx, Seafloor.y(gx, gz) + HEIGHT[biome], gz)
+			local list = near(at, BAND_FAR + 40, true)
+			local count = 0
+			for _, index in list do
+				local d = (p0[index] - at).Magnitude
+				if d >= CLOSE_NEAR and d <= 100 and Schools.list[Schools.fish[index].school].tide then
+					count += 1
+				end
+			end
+			table.insert(found, { at = at, fish = list, count = count })
+		end
+	end
+	table.sort(found, function(a, b)
+		return a.count > b.count
+	end)
+	for i = 1, math.min(SPOTS, #found) do
+		table.insert(tideSpots, { biome = biome, at = found[i].at, fish = found[i].fish })
+	end
+end
+
 local function percentile(list: { number }, p: number): number
 	if #list == 0 then
 		return 0
@@ -138,16 +203,21 @@ local function percentile(list: { number }, p: number): number
 	return list[math.clamp(math.ceil(#list * p), 1, #list)]
 end
 
+-- (`close` 25-60 studs, `closeA` 25-40 and `closeB` 40-60 of it)
 type Result = {
 	jumps: { number },
 	close: { number },
+	closeA: { number },
+	closeB: { number },
 	moves: number,
 	frames: number,
 	slow: { [string]: { number } },
 }
 
 -- Plays one spot under a variant: still for SECONDS, then swimming at 20 studs/s
-local function play(spot: Spot, variant: Variant, result: Result)
+-- (with `hitches`, every HITCH_EVERY-th frame takes two; holds go by the eased frame
+-- time, as in SchoolController)
+local function play(spot: Spot, variant: Variant, result: Result, hitches: boolean?)
 	local swimDir = Vector3.new(1, 0, 0.3).Unit
 	type State = {
 		pace: number,
@@ -155,6 +225,8 @@ local function play(spot: Spot, variant: Variant, result: Result)
 		facing: Vector3?,
 		stepAt: number,
 		holdUntil: number,
+		movedFrame: number,
+		holdFor: number,
 		shown: Vector3?,
 	}
 	local states: { [number]: State } = {}
@@ -166,19 +238,29 @@ local function play(spot: Spot, variant: Variant, result: Result)
 			facing = nil,
 			stepAt = -1,
 			holdUntil = 0,
+			movedFrame = 0,
+			holdFor = 0,
 			shown = nil,
 		}
 	end
 	local frames = SECONDS * 2 * FPS
+	local t, swum, smoothDt = T0, 0, DT
 	for frame = 1, frames do
-		local t = T0 + frame * DT
+		local dt = if hitches and frame % HITCH_EVERY == 0 then 2 * DT else DT
+		t += dt
+		smoothDt += (dt - smoothDt) * math.min(1, dt * 0.6)
 		local swimming = frame > SECONDS * FPS
-		local camera = spot.at
-			+ (if swimming then swimDir * 20 * (frame - SECONDS * FPS) * DT else Vector3.zero)
+		if swimming then
+			swum += 20 * dt
+		end
+		local camera = spot.at + swimDir * swum
 		local moves = 0
 		for _, index in spot.fish do
 			local state = states[index]
-			if state.holdUntil > frame then
+			if
+				state.holdUntil > frame
+				and (not variant.clock or t - state.stepAt + smoothDt <= state.holdFor)
+			then
 				continue
 			end
 			local fish = Schools.fish[index]
@@ -201,18 +283,31 @@ local function play(spot: Spot, variant: Variant, result: Result)
 			end
 			-- The jump seen from the camera, if it was held one or more frames
 			local shown = state.shown
-			if shown and since > DT * 1.5 and far >= CLOSE_NEAR and far <= BAND_FAR then
+			if shown and frame - state.movedFrame > 1 and far >= CLOSE_NEAR and far <= BAND_FAR then
 				local a, b = (shown - camera).Unit, (cf.Position - camera).Unit
 				local jump = math.acos(math.clamp(a:Dot(b), -1, 1)) * PX_PER_RAD
-				table.insert(if far >= BAND_NEAR then result.jumps else result.close, jump)
+				if far >= BAND_NEAR then
+					table.insert(result.jumps, jump)
+				else
+					table.insert(result.close, jump)
+					table.insert(if far < 40 then result.closeA else result.closeB, jump)
+				end
 			end
 			state.at, state.facing, state.stepAt, state.shown = cf.Position, cf.LookVector, t, cf.Position
+			state.movedFrame = frame
 			local hold = 1
-			if far > variant.near then
-				hold =
-					math.clamp(math.floor(far * variant.step / (math.max(state.pace, 1) * DT)), 1, MOVE_MAX)
+			local nearFor = if Schools.list[fish.school].tide
+				then variant.tideNear or variant.near
+				else variant.near
+			if far > nearFor then
+				hold = math.clamp(
+					math.floor(far * variant.step / (math.max(state.pace, 1) * smoothDt)),
+					1,
+					MOVE_MAX
+				)
 			end
 			state.holdUntil = frame + hold
+			state.holdFor = if hold > 1 then far * variant.step / math.max(state.pace, 1) else 0
 			if far >= 100 and far <= 150 then
 				local list = result.slow[fish.prey]
 				if list == nil then
@@ -225,6 +320,21 @@ local function play(spot: Spot, variant: Variant, result: Result)
 		result.moves += moves
 		result.frames += 1
 	end
+end
+
+local function summary(list: { number }): (number, number, number, number)
+	table.sort(list)
+	local over4, over3 = 0, 0
+	for _, jump in list do
+		if jump > 4 then
+			over4 += 1
+		end
+		if jump > 3 then
+			over3 += 1
+		end
+	end
+	local n = math.max(#list, 1)
+	return percentile(list, 0.5), percentile(list, 0.95), 100 * over4 / n, 100 * over3 / n
 end
 
 print(
@@ -242,25 +352,12 @@ for _, variant in VARIANTS do
 		"biome               60-200 studs: jumps  median  95th  over 4 px  over 3 px | 25-60: jumps  median  95th  over 4 px | moves a frame"
 	)
 	for _, biome in ORDER do
-		local result: Result = { jumps = {}, close = {}, moves = 0, frames = 0, slow = {} }
+		local result: Result =
+			{ jumps = {}, close = {}, closeA = {}, closeB = {}, moves = 0, frames = 0, slow = {} }
 		for _, spot in spots do
 			if spot.biome == biome then
 				play(spot, variant, result)
 			end
-		end
-		local function summary(list: { number }): (number, number, number, number)
-			table.sort(list)
-			local over4, over3 = 0, 0
-			for _, jump in list do
-				if jump > 4 then
-					over4 += 1
-				end
-				if jump > 3 then
-					over3 += 1
-				end
-			end
-			local n = math.max(#list, 1)
-			return percentile(list, 0.5), percentile(list, 0.95), 100 * over4 / n, 100 * over3 / n
 		end
 		local median, p95, over4, over3 = summary(result.jumps)
 		local cMedian, cP95, cOver4 = summary(result.close)
@@ -296,5 +393,44 @@ for _, variant in VARIANTS do
 				print("    frames a move at 100-150 studs: " .. table.concat(parts, ", "))
 			end
 		end
+	end
+end
+
+-- The Sardine Run's bait balls, with hitches
+print(
+	`\n{TIDE} tide, the Kelp's and Reef's spots nearest its bait balls, every {HITCH_EVERY}th frame a hitch`
+)
+for _, variant in VARIANTS do
+	print(`\n{variant.name}`)
+	print(
+		"biome               25-40: jumps median  95th  over 4 px | 40-60: jumps median  95th  over 4 px | 60-200: median  over 4 px"
+	)
+	for _, biome in { "KelpShallows", "CoralReef" } do
+		local result: Result =
+			{ jumps = {}, close = {}, closeA = {}, closeB = {}, moves = 0, frames = 0, slow = {} }
+		for _, spot in tideSpots do
+			if spot.biome == biome then
+				play(spot, variant, result, true)
+			end
+		end
+		local aMedian, aP95, aOver4 = summary(result.closeA)
+		local bMedian, bP95, bOver4 = summary(result.closeB)
+		local median, _, over4 = summary(result.jumps)
+		print(
+			string.format(
+				"%-19s %11d  %4.2f %5.2f  %6.1f%%   | %11d  %4.2f %5.2f  %6.1f%%   | %10.2f  %6.1f%%",
+				biome,
+				#result.closeA,
+				aMedian,
+				aP95,
+				aOver4,
+				#result.closeB,
+				bMedian,
+				bP95,
+				bOver4,
+				median,
+				over4
+			)
+		)
 	end
 end

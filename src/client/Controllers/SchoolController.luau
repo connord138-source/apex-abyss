@@ -76,10 +76,16 @@ local WAVE_HALF = 60
 -- (it was out of range or hidden) isn't measured. Tuned with `TEST=jump_test
 -- run_density.sh` (PC 2026-10-27: at 0.003, half the turn's arc and a 0.5 s settle,
 -- held fish jumped ~1 px and moved nearly every frame, SchoolController +19-33%;
--- 2026-10-28 at 0.0042: median 1.5 px, 95th 2.0-2.4, so 0.0046 and MOVE_NEAR 25)
+-- 2026-10-28 at 0.0042: median 1.5 px, 95th 2.0-2.4, so 0.0046 and MOVE_NEAR 25).
+-- A hold also goes by the clock (`holdFor`): a fish moves as soon as one more frame
+-- would carry it past its step, so a long frame doesn't stretch a hold (PC
+-- 2026-10-29: in a Sardine Run 13-23% of frames ran over 25 ms, and a fish held
+-- across one jumped 4-6 px); a tide school's fish (the Sardine Run's bait balls, tight
+-- swarms of 30) are moved every frame within MOVE_NEAR_TIDE
 local MOVE_STEP = 0.0046
 local MOVE_MAX = 4
 local MOVE_NEAR = 25
+local MOVE_NEAR_TIDE = 40
 local PACE_SETTLE = 4
 local PACE_TURN = 0.25
 local PACE_GAP = 0.25
@@ -143,6 +149,7 @@ type Visual = {
 	pace: number, -- studs a second it moves on screen (MOVE_STEP), its `speed` at first
 	swimRate: number, -- radians a second its spine wave runs
 	holdUntil: number, -- frameCount until which it's held where it is
+	holdFor: number, -- and seconds it may stay held (MOVE_STEP at its pace)
 	far: number, -- how far off it was last drawn
 	lit: Color3?, -- its glow light's colour while it has one shown (GLOW_LIGHTS)
 	waveFrame: number, -- frameCount its wave was last set
@@ -1138,6 +1145,7 @@ local function makeVisual(index: number): Visual
 		pace = prey.speed,
 		swimRate = 2 * math.pi * (0.9 + prey.speed * 0.22),
 		holdUntil = 0,
+		holdFor = 0,
 		far = 0,
 		lit = nil,
 		waveFrame = 0,
@@ -1708,7 +1716,7 @@ local function step(dt: number)
 			end
 			-- Held between moves (`holdUntil`, set as it's drawn below: MOVE_STEP), it stays
 			-- where it was, its glow light still picked (by where the camera is now)
-			if visual.holdUntil > frameCount then
+			if visual.holdUntil > frameCount and now - visual.stepAt + smoothDt <= visual.holdFor then
 				drawnCount += 1
 				local lit, at = visual.lit, visual.at
 				if lit and at then
@@ -1903,7 +1911,7 @@ local function step(dt: number)
 				-- Held a few frames when it's far enough off for that pace (MOVE_STEP)
 				local hold = 1
 				if
-					far > MOVE_NEAR
+					far > (if school.tide then MOVE_NEAR_TIDE else MOVE_NEAR)
 					and mouthGap > mouthNear
 					and visual.suckFrom == nil
 					and visual.chase == nil
@@ -1918,6 +1926,7 @@ local function step(dt: number)
 					)
 				end
 				visual.holdUntil = frameCount + hold - 1
+				visual.holdFor = if hold > 1 then far * MOVE_STEP / math.max(visual.pace, 1) else 0
 				local elapsed = math.min(since, 0.5)
 				table.insert(parts, visual.body)
 				local tail = visual.tail

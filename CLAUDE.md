@@ -2197,6 +2197,28 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Raft fish by their own distance** (PC: within 70 studs 1.5% of still jumps went
     over 4 px, at most 8.4): the hold comes from the fish's own place, not the raft's
     less 15 studs (a fish 9–14 under and up to 12.5 out could be ~4 studs nearer).
+- **The 2026-10-29 PC round (report `docs/playtests/2026-10-29-pc.md`, published as v36
+  from 3888d0a; eating (Blood Sense too), raft fish within 70 studs (0.5% over 4 px, was
+  1.5%) and prey jumps from 60 studs out (median 1.55–1.86 px, at most 0.1% over 4 px)
+  passed; `BulkMoveTo` −8% at the rim like for like, −12 to −21% elsewhere; built on
+  `claude/world` 2026-10-29):**
+  - **Bait balls stepped in a Sardine Run** (PC: at 25–40 studs 14–20% of jumps over 4 px
+    on a forced Sardine Run, 0.2–0.4% on Calm; 13–23% of frames over 25 ms): a hold was
+    counted in frames, so a fish held across a long frame caught up by more than its
+    step. A hold now also goes by the clock (`holdFor`: the fish moves as soon as one
+    more frame would carry it past its step, `now - stepAt + smoothDt`; the frame cap
+    stays, so a clock correction can't freeze a fish), and a tide school's fish move
+    every frame within `MOVE_NEAR_TIDE` 40 (the PC's rec). **The jump sim's second
+    pass** plays a Sardine Run (tide schools, which the first pass leaves out) at the
+    Kelp's and Reef's spots nearest the bait balls with a hitch every 5th frame, 25–40
+    and 40–60 apart: over 4 px Kelp 40–60 8.7 → 5.4%, Reef 4.1 → 0.3%, 60–200 1.3–1.7 →
+    0.5–0.6%; without hitches nothing changes (moves a frame the same). What's left is
+    the hitch frame's own motion, which a fish moved every frame makes too.
+  - **Not taken:** the PC's other rec, raft fish within 70 studs at most every 2nd frame
+    (LandmarkController at the pinnacle 12.0 → 14.2 ms/s). The PC's own RF3 has the near
+    raft fish moving less often than the round before (every 1.4 frames, was 1.1–1.3),
+    so the rise isn't them; the pinnacle has read 13.0 / 16.6 / 12.0 / 14.2 over four
+    rounds. A 2-frame floor would double the step of a fish 20–40 studs off (~6–9 px).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3224,9 +3246,9 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   batch and its follow-ups, rounds 1–3, published v15 and v17; the PC tests, then publishes), `2026-10-19-pc*.md` (pace, Ruins, prey batches,
   den props; round 3's brief covers the world-and-life batch; that round the PC publishes and Connor tests himself), `2026-10-18-pc.md` (SK4, the plume
   marker, the Vents floor, effects and trails, phone text; AB1 and TR1 on two
-  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-28-pc.md`
+  clients via Test → Clients and Servers), `2026-10-21-pc*.md` to `2026-10-29-pc.md`
   (biome landmarks, new predators, spread and no mob, frame time near the landmarks,
-  the Megalodon's leash, the prey's move rate; published v20 to v34);
+  the Megalodon's leash, the prey's move rate; published v20 to v36);
   briefs for the PC session sit beside them as `*-brief.md`).
 - A BillboardGui's `StudsOffsetWorldSpace` is in the adornee's own frame: on a part
   turned on its side (the garden's Sand cylinder) "up" goes sideways. Convert with
@@ -3289,7 +3311,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   open map (after `finishTutorial` the map closed under it and closing Daily relocked
   the cursor): open the map again (M, visible) before hiding it. Run one heavy command
   bar script at a time: a path check of thousands of samples stalls frames and spoils
-  any frame or jump measurement beside it (PC 2026-10-28).
+  any frame or jump measurement beside it (PC 2026-10-28). Measure with the tide in mind:
+  a Sardine Run adds bait balls near the Kelp's and Reef's spots and changes every built
+  count; admin `forceTide me Calm` (or `Sardine`) compares like for like and
+  `forceTide me ""` puts the tides back on the clock (PC 2026-10-29).
 - Custom fish character lessons: Roblox's `PlayerModule` is not inserted (so the
   move vector comes from `Input`), and ProximityPrompts never showed or triggered
   for it (so interactions use our own distance checks and hints).
