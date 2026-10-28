@@ -2306,7 +2306,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Shark's variant; PredatorController falls back to VariantModels after PreyModels)
     with a Jaw, else a part-built stand-in. LandmarkController's decorative
     hammerheads are gone. Sim: a still LV 70 fish bitten 12/12, a fleeing Nibbler
-    7/12, a Dash beats 66% of strikes, a LV 85 fish is left alone.
+    9/12 (a LV 70 'Cuda 4/12), a Dash beats ~80% of strikes, a LV 85 fish is left
+    alone.
   - **Wolf Eels never pivot on a fish:** a tethered hunter measures facing from its
     middle for a fish within half its length (one lying along its snout, between its
     middle and jaws, counted as behind it), and slides on past a fish at its middle
@@ -2354,6 +2355,26 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     ~3,000–3,260 parts over five seeds (`PARTS_CAP` 3,300). Preview views `chimney`
     and `chimney2`; `render_hub.py` skips the builder's `B|` view-box lines (every
     `run_vents.sh` render crashed on them).
+  - **Parts fitted to each fish** (`src/shared/PartFit.luau`; owner: "veil tail doesnt
+    make sense on the shark ... The parts need to shape to the fish and change their
+    appearance to fit"): each part model has, per fish, an attach point, pitch, length
+    and per-axis stretch (the `ANCHORS` table moved here from Cosmetics; a fish with
+    no entry keeps the old placement), and its texture is multiplied toward the fish's
+    colours (the worn shade's, else the fish model's own, measured into
+    `PartFit.LOOKS`; `PartSpec` `tint`/`glow`), glow bits taking the shade's glow. Veil
+    Tail: a long narrow streamer sweeping off the forked tail on the Reef Shark and
+    'Cuda, a ribbon off the Moray's tail tip, the betta fan round the Nibbler's,
+    Puffer's and Angler's own tail (20% see-through); its sleeve is sunk in the stalk.
+    Sail Fin: its foot sunk into the back, rising out of each fish's own dorsal.
+    Narwhal Horn: the base buried, a slimmer bill on the slender fish, under the
+    Angler's bulb. Sawblade Snout: the model was the wrong way round (`reversed` in
+    code), its root at the mouth, lightly tinted so its teeth stay white. Angler Lure:
+    behind the eyes, sized to the head, over the Angler's own lure. A multiply only
+    darkens: blue parts read slate on grey fish and stay blue on orange ones. Preview:
+    `bash tools/preview/run_parts.sh` (PartFit in the luau CLI, `parts_preview.py` in
+    Blender; `colours` re-measures). Variant bodies use their species' fit. A real
+    per-fish redesign (greyscale tintable textures, a streamer cut, a dorsal-integrated
+    sail, an Angler-only crystal lure) would need a concept board.
   - **Dens:** the expansion and passive-income design is a proposal for the owner
     (`docs/proposals/2026-10-28-den-expansion.md`: Wings, the Aquarium, Open Plan, den
     hearts); nothing of it is built.
