@@ -2376,9 +2376,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Blender; `colours` re-measures). Variant bodies use their species' fit. A real
     per-fish redesign (greyscale tintable textures, a streamer cut, a dorsal-integrated
     sail, an Angler-only crystal lure) would need a concept board.
-  - **Dens:** the expansion and passive-income design is a proposal for the owner
-    (`docs/proposals/2026-10-28-den-expansion.md`: Wings, the Aquarium, Open Plan, den
-    hearts); nothing of it is built.
+  - **Parts as mutations (owner, 2026-10-28, of the shark's Veil Tail: "dont like how
+    any of these look. theyre not a part of the fish like we need. think mutation or
+    variant"; concept art approved):** `assets/concepts/parts_v2/<Fish>.jpg` (and
+    `AllFish.jpg`) redraw each fish with each of the five parts grown out of its own
+    body and skin (`tools/props/parts_v2_board.py`, sheets
+    `tools/tripo_jobs_parts_v2_concepts.json`, Nano Banana Pro on each fish's own model
+    sheet). Waiting on the owner's picks before any 3D; weak cells: the Moray's saw and
+    the shark's horn. Recolour any open mouth's inside (Tripo paints it mauve) before 3D.
+    The plan once picked: each part a per-fish model (or a body variant), not one model
+    fitted to six fish.
+  - **Dens:** the expansion was approved and built (see "Den expansion" below).
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
@@ -3136,7 +3144,48 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     it reads NAME'S LEVEL now, the worn title under it) show the count. Owners carry
     `DenIndex`/`DenHearts`/`DenFramed` player attributes for visitors' clients. Hearts
     are drawn from frames (`Ui.heart`), never an emoji. Admin: 5 hearts, admire again
-    today, the frame on/off. Test: `tools/tests/run_hearts.sh`.
+    today, the frame on/off. Test: `tools/tests/run_hearts.sh`. The den menu has a
+    Hearts row (the count, the frame).
+  - **Wings** (§1; `Config/Dens` `wings`, `wingSlots`, `wing`): a Sanctum opens four
+    doorways off the main storey (FrontLeft/FrontRight off the Nook at z 0,
+    BackLeft/BackRight off the Burrow at z −78), each a semicircular passage
+    (`passage` 14 long, half-width 8) into a room running across the den. Five kinds,
+    **one of each** (four slots, so the choice is which to leave out): Aquarium Hall
+    250k (8 more tanks), Trophy Gallery 250k (biggest catches and boss trophies on
+    plinths, `trophiesOf` `gallery`), Grotto Pool 400k (a second Haul Pool to bank at,
+    `DenWings.pools`, HuntService; bubble falls), Observatory 600k (a domed room whose
+    far wall is thinned to `WINDOW_WALL` 8 with a round window onto open water: sand,
+    rocks, and AquariumController's diorama of a humpback, mantas, jellies and a
+    school), Great Hall 900k (+90 capacity, a high vault, chandeliers); +40 capacity
+    each otherwise. A swap costs the new price less half the old (`refund` 0.5); taking
+    one down gives half back; what was in it goes to the tray. The den's shape is
+    `DenSpace.Shape` `{ level, wings?, open? }` (every DenSpace function takes a level
+    or a shape; `DenSpace.key` caches by it); `DenCarve.wings` cuts them after the
+    house (arches, rock put back only outside the house, then the room boxes, Air ops
+    twice) and `outside` clears the water beside the block for the Observatory's view.
+    `Layout.DEN_EXTENT` grew to half 156, top 64. Request `DenWing(slot, wing)`, the den
+    menu's Wings rows and picker.
+  - **Open Plan** (§2; `openPlan` 75,000 coral, Hall and up): bought once, switched on
+    or off; each storey's rooms widen to its widest + 8 and the pillars go. Things in
+    a wing move with it; the house's wall and ceiling things that no longer fit go to
+    the tray. Request `DenOpenPlan(on)`.
+  - **The Aquarium** (§4; `Config/Dens` `aquarium`, `Shared/Aquarium`,
+    `AquariumService`, `DenWings.tanks`, `AquariumController`): wall tanks down the main
+    storey's sides (`base` 2 + the den's level, up to 8), 8 more with the Aquarium
+    Hall. A tank shows one rare catch from your Catch Log (as many tanks of one catch
+    as you've caught), swimming in it, and earns an hour by rarity: Silver 15 coral /
+    0.5 shells, Golden 45 / 1, Glowing 120 / 2, Crystal 300 / 4, Prism 700 / 8; online
+    or off, up to 12 h of it (`data.aquarium`). Collected by swimming within 16 studs of
+    a stocked tank in your own den (every 30 s), or COLLECT ALL; "while you were away"
+    after 10 min. Feeding: once a UTC day, 1 Kelp Shallows DNA a stocked tank, ×1.5 the
+    rest of that day. Tank ids are `base<n>` and `<slot><n>`. Requests
+    `AquariumStock(tank, prey, rarity)` ("" empties), `AquariumCollect`, `AquariumFeed`;
+    state `aquarium`. Test: `tools/tests/run_aquarium.sh` (a full Prism aquarium, 15
+    tanks: 10,500 coral an hour, 126k per 12 h).
+  - Admin: wings all / none, each slot's wing, Open Plan on/off, aquarium grow hours,
+    stock every tank (rarest caught, or any, logged).
+  - Checks: `run_dens.sh` covers the wings (fit inside the block, apart from each
+    other and the Observatory's sea, paths through the passages, unique tank ids).
 
 ## Tech
 

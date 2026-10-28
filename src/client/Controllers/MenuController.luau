@@ -749,22 +749,36 @@ local function denWingPicker(list: ScrollingFrame, next: () -> number, den: any,
 	end
 	for _, wing in Dens.wings do
 		local here = current ~= nil and current.id == wing.id
+		-- One of each kind: a wing built in another doorway can't be built here too
+		local elsewhere: string? = nil
+		for other, id in wings do
+			if other ~= slotId and id == wing.id then
+				local where = Dens.wingSlotsById[other]
+				elsewhere = if where then where.name else other
+			end
+		end
 		local tier = Config.Tiers.byId[wing.tier]
 		local refund = if current and not here then math.floor(current.price * Dens.wing.refund) else 0
+		local net = math.max(0, wing.price - refund)
 		local _, button = row(
 			list,
 			next(),
 			`Pick{wing.id}`,
 			wing.name,
-			if refund > 0
-				then `{wing.blurb} · the {current and current.name or ""} comes down for {Ui.number(refund)} coral back`
+			if elsewhere
+				then `Built in the {string.lower(elsewhere)} doorway · one of each kind`
+				elseif
+					refund > 0
+				then `{wing.blurb} · the {current and current.name or ""} comes down for {Ui.number(
+					refund
+				)} coral back`
 				else wing.blurb,
 			`holds +{wing.capacity}`,
-			if here then "BUILT" else coralText(wing.price),
-			if here then "disabled" else priceStyle(math.max(0, wing.price - refund)),
+			if here then "BUILT" elseif elsewhere then "BUILT" else coralText(net),
+			if here or elsewhere then "disabled" else priceStyle(net),
 			if tier then tier.color else nil
 		)
-		if button and not here then
+		if button and not here and not elsewhere then
 			button.Activated:Connect(function()
 				ClientState.request("DenWing", slotId, wing.id)
 				pickingSlot = nil
@@ -795,10 +809,10 @@ end
 
 local function tankName(id: string): string
 	local n = string.match(id, "%d+")
-	if string.sub(id, 1, 4) == "hall" then
-		return `Hall tank {n or ""}`
+	if string.sub(id, 1, 4) == "base" then
+		return `Wall tank {n or ""}`
 	end
-	return `Wall tank {n or ""}`
+	return `Hall tank {n or ""}`
 end
 
 -- The aquarium (Config/Dens aquarium, Shared/Aquarium): what's waiting (COLLECT),
@@ -1165,6 +1179,24 @@ local function denRows(list: ScrollingFrame, shopOnly: boolean?)
 			end
 		end)
 	end
+	-- Den hearts (HeartService): what visitors gave, and this week's gold frame
+	local hearts = if typeof(den.hearts) == "number" then den.hearts else 0
+	local heartsRow = row(
+		list,
+		next(),
+		"Hearts",
+		`{Ui.number(hearts)} {if hearts == 1 then "heart" else "hearts"} from visitors`,
+		if s.denFramed
+			then "A Best Dens top 3 last week: your signs wear the gold frame"
+			else "Visitors admire a den once a day · the week's top 3 Best Dens get a gold frame",
+		if s.denFramed then "GOLD FRAME" else nil,
+		nil,
+		nil,
+		Ui.HEART
+	)
+	local glyph = Ui.heart(heartsRow, 22)
+	glyph.AnchorPoint = Vector2.new(1, 0.5)
+	glyph.Position = UDim2.new(1, -24, 0.5, 0)
 	-- The upgrade
 	if upgrade then
 		local _, button = row(

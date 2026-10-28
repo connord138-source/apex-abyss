@@ -376,6 +376,27 @@ local function build()
 	amountRow("Den: things into the Build tray", "of each (max 20)", "denItems", 0, "GIVE")
 	actionRow("Den: simulate an old save (from before private dens)", "denOldSave", "LOAD", "secondary")
 	actionRow("Den: every doorway style", "denDoors", "GIVE", "secondary")
+	pickRow("Den wings: every slot, or none (a Sanctum)", {
+		{ label = "Build all", value = true },
+		{ label = "Take down", value = false },
+	}, "denWings", "SET")
+	for _, slot in Config.Dens.wingSlots do
+		local wings: { { label: string, value: any } } = {}
+		for _, wing in Config.Dens.wings do
+			table.insert(wings, { label = wing.name, value = `{slot.id}:{wing.id}` })
+		end
+		table.insert(wings, { label = "Empty", value = `{slot.id}:` })
+		pickRow(`Den wing: {slot.name}`, wings, "denWing", "SET")
+	end
+	pickRow("Den: Open Plan (owned, no coral)", {
+		{ label = "On", value = true },
+		{ label = "Off", value = false },
+	}, "denOpen", "SET")
+	amountRow("Aquarium: grow hours (as if away)", "hours (max 48)", "aquariumHours", 0, "GROW")
+	pickRow("Aquarium: stock every tank (feeding open again)", {
+		{ label = "Rarest caught", value = false },
+		{ label = "Any (logs them)", value = true },
+	}, "aquariumFill", "STOCK")
 	actionRow("Den hearts: add 5 hearts to the target's den", "denHearts", "ADD 5", "secondary")
 	actionRow("Den hearts: admire again today", "denAdmireAgain", "RESET", "secondary")
 	actionRow("Den hearts: Best Dens gold sign frame on/off (this week)", "denFrame", "TOGGLE", "secondary")

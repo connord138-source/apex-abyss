@@ -468,6 +468,16 @@ end
 do
 	local hall = { level = 5, wings = { FrontLeft = "AquariumHall" } }
 	expect(#DenSpace.tanks(hall) == Dens.aquarium.base + 5 + Dens.aquarium.hall, "the Aquarium Hall's tanks")
+	-- Two halls (a stale save; the menu builds one of each): every tank its own id
+	local twoHalls = {
+		level = wingTune.level,
+		wings = { FrontLeft = "AquariumHall", BackRight = "AquariumHall" },
+	}
+	local ids: { [string]: boolean } = {}
+	for _, tank in DenSpace.tanks(twoHalls) do
+		expect(not ids[tank.id], `tank id {tank.id} used twice`)
+		ids[tank.id] = true
+	end
 	local pools = DenSpace.pools({ level = 5, wings = { BackRight = "GrottoPool" } })
 	expect(#pools == 2, "the Grotto Pool banks too")
 	local gallery = DenSpace.fixtures({ level = 5, wings = { FrontRight = "TrophyGallery" } })

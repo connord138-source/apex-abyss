@@ -745,13 +745,27 @@ local function wing(player: Player, slotId: any, wingId: any)
 	if current and def and current.id == def.id then
 		return
 	end
-	if def and not EconomyService.spendCoral(player, def.price) then
-		return fail(player, `Not enough coral ({def.price} needed)`)
+	-- One of each kind: four slots, five kinds, so the choice is which to leave out
+	if def then
+		for other, id in den.wings do
+			if other ~= slot.id and id == def.id then
+				local where = Dens.wingSlotsById[other]
+				return fail(
+					player,
+					`You already have a {def.name} ({if where then where.name else other}) · one of each`
+				)
+			end
+		end
+	end
+	-- A swap costs the new wing's price less what the old one gives back
+	local refund = if current then math.floor(current.price * Dens.wing.refund) else 0
+	local net = (if def then def.price else 0) - refund
+	if net > 0 and not EconomyService.spendCoral(player, net) then
+		return fail(player, `Not enough coral ({net} needed)`)
 	end
 	local before = shapeOf(den)
-	local refund = if current then math.floor(current.price * Dens.wing.refund) else 0
-	if refund > 0 then
-		EconomyService.addCoral(player, refund)
+	if net < 0 then
+		EconomyService.addCoral(player, -net)
 	end
 	if def then
 		den.wings[slot.id] = def.id

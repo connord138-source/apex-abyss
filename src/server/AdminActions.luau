@@ -25,6 +25,7 @@ local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local DataService = require(script.Parent.Services.DataService)
 local EconomyService = require(script.Parent.Services.EconomyService)
 local FishService = require(script.Parent.Services.FishService)
+local AquariumService = require(script.Parent.Services.AquariumService)
 local DenService = require(script.Parent.Services.DenService)
 local GardenService = require(script.Parent.Services.GardenService)
 local HeartService = require(script.Parent.Services.HeartService)
@@ -631,6 +632,63 @@ local function denDoors(_admin: Player, targets: { Player }): string
 	return `Every doorway style for {count} player(s) · pick one in the den menu's Doorway rows`
 end
 
+-- Den wings (Config/Dens `wings`, no coral): every slot built (each kind once round
+-- the slots), or all taken down; one slot set to a kind ("" = empty); Open Plan on or
+-- off. The den is raised to a Sanctum first, and things that no longer fit go to the tray
+local function denWings(_admin: Player, targets: { Player }, fill: any): string
+	local lines: { string } = {}
+	for _, player in targets do
+		table.insert(lines, `{player.DisplayName}: {DenService.adminWings(player, fill == true)}`)
+	end
+	return table.concat(lines, " | ")
+end
+
+local function denWing(_admin: Player, targets: { Player }, pick: any): string
+	if typeof(pick) ~= "string" then
+		return "Pick a slot and a wing"
+	end
+	local slot, wing = string.match(pick, "^(%w+):(%w*)$")
+	if slot == nil or Config.Dens.wingSlotsById[slot] == nil then
+		return "No such slot"
+	end
+	local lines: { string } = {}
+	for _, player in targets do
+		table.insert(lines, `{player.DisplayName}: {DenService.adminWing(player, slot, wing or "")}`)
+	end
+	return table.concat(lines, " | ")
+end
+
+local function denOpen(_admin: Player, targets: { Player }, on: any): string
+	local lines: { string } = {}
+	for _, player in targets do
+		table.insert(lines, `{player.DisplayName}: {DenService.adminOpen(player, on == true)}`)
+	end
+	return table.concat(lines, " | ")
+end
+
+-- The den's aquarium (AquariumService): grown as if away N hours (collected by
+-- swimming by the tanks or COLLECT ALL), and every tank stocked (with the target's
+-- rarest catches, or with any catch, logged for them, when `free`), feeding open again
+local function aquariumHours(_admin: Player, targets: { Player }, hours: any): string
+	local n = if typeof(hours) == "number" and hours == hours then math.clamp(hours, 0.1, 48) else nil
+	if n == nil then
+		return "Give hours"
+	end
+	local lines: { string } = {}
+	for _, player in targets do
+		table.insert(lines, `{player.DisplayName}: {AquariumService.fastForward(player, n)}`)
+	end
+	return table.concat(lines, " | ")
+end
+
+local function aquariumFill(_admin: Player, targets: { Player }, free: any): string
+	local lines: { string } = {}
+	for _, player in targets do
+		table.insert(lines, `{player.DisplayName}: {AquariumService.fill(player, free == true)}`)
+	end
+	return table.concat(lines, " | ")
+end
+
 -- Den hearts (HeartService): 5 hearts for the target's den (on the signs and this
 -- week's Best Dens board), admiring every den again today, and the Best Dens gold
 -- frame on or off this week (the real one needs a live board: Studio has none)
@@ -876,6 +934,11 @@ AdminActions.byName = {
 	denItems = denItems :: Handler,
 	denOldSave = denOldSave :: Handler,
 	denDoors = denDoors :: Handler,
+	denWings = denWings :: Handler,
+	denWing = denWing :: Handler,
+	denOpen = denOpen :: Handler,
+	aquariumHours = aquariumHours :: Handler,
+	aquariumFill = aquariumFill :: Handler,
 	denHearts = denHearts :: Handler,
 	denAdmireAgain = denAdmireAgain :: Handler,
 	denFrame = denFrame :: Handler,

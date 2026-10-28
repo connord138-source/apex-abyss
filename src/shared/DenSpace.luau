@@ -383,7 +383,8 @@ function DenSpace.tanks(arg: ShapeArg): { Tank }
 				local x = plan.side * (plan.x1 + plan.def.length * (i - 0.5) / per)
 				for k, edge in { plan.room.z0, plan.room.z1 } do
 					table.insert(list, {
-						id = `hall{(i - 1) * 2 + k}`,
+						-- by its doorway, so a stale save with two halls can't share ids
+						id = `{plan.slot.id}{(i - 1) * 2 + k}`,
 						x = x,
 						y = s.deck + tune.height,
 						z = edge,

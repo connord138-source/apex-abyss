@@ -248,6 +248,12 @@ function CatchService.addCatches(
 		if (row.Normal or 0) == 0 then
 			row.Normal = 1
 		end
+		-- A biggest catch where there's none yet, at the fish's usual mass, so the den's
+		-- Trophy Gallery has something to show in a test
+		local best: { [string]: number } = data.catchBest[id] or {}
+		data.catchBest[id] = best
+		local prey = Config.Prey.byId[id]
+		best[rarityId] = best[rarityId] or (if prey then prey.mass else 1)
 	end
 	local got = checkGoals(data)
 	DataService.markDirty(player)
