@@ -19,6 +19,7 @@ local Schools = require(ReplicatedStorage.Shared.Schools)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
+local DenWings = require(script.Parent.Parent.DenWings)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
@@ -654,15 +655,23 @@ local function tick()
 			local den = FishService.denOf(player)
 			if den and session.haul > 0 then
 				local length = liveLength(player) or 1
-				local offset = root.Position - Layout.poolPosition(den)
-				local flat = Vector2.new(offset.X, offset.Z).Magnitude
-				-- Any part of the fish over the glow banks (8.7 studs out, on the glow's
-				-- edge, once didn't: re-test 2026-10-06)
-				if
-					flat < Config.Dens.pool.radius + length * 0.5 + 1
-					and math.abs(offset.Y) < hub.denHeight
-				then
-					bank(player, session, data)
+				-- The Nook's pool, or a Grotto Pool wing's (DenWings.pools)
+				local pools = { Layout.poolPosition(den) }
+				for _, extra in DenWings.pools(den) do
+					table.insert(pools, extra)
+				end
+				for _, pool in pools do
+					local offset = root.Position - pool
+					local flat = Vector2.new(offset.X, offset.Z).Magnitude
+					-- Any part of the fish over the glow banks (8.7 studs out, on the glow's
+					-- edge, once didn't: re-test 2026-10-06)
+					if
+						flat < Config.Dens.pool.radius + length * 0.5 + 1
+						and math.abs(offset.Y) < hub.denHeight
+					then
+						bank(player, session, data)
+						break
+					end
 				end
 			end
 		end)

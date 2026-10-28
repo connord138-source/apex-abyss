@@ -187,6 +187,16 @@ local function denRecord(): any
 	return s.den or { level = 1, glow = "Teal", items = {}, placed = {} }
 end
 
+-- The den's shape (Shared/DenSpace): its level, wings and Open Plan
+local function denShape(): DenSpace.Shape
+	local record = denRecord()
+	return {
+		level = record.level or 1,
+		wings = if typeof(record.wings) == "table" then record.wings else nil,
+		open = record.open == true,
+	}
+end
+
 local function ownIndex(): number
 	local index = state().denIndex
 	return if typeof(index) == "number" then index else 0
@@ -391,21 +401,39 @@ local function carriesOn(rooms: { any }, room: any, z: number): boolean
 end
 
 local function clampView()
-	local level = denRecord().level or 1
-	local rooms = DenSpace.rooms(level, view.storey)
+	local rooms = DenSpace.rooms(denShape(), view.storey)
+	local house = {}
+	for _, room in rooms do
+		if room.wing == nil then
+			table.insert(house, room)
+		end
+	end
 	local bestX, bestZ, bestGap = view.x, view.z, math.huge
 	for _, room in rooms do
-		local half = math.max(room.x - VIEW_INSET, 0)
+		local cx = room.cx or 0
+		local x0, x1 = cx - math.max(room.x - VIEW_INSET, 0), cx + math.max(room.x - VIEW_INSET, 0)
 		local near, far = math.min(room.z0, room.z1), math.max(room.z0, room.z1)
 		-- Inset from the end walls only: insetting both ends of every room left a
 		-- gap where two rooms meet that panning never crossed, so the view stopped
 		-- at the first room's end (PC 2026-10-16 round 2, D6)
-		local z0 = if carriesOn(rooms, room, near) then near else near + VIEW_INSET
-		local z1 = if carriesOn(rooms, room, far) then far else far - VIEW_INSET
+		local z0 = if room.wing == nil and carriesOn(house, room, near) then near else near + VIEW_INSET
+		local z1 = if room.wing == nil and carriesOn(house, room, far) then far else far - VIEW_INSET
+		if room.wing then
+			-- A wing runs out sideways: its passage reaches back into the house and
+			-- on into the wing, and the wing is inset only at its far end
+			local outward = if cx > 0 then 1 else -1
+			local inner, outer = cx - outward * room.x, cx + outward * room.x
+			if room.passage then
+				inner -= outward * (VIEW_INSET + 2)
+			else
+				outer -= outward * VIEW_INSET
+			end
+			x0, x1 = math.min(inner, outer), math.max(inner, outer)
+		end
 		if z0 > z1 then
 			z0, z1 = (near + far) / 2, (near + far) / 2
 		end
-		local x = math.clamp(view.x, -half, half)
+		local x = math.clamp(view.x, x0, x1)
 		local z = math.clamp(view.z, z0, z1)
 		local gap = (x - view.x) ^ 2 + (z - view.z) ^ 2
 		if gap < bestGap then
@@ -420,7 +448,7 @@ end
 
 -- Up or down a storey (-1 up, +1 down), keeping the view's spot as near as it can
 local function changeFloor(by: number)
-	local deepest = DenSpace.storeys(denRecord().level or 1)
+	local deepest = DenSpace.storeys(denShape())
 	local nextStorey = math.clamp(view.storey + by, 1, deepest)
 	if nextStorey == view.storey then
 		Sfx.play("TooBig", { volume = 0.25 })
@@ -439,7 +467,7 @@ local function startView()
 	local frame = DenSpace.frame(index)
 	local here = if root then DenSpace.toLocal(frame, root.Position) else Vector3.zero
 	local best, bestGap = 1, math.huge
-	for n = 1, DenSpace.storeys(denRecord().level or 1) do
+	for n = 1, DenSpace.storeys(denShape()) do
 		local gap = math.abs(here.Y - DenSpace.storey(n).deck)
 		if gap < bestGap then
 			best, bestGap = n, gap
@@ -450,10 +478,10 @@ local function startView()
 	view.y = DenSpace.storey(best).deck
 	-- The middle of the room the fish is in, not over the pool where it waits (PC
 	-- 2026-10-16 round 2, D6: a LV 100 fish filled the view)
-	for _, room in DenSpace.rooms(denRecord().level or 1, best) do
+	for _, room in DenSpace.rooms(denShape(), best) do
 		local near, far = math.min(room.z0, room.z1), math.max(room.z0, room.z1)
-		if math.abs(here.X) <= room.x + 2 and here.Z >= near - 2 and here.Z <= far + 2 then
-			view.x, view.z = 0, (near + far) / 2
+		if DenSpace.inRoom(room, here.X, here.Z, 2) then
+			view.x, view.z = room.cx or 0, (near + far) / 2
 			break
 		end
 	end
@@ -677,7 +705,7 @@ end
 -- Where the selected thing would go, from what the aim hits
 local function findSpot(item: any, hit: RaycastResult, params: RaycastParams): Spot?
 	local frame = DenSpace.frame(ownIndex())
-	local level = denRecord().level or 1
+	local level = denShape()
 	local normal = hit.Normal
 	local surface = if normal.Y > 0.6 then "floor" elseif normal.Y < -0.6 then "ceiling" else "wall"
 	local position = hit.Position
@@ -1299,7 +1327,7 @@ function bind()
 				local key = input.KeyCode
 				if key == Enum.KeyCode.ButtonA then
 					-- One button: down a storey, and back to the top from the deepest
-					local deepest = DenSpace.storeys(denRecord().level or 1)
+					local deepest = DenSpace.storeys(denShape())
 					changeFloor(if view.storey >= deepest then 1 - view.storey else 1)
 				else
 					changeFloor(if key == Enum.KeyCode.Space or key == Enum.KeyCode.PageUp then -1 else 1)
@@ -1625,7 +1653,7 @@ local function buildGui()
 			text = "FLOOR",
 			style = "secondary",
 			run = function()
-				local deepest = DenSpace.storeys(denRecord().level or 1)
+				local deepest = DenSpace.storeys(denShape())
 				changeFloor(if view.storey >= deepest then 1 - view.storey else 1)
 			end,
 		},

@@ -375,6 +375,112 @@ for _, door in Dens.doors do
 	)
 end
 
+-- Wings (2026-10-28): every wing in every slot, with Open Plan and without, fits the
+-- block with rock to spare, joins the house through its passage, keeps 8 studs of
+-- rock from a wing in the other slot on its side, and adds its room for things;
+-- the Observatory's sea never reaches another wing; tanks stay clear of the
+-- passages' mouths
+local wingTune = Dens.wing
+for _, open in { false, true } do
+	for _, def in Dens.wings do
+		for _, slot in Dens.wingSlots do
+			local shape = { level = wingTune.level, wings = { [slot.id] = def.id }, open = open }
+			local plans = DenSpace.wingPlans(shape)
+			expect(#plans == 1, `{def.id} in {slot.id}: one plan`)
+			local plan = plans[1]
+			if plan == nil then
+				continue
+			end
+			local room = plan.room
+			local tag = `{def.id} in {slot.id}{if open then " (open)" else ""}`
+			expect(math.abs(room.cx :: number) + room.x + 12 <= extent.half, `{tag}: too near the block's side`)
+			expect(room.z0 + 12 <= extent.front and room.z1 - 12 >= extent.back, `{tag}: too near the block's ends`)
+			expect((room.ceiling :: number) + 12 <= extent.top, `{tag}: too near the block's top`)
+			local s1 = Dens.storeys[1]
+			expect(s1.floor - Dens.storeys[2].ceiling >= 8, `{tag}: rock under it`)
+			-- The way through: house, passage, wing
+			for _, x in { plan.wall - 2, plan.wall + 2, plan.x1 - 2, plan.x1 + 2, plan.x2 - 9 } do
+				expect(DenSpace.onDeck(shape, 1, plan.side * x, slot.z + 6.5), `{tag}: deck at x {plan.side * x}`)
+			end
+			expect(
+				DenSpace.capacity(shape, false) == Dens.levels[wingTune.level].capacity + def.capacity,
+				`{tag}: holds {def.capacity} more`
+			)
+			-- A lamp on its floor is fine; the same spot with no wing isn't
+			local lamp = Dens.itemsById.CoralLamp or Dens.items[1]
+			local spot = Vector3.new(plan.side * (plan.x1 + 4), s1.deck, room.z0 - 4)
+			expect(DenSpace.check(shape, lamp, "floor", spot).ok, `{tag}: a thing goes on its floor`)
+			expect(
+				not DenSpace.check({ level = wingTune.level, open = open }, lamp, "floor", spot).ok,
+				`{tag}: nothing goes there with no wing`
+			)
+			for _, tank in DenSpace.tanks(shape) do
+				if string.sub(tank.id, 1, 4) == "base" then
+					expect(
+						math.abs(tank.z - slot.z) >= wingTune.passageHalf + Dens.aquarium.size.X / 2 + 1
+							or tank.x * plan.side < 0,
+						`{tag}: tank {tank.id} in the passage's mouth`
+					)
+				end
+			end
+		end
+	end
+	-- Every slot full of the biggest wing, and of the Observatory: the two wings on a
+	-- side keep 8 studs of rock between them, and the sea clears every other wing
+	for _, fill in { "GreatHall", "Observatory", "AquariumHall" } do
+		local wings: { [string]: string } = {}
+		for _, slot in Dens.wingSlots do
+			wings[slot.id] = fill
+		end
+		wings.FrontLeft = "Observatory"
+		local shape = { level = wingTune.level, wings = wings, open = open }
+		local plans = DenSpace.wingPlans(shape)
+		expect(#plans == #Dens.wingSlots, `{fill}: a plan for every slot`)
+		for _, a in plans do
+			for _, b in plans do
+				if a ~= b and a.side == b.side then
+					local gap = math.max(a.room.z1 - b.room.z0, b.room.z1 - a.room.z0)
+					expect(gap >= 8, `{fill}: {a.slot.id} and {b.slot.id} only {gap} studs apart`)
+				end
+				if a ~= b and a.def.id == "Observatory" and a.side == b.side then
+					local half = a.def.depth / 2 + 12
+					local seaFront, seaBack = a.z + half, a.z - half
+					local reaches = b.x2 > a.x2 + 8
+					local overlaps = b.room.z0 > seaBack - 4 and b.room.z1 < seaFront + 4
+					expect(not (reaches and overlaps), `{fill}: the Observatory's sea reaches {b.slot.id}`)
+				end
+			end
+		end
+		expect(#DenSpace.tanks(shape) >= Dens.aquarium.base + wingTune.level, `{fill}: the base tanks`)
+	end
+	-- Open Plan widens the house and takes its pillars away
+	if open then
+		local shape = { level = 5, open = true }
+		for _, room in DenSpace.rooms(shape) do
+			expect(room.pillars == nil, `{room.id}: no pillars with Open Plan`)
+		end
+		expect(
+			DenSpace.sideWall(shape, 0) == Dens.roomsById.Nook.x + Dens.openPlan.widen,
+			"Open Plan widens the Nook"
+		)
+	end
+end
+do
+	local hall = { level = 5, wings = { FrontLeft = "AquariumHall" } }
+	expect(#DenSpace.tanks(hall) == Dens.aquarium.base + 5 + Dens.aquarium.hall, "the Aquarium Hall's tanks")
+	local pools = DenSpace.pools({ level = 5, wings = { BackRight = "GrottoPool" } })
+	expect(#pools == 2, "the Grotto Pool banks too")
+	local gallery = DenSpace.fixtures({ level = 5, wings = { FrontRight = "TrophyGallery" } })
+	expect(#gallery == 8, `the gallery's plinths ({#gallery})`)
+	for _, fixture in gallery do
+		expect(
+			not DenSpace.onDeck({ level = 5, wings = { FrontRight = "TrophyGallery" } }, 1, fixture.x, fixture.z),
+			"a plinth's spot is cut out of the deck"
+		)
+	end
+end
+print(`wings: {#Dens.wings} wings, {#Dens.wingSlots} slots, block half-width {extent.half}, top {extent.top}`)
+
 -- Furniture sets: each has pieces and an achievement that opens it; each piece's set
 -- exists; ids are unique
 local seen: { [string]: boolean } = {}

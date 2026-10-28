@@ -56,7 +56,42 @@ export type Room = {
 	z0: number,
 	z1: number,
 	pillars: number?, -- stone columns down each side, this far apart
+	-- A wing's rooms (Shared/DenSpace builds them from `wings`): `cx` its middle
+	-- across (0 for the house's own rooms), `cross` when it runs out sideways (its
+	-- arch runs along x, so `x` is half its length and z0..z1 its width), its own
+	-- `wall` over the deck and `ceiling` crown (else the storey's), the wing slot it
+	-- belongs to, and whether it's the short passage in from the house
+	cx: number?,
+	cross: boolean?,
+	wall: number?,
+	ceiling: number?,
+	wing: string?,
+	passage: boolean?,
 }
+
+-- A wing (owner, 2026-10-28: "a coral upgrade that extends the size of your den ...
+-- choice of different rooms, open layout ... a passive element"; the proposal in
+-- docs/proposals/2026-10-28-den-expansion.md, approved: "i like the den changes lets
+-- do that and try it out"): past the Sanctum the house grows sideways. Each of the
+-- four `wingSlots` (doorways in the main storey's side walls) takes one wing, bought
+-- with coral and swapped later for `wing.refund` of its price back. A wing is a room
+-- running out from the side wall through a short arched passage.
+export type Wing = {
+	id: string,
+	name: string,
+	price: number,
+	capacity: number, -- more things the den holds
+	length: number, -- how far it runs out from the passage (along x)
+	depth: number, -- its width (along z)
+	wall: number, -- its upright walls over the deck
+	ceiling: number, -- its crown (local y)
+	tier: string, -- Config/Tiers id: its colour in the menu
+	blurb: string,
+}
+
+-- A doorway in the main storey's side wall a wing is built onto: its side (-1 left,
+-- 1 right, across the den) and its middle (local z)
+export type WingSlot = { id: string, name: string, side: number, z: number }
 
 -- A round shaft from one storey's floor down to the next storey's ceiling. `radius`
 -- is the opening inside its curb; the rock is cut 3 studs wider (DenCarve), since a
@@ -223,6 +258,82 @@ local rooms: { Room } = {
 	{ id = "SanctumFore", level = 5, storey = 3, x = 44, z0 = 36, z1 = -24 },
 	{ id = "SanctumNave", level = 5, storey = 3, x = 61, z0 = -24, z1 = -122, pillars = 19 },
 	{ id = "SanctumApse", level = 5, storey = 3, x = 80, z0 = -122, z1 = -220, pillars = 19 },
+}
+
+-- The wings (the proposal's five rooms). The Aquarium Hall's tanks, the Trophy
+-- Gallery's plinths, the Grotto Pool's second Haul Pool and the Observatory's window
+-- are built by DenBuilder; the Great Hall is simply big, with a high vault.
+local wings: { Wing } = {
+	{
+		id = "AquariumHall",
+		name = "Aquarium Hall",
+		price = 250000,
+		capacity = 40,
+		length = 64,
+		depth = 44,
+		wall = 18,
+		ceiling = 32,
+		tier = "Rare",
+		blurb = "A long gallery of 8 more aquarium tanks: your rare catches on show, earning coral",
+	},
+	{
+		id = "TrophyGallery",
+		name = "Trophy Gallery",
+		price = 250000,
+		capacity = 40,
+		length = 64,
+		depth = 44,
+		wall = 18,
+		ceiling = 32,
+		tier = "Rare",
+		blurb = "Your biggest catches, boss trophies and titles on plinths for visitors to see",
+	},
+	{
+		id = "GrottoPool",
+		name = "Grotto Pool",
+		price = 400000,
+		capacity = 40,
+		length = 60,
+		depth = 52,
+		wall = 16,
+		ceiling = 34,
+		tier = "Epic",
+		blurb = "A sunken grotto with a second Haul Pool to bank at and a waterfall of bubbles",
+	},
+	{
+		id = "Observatory",
+		name = "Observatory",
+		price = 600000,
+		capacity = 40,
+		length = 58,
+		depth = 56,
+		wall = 14,
+		ceiling = 42,
+		tier = "Epic",
+		blurb = "A domed room with a great window onto the deep, whales and jellies drifting by",
+	},
+	{
+		id = "GreatHall",
+		name = "Great Hall",
+		price = 900000,
+		capacity = 90,
+		length = 80,
+		depth = 60,
+		wall = 26,
+		ceiling = 48,
+		tier = "Legendary",
+		blurb = "Simply huge: room for 90 more things under a high vault for the tallest pieces",
+	},
+}
+
+-- The doorways the wings open from: two down each side of the main storey, off
+-- the Nook (z 0) and off the Burrow (z -78), clear of the pool, the shaft and the
+-- aquarium tanks on the side walls
+local wingSlots: { WingSlot } = {
+	{ id = "FrontLeft", name = "Front left", side = -1, z = 0 },
+	{ id = "FrontRight", name = "Front right", side = 1, z = 0 },
+	{ id = "BackLeft", name = "Back left", side = -1, z = -78 },
+	{ id = "BackRight", name = "Back right", side = 1, z = -78 },
 }
 
 local shafts: { Shaft } = {
@@ -1340,6 +1451,56 @@ return {
 	floorsById = index(floors),
 	doors = doors,
 	doorsById = index(doors),
+	wings = wings,
+	wingsById = index(wings),
+	wingSlots = wingSlots,
+	wingSlotsById = index(wingSlots),
+	-- The wings open at `level` (the Sanctum); each slot's passage runs `passage`
+	-- studs out from the side wall, `passageHalf` either side of the slot's middle,
+	-- its walls `passageWall` high under a round arch to `passageCrown` (local y); a
+	-- wing taken down gives back `refund` of its price
+	wing = { level = 5, passage = 14, passageHalf = 8, passageWall = 13, passageCrown = 22, refund = 0.5 },
+	-- Open Plan (the proposal, approved 2026-10-28): every storey's rooms take its
+	-- widest room's width plus `widen`, with no pillars, so the storey reads as one
+	-- great hall. Bought once with coral at `level` and then switched on or off in
+	-- the den menu; wall and ceiling things go back to the tray when it changes.
+	openPlan = { price = 75000, level = 3, widen = 8 },
+	-- The Aquarium (the proposal's passive element, approved 2026-10-28): wall tanks
+	-- each showing one rare fish from the Catch Log (a species at a rarity, as many
+	-- tanks of it as you've caught), earning by its rarity every hour, online or off,
+	-- up to `hours` of it (Shared/Aquarium, AquariumService). `base` + the den level
+	-- tanks down the side walls (`spots`: side, local z, in order), and the Aquarium
+	-- Hall's `hall` more. Feeding them (once a UTC day, `feed.dna` of `feed.biome`'s
+	-- DNA a stocked tank) makes that day's earnings ×`feed.multiplier`. Swimming
+	-- within `reach` of a stocked tank collects, like the Coral Garden.
+	aquarium = {
+		rates = {
+			Silver = { coral = 15, shells = 0.5 },
+			Golden = { coral = 45, shells = 1 },
+			Glowing = { coral = 120, shells = 2 },
+			Crystal = { coral = 300, shells = 4 },
+			Prism = { coral = 700, shells = 8 },
+		},
+		hours = 12,
+		base = 2,
+		hall = 8,
+		feed = { multiplier = 1.5, dna = 1, biome = "KelpShallows" },
+		reach = 16,
+		-- A tank: its glass front's width (along the wall), height and depth into the
+		-- room, and its middle's height over the deck
+		size = Vector3.new(11, 7, 4),
+		height = 7,
+		spots = {
+			{ side = -1, z = 22 },
+			{ side = 1, z = 22 },
+			{ side = -1, z = -20 },
+			{ side = 1, z = -20 },
+			{ side = -1, z = -50 },
+			{ side = 1, z = -50 },
+			{ side = -1, z = -100 },
+			{ side = 1, z = -100 },
+		},
+	},
 	-- The Den Expansion pass: this many more things placed, at any level
 	expansionCapacity = 25,
 	-- The main room's back wall at plaque height (local z), before and after the

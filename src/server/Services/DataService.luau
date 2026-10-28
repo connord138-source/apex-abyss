@@ -81,6 +81,10 @@ export type PlayerData = {
 		layout: number?,
 		door: string, -- the doorway style on the plaza (Config/Dens doors)
 		doors: { [string]: boolean }, -- doorway styles bought
+		wings: { [string]: string }, -- wing slot id → wing id (Config/Dens wings)
+		openOwned: boolean, -- Open Plan bought
+		open: boolean, -- Open Plan on
+		tanks: { [string]: { prey: string, rarity: string } }, -- the aquarium's fish by tank id
 	},
 	coral: number, -- the currency (vendors)
 	trophies: { [string]: number }, -- boss currencies (MegalodonTeeth, KrakenBeaks)
@@ -108,6 +112,7 @@ export type PlayerData = {
 	-- The den's Coral Garden (Config/Dens garden): what's grown and not yet
 	-- collected, and the Unix time it was last grown to
 	garden: { coral: number, shells: number, at: number },
+	aquarium: { coral: number, shells: number, at: number, fed: number }, -- (Shared/Aquarium)
 	-- Rare catches (Config/Catch): the Catch Log (prey id → rarity id, "Normal" too →
 	-- lifetime catches; the skin goals count it, Shared/Catch `goal`) and its finished
 	-- rows. `catchTracks` is retired (each fish's own catch track until 2026-10-18,
@@ -190,7 +195,16 @@ local TEMPLATE: PlayerData = {
 		-- DenService moved its placements over; DenService sets it)
 		door = "Stone",
 		doors = {},
+		-- (2026-10-28: the den expansion) wing slot id → wing id, Open Plan bought and
+		-- on, and the aquarium's fish by tank id
+		wings = {},
+		openOwned = false,
+		open = false,
+		tanks = {},
 	},
+	-- The aquarium's earnings waiting (Shared/Aquarium): coral, shells, when it last
+	-- grew (Unix) and the UTC day it was last fed
+	aquarium = { coral = 0, shells = 0, at = 0, fed = 0 },
 	coral = 0,
 	trophies = {},
 	titles = {},

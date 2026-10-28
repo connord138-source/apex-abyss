@@ -16,6 +16,7 @@ local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Size = require(ReplicatedStorage.Shared.Size)
 local DenBuilder = require(script.Parent.Parent.DenBuilder)
+local DenWings = require(script.Parent.Parent.DenWings)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
@@ -34,23 +35,56 @@ local DenService = {}
 type DenRecord = typeof(({} :: DataService.PlayerData).den)
 type Placement = DenBuilder.Placement
 
+-- A den record's shape (Shared/DenSpace): its level, wings and Open Plan
+local function shapeOf(den: DenRecord): DenSpace.Shape
+	return {
+		level = den.level,
+		wings = if typeof(den.wings) == "table" then den.wings else nil,
+		open = den.open == true,
+	}
+end
+
 local function fail(player: Player, text: string)
 	Net.notify(player, text, "bad")
 end
 
 local function trophiesOf(player: Player, data: DataService.PlayerData): DenBuilder.Trophies
+	-- The Trophy Gallery's records: the heaviest catch overall and at each rarity
+	-- (the Catch Log's biggest, CatchService)
+	local biggest: DenWings.Catch? = nil
+	local byRarity: { [string]: DenWings.Catch } = {}
+	for prey, best in data.catchBest do
+		if Config.Prey.byId[prey] == nil or typeof(best) ~= "table" then
+			continue
+		end
+		for rarity, kg in best do
+			if typeof(kg) ~= "number" then
+				continue
+			end
+			local have = byRarity[rarity]
+			if have == nil or kg > have.kg then
+				byRarity[rarity] = { prey = prey, rarity = rarity, kg = kg }
+			end
+			if biggest == nil or kg > biggest.kg then
+				biggest = { prey = prey, rarity = rarity, kg = kg }
+			end
+		end
+	end
+	local teeth = data.trophies.MegalodonTeeth or 0
+	local beaks = data.trophies.KrakenBeaks or 0
 	return {
 		bestPrey = data.stats.bestPrey,
 		bestPreyMass = data.stats.bestPreyMass,
-		teeth = data.trophies.MegalodonTeeth or 0,
-		beaks = data.trophies.KrakenBeaks or 0,
+		teeth = teeth,
+		beaks = beaks,
 		title = data.title,
 		owner = player.DisplayName,
+		gallery = { biggest = biggest, byRarity = byRarity, teeth = teeth, beaks = beaks, title = data.title },
 	}
 end
 
 local function capacityOf(player: Player, den: DenRecord): number
-	return DenSpace.capacity(den.level, MonetizationService.hasPass(player, "DenExpansion"))
+	return DenSpace.capacity(shapeOf(den), MonetizationService.hasPass(player, "DenExpansion"))
 end
 
 local function placedOf(den: DenRecord, itemId: string): number
@@ -115,7 +149,7 @@ local function relayout(den: DenRecord)
 	end
 	if mark < 4 then
 		-- the bigger rooms and things of 2026-10-18 (DenSpace.grow)
-		DenSpace.grow(den.level, den.placed, Dens.layout.growth)
+		DenSpace.grow(shapeOf(den), den.placed, Dens.layout.growth)
 	end
 	-- Anything that no longer fits goes back to the tray
 	for _ = 1, 3 do
@@ -123,9 +157,9 @@ local function relayout(den: DenRecord)
 		for _, placement in den.placed do
 			local item = Dens.itemsById[placement.id]
 			local at = Vector3.new(placement.x, placement.y, placement.z)
-			local fits = item ~= nil and DenSpace.check(den.level, item, placement.s, at).ok
+			local fits = item ~= nil and DenSpace.check(shapeOf(den), item, placement.s, at).ok
 			if fits and placement.s == "floor" then
-				fits = DenSpace.resting(den.level, den.placed, at, placement.uid).ok
+				fits = DenSpace.resting(shapeOf(den), den.placed, at, placement.uid).ok
 			end
 			if fits then
 				table.insert(kept, placement)
@@ -169,14 +203,14 @@ local function migrate(den: DenRecord)
 		if surface == "floor" then
 			local storey = DenSpace.storeyAt(at.Y) or 1
 			at = Vector3.new(at.X, DenSpace.storey(storey).deck, at.Z)
-			if not DenSpace.check(den.level, item, "floor", at).ok then
+			if not DenSpace.check(shapeOf(den), item, "floor", at).ok then
 				-- The nearest free spot of that floor, in rings out from the old one
 				local found: Vector3? = nil
 				for ring = 1, 12 do
 					for i = 0, ring * 8 - 1 do
 						local a = i / (ring * 8) * 2 * math.pi
 						local try = at + Vector3.new(math.cos(a), 0, math.sin(a)) * ring * 1.5
-						if DenSpace.check(den.level, item, "floor", try).ok then
+						if DenSpace.check(shapeOf(den), item, "floor", try).ok then
 							found = try
 							break
 						end
@@ -190,7 +224,7 @@ local function migrate(den: DenRecord)
 				end
 				at = found
 			end
-		elseif not DenSpace.check(den.level, item, surface, at).ok then
+		elseif not DenSpace.check(shapeOf(den), item, surface, at).ok then
 			continue
 		end
 		-- A wall thing looks into the room, away from its side of the room
@@ -210,7 +244,16 @@ local function migrate(den: DenRecord)
 end
 
 local function recordOf(den: DenRecord): DenBuilder.Record
-	return { level = den.level, glow = den.glow, floor = den.floor, placed = den.placed }
+	local shape = shapeOf(den)
+	return {
+		level = den.level,
+		glow = den.glow,
+		floor = den.floor,
+		placed = den.placed,
+		wings = shape.wings,
+		open = shape.open,
+		tanks = if typeof(den.tanks) == "table" then den.tanks else nil,
+	}
 end
 
 -- Builds the player's den as their record says
@@ -257,7 +300,7 @@ end
 local function placedChanged(player: Player, data: DataService.PlayerData, den: number)
 	-- Whatever was stacked on a thing that moved or went away comes down with it
 	-- (or back to the tray)
-	local fell = DenSpace.settle(data.den.level, data.den.placed)
+	local fell = DenSpace.settle(shapeOf(data.den), data.den.placed)
 	if #fell > 0 then
 		for i = #data.den.placed, 1, -1 do
 			if table.find(fell, data.den.placed[i].uid) then
@@ -351,9 +394,9 @@ local function place(player: Player, itemId: any, surface: any, x: any, y: any, 
 	if #record.placed >= capacityOf(player, record) then
 		return fail(player, `Your den holds {capacityOf(player, record)} things · upgrade it for more`)
 	end
-	local check = DenSpace.check(record.level, item, face, at)
+	local check = DenSpace.check(shapeOf(record), item, face, at)
 	if check.ok and face == "floor" then
-		check = DenSpace.resting(record.level, record.placed, at)
+		check = DenSpace.resting(shapeOf(record), record.placed, at)
 	end
 	if not check.ok then
 		return fail(player, check.why or "That doesn't go there")
@@ -395,7 +438,7 @@ local function layout(player: Player, setId: any, x: any, y: any, z: any, facing
 		end
 		return fail(player, `No {name} floor pieces in your tray`)
 	end
-	local fit, why = DenSpace.fitLayout(record.level, record.placed, chosen, at, turn)
+	local fit, why = DenSpace.fitLayout(shapeOf(record), record.placed, chosen, at, turn)
 	if fit == nil then
 		return fail(player, why or "Not enough open floor here")
 	end
@@ -442,9 +485,9 @@ local function move(player: Player, uid: any, surface: any, x: any, y: any, z: a
 	if placement == nil or item == nil then
 		return
 	end
-	local check = DenSpace.check(data.den.level, item, face, at)
+	local check = DenSpace.check(shapeOf(data.den), item, face, at)
 	if check.ok and face == "floor" then
-		check = DenSpace.resting(data.den.level, data.den.placed, at, placement.uid)
+		check = DenSpace.resting(shapeOf(data.den), data.den.placed, at, placement.uid)
 	end
 	if not check.ok then
 		return fail(player, check.why or "That doesn't go there")
@@ -464,7 +507,7 @@ local function move(player: Player, uid: any, surface: any, x: any, y: any, z: a
 		local carriedItem = Dens.itemsById[carried.id]
 		local fits = carriedItem ~= nil
 			and DenSpace.check(
-				data.den.level,
+				shapeOf(data.den),
 				carriedItem,
 				"floor",
 				Vector3.new(carried.x, carried.y, carried.z)
@@ -586,6 +629,260 @@ local function door(player: Player, doorId: any)
 	DenService.refresh(player)
 end
 
+-- After the den's shape changes (a wing built or taken down, Open Plan switched),
+-- what's placed is brought along: things in a wing move with it when Open Plan moves
+-- the side walls it opens from, the house's wall and ceiling things go back to the
+-- tray when its walls moved, and anything else that no longer fits does too (a wing
+-- taken down, a wall thing where a passage was cut). Fish in the den are moved over
+-- the pool, out of the rock being carved. Returns how many went to the tray.
+local function reshape(player: Player, data: DataService.PlayerData, before: DenSpace.Shape): number
+	local den = data.den
+	local after = shapeOf(den)
+	local wallsMoved = (before.open == true) ~= (after.open == true)
+	local oldPlans: { [string]: DenSpace.WingPlan } = {}
+	for _, plan in DenSpace.wingPlans(before) do
+		oldPlans[plan.slot.id] = plan
+	end
+	local newPlans: { [string]: DenSpace.WingPlan } = {}
+	for _, plan in DenSpace.wingPlans(after) do
+		newPlans[plan.slot.id] = plan
+	end
+	local kept = {}
+	for _, placement in den.placed do
+		local item = Dens.itemsById[placement.id]
+		if item == nil then
+			continue
+		end
+		-- Which wing it stood in (passage or room), if any
+		local inWing: string? = nil
+		for slotId, plan in oldPlans do
+			if
+				DenSpace.inRoom(plan.room, placement.x, placement.z, 1)
+				or DenSpace.inRoom(plan.passage, placement.x, placement.z, 1)
+			then
+				inWing = slotId
+			end
+		end
+		if inWing then
+			local was, now = oldPlans[inWing], newPlans[inWing]
+			if now and was.def.id == now.def.id then
+				placement.x = snap(placement.x + now.side * (now.x1 - was.x1))
+			end
+		elseif wallsMoved and placement.s ~= "floor" then
+			continue
+		end
+		local at = Vector3.new(placement.x, placement.y, placement.z)
+		if DenSpace.check(after, item, placement.s, at).ok then
+			table.insert(kept, placement)
+		end
+	end
+	local dropped = #den.placed - #kept
+	den.placed = kept
+	local fell = DenSpace.settle(after, den.placed)
+	if #fell > 0 then
+		for i = #den.placed, 1, -1 do
+			if table.find(fell, den.placed[i].uid) then
+				table.remove(den.placed, i)
+			end
+		end
+		dropped += #fell
+	end
+	-- Tanks a wing took with it give their fish back
+	if typeof(den.tanks) == "table" then
+		local open: { [string]: boolean } = {}
+		for _, tank in DenSpace.tanks(after) do
+			open[tank.id] = true
+		end
+		for id in den.tanks do
+			if not open[id] then
+				den.tanks[id] = nil
+			end
+		end
+	end
+	local index = FishService.denOf(player)
+	if index then
+		for _, other in Players:GetPlayers() do
+			local _, root = FishService.character(other)
+			if root and Layout.denAt(root.Position) == index then
+				Net.teleport(other, Layout.spawnFrame(index))
+			end
+		end
+	end
+	return dropped
+end
+
+local function trayNote(player: Player, dropped: number)
+	if dropped > 0 then
+		Net.notify(
+			player,
+			`{dropped} thing{if dropped == 1 then "" else "s"} went back to your Build tray`,
+			"info"
+		)
+	end
+end
+
+-- A wing built onto a slot (Config/Dens wings), swapped for another (the old one
+-- gives back `wing.refund` of its price) or taken down (`wingId` "")
+local function wing(player: Player, slotId: any, wingId: any)
+	local data = DataService.get(player)
+	local slot = if typeof(slotId) == "string" then Dens.wingSlotsById[slotId] else nil
+	if data == nil or slot == nil or typeof(wingId) ~= "string" then
+		return
+	end
+	local den = data.den
+	if den.level < Dens.wing.level then
+		local level = Dens.levels[Dens.wing.level]
+		return fail(player, `Wings open once your den is a {if level then level.name else "Sanctum"}`)
+	end
+	if typeof(den.wings) ~= "table" then
+		den.wings = {}
+	end
+	local current = Dens.wingsById[den.wings[slot.id] or ""]
+	local def = if wingId == "" then nil else Dens.wingsById[wingId]
+	if wingId ~= "" and def == nil then
+		return
+	end
+	if current and def and current.id == def.id then
+		return
+	end
+	if def and not EconomyService.spendCoral(player, def.price) then
+		return fail(player, `Not enough coral ({def.price} needed)`)
+	end
+	local before = shapeOf(den)
+	local refund = if current then math.floor(current.price * Dens.wing.refund) else 0
+	if refund > 0 then
+		EconomyService.addCoral(player, refund)
+	end
+	if def then
+		den.wings[slot.id] = def.id
+	else
+		den.wings[slot.id] = nil
+	end
+	local dropped = reshape(player, data, before)
+	DataService.markDirty(player)
+	if def then
+		Net.notify(
+			player,
+			`The masons built your {def.name}{if refund > 0
+				then ` · +{refund} coral back for the {(current :: DensConfig.Wing).name}`
+				else ""}`,
+			"good"
+		)
+	else
+		Net.notify(
+			player,
+			`Your {(current :: DensConfig.Wing).name} came down · +{refund} coral back`,
+			"info"
+		)
+	end
+	trayNote(player, dropped)
+	DenService.refresh(player)
+	Events.denChanged:fire(player, "wing")
+end
+
+-- Open Plan (Config/Dens openPlan): bought once, then switched on or off
+local function openPlan(player: Player, on: any)
+	local data = DataService.get(player)
+	if data == nil or typeof(on) ~= "boolean" then
+		return
+	end
+	local den = data.den
+	local tune = Dens.openPlan
+	if on and den.openOwned ~= true then
+		if den.level < tune.level then
+			local level = Dens.levels[tune.level]
+			return fail(player, `Open Plan needs a {if level then level.name else "bigger"} den`)
+		end
+		if not EconomyService.spendCoral(player, tune.price) then
+			return fail(player, `Not enough coral ({tune.price} needed)`)
+		end
+		den.openOwned = true
+	end
+	if (den.open == true) == on then
+		return
+	end
+	local before = shapeOf(den)
+	den.open = on
+	local dropped = reshape(player, data, before)
+	DataService.markDirty(player)
+	Net.notify(
+		player,
+		if on then "Open Plan: the masons knocked your walls through" else "Your den's walls are back",
+		"good"
+	)
+	trayNote(player, dropped)
+	DenService.refresh(player)
+	Events.denChanged:fire(player, "open")
+end
+
+-- Admin: every wing slot filled (in Config order) or emptied, and Open Plan on or off
+function DenService.adminWings(player: Player, fill: boolean): string
+	local data = DataService.get(player)
+	if data == nil then
+		return "No data"
+	end
+	local den = data.den
+	local before = shapeOf(den)
+	den.level = math.max(den.level, Dens.wing.level)
+	den.wings = {}
+	if fill then
+		for i, slot in Dens.wingSlots do
+			local def = Dens.wings[((i - 1) % #Dens.wings) + 1]
+			den.wings[slot.id] = def.id
+		end
+	end
+	local dropped = reshape(player, data, before)
+	DataService.markDirty(player)
+	DenService.refresh(player)
+	return if fill
+		then `Wings built in all {#Dens.wingSlots} slots · {dropped} back to the tray`
+		else `Wings taken down · {dropped} back to the tray`
+end
+
+-- Admin: a wing slot set to one kind (no coral)
+function DenService.adminWing(player: Player, slotId: string, wingId: string): string
+	local data = DataService.get(player)
+	if data == nil then
+		return "No data"
+	end
+	local den = data.den
+	local before = shapeOf(den)
+	den.level = math.max(den.level, Dens.wing.level)
+	if typeof(den.wings) ~= "table" then
+		den.wings = {}
+	end
+	if Dens.wingsById[wingId] then
+		den.wings[slotId] = wingId
+	else
+		den.wings[slotId] = nil
+	end
+	local dropped = reshape(player, data, before)
+	DataService.markDirty(player)
+	DenService.refresh(player)
+	return `{slotId}: {if Dens.wingsById[wingId] then wingId else "empty"} · {dropped} back to the tray`
+end
+
+function DenService.adminOpen(player: Player, on: boolean): string
+	local data = DataService.get(player)
+	if data == nil then
+		return "No data"
+	end
+	local den = data.den
+	local before = shapeOf(den)
+	den.openOwned = true
+	den.open = on
+	local dropped = reshape(player, data, before)
+	DataService.markDirty(player)
+	DenService.refresh(player)
+	return `Open Plan {if on then "on" else "off"} · {dropped} back to the tray`
+end
+
+-- The den's shape for a player (other services: the aquarium's tanks)
+function DenService.shape(player: Player): DenSpace.Shape?
+	local data = DataService.get(player)
+	return if data then shapeOf(data.den) else nil
+end
+
 -- Admin testing: the den at a level, and some of every thing in the tray
 function DenService.setLevel(player: Player, level: number)
 	local data = DataService.get(player)
@@ -598,7 +895,7 @@ function DenService.setLevel(player: Player, level: number)
 		local placement = data.den.placed[i]
 		local item = Dens.itemsById[placement.id]
 		local at = Vector3.new(placement.x, placement.y, placement.z)
-		if item == nil or not DenSpace.check(data.den.level, item, placement.s, at).ok then
+		if item == nil or not DenSpace.check(shapeOf(data.den), item, placement.s, at).ok then
 			table.remove(data.den.placed, i)
 		end
 	end
@@ -824,6 +1121,8 @@ function DenService.start()
 	Net.onRequest("DenColor", color)
 	Net.onRequest("DenFloor", floor)
 	Net.onRequest("DenDoor", door)
+	Net.onRequest("DenWing", wing)
+	Net.onRequest("DenOpenPlan", openPlan)
 	Net.onRequest("EnterDen", enterDen)
 	Net.onRequest("LeaveDen", leaveDen)
 	Net.onRequest("Prestream", prestream)

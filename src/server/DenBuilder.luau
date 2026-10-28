@@ -20,6 +20,7 @@ local DenItems = require(ReplicatedStorage.Shared.DenItems)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Cave = require(script.Parent.Cave)
 local DenCarve = require(script.Parent.DenCarve)
+local DenWings = require(script.Parent.DenWings)
 
 local Dens = Config.Dens
 
@@ -40,6 +41,9 @@ export type Record = {
 	glow: string,
 	floor: string,
 	placed: { Placement },
+	wings: { [string]: string }?, -- wing slot id → wing id (Config/Dens wings)
+	open: boolean?, -- Open Plan
+	tanks: DenWings.Stock?, -- the aquarium's fish, by tank id
 }
 
 export type Trophies = {
@@ -49,7 +53,14 @@ export type Trophies = {
 	beaks: number,
 	title: string,
 	owner: string,
+	gallery: DenWings.Gallery?, -- the Trophy Gallery's records
 }
+
+-- The record's shape (Shared/DenSpace): its level, wings and Open Plan
+local function shapeOf(record: Record): DenSpace.Shape
+	return { level = record.level, wings = record.wings, open = record.open }
+end
+DenBuilder.shapeOf = shapeOf
 
 type Built = { model: Model, key: string }
 type DenState = {
@@ -57,10 +68,14 @@ type DenState = {
 	shell: Folder,
 	items: Folder,
 	trophies: Folder,
-	carved: number?, -- the level the rock is carved for
-	shellKey: string?, -- level, floor and glow the shell was built for
+	wings: Folder,
+	tanks: Folder,
+	carved: string?, -- the shape the rock is carved for (DenSpace.key)
+	shellKey: string?, -- shape, floor and glow the shell was built for
 	placed: { [number]: Built },
 	trophyKey: string?,
+	wingKey: string?,
+	tankKey: string?,
 }
 
 local STONE = Color3.fromRGB(176, 164, 140)
@@ -124,6 +139,8 @@ local function stateOf(index: number): DenState
 		shell = sub("Shell"),
 		items = sub("Items"),
 		trophies = sub("Trophies"),
+		wings = sub("Wings"),
+		tanks = sub("Tanks"),
 		carved = if existing then existing.carved else nil,
 		placed = {},
 	}
@@ -143,7 +160,7 @@ end
 local function buildShell(state: DenState, index: number, record: Record)
 	state.shell:ClearAllChildren()
 	local frame = DenSpace.frame(index)
-	local level = record.level
+	local level = shapeOf(record)
 	local glow = glowOf(record)
 	local style = Dens.floorsById[record.floor] or Dens.floors[1]
 	local function spot(x: number, y: number, z: number): CFrame
@@ -256,13 +273,17 @@ local function buildShell(state: DenState, index: number, record: Record)
 		end
 	end
 	-- Pillars down the big rooms, up into the vault, every other one with a sconce
+	local roomsById: { [string]: DensConfig.Room } = {}
+	for _, room in DenSpace.rooms(level) do
+		roomsById[room.id] = room
+	end
 	for n, pillar in DenSpace.pillars(level) do
-		local room = Dens.roomsById[pillar.room]
+		local room = roomsById[pillar.room]
 		if room == nil then
 			continue
 		end
 		local s = DenSpace.storey(room.storey)
-		local height = DenSpace.vaultAt(room, math.abs(pillar.x)) + 1.5
+		local height = DenSpace.vaultAt(room, math.abs(pillar.x), pillar.z) + 1.5
 		local foot = spot(pillar.x, s.deck, pillar.z)
 		local shaftPart = part(
 			state.shell,
@@ -292,7 +313,7 @@ local function buildShell(state: DenState, index: number, record: Record)
 			Enum.Material.Slate
 		)
 		-- The sconce faces the room's middle
-		local inward = if pillar.x > 0 then -1 else 1
+		local inward = if pillar.x > (room.cx or 0) then -1 else 1
 		local sconce = part(
 			state.shell,
 			"Sconce",
@@ -313,7 +334,13 @@ local function buildShell(state: DenState, index: number, record: Record)
 	local cords: { Part } = {}
 	for storey = 1, DenSpace.storeys(level) do
 		local s = DenSpace.storey(storey)
-		local rooms = DenSpace.rooms(level, storey)
+		-- (the house's own rooms: the wings hang their own lamps, DenWings)
+		local rooms: { DensConfig.Room } = {}
+		for _, room in DenSpace.rooms(level, storey) do
+			if room.wing == nil then
+				table.insert(rooms, room)
+			end
+		end
 		local front, back = -math.huge, math.huge
 		for _, room in rooms do
 			front = math.max(front, room.z0)
@@ -940,18 +967,54 @@ function DenBuilder.build(
 	shellFill: number?
 )
 	local state = stateOf(index)
-	if state.carved ~= record.level then
-		Cave.apply(workspace.Terrain, DenCarve.ops(index, record.level))
-		state.carved = record.level
+	local shape = shapeOf(record)
+	local shapeKey = DenSpace.key(shape)
+	if state.carved ~= shapeKey then
+		Cave.apply(workspace.Terrain, DenCarve.ops(index, shape))
+		state.carved = shapeKey
 	end
 	-- Clients read which shafts this den has (SwimController's shaft lift)
 	state.folder:SetAttribute("Level", record.level)
-	local shellKey = `{record.level}|{record.floor}|{record.glow}`
+	state.folder:SetAttribute("Shape", shapeKey)
+	local shellKey = `{shapeKey}|{record.floor}|{record.glow}`
 	if state.shellKey ~= shellKey then
 		buildShell(state, index, record)
 		state.shellKey = shellKey
 	end
 	syncItems(state, index, record)
+	-- The wings' dressing, and the aquarium's tanks
+	local gallery: DenWings.Gallery = trophies.gallery
+		or {
+			biggest = nil,
+			byRarity = {},
+			teeth = trophies.teeth,
+			beaks = trophies.beaks,
+			title = trophies.title,
+		}
+	local galleryKey = ""
+	if gallery.biggest then
+		galleryKey ..= `{gallery.biggest.prey}{gallery.biggest.rarity}{gallery.biggest.kg}`
+	end
+	for rarity, catch in gallery.byRarity do
+		galleryKey ..= `|{rarity}{catch.prey}{catch.kg}`
+	end
+	local wingKey = `{shellKey}|{gallery.teeth}|{gallery.beaks}|{galleryKey}`
+	if state.wingKey ~= wingKey then
+		state.wings:ClearAllChildren()
+		DenWings.build(state.wings, index, DenSpace.frame(index), shape, glowOf(record), gallery)
+		state.wingKey = wingKey
+	end
+	local stock = record.tanks or {}
+	local tankKey = shellKey
+	for _, tank in DenSpace.tanks(shape) do
+		local fish = stock[tank.id]
+		tankKey ..= `|{tank.id}={if fish then fish.prey .. fish.rarity else ""}`
+	end
+	if state.tankKey ~= tankKey then
+		state.tanks:ClearAllChildren()
+		DenWings.tanks(state.tanks, DenSpace.frame(index), shape, glowOf(record), stock)
+		state.tankKey = tankKey
+	end
 	local trophyKey =
 		`{record.level}|{record.glow}|{trophies.bestPrey}|{trophies.bestPreyMass}|{trophies.teeth}|{trophies.beaks}|{trophies.title}`
 	if state.trophyKey ~= trophyKey then

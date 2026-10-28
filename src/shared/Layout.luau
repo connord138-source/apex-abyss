@@ -138,12 +138,22 @@ function Layout.exitFrame(index: number): CFrame
 end
 
 -- How far a den's block reaches round its frame (the rooms plus their walls)
--- (the front reaches past the way out's alcove, Dens.exit `back`, with rock to spare)
+-- (the front reaches past the way out's alcove, Dens.exit `back`, with rock to spare),
+-- the widest it can be: Open Plan's rooms, and the longest wing out from the main
+-- storey's side wall Open Plan has widened (Shared/DenSpace wingPlans)
 local HALF, FRONT, BACK, TOP, BOTTOM = 0, Dens.maxFront + Dens.exit.back + 13, Dens.maxBack - 16, 0, 0
+local mainWall = 0
 for _, room in Dens.rooms do
-	HALF = math.max(HALF, room.x + 16)
+	HALF = math.max(HALF, room.x + Dens.openPlan.widen + 16)
+	if room.storey == 1 then
+		mainWall = math.max(mainWall, room.x + Dens.openPlan.widen)
+	end
 end
 TOP = Dens.storeys[1].ceiling + 16
+for _, wing in Dens.wings do
+	HALF = math.max(HALF, math.ceil((mainWall + Dens.wing.passage) / 2) * 2 + wing.length + 16)
+	TOP = math.max(TOP, wing.ceiling + 16)
+end
 BOTTOM = Dens.storeys[#Dens.storeys].floor - 16
 Layout.DEN_EXTENT = { half = HALF, front = FRONT, back = BACK, top = TOP, bottom = BOTTOM }
 
