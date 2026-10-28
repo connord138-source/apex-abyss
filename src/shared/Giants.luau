@@ -87,4 +87,36 @@ function Giants.gap(at: Vector3, heading: Vector3, size: number, point: Vector3)
 	return distance - radius, if distance > 1e-3 then offset / distance else Vector3.yAxis
 end
 
+-- A humpback's hunt this pass (Config/Ambient `whale.hunt`; CompanionService publishes
+-- it on Workspace.Giants as `Lane<n>` = (slot, health 0..1, the clock it died or 0)):
+-- its health share, and when it died if it did
+function Giants.hunt(lane: number, slot: number): (number, number?)
+	local folder = workspace:FindFirstChild("Giants")
+	local state = if folder then folder:GetAttribute(`Lane{lane}`) else nil
+	if typeof(state) == "Vector3" and math.floor(state.X + 0.5) == slot then
+		return state.Y, if state.Z > 0 then state.Z else nil
+	end
+	return 1, nil
+end
+
+-- Where a humpback brought down at `diedAt` is at `t`: stopped where it died, rolling
+-- onto its back over the hunt's `roll` s and sinking (`SINK` studs/s), and how far it
+-- has faded out (it's gone as the Whale Fall's carcass takes its place at the end of
+-- the roll: ChumService.whaleKilled starts there)
+local SINK = 4
+function Giants.deadFrame(
+	lane: number,
+	from: Vector3,
+	to: Vector3,
+	diedAt: number,
+	t: number
+): (CFrame, number)
+	local at = Giants.at(lane, from, to, diedAt)
+	local roll = Ambient.giants.whale.hunt.roll
+	local since = math.clamp(t - diedAt, 0, roll)
+	local u = since / roll
+	local frame = CFrame.lookAt(at, at + (to - from)) * CFrame.Angles(0, 0, u * u * math.pi * 0.9)
+	return frame - Vector3.new(0, since * SINK, 0), math.clamp((u - 0.7) / 0.3, 0, 1)
+end
+
 return Giants

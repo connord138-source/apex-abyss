@@ -539,6 +539,53 @@ function ChumService.whaleNow(crush: boolean?): string
 	return if w then `Whale Fall in the {w.biome.name} in 5 s` else "Whale Fall started"
 end
 
+-- A humpback the hunters brought down in the Open Blue (CompanionService; owner,
+-- 2026-10-28: "whales should be big prey points that would draw in multiple high level
+-- players"): it's the Whale Fall where it died, sinking at once from where it rolled
+-- over, so everyone can feed on it. One that's only announced gives way to it; with
+-- one already feeding, it bursts into a big slick instead. The carcass settles on the
+-- least cluttered floor within 30 studs. Returns whether it became the Whale Fall.
+function ChumService.whaleKilled(at: Vector3, yaw: number): boolean
+	local biome = Biomes.at(Vector3.new(at.X, Seafloor.y(at.X, at.Z) + 10, at.Z))
+	if biome == nil then
+		return false
+	end
+	local now = Timing.clock()
+	local current = whale
+	if current and current.cloud then
+		local floor = floorUnder(at.X, at.Z, math.min(at.Y, World.surfaceY - 5))
+		add("slick", at, floor, tune.whale.chunks, chunkKg(biome), 16, tune.whale.feed * 0.4, biome)
+		return false
+	end
+	local spot, floor = at, floorUnder(at.X, at.Z, World.surfaceY - 5)
+	local best = (blocked(at.X, at.Z, floor, yaw))
+	if best > 0 then
+		for i = 1, 8 do
+			local angle = i * math.pi / 4
+			local x, z = at.X + math.cos(angle) * 30, at.Z + math.sin(angle) * 30
+			local under = floorUnder(x, z, World.surfaceY - 5)
+			local score = (blocked(x, z, under, yaw))
+			if score < best then
+				best, spot, floor = score, Vector3.new(x, at.Y, z), under
+			end
+		end
+	end
+	local top = math.min(spot.Y, floor + tune.whale.height * 1.6, World.surfaceY - 30)
+	whale = {
+		at = Vector3.new(spot.X, top, spot.Z),
+		floor = floor,
+		yaw = yaw,
+		biome = biome,
+		startsAt = now,
+		cloud = nil,
+	}
+	warned = false
+	Net.chum("warn", { x = spot.X, y = top, z = spot.Z, biome = biome.name, startsAt = now })
+	startWhale()
+	scheduleWhale(now, false)
+	return true
+end
+
 -- A Blood Tide slick near a random player out in the biomes
 local function slick()
 	local out: { { player: Player, at: Vector3 } } = {}

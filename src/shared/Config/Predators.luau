@@ -725,6 +725,64 @@ local list: { PredatorDef } = {
 		back = Color3.fromRGB(24, 24, 32),
 		belly = Color3.fromRGB(36, 36, 46),
 	},
+	{
+		-- The Open Blue's top hunters (owner, 2026-10-28: "hammerheads ... appear to be
+		-- impervious to players ... Hammerhead should be a top tier predator"): a pack
+		-- of three round Hammerhead Pinnacle, the highest level of any plain predator.
+		-- They turn on a coin (the wide head), circle a fish before they come in, and
+		-- swing out to its flanks like the trevally. A Dash away or the pinnacle's
+		-- ledges break a pack's run; only a fish near their level should take them on
+		id = "Hammerhead",
+		name = "Great Hammerhead",
+		model = "Hammerhead", -- (VariantModels.Hammerhead, the Reef Shark's variant)
+		girth = 0.16,
+		length = 20,
+		health = 360, -- (15 bites at its level)
+		level = 72,
+		speed = 52, -- (a LV 72 'Cuda swims ~58, a Nibbler ~44; a Dash outruns it)
+		turnRate = 2.6,
+		aggroRange = 140,
+		style = {
+			kind = "tracker",
+			chase = 1,
+			turnAtSpeed = 0.85,
+			tellFollow = 1,
+			tellBrake = 1.2,
+			tellFacing = 0.75,
+			snap = 1.5,
+			cone = 0.45,
+			commit = 0.65,
+			whip = 2.2,
+			slowsToTurn = 0.35,
+			roam = 0.4,
+			recover = 0.7,
+			leash = 2.4,
+			carry = 0.45,
+			comeTurn = 2.6,
+			comePace = 0.9,
+			sated = 2,
+			circle = 0.35,
+			circleSeconds = 2.4,
+			feint = 0.1,
+			glide = 0.15,
+			beat = 2.2,
+			pack = { size = 3, spread = 22 },
+			warn = "HAMMERHEADS · DASH CLEAR",
+		},
+		biteReach = 4,
+		biteFraction = 0.26, -- (three of them: a still fish of its level lasts ~10 s)
+		biteCooldown = 2,
+		telegraph = 0.75,
+		ignoreBelow = 0.25,
+		band = { 1240, 1490 },
+		angles = { 256, 292 },
+		depth = { 20, 170 },
+		count = 2, -- (packs)
+		respawn = 150,
+		loot = { hauls = 0.9, dna = 10, coral = 300 },
+		back = Color3.fromRGB(104, 116, 128),
+		belly = Color3.fromRGB(214, 220, 226),
+	},
 }
 
 local byId: { [string]: PredatorDef } = {}

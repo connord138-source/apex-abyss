@@ -45,6 +45,7 @@ local SwimController = require(script.Parent.SwimController)
 local ClientState = require(script.Parent.Parent.ClientState)
 local HudController = require(script.Parent.HudController)
 local HuntController = require(script.Parent.HuntController)
+local Ui = require(script.Parent.Parent.Ui)
 
 local Ambient = Config.Ambient
 local World = Config.World
@@ -105,6 +106,7 @@ type Creature = {
 	from: Vector3?, -- a giant's line
 	to: Vector3?,
 	giant: string?, -- "whale" | "manta"
+	slot: number, -- a giant's pass (Shared/Giants `slot`)
 	body: AmbientBody.Body?, -- a ray's, manta's, turtle's or giant's
 	beat: number, -- seconds a flap, stroke or ripple
 	cycle: number, -- a stingray's day (Config/Ambient `settle`)
@@ -196,6 +198,7 @@ local function newCreature(kind: string, key: number, home: Vector3, size: numbe
 		from = nil,
 		to = nil,
 		giant = nil,
+		slot = 0,
 		body = nil,
 		beat = 1,
 		cycle = 1,
@@ -587,6 +590,7 @@ local function makeGiant(lane: number, slot: number): Creature
 	local which, from, to, size = giantLine(lane, slot)
 	local creature = newCreature("giant", lane, from, size, (lane * 1.7) % TAU)
 	creature.giant = which
+	creature.slot = slot
 	creature.from = from
 	creature.to = to
 	local settings = if which == "whale" then Ambient.giants.whale else Ambient.giants.manta
@@ -600,6 +604,20 @@ end
 
 local function giantAt(creature: Creature, t: number): (Vector3, number)
 	return Giants.at(creature.key, creature.from :: Vector3, creature.to :: Vector3, t)
+end
+
+-- A humpback's hunt (Config/Ambient `whale.hunt`, published by CompanionService): its
+-- health share and when it was brought down, if it was
+local function huntOf(creature: Creature): (number, number?)
+	if creature.giant ~= "whale" then
+		return 1, nil
+	end
+	return Giants.hunt(creature.key, creature.slot)
+end
+
+local function brought(creature: Creature): boolean
+	local _, diedAt = huntOf(creature)
+	return diedAt ~= nil
 end
 
 ----------------------------------------------------------------------------------
@@ -935,8 +953,13 @@ local function frameOf(creature: Creature, t: number): (CFrame, number, number, 
 	if kind == "ray" then
 		return rayFrame(creature, t)
 	elseif kind == "giant" then
-		local at = giantAt(creature, t)
 		local from, to = creature.from :: Vector3, creature.to :: Vector3
+		-- Brought down: it rolls onto its back and sinks where it died
+		local _, diedAt = huntOf(creature)
+		if diedAt then
+			return (Giants.deadFrame(creature.key, from, to, diedAt, t)), 0, 0, -1
+		end
+		local at = giantAt(creature, t)
 		return CFrame.lookAt(at, at + (to - from)), 0, 0, -1
 	end
 	local frame, rate = cruiseFrame(creature, t)
@@ -971,7 +994,7 @@ end
 local function whaleAt(mouth: Vector3, reach: number): number?
 	local now = Timing.clock()
 	for lane, creature in giants do
-		if creature.giant == "whale" and creature.fade < 0.5 then
+		if creature.giant == "whale" and creature.fade < 0.5 and not brought(creature) then
 			local at = giantAt(creature, now)
 			local heading = ((creature.to :: Vector3) - (creature.from :: Vector3)).Unit
 			if (Giants.gap(at, heading, creature.size, mouth)) <= reach then
@@ -1053,6 +1076,66 @@ end
 type Posing = { creature: Creature, away: number, frame: CFrame, rate: number, settled: number, since: number }
 local posing: { Posing } = {}
 
+-- A hunted humpback's health over it (Config/Ambient `whale.hunt`): the hurt one
+-- nearest the camera within HEALTH_RANGE studs, alive
+local HEALTH_RANGE = 380
+local healthAnchor: Part? = nil
+local healthGui: BillboardGui? = nil
+local healthFill: Frame? = nil
+
+local function showHealth(creature: Creature?, health: number, now: number)
+	local gui = healthGui
+	if creature == nil then
+		if gui then
+			gui.Enabled = false
+		end
+		return
+	end
+	if gui == nil then
+		local anchor = Instance.new("Part")
+		anchor.Name = "WhaleHealth"
+		anchor.Anchored = true
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.one
+		anchor.Parent = folder
+		healthAnchor = anchor
+		local made = Instance.new("BillboardGui")
+		made.Name = "WhaleHealth"
+		made.Adornee = anchor
+		made.AlwaysOnTop = true
+		made.LightInfluence = 0
+		made.Size = UDim2.fromOffset(230, 40)
+		made.MaxDistance = HEALTH_RANGE
+		made.ResetOnSpawn = false
+		Ui.label(
+			made,
+			"Title",
+			"HUMPBACK · HUNTED",
+			Ui.FONT_HEAVY,
+			15,
+			Ui.color.text,
+			UDim2.new(1, 0, 0, 18)
+		).TextXAlignment =
+			Enum.TextXAlignment.Center
+		local _, fill =
+			Ui.bar(made, "Health", UDim2.new(1, -20, 0, 10), UDim2.new(0, 10, 0, 24), Ui.color.danger)
+		healthFill = fill
+		made.Parent = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+		healthGui = made
+		gui = made
+	end
+	assert(gui)
+	local anchor = healthAnchor :: Part
+	local at = giantAt(creature, now)
+	anchor.CFrame = CFrame.new(at + Vector3.new(0, creature.size * Ambient.giants.whale.girth + 10, 0))
+	local fill = healthFill :: Frame
+	fill.Size = UDim2.fromScale(math.clamp(health, 0, 1), 1)
+	gui.Enabled = true
+end
+
 local function step(dt: number)
 	local now = Timing.clock()
 	frameCount += 1
@@ -1097,6 +1180,7 @@ local function step(dt: number)
 	table.clear(moveParts)
 	table.clear(moveFrames)
 	table.clear(posing)
+	local hurt: Creature?, hurtAway, hurtHealth = nil, HEALTH_RANGE, 1
 	for creature in creatures do
 		local kind = KINDS[creature.kind]
 		local isGiant = creature.kind == "giant"
@@ -1147,10 +1231,26 @@ local function step(dt: number)
 				local near = Ambient.giants.near
 				fade = math.max(fade, 1 - (away - near) / 50)
 			end
-			local _, u = giantAt(creature, now)
-			fade = math.max(fade, 1 - math.min(u, 1 - u) / 0.08)
+			local health, diedAt = huntOf(creature)
+			if diedAt then
+				-- (gone as the Whale Fall's carcass takes its place)
+				local _, gone = Giants.deadFrame(
+					creature.key,
+					creature.from :: Vector3,
+					creature.to :: Vector3,
+					diedAt,
+					now
+				)
+				fade = math.max(fade, gone)
+			else
+				local _, u = giantAt(creature, now)
+				fade = math.max(fade, 1 - math.min(u, 1 - u) / 0.08)
+				if health < 1 and fade < 0.5 and away < hurtAway then
+					hurt, hurtAway, hurtHealth = creature, away, health
+				end
+			end
 		end
-		if creature.giant == "whale" and fade < 0.5 then
+		if creature.giant == "whale" and fade < 0.5 and not brought(creature) then
 			solidWhale(creature, frame)
 		end
 		fade = math.max(fade, bossFade)
@@ -1178,6 +1278,7 @@ local function step(dt: number)
 		end
 	end
 	lastCloudAt = now
+	showHealth(hurt, hurtHealth, now)
 	if not sawTurtle then
 		turtleKey = nil
 	end
@@ -1215,7 +1316,8 @@ local function step(dt: number)
 		local animate = (kind.animate or 120) * scale
 		local due = entry.away <= animate
 			or (entry.away <= animate * 2 and (frameCount + creature.key) % 2 == 0)
-		if due and budget >= body.joints then
+		-- (a whale brought down lies still as it rolls over and sinks)
+		if due and budget >= body.joints and not brought(creature) then
 			budget -= body.joints
 			local motion = creature.motion
 			motion.t = now

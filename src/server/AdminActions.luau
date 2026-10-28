@@ -385,6 +385,18 @@ local function turtleJoin(_admin: Player, targets: { Player }): string
 	return `A sea turtle swims with {count} player(s) for {Config.Companions.turtle.lasts} s`
 end
 
+-- A test of the whale hunt: the humpback nearest the first target drops to 10%
+local function whaleHurt(_admin: Player, targets: { Player }): string
+	if #targets == 0 then
+		return "No target"
+	end
+	local _, root = FishService.character(targets[1])
+	if root == nil then
+		return "The target has no fish"
+	end
+	return CompanionService.hurtWhale(root.Position, 0.1)
+end
+
 local function chumHere(_admin: Player, targets: { Player }, amount: any): string
 	local kg = amountOf(amount, 1) or 20
 	local count = 0
@@ -804,6 +816,7 @@ AdminActions.byName = {
 	apexBounty = apexBounty :: Handler,
 	chumHere = chumHere :: Handler,
 	turtleJoin = turtleJoin :: Handler,
+	whaleHurt = whaleHurt :: Handler,
 	hurtBoss = hurtBoss :: Handler,
 	endBoss = endBoss :: Handler,
 	grantPass = grantPass :: Handler,

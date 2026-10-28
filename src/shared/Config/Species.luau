@@ -25,6 +25,10 @@ export type Species = {
 	id: string,
 	name: string,
 	role: string,
+	-- A hunter of big game: only a predator fish can hurt a whale (Config/Ambient
+	-- `whale.hunt`; owner, 2026-10-28: "Low level fish and non predator players
+	-- shouldnt be able to hurt the whale")
+	predator: boolean?,
 	blurb: string,
 	plan: string, -- body plan (Shared/FishPlans)
 	home: string, -- biome id
@@ -74,6 +78,7 @@ local list: { Species } = {
 		id = "Cuda",
 		name = "'Cuda",
 		role = "Speed hunter",
+		predator = true,
 		blurb = "The fastest fish in a straight line. Hits hard, turns wide.",
 		plan = "Cuda",
 		home = "KelpShallows",
@@ -129,6 +134,7 @@ local list: { Species } = {
 		id = "MorayEel",
 		name = "Moray Eel",
 		role = "Ambusher",
+		predator = true,
 		blurb = "Quick, sneaky, and thin enough to slip through gaps nothing its size can.",
 		plan = "Eel",
 		home = "ShipwreckGraveyard",
@@ -156,6 +162,7 @@ local list: { Species } = {
 		id = "ReefShark",
 		name = "Reef Shark",
 		role = "Brawler",
+		predator = true,
 		blurb = "Built to bite. Wins fights it has no business winning.",
 		plan = "Shark",
 		home = "OpenBlue",
@@ -181,6 +188,7 @@ local list: { Species } = {
 		id = "Anglerfish",
 		name = "Anglerfish",
 		role = "Lure hunter",
+		predator = true,
 		blurb = "Lives in the dark, and lets dinner come to it.",
 		plan = "Angler",
 		home = "AbyssalTrench",

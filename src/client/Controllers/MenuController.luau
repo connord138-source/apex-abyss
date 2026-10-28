@@ -1718,6 +1718,10 @@ local function guide(): { { title: string, text: string } }
 			text = "Silver, Golden, Glowing, Crystal and Prism fish sparkle and pay big. Catch them from five species for skins every fish wears (the LOG's logbook). The Tide Clock changes the sea every 20 minutes.",
 		},
 		{
+			title = "Whale hunts",
+			text = "Humpbacks cross the Open Blue. Only hunters (the 'Cuda, Moray Eel, Reef Shark and Anglerfish) from LV 60 can hurt one: bring it down together and everyone who bit it is paid, and it sinks as a Whale Fall that feeds the whole server.",
+		},
+		{
 			title = "World bosses",
 			text = "The Megalodon and the Giant Squid rise about every 30 minutes. Fight together for trophies, exclusive skins and a huge Haul.",
 		},

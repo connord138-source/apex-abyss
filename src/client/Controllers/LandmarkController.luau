@@ -6,8 +6,8 @@
 --     the jelly chains drift (`Drifting`), near the camera only;
 --   * garden eels duck into the sand as a fish swims over them (`GardenEels`);
 --   * little fish shelter under each sargassum raft (`Sargassum`), built near it;
---   * hammerheads circle Hammerhead Pinnacle (the PlaceMarks HammerheadPinnacle and
---     HammerheadPinnacle_Base): VariantModels.Hammerhead, or a part-built shark;
+--   * (the hammerheads round Hammerhead Pinnacle are real predators since 2026-10-28,
+--     Config/Predators `Hammerhead`, drawn by PredatorController);
 --   * BITE the Broken Galleon's bell or a clam's pearl (`HuntController.findLandmark`;
 --     the bell rings for everyone near, a pearl taken stays hidden for us until it
 --     grows back: state `pearls`);
@@ -35,7 +35,7 @@ local LandmarkController = {}
 
 -- Floating things bob and drift about a stud a second, so they're posed every other
 -- frame within NEAR_EVERY, every fifth within NEAR_HALF and every eighth past it,
--- all in one BulkMoveTo with the raft fish and the hammerheads. Their motion eases
+-- all in one BulkMoveTo with the raft fish. Their motion eases
 -- out with distance and they hold still past it: a jelly past DRIFT_STILL, a raft,
 -- buoy or otter past BOB_STILL. Each is welded into one assembly on the server
 -- (LandmarkKit.oneBody), so only its anchored root is moved (PC 2026-10-22, 66.7
@@ -63,10 +63,6 @@ local SHELTER_KEEP = 30
 local SHELTER_STEP = 0.0042
 local SHELTER_MAX = 6
 local SHELTER_FISH = 4
-local SHARKS = 4
-local SHARK_NEAR = 900
-local SHARK_HALF = 300
-local SHARK_LENGTH = 16
 
 -- A floating thing: its rest pivot (the server's), and each of its parts placed
 -- against it (an assembly's root only: welded parts follow it), kept up to date as
@@ -294,110 +290,14 @@ local function clearShelter(entry: Shelter)
 end
 
 -- ---------------------------------------------------------------------------
--- Hammerheads round the pinnacle
+-- What moves this frame
 -- ---------------------------------------------------------------------------
 
-type Shark = { model: Model, parts: { BasePart }, offsets: { CFrame } }
 -- What moves this frame, in one BulkMoveTo
 local moveParts: { BasePart } = {}
 local moveFrames: { CFrame } = {}
-local sharks: { Shark } = {}
 local frameCount = 0
 local smoothDt = 1 / 60 -- the frame time, eased (the raft fish's SHELTER_STEP)
-
-local function partShark(): Model
-	local model = Instance.new("Model")
-	model.Name = "Hammerhead"
-	local grey = Color3.fromRGB(104, 116, 128)
-	local function piece(name: string, size: Vector3, at: CFrame, shape: string?)
-		local p: BasePart = if shape == "wedge" then Instance.new("WedgePart") else Instance.new("Part")
-		p.Name = name
-		p.Anchored = true
-		p.CanCollide = false
-		p.CanQuery = false
-		p.CanTouch = false
-		p.Material = Enum.Material.SmoothPlastic
-		p.Color = grey
-		p.Size = size
-		p.CFrame = at
-		p.Parent = model
-		return p
-	end
-	-- (along -Z, the way a rigged model faces)
-	local body = piece("Body", Vector3.new(2.2, 2.4, 12), CFrame.new())
-	model.PrimaryPart = body
-	piece("Head", Vector3.new(7.5, 0.7, 1.8), CFrame.new(0, 0.2, -6.4))
-	piece("Dorsal", Vector3.new(0.4, 3.2, 2.6), CFrame.new(0, 2.6, -0.5), "wedge")
-	piece("Tail", Vector3.new(0.4, 4.2, 2.4), CFrame.new(0, 0.8, 7) * CFrame.Angles(0, math.pi, 0), "wedge")
-	return model
-end
-
-local function sharkModel(): Model
-	local variants = ReplicatedStorage:FindFirstChild("VariantModels")
-	local template = if variants then variants:FindFirstChild("Hammerhead") else nil
-	if template and template:IsA("Model") then
-		local model = template:Clone()
-		for _, part in model:GetDescendants() do
-			if part:IsA("BasePart") then
-				part.Anchored = true
-				part.CanCollide = false
-				part.CanQuery = false
-				part.CanTouch = false
-			end
-		end
-		local extent = model:GetExtentsSize()
-		local long = math.max(extent.X, extent.Y, extent.Z)
-		if long > 0 then
-			model:ScaleTo(SHARK_LENGTH / long)
-		end
-		return model
-	end
-	return partShark()
-end
-
-local function stepSharks(now: number, camera: Vector3)
-	local center, base = mark("HammerheadPinnacle"), mark("HammerheadPinnacle_Base")
-	if center == nil or base == nil or (camera - center).Magnitude > SHARK_NEAR then
-		for _, shark in sharks do
-			shark.model:Destroy()
-		end
-		table.clear(sharks)
-		return
-	end
-	if #sharks == 0 then
-		for _ = 1, SHARKS do
-			local model = sharkModel()
-			local pivot = model:GetPivot()
-			local shark: Shark = { model = model, parts = {}, offsets = {} }
-			for _, part in model:GetDescendants() do
-				if part:IsA("BasePart") then
-					table.insert(shark.parts, part)
-					table.insert(shark.offsets, pivot:ToObjectSpace(part.CFrame))
-				end
-			end
-			model.Parent = folder
-			table.insert(sharks, shark)
-		end
-	end
-	-- (past SHARK_HALF, every other frame)
-	if (camera - center).Magnitude > SHARK_HALF and frameCount % 2 == 1 then
-		return
-	end
-	for k, shark in sharks do
-		local radius = 70 + k * 14
-		local speed = 9 + k
-		local way = if k % 2 == 0 then 1 else -1
-		local angle = way * now * speed / radius + k * 1.7
-		local height = base.Y + 50 + k * 34 + math.sin(now * 0.3 + k) * 8
-		local at = Vector3.new(base.X + math.cos(angle) * radius, height, base.Z + math.sin(angle) * radius)
-		local ahead = Vector3.new(-math.sin(angle) * way, 0, math.cos(angle) * way)
-		local frame = CFrame.lookAt(at, at + ahead) * CFrame.Angles(0, 0, way * 0.18)
-		for i, part in shark.parts do
-			table.insert(moveParts, part)
-			table.insert(moveFrames, frame * shark.offsets[i])
-		end
-	end
-end
 
 -- ---------------------------------------------------------------------------
 -- The bell, the pearls and the cannon
@@ -626,7 +526,6 @@ local function step(dt: number)
 			table.insert(moveFrames, CFrame.lookAt(at, at + ahead) * entry.turn[k])
 		end
 	end
-	stepSharks(now, eye)
 	if #moveParts > 0 then
 		Workspace:BulkMoveTo(moveParts, moveFrames, Enum.BulkMoveMode.FireCFrameChanged)
 		table.clear(moveParts)

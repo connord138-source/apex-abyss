@@ -57,6 +57,7 @@ local JAW: { [string]: JawRange } = {
 	WolfEel = { cruise = 0.05, wide = 0.5, shut = -0.1 },
 	GoblinShark = { cruise = 0.05, wide = 0.7, shut = -0.1, throw = 0.1 }, -- (the jaw throw)
 	BlackDragonfish = { cruise = 0.1, wide = 0.65, shut = -0.05 },
+	Hammerhead = { cruise = 0.06, wide = 0.4, shut = -0.1 },
 	default = { cruise = 0.05, wide = 0.4, shut = -0.1 },
 }
 
@@ -87,6 +88,36 @@ type Piece = {
 type StandIn = { w: number, h: number, tail: Vector3, tailColor: Color3?, pieces: { Piece } }
 local CYAN = Color3.fromRGB(90, 230, 255)
 local STAND_INS: { [string]: StandIn } = {
+	-- (the Reef Shark's variant model, VariantModels.Hammerhead, until then: a grey
+	-- shark under its wide flat head, the eyes at the head's tips)
+	Hammerhead = {
+		w = 0.15,
+		h = 0.18,
+		tail = Vector3.new(0.03, 0.34, 0.14),
+		pieces = {
+			{ shape = "block", size = Vector3.new(0.4, 0.035, 0.1), at = Vector3.new(0, 0.02, -0.44) },
+			{ shape = "wedge", size = Vector3.new(0.025, 0.2, 0.14), at = Vector3.new(0, 0.17, -0.04) },
+			{
+				shape = "block",
+				size = Vector3.new(0.26, 0.02, 0.1),
+				at = Vector3.new(0.12, -0.06, -0.14),
+				rot = Vector3.new(0, -20, -15),
+			},
+			{
+				shape = "block",
+				size = Vector3.new(0.26, 0.02, 0.1),
+				at = Vector3.new(-0.12, -0.06, -0.14),
+				rot = Vector3.new(0, 20, 15),
+			},
+			{ shape = "ball", size = Vector3.one * 0.035, at = Vector3.new(0.2, 0.02, -0.44), color = "eye" },
+			{
+				shape = "ball",
+				size = Vector3.one * 0.035,
+				at = Vector3.new(-0.2, 0.02, -0.44),
+				color = "eye",
+			},
+		},
+	},
 	SeaLion = {
 		w = 0.25,
 		h = 0.26,
@@ -850,7 +881,10 @@ local function build(index: number, def: Def, boss: boolean): Visual
 	local bones: { [string]: Bone } = {}
 	local spine: { string } = {}
 	local flip = false
-	local rigged = riggedTemplate(def.model, if boss then "FishModels" else "PreyModels")
+	-- (a predator that's also a playable variant, the Hammerhead, draws that model)
+	local rigged = if boss
+		then riggedTemplate(def.model, "FishModels")
+		else riggedTemplate(def.model, "PreyModels") or riggedTemplate(def.model, "VariantModels")
 	do
 		if rigged then
 			local clone = rigged:Clone()

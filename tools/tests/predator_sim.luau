@@ -1198,6 +1198,21 @@ expect(dStill.pulled > 0 and dStill.lured > 0, "Dragonfish: its lure draws the f
 local dDash = case("BlackDragonfish", n88, "water", deepWater, "stillDash", 40)
 expect(rate(dDash) <= 0.55, "Dragonfish: a Dash beats the lunge it's used on")
 
+-- Great Hammerhead, the Open Blue's top hunter round its pinnacle (LV 72, packs of 3;
+-- owner, 2026-10-28: "Hammerhead should be a top tier predator")
+print("-- Great Hammerhead: top-tier pack round the pinnacle")
+local pinnacle = at(266, 1320, 90)
+local n70, c70, n85 = fishAt("Nibbler", 70), fishAt("Cuda", 70), fishAt("Nibbler", 85)
+local hStill = case("Hammerhead", n70, "water", pinnacle, "still", 70)
+expect(hStill.caught >= TRIALS * 0.9, "Hammerhead: a still fish is bitten")
+local hFlee = case("Hammerhead", n70, "water", pinnacle, "flee", 60)
+expect(hFlee.caught >= TRIALS * 0.5, "Hammerhead: runs a LV 70 Nibbler down")
+case("Hammerhead", c70, "water", pinnacle, "flee", 60)
+local hDash = case("Hammerhead", n70, "water", pinnacle, "stillDash", 60)
+expect(rate(hDash) <= 0.5, "Hammerhead: a Dash beats most strikes")
+local hWary = case("Hammerhead", n85, "water", pinnacle, "still", 60)
+expect(hWary.bites == 0, "Hammerhead: leaves a fish 13+ levels over it alone")
+
 if failures > 0 then
 	error(`{failures} predator check(s) failed`)
 end

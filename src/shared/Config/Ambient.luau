@@ -217,6 +217,29 @@ return {
 			-- a capsule `girth` of its length thick at the middle.
 			girth = 0.11,
 			feed = { bite = 1 / 10, hauls = 1 },
+			-- A hunt (owner, 2026-10-28: "whales should be big prey points that would
+			-- draw in multiple high level players. Low level fish and non predator
+			-- players shouldnt be able to hurt the whale"): only a predator fish
+			-- (Config/Species `predator`) at `minLevel` or above hurts one (and takes a
+			-- mouthful); anyone else's bite glances off. A bite does what it would to a
+			-- plain predator at `level` (Config/Predators `fight`: LV 100 ×4, LV 75 ×1,
+			-- LV 60 ×0.36 of 24); `health` grows `perExtra` for each other hunter in the
+			-- last `window` s. The first bite tells the server (once every `callEvery`
+			-- s). Brought down, it rolls over and sinks, and after `roll` s it's the
+			-- Whale Fall where it died (ChumService.whaleKilled; a big cloud of chum if
+			-- one is already feeding), and everyone who hurt it is paid by damage share
+			-- (at least `minShare`): `hauls` full Hauls past the cap, coral, DNA.
+			hunt = {
+				minLevel = 60,
+				level = 75,
+				health = 4000,
+				perExtra = 0.4,
+				window = 20,
+				callEvery = 90,
+				roll = 2.5,
+				minShare = 0.15,
+				loot = { hauls = 1.5, coral = 2500, dna = 12 },
+			},
 			look = {
 				top = Color3.fromRGB(56, 72, 94),
 				top2 = Color3.fromRGB(50, 66, 88),

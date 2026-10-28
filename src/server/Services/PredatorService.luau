@@ -1614,6 +1614,16 @@ local function simulate(predator: Predator, dt: number, now: number)
 			local toTarget = aim - mouth
 			local direction = if toTarget.Magnitude > 1e-3 then toTarget.Unit else predator.heading
 			local facing = predator.heading:Dot(direction)
+			-- (a tethered hunter's long body can carry its jaws just past a fish lying
+			-- along its snout: measured from its middle, a fish between its middle and its
+			-- jaws is ahead of it, not behind; a Wolf Eel pivoted on one for 20 s,
+			-- predator sim 2026-10-28)
+			if predator.home and gap < def.length * 0.5 then
+				local fromMiddle = aim - predator.position
+				if fromMiddle.Magnitude > 1e-3 then
+					facing = math.max(facing, predator.heading:Dot(fromMiddle.Unit))
+				end
+			end
 			local ambush = style.kind == "ambush"
 			-- An ambusher's burst ran out without a tell: out of breath
 			if
@@ -1712,6 +1722,13 @@ local function simulate(predator: Predator, dt: number, now: number)
 						local pace = if style.whip then style.slowsToTurn or 0.35 else TETHER_PIVOT
 						desired = direction * speed * pace
 						turnRate = def.turnRate * (whip :: number)
+						-- (a fish right against its middle: it slides on past it first, or it
+						-- pivots about the fish and its jaws never come round to it; a Wolf
+						-- Eel sat on a still fish for 20 s, predator sim 2026-10-28)
+						local off = aim - predator.position
+						if not style.whip and Vector3.new(off.X, 0, off.Z).Magnitude < def.length * 0.3 then
+							desired = predator.heading * speed * 0.4
+						end
 					elseif not bursting and gap < def.length * 2 and facing < 0.2 then
 						startRecover(predator, now, 1, false)
 					elseif
