@@ -397,6 +397,22 @@ local function whaleHurt(_admin: Player, targets: { Player }): string
 	return CompanionService.hurtWhale(root.Position, 0.1)
 end
 
+-- The whale hunt's other test: take the first target beside the nearest humpback
+local function whaleGo(_admin: Player, targets: { Player }): string
+	if #targets == 0 then
+		return "No target"
+	end
+	local _, root = FishService.character(targets[1])
+	if root == nil then
+		return "The target has no fish"
+	end
+	local frame, said = CompanionService.besideWhale(root.Position, 30)
+	if frame then
+		Net.teleport(targets[1], frame)
+	end
+	return said
+end
+
 local function chumHere(_admin: Player, targets: { Player }, amount: any): string
 	local kg = amountOf(amount, 1) or 20
 	local count = 0
@@ -817,6 +833,7 @@ AdminActions.byName = {
 	chumHere = chumHere :: Handler,
 	turtleJoin = turtleJoin :: Handler,
 	whaleHurt = whaleHurt :: Handler,
+	whaleGo = whaleGo :: Handler,
 	hurtBoss = hurtBoss :: Handler,
 	endBoss = endBoss :: Handler,
 	grantPass = grantPass :: Handler,

@@ -300,10 +300,9 @@ local function onBiteWhale(player: Player, lane: any)
 	end
 end
 
--- Admin (a test of the hunt): the humpback crossing nearest `near` drops to `share`
--- of its health, so a hunter's few bites bring it down. Says where it is.
-function CompanionService.hurtWhale(near: Vector3, share: number): string
-	local now = Timing.clock()
+-- The humpback crossing nearest `near` (not just starting or ending its pass): its
+-- lane and how far off it is
+local function nearestWhale(near: Vector3, now: number): (number?, number)
 	local settings = Config.Ambient.giants
 	local best: number?, bestAway = nil, math.huge
 	for lane = 1, settings.lanes do
@@ -313,7 +312,34 @@ function CompanionService.hurtWhale(near: Vector3, share: number): string
 			best, bestAway = lane, (at - near).Magnitude
 		end
 	end
-	local lane = best
+	return best, bestAway
+end
+
+-- Admin (a test of the hunt): where to put a fish beside the humpback crossing
+-- nearest `near`, `gap` studs off its flank at its middle and facing it, so a test
+-- needn't search the Open Blue for one
+function CompanionService.besideWhale(near: Vector3, gap: number): (CFrame?, string)
+	local now = Timing.clock()
+	local lane, away = nearestWhale(near, now)
+	if lane == nil then
+		return nil, "No humpback is crossing the Open Blue right now; try again in a minute"
+	end
+	local pass = Giants.pass(lane, now)
+	local at = Giants.at(lane, pass.from, pass.to, now)
+	local heading = (pass.to - pass.from) * Vector3.new(1, 0, 1)
+	heading = if heading.Magnitude > 1e-3 then heading.Unit else Vector3.xAxis
+	local side = heading:Cross(Vector3.yAxis)
+	local spot = at + side * (pass.size * Config.Ambient.giants.whale.girth + gap)
+	return CFrame.lookAt(spot, at),
+		`Beside the humpback on lane {lane} (it was {math.floor(away)} studs away), {math.floor(pass.size)} studs long`
+end
+
+-- Admin (a test of the hunt): the humpback crossing nearest `near` drops to `share`
+-- of its health, so a hunter's few bites bring it down. Says where it is.
+function CompanionService.hurtWhale(near: Vector3, share: number): string
+	local now = Timing.clock()
+	local settings = Config.Ambient.giants
+	local lane, bestAway = nearestWhale(near, now)
 	if lane == nil then
 		return "No humpback is crossing the Open Blue right now; try again in a minute"
 	end

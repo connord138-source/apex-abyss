@@ -2297,7 +2297,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     sink, fade it into the carcass, a HUMPBACK · HUNTED health bar over a hurt whale
     within 380 studs, and stop it being solid once dead. The first bite tells the
     server (once every 90 s). Admin "Whale hunt: the humpback nearest the target
-    drops to 10%" (`whaleHurt`). The Index has a Whale hunts line.
+    drops to 10%" (`whaleHurt`) and "take the target beside the nearest humpback"
+    (`whaleGo`, 30 studs off its flank). The Index has a Whale hunts line.
   - **The Great Hammerhead** (`Config/Predators` `Hammerhead`): LV 72, two packs of 3
     round Hammerhead Pinnacle (band 1240–1490, 256–292°, 20–170 over the floor), a
     tracker that circles (`circle` 0.35), whips round (`whip` 2.2) and turns 2.6;
