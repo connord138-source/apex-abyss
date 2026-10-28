@@ -396,8 +396,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     species. Measured by `tools/tests/run_catch_sim.sh` (the school layout, a hunter
     chasing glints and a casual player taking only what's within 60 studs of their
     path; checks `every` within ±30%; rerun it after changing rates, lives, `spawn`,
-    `Config/Prey` or `Config/Tides`): a hunter's minutes per catch Silver 0.8, Golden
-    1.9, Glowing 10, Crystal ~31, Prism ~2.6 a Prism Tide; a casual player a third to a
+    `Config/Prey` or `Config/Tides`): a hunter's minutes per catch Silver 0.4, Golden
+    0.9 (0.8 / 1.9 until 2026-10-28's doubling), Glowing 10, Crystal ~31, Prism ~2.6 a Prism Tide; a casual player a third to a
     half of that (owner, 2026-10-20: "i havent seen a single gold or crystal fish
     spawn today": Golden, Glowing and Crystal rates ×2.7/×2.3/×3.4 and lives longer;
     were Golden 5, Glowing 25, Crystal ~100). Skin goals in one biome: Golden ~2.5–3 h,
@@ -423,7 +423,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     totals per rarity, and the five goals on top with your fish in the skin and FOR
     EVERY FISH. A goal is N of a rarity from each of S prey species (`Config/Catch`
     `unlock`, `Catch.goal`/`met`, counted from the lifetime `data.catchLog`): Silver
-    10 × 5, Golden 10 × 5, Glowing 5 × 5, Crystal 2 × 5, Prism 1 × 5; a met goal
+    10 × 5, Golden 15 × 5 (10 until 2026-10-28), Glowing 5 × 5, Crystal 2 × 5, Prism 1 × 5; a met goal
     unlocks the skin for every playable fish, locked ones too
     (`CatchService.grantEveryFish`), re-checked on join, and a catch skin one fish
     earned on the old per-fish tracks became every fish's (`data.catchTracks` stays,
@@ -1329,7 +1329,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     preview's flare colour (nil = Golden's warm white). A new `sheen` skin gets an FX
     `light` and, if it isn't gold, a Wardrobe `SKIN_EFFECT_WORDS` entry. Bounties now
     Silver10, Golden5, Glowing2 (Golden8 and Glowing3 took ~40 / ~75 min of hunting
-    at the new rates); Silver is 8 Pass XP and 0.2 leaderboard points, ×2 in the
+    at the new rates); Silver is 4 Pass XP (8 until 2026-10-28) and 0.2 leaderboard points, ×2 in the
     Blood and Prism Tides.
   - **Dens:** rooms 1.22× (deck ~1.5×), capacities 24/48/80/125/180; things at real
     scale (floor ×1.9, rugs 18–24 studs, wall lanterns small) and clusters built from
@@ -2271,6 +2271,80 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   body (`Size.colliderDiameter` + 2 thick, length + 4 long) overlaps anything
   collidable (a stall's counter and posts on the 45/135/225/315° doors, the Treasure
   Wheel by the 225/255° ones); leaving, an eviction and the prestream use it.
+- **The 2026-10-28 owner batch (owner: vent chimneys and tube worms "look rough", "way
+  to get rid of the skybox?", "need more variety in roll rewards ... a bit too much
+  coral", "veil tail doesnt make sense on the shark ... The parts need to shape to the
+  fish", "still need more silver and gold fish", the buoy "floating in the water when
+  its not on the surface", "hub entrances should be bigger", the teal brazier's fire
+  "should actually flow like fire", a den coral upgrade with "choice of different
+  rooms, open layout ... a passive element", and "hammerheads and whales appear to be
+  impervious ... Hammerhead should be a top tier predator and whales should be big
+  prey points that would draw in multiple high level players. Low level fish and non
+  predator players shouldnt be able to hurt the whale"; built on `claude/world`):**
+  - **Whale hunts** (`Config/Ambient` `whale.hunt`, `CompanionService`,
+    `Shared/Giants` `hunt`/`deadFrame`): only a hunter species (`Config/Species`
+    `predator`: 'Cuda, Moray Eel, Reef Shark, Anglerfish) at LV 60+ hurts a passing
+    humpback; anyone else is told once a pass and their bite glances off (no mouthful:
+    they feed on the Whale Fall after). A bite does what it would to a LV 75 plain
+    predator (`Config/Predators` `fight`; with Iron Jaw, the species' bite and the
+    school bonus), 4,000 health +40% per other hunter in the last 20 s; a mouthful as
+    before (`feed`). The hunt is published on `Workspace.Giants` as `Lane<n>` =
+    (slot, health 0..1, the clock it died). Brought down, everyone who hurt it is paid
+    by damage share (at least 15%): 1.5 full Hauls past the cap, 2,500 coral, 12 DNA;
+    it rolls over and sinks for 2.5 s, then `ChumService.whaleKilled` makes it the
+    Whale Fall there (an announced one gives way; with one feeding, a big slick), the
+    carcass on the least cluttered floor within 30 studs. Clients draw the roll and
+    sink, fade it into the carcass, a HUMPBACK · HUNTED health bar over a hurt whale
+    within 380 studs, and stop it being solid once dead. The first bite tells the
+    server (once every 90 s). Admin "Whale hunt: the humpback nearest the target
+    drops to 10%" (`whaleHurt`). The Index has a Whale hunts line.
+  - **The Great Hammerhead** (`Config/Predators` `Hammerhead`): LV 72, two packs of 3
+    round Hammerhead Pinnacle (band 1240–1490, 256–292°, 20–170 over the floor), a
+    tracker that circles (`circle` 0.35), whips round (`whip` 2.2) and turns 2.6;
+    bite 0.26 every 2 s, 360 health, loot 0.9 Hauls / 300 coral / 10 DNA; warning
+    HAMMERHEADS · DASH CLEAR. The client draws `VariantModels.Hammerhead` (the Reef
+    Shark's variant; PredatorController falls back to VariantModels after PreyModels)
+    with a Jaw, else a part-built stand-in. LandmarkController's decorative
+    hammerheads are gone. Sim: a still LV 70 fish bitten 12/12, a fleeing Nibbler
+    7/12, a Dash beats 66% of strikes, a LV 85 fish is left alone.
+  - **Wolf Eels never pivot on a fish:** a tethered hunter measures facing from its
+    middle for a fish within half its length (one lying along its snout, between its
+    middle and jaws, counted as behind it), and slides on past a fish at its middle
+    before whipping round (the new group shifted the predator sim's random sequence
+    onto that case: 0 bites in 20 s, now 4).
+  - **Bigger hub tunnels** (`Config/World` `tunnelArch` 12, `tunnelWall` 116,
+    `tunnelWide` 23; `Cave.TUNNEL_TOP`): the dens' doorways open either side of each
+    tunnel at the cavern wall, so there it's a tall arch (a second tube 12 up; crown
+    42 studs, was 33); past the wall it widens to radius 23 (was 16) and its mouth
+    flares to 29; past r ~132 its top opens in the seamount's step like a gorge. The
+    EXIT board sits over the new crown. `check_exits.py`: all open. Hub preview views
+    `tunnel` and `tunnelout`.
+  - **The Kelp Cathedral's buoy rides the surface:** a short chain off the rowboat's
+    bow, then a line up through the roof's open middle to the float (it hung on a
+    chain 78 studs over the boat).
+  - **Living fire** (`Fx.hearth`, `Config/Dens` `flame`): the Teal Brazier's flames
+    rise, narrow and lick off its bowl in its teal, with embers, over the model's own
+    still flame.
+  - **A water sky, gated** (`Config/Textures` `skyUp`/`skySide`/`skyDown`,
+    `OceanController` `waterSky`, `assets/textures/sky_water_*.png`, classifier
+    0.003–0.015): once all three ids are set the client's OceanSky wears lit water over,
+    a deep-blue gradient round and navy under. All 0: the sky and surface are the PC
+    chat's, so set them only with the owner's go-ahead.
+  - **Roll prizes** (`Config/Rolls` `prizes`, `RollOdds` `fixed`): Shell Purse +30
+    shells 1/8, DNA Bundle +8 of the fish's home biome 1/12, Lucky Charm 1/20, Feast
+    Charm and Shell Magnet 1/40, Deep Lantern 1/50, Tattered Map 1/30, Weathered Map
+    1/120, each fixed (luck doesn't touch them) and taken out of coral; a charm at
+    its carry cap or a map with the satchel full pays `refund` coral. A fresh fish's
+    roll is 45% coral (was ~82%); `minCoralShare` 0.3. Prizes are never announced; the
+    reel's rare teasers stay cosmetics; cards photograph a charm with its own gem and a
+    map as a scroll (`CardPhoto` `scroll`). `run_odds.sh`: OK.
+  - **Twice the Silver and Golden fish** (`Config/Catch`): Silver 2.5/min, life 180
+    (~7.5 swimming round a player, was ~2.5), Golden 0.5/min, life 360 (~3, was ~1.1);
+    a hunter's catch every 0.4 / 0.9 min. The Golden goal is 15 × 5 species (1.7–2.6 h
+    in one biome); their Tide Pass XP is halved (Silver 4, Golden 12).
+  - **Dens:** the expansion and passive-income design is a proposal for the owner
+    (`docs/proposals/2026-10-28-den-expansion.md`: Wings, the Aquarium, Open Plan, den
+    hearts); nothing of it is built.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
