@@ -2342,6 +2342,18 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (~7.5 swimming round a player, was ~2.5), Golden 0.5/min, life 360 (~3, was ~1.1);
     a hunter's catch every 0.4 / 0.9 min. The Golden goal is 15 × 5 species (1.7–2.6 h
     in one biome); their Tide Pass XP is halved (Silver 4, Golden 12).
+  - **Vent chimneys and tube worms** (`Vents.luau` `flange`, `worm`, `wormCrust`):
+    a flange is a ring of 5–7 chunky slabs, each its own reach, slope and roll, half
+    of them turned-over wedges, buried in the column, in a basalt near the column's
+    (`COLORS.flange`), with a faint glow slit under two of them, a hanging drip and
+    sometimes sulfide on top (the yellow `FlangeLip` star is gone). A tube worm is a
+    pale tube with a flared collar (tall ones a stained lower section with a slight
+    bend) and a fan of 3–4 thin red blades from the collar; ~10% have it drawn in.
+    Clumps stand on a low faceted crust pad, tallest in the middle, 7–11 a clump;
+    forests are 4 knots of 34/25/20 (were 110/80/60): ~143 worms (were ~415),
+    ~3,000–3,260 parts over five seeds (`PARTS_CAP` 3,300). Preview views `chimney`
+    and `chimney2`; `render_hub.py` skips the builder's `B|` view-box lines (every
+    `run_vents.sh` render crashed on them).
   - **Dens:** the expansion and passive-income design is a proposal for the owner
     (`docs/proposals/2026-10-28-den-expansion.md`: Wings, the Aquarium, Open Plan, den
     hearts); nothing of it is built.
