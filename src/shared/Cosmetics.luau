@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(script.Parent.Config)
 local ShadesConfig = require(script.Parent.Config.Shades)
 local FishBuilder = require(script.Parent.FishBuilder)
+local PartFit = require(script.Parent.PartFit)
 local SkinFx = require(script.Parent.SkinFx)
 
 type PartSpec = FishBuilder.PartSpec
@@ -297,84 +298,55 @@ local PARTS: { [string]: Cosmetic } = {
 	},
 }
 
--- The rolled parts' Tripo models (owner, 2026-10-21: the approved PartsBoard's
--- legendary sheet; parts_glb, ReplicatedStorage.PartModels.<PartId>). Each hangs on
--- `parent` like the part-built pieces above, its longest side `length` of the fish's
--- length, its attach point (where it meets the fish) at `c0` there. `box` and
--- `attach` are the model's own proportions and that point, in units of its longest
--- side (tools/props/parts_prep.py's parts.json). Until it's imported the part-built
--- piece is drawn.
-type PartFit = {
-	parent: string,
-	length: number,
-	c0: CFrame,
-	box: Vector3,
-	attach: Vector3,
-	light: Color3?,
-}
-local PART_MODELS: { [string]: PartFit } = {
-	-- A segmented stalk from the top of the head to a crystal bulb dangling ahead of
-	-- the mouth
-	AnglerLure = {
-		parent = "Head",
-		length = 0.42,
-		c0 = CFrame.new(0, 0.13, 0.02),
-		box = Vector3.new(0.3424, 0.9738, 1),
-		attach = Vector3.new(-0.0457, -0.0229, 0.5),
-		light = Color3.fromRGB(120, 235, 255),
-	},
-	NarwhalHorn = {
-		parent = "Head",
-		length = 0.56,
-		c0 = CFrame.new(0, 0.03, -0.13) * CFrame.Angles(math.rad(8), 0, 0),
-		box = Vector3.new(0.3269, 0.3213, 1),
-		attach = Vector3.new(0.0037, -0.0046, 0.5),
-	},
-	SawSnout = {
-		parent = "Head",
-		length = 0.42,
-		c0 = CFrame.new(0, -0.02, -0.12),
-		box = Vector3.new(0.358, 0.1295, 1),
-		attach = Vector3.new(0.0045, -0.0005, 0.5),
-	},
-	-- Its foot a little into the back, the tall end forward
-	SailFin = {
-		parent = "Body1",
-		length = 0.52,
-		c0 = CFrame.new(0, 0.13, 0.08),
-		box = Vector3.new(0.1204, 0.4918, 1),
-		attach = Vector3.new(0, -0.2459, 0.0002),
-	},
-	-- Its stem round the tail stalk, the veil flowing out behind the fish's own tail
-	VeilTail = {
-		parent = "Stalk",
-		length = 0.48,
-		c0 = CFrame.new(0, 0, -0.02),
-		box = Vector3.new(0.3083, 0.8497, 1),
-		attach = Vector3.new(0.07, 0.0079, -0.5),
-	},
-}
 -- (a static GLB faces +Z, the fish -Z: turned round about its own middle)
 local MODEL_TURN = CFrame.Angles(0, math.pi, 0)
 
--- A rolled part's model as one piece to hang (nil until it's imported)
-local function modelSpecs(id: string): { PartSpec }?
-	local fit = PART_MODELS[id]
-	local template = if fit then FishBuilder.partModel(id) else nil
-	if fit == nil or template == nil then
+-- A rolled part's Tripo model (owner, 2026-10-21: the approved PartsBoard's legendary
+-- sheet; parts_glb, ReplicatedStorage.PartModels.<PartId>) as one piece to hang, nil
+-- until it's imported (the part-built piece is drawn then). Shared/PartFit says where
+-- and how it sits: on a mesh body (`on`: its anchors, plan and part scale) the place,
+-- size and stretch measured on that fish (owner, 2026-10-28: "The parts need to shape
+-- to the fish and change their appearance to fit. Not just mesh slap a part on"), on
+-- a graybox body the part body's own spot. `look` is the colours the fish wears (its
+-- shade's when it has one), which the model's texture is tinted toward, and `glow`
+-- its glow's tint.
+type MeshFit = { anchors: { [string]: CFrame }, plan: string?, partScale: number }
+local function modelSpecs(id: string, look: FishBuilder.Look, glow: Color3?, on: MeshFit?): { PartSpec }?
+	local model = PartFit.MODELS[id]
+	local template = if model then FishBuilder.partModel(id) else nil
+	if model == nil or template == nil then
 		return nil
 	end
-	local turn = if template:GetAttribute("Facing") == "-Z" then CFrame.new() else MODEL_TURN
+	local turned = template:GetAttribute("Facing") ~= "-Z"
+	if model.reversed then
+		turned = not turned
+	end
+	local turn = if turned then MODEL_TURN else CFrame.new()
+	local shape = if on and on.plan then model.plans[on.plan] else nil
+	local anchor = if on and shape then on.anchors[shape.parent] else nil
+	local parent, length, stretch, c0 = model.parent, model.length, Vector3.one, model.c0
+	if shape and anchor then
+		parent, length, stretch = shape.parent, shape.length, shape.stretch or Vector3.one
+		c0 = anchor:Inverse() * shape.at
+	elseif on then
+		-- (a plan with no fit of its own: hung like the part-built pieces, as much smaller
+		-- as the plan draws them)
+		length *= on.partScale
+		c0 = CFrame.new(c0.Position * on.partScale) * c0.Rotation
+	end
 	local spec: PartSpec = {
 		name = id,
-		parent = fit.parent,
-		size = fit.box * fit.length,
-		c0 = fit.c0,
-		c1 = turn * CFrame.new(fit.attach * fit.length),
+		parent = parent,
+		size = model.box * stretch * length,
+		c0 = c0,
+		c1 = turn * CFrame.new(model.attach * stretch * length),
 		shape = "Block",
 		color = "fixed",
+		transparency = model.transparency,
 		mesh = id,
-		light = fit.light,
+		light = model.light,
+		tint = PartFit.tint(model, look),
+		glow = glow,
 	}
 	return { spec }
 end
@@ -620,7 +592,7 @@ end
 -- original base fish as well. For all playable models"). A mesh body has no
 -- Head/Body1/Stalk parts to hang pieces from, so those names are anchors: frames in
 -- the fish's own unit box (nose at z -0.5, tail at +0.5), tuned per body plan
--- (ANCHORS), each tied to a bone (Head, Spine1, Tail). A piece is a part jointed
+-- (Shared/PartFit), each tied to a bone (Head, Spine1, Tail). A piece is a part jointed
 -- to the mesh's primary part by a Motor6D whose C0 is rewritten every frame from
 -- its bone's animated pose (Cosmetics.follow, from FishAnimator), so a veil tail
 -- swings with the tail and a horn turns with the head. Pieces live under the Mesh
@@ -634,55 +606,29 @@ type Rigged = {
 }
 local meshRigs: { [Model]: { Rigged } } = {}
 
--- Per body plan: where the head sits (its length as a fraction of the body's,
--- from the nose), its height, the back's height over the middle, the tail stalk,
--- and `partScale`: rolled parts are made for the round graybox body (Body1 0.39 of
--- the length tall), so on a slender fish they're drawn smaller, as much as its
--- body is thinner. The heights were measured from the rigged FBX (the body's top
--- at Body1, the snout's middle) and set so a sail stands a third deep in the back:
--- on the Moray Eel a graybox-sized sail touched the back only at its lowest point
--- and read as floating a body height above it (playtest 2026-10-12), and the
--- Hammerhead's paddle lay on top of the snout (the head anchor sat 0.07 of the
--- length over the shark's snout)
-type AnchorTune = {
-	head: number?,
-	headY: number?,
-	bodyY: number?,
-	stalkZ: number?,
-	partScale: number?,
-}
-local ANCHORS: { [string]: AnchorTune } = {
-	Nibbler = {},
-	Cuda = { head = 0.3, headY = -0.039, bodyY = -0.023, partScale = 0.65 },
-	Puffer = { head = 0.38 },
-	Eel = { head = 0.16, headY = -0.037, bodyY = -0.043, stalkZ = 0.42, partScale = 0.55 },
-	Shark = { head = 0.3, headY = -0.05, bodyY = -0.032, partScale = 0.8 },
-	Angler = { head = 0.46, headY = 0.03, bodyY = -0.026 },
-}
-
--- The anchors of a mesh body, in its unit box, the box's dims and the plan's part
--- scale
+-- The anchors of a mesh body in its unit box (Shared/PartFit, per body plan), the
+-- box's dims and the plan's part scale
 local function meshAnchors(body: Model): ({ [string]: CFrame }, Dims, number)
 	local plan = body:GetAttribute("Plan")
-	local tune: AnchorTune = ANCHORS[if typeof(plan) == "string" then plan else ""] or ({} :: AnchorTune)
 	local w = body:GetAttribute("UnitW")
 	local h = body:GetAttribute("UnitH")
 	local dims: Dims = {
 		w = if typeof(w) == "number" then w else 0.4,
 		h = if typeof(h) == "number" then h else 0.45,
 	}
-	local head = tune.head or 0.3
-	local headY = tune.headY or math.clamp((dims.h * 0.4 - 0.15) * 0.5, -0.08, 0.08)
-	local bodyY = tune.bodyY or math.clamp(dims.h / 2 - 0.195, -0.1, 0.12)
-	return {
-		Head = CFrame.new(0, headY, -0.5 + head * 0.5),
-		Body1 = CFrame.new(0, bodyY, -0.05),
-		Body2 = CFrame.new(0, bodyY * 0.8, 0.15),
-		Body3 = CFrame.new(0, bodyY * 0.6, 0.28),
-		Stalk = CFrame.new(0, 0, tune.stalkZ or 0.38),
-	},
-		dims,
-		tune.partScale or 1
+	local anchors, partScale = PartFit.anchors(if typeof(plan) == "string" then plan else nil, dims.w, dims.h)
+	return anchors, dims, partScale
+end
+
+-- The colours a fish wears, for the pieces hung on it: its shade's when it has one
+-- (a mesh fish's parts are never repainted by a shade, so they take it here), and the
+-- shade's glow
+local function wornLook(look: FishBuilder.Look, shadeId: string?): (FishBuilder.Look, Color3?)
+	local shade = if shadeId then Config.Shades.byId[shadeId] else nil
+	if shade == nil then
+		return look, nil
+	end
+	return { back = shade.back, belly = shade.belly, fin = shade.fin }, shade.glow or shade.light
 end
 
 -- A rolled part's pieces drawn `k` times their size (sizes and the offsets inside
@@ -1477,11 +1423,17 @@ function Cosmetics.apply(
 		paintMesh(body, dress.shade, length, skinReady)
 		local anchors, dims, partScale = meshAnchors(body)
 		local bones = meshBones(mesh)
+		-- (a variant's own model keeps its species' plan: it has the same body)
+		local plan = body:GetAttribute("Plan")
+		local planName = if typeof(plan) == "string" then plan else nil
+		local fit: MeshFit = { anchors = anchors, plan = planName, partScale = partScale }
+		-- (a mesh fish's own colours are its texture's, PartFit.LOOKS)
+		local worn, glow = wornLook(PartFit.LOOKS[planName or ""] or look, dress.shade)
 		local variant = if dress.variant then VARIANTS[dress.variant] else nil
 		if variant then
 			-- (a variant drawn as its own model has its horns and fangs already)
 			if body:GetAttribute("MeshPlan") ~= dress.variant then
-				addMeshParts(body, mesh, extrasOf(variant, dims), look, anchors, bones)
+				addMeshParts(body, mesh, extrasOf(variant, dims), worn, anchors, bones)
 			end
 			body:SetAttribute("MeshScale", variant.meshScale or 1)
 		end
@@ -1489,13 +1441,14 @@ function Cosmetics.apply(
 			local id = dress.parts[slot]
 			local cosmetic = if id then PARTS[id] else nil
 			if cosmetic and id then
-				local specs = modelSpecs(id) or cosmetic.parts
-				addMeshParts(body, mesh, scaledSpecs(specs, partScale), look, anchors, bones)
+				local specs = modelSpecs(id, worn, glow, fit) or scaledSpecs(cosmetic.parts, partScale)
+				addMeshParts(body, mesh, specs, worn, anchors, bones)
 			end
 		end
 		return rebuilt
 	end
 	strip(body)
+	local worn, glow = wornLook(look, dress.shade)
 	local variant = if dress.variant then VARIANTS[dress.variant] else nil
 	if variant then
 		addParts(body, extrasOf(variant, grayboxDims(body)), look)
@@ -1505,7 +1458,7 @@ function Cosmetics.apply(
 		local id = dress.parts[slot]
 		local cosmetic = if id then PARTS[id] else nil
 		if cosmetic and id then
-			addParts(body, modelSpecs(id) or cosmetic.parts, look)
+			addParts(body, modelSpecs(id, worn, glow) or cosmetic.parts, look)
 			hide(body, cosmetic.hides)
 		end
 	end

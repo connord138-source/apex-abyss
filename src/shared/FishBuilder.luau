@@ -46,6 +46,11 @@ function FishBuilder.makePart(
 		for _, child in part:GetChildren() do
 			if not child:IsA("SurfaceAppearance") then
 				child:Destroy()
+			elseif spec.tint or spec.glow then
+				-- Its texture takes the fish's colours (a multiply: Shared/PartFit picks a
+				-- tint it can reach), its glow the shade's
+				child.Color = spec.tint or child.Color
+				child.EmissiveTint = spec.glow or child.EmissiveTint
 			end
 		end
 	elseif spec.shape == "Wedge" then
