@@ -428,4 +428,68 @@ function Fx.beam(
 	return beam
 end
 
+-- A living fire on a hearth (owner, 2026-10-28: the Teal Brazier's fire "should
+-- actually flow like fire"): tall tongues rising and narrowing off a bed `width`
+-- across, licks flicking off its edges and a few embers drifting up, `height` studs
+-- tall, from the core colour `core` to `edge` at the tips. Emits from `parent`, a
+-- flat part at the bed.
+function Fx.hearth(
+	parent: BasePart,
+	width: number,
+	height: number,
+	core: Color3,
+	edge: Color3
+): { ParticleEmitter }
+	local flames = Instance.new("ParticleEmitter")
+	flames.Name = "FxHearth"
+	flames.Texture = texture("fxFlame", BUILT_IN.fire)
+	flames.LightEmission = 1
+	flames.LightInfluence = 0
+	flames.EmissionDirection = Enum.NormalId.Top
+	flames.SpreadAngle = Vector2.new(8, 8)
+	flames.Rate = 22
+	flames.Lifetime = NumberRange.new(0.7, 1.1)
+	flames.Speed = NumberRange.new(height * 0.55, height * 0.9)
+	flames.Acceleration = Vector3.new(0, height * 0.6, 0)
+	flames.Drag = 1.6
+	flames.Rotation = NumberRange.new(-12, 12)
+	flames.RotSpeed = NumberRange.new(-30, 30)
+	flames.Size = keys({ 0, width * 0.42, 0.35, width * 0.36, 0.75, width * 0.18, 1, 0 })
+	flames.Transparency = keys({ 0, 0.55, 0.12, 0.1, 0.6, 0.35, 1, 1 })
+	flames.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, core),
+		ColorSequenceKeypoint.new(0.45, core:Lerp(edge, 0.6)),
+		ColorSequenceKeypoint.new(1, edge),
+	})
+	flames.ZOffset = 0.5
+	flames.Parent = parent
+	local licks = flames:Clone()
+	licks.Name = "FxHearthLicks"
+	licks.Rate = 16
+	licks.SpreadAngle = Vector2.new(24, 24)
+	licks.Lifetime = NumberRange.new(0.35, 0.6)
+	licks.Speed = NumberRange.new(height * 0.8, height * 1.3)
+	licks.Size = keys({ 0, width * 0.2, 0.5, width * 0.14, 1, 0 })
+	licks.Transparency = keys({ 0, 0.3, 0.3, 0.25, 1, 1 })
+	licks.RotSpeed = NumberRange.new(-90, 90)
+	licks.ZOffset = 0.8
+	licks.Parent = parent
+	local embers = Instance.new("ParticleEmitter")
+	embers.Name = "FxHearthEmbers"
+	embers.Texture = texture("fxStar", BUILT_IN.sparkle)
+	embers.LightEmission = 1
+	embers.LightInfluence = 0
+	embers.EmissionDirection = Enum.NormalId.Top
+	embers.SpreadAngle = Vector2.new(30, 30)
+	embers.Rate = 5
+	embers.Lifetime = NumberRange.new(1.4, 2.4)
+	embers.Speed = NumberRange.new(height * 0.3, height * 0.6)
+	embers.Drag = 0.8
+	embers.Size = keys({ 0, 0.22, 0.5, 0.16, 1, 0 })
+	embers.Transparency = keys({ 0, 0.1, 0.8, 0.4, 1, 1 })
+	embers.Color = ColorSequence.new(core)
+	embers.Parent = parent
+	return { flames, licks, embers }
+end
+
 return Fx

@@ -23,7 +23,9 @@ for segment = 1, hub.segments do
 		den.Parent = hubFolder
 	elseif kind == "tunnel" then
 		local angle = Layout.segmentAngle(segment)
-		local boardY = (hub.tunnelHeight / 2 - 2) * 2 + 1 + 4.6
+		-- (over the tunnel's crown, Cave.TUNNEL_TOP; an older Cave has none)
+		local crown = (Cave :: any).TUNNEL_TOP
+		local boardY = (if crown then crown else (hub.tunnelHeight / 2 - 2) * 2 + 1) + 4.6
 		local board = Plaza.tunnelBoard(hubFolder, angle, hub.radius - 0.6, boardY)
 		for side = -1, 1, 2 do
 			Decor.lantern(hubFolder, board * CFrame.new(side * 13.6, -0.6, -1.2), -side, true, 26, Color3.fromRGB(110, 220, 235))

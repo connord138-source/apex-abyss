@@ -89,6 +89,10 @@ export type Item = {
 	blurb: string,
 	set: string?, -- the furniture set it belongs to (`sets`): bought once its achievement is done
 	lamp: Color3?, -- lit in its own color (not the den's glow), its prop left untinted
+	-- A living fire over it (Shared/Fx `hearth`, in its `lamp` colour): its bed `at`
+	-- of its height over its middle, `width` of its width across, `height` of its
+	-- height tall
+	flame: { at: number, width: number, height: number }?,
 	rug: string?, -- a rug's shape ("round", "oval", "square"); its top-down art is Config/Textures `rug<id>`
 	front: number?, -- degrees its imported prop is turned to face out (Tripo props face +X: 90)
 	cluster: Cluster?, -- built of many pieces (a garden, a pile, a cluster): Shared/DenItems
@@ -770,6 +774,9 @@ local items: { Item } = {
 		front = 90,
 		color = Color3.fromRGB(150, 100, 60),
 		lamp = Color3.fromRGB(90, 255, 220),
+		-- (its bowl's rim is just over its middle; the flames rise over the model's own
+		-- still flame, owner 2026-10-28: "should actually flow like fire")
+		flame = { at = 0.06, width = 0.46, height = 0.5 },
 		blurb = "A bronze brazier holding a cold teal flame",
 	},
 	{

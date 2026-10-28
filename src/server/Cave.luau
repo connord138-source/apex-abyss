@@ -57,6 +57,10 @@ local DOME_CENTER_Y = hub.height - DOME_RADIUS
 local MOUND_TOP = hub.height - 2 -- the drum's flat top; the dome cap rises above it
 local DEN_FLOOR = hub.denFloorY
 local TUNNEL_RADIUS = hub.tunnelHeight / 2 - 2
+local TUNNEL_WIDE = hub.tunnelWide
+-- The tunnel's crown where it meets the cavern (its arch tube's top), for the EXIT
+-- board over it (WorldService)
+Cave.TUNNEL_TOP = TUNNEL_RADIUS + 1 + hub.tunnelArch + (TUNNEL_RADIUS - 3)
 
 local function ball(ops: { Op }, material: Enum.Material, center: Vector3, radius: number)
 	table.insert(ops, { kind = "ball", material = material, center = center, radius = radius })
@@ -364,7 +368,8 @@ function Cave.ops(): { Op }
 		Cave.denDoor(ops, den)
 	end
 
-	-- 6. The tunnels: round tubes out to the shallows, roughened
+	-- 6. The tunnels: round tubes out to the shallows, roughened. Through the wall a
+	-- tall arch (the dens' doorways open either side), then wider past it
 	for segment = 1, hub.segments do
 		if Layout.segmentKind(segment) == "tunnel" then
 			local angle = Layout.segmentAngle(segment)
@@ -378,17 +383,36 @@ function Cave.ops(): { Op }
 				reach - (hub.radius - 20),
 				TUNNEL_RADIUS
 			)
+			local wall = hub.tunnelWall
+			cylinder(
+				ops,
+				AIR,
+				at(angle, (hub.radius - 20 + wall) / 2, TUNNEL_RADIUS + 1 + hub.tunnelArch),
+				outward(angle),
+				wall - (hub.radius - 20),
+				TUNNEL_RADIUS - 3
+			)
+			cylinder(
+				ops,
+				AIR,
+				at(angle, (wall + reach) / 2, TUNNEL_WIDE + 1),
+				outward(angle),
+				reach - wall,
+				TUNNEL_WIDE
+			)
+			-- (the step from the arch out to the wide tube, rounded)
+			ball(ops, AIR, at(angle, wall, TUNNEL_RADIUS + 1 + hub.tunnelArch * 0.5), TUNNEL_RADIUS + 2)
 			-- A flared mouth where the tube comes out on the sand, so it opens wide
 			-- onto the shallows instead of ending in a lip
-			ball(ops, AIR, at(angle, reach - 4, TUNNEL_RADIUS + 5), TUNNEL_RADIUS + 4)
+			ball(ops, AIR, at(angle, reach - 4, TUNNEL_WIDE + 5), TUNNEL_WIDE + 6)
 			for _ = 1, 6 do
 				local r = rng:NextNumber(hub.radius + 4, reach - 8)
 				local side = rng:NextNumber(0, 2 * math.pi)
 				local offset = Vector3.new(math.cos(side), math.sin(side), 0)
 				local along = outward(angle)
 				local right = along:Cross(Vector3.yAxis).Unit
-				local spot = at(angle, r, TUNNEL_RADIUS + 1)
-					+ (right * offset.X + Vector3.yAxis * offset.Y) * TUNNEL_RADIUS
+				local radius = if r > hub.tunnelWall then TUNNEL_WIDE else TUNNEL_RADIUS
+				local spot = at(angle, r, radius + 1) + (right * offset.X + Vector3.yAxis * offset.Y) * radius
 				if spot.Y > 6 then
 					ball(ops, AIR, spot, rng:NextNumber(5, 8))
 				end
@@ -414,7 +438,7 @@ function Cave.ops(): { Op }
 				ops,
 				BASALT,
 				CFrame.lookAt(floorCenter, floorCenter + outward(angle)),
-				Vector3.new(TUNNEL_RADIUS * 2 + 6, 8, reach - (hub.radius - 20))
+				Vector3.new(TUNNEL_WIDE * 2 + 6, 8, reach - (hub.radius - 20))
 			)
 		end
 	end

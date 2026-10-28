@@ -380,13 +380,12 @@ end
 -- either end of it, on the board's own brackets (owner, 2026-10-17: they had stood
 -- at the mouth's sides, which is where the dens' doorways beside it open, so they
 -- hung inside those doorways). Built once the Terrain answers raycasts.
-local TUNNEL_RADIUS = hub.tunnelHeight / 2 - 2 -- Cave.luau's tube
 local function exitDressing(parent: Instance, segment: number)
 	local angle = Layout.segmentAngle(segment)
 	local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
 	local right = radial:Cross(Vector3.yAxis).Unit
-	-- Just above the tube's top (it's centered TUNNEL_RADIUS + 1 up)
-	local boardY = TUNNEL_RADIUS * 2 + 1 + 4.6
+	-- Just above the tunnel's crown (its arch, Cave.TUNNEL_TOP)
+	local boardY = Cave.TUNNEL_TOP + 4.6
 	local face = wallAt(radial, right, Vector3.new(0, boardY, 0), 11) or (hub.radius - 1)
 	local board = Plaza.tunnelBoard(parent, angle, face, boardY)
 	for side = -1, 1, 2 do

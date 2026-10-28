@@ -12,7 +12,7 @@
 --     the middle open and sun shafts coming down it; an understorey of young kelp and
 --     kelp clumps round the nave's edge; on its floor patches of sea grass, rippled
 --     sand, grey rocks with purple urchins and orange starfish, an old lobster trap and
---     a sunken rowboat whose float hangs on its chain over it;
+--     a sunken rowboat whose float rides the surface on its long line;
 --   * OTTER MEADOW (OtterMeadow): a dense sea-grass meadow, an urchin barren on a grey
 --     rock pavement beside it, sea otters floating on their backs at the surface over
 --     it (they bob: the client's LandmarksController, tag `Bobbing`), and a red buoy on
@@ -459,7 +459,7 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 	end
 
 	-- An old lobster trap near the way in, and a sunken rowboat across the nave whose
-	-- float hangs on its chain over it
+	-- float rides the surface on its long line
 	do
 		local p = ground - away * 42 - side * 8
 		local g = floorAt(p.X, p.Z)
@@ -483,17 +483,39 @@ local function cathedral(kelpFolder: Instance, parent: Instance)
 			Kit.part(stats, sm, "Hull", size * Vector3.new(0.9, 0.6, 0.4), box, WOOD, false)
 		end)
 		local bow = (box * CFrame.new(0, 0, -length * 0.4)).Position
-		local float = bow + Vector3.new(4, 78, 2)
-		-- (the chain stands still, so the float on it bobs a quarter as much, `Bob`, and
-		-- the top link ends inside the float's body, past the eyelet under its middle:
-		-- the KelpBuoy model's own side chain hangs to its box's bottom, and a chain
-		-- ending there stopped 2-3 studs short of the eyelet, PC 2026-10-23/24)
-		Kit.chain(stats, m, bow + Vector3.new(0, 1, 0), float + Vector3.new(0, 0.9, 0), 3, 1.8, CHAIN)
+		-- The float rides the surface (owner, 2026-10-28: a buoy "floating in the water
+		-- when its not on the surface" made no sense; it hung 78 studs over the boat): a
+		-- short chain off the bow, then its line up through the roof's open middle,
+		-- drifting a little downcurrent. The line stands still, so the float on it bobs
+		-- a quarter as much (`Bob`), and the line ends inside the float's body, past
+		-- the eyelet under its middle (the meadow buoy's, PC 2026-10-23/24)
 		local buoyHeight = 9
 		local buoySize = Vector3.new(0.45, 1, 0.48) * buoyHeight
-		local buoy = CFrame.new(float) * CFrame.Angles(0.15, 0, 0.1)
+		local float = Vector3.new(bow.X + 18, World.surfaceY - buoyHeight * 0.45, bow.Z + 9)
+		local knot = bow + Vector3.new(1.2, 14, 0.6)
+		Kit.chain(stats, m, bow + Vector3.new(0, 1, 0), knot, 1.2, 1.8, CHAIN)
+		Kit.rod(
+			stats,
+			m,
+			"BuoyLine",
+			knot,
+			Vector3.new(float.X, World.surfaceY - buoyHeight * 0.35, float.Z),
+			0.3,
+			IRON,
+			false
+		)
+		local buoy = CFrame.new(float)
 		local buoyHolder = Kit.hero(stats, m, "KelpBuoy", buoy, buoySize, function(sm)
-			Kit.part(stats, sm, "Float", Vector3.new(4, 4, 4), buoy, RED, false, Enum.PartType.Cylinder)
+			Kit.part(
+				stats,
+				sm,
+				"Float",
+				Vector3.new(4, 4, 4),
+				buoy * CFrame.new(0, 2, 0),
+				RED,
+				false,
+				Enum.PartType.Cylinder
+			)
 		end)
 		buoyHolder:SetAttribute("Bob", 0.25)
 		Kit.oneBody(buoyHolder)

@@ -21,6 +21,7 @@
 -- 2026-10-17: "fuzzy, cheap").
 local Config = require(script.Parent.Config)
 local DensConfig = require(script.Parent.Config.Dens)
+local Fx = require(script.Parent.Fx)
 local Props = require(script.Parent.Props)
 
 local DenItems = {}
@@ -1805,6 +1806,18 @@ function DenItems.build(item: DensConfig.Item, glow: Color3, surface: string): M
 		light(main, color, reach, 1.3)
 	elseif item.lamp then
 		light(main, item.lamp, reach, 1.2)
+	end
+	local flame = item.flame
+	if flame and item.lamp then
+		local bed = part(
+			model,
+			"Hearth",
+			Vector3.new(size.X * flame.width * 0.7, 0.2, size.Z * flame.width * 0.7),
+			CFrame.new(0, size.Y * flame.at, 0),
+			item.lamp
+		)
+		bed.Transparency = 1
+		Fx.hearth(bed, size.X * flame.width, size.Y * flame.height, Color3.new(0.85, 1, 0.97), item.lamp)
 	end
 	if item.id == "BubbleColumn" then
 		column(model, item)

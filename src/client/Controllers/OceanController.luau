@@ -644,7 +644,31 @@ function OceanController.setBossLight(amount: number)
 	bossLightTarget = math.clamp(amount, 0, 1)
 end
 
+-- The sky as water (Config/Textures `skyUp`/`skySide`/`skyDown`; owner, 2026-10-28:
+-- "way to get rid of the skybox?"): wherever the sky peeks past the haze it reads as
+-- more water, lit from above and darkening down. Only on this client, and only once
+-- all three images are uploaded (until then Roblox's default sky stays).
+local function waterSky()
+	local textures = Config.Textures :: { [string]: number }
+	local up, side, down = textures.skyUp or 0, textures.skySide or 0, textures.skyDown or 0
+	if up == 0 or side == 0 or down == 0 then
+		return
+	end
+	task.spawn(function()
+		local sky = Lighting:WaitForChild("OceanSky", 30)
+		if sky == nil or not sky:IsA("Sky") then
+			return
+		end
+		sky.SkyboxUp = `rbxassetid://{up}`
+		sky.SkyboxDn = `rbxassetid://{down}`
+		for _, face in { "SkyboxBk", "SkyboxFt", "SkyboxLf", "SkyboxRt" } do
+			(sky :: any)[face] = `rbxassetid://{side}`
+		end
+	end)
+end
+
 function OceanController.start()
+	waterSky()
 	grade = Instance.new("ColorCorrectionEffect")
 	grade.Name = "OceanGrade"
 	grade.Contrast = 0.06

@@ -33,6 +33,14 @@ return {
 		-- ~180): at 44 the tubes stopped inside the rock widened for the dens
 		-- (owner, 2026-10-11: "ensure all exits from the den are clear and open")
 		tunnelLength = 76,
+		-- Bigger ways out (owner, 2026-10-28: "hub entrances should be bigger"): the
+		-- dens' doorways open either side of each tunnel at the cavern wall, so there a
+		-- tube can't be wider, only taller (a second tube `tunnelArch` higher); past the
+		-- wall (`tunnelWall` from the centre) it widens to `tunnelWide` radius, and its
+		-- mouth onto the sand flares wider still
+		tunnelArch = 12,
+		tunnelWall = 116,
+		tunnelWide = 23,
 		oculusRadius = 28, -- the hole in the cavern roof (light comes down through it)
 		poolRadius = 7, -- each den's Haul Pool: swim into it to bank
 		-- The plaza's paving outside the raised centre (Plaza.luau): its top, a

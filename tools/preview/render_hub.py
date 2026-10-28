@@ -1043,6 +1043,9 @@ def views():
     # Den 1's nameplate from the beacon's side of the plaza (readability)
     v["doorfar"] = (polar(330, 24, 12), polar(15, 95, 27), 50)
     v["top"] = ((0, 260, 0.01), (0, 0, 0), 46)
+    # The tunnel at 0 deg from the plaza (den doorways either side), and out along it
+    v["tunnel"] = (polar(-6, 42, 16), polar(0, 104, 22), 72)
+    v["tunnelout"] = (polar(0, 100, 18), polar(0, 220, 22), 72)
     return v
 
 
