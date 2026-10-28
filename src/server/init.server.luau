@@ -29,6 +29,7 @@ local BossService = require(Services.BossService)
 local Admin = require(script.Admin)
 local DenService = require(Services.DenService)
 local GardenService = require(Services.GardenService)
+local AquariumService = require(Services.AquariumService)
 local RewardsService = require(Services.RewardsService)
 local TideService = require(Services.TideService)
 local CatchService = require(Services.CatchService)
@@ -71,6 +72,7 @@ BossService.start() -- world boss events: the Megalodon's phases, attacks and re
 Admin.start() -- the owner's admin panel (checks who is asking on every call)
 DenService.start() -- den bases: levels, furniture, glow, trophy wall
 GardenService.start() -- the den's Coral Garden: AFK and offline coral and shells
+AquariumService.start() -- the den's aquarium tanks: rare catches on show, earning
 RewardsService.start() -- the daily login streak and the group perk
 TideService.start() -- the Tide Clock: the tide turning, the Prism Tide warning
 CatchService.start() -- rare catches: which fish are rare, the Catch Log, the skin goals, the Catch of the Week

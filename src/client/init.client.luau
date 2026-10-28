@@ -17,6 +17,7 @@ local ChumController = require(script.Controllers.ChumController)
 local PvpController = require(script.Controllers.PvpController)
 local HookController = require(script.Controllers.HookController)
 local GardenController = require(script.Controllers.GardenController)
+local AquariumController = require(script.Controllers.AquariumController)
 local HealController = require(script.Controllers.HealController)
 local ItemBarController = require(script.Controllers.ItemBarController)
 local ItemWheelController = require(script.Controllers.ItemWheelController)
@@ -62,6 +63,7 @@ RollController.start() -- wallet, Roll button and the reveal
 Store.start() -- Robux prompts (passes, products)
 OfferController.start() -- DAILY and SHOP, the growth chip, Double Haul and Second Chance cards
 GardenController.start() -- the den's Coral Garden sign, payouts and welcome back
+AquariumController.start() -- the den's tank fish and the Observatory's view
 BuildController.startController() -- Build mode in your own den: B / BUILD, the tray, the ghost
 DenDoorController.start() -- den doorways: the bubble portals into the private dens and back out
 task.spawn(Ads.start) -- rewarded ads: checks whether one can be shown

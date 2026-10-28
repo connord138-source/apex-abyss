@@ -12,7 +12,9 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
+local Aquarium = require(ReplicatedStorage.Shared.Aquarium)
 local Config = require(ReplicatedStorage.Shared.Config)
+local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
@@ -640,6 +642,337 @@ local function denDoorRows(list: ScrollingFrame, next: () -> number, s: any, den
 	end
 end
 
+-- The den's shape from its record (Shared/DenSpace)
+local function denShapeOf(den: any): DenSpace.Shape
+	return {
+		level = den.level or 1,
+		wings = if typeof(den.wings) == "table" then den.wings else nil,
+		open = den.open == true,
+	}
+end
+
+-- The den menu's pickers (2026-10-28): which wing slot or aquarium tank is being
+-- filled, while its choices show in place of the menu
+local pickingSlot: string? = nil
+local pickingTank: string? = nil
+
+-- The wings and Open Plan (Config/Dens wings, openPlan; the den expansion the owner
+-- approved 2026-10-28): a row a slot (BUILD, or SWAP for another, half the old one's
+-- price back), and Open Plan bought once and switched
+local function denWingRows(list: ScrollingFrame, next: () -> number, den: any)
+	local Dens = Config.Dens
+	local wings = if typeof(den.wings) == "table" then den.wings else {}
+	local open = Dens.levels[Dens.wing.level]
+	denSection(list, next(), "Wings · rooms built out from your den's sides")
+	if (den.level or 1) < Dens.wing.level then
+		row(
+			list,
+			next(),
+			"WingsLocked",
+			"Wings",
+			`Past the {if open then open.name else "Sanctum"}, your den grows sideways: four doorways, each a room you pick (aquarium, gallery, pool, observatory, great hall)`,
+			nil,
+			"LOCKED",
+			"disabled",
+			Ui.color.haul
+		)
+	else
+		for _, slot in Dens.wingSlots do
+			local wing = Dens.wingsById[wings[slot.id] or ""]
+			local tier = if wing then Config.Tiers.byId[wing.tier] else nil
+			local _, button = row(
+				list,
+				next(),
+				`Wing{slot.id}`,
+				if wing then `{slot.name}: {wing.name}` else `{slot.name}: an empty doorway`,
+				if wing then wing.blurb else "Pick a room to build out from this side of your den",
+				if wing then `holds +{wing.capacity}` else nil,
+				if wing then "SWAP" else "BUILD",
+				if wing then "secondary" else "gold",
+				if tier then tier.color else Ui.color.haul
+			)
+			if button then
+				button.Activated:Connect(function()
+					pickingSlot = slot.id
+					pickingTank = nil
+					MenuController.rerenderCurrent()
+				end)
+			end
+		end
+	end
+	-- Open Plan
+	local tune = Dens.openPlan
+	local owned = den.openOwned == true
+	local on = den.open == true
+	local need = Dens.levels[tune.level]
+	local locked = (den.level or 1) < tune.level
+	local _, button = row(
+		list,
+		next(),
+		"OpenPlan",
+		"Open Plan",
+		if locked
+			then `Knock the walls through: every storey one great hall, no pillars · needs a {if need
+				then need.name
+				else "bigger"} den`
+			else "Knock the walls through: every storey one great hall, no pillars (wall and ceiling things go back to your tray)",
+		if on then "ON" elseif owned then "OFF" else nil,
+		if locked
+			then "LOCKED"
+			elseif not owned then coralText(tune.price)
+			elseif on then "PUT WALLS BACK"
+			else "OPEN UP",
+		if locked then "disabled" elseif not owned then priceStyle(tune.price) else "secondary",
+		Color3.fromRGB(150, 210, 255)
+	)
+	if button and not locked then
+		button.Activated:Connect(function()
+			ClientState.request("DenOpenPlan", not on)
+		end)
+	end
+end
+
+-- Picking a wing for a slot: every wing with its price (what's there now comes back
+-- at half price), then BACK
+local function denWingPicker(list: ScrollingFrame, next: () -> number, den: any, slotId: string)
+	local Dens = Config.Dens
+	local slot = Dens.wingSlotsById[slotId]
+	local wings = if typeof(den.wings) == "table" then den.wings else {}
+	local current = Dens.wingsById[wings[slotId] or ""]
+	denSection(list, next(), `{if slot then slot.name else slotId} doorway · pick a wing`)
+	local _, back = row(list, next(), "Back", "Back", "Back to your den menu", nil, "BACK", "secondary", nil)
+	if back then
+		back.Activated:Connect(function()
+			pickingSlot = nil
+			MenuController.rerenderCurrent()
+		end)
+	end
+	for _, wing in Dens.wings do
+		local here = current ~= nil and current.id == wing.id
+		local tier = Config.Tiers.byId[wing.tier]
+		local refund = if current and not here then math.floor(current.price * Dens.wing.refund) else 0
+		local _, button = row(
+			list,
+			next(),
+			`Pick{wing.id}`,
+			wing.name,
+			if refund > 0
+				then `{wing.blurb} · the {current and current.name or ""} comes down for {Ui.number(refund)} coral back`
+				else wing.blurb,
+			`holds +{wing.capacity}`,
+			if here then "BUILT" else coralText(wing.price),
+			if here then "disabled" else priceStyle(math.max(0, wing.price - refund)),
+			if tier then tier.color else nil
+		)
+		if button and not here then
+			button.Activated:Connect(function()
+				ClientState.request("DenWing", slotId, wing.id)
+				pickingSlot = nil
+			end)
+		end
+	end
+	if current then
+		local refund = math.floor(current.price * Dens.wing.refund)
+		local _, button = row(
+			list,
+			next(),
+			"TakeDown",
+			`Take the {current.name} down`,
+			`An empty doorway again · {Ui.number(refund)} coral back; what's in it goes back to your tray`,
+			nil,
+			"TAKE DOWN",
+			"danger",
+			nil
+		)
+		if button then
+			button.Activated:Connect(function()
+				ClientState.request("DenWing", slotId, "")
+				pickingSlot = nil
+			end)
+		end
+	end
+end
+
+local function tankName(id: string): string
+	local n = string.match(id, "%d+")
+	if string.sub(id, 1, 4) == "hall" then
+		return `Hall tank {n or ""}`
+	end
+	return `Wall tank {n or ""}`
+end
+
+-- The aquarium (Config/Dens aquarium, Shared/Aquarium): what's waiting (COLLECT),
+-- feeding, and a row a tank (STOCK)
+local function denAquariumRows(list: ScrollingFrame, next: () -> number, s: any, den: any)
+	local tune = Config.Dens.aquarium
+	local info = s.aquarium
+	if typeof(info) ~= "table" then
+		return
+	end
+	denSection(list, next(), "Aquarium · your rare catches on show, earning coral")
+	local _, collect = row(
+		list,
+		next(),
+		"Aquarium",
+		"Aquarium",
+		`{info.stocked} of {info.tanks} tanks stocked · {Ui.number(info.coralPerHour)} coral and {info.shellsPerHour} shells an hour{if info.fed
+			then ` · fed: ×{tune.feed.multiplier} today`
+			else ""} · holds {tune.hours} h`,
+		`{Ui.number(info.coral)} / {Ui.number(info.capCoral)} waiting`,
+		"COLLECT",
+		if info.coral >= 1 then "gold" else "disabled",
+		Color3.fromRGB(90, 220, 255)
+	)
+	if collect and info.coral >= 1 then
+		collect.Activated:Connect(function()
+			ClientState.request("AquariumCollect")
+		end)
+	end
+	local biome = Config.Biomes.byId[tune.feed.biome]
+	local have = (s.dna or {})[tune.feed.biome] or 0
+	local _, feed = row(
+		list,
+		next(),
+		"AquariumFeed",
+		"Feed the tanks",
+		`{info.feedCost} {if biome then biome.name else "Kelp"} DNA (you have {have}) · ×{tune.feed.multiplier} earnings for the rest of today`,
+		nil,
+		if info.fed then "FED TODAY" else "FEED",
+		if info.fed or info.stocked == 0 or have < info.feedCost then "disabled" else "primary",
+		Color3.fromRGB(120, 230, 160)
+	)
+	if feed and not info.fed then
+		feed.Activated:Connect(function()
+			ClientState.request("AquariumFeed")
+		end)
+	end
+	local stock = if typeof(den.tanks) == "table" then den.tanks else {}
+	for _, tank in DenSpace.tanks(denShapeOf(den)) do
+		local fish = stock[tank.id]
+		local prey = if fish then Config.Prey.byId[fish.prey] else nil
+		local rarity = if fish then Config.Catch.byId[fish.rarity] else nil
+		local rate = if fish then tune.rates[fish.rarity] else nil
+		local _, button = row(
+			list,
+			next(),
+			`Tank{tank.id}`,
+			if fish and prey
+				then `{tankName(tank.id)}: {if rarity then rarity.name .. " " else ""}{prey.name}`
+				else `{tankName(tank.id)}: empty`,
+			if rate
+				then `{rate.coral} coral and {rate.shells} shells an hour`
+				else "Stock it with a rare catch from your Catch Log",
+			nil,
+			if fish then "CHANGE" else "STOCK",
+			if fish then "secondary" else "primary",
+			if rarity then rarity.color else Color3.fromRGB(56, 148, 176)
+		)
+		if button then
+			button.Activated:Connect(function()
+				pickingTank = tank.id
+				pickingSlot = nil
+				MenuController.rerenderCurrent()
+			end)
+		end
+	end
+end
+
+-- Picking a fish for a tank: every rare catch you've caught one more of than are in
+-- your other tanks, best earners first, then BACK and EMPTY
+local function denTankPicker(list: ScrollingFrame, next: () -> number, s: any, den: any, tankId: string)
+	local tune = Config.Dens.aquarium
+	local stock = if typeof(den.tanks) == "table" then den.tanks else {}
+	local log = if typeof(s.catchLog) == "table" then s.catchLog else {}
+	denSection(list, next(), `{tankName(tankId)} · pick a rare catch`)
+	local _, back = row(list, next(), "Back", "Back", "Back to your den menu", nil, "BACK", "secondary", nil)
+	if back then
+		back.Activated:Connect(function()
+			pickingTank = nil
+			MenuController.rerenderCurrent()
+		end)
+	end
+	type Choice = { prey: string, rarity: string, caught: number, used: number, coral: number }
+	local choices: { Choice } = {}
+	for preyId, counts in log do
+		if typeof(counts) ~= "table" or Config.Prey.byId[preyId] == nil then
+			continue
+		end
+		for rarityId, caught in counts do
+			local rate = tune.rates[rarityId]
+			if rate and typeof(caught) == "number" and caught > 0 then
+				table.insert(choices, {
+					prey = preyId,
+					rarity = rarityId,
+					caught = caught,
+					used = Aquarium.inTanks(stock, preyId, rarityId, tankId),
+					coral = rate.coral,
+				})
+			end
+		end
+	end
+	table.sort(choices, function(a, b)
+		if a.coral ~= b.coral then
+			return a.coral > b.coral
+		end
+		return a.prey < b.prey
+	end)
+	if #choices == 0 then
+		row(
+			list,
+			next(),
+			"NoCatches",
+			"No rare catches yet",
+			"Catch Silver, Golden, Glowing, Crystal or Prism fish out in the biomes: each one caught can go in a tank",
+			nil,
+			nil,
+			nil,
+			nil
+		)
+	end
+	for _, choice in choices do
+		local prey = Config.Prey.byId[choice.prey]
+		local rarity = Config.Catch.byId[choice.rarity]
+		local free = choice.caught - choice.used
+		local rate = tune.rates[choice.rarity]
+		local _, button = row(
+			list,
+			next(),
+			`Fish{choice.prey}{choice.rarity}`,
+			`{if rarity then rarity.name else choice.rarity} {prey.name}`,
+			`{rate.coral} coral and {rate.shells} shells an hour · caught {choice.caught}, {choice.used} in other tanks`,
+			nil,
+			if free > 0 then "STOCK" else "ALL IN TANKS",
+			if free > 0 then "primary" else "disabled",
+			if rarity then rarity.color else nil
+		)
+		if button and free > 0 then
+			button.Activated:Connect(function()
+				ClientState.request("AquariumStock", tankId, choice.prey, choice.rarity)
+				pickingTank = nil
+			end)
+		end
+	end
+	if stock[tankId] then
+		local _, button = row(
+			list,
+			next(),
+			"Empty",
+			"Empty this tank",
+			"Its fish goes back to your log",
+			nil,
+			"EMPTY",
+			"danger",
+			nil
+		)
+		if button then
+			button.Activated:Connect(function()
+				ClientState.request("AquariumStock", tankId, "", "")
+				pickingTank = nil
+			end)
+		end
+	end
+end
+
 -- The den shop's rows: things (into the Build tray), the furniture sets, floors and
 -- glows. Part of the den menu, and on its own as Build mode's SHOP
 local function denShopRows(list: ScrollingFrame, next: () -> number, s: any, den: any)
@@ -802,6 +1135,15 @@ local function denRows(list: ScrollingFrame, shopOnly: boolean?)
 		denShopRows(list, next, s, den)
 		return
 	end
+	-- A picker open: only its choices
+	if pickingSlot then
+		denWingPicker(list, next, den, pickingSlot)
+		return
+	end
+	if pickingTank then
+		denTankPicker(list, next, s, den, pickingTank)
+		return
+	end
 	-- Build mode
 	local _, build = row(
 		list,
@@ -907,6 +1249,8 @@ local function denRows(list: ScrollingFrame, shopOnly: boolean?)
 			end)
 		end
 	end
+	denAquariumRows(list, next, s, den)
+	denWingRows(list, next, den)
 	denDoorRows(list, next, s, den)
 	denShopRows(list, next, s, den)
 end
@@ -923,6 +1267,7 @@ local function denSubtitle(): string
 end
 
 function MenuController.openDen(anchor: Vector3?)
+	pickingSlot, pickingTank = nil, nil
 	open("YOUR DEN · BUILD AND SHOP", denSubtitle(), Vector2.new(720, 520), function(window)
 		local list = Ui.list(window.content)
 		return {

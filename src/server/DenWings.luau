@@ -484,7 +484,8 @@ local function observatory(
 	pane.Material = Enum.Material.Glass
 	pane.Transparency = 0.82
 	pane.CanCollide = true
-	pane:SetAttribute("Side", plan.side)
+	pane:SetAttribute("Out", frame:VectorToWorldSpace(Vector3.new(plan.side, 0, 0)))
+	pane:SetAttribute("Radius", radius)
 	CollectionService:AddTag(pane, "ObservatoryWindow")
 	-- A brass ring round it with bolts, and four spokes' worth of mullions
 	local count = 28
