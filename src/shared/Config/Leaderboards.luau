@@ -1,14 +1,18 @@
 --!strict
--- Weekly leaderboards (owner, 2026-10-10; LeaderboardService). Three boards, reset
+-- Weekly leaderboards (owner, 2026-10-10; LeaderboardService). Four boards, reset
 -- every Monday 00:00 UTC: this server's live and the whole game's top 50. The top
--- 100 of each board earn a title when they next join (kept for good).
+-- 100 of each board earn a title when they next join (kept for good). Best Dens
+-- (owner, 2026-10-28: den hearts, HeartService) also has a top-3 title, and its top 3
+-- wear a gold frame on their den's signs the next week.
 export type Board = {
 	id: string,
 	name: string,
 	unit: string,
 	blurb: string,
 	best: boolean?, -- the week's best single value, not a running total
-	titles: { string }, -- for ranks 1, top 10 and top 100 (`ranks`)
+	titles: { string }, -- for ranks 1, top 10 and top 100 (`ranks`), or the board's own `ranks`
+	ranks: { number }?, -- its own title ranks (each a "top N"), when not the usual 1 / 10 / 100
+	frame: number?, -- the week's top N wear a gold frame on their den's signs the next week (HeartService)
 }
 
 local boards: { Board } = {
@@ -33,6 +37,15 @@ local boards: { Board } = {
 		unit = "dmg",
 		blurb = "Damage dealt to world bosses this week",
 		titles = { "Boss Breaker", "Top 10 Boss Hunter", "Top 100 Boss Hunter" },
+	},
+	{
+		id = "BestDens",
+		name = "Best Dens",
+		unit = "hearts",
+		blurb = "Hearts from visitors this week",
+		ranks = { 1, 3, 10, 100 },
+		titles = { "Best Den", "Top 3 Den", "Top 10 Den", "Top 100 Den" },
+		frame = 3,
 	},
 }
 

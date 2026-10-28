@@ -20,6 +20,12 @@
 -- dim, still curtain (its portal lets no one in: DenDoorController). A freed den
 -- goes back to the Stone Arch.
 --
+-- Den hearts (owner, 2026-10-28; HeartService): once a lived-in den has a heart, a
+-- drawn heart and the count stand where the nameplate's lower right rule was, and
+-- last week's top 3 Best Dens wear a bright gold frame round the nameplate. Both
+-- are built the first time they're needed, so a den without them (and the hub's
+-- previews) builds as before.
+--
 -- The way out inside a den (owner, 2026-10-20: "den exit needs to be more pronounced
 -- like the entrance too") is the same doorway turned round: an alcove in the front
 -- wall of the same shape (DenCarve), the den's own doorway style round it, a
@@ -35,6 +41,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local HeartGlyph = require(ReplicatedStorage.Shared.HeartGlyph)
+local Hearts = require(ReplicatedStorage.Shared.Hearts)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Decor = require(script.Parent.Decor)
 
@@ -96,6 +104,10 @@ local TEXT_EMPTY = Color3.fromRGB(150, 168, 176)
 local CURTAIN_SHUT = Color3.fromRGB(70, 104, 114)
 local PANE_SHUT = Color3.fromRGB(20, 30, 36)
 local UNLIT = Color3.fromRGB(78, 74, 66)
+-- Den hearts: the heart on the nameplate, and the Best Dens frame's gold and gems
+local HEART = Color3.fromRGB(255, 96, 122)
+local FRAME_GOLD = Color3.fromRGB(236, 172, 44)
+local FRAME_GEM = Color3.fromRGB(255, 232, 150)
 
 local DRIFT = Color3.fromRGB(132, 104, 76)
 local DRIFT_DARK = Color3.fromRGB(96, 74, 52)
@@ -137,6 +149,9 @@ type Built = {
 	shimmer: ParticleEmitter,
 	glow: PointLight,
 	look: Look,
+	badge: Frame?, -- the heart count (built with the den's first heart)
+	badgeCount: TextLabel?,
+	frame: { BasePart }?, -- the Best Dens frame, while it's worn
 }
 type Door = {
 	model: Model, -- the doorway (threshold and steps, and the style under it)
@@ -146,6 +161,8 @@ type Door = {
 	owner: string?,
 	levelName: string?,
 	exit: boolean?, -- the way out inside the den (DenDoor.exit)
+	hearts: number?, -- den hearts (HeartService), while someone lives there
+	framed: boolean?, -- the Best Dens frame this week
 }
 
 local doors: { [number]: Door } = {}
@@ -1538,6 +1555,136 @@ local function build(door: Door, index: number, styleId: string)
 	}
 end
 
+-- The heart count on a nameplate, where its lower right rule was: a drawn heart
+-- (Shared/HeartGlyph) and the number in gold
+local function heartBadge(gui: SurfaceGui): (Frame, TextLabel)
+	local badge = Instance.new("Frame")
+	badge.Name = "Hearts"
+	badge.BackgroundTransparency = 1
+	badge.Position = UDim2.fromScale(0.7, 0.655)
+	badge.Size = UDim2.fromScale(0.24, 0.3)
+	badge.Parent = gui
+	local heart = HeartGlyph.draw(badge, UDim2.fromScale(0.4, 0.94), HEART, Decor.TEXT_STROKE)
+	heart.AnchorPoint = Vector2.new(0, 0.5)
+	heart.Position = UDim2.fromScale(0.02, 0.5)
+	local count = Instance.new("TextLabel")
+	count.Name = "Count"
+	count.BackgroundTransparency = 1
+	count.AnchorPoint = Vector2.new(0, 0.5)
+	count.Position = UDim2.fromScale(0.42, 0.5)
+	count.Size = UDim2.fromScale(0.56, 0.96)
+	count.Font = Enum.Font.GothamBlack
+	count.TextScaled = true
+	count.TextXAlignment = Enum.TextXAlignment.Left
+	count.TextColor3 = Decor.TEXT_GOLD
+	count.Text = ""
+	count.Parent = badge
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Decor.TEXT_STROKE
+	stroke.Thickness = 2.5
+	stroke.Parent = count
+	return badge, count
+end
+
+-- The Best Dens frame (last week's top 3): a bright gold border just outside the
+-- nameplate's own trim, a gem at each corner and one over the middle. Its pieces
+-- join the plaque's trims, so the seating that moves the plaque onto the rock
+-- (seatPlaque, underVault) moves them with it.
+local function goldFrame(parent: Instance, plate: Decor.Plaque): { BasePart }
+	local board = plate.board
+	local at = board.CFrame
+	local hx, hy = board.Size.X / 2 + 0.62, board.Size.Y / 2 + 0.62
+	local bar = 0.5
+	local made: { BasePart } = {}
+	local function add(props: { [string]: any })
+		props.Name = "PlaqueFrame"
+		props.CanCollide = false
+		props.CastShadow = false
+		table.insert(made, part(parent, props))
+	end
+	for _, y in { -1, 1 } do
+		add({
+			Size = Vector3.new(hx * 2 + bar, bar, 0.6),
+			CFrame = at * CFrame.new(0, y * hy, -0.3),
+			Color = FRAME_GOLD,
+			Material = Enum.Material.Neon,
+		})
+	end
+	for _, x in { -1, 1 } do
+		add({
+			Size = Vector3.new(bar, hy * 2 + bar, 0.6),
+			CFrame = at * CFrame.new(x * hx, 0, -0.3),
+			Color = FRAME_GOLD,
+			Material = Enum.Material.Neon,
+		})
+	end
+	for _, x in { -1, 1 } do
+		for _, y in { -1, 1 } do
+			add({
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.one * 1.25,
+				CFrame = at * CFrame.new(x * hx, y * hy, -0.5),
+				Color = FRAME_GEM,
+				Material = Enum.Material.Neon,
+			})
+		end
+	end
+	-- (a cut gem over the middle: a block turned 45° on the board's face)
+	add({
+		Size = Vector3.new(1.3, 1.3, 0.6),
+		CFrame = at * CFrame.new(0, hy + 0.45, -0.5) * CFrame.Angles(0, 0, math.rad(45)),
+		Color = FRAME_GEM,
+		Material = Enum.Material.Neon,
+	})
+	return made
+end
+
+-- A lived-in den's hearts and Best Dens frame on its nameplate (an empty den shows
+-- neither). Nothing is built until the den has a heart or the frame.
+local function showHearts(door: Door, built: Built, lived: boolean)
+	local hearts = if lived then door.hearts or 0 else 0
+	local framed = lived and door.framed == true
+	if hearts <= 0 and built.badge == nil and not framed and built.frame == nil then
+		return
+	end
+	local plate = built.plaque
+	if hearts > 0 and built.badge == nil then
+		built.badge, built.badgeCount = heartBadge(plate.gui)
+	end
+	local badge, count = built.badge, built.badgeCount
+	if badge and count then
+		badge.Visible = hearts > 0
+		count.Text = Hearts.short(hearts)
+	end
+	-- The badge stands in for the lower right rule (the rules: Decor.plaque)
+	local right: GuiObject? = nil
+	for _, child in plate.gui:GetChildren() do
+		if child.Name == "Rule" and child:IsA("GuiObject") and child.Position.X.Scale > 0.5 then
+			right = child
+		end
+	end
+	if right then
+		right.Visible = hearts <= 0
+	end
+	local style = door.style
+	if framed and built.frame == nil and style then
+		local pieces = goldFrame(style, plate)
+		for _, piece in pieces do
+			table.insert(plate.trims, piece)
+		end
+		built.frame = pieces
+	elseif not framed and built.frame then
+		for _, piece in built.frame do
+			local at = table.find(plate.trims, piece)
+			if at then
+				table.remove(plate.trims, at)
+			end
+			piece:Destroy()
+		end
+		built.frame = nil
+	end
+end
+
 -- Shows who lives in a door's den (or that no one does) on what its style built
 local function apply(door: Door)
 	local built = door.built
@@ -1566,6 +1713,9 @@ local function apply(door: Door)
 	local look = built.look
 	plate.board.Color = if lived then look.board else LACQUER_EMPTY
 	for _, trim in plate.trims do
+		if trim.Name == "PlaqueFrame" then
+			continue -- (the Best Dens frame keeps its gold: showHearts)
+		end
 		trim.Color = if lived
 			then (if trim.Name == "PlaqueBoss" then look.boss else look.trim)
 			else TRIM_EMPTY
@@ -1584,6 +1734,9 @@ local function apply(door: Door)
 	built.bubbles.Rate = if lived then 26 else 4
 	built.shimmer.Enabled = lived
 	built.glow.Enabled = lived
+	if not door.exit then
+		showHearts(door, built, lived)
+	end
 end
 
 -- Den `index`'s front door on the plaza, into `parent` (its Den<i> model): the
@@ -1704,6 +1857,22 @@ function DenDoor.setSign(index: number, owner: string?, levelName: string?)
 	end
 	door.owner = owner
 	door.levelName = levelName
+	if owner == nil then
+		door.hearts = nil
+		door.framed = nil
+	end
+	apply(door)
+end
+
+-- Den `index`'s hearts and whether its nameplate wears the Best Dens frame this
+-- week (HeartService); an empty den's door shows neither
+function DenDoor.setHearts(index: number, hearts: number, framed: boolean)
+	local door = doors[index]
+	if door == nil then
+		return
+	end
+	door.hearts = hearts
+	door.framed = framed
 	apply(door)
 end
 

@@ -66,6 +66,10 @@ export type PlayerData = {
 	-- (Build mode) and how many of each thing are owned, the glows and floors bought
 	den: {
 		level: number,
+		-- Den hearts (HeartService): every visitor's heart ever, and the week its signs
+		-- wear the Best Dens gold frame (Shared/Tides.week; 0 = never)
+		hearts: number,
+		frame: number,
 		glow: string,
 		floor: string,
 		owned: { [string]: boolean }, -- "Glow:<id>", "Floor:<id>"
@@ -146,6 +150,9 @@ export type PlayerData = {
 	-- LandmarkService)
 	places: { [string]: boolean },
 	pearls: { [string]: number },
+	-- The dens this player admired today (Shared/Hearts: the UTC day and the owners'
+	-- user ids, once a day each; HeartService)
+	admired: { day: number, dens: { [string]: boolean } },
 	codes: { [string]: boolean }, -- redeem codes used (Config/Codes)
 	-- Monetization
 	passes: { [string]: boolean },
@@ -184,6 +191,8 @@ local TEMPLATE: PlayerData = {
 	},
 	den = {
 		level = 1,
+		hearts = 0,
+		frame = 0,
 		glow = "Teal",
 		floor = "Flagstone",
 		owned = {},
@@ -238,6 +247,7 @@ local TEMPLATE: PlayerData = {
 	achievements = {},
 	places = {},
 	pearls = {},
+	admired = { day = 0, dens = {} },
 	codes = {},
 	passes = {},
 	groupRewarded = false,

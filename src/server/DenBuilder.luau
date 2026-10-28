@@ -6,7 +6,8 @@
 --    hanging from the vaults, lit in the den's glow;
 --  * the things placed in Build mode, kept in step with the record by id;
 --  * the trophy wall on the main room's back wall (the biggest catch, boss teeth and
---    beaks, the title over the door);
+--    beaks), under the den's title board (NAME'S SANCTUM, the title worn, the den's
+--    hearts and, for last week's top 3 Best Dens, a gold frame: HeartService);
 --  * the Coral Garden (a planter along the back wall, then a bed in the Hall's
 --    middle), its corals growing as it fills.
 -- Everything is rebuilt from the saved record, so it follows its owner from server
@@ -18,6 +19,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local DensConfig = require(ReplicatedStorage.Shared.Config.Dens)
 local DenItems = require(ReplicatedStorage.Shared.DenItems)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
+local HeartGlyph = require(ReplicatedStorage.Shared.HeartGlyph)
+local Hearts = require(ReplicatedStorage.Shared.Hearts)
 local Cave = require(script.Parent.Cave)
 local DenCarve = require(script.Parent.DenCarve)
 local DenWings = require(script.Parent.DenWings)
@@ -63,6 +66,8 @@ end
 DenBuilder.shapeOf = shapeOf
 
 type Built = { model: Model, key: string }
+-- The title board's parts that change with den hearts (paintSign)
+type Sign = { name: TextLabel, title: TextLabel?, badge: Frame, count: TextLabel, gold: { BasePart } }
 type DenState = {
 	folder: Folder,
 	shell: Folder,
@@ -76,6 +81,9 @@ type DenState = {
 	trophyKey: string?,
 	wingKey: string?,
 	tankKey: string?,
+	hearts: number, -- den hearts (HeartService, DenBuilder.setHearts)
+	framed: boolean, -- the Best Dens frame this week
+	sign: Sign?,
 }
 
 local STONE = Color3.fromRGB(176, 164, 140)
@@ -143,6 +151,8 @@ local function stateOf(index: number): DenState
 		tanks = sub("Tanks"),
 		carved = if existing then existing.carved else nil,
 		placed = {},
+		hearts = if existing then existing.hearts else 0,
+		framed = if existing then existing.framed else false,
 	}
 	-- The camera looks past furniture (CameraController ignores this tag)
 	CollectionService:AddTag(made.items, "DenItems")
@@ -506,6 +516,30 @@ local function seatTrophies(frame: CFrame, backZ: number, columns: { [number]: {
 	end
 end
 
+-- Den hearts on the title board: the heart and count at its right end once the den
+-- has a heart (the lines give it room), and the gold frame while it's worn
+local SIGN_HEART = Color3.fromRGB(255, 96, 122)
+local SIGN_GOLD = Color3.fromRGB(236, 172, 44)
+local SIGN_GEM = Color3.fromRGB(255, 232, 150)
+local function paintSign(state: DenState)
+	local sign = state.sign
+	if sign == nil or sign.badge.Parent == nil then
+		return
+	end
+	local shown = state.hearts > 0
+	sign.badge.Visible = shown
+	sign.count.Text = Hearts.short(state.hearts)
+	local width = if shown then 0.72 else 0.92
+	sign.name.Size = UDim2.fromScale(width, sign.name.Size.Y.Scale)
+	local title = sign.title
+	if title then
+		title.Size = UDim2.fromScale(width, title.Size.Y.Scale)
+	end
+	for _, piece in sign.gold do
+		piece.Transparency = if state.framed then 0 else 1
+	end
+end
+
 local function trophyWall(state: DenState, index: number, record: Record, trophies: Trophies)
 	local folder = state.trophies
 	folder:ClearAllChildren()
@@ -640,69 +674,153 @@ local function trophyWall(state: DenState, index: number, record: Record, trophi
 		shape.Parent = beak
 		mount(7, beak)
 	end
-	-- The title over the trophies: a lacquered board in a brass frame, in the same
-	-- style as the doorways' nameplates (SmoothPlastic: a toon material's tile blurred
-	-- a small sign). It hung over the way out until 2026-10-20, when the way out took
-	-- the den's doorway style (DenDoor.exit), whose nameplate reaches near the vault.
-	if trophies.title ~= "" then
-		local at = DenSpace.spot(frame, 0, TITLE_Y, backZ)
-		local width, height = 14, 2.6
-		local sign = part(
-			folder,
-			"Title",
-			Vector3.new(width, height, 0.5),
-			at,
-			Color3.fromRGB(20, 88, 102),
-			Enum.Material.SmoothPlastic
+	-- The den's title board over the trophies: a lacquered board in a brass frame, in
+	-- the same style as the doorways' nameplates (SmoothPlastic: a toon material's
+	-- tile blurred a small sign). It hung over the way out until 2026-10-20, when the
+	-- way out took the den's doorway style (DenDoor.exit), whose nameplate reaches
+	-- near the vault. It reads the owner's name and the den's level (CONNOR'S
+	-- SANCTUM), the title they wear under it, and since den hearts (2026-10-28) the
+	-- den's hearts at its right end and, for last week's top 3 Best Dens, a bright
+	-- gold frame outside the brass (paintSign shows them; DenBuilder.setHearts).
+	local worn = trophies.title ~= ""
+	local at = DenSpace.spot(frame, 0, TITLE_Y, backZ)
+	local width, height = 16, if worn then 3.6 else 2.8
+	local sign = part(
+		folder,
+		"Title",
+		Vector3.new(width, height, 0.5),
+		at,
+		Color3.fromRGB(20, 88, 102),
+		Enum.Material.SmoothPlastic
+	)
+	mount(0, sign)
+	local brass = Color3.fromRGB(214, 160, 70)
+	for _, y in { -1, 1 } do
+		mount(
+			0,
+			part(
+				folder,
+				"TitleTrim",
+				Vector3.new(width + 0.4, 0.4, 0.35),
+				at * CFrame.new(0, y * height / 2, -0.2),
+				brass,
+				Enum.Material.SmoothPlastic
+			)
 		)
-		mount(0, sign)
-		local brass = Color3.fromRGB(214, 160, 70)
+	end
+	for _, x in { -1, 1 } do
+		mount(
+			0,
+			part(
+				folder,
+				"TitleTrim",
+				Vector3.new(0.4, height + 0.4, 0.35),
+				at * CFrame.new(x * width / 2, 0, -0.2),
+				brass,
+				Enum.Material.SmoothPlastic
+			)
+		)
+	end
+	-- The Best Dens frame: built with the board, shown only while it's worn
+	local gold: { BasePart } = {}
+	local gx, gy = width / 2 + 0.55, height / 2 + 0.55
+	local function goldPiece(name: string, size: Vector3, cframe: CFrame, color: Color3, ball: boolean?)
+		local piece = part(folder, name, size, cframe, color, Enum.Material.Neon)
+		if ball then
+			piece.Shape = Enum.PartType.Ball
+		end
+		piece.Transparency = 1
+		mount(0, piece)
+		table.insert(gold, piece)
+	end
+	for _, y in { -1, 1 } do
+		goldPiece(
+			"TitleFrame",
+			Vector3.new(gx * 2 + 0.4, 0.4, 0.45),
+			at * CFrame.new(0, y * gy, -0.25),
+			SIGN_GOLD
+		)
+	end
+	for _, x in { -1, 1 } do
+		goldPiece(
+			"TitleFrame",
+			Vector3.new(0.4, gy * 2 + 0.4, 0.45),
+			at * CFrame.new(x * gx, 0, -0.25),
+			SIGN_GOLD
+		)
 		for _, y in { -1, 1 } do
-			mount(
-				0,
-				part(
-					folder,
-					"TitleTrim",
-					Vector3.new(width + 0.4, 0.4, 0.35),
-					at * CFrame.new(0, y * height / 2, -0.2),
-					brass,
-					Enum.Material.SmoothPlastic
-				)
-			)
+			goldPiece("TitleGem", Vector3.one * 1, at * CFrame.new(x * gx, y * gy, -0.4), SIGN_GEM, true)
 		end
-		for _, x in { -1, 1 } do
-			mount(
-				0,
-				part(
-					folder,
-					"TitleTrim",
-					Vector3.new(0.4, height + 0.4, 0.35),
-					at * CFrame.new(x * width / 2, 0, -0.2),
-					brass,
-					Enum.Material.SmoothPlastic
-				)
-			)
-		end
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 60
-		gui.LightInfluence = 0
-		gui.Parent = sign
+	end
+	goldPiece(
+		"TitleGem",
+		Vector3.new(1.1, 1.1, 0.45),
+		at * CFrame.new(0, gy + 0.4, -0.4) * CFrame.Angles(0, 0, math.rad(45)),
+		SIGN_GEM
+	)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 60
+	gui.LightInfluence = 0
+	gui.Parent = sign
+	local stroke = Color3.fromRGB(8, 34, 42)
+	local function line(name: string, text: string, y: number, h: number, color: Color3): TextLabel
 		local label = Instance.new("TextLabel")
+		label.Name = name
 		label.BackgroundTransparency = 1
-		label.Position = UDim2.fromScale(0.04, 0.1)
-		label.Size = UDim2.fromScale(0.92, 0.8)
+		label.Position = UDim2.fromScale(0.04, y)
+		label.Size = UDim2.fromScale(0.92, h)
 		label.Font = Enum.Font.FredokaOne
 		label.TextScaled = true
-		label.TextColor3 = glow
-		label.Text = string.upper(trophies.title)
+		label.TextColor3 = color
+		-- (one line: spaces made non-breaking, so a long name shrinks, never wraps)
+		label.Text = (string.gsub(string.upper(text), " ", "\u{00A0}"))
 		label.Parent = gui
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(8, 34, 42)
-		stroke.Thickness = 3
-		stroke.Parent = label
+		local edge = Instance.new("UIStroke")
+		edge.Color = stroke
+		edge.Thickness = 3
+		edge.Parent = label
+		return label
 	end
+	local levelName = (Dens.levels[record.level] or Dens.levels[1]).name
+	local name = line(
+		"Name",
+		`{trophies.owner}'S {levelName}`,
+		if worn then 0.07 else 0.1,
+		if worn then 0.5 else 0.8,
+		if worn then Color3.fromRGB(255, 244, 222) else glow
+	)
+	local titleLabel = if worn then line("Worn", trophies.title, 0.58, 0.36, glow) else nil
+	-- The hearts: a drawn heart (Shared/HeartGlyph) and the count, at the right end
+	local badge = Instance.new("Frame")
+	badge.Name = "Hearts"
+	badge.BackgroundTransparency = 1
+	badge.AnchorPoint = Vector2.new(1, 0.5)
+	badge.Position = UDim2.fromScale(0.97, 0.5)
+	badge.Size = UDim2.fromScale(0.2, if worn then 0.5 else 0.7)
+	badge.Visible = false
+	badge.Parent = gui
+	local heart = HeartGlyph.draw(badge, UDim2.fromScale(0.4, 0.96), SIGN_HEART, stroke)
+	heart.AnchorPoint = Vector2.new(0, 0.5)
+	heart.Position = UDim2.fromScale(0, 0.5)
+	local count = Instance.new("TextLabel")
+	count.Name = "Count"
+	count.BackgroundTransparency = 1
+	count.AnchorPoint = Vector2.new(0, 0.5)
+	count.Position = UDim2.fromScale(0.42, 0.5)
+	count.Size = UDim2.fromScale(0.58, 0.96)
+	count.Font = Enum.Font.GothamBlack
+	count.TextScaled = true
+	count.TextXAlignment = Enum.TextXAlignment.Left
+	count.TextColor3 = Color3.fromRGB(255, 208, 104)
+	count.Parent = badge
+	local countEdge = Instance.new("UIStroke")
+	countEdge.Color = stroke
+	countEdge.Thickness = 2.5
+	countEdge.Parent = count
+	state.sign = { name = name, title = titleLabel, badge = badge, count = count, gold = gold }
+	paintSign(state)
 	-- Terrain carved this frame doesn't answer a raycast until a later one
 	task.delay(0.5, function()
 		seatTrophies(frame, backZ, columns)
@@ -1016,7 +1134,7 @@ function DenBuilder.build(
 		state.tankKey = tankKey
 	end
 	local trophyKey =
-		`{record.level}|{record.glow}|{trophies.bestPrey}|{trophies.bestPreyMass}|{trophies.teeth}|{trophies.beaks}|{trophies.title}`
+		`{record.level}|{record.glow}|{trophies.bestPrey}|{trophies.bestPreyMass}|{trophies.teeth}|{trophies.beaks}|{trophies.title}|{trophies.owner}`
 	if state.trophyKey ~= trophyKey then
 		trophyWall(state, index, record, trophies)
 		state.trophyKey = trophyKey
@@ -1024,6 +1142,15 @@ function DenBuilder.build(
 	if fill then
 		DenBuilder.garden(index, record, fill, shellFill or 0)
 	end
+end
+
+-- Den `index`'s hearts and whether its title board wears the Best Dens frame this
+-- week (HeartService); kept for the board when it's built again
+function DenBuilder.setHearts(index: number, hearts: number, framed: boolean)
+	local state = stateOf(index)
+	state.hearts = hearts
+	state.framed = framed
+	paintSign(state)
 end
 
 -- Only the placed things (Build mode)

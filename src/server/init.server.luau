@@ -35,6 +35,7 @@ local TideService = require(Services.TideService)
 local CatchService = require(Services.CatchService)
 local BountyService = require(Services.BountyService)
 local LeaderboardService = require(Services.LeaderboardService)
+local HeartService = require(Services.HeartService)
 local WheelService = require(Services.WheelService)
 local PlaytimeService = require(Services.PlaytimeService)
 local PassService = require(Services.PassService)
@@ -78,6 +79,7 @@ TideService.start() -- the Tide Clock: the tide turning, the Prism Tide warning
 CatchService.start() -- rare catches: which fish are rare, the Catch Log, the skin goals, the Catch of the Week
 BountyService.start() -- daily bounties and the Bounty Chest
 LeaderboardService.start() -- weekly leaderboards and last week's titles
+HeartService.start() -- den hearts: admire a den once a day, the Best Dens board, hearts and frames on den signs
 WheelService.start() -- the Treasure Wheel: spins, the line, prizes, free spins
 PlaytimeService.start() -- playtime gifts: a ladder of gifts for minutes played today, Premium's daily spin
 PassService.start() -- the Tide Pass: season XP from play, the free and Deep Pass rows
