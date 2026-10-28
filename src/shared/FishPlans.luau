@@ -19,6 +19,8 @@ export type PartSpec = {
 	transparency: number?,
 	light: Color3?, -- a small light in the part (an angler's lure)
 	mesh: string?, -- draw this ReplicatedStorage.PartModels MeshPart instead (its own texture)
+	tint: Color3?, -- a model's texture multiplied by this (Shared/PartFit: the fish's colours)
+	glow: Color3?, -- a model's glow tinted this (the shade's glow)
 }
 
 type Piece = {

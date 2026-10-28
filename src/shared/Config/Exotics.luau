@@ -2,7 +2,8 @@
 -- The rarest roll outcomes: body parts (worn in a slot, one per slot) and exotic
 -- body variants (reshape the whole fish). Their geometry lives in
 -- Shared/Cosmetics.luau under the same ids (a Tripo model each since 2026-10-21:
--- ReplicatedStorage.PartModels / VariantModels, part-built until imported). `chance`
+-- ReplicatedStorage.PartModels / VariantModels, part-built until imported), and how
+-- each part's model sits on and is tinted to each fish in Shared/PartFit.luau. `chance`
 -- is "1 in N" per roll.
 --
 -- Each also does a little for its fish (owner, 2026-10-21, with the approved parts and

@@ -128,7 +128,7 @@ type Arc = { points: { Attachment }, beams: { Beam } }
 type Curtain = { a0: Attachment, a1: Attachment, beam: Beam, at: number, phase: number }
 
 -- Where a crown sits on a fish's head, in its unit box (nose at z -0.5, the box's
--- middle at 0, as Cosmetics' ANCHORS): `z` along the body, `y` the head's top there,
+-- middle at 0, as Shared/PartFit's anchors): `z` along the body, `y` the head's top there,
 -- `radius` and `tilt` (radians, its top leaning back)
 type CrownSeat = { z: number, y: number, radius: number, tilt: number }
 
