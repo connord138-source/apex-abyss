@@ -4,8 +4,11 @@
 -- the game reads as one product.
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+
+local HeartGlyph = require(ReplicatedStorage.Shared.HeartGlyph)
 
 local Ui = {}
 
@@ -708,6 +711,20 @@ function Ui.list(parent: Instance, padding: number?): ScrollingFrame
 	layout.Parent = scroller
 	scroller.Parent = parent
 	return scroller
+end
+
+-- A heart drawn from frames (no emoji, no font glyph; Shared/HeartGlyph, the same
+-- heart as the den signs'), `size` px square, in `color` (den hearts' rose by
+-- default), with a dark outline unless `outline` is false. Returns its box: set
+-- Position, AnchorPoint and LayoutOrder on it.
+Ui.HEART = Color3.fromRGB(255, 96, 122)
+function Ui.heart(parent: Instance, size: number, color: Color3?, outline: boolean?): Frame
+	return HeartGlyph.draw(
+		parent,
+		UDim2.fromOffset(size, size),
+		color or Ui.HEART,
+		if outline == false then nil else Ui.color.panelFoot
+	)
 end
 
 -- Thousands separators: 12,400.

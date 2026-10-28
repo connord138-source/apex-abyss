@@ -27,6 +27,7 @@ local EconomyService = require(script.Parent.Services.EconomyService)
 local FishService = require(script.Parent.Services.FishService)
 local DenService = require(script.Parent.Services.DenService)
 local GardenService = require(script.Parent.Services.GardenService)
+local HeartService = require(script.Parent.Services.HeartService)
 local HuntService = require(script.Parent.Services.HuntService)
 local MonetizationService = require(script.Parent.Services.MonetizationService)
 local PassService = require(script.Parent.Services.PassService)
@@ -630,6 +631,32 @@ local function denDoors(_admin: Player, targets: { Player }): string
 	return `Every doorway style for {count} player(s) · pick one in the den menu's Doorway rows`
 end
 
+-- Den hearts (HeartService): 5 hearts for the target's den (on the signs and this
+-- week's Best Dens board), admiring every den again today, and the Best Dens gold
+-- frame on or off this week (the real one needs a live board: Studio has none)
+local function denHearts(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		HeartService.addHearts(player, 5)
+	end
+	return `+5 hearts on {names(targets)}'s den (signs and the Best Dens board)`
+end
+
+local function denAdmireAgain(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		HeartService.admireAgain(player)
+	end
+	return `{names(targets)} can admire every den again today`
+end
+
+local function denFrame(_admin: Player, targets: { Player }): string
+	local lines: { string } = {}
+	for _, player in targets do
+		local on = HeartService.toggleFrame(player)
+		table.insert(lines, `{player.DisplayName}: gold frame {if on then "ON" else "OFF"}`)
+	end
+	return table.concat(lines, " | ")
+end
+
 -- The Tide Clock: force a tide on this server for one tide's length, starting now (so
 -- its opening boost runs as a real tide's does); "" = back to the clock. TideService
 -- clears the attributes when it ends (PC 2026-10-19: a forced tide lapsed after 10
@@ -849,6 +876,9 @@ AdminActions.byName = {
 	denItems = denItems :: Handler,
 	denOldSave = denOldSave :: Handler,
 	denDoors = denDoors :: Handler,
+	denHearts = denHearts :: Handler,
+	denAdmireAgain = denAdmireAgain :: Handler,
+	denFrame = denFrame :: Handler,
 	skinFailTest = skinFailTest :: Handler,
 	achievementsAll = achievementsAll :: Handler,
 	achievementsReset = achievementsReset :: Handler,

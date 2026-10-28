@@ -3123,6 +3123,20 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   2. Look-target concepts and UI mockups.
   3. A ship-quality vertical slice: 1 biome, 1 line.
   4. Content.
+- **Den expansion (owner, 2026-10-28: the proposal approved, "i like the den changes
+  lets do that and try it out"; `docs/proposals/2026-10-28-den-expansion.md`):**
+  - **Den hearts and Best Dens** (§3; `HeartService`, `HeartController`,
+    `Shared/Hearts`, `Shared/HeartGlyph`): in someone else's den E / Y / ADMIRE
+    (`AdmireDen`) admires it once a UTC day per den (`data.admired`); its owner gets a
+    heart (`den.hearts`), a 25 coral tip, a toast and a point on the weekly **Best
+    Dens** board (`Config/Leaderboards` `BestDens`, its own `ranks` 1/3/10/100 for the
+    titles). Last week's top 3 (`frame` 3, `LeaderboardService.ranked`) wear a gold
+    frame on their den's signs that week (`den.frame` = the week). The plaza
+    nameplate (`DenDoor.setHearts`) and the title board inside (`DenBuilder.setHearts`;
+    it reads NAME'S LEVEL now, the worn title under it) show the count. Owners carry
+    `DenIndex`/`DenHearts`/`DenFramed` player attributes for visitors' clients. Hearts
+    are drawn from frames (`Ui.heart`), never an emoji. Admin: 5 hearts, admire again
+    today, the frame on/off. Test: `tools/tests/run_hearts.sh`.
 
 ## Tech
 

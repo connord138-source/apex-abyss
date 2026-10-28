@@ -6,7 +6,9 @@
 -- leave) a changed score goes to an OrderedDataStore per board per week, and every
 -- `readEvery` seconds the top `show` of each come back for the whole server. The
 -- server's own board is live from its players. A player who made last week's top
--- 100 gets that board's title when they next join.
+-- 100 gets that board's title when they next join (or, already here, a couple of
+-- minutes into the new week), and `ranked` tells other services where they placed
+-- (HeartService: Best Dens' top 3 wear a gold frame on their den's signs).
 --
 -- Studio without API access (and any DataStore error) falls back to this server's
 -- players, so nothing breaks.
@@ -22,6 +24,7 @@ local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
+local Signal = require(ReplicatedStorage.Shared.Signal)
 local Weekly = require(script.Parent.Parent.Weekly)
 local DataService = require(script.Parent.DataService)
 
@@ -30,13 +33,23 @@ type Row = { userId: number, name: string, score: number }
 local Boards = Config.Leaderboards
 local CatchConfig = Config.Catch
 
-local LeaderboardService = {}
+local LeaderboardService = {
+	-- (player, boardId, rank, week) — the player placed `rank` on that board last
+	-- week (within its deepest title rank); fired once a week each, as titles are
+	-- checked. `week` is the week now (the one the reward is for).
+	ranked = Signal.new(),
+}
 
 local global: { [string]: { Row } } = {} -- board id → the game's top rows, this week
 local readWeek = -1
 local dirty: { [Player]: boolean } = {}
 local names: { [number]: string } = {}
-local lastWeek: { [string]: { [number]: number }? } = {} -- board id → userId → rank, last week
+-- "<week>|<board id>" → userId → rank the week before `week` (keyed by the week: a
+-- server can outlive one, and a read started before Monday can land after it)
+local lastWeek: { [string]: { [number]: number }? } = {}
+local lastWeekFor = -1 -- the week the cache holds (older entries are dropped)
+local turnedWeek = -1 -- the last week whose titles were checked for everyone here
+local TURN_WAIT = 120 -- seconds into a new week before players already here are checked (scores still writing)
 -- False once DataStores have failed, and from the start in Studio: a published place's
 -- Studio session logged DataStore errors there with API access off (playtest
 -- 2026-10-10), and Studio's boards show this server anyway
@@ -158,13 +171,19 @@ local function checkTitles(player: Player, data: DataService.PlayerData)
 		return
 	end
 	data.lbChecked = week
+	if lastWeekFor ~= week then
+		table.clear(lastWeek)
+		lastWeekFor = week
+	end
 	for _, board in Boards.boards do
-		local ranks = lastWeek[board.id]
+		local limits = board.ranks or Boards.ranks
+		local key = `{week}|{board.id}`
+		local ranks = lastWeek[key]
 		if ranks == nil then
 			ranks = {}
 			local store = storeFor(board.id, week - 1)
 			local page: { { key: string, value: number } } = if store
-				then top(store, Boards.ranks[#Boards.ranks]) or {}
+				then top(store, limits[#limits]) or {}
 				else {}
 			for i, entry in page do
 				local userId = tonumber(entry.key)
@@ -172,11 +191,12 @@ local function checkTitles(player: Player, data: DataService.PlayerData)
 					(ranks :: { [number]: number })[userId] = i
 				end
 			end
-			lastWeek[board.id] = ranks
+			lastWeek[key] = ranks
 		end
 		local rank = (ranks :: { [number]: number })[player.UserId]
 		if rank then
-			for i, limit in Boards.ranks do
+			LeaderboardService.ranked:fire(player, board.id, rank, week)
+			for i, limit in limits do
 				if rank <= limit then
 					local title = board.titles[i]
 					if title and not data.titles[title] then
@@ -195,7 +215,8 @@ local function checkTitles(player: Player, data: DataService.PlayerData)
 	DataService.markDirty(player)
 end
 
--- Testing (the admin panel): add to a player's score on a board this week
+-- Adds to a player's score on a board this week (HeartService: Best Dens hearts;
+-- the admin panel)
 function LeaderboardService.add(player: Player, boardId: string, amount: number)
 	if Boards.byId[boardId] then
 		add(player, boardId, amount, Boards.byId[boardId].best)
@@ -232,6 +253,19 @@ function LeaderboardService.start()
 		end
 	end)
 	Guard.loop("LeaderboardService.read", Boards.readEvery, read)
+	-- A new week: last week's titles for everyone already here, once the last
+	-- scores have had time to be written (each player is checked once a week)
+	turnedWeek = Tides.week(Timing.unix())
+	Guard.loop("LeaderboardService.turn", 60, function()
+		local unix = Timing.unix()
+		local week = Tides.week(unix)
+		if week > turnedWeek and unix - Tides.weekStart(week) >= TURN_WAIT then
+			turnedWeek = week
+			for player, data in DataService.loadedPlayers() do
+				task.spawn(checkTitles, player, data)
+			end
+		end
+	end)
 	Net.onGetBoards(function(player: Player): { [string]: any }
 		local unix = Timing.unix()
 		local week = Tides.week(unix)
