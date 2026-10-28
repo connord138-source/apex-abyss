@@ -96,6 +96,7 @@ local KIND_LABEL: { [string]: string } = {
 	dna = "DNA",
 	wraps = "KELP WRAPS",
 	charm = "CHARM",
+	map = "TREASURE MAP",
 }
 
 local function card(parent: Instance, outcome: RollOdds.Outcome, x: number): Frame
@@ -326,6 +327,7 @@ local function filler(rng: Random): RollOdds.Outcome
 		for _, outcome in outcomes do
 			if
 				outcome.kind ~= "coral"
+				and not outcome.fixed
 				and not (outcome.kind == "shade" and (fishShades[outcome.id] or outcome.species ~= species))
 			then
 				table.insert(rare, outcome)
@@ -602,7 +604,18 @@ local function reveal(result: { [string]: any })
 	title.TextStrokeTransparency = 0.55
 	local probability = if typeof(result.probability) == "number" then result.probability else 0
 	local detail
-	if result.kind == "coral" and bossFrom then
+	local charm = if typeof(result.charm) == "string" then Config.Shop.charmsById[result.charm] else nil
+	if result.duplicate and (result.kind == "charm" or result.kind == "map") then
+		detail = if result.kind == "charm"
+			then `You carry the most of those · +{Ui.number(result.coral or 0)} Coral instead`
+			else `Your satchel is full · +{Ui.number(result.coral or 0)} Coral instead`
+	elseif result.kind == "map" then
+		detail = "A treasure map: follow it from MAPS and dig at the X"
+	elseif charm then
+		detail = `+1 {charm.name}: {charm.blurb}`
+	elseif result.kind == "dna" and typeof(result.dnaBiome) == "string" then
+		detail = `+{Ui.number(result.dna or 0)} {result.dnaBiome} DNA (unlocks and upgrades)`
+	elseif result.kind == "coral" and bossFrom then
 		detail = `Every rare shade is this fish's already · +{Ui.number(result.coral or 0)} Coral instead`
 	elseif result.kind == "coral" then
 		detail = `+{Ui.number(result.coral or 0)} Coral`

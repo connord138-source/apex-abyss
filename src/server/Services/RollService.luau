@@ -2,8 +2,10 @@
 -- Rolls: 50 Shells buys one. The server rolls (Shared/RollOdds, the same table
 -- the odds panel shows), grants the outcome, and sends the result for the reveal.
 -- Shades are per fish: one the rolling fish has is out of its table. A part or
--- variant you already own turns into coral instead. Rare results
--- are announced to the whole server and saved straight away.
+-- variant you already own turns into coral instead, and so does a charm prize you
+-- carry the most of or a map prize with the satchel full (Config/Rolls `prizes`).
+-- Rare skins, parts and variants are announced to the whole server and saved
+-- straight away.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -13,6 +15,7 @@ local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Progress = require(script.Parent.Parent.Progress)
+local TreasureService = require(script.Parent.TreasureService)
 
 local Rolls = Config.Rolls
 local Tiers = Config.Tiers
@@ -68,6 +71,37 @@ local function roll(player: Player)
 		local amount = outcome.amount or 0
 		EconomyService.addCoral(player, amount)
 		result.coral = amount
+	elseif outcome.fixed then
+		-- A prize: paid straight away, or coral when it can't be carried
+		local function instead()
+			result.duplicate = true
+			result.coral = outcome.refund or 0
+			EconomyService.addCoral(player, outcome.refund or 0)
+		end
+		if outcome.kind == "shells" then
+			EconomyService.addShells(player, outcome.amount or 0)
+			result.shells = outcome.amount
+		elseif outcome.kind == "dna" then
+			-- (for the rolling fish's home biome: what its unlocks and its line need)
+			local home = Progress.species(data).home
+			data.dna[home] = (data.dna[home] or 0) + (outcome.amount or 0)
+			result.dna = outcome.amount
+			local biome = Config.Biomes.byId[home]
+			result.dnaBiome = if biome then biome.name else home
+		elseif outcome.kind == "charm" then
+			local id = outcome.charm or ""
+			local charm = Config.Shop.charmsById[id]
+			if charm == nil or (data.charms[id] or 0) >= (charm.max or math.huge) then
+				instead()
+			else
+				data.charms[id] = (data.charms[id] or 0) + 1
+				result.charm = id
+			end
+		elseif outcome.kind == "map" then
+			if not TreasureService.give(player, outcome.map or "Tattered") then
+				instead()
+			end
+		end
 	else
 		local collection = owned(data, outcome)
 		if collection and collection[outcome.id] then
@@ -84,7 +118,7 @@ local function roll(player: Player)
 	Events.rolled:fire(player)
 
 	local tier = Tiers.byId[outcome.tier]
-	if tier and tier.order >= Tiers.byId[Rolls.announceFrom].order then
+	if tier and not outcome.fixed and tier.order >= Tiers.byId[Rolls.announceFrom].order then
 		local text =
 			`{player.DisplayName} rolled {string.upper(outcome.name)}! ({RollOdds.oneIn(probability)})`
 		-- Let the roller's reveal land first

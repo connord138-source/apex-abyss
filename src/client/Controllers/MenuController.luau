@@ -1695,7 +1695,7 @@ local function guide(): { { title: string, text: string } }
 		},
 		{
 			title = "Shells and rolls",
-			text = "Every 50 shells is a roll: a skin, a body part or a variant for the fish you swim as. Skins you have never roll again for that fish. ROLL ODDS shows every chance.",
+			text = "Every 50 shells is a roll: coral, shells back, DNA, a charm, a treasure map, or a skin, body part or variant for the fish you swim as. Skins you have never roll again for that fish. ROLL ODDS shows every chance.",
 		},
 		{
 			title = "Fish",

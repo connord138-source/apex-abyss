@@ -14,7 +14,7 @@ local Config = require(script.Parent.Config)
 
 local Rolls = Config.Rolls
 
-export type Kind = "coral" | "shade" | "part" | "variant"
+export type Kind = "coral" | "shade" | "part" | "variant" | "shells" | "dna" | "charm" | "map"
 
 export type Outcome = {
 	id: string,
@@ -26,6 +26,9 @@ export type Outcome = {
 	share: number?, -- coral: its share of the coral chance
 	refund: number?, -- coral a duplicate turns into
 	species: string?, -- a skin: the fish whose line it's in (it only rolls for that fish; nil: every fish's)
+	fixed: boolean?, -- a prize (Config/Rolls `prizes`): its chance is fixed, luck doesn't touch it
+	charm: string?, -- a charm prize: the Config/Shop charm
+	map: string?, -- a map prize: the Config/Treasure tier
 }
 
 export type Odds = { outcome: Outcome, probability: number }
@@ -39,6 +42,20 @@ for _, coral in Rolls.coral do
 		tier = "Coral",
 		amount = coral.amount,
 		share = coral.share,
+	})
+end
+for _, prize in Rolls.prizes do
+	table.insert(outcomes, {
+		id = prize.id,
+		kind = prize.kind,
+		name = prize.name,
+		tier = prize.tier,
+		chance = prize.chance,
+		amount = prize.amount,
+		refund = prize.refund,
+		fixed = true,
+		charm = prize.charm,
+		map = prize.map,
 	})
 end
 for _, shade in Config.Shades.list do
@@ -145,22 +162,26 @@ function RollOdds.table(luck: number, owned: { [string]: boolean }?, species: st
 		local boost = if outcome.kind == "shade" then boosts[outcome.tier] or 1 else 1
 		return luck / chance * boost
 	end
-	local special = 0
+	local special, fixed = 0, 0
 	for _, outcome in outcomes do
-		if outcome.chance and not excluded(outcome, owned, species) then
+		if outcome.fixed then
+			fixed += 1 / (outcome.chance :: number)
+		elseif outcome.chance and not excluded(outcome, owned, species) then
 			special += base(outcome)
 		end
 	end
-	-- Luck can't push coral below its floor: scale the specials down if it would
-	local scale = math.min(1, (1 - Rolls.minCoralShare) / math.max(special, 1e-12))
-	local coralTotal = 1 - special * scale
+	-- Luck can't push coral below its floor: scale the skins, parts and variants down
+	-- if it would (the prizes keep their fixed chances)
+	local scale = math.min(1, (1 - fixed - Rolls.minCoralShare) / math.max(special, 1e-12))
+	local coralTotal = 1 - fixed - special * scale
 	local result: { Odds } = {}
 	for _, outcome in outcomes do
 		if excluded(outcome, owned, species) then
 			continue
 		end
-		local probability = if outcome.chance
-			then base(outcome) * scale
+		local probability = if outcome.fixed
+			then 1 / (outcome.chance :: number)
+			elseif outcome.chance then base(outcome) * scale
 			else coralTotal * (outcome.share or 0)
 		table.insert(result, { outcome = outcome, probability = probability })
 	end

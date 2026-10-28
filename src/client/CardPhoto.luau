@@ -397,7 +397,15 @@ local function wraps(): Model
 	return model
 end
 
-local function charm(): Model
+-- Each charm's gem (a roll prize names its charm; the treasure's is the Lucky Charm)
+local CHARM_GEMS: { [string]: Color3 } = {
+	Lucky = Color3.fromRGB(70, 255, 200),
+	Feast = Color3.fromRGB(255, 140, 50),
+	Magnet = Color3.fromRGB(120, 180, 255),
+	DeepLantern = Color3.fromRGB(255, 226, 120),
+}
+
+local function charm(gem: Color3?): Model
 	local model = newSubject()
 	local gold = Color3.fromRGB(255, 204, 70)
 	local at = CFrame.new(0, 1.4, 0) * CFrame.Angles(0, math.rad(20), math.rad(90))
@@ -415,7 +423,7 @@ local function charm(): Model
 		Enum.PartType.Ball,
 		Vector3.one * 0.9,
 		CFrame.new(0, 1.4, 0) * CFrame.Angles(0, math.rad(20), 0) * CFrame.new(0, 0, -0.18),
-		Color3.fromRGB(70, 255, 200),
+		gem or CHARM_GEMS.Lucky,
 		Enum.Material.Neon
 	)
 	part(
@@ -426,6 +434,56 @@ local function charm(): Model
 		gold,
 		Enum.Material.Metal
 	)
+	model:SetAttribute("Pose", "still")
+	return model
+end
+
+-- A treasure map (a roll prize): a parchment half unrolled between its two rods,
+-- a dotted trail to a red X
+local function scroll(): Model
+	local model = newSubject()
+	local turn = CFrame.new(0, 1.3, 0) * CFrame.Angles(math.rad(-55), math.rad(20), 0)
+	local paper = Color3.fromRGB(196, 168, 112)
+	local wood = Color3.fromRGB(96, 62, 36)
+	part(model, Enum.PartType.Block, Vector3.new(2.6, 0.06, 1.9), turn, paper)
+	for side = -1, 1, 2 do
+		part(
+			model,
+			Enum.PartType.Cylinder,
+			Vector3.new(2.9, 0.34, 0.34),
+			turn * CFrame.new(0, 0.08, side * 1.0),
+			paper:Lerp(wood, 0.25)
+		)
+		for tip = -1, 1, 2 do
+			part(
+				model,
+				Enum.PartType.Ball,
+				Vector3.one * 0.3,
+				turn * CFrame.new(tip * 1.55, 0.08, side * 1.0),
+				wood,
+				Enum.Material.Wood
+			)
+		end
+	end
+	for i = 0, 4 do
+		part(
+			model,
+			Enum.PartType.Block,
+			Vector3.new(0.14, 0.07, 0.14),
+			turn * CFrame.new(-0.95 + i * 0.32, 0.03, 0.45 - math.sin(i * 0.9) * 0.4),
+			Color3.fromRGB(110, 70, 40)
+		)
+	end
+	for k = -1, 1, 2 do
+		part(
+			model,
+			Enum.PartType.Block,
+			Vector3.new(0.55, 0.08, 0.12),
+			turn * CFrame.new(0.75, 0.04, -0.35) * CFrame.Angles(0, math.rad(45 * k), 0),
+			Color3.fromRGB(220, 40, 40),
+			Enum.Material.Neon
+		)
+	end
 	model:SetAttribute("Pose", "still")
 	return model
 end
@@ -498,7 +556,12 @@ local function master(outcome: Outcome): Model?
 	elseif kind == "wraps" then
 		model = wraps()
 	elseif kind == "charm" then
-		model = if outcome.id == "secondChance" then lifeRing() else charm()
+		local id = (outcome :: any).charm
+		model = if outcome.id == "secondChance"
+			then lifeRing()
+			else charm(if typeof(id) == "string" then CHARM_GEMS[id] else nil)
+	elseif kind == "map" then
+		model = scroll()
 	end
 	if model then
 		for _, d in model:GetDescendants() do
