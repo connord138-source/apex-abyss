@@ -87,10 +87,11 @@ for i, rarity in CatchConfig.rarities do
 	check(rarity.unlock.each >= 1 and rarity.unlock.species >= 1, `{rarity.id}: its goal`)
 	check(rarity.unlock.species <= #Config.Prey.list, `{rarity.id}: more species than there are`)
 	check((CatchConfig.firstCatch :: any)[rarity.id] ~= nil, `{rarity.id}: a first-catch reward`)
-	-- Each player has a few rare fish swimming round them at most (a calm sea, Silver
-	-- the most), and the rarer swim less often, pay more and score more
+	-- Each player has a handful of rare fish swimming round them at most (a calm sea,
+	-- Silver the most: ~7.5 since 2026-10-28, owner: "still need more silver and gold
+	-- fish"), and the rarer swim less often, pay more and score more
 	local swimming = rarity.rate * rarity.life / 60
-	check(swimming > 0 and swimming < 5, `{rarity.id}: {swimming} swimming round each player`)
+	check(swimming > 0 and swimming < 10, `{rarity.id}: {swimming} swimming round each player`)
 	if previous and not rarity.tide then
 		check(rarity.rate < previous.rate, `{rarity.id} spawns more often than {previous.id}`)
 		check(rarity.every > previous.every, `{rarity.id} is met more often than {previous.id}`)

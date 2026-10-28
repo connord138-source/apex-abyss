@@ -92,7 +92,9 @@ return {
 		bankPerKg = 2,
 		bankMin = 20,
 		bankMax = 300,
-		catch = { Normal = 2, Silver = 8, Golden = 25, Glowing = 60, Crystal = 150, Prism = 300 } :: { [string]: number },
+		-- (Silver 8 and Golden 25 until 2026-10-28, when twice as many swam: halved, so
+		-- a season still takes about four weeks)
+		catch = { Normal = 2, Silver = 4, Golden = 12, Glowing = 60, Crystal = 150, Prism = 300 } :: { [string]: number },
 		bounty = 150,
 		chest = 300,
 		boss = 400,

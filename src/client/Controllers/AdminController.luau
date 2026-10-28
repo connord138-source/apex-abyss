@@ -392,7 +392,7 @@ local function build()
 	end
 	pickRow("Turn the 10 nearest fish", rarities, "rareNear", "TURN")
 	-- The Catch Logbook's skin goals: catches of a rarity on one prey species, or on
-	-- each of the first N species (an unlock in one tap: 10 Golden × 5 species)
+	-- each of the first N species (an unlock in one tap: 15 Golden × 5 species)
 	do
 		local frame = row("Catch Log: add catches")
 		local wheres: { { label: string, value: string } } = {

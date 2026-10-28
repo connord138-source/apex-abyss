@@ -1012,7 +1012,7 @@ local list: { Shade } = {
 		C(245, 170, 0),
 		C(255, 205, 70),
 		C(200, 123, 0),
-		"Polished gold, its own pattern engraved, a shine running down it. 10 Golden fish of each of 5 species, and it's every fish's.",
+		"Polished gold, its own pattern engraved, a shine running down it. 15 Golden fish of each of 5 species, and it's every fish's.",
 		-- Less mirror than it was: reflecting the blue water, gold read lime (playtest
 		-- 2026-10-10; the skin's metal map went from 0.6 to 0.35)
 		{ material = Enum.Material.Metal, reflectance = 0.2, sparkle = C(255, 226, 150), aura = "glints" }

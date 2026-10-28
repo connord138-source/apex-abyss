@@ -196,7 +196,7 @@ return {
 		"Bigger fish are worth far more. Grow, then push into the deeper biomes.",
 		"The INDEX (on the HUD) shows how to get every skin, part, variant and trail.",
 		"Your Nibbler at LV 15 plus Kelp Shallows DNA unlocks the 'Cuda in the FISH menu.",
-		"Sparkling fish are rare: 10 Golden fish of 5 different kinds unlock the Golden skin for every fish.",
+		"Sparkling fish are rare: 15 Golden fish of 5 different kinds unlock the Golden skin for every fish.",
 		"Kelp Wraps heal you (H). Health never comes back on its own.",
 		"Too deep too soon and the pressure crushes you. Each band of depth needs a higher level.",
 		"Small fish can school up: bite a big one together and your mass counts as one.",

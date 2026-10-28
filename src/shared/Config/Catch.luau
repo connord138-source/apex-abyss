@@ -53,9 +53,12 @@ local rarities: { Rarity } = {
 		id = "Silver",
 		name = "Silver",
 		tier = "Uncommon",
-		rate = 1.25,
-		life = 120,
-		every = 1,
+		-- (×2 and lives ×1.5 since 2026-10-28, owner: "still need more silver and gold
+		-- fish. went across the whole server and saw 2 silver sardines": ~2.5 swam round
+		-- a player at once, ~7.5 now)
+		rate = 2.5,
+		life = 180,
+		every = 0.4,
 		haul = 2,
 		coralPerKg = 3,
 		coralMin = 5,
@@ -70,16 +73,21 @@ local rarities: { Rarity } = {
 		id = "Golden",
 		name = "Golden",
 		tier = "Rare",
-		rate = 0.25, -- (×2.7 since 2026-10-20, owner: "i havent seen a single gold or crystal fish spawn today")
-		life = 270,
-		every = 2,
+		-- (×2.7 since 2026-10-20, owner: "i havent seen a single gold or crystal fish spawn
+		-- today"; ×2 and lives ×1.33 since 2026-10-28: ~1.1 swam round a player at once,
+		-- ~3 now)
+		rate = 0.5,
+		life = 360,
+		every = 0.9,
 		haul = 3,
 		coralPerKg = 6,
 		coralMin = 10,
 		dna = 2,
 		points = 1,
 		skin = "CatchGolden",
-		unlock = { each = 10, species = 5 },
+		-- (10 until 2026-10-28; with twice the Golden fish 15 keeps the goal near two
+		-- hours of hunting, owner: "atleast 10 gold of 5 different species")
+		unlock = { each = 15, species = 5 },
 		color = Color3.fromRGB(255, 196, 60),
 		announce = { spawn = false, catch = false },
 	},
