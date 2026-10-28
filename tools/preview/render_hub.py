@@ -981,7 +981,7 @@ def load_parts(meshes):
             add_part(f, meshes)
         elif tag == "L":
             add_light(f)
-        elif tag == "B":
+        elif tag == "B" and f[1].count(",") == 2:  # (a builder's view box B|name|... isn't a Beam)
             add_beam(f)
         elif tag == "E":
             add_particles(f, meshes)

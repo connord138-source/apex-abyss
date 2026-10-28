@@ -15,7 +15,8 @@
 --   * BLACK SMOKERS: a glowing throat on every spire (on its real top), a tall
 --     billowing black plume, heat shimmer, small side throats on the flanges,
 --     sulfide crust (ochre, rust, sulfur) on them, a light at each complex; and the
---     basins' older chimneys dressed to match (flanges, staining, side throats);
+--     basins' older chimneys dressed to match (craggy rock flanges with a hot seam
+--     under them and drips off them, staining, side throats);
 --   * COLUMNAR BASALT: hex columns (three blocks turned 60°, dark basalt with
 --     lighter tops) in two terraced outcrops and the causeway from the Forge's foot
 --     toward the hub;
@@ -23,9 +24,10 @@
 --     warm glowing pool behind a scalloped rim, flowstone draped between them;
 --   * THE BRINE POOL: a dark glassy lake on a basin floor with a faint teal glow
 --     under it, a crust and mussel shoreline and mist rolling over it;
---   * TUBE WORMS (mid-grey tubes, crimson plumes): three forests (round the tallest
---     smoker complex, a basin chimney and the brine pool's far shore) and clumps
---     round the smokers and chimneys, with MUSSEL and CLAM BEDS;
+--   * TUBE WORMS (pale tubes with flared collars, crimson plumes fanned out like
+--     feather dusters, their feet in mineral crust): three forests (round the
+--     tallest smoker complex, a basin chimney and the brine pool's far shore) and
+--     clumps round the smokers and chimneys, with MUSSEL and CLAM BEDS;
 --   * a glow over the two biggest crust patches, and embers and mineral flecks
 --     drifting over the field.
 --
@@ -34,7 +36,7 @@
 -- it, and every top stays under VentsPlan.ceiling, so no prey school is lifted over
 -- it. Decor neither collides, takes rays nor fires Touched. Everything is anchored,
 -- SmoothPlastic, Neon or (the brine) Glass: never a toon-overridden material. It
--- builds 2,200–3,100 parts and 13–14 lights (PARTS_CAP stops the small life past
+-- builds 2,950–3,270 parts and 12–14 lights (PARTS_CAP stops the small life past
 -- 3,300), and clears scattered boulders and plankton out of its landmarks (tidy).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -80,13 +82,22 @@ local COLORS = {
 	lavaRim = Color3.fromRGB(168, 38, 14),
 	raft = Color3.fromRGB(44, 34, 34),
 	minerals = { Color3.fromRGB(198, 142, 54), Color3.fromRGB(150, 66, 34), Color3.fromRGB(230, 208, 72) },
-	-- (the chimneys' flange crust: the same minerals, duller, so they don't ring gold)
+	-- (the sulfide on the chimneys' flanges: the same minerals, duller, so they don't ring gold)
 	crust = { Color3.fromRGB(168, 116, 56), Color3.fromRGB(128, 64, 38), Color3.fromRGB(160, 146, 70) },
+	-- (the chimneys' flanges: near the columns' own basalt, so they read as growing out of it)
+	flange = { Color3.fromRGB(84, 88, 98), Color3.fromRGB(94, 96, 104), Color3.fromRGB(76, 80, 90) },
+	-- (the hot water trapped under a flange)
+	seam = Color3.fromRGB(214, 78, 32),
 	-- Rimstone: cream, ochre and rust, and the warm water standing on it
 	travertine = { Color3.fromRGB(204, 182, 136), Color3.fromRGB(184, 130, 72), Color3.fromRGB(150, 86, 50) },
 	terracePool = Color3.fromRGB(236, 146, 64),
-	tube = { Color3.fromRGB(126, 128, 124), Color3.fromRGB(112, 114, 112), Color3.fromRGB(138, 136, 128) },
-	plume = { Color3.fromRGB(196, 22, 38), Color3.fromRGB(176, 16, 34), Color3.fromRGB(214, 40, 48) },
+	-- Giant tube worms: pale chitin tubes (stained low down on the old ones), a paler
+	-- collar at the mouth, crimson plumes, and the mineral crust round their feet
+	tube = { Color3.fromRGB(196, 192, 180), Color3.fromRGB(182, 180, 172), Color3.fromRGB(206, 200, 186) },
+	tubeBase = { Color3.fromRGB(150, 138, 114), Color3.fromRGB(134, 126, 108), Color3.fromRGB(162, 146, 116) },
+	collar = Color3.fromRGB(220, 214, 200),
+	plume = { Color3.fromRGB(206, 24, 40), Color3.fromRGB(184, 16, 34), Color3.fromRGB(226, 44, 52) },
+	wormCrust = { Color3.fromRGB(80, 74, 68), Color3.fromRGB(92, 84, 74), Color3.fromRGB(70, 66, 62) },
 	mussel = {
 		Color3.fromRGB(34, 38, 56),
 		Color3.fromRGB(28, 32, 46),
@@ -110,7 +121,7 @@ local LIGHT = {
 }
 
 -- The most parts the field builds: the small life (worms, shells) is left out past it
--- (a field lays out at 2,100–2,700 over every seed tried)
+-- (a whole field, its life included, builds 2,950–3,270 over the seeds tried)
 local PARTS_CAP = 3300
 
 local rng = Random.new(World.seed + 99)
@@ -216,21 +227,6 @@ local function chip(parent: Instance, name: string, cframe: CFrame, size: Vector
 		color
 	)
 	return p
-end
-
--- A flat-topped ledge round a column (a chimney's flange): `sides` blocks turned
--- evenly, so its edge is a many-sided polygon like the basalt's, never a disc
-local function ledge(
-	parent: Instance,
-	name: string,
-	cframe: CFrame,
-	size: Vector3,
-	color: Color3,
-	sides: number
-)
-	for k = 0, sides - 1 do
-		trim(parent, name, size, cframe * CFrame.Angles(0, k * HALF / sides, 0), color)
-	end
 end
 
 -- A mineral streak running down a flank from `on` (its middle, on the surface; `out`
@@ -848,11 +844,122 @@ local function smokers(parent: Instance, plan: VentsPlan.Plan)
 	end
 end
 
+-- A chimney's flange (owner, 2026-10-28: the stacked many-sided plates read as flat
+-- placeholder plates floating round the column, and their mineral lip as a yellow
+-- star): a craggy rock ledge growing out of the column `r` round at `foot`, its top
+-- at `at`, reaching up to `out` studs past it. A ring of chunky slabs, each its own
+-- reach, thickness, height and slope: their inner ends buried in the column, their
+-- tops sloping down and out, most tapering underneath to a thin lip (a flange grows
+-- out as a shelf) and the rest blunt, so the edge is ragged. Under two of them a
+-- faint hot seam where they meet the column (a real flange traps shimmering hot
+-- water under it), a drip hanging off it and on some a little sulfide on top.
+-- Returns a spot on its top near the edge (for a side throat).
+local FLANGE =
+	{ spacing = 9.5, slabs = { 5, 7 }, slope = { 0.12, 0.38 }, tapered = 0.5, seams = 2, seam = 1.4 }
+
+local function flange(m: Instance, foot: Vector3, r: number, at: number, out: number): Vector3
+	local count =
+		math.clamp(math.floor(TAU * (r + out / 2) / FLANGE.spacing + 0.5), FLANGE.slabs[1], FLANGE.slabs[2])
+	local turn = rng:NextNumber(0, TAU)
+	local bury = math.min(r * 0.5, 3)
+	local slabs: { { frame: CFrame, length: number, width: number, thick: number, tapered: boolean } } = {}
+	local edge, longest = foot, -1
+	for k = 0, count - 1 do
+		local a = turn + (k + rng:NextNumber(-0.12, 0.12)) * TAU / count
+		local radial = Vector3.new(math.cos(a), 0, math.sin(a))
+		-- (a little off the radial, so the slabs' edges don't line up round it)
+		local skew = a + rng:NextNumber(-0.22, 0.22)
+		local heading = Vector3.new(math.cos(skew), 0, math.sin(skew))
+		local reach = out * rng:NextNumber(0.55, 1.15)
+		local length = reach + bury
+		local tapered = rng:NextNumber() < FLANGE.tapered
+		local thick = if tapered then rng:NextNumber(2, 3.2) else rng:NextNumber(1.1, 1.8)
+		local width = TAU * (r + reach / 2) / count * rng:NextNumber(0.95, 1.3)
+		local hinge = Vector3.new(foot.X, at + rng:NextNumber(-0.9, 0.6), foot.Z) + radial * (r - bury)
+		local frame = CFrame.lookAt(hinge, hinge + heading)
+			* CFrame.Angles(-rng:NextNumber(FLANGE.slope[1], FLANGE.slope[2]), 0, rng:NextNumber(-0.18, 0.18))
+		local center = frame * CFrame.new(0, -thick / 2, -length / 2)
+		local size = Vector3.new(width, thick, length)
+		if tapered then
+			-- (a wedge turned over: a flat top, the underside rising to a lip at its edge)
+			wedge(m, "Flange", size, center * CFrame.Angles(0, 0, math.pi), pick(COLORS.flange))
+		else
+			trim(m, "Flange", size, center, pick(COLORS.flange))
+		end
+		table.insert(
+			slabs,
+			{ frame = frame, length = length, width = width, thick = thick, tapered = tapered }
+		)
+		if reach > longest then
+			longest = reach
+			edge = (frame * CFrame.new(0, 0, -(bury + reach * 0.55))).Position
+		end
+	end
+	-- The hot seam: a thin, faint glowing slit hugging the underside of two slabs
+	-- across the ring from each other, where they leave the column (a whole ring
+	-- read as a neon hoop)
+	for k = 1, FLANGE.seams do
+		local slab = slabs[(k - 1) * math.floor(#slabs / FLANGE.seams) + 1]
+		local s = bury + FLANGE.seam / 2
+		-- (along the underside: a tapered slab's rises to its lip)
+		local rise = if slab.tapered then math.atan(slab.thick / slab.length) else 0
+		local under = if slab.tapered then -slab.thick * (1 - s / slab.length) else -slab.thick
+		local hot = glow(
+			m,
+			"FlangeSeam",
+			Vector3.new(slab.width * 0.7, 0.2, FLANGE.seam),
+			slab.frame * CFrame.new(0, under - 0.1, -s) * CFrame.Angles(rise, 0, 0),
+			COLORS.seam,
+			0.5
+		)
+		hot.CastShadow = false
+	end
+	-- A drip hanging off the underside: a sharp tooth of rock, the lip's own colour
+	do
+		local slab = slabs[rng:NextInteger(1, #slabs)]
+		local s = slab.length * rng:NextNumber(0.55, 0.85)
+		local under = if slab.tapered then -slab.thick * (1 - s / slab.length) else -slab.thick
+		local hang = (slab.frame * CFrame.new(rng:NextNumber(-0.25, 0.25) * slab.width, under, -s)).Position
+		local across = slab.frame.RightVector
+		local u = Vector3.new(across.X, 0, across.Z).Unit * (if rng:NextNumber() < 0.5 then 1 else -1)
+		local drop = rng:NextNumber(1.2, 3)
+		wedge(
+			m,
+			"Drip",
+			Vector3.new(rng:NextNumber(0.6, 1), rng:NextNumber(0.8, 1.5), drop),
+			CFrame.fromMatrix(hang + Vector3.new(0, 0.3 - drop / 2, 0), u:Cross(Vector3.yAxis), u),
+			pick(COLORS.flange)
+		)
+	end
+	-- Now and then a little sulfide where the ledge meets the column
+	if rng:NextNumber() < 0.5 then
+		local slab = slabs[rng:NextInteger(1, #slabs)]
+		local spot = (slab.frame * CFrame.new(0, 0, -(bury + rng:NextNumber(0.4, 1.2)))).Position
+		local size = rng:NextNumber(1.1, 2)
+		local color = pick(COLORS.crust)
+		for _ = 1, 2 do
+			trim(
+				m,
+				"Sulfide",
+				Vector3.new(size * 0.32, size * rng:NextNumber(0.7, 1.2), size * 0.32),
+				CFrame.new(spot + Vector3.new(0, size * 0.25, 0))
+					* CFrame.Angles(
+						rng:NextNumber(-0.5, 0.5),
+						rng:NextNumber(0, TAU),
+						rng:NextNumber(-0.5, 0.5)
+					),
+				color
+			)
+		end
+	end
+	return edge
+end
+
 -- The basins' older chimneys (Shelf.luau's plain basalt columns, each with its
 -- glowing throat and smoke from WorldService ventSmoke) dressed like the smokers'
--- spires: one or two flanges with a mineral lip, sulfide staining down the flank,
--- and on some a small side throat breathing out at a flange's edge. All decor (no
--- school or predator meets more than the chimney it already climbs over).
+-- spires: one or two craggy flanges, sulfide staining down the flank, and on some a
+-- small side throat breathing out on a flange. All decor (no school or predator
+-- meets more than the chimney it already climbs over).
 local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 	local m = model(parent, "ChimneyCrust")
 	for _, chimney in plan.chimneys do
@@ -866,33 +973,10 @@ local function chimneyDress(parent: Instance, plan: VentsPlan.Plan)
 		for f = 1, flanges do
 			local at = foot.Y
 				+ h * (if flanges == 1 then 0.55 else ({ 0.42, 0.72 })[f] + rng:NextNumber(-0.05, 0.05))
-			-- (a many-sided ledge, a little tilted: a flat disc read as a plate, and a
-			-- squashed sphere as a ring of egg)
-			local reach = r + rng:NextNumber(1.6, 2.8)
-			local turn = CFrame.Angles(
-				rng:NextNumber(-0.08, 0.08),
-				rng:NextNumber(0, TAU),
-				rng:NextNumber(-0.08, 0.08)
-			)
-			local center = CFrame.new(foot.X, at, foot.Z) * turn
-			ledge(m, "Flange", center, Vector3.new(reach * 2, 2.2, reach * 2), pick(COLORS.basalt), 3)
-			ledge(
-				m,
-				"FlangeLip",
-				center * CFrame.new(0, 1.3, 0) * CFrame.Angles(0, HALF / 6, 0),
-				Vector3.new(reach * 1.8, 0.7, reach * 1.8),
-				pick(COLORS.crust),
-				2
-			)
+			local edge = flange(m, foot, r, at, rng:NextNumber(2.4, 4.2) + r * 0.12)
 			if rng:NextNumber() < 0.35 then
-				local a = rng:NextNumber(0, TAU)
-				local spot = Vector3.new(
-					foot.X + math.cos(a) * (reach - 0.8),
-					at + 0.6,
-					foot.Z + math.sin(a) * (reach - 0.8)
-				)
-				mouthGlow(m, "SideThroat", spot, 0.7)
-				blackSmoke(holder(m, "SidePlume", CFrame.new(spot + Vector3.new(0, 1, 0)), Vector3.one), 0.2)
+				mouthGlow(m, "SideThroat", edge, 0.7)
+				blackSmoke(holder(m, "SidePlume", CFrame.new(edge + Vector3.new(0, 1, 0)), Vector3.one), 0.2)
 			end
 		end
 		for _ = 1, rng:NextInteger(2, 3) do
@@ -1157,51 +1241,139 @@ local function musselBed(parent: Instance, center: Vector3, inner: number, outer
 	end
 end
 
--- One giant tube worm standing out of the ground at `hit` along `dir`: a mid-grey
--- tube and its crimson plume (now and then drawn in)
-local function worm(m: Instance, hit: Vector3, dir: Vector3, length: number, radius: number)
-	if stats.parts >= PARTS_CAP then
+-- One giant tube worm (owner, 2026-10-28: a grey rod with a red cylinder on it read
+-- as a matchstick) standing out of the ground at `hit` along `dir`, `length` tall and
+-- `radius` round: a pale chitin tube (on a tall one the old growth low down stouter
+-- and stained, the newer bending a little off it), a flared collar at its mouth and
+-- its crimson plume, `fronds` thin blades fanned out of the mouth in a cone wider than
+-- the tube, like a feather duster. Now and then one has drawn its plume in. A worm
+-- that would take the field past PARTS_CAP is left out whole.
+local WORM = {
+	buried = 0.6,
+	tall = 7,
+	drawnIn = 0.1,
+	lean = { 0.08, 0.22 },
+	plume = { 3, 3.8 },
+	width = { 1.4, 1.8 },
+	blade = 0.16,
+}
+
+local function worm(m: Instance, hit: Vector3, dir: Vector3, length: number, radius: number, fronds: number)
+	local tall = length >= WORM.tall
+	if stats.parts + 2 + fronds + (if tall then 1 else 0) > PARTS_CAP then
 		return
 	end
-	local foot = hit - dir * 0.4
-	local tip = foot + dir * length
-	rod(m, "Tube", foot, tip, radius, pick(COLORS.tube))
-	if rng:NextNumber() < 0.85 then
-		-- (a giant tube worm's plume: a red brush out of its tube's mouth)
-		rod(m, "Plume", tip - dir * 0.2, tip + dir * (1.2 + radius * 1.1), radius * 1.15, pick(COLORS.plume))
+	local foot = hit - dir * WORM.buried
+	local axis, mouth = dir, foot + dir * length
+	if tall then
+		local knee = foot + dir * (length * rng:NextNumber(0.3, 0.45))
+		rod(m, "TubeBase", foot, knee + dir * 0.3, radius * 1.14, pick(COLORS.tubeBase))
+		axis = (dir + Vector3.new(rng:NextNumber(-0.1, 0.1), 0, rng:NextNumber(-0.1, 0.1))).Unit
+		mouth = knee + axis * (length - (knee - foot).Magnitude)
+		rod(m, "Tube", knee, mouth, radius, pick(COLORS.tube))
+	else
+		rod(m, "Tube", foot, mouth, radius, pick(COLORS.tube))
+	end
+	rod(m, "Collar", mouth - axis * 0.3, mouth + axis * 0.15, radius * 1.3, COLORS.collar)
+	if rng:NextNumber() >= WORM.drawnIn then
+		-- (each blade's inner edge leans out of the axis and its outer edge flares
+		-- further, so together they open like a feather duster)
+		local side = axis:Cross(if math.abs(axis.Y) < 0.95 then Vector3.yAxis else Vector3.xAxis).Unit
+		local other = axis:Cross(side)
+		local turn = rng:NextNumber(0, TAU)
+		local long = radius * rng:NextNumber(WORM.plume[1], WORM.plume[2]) + 0.35
+		for k = 0, fronds - 1 do
+			local phi = turn + (k + rng:NextNumber(-0.15, 0.15)) * TAU / fronds
+			local u = side * math.cos(phi) + other * math.sin(phi)
+			local lean = rng:NextNumber(WORM.lean[1], WORM.lean[2])
+			local along = axis * math.cos(lean) + u * math.sin(lean)
+			local outward = u * math.cos(lean) - axis * math.sin(lean)
+			local d = long * rng:NextNumber(0.85, 1.1)
+			local w = radius * rng:NextNumber(WORM.width[1], WORM.width[2]) + 0.3
+			-- (out of the collar's middle, so no blade's foot shows on its rim)
+			local start = mouth + u * (radius * 0.1) + axis * 0.1
+			wedge(
+				m,
+				"Plume",
+				Vector3.new(WORM.blade, w, d),
+				CFrame.fromMatrix(start + outward * (w / 2) + along * (d / 2), outward:Cross(along), outward),
+				pick(COLORS.plume)
+			)
+		end
 	end
 	stats.worms += 1
 end
 
--- A clump of giant tube worms: mid-grey tubes (tallest in the middle, leaning out)
--- with crimson plumes at their tips; a few have drawn theirs in
+-- The mineral crust a clump's feet are buried in: a low faceted mound `radius` round
+-- on the ground at `at` and a broken plate at its edge
+local function wormCrust(m: Instance, at: Vector3, radius: number)
+	if stats.parts + 3 > PARTS_CAP then
+		return
+	end
+	chip(
+		m,
+		"WormCrust",
+		CFrame.new(at + Vector3.new(0, 0.1, 0))
+			* CFrame.Angles(rng:NextNumber(-0.06, 0.06), rng:NextNumber(0, TAU), rng:NextNumber(-0.06, 0.06)),
+		Vector3.new(radius * 2, 1.1, radius * 1.7),
+		pick(COLORS.wormCrust)
+	)
+	local a = rng:NextNumber(0, TAU)
+	local d = radius * rng:NextNumber(0.85, 1.1)
+	local hit = groundOf(at.X + math.cos(a) * d, at.Z + math.sin(a) * d)
+	if hit and math.abs(hit.Y - at.Y) < 2.5 then
+		trim(
+			m,
+			"WormCrust",
+			Vector3.new(rng:NextNumber(1.3, 2), rng:NextNumber(0.7, 1.1), rng:NextNumber(1.1, 1.7)),
+			CFrame.new(hit + Vector3.new(0, 0.15, 0))
+				* CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, TAU), rng:NextNumber(-0.3, 0.3)),
+			pick(COLORS.wormCrust)
+		)
+	end
+end
+
+-- A clump of giant tube worms on a crust mound, `spread` round: the tallest in the
+-- middle with the fullest plumes, shorter ones round them leaning out
 local function wormClump(parent: Instance, center: Vector3, count: number, spread: number)
 	local m = model(parent, "TubeWorms")
 	stats.clumps += 1
+	local base = groundOf(center.X, center.Z)
+	if base and math.abs(base.Y - center.Y) <= 3 then
+		wormCrust(m, base, spread * 0.75)
+	end
 	for _ = 1, count do
 		local a = rng:NextNumber(0, TAU)
-		local d = spread * math.sqrt(rng:NextNumber())
+		local share = math.sqrt(rng:NextNumber())
+		local d = spread * share
 		local hit = groundOf(center.X + math.cos(a) * d, center.Z + math.sin(a) * d)
 		if hit == nil or math.abs(hit.Y - center.Y) > 3 then
 			continue
 		end
-		local length = rng:NextNumber(2.5, 8.5) * (1 - 0.45 * d / spread)
-		local lean = rng:NextNumber(0, 0.28) * (0.4 + d / spread)
+		local length = rng:NextNumber(3.5, 9) * (1 - 0.5 * share)
+		local lean = rng:NextNumber(0.05, 0.3) * (0.4 + share)
 		local dir = Vector3.new(math.cos(a) * math.sin(lean), math.cos(lean), math.sin(a) * math.sin(lean))
-		worm(m, hit, dir, length, rng:NextNumber(0.28, 0.46))
+		worm(
+			m,
+			hit,
+			dir,
+			length,
+			rng:NextNumber(0.28, 0.42) * (1 - 0.15 * share),
+			if share < 0.45 then 4 else 3
+		)
 	end
 end
 
 -- A tube-worm forest: a band `inner`–`outer` studs round `center` (a whole ring, or
--- the arc `from`–`to` radians) thick with knots of tall worms, the tallest in each
--- knot's middle, leaning out of it; the ground under each is found by raycast, and
--- a worm whose ground isn't within `step` of the forest's is left out (a rock, a
--- spire's flank)
-local FOREST = { knots = 7, tallest = 11, shortest = 3, step = 3.5, level = 6 }
+-- the arc `from`–`to` radians) of dense knots of tall worms, each on its crust mound,
+-- the tallest in each knot's middle, leaning out of it; the ground under each is found
+-- by raycast, and a worm whose ground isn't within `step` of the forest's is left out
+-- (a rock, a spire's flank)
+local FOREST = { knots = 4, tallest = 11, shortest = 3.5, step = 3.5, level = 6, radius = { 2, 3 } }
 -- The forests and their worms: a belt round the tallest smoker complex, the floor
 -- round a basin chimney (not in the brine pool's basin) and an arc of the brine
 -- pool's shore
-local FORESTS = { smoker = 110, chimney = 80, brine = 60 }
+local FORESTS = { smoker = 34, chimney = 25, brine = 20 }
 
 local function wormForest(
 	parent: Instance,
@@ -1223,7 +1395,7 @@ local function wormForest(
 		local d = rng:NextNumber(inner, outer)
 		local hit = groundOf(center.X + math.cos(a) * d, center.Z + math.sin(a) * d)
 		if hit and math.abs(hit.Y - center.Y) <= FOREST.level then
-			table.insert(knots, { at = hit, radius = rng:NextNumber(3, 6) })
+			table.insert(knots, { at = hit, radius = rng:NextNumber(FOREST.radius[1], FOREST.radius[2]) })
 		end
 	end
 	if #knots == 0 then
@@ -1231,6 +1403,9 @@ local function wormForest(
 	end
 	local m = model(parent, "TubeWormForest")
 	stats.forests += 1
+	for _, knot in knots do
+		wormCrust(m, knot.at, knot.radius * 0.75)
+	end
 	local made = 0
 	for _ = 1, count do
 		local knot = knots[rng:NextInteger(1, #knots)]
@@ -1245,9 +1420,16 @@ local function wormForest(
 		made += 1
 		local length = (FOREST.shortest + (FOREST.tallest - FOREST.shortest) * (1 - share * 0.75))
 			* rng:NextNumber(0.6, 1)
-		local lean = rng:NextNumber(0.02, 0.22) * (0.3 + share)
+		local lean = rng:NextNumber(0.04, 0.28) * (0.3 + share)
 		local dir = Vector3.new(math.cos(a) * math.sin(lean), math.cos(lean), math.sin(a) * math.sin(lean))
-		worm(m, hit, dir, length, rng:NextNumber(0.32, 0.55))
+		worm(
+			m,
+			hit,
+			dir,
+			length,
+			rng:NextNumber(0.3, 0.46) * (1 - 0.15 * share),
+			if share < 0.45 then 4 else 3
+		)
 	end
 	return made
 end
@@ -1307,7 +1489,7 @@ local function brinePool(parent: Instance, plan: VentsPlan.Plan)
 	end
 	musselBed(m, Vector3.new(c.X, y, c.Z), radius + 1.5, radius + 6, 44)
 	local a = rng:NextNumber(0, TAU)
-	wormClump(m, Vector3.new(c.X + math.cos(a) * (radius + 9), y, c.Z + math.sin(a) * (radius + 9)), 22, 5)
+	wormClump(m, Vector3.new(c.X + math.cos(a) * (radius + 9), y, c.Z + math.sin(a) * (radius + 9)), 8, 3)
 	-- A forest along the far shore
 	wormForest(m, Vector3.new(c.X, y, c.Z), radius + 4, radius + 12, FORESTS.brine, a + 2.3, a + 4.0)
 	local mist =
@@ -1371,7 +1553,7 @@ local function life(parent: Instance, plan: VentsPlan.Plan)
 			local a = rng:NextNumber(0, TAU)
 			local at = spire.foot
 				+ Vector3.new(math.cos(a), 0, math.sin(a)) * (spire.radius + rng:NextNumber(4, 7))
-			wormClump(m, at, rng:NextInteger(22, 30), rng:NextNumber(4.5, 6.5))
+			wormClump(m, at, rng:NextInteger(8, 11), rng:NextNumber(2.6, 3.4))
 			if k == 1 then
 				local b = a + math.pi + rng:NextNumber(-0.6, 0.6)
 				local bed = spire.foot + Vector3.new(math.cos(b), 0, math.sin(b)) * (spire.radius + 6)
@@ -1379,15 +1561,16 @@ local function life(parent: Instance, plan: VentsPlan.Plan)
 			end
 		end
 	end
-	-- The chimneys, every other one or so, skipping any whose foot isn't open floor
+	-- Six of the chimneys, skipping any whose foot isn't open floor: a mussel bed at
+	-- each, and a clump of worms opposite it at the first four (fewer, fuller clumps)
 	local order = table.clone(plan.chimneys)
 	for i = #order, 2, -1 do
 		local j = rng:NextInteger(1, i)
 		order[i], order[j] = order[j], order[i]
 	end
-	local clumps, beds = 0, 0
+	local spots = 0
 	for _, chimney in order do
-		if clumps >= 6 then
+		if spots >= 6 then
 			break
 		end
 		local foot = chimney.position
@@ -1397,14 +1580,13 @@ local function life(parent: Instance, plan: VentsPlan.Plan)
 		if hit == nil or math.abs(hit.Y - foot.Y) > 3 then
 			continue
 		end
-		wormClump(m, hit, rng:NextInteger(18, 26), rng:NextNumber(4, 5.5))
-		clumps += 1
-		if beds < 6 then
-			local b = a + math.pi + rng:NextNumber(-0.5, 0.5)
-			local bed = foot + Vector3.new(math.cos(b), 0, math.sin(b)) * 14
-			musselBed(m, Vector3.new(bed.X, foot.Y, bed.Z), 0, 5, 16)
-			beds += 1
+		if spots < 4 then
+			wormClump(m, hit, rng:NextInteger(8, 10), rng:NextNumber(2.6, 3.4))
 		end
+		spots += 1
+		local b = a + math.pi + rng:NextNumber(-0.5, 0.5)
+		local bed = foot + Vector3.new(math.cos(b), 0, math.sin(b)) * 14
+		musselBed(m, Vector3.new(bed.X, foot.Y, bed.Z), 0, 5, 16)
 	end
 end
 

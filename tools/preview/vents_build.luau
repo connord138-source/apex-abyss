@@ -575,6 +575,34 @@ for index, outcrop in plan.outcrops do
 		2
 	)
 end
+-- A basin chimney's flanges up close: the tallest dressed one (two flanges) from a
+-- fish's height beside it, and a short one (one flange) from over it
+local tallest, shortest = nil, nil
+for _, chimney in plan.chimneys do
+	local p = chimney.position
+	if math.abs((groundAt(p.X, p.Z)).Y - (p.Y + chimney.height)) > 12 then
+		continue
+	end
+	if tallest == nil or chimney.height > tallest.height then
+		tallest = chimney
+	end
+	if chimney.height < 55 and (shortest == nil or chimney.height > shortest.height) then
+		shortest = chimney
+	end
+end
+for name, chimney in { chimney = tallest, chimney2 = shortest } do
+	local p, h, r = chimney.position, chimney.height, chimney.radius
+	local high = name == "chimney2"
+	local look = p + up * (h * (if high then 0.45 else 0.55))
+	view(
+		name,
+		openView(p, look, r + (if high then 30 else 38), h * (if high then 0.95 else 0.5), r + 2),
+		look,
+		58,
+		boxAround(p, r + 80, p.Y - 20, p.Y + h + 20),
+		1.5
+	)
+end
 -- A tube-worm forest up close (the first), else a clump
 local wormsAt = nil
 for _, name in { "TubeWormForest", "TubeWorms" } do

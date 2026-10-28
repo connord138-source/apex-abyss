@@ -6,8 +6,9 @@
 #   bash tools/preview/run_vents.sh <out_dir>
 # Views (vents_build.luau finds them on the plan): map and aerial (the whole field), forge
 # (the Forge from ~250 studs down its causeway's side), crater, causeway, basin (the
-# brine pool's basin), terraces1/2, smoker1..3, basalt1/2 and worms (a tube-worm
-# forest); VIEWS=a,b,... picks some. Each view voxelizes its own box (B| lines) at
+# brine pool's basin), terraces1/2, smoker1..3, basalt1/2, chimney and chimney2 (a
+# tall basin chimney's flanges from beside it, a short one's from over it) and worms
+# (a tube-worm forest); VIEWS=a,b,... picks some. Each view voxelizes its own box (B| lines) at
 # its own cell size (CELL=... overrides), so Terrain past it isn't drawn (a far
 # chimney's flanges can seem to float). NO_SCHOOLS=1 skips the school check (K|
 # lines); T| is the boulder tidy's test; DUMP_ONLY=1 stops after the build and the
