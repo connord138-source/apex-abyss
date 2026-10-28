@@ -14,6 +14,7 @@ local DensConfig = require(ReplicatedStorage.Shared.Config.Dens)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Garden = require(ReplicatedStorage.Shared.Garden)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Size = require(ReplicatedStorage.Shared.Size)
 local DenBuilder = require(script.Parent.Parent.DenBuilder)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
@@ -672,6 +673,41 @@ local function travel(player: Player, target: CFrame)
 	end)
 end
 
+-- Where a fish leaving den `index` comes out on the plaza: as far out as its camera
+-- needs (Layout.exitOut), stepped back toward the doorway while its body would
+-- overlap anything solid there (a stall's counter and posts, the Treasure Wheel)
+local exitParams = OverlapParams.new()
+exitParams.FilterType = Enum.RaycastFilterType.Exclude
+exitParams.RespectCanCollide = true
+local function exitFor(player: Player, index: number): CFrame
+	local character = FishService.character(player)
+	local length = if character then character:GetAttribute("Length") else nil
+	if character == nil or typeof(length) ~= "number" then
+		return Layout.hubExitFrame(index)
+	end
+	local speciesId = character:GetAttribute("Species")
+	local species = if typeof(speciesId) == "string" then Config.Species.byId[speciesId] else nil
+	local scale = if species and species.camera then species.camera else 1
+	local filter: { Instance } = { workspace.Terrain }
+	for _, other in Players:GetPlayers() do
+		if other.Character then
+			table.insert(filter, other.Character)
+		end
+	end
+	exitParams.FilterDescendantsInstances = filter
+	local thick = Size.colliderDiameter(length) + 2
+	local body = Vector3.new(thick, thick, length + 4)
+	local out = Layout.exitOut(length, scale)
+	while out > Layout.EXIT_OUT do
+		local frame = Layout.hubExitFrame(index, out)
+		if #workspace:GetPartBoundsInBox(frame, body, exitParams) == 0 then
+			return frame
+		end
+		out -= 2
+	end
+	return Layout.hubExitFrame(index)
+end
+
 local function enterDen(player: Player, index: any)
 	if typeof(index) ~= "number" or index % 1 ~= 0 or index < 1 or index > Layout.DEN_COUNT then
 		return
@@ -702,7 +738,7 @@ local function leaveDen(player: Player)
 	if (root.Position - Layout.exitFrame(index).Position).Magnitude > Config.Dens.exit.radius + 16 then
 		return
 	end
-	travel(player, Layout.hubExitFrame(index))
+	travel(player, exitFor(player, index))
 end
 
 -- A fish near a portal (within 40 studs) has the far side streamed in ahead of it,
@@ -719,7 +755,7 @@ local function prestream(player: Player)
 	local index = Layout.denAt(position)
 	if index then
 		if (position - Layout.exitFrame(index).Position).Magnitude <= 40 then
-			target = Layout.hubExitFrame(index)
+			target = exitFor(player, index)
 		end
 	else
 		for door = 1, Layout.DEN_COUNT do
@@ -749,7 +785,7 @@ local function evict(index: number)
 	for _, player in Players:GetPlayers() do
 		local _, root = FishService.character(player)
 		if root and Layout.denAt(root.Position) == index then
-			travel(player, Layout.hubExitFrame(index))
+			travel(player, exitFor(player, index))
 		end
 	end
 end

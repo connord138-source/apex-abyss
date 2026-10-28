@@ -56,10 +56,26 @@ function Layout.doorFrame(index: number): CFrame
 	return CFrame.lookAt(at, at - radial)
 end
 
--- Where a fish comes out into the hub from its den: in front of the doorway, facing
--- the plaza
-function Layout.hubExitFrame(index: number): CFrame
-	return Layout.doorFrame(index) * CFrame.new(0, 0, -16)
+-- Where a fish comes out into the hub from its den: `out` studs in front of the
+-- doorway's portal (EXIT_OUT when not given), facing the plaza
+Layout.EXIT_OUT = 16
+function Layout.hubExitFrame(index: number, out: number?): CFrame
+	return Layout.doorFrame(index) * CFrame.new(0, 0, -(out or Layout.EXIT_OUT))
+end
+
+-- How far in front of the portal a fish `length` long comes out: far enough that its
+-- camera, at its usual distance behind it (Config/Tuning `camera`; `cameraScale` is
+-- the species' Config/Species `camera`), sits out on the plaza clear of the doorway's
+-- arch (owner, 2026-10-28: a LV 100 Reef Shark came out 16 studs in front, its camera
+-- ~43 studs back stopped at the back of the alcove, and the rock round the hole filled
+-- the screen). Never past EXIT_MAX (the plaza's raised centre). DenService steps it
+-- back toward the doorway while anything solid is in the way.
+local EXIT_ARCH = 6 -- the camera stays this far in front of the cavern wall
+Layout.EXIT_MAX = 58
+function Layout.exitOut(length: number, cameraScale: number?): number
+	local camera = Config.Tuning.camera
+	local distance = (camera.baseDistance + camera.perLength * length) * (cameraScale or 1)
+	return math.clamp(DOOR_BACK + EXIT_ARCH + distance, Layout.EXIT_OUT, Layout.EXIT_MAX)
 end
 
 -- The doorway portal a fish is passing through (its den's index), or nil

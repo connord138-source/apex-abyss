@@ -2258,6 +2258,19 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **`Built` after a teleport** reads 360–660 for ~15 s while Detail dips to ~0.66
     (streaming's slow frames ease the draw ranges in), then 836–893 by ~25 s; read it
     25+ s after arriving.
+- **Leaving a den, the camera is out on the plaza (owner, after the 2026-10-31 round:
+  "still a bit messy as the player leaves the den"; a LV 100 Reef Shark's screenshot
+  framed by the doorway's rock):** a fish came out 16 studs in front of its portal (7
+  out from the wall), so a big fish's camera (~43 studs back at LV 100) was stopped at
+  the back of the alcove and the rock round the hole filled the screen. It comes out
+  `Layout.exitOut(length, cameraScale)` in front: the portal's depth, 6 more and its
+  camera's distance (`Config/Tuning` `camera`, the species' `camera`), 16 to
+  `EXIT_MAX` 58, so every fish's camera lands ~6 studs in front of the wall (the arch
+  stands out 3): a Nibbler comes out at r ~82, a LV 100 shark at r ~46.
+  `DenService` `exitFor` steps it back toward the doorway 2 studs at a time while its
+  body (`Size.colliderDiameter` + 2 thick, length + 4 long) overlaps anything
+  collidable (a stall's counter and posts on the 45/135/225/315° doors, the Treasure
+  Wheel by the 225/255° ones); leaving, an eviction and the prestream use it.
 - **Daily login streak (owner, 2026-10-09; built):** `Config/Daily.luau`,
   `RewardsService`, `MenuController.openDaily`. One claim a UTC day; a missed day
   restarts at Day 1; seven days loop (300 coral → … → Day 7: 2,500 coral, 100 shells
