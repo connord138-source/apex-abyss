@@ -176,16 +176,27 @@ local function bringDown(lane: number, hunt: Hunt, pass: Giants.Pass, now: numbe
 		HuntService.giveDna(player, at, math.max(1, math.floor(tune.loot.dna * share + 0.5)))
 		Net.notify(
 			player,
-			`You brought down a humpback! +{Format.haul(HuntService.shown(player, added))} · +{coral} coral`,
+			`You brought down a humpback! +{Format.haul(HuntService.shown(player, added))} · +{Format.number(
+				coral
+			)} coral`,
 			"rare"
 		)
 	end
-	Net.notifyAll("A humpback was brought down in the Open Blue · it's sinking as a WHALE FALL", "rare")
 	local heading = (pass.to - pass.from) * Vector3.new(1, 0, 1)
 	local yaw = math.atan2(-heading.Z, heading.X)
 	task.delay(tune.roll, function()
 		local frame = Giants.deadFrame(lane, pass.from, pass.to, now, now + tune.roll)
-		ChumService.whaleKilled(frame.Position, yaw)
+		-- Said once it's down, by where it sank and what it became (PC 2026-11-02:
+		-- "Open Blue" for a whale sinking on the Ruins' edge, and "WHALE FALL" for one
+		-- that went to chum beside a feeding fall)
+		local fell, biome = ChumService.whaleKilled(frame.Position, yaw)
+		local where = if biome then ` in the {biome}` else ""
+		Net.notifyAll(
+			if fell
+				then `A humpback was brought down{where} · it's sinking as a WHALE FALL`
+				else `A humpback was brought down{where} · its remains drift as chum`,
+			"rare"
+		)
 	end)
 end
 

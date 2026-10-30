@@ -3155,8 +3155,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     plinths, `trophiesOf` `gallery`), Grotto Pool 400k (a second Haul Pool to bank at,
     `DenWings.pools`, HuntService; bubble falls), Observatory 600k (a domed room whose
     far wall is thinned to `WINDOW_WALL` 8 with a round window onto open water: sand,
-    rocks, and AquariumController's diorama of a humpback, mantas, jellies and a
-    school), Great Hall 900k (+90 capacity, a high vault, chandeliers); +40 capacity
+    rock stacks, and AquariumController's diorama of a humpback, mantas, jellies and a
+    school; the bore and bezel since the 2026-11-02 round, below), Great Hall 900k (+90 capacity, a high vault, chandeliers); +40 capacity
     each otherwise. A swap costs the new price less half the old (`refund` 0.5); taking
     one down gives half back; what was in it goes to the tray. The den's shape is
     `DenSpace.Shape` `{ level, wings?, open? }` (every DenSpace function takes a level
@@ -3185,7 +3185,51 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Admin: wings all / none, each slot's wing, Open Plan on/off, aquarium grow hours,
     stock every tank (rarest caught, or any, logged).
   - Checks: `run_dens.sh` covers the wings (fit inside the block, apart from each
-    other and the Observatory's sea, paths through the passages, unique tank ids).
+    other and the Observatory's sea, paths through the passages, unique tank ids,
+    nothing placed in a passage).
+- **The 2026-11-02 PC round (report `docs/playtests/2026-11-02-pc.md`, published as v43
+  from e428f3a; the den expansion, whale hunts, the Great Hammerhead, the tunnels, the
+  den exit, roll prizes and the Golden fish passed; built on `claude/world`
+  2026-10-30):**
+  - **The blocker:** the den expansion's five requests weren't in `Net.luau`'s
+    `REQUESTS`, so `Net.onRequest` asserted and the server's start stopped at
+    DenService (the PC added them). `tools/tests/check_requests.py` (run by
+    `tools/verify.sh`) now fails on any `Net.onRequest` or `ClientState.request` name
+    missing from `REQUESTS`: **add a request there whenever you add one**.
+  - **AquariumController** (DE14: 43–45 ms/s in a full den) is one `BulkMoveTo` a frame:
+    a tank's fish only while its tank is on screen (`ON_SCREEN`), every frame within 35
+    studs, every other to 80, every fourth past, its tail within 50; the Observatory's
+    view only from inside the room with the window on screen, its jellies every other
+    frame; the tagged lists kept by signals. `PreyDisplay.pose` gives a display's parts
+    and frames for a batch (`rel`).
+  - **Trophy Gallery:** a new rare record fires `Events.trophies` (CatchService), so the
+    gallery rebuilds at once (it waited for a wing, level or join); admin "Catch Log:
+    add catches" fills a biggest record where there's none.
+  - **Passages stay clear:** `DenSpace.inPassage` refuses anything in a wing's passage
+    or 4 studs out in front of its doorway ("Keep the way into your … clear").
+  - **Teal Brazier:** `flame.at` is a share of the height from the model's foot (0.58;
+    at 0.06 the fire burned under the bowl), the core is the lamp's teal and the flames
+    half additive (`LightEmission` 0.55; white over the pale bowl).
+  - **The Observatory:** the bore is cut at `WINDOW_BORE` 18, flaring to `WINDOW_FLARE`
+    23 from 5 studs into the wall, behind a solid stone bezel out to 20.5 (Terrain drew
+    the round cut as a rounded square inside the brass ring); `WINDOW_Y` 19; the sand
+    floor is `SEA_FLOOR` 16 under the deck (at 40 it was out of sight) with four tall
+    rock stacks 30–90 studs out in view.
+  - **Tanks:** seated by five rays (middle and corners) so the whole box stands in front
+    of the rock (the rock filled the back of the water), a painted backdrop (a
+    SurfaceGui gradient), two flat rocks and flat weed blades (the kelp was round
+    blobs).
+  - **Words:** the whale kill is announced once it's down, by where it sank and whether
+    it became a Whale Fall or chum; a predator kill names its coral and DNA; den and
+    aquarium toasts use `Format.number`; a wing swap that pays back shows "+N BACK".
+  - **Admin** targets take a player's name too (`Admin` `targetsOf`).
+  - **Silver:** the server set ~1.1 Silver a minute swimming round the PC's hunter (8
+    minutes, forced Calm), the sim ~2.5; nothing in the code explains it yet.
+    `Workspace.RareSpawn` now shows `Placed_`/`Failed_`/`Capped_`/`Swimming_<rarity>`
+    (RareSpawn `stats`) for the next round to read.
+  - Left as is: the swap that kept fitting things in the bigger room (DE4: the brief
+    was wrong); Studio 0.745's "forbidden access" on some SurfaceAppearances (not the
+    game's code; check a live server); the pack's overlapping tags.
 
 ## Tech
 
@@ -3598,6 +3642,8 @@ luau-lsp analyze --definitions=globalTypes.d.luau --sourcemap=/tmp/sourcemap.jso
 stylua --check src --glob '!**/Packages/**'
 ```
 
+- `verify.sh` also runs `tools/tests/check_requests.py` (every request name in
+  `Net.luau`'s `REQUESTS`).
 - Binaries: get Rojo 7.7.0, StyLua 2.0.2, luau-lsp and the Luau CLI from their GitHub
   releases. `globalTypes.d.luau` comes from the luau-lsp repo's `scripts/` folder.
 - selene can't fetch the Roblox API dump from the sandbox.

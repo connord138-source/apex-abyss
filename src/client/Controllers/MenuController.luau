@@ -670,7 +670,7 @@ local function denWingRows(list: ScrollingFrame, next: () -> number, den: any)
 			next(),
 			"WingsLocked",
 			"Wings",
-			`Past the {if open then open.name else "Sanctum"}, your den grows sideways: four doorways, each a room you pick (aquarium, gallery, pool, observatory, great hall)`,
+			`A {if open then open.name else "Sanctum"} opens four doorways, each a room you pick`,
 			nil,
 			"LOCKED",
 			"disabled",
@@ -774,7 +774,10 @@ local function denWingPicker(list: ScrollingFrame, next: () -> number, den: any,
 				)} coral back`
 				else wing.blurb,
 			`holds +{wing.capacity}`,
-			if here then "BUILT" elseif elsewhere then "BUILT" else coralText(net),
+			if here or elsewhere
+				then "BUILT"
+				elseif refund > wing.price then `+{Ui.number(refund - wing.price)} BACK`
+				else coralText(net),
 			if here or elsewhere then "disabled" else priceStyle(net),
 			if tier then tier.color else nil
 		)

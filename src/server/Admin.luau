@@ -37,7 +37,7 @@ function Admin.isAdmin(player: Player): boolean
 end
 
 -- Who a request applies to: the admin ("me"), every player ("all"), or the player
--- with that UserId.
+-- with that UserId or name.
 local function targetsOf(player: Player, target: any): { Player }?
 	if target == nil or target == "me" then
 		return { player }
@@ -46,6 +46,14 @@ local function targetsOf(player: Player, target: any): { Player }?
 	elseif typeof(target) == "number" then
 		local other = Players:GetPlayerByUserId(target)
 		return if other then { other } else nil
+	elseif typeof(target) == "string" then
+		-- (a name or display name, any case: the command bar's tests, PC 2026-11-02)
+		local wanted = string.lower(target)
+		for _, other in Players:GetPlayers() do
+			if string.lower(other.Name) == wanted or string.lower(other.DisplayName) == wanted then
+				return { other }
+			end
+		end
 	end
 	return nil
 end

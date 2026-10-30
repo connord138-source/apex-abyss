@@ -545,17 +545,17 @@ end
 -- over, so everyone can feed on it. One that's only announced gives way to it; with
 -- one already feeding, it bursts into a big slick instead. The carcass settles on the
 -- least cluttered floor within 30 studs. Returns whether it became the Whale Fall.
-function ChumService.whaleKilled(at: Vector3, yaw: number): boolean
+function ChumService.whaleKilled(at: Vector3, yaw: number): (boolean, string?)
 	local biome = Biomes.at(Vector3.new(at.X, Seafloor.y(at.X, at.Z) + 10, at.Z))
 	if biome == nil then
-		return false
+		return false, nil
 	end
 	local now = Timing.clock()
 	local current = whale
 	if current and current.cloud then
 		local floor = floorUnder(at.X, at.Z, math.min(at.Y, World.surfaceY - 5))
 		add("slick", at, floor, tune.whale.chunks, chunkKg(biome), 16, tune.whale.feed * 0.4, biome)
-		return false
+		return false, biome.name
 	end
 	local spot, floor = at, floorUnder(at.X, at.Z, World.surfaceY - 5)
 	local best = (blocked(at.X, at.Z, floor, yaw))
@@ -583,7 +583,7 @@ function ChumService.whaleKilled(at: Vector3, yaw: number): boolean
 	Net.chum("warn", { x = spot.X, y = top, z = spot.Z, biome = biome.name, startsAt = now })
 	startWhale()
 	scheduleWhale(now, false)
-	return true
+	return true, biome.name
 end
 
 -- A Blood Tide slick near a random player out in the biomes

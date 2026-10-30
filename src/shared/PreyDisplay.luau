@@ -67,6 +67,9 @@ export type Display = {
 	bones: { [string]: Bone }, -- a rigged model's, for a swim (SwimWave)
 	spine: { string },
 	parts: { BasePart },
+	-- each of `parts` against where the body goes (`frame * turn`), so a client can
+	-- move a display in one BulkMoveTo with others (PreyDisplay.pose)
+	rel: { CFrame },
 	length: number,
 	pieces: { [BasePart]: CFrame }?, -- a stand-in's pieces, against its body
 }
@@ -167,6 +170,10 @@ function PreyDisplay.build(preyId: string, rarity: string, length: number): Disp
 			end
 			copy.Parent = model
 			local rigged = next(bones) ~= nil
+			local rel: { CFrame } = {}
+			for k, part in parts do
+				rel[k] = mesh.CFrame:ToObjectSpace(part.CFrame)
+			end
 			display = {
 				model = model,
 				body = mesh,
@@ -176,6 +183,7 @@ function PreyDisplay.build(preyId: string, rarity: string, length: number): Disp
 				bones = bones,
 				spine = spine,
 				parts = parts,
+				rel = rel,
 				length = length,
 				pieces = nil,
 			}
@@ -194,6 +202,8 @@ function PreyDisplay.build(preyId: string, rarity: string, length: number): Disp
 		ellipsoid(model, Vector3.new(length * slim * 0.4, length * slim * 0.6, length * 0.65), belly)
 	local tail = ellipsoid(model, Vector3.new(length * 0.04, length * slim * 1.1, length * 0.26), back)
 	model.PrimaryPart = body
+	local under = CFrame.new(0, -length * slim * 0.18, 0)
+	local behind = CFrame.new(0, 0, length * 0.46)
 	display = {
 		model = model,
 		body = body,
@@ -201,14 +211,26 @@ function PreyDisplay.build(preyId: string, rarity: string, length: number): Disp
 		bones = {},
 		spine = {},
 		parts = { body, underside, tail },
+		rel = { CFrame.identity, under, behind },
 		length = length,
 		pieces = {
-			[underside :: BasePart] = CFrame.new(0, -length * slim * 0.18, 0),
-			[tail :: BasePart] = CFrame.new(0, 0, length * 0.46),
+			[underside :: BasePart] = under,
+			[tail :: BasePart] = behind,
 		} :: { [BasePart]: CFrame },
 	}
 	PreyDisplay.dress(display, rarity)
 	return display
+end
+
+-- Where every part of a display goes for `frame` (as PreyDisplay.place puts it),
+-- added to `parts` and `frames` for one BulkMoveTo
+function PreyDisplay.pose(display: Display, frame: CFrame, parts: { BasePart }, frames: { CFrame })
+	local at = frame * display.turn
+	local rel = display.rel
+	for k, part in display.parts do
+		table.insert(parts, part)
+		table.insert(frames, at * rel[k])
+	end
 end
 
 -- Puts a display's head along `frame`'s look (its middle at frame's position)

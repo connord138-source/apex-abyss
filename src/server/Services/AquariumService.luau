@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Aquarium = require(ReplicatedStorage.Shared.Aquarium)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -103,7 +104,9 @@ local function collect(player: Player, data: PlayerData, loud: boolean)
 	local while_ = if away and away >= AWAY_NOTICE then " while you were away" else ""
 	Net.notify(
 		player,
-		`Aquarium{while_}: +{earned} coral{if shells > 0 then ` · +{shells} shells` else ""}`,
+		`Aquarium{while_}: +{Format.number(earned)} coral{if shells > 0
+			then ` · +{Format.number(shells)} shells`
+			else ""}`,
 		"good"
 	)
 	DataService.markDirty(player)

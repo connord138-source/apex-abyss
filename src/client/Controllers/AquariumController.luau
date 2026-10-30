@@ -7,6 +7,13 @@
 --    deep-sea diorama drifts by: a humpback and two mantas crossing the view, jellies
 --    rising and sinking, and a school of little fish wheeling through, built only
 --    while the camera is near the window.
+--
+-- Cost (PC 2026-11-02, DE14: 43-45 ms/s in a full den, a PivotTo and a CFrame write a
+-- fish every frame): everything moves in one BulkMoveTo a frame; a tank's fish only
+-- while its tank is on screen, every frame within TANK_NEAR studs, every other to
+-- TANK_FAR and every fourth past it, its tail only within WAVE_RANGE; the
+-- Observatory's view only while its window is on screen from inside the room, its
+-- jellies every other frame; the tagged lists are kept by signals, not GetTagged.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,9 +26,42 @@ local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 
 local AquariumController = {}
 
-local TANK_RANGE = 140 -- studs from the camera a tank's fish swims
+local TANK_RANGE = 140 -- studs from the camera a tank's fish is built
+local TANK_NEAR = 35 -- every frame within this
+local TANK_FAR = 80 -- every other frame within this, every fourth past it
+local WAVE_RANGE = 50 -- a tank fish's tail waves within this
 local VIEW_RANGE = 220 -- studs from the camera the window's diorama is built
+-- On screen: within this of the camera's look (cos of ~66°: the screen's half width
+-- at 16:9 and a little more, so nothing is caught still at the edge)
+local ON_SCREEN = 0.4
 local TAU = 2 * math.pi
+
+local frameCount = 0
+local moveParts: { BasePart } = {}
+local moveFrames: { CFrame } = {}
+
+-- The tagged parts, kept as they come and go
+local function tracked(tag: string): { [BasePart]: boolean }
+	local set: { [BasePart]: boolean } = {}
+	local function add(item: Instance)
+		if item:IsA("BasePart") then
+			set[item] = true
+		end
+	end
+	for _, item in CollectionService:GetTagged(tag) do
+		add(item)
+	end
+	CollectionService:GetInstanceAddedSignal(tag):Connect(add)
+	CollectionService:GetInstanceRemovedSignal(tag):Connect(function(item: Instance)
+		if item:IsA("BasePart") then
+			set[item] = nil
+		end
+	end)
+	return set
+end
+
+local tankParts: { [BasePart]: boolean } = {}
+local windowParts: { [BasePart]: boolean } = {}
 
 type TankFish = {
 	water: BasePart,
@@ -29,6 +69,7 @@ type TankFish = {
 	key: string,
 	phase: number,
 	speed: number,
+	slot: number, -- which frame of 2 or 4 it moves on
 }
 
 local tanks: { [BasePart]: TankFish } = {}
@@ -51,6 +92,19 @@ local function seedOf(text: string): number
 		n = (n * 31 + string.byte(text, i)) % 1000003
 	end
 	return n
+end
+
+local function onScreen(
+	look: Vector3,
+	camera: Vector3,
+	at: Vector3,
+	distance: number,
+	radius: number
+): boolean
+	if distance < radius then
+		return true
+	end
+	return look:Dot((at - camera) / distance) > ON_SCREEN - radius / distance
 end
 
 -- A tank's fish, built once its tank is near and kept in step with what's in it
@@ -85,36 +139,43 @@ local function tankFish(water: BasePart, near: boolean): TankFish?
 		key = key,
 		phase = (seed % 1000) / 1000 * TAU,
 		speed = 0.32 + (seed % 7) * 0.025,
+		slot = seed % 4,
 	}
 	tanks[water] = made
 	return made
 end
 
-local function swimTanks(now: number, camera: Vector3)
-	for _, water in CollectionService:GetTagged("AquariumTank") do
-		if not water:IsA("BasePart") or not water:IsDescendantOf(workspace) then
+local function swimTanks(now: number, camera: Vector3, look: Vector3)
+	for water in tankParts do
+		if not water:IsDescendantOf(workspace) then
 			continue
 		end
-		local near = (water.Position - camera).Magnitude < TANK_RANGE
-		local fish = tankFish(water, near)
+		local distance = (water.Position - camera).Magnitude
+		local fish = tankFish(water, distance < TANK_RANGE)
 		if fish == nil then
 			continue
 		end
-		local display = fish.display
 		local size = water.Size
+		if not onScreen(look, camera, water.Position, distance, size.X) then
+			continue
+		end
+		local every = if distance < TANK_NEAR then 1 elseif distance < TANK_FAR then 2 else 4
+		if every > 1 and (frameCount + fish.slot) % every ~= 0 then
+			continue
+		end
+		local display = fish.display
 		local reach = math.max(size.X / 2 - display.length * 0.55 - 0.4, 0.2)
 		local t = now * fish.speed + fish.phase
 		local along = math.sin(t)
 		local heading = math.cos(t) -- +: swimming toward +X
 		-- At each end it turns through facing the glass (the tank's -Z)
 		local turn = (1 - math.clamp((heading + 0.3) / 0.6, 0, 1)) * math.pi
-		local look = Vector3.new(math.cos(turn), 0, -math.sin(turn))
+		local swimLook = Vector3.new(math.cos(turn), 0, -math.sin(turn))
 		local bob = math.sin(t * 2.3 + fish.phase) * size.Y * 0.08
 		local depth = -size.Z * 0.12 + math.sin(t * 0.7) * size.Z * 0.08
 		local at = Vector3.new(along * reach, bob, depth)
-		local frame = water.CFrame * CFrame.lookAt(at, at + look)
-		PreyDisplay.place(display, frame)
-		if #display.spine > 0 then
+		PreyDisplay.pose(display, water.CFrame * CFrame.lookAt(at, at + swimLook), moveParts, moveFrames)
+		if distance < WAVE_RANGE and #display.spine > 0 then
 			SwimWave.applyBones(display.bones, display.spine, now * 6 + fish.phase, 0.22, 0)
 		end
 	end
@@ -128,12 +189,13 @@ end
 
 -- The Observatory's view: one per window near the camera
 type Drifter = {
-	part: BasePart?,
 	body: AmbientBody.Body?,
 	display: PreyDisplay.Display?,
 	motion: AmbientRigs.Motion?,
 	path: (t: number) -> CFrame,
 	parts: { BasePart },
+	jelly: boolean,
+	offsets: { Vector3 }?, -- a jelly's strands against its bell
 }
 type View = { window: BasePart, model: Model, drifters: { Drifter } }
 local views: { [BasePart]: View } = {}
@@ -144,8 +206,9 @@ local JELLY = {
 	Color3.fromRGB(90, 220, 255),
 }
 
-local function jelly(parent: Instance, size: number, color: Color3): { BasePart }
+local function jelly(parent: Instance, size: number, color: Color3): ({ BasePart }, { Vector3 })
 	local parts: { BasePart } = {}
+	local offsets: { Vector3 } = {}
 	local bell = Instance.new("Part")
 	bell.Name = "Bell"
 	bell.Anchored = true
@@ -173,14 +236,11 @@ local function jelly(parent: Instance, size: number, color: Color3): { BasePart 
 		strand.Color = color
 		strand.Material = Enum.Material.Neon
 		strand.Transparency = 0.35
-		strand:SetAttribute(
-			"Offset",
-			Vector3.new(math.cos(a) * size * 0.3, -size * 0.9, math.sin(a) * size * 0.3)
-		)
 		strand.Parent = parent
 		table.insert(parts, strand)
+		table.insert(offsets, Vector3.new(math.cos(a) * size * 0.3, -size * 0.9, math.sin(a) * size * 0.3))
 	end
-	return parts
+	return parts, offsets
 end
 
 local function buildView(window: BasePart): View?
@@ -214,6 +274,7 @@ local function buildView(window: BasePart): View?
 			return spot(130, (u - 0.5) * 420, -6 + math.sin(t * 0.2) * 5, across)
 		end,
 		parts = whale.parts,
+		jelly = false,
 	})
 	for k = 1, 2 do
 		local manta =
@@ -236,6 +297,7 @@ local function buildView(window: BasePart): View?
 				return spot(55 + k * 18, (0.5 - u) * 260, 14 - k * 16 + math.sin(t * 0.4 + k) * 4, -across)
 			end,
 			parts = manta.parts,
+			jelly = false,
 		})
 	end
 	-- Jellies rising and sinking at every depth
@@ -244,13 +306,15 @@ local function buildView(window: BasePart): View?
 		holder.Name = "Jelly"
 		holder.Parent = model
 		local size = rng:NextNumber(1.6, 3.4)
-		local parts = jelly(holder, size, JELLY[(i % #JELLY) + 1])
+		local parts, offsets = jelly(holder, size, JELLY[(i % #JELLY) + 1])
 		local ahead = rng:NextNumber(22, 110)
 		local side = rng:NextNumber(-60, 60)
 		local rise = rng:NextNumber(-30, 34)
 		local phase = rng:NextNumber(0, TAU)
 		table.insert(drifters, {
 			parts = parts,
+			offsets = offsets,
+			jelly = true,
 			path = function(t: number): CFrame
 				return spot(
 					ahead,
@@ -272,6 +336,7 @@ local function buildView(window: BasePart): View?
 		table.insert(drifters, {
 			display = display,
 			parts = display.parts,
+			jelly = false,
 			path = function(t: number): CFrame
 				local a = (t / 26 - lag) * TAU
 				local at = middle
@@ -286,12 +351,13 @@ local function buildView(window: BasePart): View?
 	return { window = window, model = model, drifters = drifters }
 end
 
-local function driftViews(now: number, camera: Vector3)
-	for _, window in CollectionService:GetTagged("ObservatoryWindow") do
-		if not window:IsA("BasePart") or not window:IsDescendantOf(workspace) then
+local function driftViews(now: number, camera: Vector3, look: Vector3)
+	for window in windowParts do
+		if not window:IsDescendantOf(workspace) then
 			continue
 		end
-		local near = (window.Position - camera).Magnitude < VIEW_RANGE
+		local distance = (window.Position - camera).Magnitude
+		local near = distance < VIEW_RANGE
 		local have: View? = views[window]
 		if near and have == nil then
 			have = buildView(window)
@@ -307,25 +373,49 @@ local function driftViews(now: number, camera: Vector3)
 		if view == nil then
 			continue
 		end
+		-- Only from inside the room (the sea is behind the window's glass) with the
+		-- window on screen
+		local out = window:GetAttribute("Out")
+		if typeof(out) == "Vector3" and (camera - window.Position):Dot(out) > 0 then
+			continue
+		end
+		local radius = window:GetAttribute("Radius")
+		if
+			not onScreen(
+				look,
+				camera,
+				window.Position,
+				distance,
+				if typeof(radius) == "number" then radius else 14
+			)
+		then
+			continue
+		end
+		local jellies = frameCount % 2 == 0
 		for _, drifter in view.drifters do
-			local frame = drifter.path(now)
 			local body = drifter.body
 			if body and drifter.motion then
 				drifter.motion.t = now
 				AmbientBody.pose(body, drifter.motion)
-				body.root.CFrame = AmbientBody.frame(body, frame)
+				table.insert(moveParts, body.root)
+				table.insert(moveFrames, AmbientBody.frame(body, drifter.path(now)))
 			elseif drifter.display then
-				PreyDisplay.place(drifter.display, frame)
-			else
-				local bell = drifter.parts[1]
-				bell.CFrame = frame
-				for i = 2, #drifter.parts do
-					local strand = drifter.parts[i]
-					local offset = strand:GetAttribute("Offset")
-					if typeof(offset) == "Vector3" then
+				PreyDisplay.pose(drifter.display, drifter.path(now), moveParts, moveFrames)
+			elseif drifter.jelly and jellies then
+				local frame = drifter.path(now)
+				local parts = drifter.parts
+				table.insert(moveParts, parts[1])
+				table.insert(moveFrames, frame)
+				local offsets = drifter.offsets
+				if offsets then
+					local at = frame.Position
+					for i = 2, #parts do
 						local sway = math.sin(now * 1.7 + i) * 0.3
-						strand.CFrame = CFrame.new(frame.Position + offset)
-							* CFrame.Angles(sway, 0, sway * 0.6)
+						table.insert(moveParts, parts[i])
+						table.insert(
+							moveFrames,
+							CFrame.new(at + offsets[i - 1]) * CFrame.Angles(sway, 0, sway * 0.6)
+						)
 					end
 				end
 			end
@@ -340,15 +430,32 @@ local function driftViews(now: number, camera: Vector3)
 end
 
 function AquariumController.start()
+	tankParts = tracked("AquariumTank")
+	windowParts = tracked("ObservatoryWindow")
 	RunService.Heartbeat:Connect(function()
 		local camera = workspace.CurrentCamera
 		if camera == nil then
 			return
 		end
+		if
+			next(tankParts) == nil
+			and next(windowParts) == nil
+			and next(tanks) == nil
+			and next(views) == nil
+		then
+			return
+		end
+		frameCount += 1
 		local now = workspace:GetServerTimeNow()
-		local at = camera.CFrame.Position
-		swimTanks(now, at)
-		driftViews(now, at)
+		local cframe = camera.CFrame
+		local at, look = cframe.Position, cframe.LookVector
+		table.clear(moveParts)
+		table.clear(moveFrames)
+		swimTanks(now, at, look)
+		driftViews(now, at, look)
+		if #moveParts > 0 then
+			workspace:BulkMoveTo(moveParts, moveFrames, Enum.BulkMoveMode.FireCFrameChanged)
+		end
 	end)
 end
 

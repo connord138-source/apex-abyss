@@ -410,6 +410,11 @@ for _, open in { false, true } do
 			local lamp = Dens.itemsById.CoralLamp or Dens.items[1]
 			local spot = Vector3.new(plan.side * (plan.x1 + 4), s1.deck, room.z0 - 4)
 			expect(DenSpace.check(shape, lamp, "floor", spot).ok, `{tag}: a thing goes on its floor`)
+			-- The passage and its mouth stay clear (PC 2026-11-02, DE7)
+			for _, x in { plan.wall - 2, (plan.wall + plan.x1) / 2, plan.x1 + 1 } do
+				local mouth = Vector3.new(plan.side * x, s1.deck, slot.z + 2)
+				expect(not DenSpace.check(shape, lamp, "floor", mouth).ok, `{tag}: a thing in the passage at {x}`)
+			end
 			expect(
 				not DenSpace.check({ level = wingTune.level, open = open }, lamp, "floor", spot).ok,
 				`{tag}: nothing goes there with no wing`

@@ -127,7 +127,7 @@ export type Item = {
 	-- A living fire over it (Shared/Fx `hearth`, in its `lamp` colour): its bed `at`
 	-- of its height over its middle, `width` of its width across, `height` of its
 	-- height tall
-	flame: { at: number, width: number, height: number }?,
+	flame: { at: number, width: number, height: number }?, -- a fire over it (Fx.hearth): `at` a share of its height from its foot
 	rug: string?, -- a rug's shape ("round", "oval", "square"); its top-down art is Config/Textures `rug<id>`
 	front: number?, -- degrees its imported prop is turned to face out (Tripo props face +X: 90)
 	cluster: Cluster?, -- built of many pieces (a garden, a pile, a cluster): Shared/DenItems
@@ -885,9 +885,11 @@ local items: { Item } = {
 		front = 90,
 		color = Color3.fromRGB(150, 100, 60),
 		lamp = Color3.fromRGB(90, 255, 220),
-		-- (its bowl's rim is just over its middle; the flames rise over the model's own
-		-- still flame, owner 2026-10-28: "should actually flow like fire")
-		flame = { at = 0.06, width = 0.46, height = 0.5 },
+		-- (`at` is a share of its height from its foot: its bowl's rim is just over its
+		-- middle; at 0.06 the fire burned under the bowl, PC 2026-11-02 BF1. The
+		-- flames rise over the model's own still flame, owner 2026-10-28: "should
+		-- actually flow like fire")
+		flame = { at = 0.58, width = 0.46, height = 0.5 },
 		blurb = "A bronze brazier holding a cold teal flame",
 	},
 	{

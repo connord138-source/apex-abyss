@@ -399,6 +399,30 @@ function DenSpace.tanks(arg: ShapeArg): { Tank }
 end
 
 -- Whether a point is on or in front of an aquarium tank (nothing hangs over one)
+-- The wing whose passage `at` is in, or in the mouth of (`MOUTH` studs out into the
+-- house in front of its doorway, and 1.5 into the wing): kept clear, so the way
+-- through is never blocked (PC 2026-11-02, DE7: Shell Piles and a rug went down in
+-- the passages)
+local MOUTH = 4
+function DenSpace.inPassage(arg: ShapeArg, at: Vector3): DensConfig.Wing?
+	local deck = DenSpace.storey(1).deck
+	local tune = Dens.wing
+	if at.Y < deck - 1 or at.Y > deck + tune.passageCrown + 2 then
+		return nil
+	end
+	for _, plan in DenSpace.wingPlans(arg) do
+		local x = at.X * plan.side
+		if
+			x >= plan.wall - MOUTH
+			and x <= plan.x1 + 1.5
+			and math.abs(at.Z - plan.z) <= tune.passageHalf + 1.5
+		then
+			return plan.def
+		end
+	end
+	return nil
+end
+
 function DenSpace.onTank(arg: ShapeArg, at: Vector3): boolean
 	local size = Dens.aquarium.size
 	for _, tank in DenSpace.tanks(arg) do
@@ -828,6 +852,10 @@ end
 function DenSpace.check(level: ShapeArg, item: DensConfig.Item, surface: string, at: Vector3): Check
 	if not table.find(item.kinds, surface) then
 		return { ok = false, why = `A {item.name} doesn't go on the {surface}` }
+	end
+	local wing = DenSpace.inPassage(level, at)
+	if wing then
+		return { ok = false, why = `Keep the way into your {wing.name} clear` }
 	end
 	if surface == "floor" then
 		local storey = DenSpace.storeyAt(at.Y)

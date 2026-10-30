@@ -140,6 +140,31 @@ local function tick()
 		end
 	end
 	flush()
+	-- The stream's counts so far, for playtests (Workspace.RareSpawn: Placed_<rarity>,
+	-- Failed_<rarity>, Capped_<rarity> and Swimming_<rarity>)
+	local board = workspace:FindFirstChild("RareSpawn")
+	if board == nil then
+		board = Instance.new("Folder")
+		board.Name = "RareSpawn"
+		board.Parent = workspace
+	end
+	for _, rarity in CatchConfig.rarities do
+		local id = rarity.id
+		local stats = spawner.stats
+		for key, count in
+			{
+				Placed = stats.placed[id] or 0,
+				Failed = stats.failed[id] or 0,
+				Capped = stats.capped[id] or 0,
+				Swimming = spawner.count[id] or 0,
+			}
+		do
+			local name = `{key}_{id}`
+			if (board :: Instance):GetAttribute(name) ~= count then
+				(board :: Instance):SetAttribute(name, count)
+			end
+		end
+	end
 end
 
 -- The rarity of fish `index` as it's eaten (nil = plain): taken off it; it comes
@@ -255,6 +280,7 @@ function CatchService.addCatches(
 		local prey = Config.Prey.byId[id]
 		best[rarityId] = best[rarityId] or (if prey then prey.mass else 1)
 	end
+	Events.trophies:fire(player) -- (the den's Trophy Gallery)
 	local got = checkGoals(data)
 	DataService.markDirty(player)
 	-- The goal-met banner, as a real catch shows it (PC 2026-10-19, UN1: the admin add
@@ -303,6 +329,11 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 		best[rarityId] = mass
 		if before > 0 then
 			summary.record = before
+		end
+		-- A rare record goes up in the den's Trophy Gallery (PC 2026-11-02, DE5: it
+		-- waited for a full den rebuild)
+		if rarityId ~= "Normal" then
+			Events.trophies:fire(player)
 		end
 	end
 	if first then

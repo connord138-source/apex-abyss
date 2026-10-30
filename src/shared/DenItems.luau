@@ -1817,7 +1817,15 @@ function DenItems.build(item: DensConfig.Item, glow: Color3, surface: string): M
 			item.lamp
 		)
 		bed.Transparency = 1
-		Fx.hearth(bed, size.X * flame.width, size.Y * flame.height, Color3.new(0.85, 1, 0.97), item.lamp)
+		-- A pale core in the lamp's own colour (a near-white core read yellow-white over
+		-- the bowl, PC 2026-11-02 BF1)
+		Fx.hearth(
+			bed,
+			size.X * flame.width,
+			size.Y * flame.height,
+			item.lamp:Lerp(Color3.new(1, 1, 1), 0.3),
+			item.lamp:Lerp(Color3.new(0, 0.3, 0.32), 0.35)
+		)
 	end
 	if item.id == "BubbleColumn" then
 		column(model, item)

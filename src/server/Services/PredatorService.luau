@@ -1235,14 +1235,22 @@ local function payOut(predator: Predator, killer: Player?, swallowed: boolean?)
 		if dna > 0 then
 			HuntService.giveDna(player, predator.position, dna)
 		end
-		EconomyService.earnCoral(player, def.loot.coral * share * pay)
+		local coral = EconomyService.earnCoral(player, def.loot.coral * share * pay)
 		Events.ate:fire(player, 1)
+		-- What it paid, all of it (PC 2026-11-02: the toast named only the Haul)
+		local paid = `+{Format.haul(gained)} Haul`
+		if coral >= 1 then
+			paid ..= ` · +{Format.number(math.floor(coral))} coral`
+		end
+		if dna > 0 then
+			paid ..= ` · +{dna} DNA`
+		end
 		Net.notify(
 			player,
 			if player == killer and swallowed
-				then `You swallowed the {def.name} whole! +{Format.haul(gained)} Haul`
-				elseif player == killer then `You killed the {def.name}! +{Format.haul(gained)} Haul`
-				else `The {def.name} is dead · your share: +{Format.haul(gained)} Haul`,
+				then `You swallowed the {def.name} whole! {paid}`
+				elseif player == killer then `You killed the {def.name}! {paid}`
+				else `The {def.name} is dead · your share: {paid}`,
 			"good"
 		)
 	end

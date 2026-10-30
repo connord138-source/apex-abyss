@@ -511,6 +511,22 @@ local function observatory(
 			})
 		end
 	end
+	-- A stone bezel round the ring, out to past the bore's edge: Terrain cuts the
+	-- round bore as a rounded square, which showed between the ring and the rock (PC
+	-- 2026-11-02); solid, so nothing swims through the gap behind it
+	local inner, outer = ringR + 0.4, DenCarve.WINDOW_BORE + 2.5
+	local bezelCount = 32
+	for i = 1, bezelCount do
+		local a = (i - 0.5) / bezelCount * 2 * math.pi
+		part(parent, {
+			Name = "WindowBezel",
+			Size = Vector3.new(2 * math.pi * outer / bezelCount + 0.3, outer - inner, 1),
+			CFrame = paneAt * CFrame.Angles(0, 0, a) * CFrame.new(0, (inner + outer) / 2, -0.9),
+			Color = STONE:Lerp(Color3.new(0.12, 0.16, 0.2), 0.25),
+			Material = Enum.Material.SmoothPlastic,
+			CanCollide = true,
+		})
+	end
 	for _, a in { 0, math.pi / 2 } do
 		part(parent, {
 			Name = "Mullion",
@@ -716,7 +732,35 @@ function DenWings.tanks(parent: Instance, frame: CFrame, shape: DenSpace.Shape, 
 		end
 		CollectionService:AddTag(water, "AquariumTank")
 		lightOn(water, if fish then WATER:Lerp(tint, 0.5) else WATER, 14, if fish then 1.2 else 0.5)
-		-- A sand bed, a few kelp blades and a shell
+		-- A painted backdrop (deep water fading up to lit blue), a sand bed, two flat
+		-- rocks at the back and flat weed blades: the tank's back was bare rock and its
+		-- kelp round blobs (PC 2026-11-02, DE9)
+		local backdrop = part(model, {
+			Name = "TankBackdrop",
+			Size = Vector3.new(size.X, size.Y, 0.1),
+			CFrame = face * CFrame.new(0, 0, inner - 1.3 - 0.05),
+			Color = Color3.fromRGB(16, 52, 72),
+			Material = Enum.Material.SmoothPlastic,
+		})
+		local painted = Instance.new("SurfaceGui")
+		painted.Face = Enum.NormalId.Front
+		painted.LightInfluence = 0.4
+		painted.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		painted.PixelsPerStud = 16
+		painted.Parent = backdrop
+		local wash = Instance.new("Frame")
+		wash.Size = UDim2.fromScale(1, 1)
+		wash.BorderSizePixel = 0
+		wash.BackgroundColor3 = Color3.new(1, 1, 1)
+		wash.Parent = painted
+		local gradient = Instance.new("UIGradient")
+		gradient.Rotation = 90
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 150, 176)),
+			ColorSequenceKeypoint.new(0.55, Color3.fromRGB(26, 84, 112)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 40, 58)),
+		})
+		gradient.Parent = wash
 		part(model, {
 			Name = "TankSand",
 			Size = Vector3.new(size.X - 0.2, 0.7, size.Z - 0.4),
@@ -725,15 +769,38 @@ function DenWings.tanks(parent: Instance, frame: CFrame, shape: DenSpace.Shape, 
 			Material = Enum.Material.SmoothPlastic,
 		})
 		local rng = Random.new(#tank.id * 97 + string.byte(tank.id, -1))
-		for k = 1, 3 do
-			Decor.kelp(
-				model,
-				water.CFrame
-					* CFrame.new(-size.X / 2 + 1.2 + (k - 1) * (size.X - 2.4) / 2, -size.Y / 2 + 0.7, 0.6),
-				3,
-				1.6,
-				rng
-			)
+		local floor = water.CFrame * CFrame.new(0, -size.Y / 2 + 0.7, 0)
+		for _, sx in { -1, 1 } do
+			local w = rng:NextNumber(1.6, 2.4)
+			part(model, {
+				Name = "TankRock",
+				Size = Vector3.new(w, rng:NextNumber(1.2, 2.2), w * 0.8),
+				CFrame = floor * CFrame.new(sx * (size.X / 2 - 1.4), 0.5, size.Z / 2 - 1) * CFrame.Angles(
+					rng:NextNumber(-0.2, 0.2),
+					rng:NextNumber(0, math.pi),
+					rng:NextNumber(-0.3, 0.3)
+				),
+				Color = Color3.fromRGB(78, 88, 96):Lerp(Color3.fromRGB(110, 98, 84), rng:NextNumber()),
+				Material = Enum.Material.SmoothPlastic,
+			})
+		end
+		local greens = {
+			Color3.fromRGB(70, 140, 70),
+			Color3.fromRGB(96, 156, 60),
+			Color3.fromRGB(52, 120, 92),
+		}
+		for k = 1, 7 do
+			local h = rng:NextNumber(2, size.Y * 0.75)
+			local x = -size.X / 2 + 0.8 + (k - 0.5) / 7 * (size.X - 1.6) + rng:NextNumber(-0.3, 0.3)
+			part(model, {
+				Name = "TankWeed",
+				Size = Vector3.new(rng:NextNumber(0.35, 0.6), h, 0.08),
+				CFrame = floor
+					* CFrame.new(x, h / 2, size.Z / 2 - 0.6 - rng:NextNumber(0, 0.8))
+					* CFrame.Angles(0, rng:NextNumber(-0.5, 0.5), rng:NextNumber(-0.18, 0.18)),
+				Color = greens[rng:NextInteger(1, #greens)],
+				Material = Enum.Material.SmoothPlastic,
+			})
 		end
 		-- The glass front and a brass frame round it
 		part(model, {
@@ -785,21 +852,42 @@ function DenWings.tanks(parent: Instance, frame: CFrame, shape: DenSpace.Shape, 
 		model.Parent = parent
 		table.insert(models, { model = model, front = frontAt, normal = normal })
 	end
-	-- Seat each tank on the real rock: a ray from the room toward the wall
+	-- Seat each tank on the real rock, its whole box in front of it: rays from the
+	-- room toward the wall at the middle and the four corners of its back, and the
+	-- rock that reaches furthest out sits just behind the back (with one ray at the
+	-- middle the rock bulged into the water, PC 2026-11-02 DE9)
 	task.delay(0.6, function()
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Include
 		params.FilterDescendantsInstances = { workspace.Terrain }
+		local back = size.Z - 1.3 + 0.6 + 0.3 -- the back's far face, behind the glass's line
 		for _, entry in models do
 			if entry.model.Parent == nil then
 				continue
 			end
-			local from = entry.front + entry.normal * 10
-			local hit = workspace:Raycast(from, -entry.normal * 16, params)
-			if hit then
-				-- The wall should sit 1.5 studs behind the glass
-				local shift = (hit.Position - entry.front):Dot(entry.normal) + 1.5
-				shift = math.clamp(shift, -4, 4)
+			local across = entry.normal:Cross(Vector3.yAxis).Unit
+			local nearest: number? = nil
+			for _, offset in
+				{
+					Vector2.zero,
+					Vector2.new(-1, -1),
+					Vector2.new(1, -1),
+					Vector2.new(-1, 1),
+					Vector2.new(1, 1),
+				}
+			do
+				local from = entry.front
+					+ across * offset.X * (size.X / 2 + 0.4)
+					+ Vector3.yAxis * offset.Y * (size.Y / 2 + 0.4)
+					+ entry.normal * 10
+				local hit = workspace:Raycast(from, -entry.normal * 20, params)
+				if hit then
+					local depth = -(hit.Position - entry.front):Dot(entry.normal)
+					nearest = if nearest then math.min(nearest, depth) else depth
+				end
+			end
+			if nearest then
+				local shift = math.clamp(back - nearest, -4, 6)
 				if math.abs(shift) > 0.2 then
 					entry.model:PivotTo(entry.model:GetPivot() + entry.normal * shift)
 				end

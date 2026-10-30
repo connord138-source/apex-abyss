@@ -443,7 +443,8 @@ function Fx.hearth(
 	local flames = Instance.new("ParticleEmitter")
 	flames.Name = "FxHearth"
 	flames.Texture = texture("fxFlame", BUILT_IN.fire)
-	flames.LightEmission = 1
+	-- (half additive: fully additive flames over a pale bowl summed to white)
+	flames.LightEmission = 0.55
 	flames.LightInfluence = 0
 	flames.EmissionDirection = Enum.NormalId.Top
 	flames.SpreadAngle = Vector2.new(8, 8)

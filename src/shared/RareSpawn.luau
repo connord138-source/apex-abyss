@@ -52,6 +52,10 @@ export type Spawner = {
 	count: { [string]: number }, -- rare fish of each rarity swimming (queued too)
 	owed: { [number]: { [string]: number } }, -- hunter id → rarity → spawn clock
 	due: { [number]: { [string]: number? } }, -- hunter id → rarity → when the next one comes
+	-- How each rarity's spawns went: set swimming, nowhere to put one (tried again in
+	-- RETRY seconds), or held back by the cap (PC 2026-11-02: the server set only ~1.1
+	-- Silver a minute swimming round one hunter against the sim's 2.5)
+	stats: { placed: { [string]: number }, failed: { [string]: number }, capped: { [string]: number } },
 	rng: Random,
 }
 
@@ -138,6 +142,7 @@ function RareSpawn.new(seed: number?): Spawner
 		count = count,
 		owed = {},
 		due = {},
+		stats = { placed = {}, failed = {}, capped = {} },
 		rng = Random.new(seed or 1),
 	}
 end
@@ -343,13 +348,17 @@ function RareSpawn.step(
 				continue
 			end
 			local cap = SPAWN.cap * (rates[id] or 0) * rarity.life + 1
+			local stats = spawner.stats
 			if spawner.count[id] >= cap then
 				owed[id] = 0
 				due[id] = nil
+				stats.capped[id] = (stats.capped[id] or 0) + 1
 			elseif place(spawner, hunter, id, now, tideId, everyone, eatenUntil, changes) then
 				owed[id] -= wait
 				due[id] = nil
+				stats.placed[id] = (stats.placed[id] or 0) + 1
 			else
+				stats.failed[id] = (stats.failed[id] or 0) + 1
 				-- (nowhere this time: it comes when there's room, tried again in a
 				-- few seconds, never more than the one)
 				owed[id] = wait - rate * RETRY

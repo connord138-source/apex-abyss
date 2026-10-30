@@ -28,11 +28,18 @@ DenCarve.SHAFT_CUT = 3
 -- The Observatory's window (2026-10-28): the rock past its far wall goes, leaving
 -- WINDOW_WALL studs, and a round window WINDOW_RADIUS across is cut through it with
 -- its middle WINDOW_Y over the deck; outside, a sand floor SEA_FLOOR studs under the
--- deck reaches SEA_REACH out (the client swims a deep-sea diorama past it)
+-- deck reaches SEA_REACH out (the client swims a deep-sea diorama past it). The bore
+-- is WINDOW_BORE across, flaring to WINDOW_FLARE from 5 studs into the wall: Terrain draws a
+-- round cut as a rounded square in 4-stud voxels, so it's cut wider than the glass
+-- and DenWings' stone bezel covers its edge (PC 2026-11-02: rock showed between the
+-- brass ring and a squarish opening). The floor sat 40 under the deck, out of sight
+-- through the window, so the view read as plain blue water.
 DenCarve.WINDOW_WALL = 8
 DenCarve.WINDOW_RADIUS = 14
-DenCarve.WINDOW_Y = 17
-DenCarve.SEA_FLOOR = 40
+DenCarve.WINDOW_BORE = 18
+DenCarve.WINDOW_FLARE = 23
+DenCarve.WINDOW_Y = 19
+DenCarve.SEA_FLOOR = 16
 DenCarve.SEA_REACH = 150
 
 -- The water outside either side of a den, where an Observatory looks out: cleared
@@ -323,7 +330,16 @@ function DenCarve.wings(
 			at(plan.side * (far + DenCarve.WINDOW_WALL / 2), s.deck + DenCarve.WINDOW_Y, plan.z),
 			right,
 			DenCarve.WINDOW_WALL + 6,
-			DenCarve.WINDOW_RADIUS
+			DenCarve.WINDOW_BORE
+		)
+		-- (its sea-side half flared, so the bore's sides don't close in on the view)
+		Cave.cylinder(
+			ops,
+			AIR,
+			at(plan.side * (far + DenCarve.WINDOW_WALL / 2 + 5), s.deck + DenCarve.WINDOW_Y, plan.z),
+			right,
+			DenCarve.WINDOW_WALL,
+			DenCarve.WINDOW_FLARE
 		)
 		twice(first)
 		-- A sand floor out there, and a few rounded rocks on it
@@ -332,6 +348,29 @@ function DenCarve.wings(
 		local slo, shi = if plan.side > 0 then x0 else -x1, if plan.side > 0 then x1 else -x0
 		span(Enum.Material.Sand, slo, shi, seaY - 10, seaY, plan.z + 110, plan.z - 110, false)
 		local seaRng = Random.new(Config.World.seed + 977)
+		-- Tall rock stacks in the window's view, 30-90 out, so the eye has something to
+		-- read the water against (each two pebbles, the top one smaller and leaning)
+		for k = 1, 4 do
+			local out = x0 + 26 + (k - 1) * 18 + seaRng:NextNumber(-4, 4)
+			local z = plan.z + (if k % 2 == 0 then 1 else -1) * seaRng:NextNumber(14, 34)
+			local height = seaRng:NextNumber(24, 40)
+			local width = seaRng:NextNumber(12, 18)
+			local turn = CFrame.Angles(0, seaRng:NextNumber(0, math.pi), 0)
+			Cave.pebble(
+				ops,
+				Enum.Material.Rock,
+				DenSpace.spot(frame, plan.side * out, seaY + height * 0.32, z) * turn,
+				Vector3.new(width, height * 0.7, width * 0.85)
+			)
+			Cave.pebble(
+				ops,
+				Enum.Material.Rock,
+				DenSpace.spot(frame, plan.side * out, seaY + height * 0.72, z)
+					* turn
+					* CFrame.Angles(seaRng:NextNumber(-0.25, 0.25), 0, seaRng:NextNumber(-0.25, 0.25)),
+				Vector3.new(width * 0.7, height * 0.45, width * 0.6)
+			)
+		end
 		for _ = 1, 7 do
 			local x = plan.side * seaRng:NextNumber(x0 + 25, x1 - 15)
 			local z = plan.z + seaRng:NextNumber(-90, 90)

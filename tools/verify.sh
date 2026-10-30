@@ -11,4 +11,5 @@ MAP="$(mktemp -t sourcemap.XXXX.json)"
 "$(bin rojo)" sourcemap default.project.json -o "$MAP"
 "$(bin luau-lsp)" analyze --definitions="$DEFS" --sourcemap="$MAP" --ignore="**/Packages/**" src
 "$(bin stylua)" --check src --glob '!**/Packages/**'
+python3 -I tools/tests/check_requests.py
 echo "verify: OK"

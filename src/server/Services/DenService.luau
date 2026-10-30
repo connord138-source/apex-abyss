@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local DensConfig = require(ReplicatedStorage.Shared.Config.Dens)
 local DenSpace = require(ReplicatedStorage.Shared.DenSpace)
 local Garden = require(ReplicatedStorage.Shared.Garden)
@@ -761,7 +762,7 @@ local function wing(player: Player, slotId: any, wingId: any)
 	local refund = if current then math.floor(current.price * Dens.wing.refund) else 0
 	local net = (if def then def.price else 0) - refund
 	if net > 0 and not EconomyService.spendCoral(player, net) then
-		return fail(player, `Not enough coral ({net} needed)`)
+		return fail(player, `Not enough coral ({Format.number(net)} needed)`)
 	end
 	local before = shapeOf(den)
 	if net < 0 then
@@ -778,14 +779,14 @@ local function wing(player: Player, slotId: any, wingId: any)
 		Net.notify(
 			player,
 			`The masons built your {def.name}{if refund > 0
-				then ` · +{refund} coral back for the {(current :: DensConfig.Wing).name}`
+				then ` · +{Format.number(refund)} coral back for the {(current :: DensConfig.Wing).name}`
 				else ""}`,
 			"good"
 		)
 	else
 		Net.notify(
 			player,
-			`Your {(current :: DensConfig.Wing).name} came down · +{refund} coral back`,
+			`Your {(current :: DensConfig.Wing).name} came down · +{Format.number(refund)} coral back`,
 			"info"
 		)
 	end
@@ -808,7 +809,7 @@ local function openPlan(player: Player, on: any)
 			return fail(player, `Open Plan needs a {if level then level.name else "bigger"} den`)
 		end
 		if not EconomyService.spendCoral(player, tune.price) then
-			return fail(player, `Not enough coral ({tune.price} needed)`)
+			return fail(player, `Not enough coral ({Format.number(tune.price)} needed)`)
 		end
 		den.openOwned = true
 	end
