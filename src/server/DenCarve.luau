@@ -41,6 +41,13 @@ DenCarve.WINDOW_FLARE = 23
 DenCarve.WINDOW_Y = 19
 DenCarve.SEA_FLOOR = 16
 DenCarve.SEA_REACH = 150
+-- How far the sea past the window opens either side of its middle (PC 2026-11-03:
+-- the cut was the room's depth + 12 wide, and from near the glass the line of sight
+-- through the window widens past that, so the cut's side walls filled both edges of
+-- the ring), and the rock kept round another wing on the same side while the sea runs
+-- alongside it (its alcoves bulge ~7 studs out)
+DenCarve.SEA_SPREAD = 110
+DenCarve.SEA_KEEP = 10
 
 -- The water outside either side of a den, where an Observatory looks out: cleared
 -- before a den is carved and when it's freed (a sand floor left from an old
@@ -317,13 +324,32 @@ function DenCarve.wings(
 		local extent = Layout.DEN_EXTENT
 		local far = plan.x2
 		local beyond = far + DenCarve.WINDOW_WALL
-		local half = plan.def.depth / 2 + 12
 		first = #ops + 1
-		local lo, hi = beyond, extent.half + DenCarve.SEA_REACH + 8
-		if plan.side < 0 then
-			lo, hi = -hi, -lo
+		-- Out to the side's far edge, SEA_SPREAD either way, but alongside another wing
+		-- on this side only up to SEA_KEEP from its room, until past its far end
+		local front, back = plan.z + DenCarve.SEA_SPREAD, plan.z - DenCarve.SEA_SPREAD
+		local nearFront, nearBack, nearTo = front, back, beyond
+		for _, other in plans do
+			if other == plan or other.side ~= plan.side then
+				continue
+			end
+			if other.z > plan.z then
+				nearFront = math.min(nearFront, other.room.z1 - DenCarve.SEA_KEEP)
+			else
+				nearBack = math.max(nearBack, other.room.z0 + DenCarve.SEA_KEEP)
+			end
+			nearTo = math.max(nearTo, other.x2 + DenCarve.SEA_KEEP)
 		end
-		span(AIR, lo, hi, extent.bottom - 30, extent.top + 30, plan.z + half, plan.z - half, false)
+		local outTo = extent.half + DenCarve.SEA_REACH + 8
+		local function sea(x0: number, x1: number, z0: number, z1: number)
+			local lo, hi = x0, x1
+			if plan.side < 0 then
+				lo, hi = -x1, -x0
+			end
+			span(AIR, lo, hi, extent.bottom - 30, extent.top + 30, z0, z1, false)
+		end
+		sea(beyond, nearTo, nearFront, nearBack)
+		sea(nearTo, outTo, front, back)
 		Cave.cylinder(
 			ops,
 			AIR,

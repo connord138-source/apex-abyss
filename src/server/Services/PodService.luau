@@ -186,7 +186,10 @@ local function shareKill(eater: Player, _victim: Player, gain: number)
 			if added > 0 then
 				Net.notify(
 					mate,
-					`Pod kill by {eater.DisplayName} · +{Format.haul(HuntService.shown(mate, added))} Haul`,
+					`Pod kill by {eater.DisplayName} · {Format.haulGain(
+						HuntService.shown(mate, added),
+						"Haul"
+					)}`,
 					"good"
 				)
 			end

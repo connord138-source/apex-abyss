@@ -10,10 +10,18 @@
 --
 -- Cost (PC 2026-11-02, DE14: 43-45 ms/s in a full den, a PivotTo and a CFrame write a
 -- fish every frame): everything moves in one BulkMoveTo a frame; a tank's fish only
--- while its tank is on screen, every frame within TANK_NEAR studs, every other to
--- TANK_FAR and every fourth past it, its tail only within WAVE_RANGE; the
--- Observatory's view only while its window is on screen from inside the room, its
--- jellies every other frame; the tagged lists are kept by signals, not GetTagged.
+-- while its tank is on screen, the nearer the more often, its tail only near; the
+-- Observatory's view only while its window is on screen from inside the room; the
+-- tagged lists are kept by signals, not GetTagged.
+-- PC 2026-11-03 (6.9 / 23.5 / 12.1 ms/s in the Nook, at the window, in the Aquarium
+-- Hall; moving parts is most of it): a tank off screen costs a distance and
+-- a dot, a built tank's stock is read every STOCK_EVERY seconds, a fish is placed in
+-- its tank the frame it's built (one built off screen sat under the hub), and the
+-- tank fish (~1-2 studs/s) move every frame only within TANK_CLOSE, every other to
+-- TANK_NEAR, every fourth to TANK_FAR and every eighth past it; past the window only
+-- what the line of sight through the glass reaches moves, staggered: the school every
+-- other frame, the mantas every third, the far humpback and the jellies (each one
+-- part, its strands welded on) every fourth.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -27,9 +35,10 @@ local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local AquariumController = {}
 
 local TANK_RANGE = 140 -- studs from the camera a tank's fish is built
-local TANK_NEAR = 35 -- every frame within this
-local TANK_FAR = 80 -- every other frame within this, every fourth past it
-local WAVE_RANGE = 50 -- a tank fish's tail waves within this
+local TANK_CLOSE = 15 -- a tank's fish moves every frame within this
+local TANK_NEAR = 35 -- every other frame within this (its tail waves within it)
+local TANK_FAR = 80 -- every fourth frame within this, every eighth past it
+local STOCK_EVERY = 0.5 -- seconds between reads of a built tank's stock
 local VIEW_RANGE = 220 -- studs from the camera the window's diorama is built
 -- On screen: within this of the camera's look (cos of ~66°: the screen's half width
 -- at 16:9 and a little more, so nothing is caught still at the edge)
@@ -66,10 +75,13 @@ local windowParts: { [BasePart]: boolean } = {}
 type TankFish = {
 	water: BasePart,
 	display: PreyDisplay.Display,
-	key: string,
+	prey: string,
+	rarity: string,
 	phase: number,
 	speed: number,
-	slot: number, -- which frame of 2 or 4 it moves on
+	slot: number, -- which frame of 2, 4 or 8 it moves on
+	posed: boolean, -- placed in its tank yet
+	checked: number, -- when its tank's stock was last read
 }
 
 local tanks: { [BasePart]: TankFish } = {}
@@ -108,10 +120,13 @@ local function onScreen(
 end
 
 -- A tank's fish, built once its tank is near and kept in step with what's in it
-local function tankFish(water: BasePart, near: boolean): TankFish?
+local function tankFish(water: BasePart, near: boolean, now: number): TankFish?
+	local have = tanks[water]
+	if near and have and now - have.checked < STOCK_EVERY then
+		return have
+	end
 	local prey = water:GetAttribute("Prey")
 	local rarity = water:GetAttribute("Rarity")
-	local have = tanks[water]
 	if not near or typeof(prey) ~= "string" or typeof(rarity) ~= "string" then
 		if have then
 			have.display.model:Destroy()
@@ -119,8 +134,8 @@ local function tankFish(water: BasePart, near: boolean): TankFish?
 		end
 		return nil
 	end
-	local key = `{prey}|{rarity}`
-	if have and have.key == key then
+	if have and have.prey == prey and have.rarity == rarity then
+		have.checked = now
 		return have
 	end
 	if have then
@@ -136,33 +151,48 @@ local function tankFish(water: BasePart, near: boolean): TankFish?
 	local made: TankFish = {
 		water = water,
 		display = display,
-		key = key,
+		prey = prey,
+		rarity = rarity,
 		phase = (seed % 1000) / 1000 * TAU,
 		speed = 0.32 + (seed % 7) * 0.025,
-		slot = seed % 4,
+		slot = seed % 8,
+		posed = false,
+		checked = now,
 	}
 	tanks[water] = made
 	return made
 end
 
 local function swimTanks(now: number, camera: Vector3, look: Vector3)
+	-- (a tank leaving the place drops out of tankParts by its tag's signal)
 	for water in tankParts do
-		if not water:IsDescendantOf(workspace) then
-			continue
-		end
-		local distance = (water.Position - camera).Magnitude
-		local fish = tankFish(water, distance < TANK_RANGE)
-		if fish == nil then
+		local middle = water.Position
+		local distance = (middle - camera).Magnitude
+		if distance >= TANK_RANGE then
+			if tanks[water] then
+				tankFish(water, false, now)
+			end
 			continue
 		end
 		local size = water.Size
-		if not onScreen(look, camera, water.Position, distance, size.X) then
+		if not onScreen(look, camera, middle, distance, size.X) then
 			continue
 		end
-		local every = if distance < TANK_NEAR then 1 elseif distance < TANK_FAR then 2 else 4
-		if every > 1 and (frameCount + fish.slot) % every ~= 0 then
+		local every = if distance < TANK_CLOSE
+			then 1
+			elseif distance < TANK_NEAR then 2
+			elseif distance < TANK_FAR then 4
+			else 8
+		local have = tanks[water]
+		if have and have.posed and every > 1 and (frameCount + have.slot) % every ~= 0 then
 			continue
 		end
+		-- (built, or rebuilt for a new stock, only on screen, and placed at once)
+		local fish = tankFish(water, true, now)
+		if fish == nil then
+			continue
+		end
+		fish.posed = true
 		local display = fish.display
 		local reach = math.max(size.X / 2 - display.length * 0.55 - 0.4, 0.2)
 		local t = now * fish.speed + fish.phase
@@ -175,12 +205,12 @@ local function swimTanks(now: number, camera: Vector3, look: Vector3)
 		local depth = -size.Z * 0.12 + math.sin(t * 0.7) * size.Z * 0.08
 		local at = Vector3.new(along * reach, bob, depth)
 		PreyDisplay.pose(display, water.CFrame * CFrame.lookAt(at, at + swimLook), moveParts, moveFrames)
-		if distance < WAVE_RANGE and #display.spine > 0 then
+		if distance < TANK_NEAR and #display.spine > 0 then
 			SwimWave.applyBones(display.bones, display.spine, now * 6 + fish.phase, 0.22, 0)
 		end
 	end
 	for water, fish in tanks do
-		if not water:IsDescendantOf(workspace) then
+		if tankParts[water] == nil then
 			fish.display.model:Destroy()
 			tanks[water] = nil
 		end
@@ -195,7 +225,11 @@ type Drifter = {
 	path: (t: number) -> CFrame,
 	parts: { BasePart },
 	jelly: boolean,
-	offsets: { Vector3 }?, -- a jelly's strands against its bell
+	phase: number, -- (a jelly's sway)
+	reach: number, -- studs it reaches round its middle (seen through the glass)
+	every: number, -- moved every this many frames
+	slot: number, -- which of them
+	placed: Vector3?, -- where it was last moved to (nil: not yet)
 }
 type View = { window: BasePart, model: Model, drifters: { Drifter } }
 local views: { [BasePart]: View } = {}
@@ -206,9 +240,10 @@ local JELLY = {
 	Color3.fromRGB(90, 220, 255),
 }
 
-local function jelly(parent: Instance, size: number, color: Color3): ({ BasePart }, { Vector3 })
+-- A jelly: its strands welded under its bell, so it moves as one part (PC 2026-11-03:
+-- six parts a jelly were most of what moved past the window)
+local function jelly(parent: Instance, size: number, color: Color3): { BasePart }
 	local parts: { BasePart } = {}
-	local offsets: { Vector3 } = {}
 	local bell = Instance.new("Part")
 	bell.Name = "Bell"
 	bell.Anchored = true
@@ -221,13 +256,15 @@ local function jelly(parent: Instance, size: number, color: Color3): ({ BasePart
 	bell.Color = color
 	bell.Material = Enum.Material.Neon
 	bell.Transparency = 0.45
+	bell.CFrame = CFrame.identity
 	bell.Parent = parent
 	table.insert(parts, bell)
 	for i = 1, 5 do
 		local a = i / 5 * TAU
 		local strand = Instance.new("Part")
 		strand.Name = "Tentacle"
-		strand.Anchored = true
+		strand.Anchored = false
+		strand.Massless = true
 		strand.CanCollide = false
 		strand.CanQuery = false
 		strand.CanTouch = false
@@ -236,11 +273,15 @@ local function jelly(parent: Instance, size: number, color: Color3): ({ BasePart
 		strand.Color = color
 		strand.Material = Enum.Material.Neon
 		strand.Transparency = 0.35
+		strand.CFrame = CFrame.new(math.cos(a) * size * 0.3, -size * 0.9, math.sin(a) * size * 0.3)
 		strand.Parent = parent
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = bell
+		weld.Part1 = strand
+		weld.Parent = strand
 		table.insert(parts, strand)
-		table.insert(offsets, Vector3.new(math.cos(a) * size * 0.3, -size * 0.9, math.sin(a) * size * 0.3))
 	end
-	return parts, offsets
+	return parts
 end
 
 local function buildView(window: BasePart): View?
@@ -275,6 +316,10 @@ local function buildView(window: BasePart): View?
 		end,
 		parts = whale.parts,
 		jelly = false,
+		phase = 0,
+		reach = 36,
+		every = 4,
+		slot = 2,
 	})
 	for k = 1, 2 do
 		local manta =
@@ -298,6 +343,10 @@ local function buildView(window: BasePart): View?
 			end,
 			parts = manta.parts,
 			jelly = false,
+			phase = 0,
+			reach = 10,
+			every = 3,
+			slot = k,
 		})
 	end
 	-- Jellies rising and sinking at every depth
@@ -306,15 +355,18 @@ local function buildView(window: BasePart): View?
 		holder.Name = "Jelly"
 		holder.Parent = model
 		local size = rng:NextNumber(1.6, 3.4)
-		local parts, offsets = jelly(holder, size, JELLY[(i % #JELLY) + 1])
+		local parts = jelly(holder, size, JELLY[(i % #JELLY) + 1])
 		local ahead = rng:NextNumber(22, 110)
 		local side = rng:NextNumber(-60, 60)
 		local rise = rng:NextNumber(-30, 34)
 		local phase = rng:NextNumber(0, TAU)
 		table.insert(drifters, {
 			parts = parts,
-			offsets = offsets,
 			jelly = true,
+			phase = phase,
+			reach = size * 2,
+			every = 4,
+			slot = i % 4,
 			path = function(t: number): CFrame
 				return spot(
 					ahead,
@@ -337,6 +389,10 @@ local function buildView(window: BasePart): View?
 			display = display,
 			parts = display.parts,
 			jelly = false,
+			phase = 0,
+			reach = 1.5,
+			every = 2,
+			slot = i % 2,
 			path = function(t: number): CFrame
 				local a = (t / 26 - lag) * TAU
 				local at = middle
@@ -353,9 +409,6 @@ end
 
 local function driftViews(now: number, camera: Vector3, look: Vector3)
 	for window in windowParts do
-		if not window:IsDescendantOf(workspace) then
-			continue
-		end
 		local distance = (window.Position - camera).Magnitude
 		local near = distance < VIEW_RANGE
 		local have: View? = views[window]
@@ -391,38 +444,52 @@ local function driftViews(now: number, camera: Vector3, look: Vector3)
 		then
 			continue
 		end
-		local jellies = frameCount % 2 == 0
+		local opening = (if typeof(radius) == "number" then radius else 14) + 1
+		local glass = window.Position
+		local outward = if typeof(out) == "Vector3" then out.Unit else window.CFrame.LookVector
+		local toGlass = (glass - camera):Dot(outward)
+		-- Whether the line of sight to `at` passes through the round opening, with room
+		-- for what reaches `reach` round it (the rest of the view is behind rock)
+		local function seen(at: Vector3, reach: number): boolean
+			local toward = at - camera
+			local along = toward:Dot(outward)
+			if along <= toGlass then
+				return false
+			end
+			local scale = toGlass / along
+			return (camera + toward * scale - glass).Magnitude < opening + reach * scale
+		end
 		for _, drifter in view.drifters do
+			local placed = drifter.placed
+			if placed and drifter.every > 1 and (frameCount + drifter.slot) % drifter.every ~= 0 then
+				continue
+			end
+			local frame = drifter.path(now)
+			-- Moved while it's seen, and once more when it goes out of sight (so it's
+			-- never left still at the edge of the view); all placed the first frame
+			-- the window is in view
+			if placed and not seen(frame.Position, drifter.reach) and not seen(placed, drifter.reach) then
+				continue
+			end
+			drifter.placed = frame.Position
 			local body = drifter.body
 			if body and drifter.motion then
 				drifter.motion.t = now
 				AmbientBody.pose(body, drifter.motion)
 				table.insert(moveParts, body.root)
-				table.insert(moveFrames, AmbientBody.frame(body, drifter.path(now)))
+				table.insert(moveFrames, AmbientBody.frame(body, frame))
 			elseif drifter.display then
-				PreyDisplay.pose(drifter.display, drifter.path(now), moveParts, moveFrames)
-			elseif drifter.jelly and jellies then
-				local frame = drifter.path(now)
-				local parts = drifter.parts
-				table.insert(moveParts, parts[1])
-				table.insert(moveFrames, frame)
-				local offsets = drifter.offsets
-				if offsets then
-					local at = frame.Position
-					for i = 2, #parts do
-						local sway = math.sin(now * 1.7 + i) * 0.3
-						table.insert(moveParts, parts[i])
-						table.insert(
-							moveFrames,
-							CFrame.new(at + offsets[i - 1]) * CFrame.Angles(sway, 0, sway * 0.6)
-						)
-					end
-				end
+				PreyDisplay.pose(drifter.display, frame, moveParts, moveFrames)
+			elseif drifter.jelly then
+				-- (its bell, the strands welded under it, rocking gently)
+				local sway = math.sin(now * 0.9 + drifter.phase) * 0.12
+				table.insert(moveParts, drifter.parts[1])
+				table.insert(moveFrames, frame * CFrame.Angles(sway, 0, sway * 0.6))
 			end
 		end
 	end
 	for window, view in views do
-		if not window:IsDescendantOf(workspace) then
+		if windowParts[window] == nil then
 			view.model:Destroy()
 			views[window] = nil
 		end

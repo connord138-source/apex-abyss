@@ -577,21 +577,51 @@ local function rock(parent: Instance, rng: Random, ground: Vector3, scale: numbe
 	})
 end
 
+-- A rock arch. Dressed as round boulders like the scattered rocks (PC 2026-11-03: its
+-- blocks drew as plain dark boxes on the sand): a stack up each pillar and three
+-- across the top, solid, the blocks hidden; the stones' sizes and turns come from
+-- their own Random, so the scatter's sequence is unchanged.
 local function arch(parent: Instance, rng: Random, ground: Vector3)
 	local gap = rng:NextNumber(5, 9)
 	local height = rng:NextNumber(14, 26)
 	local base = CFrame.new(ground) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
+	local stones = Random.new(math.floor(math.abs(ground.X * 7 + ground.Z * 13)) % 1000003)
+	local function stone(holder: BasePart, frame: CFrame, size: Vector3)
+		Props.dress(holder, "BoulderRound", {
+			cframe = frame * CFrame.Angles(0, stones:NextNumber(0, 6.28), 0),
+			size = size,
+			solid = true,
+			blocksCamera = true,
+		})
+	end
 	for side = -1, 1, 2 do
-		block(
+		local x = side * (gap / 2 + 4)
+		local pillar = block(
 			parent,
 			"ArchPillar",
 			Vector3.new(8, height, 8),
-			base * CFrame.new(side * (gap / 2 + 4), height / 2, 0),
+			base * CFrame.new(x, height / 2, 0),
 			ROCK_DARK,
 			Enum.Material.Rock
 		)
+		-- (about as wide as the old block, so the opening stays the same)
+		local count = math.ceil(height / 6.5)
+		local step = height / count
+		for k = 1, count do
+			local width = 8.8 - k * 0.35 + stones:NextNumber(-0.4, 0.4)
+			stone(
+				pillar,
+				base
+					* CFrame.new(
+						x + stones:NextNumber(-0.4, 0.4),
+						step * (k - 0.5),
+						stones:NextNumber(-0.4, 0.4)
+					),
+				Vector3.new(width, step * 2, width)
+			)
+		end
 	end
-	block(
+	local top = block(
 		parent,
 		"ArchTop",
 		Vector3.new(gap + 20, 7, 10),
@@ -599,6 +629,9 @@ local function arch(parent: Instance, rng: Random, ground: Vector3)
 		ROCK_DARK,
 		Enum.Material.Rock
 	)
+	for k = -1, 1 do
+		stone(top, base * CFrame.new(k * (gap / 2 + 5), height + 2.5, 0), Vector3.new(11, 9, 10))
+	end
 end
 
 -- A coral garden: a spread of corals, sponges and anemones on and round a spot

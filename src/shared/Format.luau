@@ -30,6 +30,15 @@ function Format.haul(kg: number): string
 	return Format.mass(kg)
 end
 
+-- A Haul gain in a toast: "+2.4 kg Haul" (`what` after it, if any), or "Haul full"
+-- when nothing went on (PC 2026-11-03: a swallow with a full Haul read "+0.0 g Haul")
+function Format.haulGain(kg: number, what: string?): string
+	if kg < 0.00005 then
+		return "Haul full"
+	end
+	return if what then `+{Format.haul(kg)} {what}` else `+{Format.haul(kg)}`
+end
+
 -- A catch's weight with enough digits for the small fish (the Catch Log's biggest:
 -- a minnow weighs 0.06–0.3 kg)
 function Format.catchMass(kg: number): string

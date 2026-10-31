@@ -514,14 +514,20 @@ local function observatory(
 	-- A stone bezel round the ring, out to past the bore's edge: Terrain cuts the
 	-- round bore as a rounded square, which showed between the ring and the rock (PC
 	-- 2026-11-02); solid, so nothing swims through the gap behind it
+	-- Its lower stones stop on the deck (PC 2026-11-03: the bezel ran into the floor)
 	local inner, outer = ringR + 0.4, DenCarve.WINDOW_BORE + 2.5
 	local bezelCount = 32
+	local stoneWidth = 2 * math.pi * outer / bezelCount + 0.3
 	for i = 1, bezelCount do
 		local a = (i - 0.5) / bezelCount * 2 * math.pi
+		-- (a turn of `a` from straight up: its outer corners come down this far)
+		local down = -math.cos(a)
+		local room = middle - deck - stoneWidth / 2 * math.abs(math.sin(a)) - 0.05
+		local reach = if down > 0.05 then math.min(outer, room / down) else outer
 		part(parent, {
 			Name = "WindowBezel",
-			Size = Vector3.new(2 * math.pi * outer / bezelCount + 0.3, outer - inner, 1),
-			CFrame = paneAt * CFrame.Angles(0, 0, a) * CFrame.new(0, (inner + outer) / 2, -0.9),
+			Size = Vector3.new(stoneWidth, reach - inner, 1),
+			CFrame = paneAt * CFrame.Angles(0, 0, a) * CFrame.new(0, (inner + reach) / 2, -0.9),
 			Color = STONE:Lerp(Color3.new(0.12, 0.16, 0.2), 0.25),
 			Material = Enum.Material.SmoothPlastic,
 			CanCollide = true,

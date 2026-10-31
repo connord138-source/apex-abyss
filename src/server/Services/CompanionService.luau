@@ -176,7 +176,7 @@ local function bringDown(lane: number, hunt: Hunt, pass: Giants.Pass, now: numbe
 		HuntService.giveDna(player, at, math.max(1, math.floor(tune.loot.dna * share + 0.5)))
 		Net.notify(
 			player,
-			`You brought down a humpback! +{Format.haul(HuntService.shown(player, added))} · +{Format.number(
+			`You brought down a humpback! {Format.haulGain(HuntService.shown(player, added))} · +{Format.number(
 				coral
 			)} coral`,
 			"rare"

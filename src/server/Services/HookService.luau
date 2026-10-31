@@ -207,7 +207,7 @@ local function takeBait(player: Player, id: any)
 	end
 	Net.notify(
 		player,
-		`+{Format.haul(HuntService.shown(player, added))} bait · HOOKED! Mash BITE or DASH to break free`,
+		`{Format.haulGain(HuntService.shown(player, added), "bait")} · HOOKED! Mash BITE or DASH to break free`,
 		"bad"
 	)
 	Net.hooks(payload(now))

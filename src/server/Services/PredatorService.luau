@@ -1238,7 +1238,7 @@ local function payOut(predator: Predator, killer: Player?, swallowed: boolean?)
 		local coral = EconomyService.earnCoral(player, def.loot.coral * share * pay)
 		Events.ate:fire(player, 1)
 		-- What it paid, all of it (PC 2026-11-02: the toast named only the Haul)
-		local paid = `+{Format.haul(gained)} Haul`
+		local paid = Format.haulGain(gained, "Haul")
 		if coral >= 1 then
 			paid ..= ` · +{Format.number(math.floor(coral))} coral`
 		end

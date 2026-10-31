@@ -246,6 +246,29 @@ local function row(
 	return frame, button
 end
 
+-- A taller row whose blurb wraps onto two lines (the Shop's descriptions, the den's wings)
+local function tallRow(
+	list: ScrollingFrame,
+	order: number,
+	name: string,
+	title: string,
+	blurb: string,
+	status: string?,
+	action: string?,
+	style: Ui.ButtonStyle?,
+	accent: Color3?
+): (Frame, TextButton?)
+	local frame, button = row(list, order, name, title, blurb, status, action, style, accent)
+	frame.Size = UDim2.new(1, -8, 0, 80)
+	local blurbLabel = frame:FindFirstChild("Blurb") :: TextLabel?
+	if blurbLabel then
+		blurbLabel.Size = UDim2.new(1, -320, 0, 38)
+		blurbLabel.TextWrapped = true
+		blurbLabel.TextYAlignment = Enum.TextYAlignment.Top
+	end
+	return frame, button
+end
+
 local function pips(level: number, max: number): string
 	return `LV {level} / {max}`
 end
@@ -665,7 +688,7 @@ local function denWingRows(list: ScrollingFrame, next: () -> number, den: any)
 	local open = Dens.levels[Dens.wing.level]
 	denSection(list, next(), "Wings · rooms built out from your den's sides")
 	if (den.level or 1) < Dens.wing.level then
-		row(
+		tallRow(
 			list,
 			next(),
 			"WingsLocked",
@@ -680,7 +703,7 @@ local function denWingRows(list: ScrollingFrame, next: () -> number, den: any)
 		for _, slot in Dens.wingSlots do
 			local wing = Dens.wingsById[wings[slot.id] or ""]
 			local tier = if wing then Config.Tiers.byId[wing.tier] else nil
-			local _, button = row(
+			local _, button = tallRow(
 				list,
 				next(),
 				`Wing{slot.id}`,
@@ -706,7 +729,7 @@ local function denWingRows(list: ScrollingFrame, next: () -> number, den: any)
 	local on = den.open == true
 	local need = Dens.levels[tune.level]
 	local locked = (den.level or 1) < tune.level
-	local _, button = row(
+	local _, button = tallRow(
 		list,
 		next(),
 		"OpenPlan",
@@ -760,7 +783,7 @@ local function denWingPicker(list: ScrollingFrame, next: () -> number, den: any,
 		local tier = Config.Tiers.byId[wing.tier]
 		local refund = if current and not here then math.floor(current.price * Dens.wing.refund) else 0
 		local net = math.max(0, wing.price - refund)
-		local _, button = row(
+		local _, button = tallRow(
 			list,
 			next(),
 			`Pick{wing.id}`,
@@ -790,7 +813,7 @@ local function denWingPicker(list: ScrollingFrame, next: () -> number, den: any,
 	end
 	if current then
 		local refund = math.floor(current.price * Dens.wing.refund)
-		local _, button = row(
+		local _, button = tallRow(
 			list,
 			next(),
 			"TakeDown",
@@ -2366,29 +2389,6 @@ local function heading(list: ScrollingFrame, order: number, text: string)
 		Ui.label(list, `Heading{order}`, text, Ui.FONT_HEAVY, 15, Ui.color.haul, UDim2.new(1, -8, 0, 24))
 	label.LayoutOrder = order
 	label.TextYAlignment = Enum.TextYAlignment.Bottom
-end
-
--- A taller row whose blurb wraps onto two lines (the Shop's descriptions)
-local function tallRow(
-	list: ScrollingFrame,
-	order: number,
-	name: string,
-	title: string,
-	blurb: string,
-	status: string?,
-	action: string?,
-	style: Ui.ButtonStyle?,
-	accent: Color3?
-): (Frame, TextButton?)
-	local frame, button = row(list, order, name, title, blurb, status, action, style, accent)
-	frame.Size = UDim2.new(1, -8, 0, 80)
-	local blurbLabel = frame:FindFirstChild("Blurb") :: TextLabel?
-	if blurbLabel then
-		blurbLabel.Size = UDim2.new(1, -320, 0, 38)
-		blurbLabel.TextWrapped = true
-		blurbLabel.TextYAlignment = Enum.TextYAlignment.Top
-	end
-	return frame, button
 end
 
 -- The Shop (SHOP on the HUD, or the View button on a controller): Robux boosts and
