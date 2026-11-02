@@ -68,7 +68,8 @@ local REQUESTS: { [string]: number } = {
 	BiteLine = 0.3, -- (userId) bite a hooked podmate's line
 	Roll = 0.4, -- ()
 	Buy = 0.2, -- (kind: "upgrade" | "charm" | "dye" | "shells", id: string)
-	Equip = 0.15, -- (kind: "shade" | "part" | "variant", id: string ("" = take off), slot: string?)
+	Equip = 0.15, -- (kind: "shade" | "part" | "variant" | "trail" | "title", id: string ("" = take off), slot: string?)
+	Setting = 0.3, -- (name: "music" | "sound", on: boolean) the player's saved sound settings
 	SelectSpecies = 0.5, -- (speciesId) swim as another unlocked species (in the safe zone)
 	UnlockSpecies = 0.5, -- (speciesId) unlock with its biome's DNA and coral
 	FollowMap = 0.3, -- (mapId or "") follow a treasure map, or stop

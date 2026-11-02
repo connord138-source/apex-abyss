@@ -154,6 +154,8 @@ export type PlayerData = {
 	-- user ids, once a day each; HeartService)
 	admired: { day: number, dens: { [string]: boolean } },
 	codes: { [string]: boolean }, -- redeem codes used (Config/Codes)
+	-- Music and sound effects on or off (the Shop's SETTINGS; EconomyService)
+	settings: { music: boolean, sound: boolean },
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
@@ -249,6 +251,7 @@ local TEMPLATE: PlayerData = {
 	pearls = {},
 	admired = { day = 0, dens = {} },
 	codes = {},
+	settings = { music = true, sound = true },
 	passes = {},
 	groupRewarded = false,
 	purchaseIds = {},

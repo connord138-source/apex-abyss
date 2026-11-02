@@ -40,7 +40,7 @@ local function speciesName(): string
 	return if state and typeof(state.speciesName) == "string" then state.speciesName else "fish"
 end
 
-local function banner(biome: Biomes.Biome)
+local function showBanner(biome: Biomes.Biome): (quick: boolean) -> ()
 	Sfx.play("Banner", { volume = 0.45 })
 	local old = gui:FindFirstChild("BiomeBanner")
 	if old then
@@ -114,15 +114,29 @@ local function banner(biome: Biomes.Biome)
 	for _, label in labels do
 		Ui.tween(label, 0.4, { TextTransparency = 0, TextStrokeTransparency = 0.55 })
 	end
-	task.delay(if danger then 5 else 3, function()
+	return function(quick: boolean)
 		if holder.Parent == nil then
 			return
 		end
+		local fade = if quick then 0.2 else 0.6
 		for _, label in labels do
-			Ui.tween(label, 0.6, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			Ui.tween(label, fade, { TextTransparency = 1, TextStrokeTransparency = 1 })
 		end
-		task.wait(0.65)
-		holder:Destroy()
+		task.delay(fade + 0.05, function()
+			holder:Destroy()
+		end)
+	end
+end
+
+-- The biome's title, on the stage like the other centre banners (Ui.stageBanner: it
+-- waits for a catch or tutorial banner and steps aside for the bank's sequence);
+-- dropped if the fish has left that biome by its turn
+local function banner(biome: Biomes.Biome)
+	local seconds = if Biomes.tooLow(biome, level()) then 5 else 3
+	Ui.stageBanner("biome", seconds, 0.65, function()
+		return showBanner(biome)
+	end, function()
+		return current == biome
 	end)
 end
 

@@ -7,7 +7,9 @@
 -- generous slack);
 -- three strikes in 30 s writes a warning to the Output with the numbers, so false
 -- positives can be found in testing before anything is enforced. Moves the server
--- made (a teleport, a respawn, a creature's shove) reset the baseline.
+-- made (a teleport, a respawn, a creature's shove) reset the baseline. With ENFORCE
+-- on, a fish that strikes out is also put back where it last swam within the
+-- allowance (built 2026-11-02, off until a multi-player test shows no false alarms).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -16,6 +18,7 @@ local Perks = require(ReplicatedStorage.Shared.Perks)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Guard = require(script.Parent.Parent.Guard)
+local Net = require(script.Parent.Parent.Net)
 local Progress = require(script.Parent.Parent.Progress)
 local DataService = require(script.Parent.DataService)
 local FishService = require(script.Parent.FishService)
@@ -30,8 +33,12 @@ local EXTRA = 25 -- studs of latency and physics slack
 local STRIKES = 3
 local WINDOW = 30
 local LOG_EVERY = 30
+-- Pull a fish that strikes out back to its last fair spot (off: log only). Turn on
+-- once a full-server playtest's Output shows no [SpeedCheck] lines from fair play.
+local ENFORCE = false
 
-type Track = { position: Vector3, at: number, strikes: { number }, loggedAt: number }
+-- `good`: where it last moved within the allowance (ENFORCE puts it back there)
+type Track = { position: Vector3, at: number, strikes: { number }, loggedAt: number, good: CFrame }
 
 local tracks: { [Player]: Track } = {}
 
@@ -79,7 +86,8 @@ function SpeedService.start()
 			local track = tracks[player]
 			local movedAt = player:GetAttribute("MovedAt")
 			if track == nil or (typeof(movedAt) == "number" and movedAt >= track.at - 0.5) then
-				tracks[player] = { position = root.Position, at = now, strikes = {}, loggedAt = 0 }
+				tracks[player] =
+					{ position = root.Position, at = now, strikes = {}, loggedAt = 0, good = root.CFrame }
 				continue
 			end
 			local dt = now - track.at
@@ -87,6 +95,7 @@ function SpeedService.start()
 			local allowed = fastest(player, length) * SLACK * dt + EXTRA
 			track.position, track.at = root.Position, now
 			if moved <= allowed then
+				track.good = root.CFrame
 				continue
 			end
 			table.insert(track.strikes, now)
@@ -108,6 +117,11 @@ function SpeedService.start()
 						length
 					)
 				)
+			end
+			if ENFORCE and #track.strikes >= STRIKES then
+				warn(`[SpeedCheck] {player.Name} ({player.UserId}) put back where it last swam fairly`)
+				Net.teleport(player, track.good)
+				tracks[player] = nil
 			end
 		end
 	end)

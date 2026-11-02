@@ -141,8 +141,10 @@ local function pop(text: string, color: Color3, delay: number)
 	end)
 end
 
--- "WELCOME BACK": what grew while you were away
-local function welcome(summary: { [string]: any })
+-- "WELCOME BACK": what grew while you were away (built when its turn on the stage
+-- comes, Ui.stageBanner; it returns how to take it down)
+local function welcome(summary: { [string]: any }): (quick: boolean) -> ()
+	Sfx.play("Bank", { volume = 0.6 })
 	local holder = Instance.new("Frame")
 	holder.Name = "Welcome"
 	holder.BackgroundTransparency = 1
@@ -180,12 +182,17 @@ local function welcome(summary: { [string]: any })
 	sub.TextStrokeTransparency = 0.6
 	holder.Parent = banners
 	Ui.tween(scale, 0.5, { Scale = 1 }, Enum.EasingStyle.Back)
-	task.delay(4.5, function()
-		Ui.tween(heading, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
-		Ui.tween(sub, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
-		task.wait(0.55)
-		holder:Destroy()
-	end)
+	return function(quick: boolean)
+		if holder.Parent == nil then
+			return
+		end
+		local fade = if quick then 0.2 else 0.5
+		Ui.tween(heading, fade, { TextTransparency = 1, TextStrokeTransparency = 1 })
+		Ui.tween(sub, fade, { TextTransparency = 1, TextStrokeTransparency = 1 })
+		task.delay(fade + 0.05, function()
+			holder:Destroy()
+		end)
+	end
 end
 
 local function onCollected(summary: { [string]: any })
@@ -200,8 +207,9 @@ local function onCollected(summary: { [string]: any })
 	if typeof(summary.away) == "number" then
 		-- On joining: after the start screen, so it's seen
 		StartController.afterStart(function()
-			Sfx.play("Bank", { volume = 0.6 })
-			welcome(summary)
+			Ui.stageBanner("welcome", 4.5, 0.55, function()
+				return welcome(summary)
+			end)
 		end)
 	else
 		Sfx.play("Shell", { volume = 0.45 })

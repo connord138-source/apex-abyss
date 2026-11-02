@@ -60,6 +60,16 @@ local warned = false
 
 local Sfx = {}
 
+-- Every sound effect plays through this group, so the Shop's SETTINGS can mute them
+-- all (Sfx.setMuted); the music has its own (MusicController)
+local group = Instance.new("SoundGroup")
+group.Name = "Effects"
+group.Parent = SoundService
+
+function Sfx.setMuted(on: boolean)
+	group.Volume = if on then 0 else 1
+end
+
 -- The pack to play: v2 once its id is set, else the v1 pack (`legacy`, without the
 -- sounds it skips), else none
 type Pack = { id: number, regions: { [string]: { number } }, skip: { [string]: boolean }? }
@@ -96,6 +106,7 @@ local function regionOf(name: string): { number }?
 end
 
 local function place(sound: Sound, parent: Instance?, range: number?)
+	sound.SoundGroup = group
 	if parent and (parent:IsA("BasePart") or parent:IsA("Attachment")) then
 		sound.RollOffMode = Enum.RollOffMode.InverseTapered
 		sound.RollOffMinDistance = 14
@@ -189,6 +200,7 @@ function Sfx.loop(name: string, volume: number, parent: Instance?): Sound?
 	sound.LoopRegion = NumberRange.new(region[1], region[1] + region[2])
 	sound.Looped = true
 	sound.Volume = volume
+	sound.SoundGroup = group
 	sound.Parent = parent or SoundService
 	sound:Play()
 	return sound

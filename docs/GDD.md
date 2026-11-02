@@ -1339,8 +1339,12 @@ owner picked all four ("All four please!").
   Wrasse), with a spawn stream of its own all week (`weekly.rate`, on its species only,
   where it swims near the player): a hunter there meets one in about 45 minutes. The
   first one caught pays big and unlocks that week's
-  limited skin for the fish that caught it (Great Wave, Living Reef, Shipwreck, Sea
-  Glass). The list cycles; add a week and a skin to keep it fresh.
+  limited skin for the fish that caught it (Great Wave, Living Reef, Barnacled, Sea
+  Glass). Weeks 5–8 (2026-11-02): Glowing Garibaldi, Golden Parrotfish, Crystal
+  Lionfish, Glowing Yellowfin Tuna, each bringing one of the four skins round again for
+  another fish plus a boost trail of its own for every fish (Sea Glass Wake, Reef Bloom,
+  Venom Cloud, Sunlit Wake; `Config/Trails` `week`). The list of eight cycles; add a
+  week to keep it fresh.
 - **Weekly leaderboards** (`Config/Leaderboards`, `LeaderboardService`): Rare Catches
   (Silver 0.2, Golden 1, Glowing 5, Crystal 25, Prism 100, Catch of the Week +50), Biggest Haul and
   Boss Damage; this server's live and every server's top 50 (OrderedDataStores per
@@ -1388,7 +1392,7 @@ created in Creator Hub, and a live game hides id-0 items.
 | **Server Frenzy** | product | 99 | ×2 growth for the whole server for 15 min, announced; buying again adds 15 min (up to 2 h ahead) |
 | **Shell Pouch** / **Shell Chest** | product | 49 / 199 | 100 / 600 shells (2 / 12 rolls). Paid random items: hidden where policy restricts them, with ODDS one tap away |
 | Double Haul (ad) | ad reward | — | A watched rewarded video doubles a Haul up to 0.6 kg |
-| **Deep Pass** | product | 399 | This season's paid row of the Tide Pass (below): three skins, a title, three den pieces, far more coral, shells and spins, +20% pass XP. Bought from PASS, not the Shop |
+| **Deep Pass** | product | 399 | This season's paid row of the Tide Pass (below): three skins (every fish's), five boost trails, two titles, three den pieces, far more coral, shells and spins, +20% pass XP. Bought from PASS, not the Shop |
 
 - **Double Haul:** offered on the bank screen after the tutorial for a Haul of at
   least 75% of a full one (`minFull`; one more dive's worth, 3–5 minutes of hunting,
@@ -1442,23 +1446,29 @@ paying players a long goal, and makes Premium worth having, without a wall:
   from the Daily panel (beside CLAIM GIFT), the Shop's Free Perks row and nowhere as a
   wall.
 - **The Tide Pass** (`Config/Pass`, `PassService`, `MenuController.openPass`, PASS on
-  the HUD): seasons of four weeks on the Tide Clock's week numbers (season 1 starts
-  Monday 2026-10-12 00:00 UTC), 30 tiers of 2,000 XP. XP comes from play: banking
-  (2/kg, 20–300 a bank), catches (2 / 25 / 60 / 150 / 300 by rarity), bounties (150,
-  chest 300), boss kills (400), treasure (100), the daily claim (200) and the
-  playtime gifts. A player on for an hour a day makes ~2,200 a day and finishes in
-  about four weeks; past tier 30 every 2,000 XP pays 500 coral (Overtide). Every tier
-  has a free reward; the **Deep Pass** (399 R$, a developer product bought for the
-  season) opens the paid row and earns ×1.2 XP. Rewards stay at Epic or below (the
-  elite skins are RNG, bosses and treasure): season 1 "Riptide" gives the free row
-  Tideglass (Rare, tier 20), the titles Tide Rider (10) and Riptide Veteran (30),
-  spins, wraps, charms, coral and shells; the paid row Riptide (Epic, tier 1, so the
-  Deep Pass pays at once), Undertow (Epic, 15), Abyssal Current (Epic, 30), the
-  titles Riptide and Abyss Walker, the Sea Glass Lantern, Pearl Pedestal and Crystal
-  Shard den pieces, two maps and far more coral, shells and spins. CLAIM ALL takes
-  every unlocked reward; a skin goes to the fish you're swimming as (the per-fish
-  rule). When a season ends, what a player had unlocked is claimed for them and the
-  record starts again; the Deep Pass is per season.
+  the HUD): seasons of four weeks from the launch (`start`; owner, 2026-11-02: "once
+  we go Live we will start season 1 from the beginning"); before it the pass is a
+  preview (season 0, on season 1's tiers) that resets at the launch, claiming what was
+  unlocked. 40 tiers of 1,500 XP (30 of 2,000 until 2026-10-17: the same 60,000 a
+  season). XP comes from play: banking (2/kg eaten, 20–300 a bank), catches (2 / 4 /
+  12 / 60 / 150 / 300, Normal to Prism), bounties (150, chest 300), boss kills (400),
+  treasure (100), the daily claim (200) and the playtime gifts. A player on for an hour
+  a day makes ~2,200 a day and finishes in about four weeks; past tier 40 every 1,500
+  XP pays 500 coral (Overtide). Every tier has a free reward; the **Deep Pass** (399
+  R$, a developer product bought for the season) opens the paid row and earns ×1.2 XP.
+  Rewards stay at Epic or below (the elite skins are RNG, bosses and treasure), and
+  pass skins are every fish's: season 1 "Riptide" gives the free row Tideglass (Rare,
+  tier 26), the trails Bubble Stream (6), Ink Cloud (18) and Glitter (32), the titles
+  Tide Rider (13) and Riptide Veteran (40), a Tattered and a Weathered map, spins,
+  wraps, charms, coral and shells; the paid row Riptide (Epic, tier 1, so the Deep
+  Pass pays at once), Undertow (Epic, 20), Abyssal Current (Epic, 40), the trails Fire
+  Wake (4), Rainbow Wake (11), Frost Wake (16), Storm Wake (27) and Stardust (36), the
+  titles Riptide (13) and Abyss Walker (40), the Sea Glass Lantern, Pearl Pedestal and
+  Crystal Shard den pieces, a Weathered and a Captain's map and far more coral, shells
+  and spins. CLAIM ALL takes every unlocked reward. When a season ends, what a player
+  had unlocked is claimed for them and the record starts again; the Deep Pass is per
+  season. Only season 1 exists so far: season 2 must be written before season 1's four
+  weeks run out, or Riptide comes round again.
 
 ### Daily login streak (owner, 2026-10-09; built)
 

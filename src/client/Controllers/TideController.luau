@@ -37,19 +37,7 @@ local function clockText(seconds: number): string
 	return string.format("%d:%02d", seconds // 60, seconds % 60)
 end
 
-local function banner(tide: TideConfig.Tide)
-	if StartController.isUp() then
-		return
-	end
-	-- A player's own banner (the tutorial's end, a skin unlock) has the spot: wait
-	-- for it, and skip this one if the tide turned again meanwhile
-	local waited = 0
-	while Ui.centreBannerUp() and waited < 8 do
-		waited += task.wait(0.25)
-	end
-	if shown ~= tide.id then
-		return
-	end
+local function showBanner(tide: TideConfig.Tide): (quick: boolean) -> ()
 	Sfx.play("Banner", { volume = 0.5, pitch = if tide.id == "Prism" then 1.25 else 0.9 })
 	local old = gui:FindFirstChild("TideBanner")
 	if old then
@@ -94,15 +82,31 @@ local function banner(tide: TideConfig.Tide)
 	for _, label in labels do
 		Ui.tween(label, 0.5, { TextTransparency = 0, TextStrokeTransparency = 0.55 })
 	end
-	task.delay(4, function()
+	return function(quick: boolean)
 		if holder.Parent == nil then
 			return
 		end
+		local fade = if quick then 0.2 else 0.7
 		for _, label in labels do
-			Ui.tween(label, 0.7, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			Ui.tween(label, fade, { TextTransparency = 1, TextStrokeTransparency = 1 })
 		end
-		task.wait(0.75)
-		holder:Destroy()
+		task.delay(fade + 0.05, function()
+			holder:Destroy()
+		end)
+	end
+end
+
+-- On the stage like the other centre banners (Ui.stageBanner): a player's own banner
+-- (a catch, the tutorial, the bank) goes first, and it's dropped if the tide turned
+-- again meanwhile (it waited at most 8 s before, then showed over them)
+local function banner(tide: TideConfig.Tide)
+	if StartController.isUp() then
+		return
+	end
+	Ui.stageBanner("tide", 4, 0.75, function()
+		return showBanner(tide)
+	end, function()
+		return shown == tide.id and not StartController.isUp()
 	end)
 end
 

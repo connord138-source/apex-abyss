@@ -47,6 +47,7 @@ export type Deps = {
 	openLog: () -> (),
 	openOdds: () -> (),
 	openIndex: (tab: string?) -> (),
+	openTitles: () -> (),
 }
 
 export type Built = { render: () -> (), cleanup: () -> () }
@@ -735,6 +736,18 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 	local stateChip = Ui.chip(stage, "State", "", Ui.color.accent, 22)
 	stateChip.Position = UDim2.fromOffset(10, 10)
 	stateChip.ZIndex = 5
+	-- The title over your name (MenuController.openTitles)
+	local titles = Ui.button(
+		stage,
+		"Titles",
+		"TITLES",
+		UDim2.fromOffset(84, if Ui.isTouch() then 32 else 26),
+		UDim2.new(1, -94, 0, 10),
+		"secondary"
+	)
+	titles.TextSize = 12
+	titles.ZIndex = 6
+	table.insert(connections, titles.Activated:Connect(deps.openTitles))
 	local fishLabel = Ui.label(
 		stage,
 		"Fish",
@@ -1017,6 +1030,9 @@ function Wardrobe.build(window: Ui.Window, deps: Deps): Built
 		if item.elsewhere then
 			return "ON ANOTHER FISH"
 		elseif item.kind == "trail" then
+			if item.record.week then
+				return "CATCH OF THE WEEK"
+			end
 			return pass("trail")
 		elseif item.kind == "shade" then
 			if r.pass then

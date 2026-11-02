@@ -21,7 +21,7 @@
 -- TANK_NEAR, every fourth to TANK_FAR and every eighth past it; past the window only
 -- what the line of sight through the glass reaches moves, staggered: the school every
 -- other frame, the mantas every third, the far humpback and the jellies (each one
--- part, its strands welded on) every fourth.
+-- moved part, the rest welded on) every fourth.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -239,49 +239,100 @@ local JELLY = {
 	Color3.fromRGB(110, 170, 255),
 	Color3.fromRGB(90, 220, 255),
 }
+local JELLY_TRAIL = 2.6 -- a tentacle's longest, in bell widths
+-- The sand outside lies this far under the window's middle (DenCarve WINDOW_Y +
+-- SEA_FLOOR): a jelly's tentacles stay over it
+local SEA_DOWN = 35
 
--- A jelly: its strands welded under its bell, so it moves as one part (PC 2026-11-03:
--- six parts a jelly were most of what moved past the window)
-local function jelly(parent: Instance, size: number, color: Color3): { BasePart }
-	local parts: { BasePart } = {}
-	local bell = Instance.new("Part")
-	bell.Name = "Bell"
-	bell.Anchored = true
-	bell.CanCollide = false
-	bell.CanQuery = false
-	bell.CanTouch = false
-	bell.CastShadow = false
-	bell.Shape = Enum.PartType.Ball
-	bell.Size = Vector3.new(size, size * 0.7, size)
-	bell.Color = color
-	bell.Material = Enum.Material.Neon
-	bell.Transparency = 0.45
-	bell.CFrame = CFrame.identity
-	bell.Parent = parent
-	table.insert(parts, bell)
-	for i = 1, 5 do
-		local a = i / 5 * TAU
-		local strand = Instance.new("Part")
-		strand.Name = "Tentacle"
-		strand.Anchored = false
-		strand.Massless = true
-		strand.CanCollide = false
-		strand.CanQuery = false
-		strand.CanTouch = false
-		strand.CastShadow = false
-		strand.Size = Vector3.new(0.12, size * 1.6, 0.12)
-		strand.Color = color
-		strand.Material = Enum.Material.Neon
-		strand.Transparency = 0.35
-		strand.CFrame = CFrame.new(math.cos(a) * size * 0.3, -size * 0.9, math.sin(a) * size * 0.3)
-		strand.Parent = parent
+-- A jelly in the Open Blue's look (BlueDress `jellyfish`): a stepped bell glowing
+-- through, a bright rim, long tentacles and oral arms, all welded to an invisible core,
+-- so it moves as one part (PC 2026-11-03: six parts a jelly were most of what moved
+-- past the window). Big and nearly solid (owner, 2026-11-02: at 1.6-3.4 studs and half
+-- see-through they were lost in the haze).
+local function jelly(parent: Instance, size: number, color: Color3, rng: Random): { BasePart }
+	local core = Instance.new("Part")
+	core.Name = "Core"
+	core.Anchored = true
+	core.CanCollide = false
+	core.CanQuery = false
+	core.CanTouch = false
+	core.CastShadow = false
+	core.Transparency = 1
+	core.Size = Vector3.one * 0.2
+	core.CFrame = CFrame.identity
+	core.Parent = parent
+	local function piece(
+		name: string,
+		shape: Enum.PartType,
+		box: Vector3,
+		at: CFrame,
+		tint: Color3,
+		clear: number
+	)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Shape = shape
+		p.Anchored = false
+		p.Massless = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.Neon
+		p.Color = tint
+		p.Transparency = clear
+		p.Size = box
+		p.CFrame = at
+		p.Parent = parent
 		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = bell
-		weld.Part1 = strand
-		weld.Parent = strand
-		table.insert(parts, strand)
+		weld.Part0 = core
+		weld.Part1 = p
+		weld.Parent = p
 	end
-	return parts
+	local upright = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder's axis is its X)
+	local function disc(name: string, diameter: number, thick: number, y: number, tint: Color3, clear: number)
+		piece(
+			name,
+			Enum.PartType.Cylinder,
+			Vector3.new(thick, diameter, diameter),
+			CFrame.new(0, y, 0) * upright,
+			tint,
+			clear
+		)
+	end
+	local glow = color:Lerp(Color3.new(0.8, 0.9, 1), 0.25)
+	disc("Bell", size, size * 0.22, 0, color, 0.3)
+	disc("BellTop", size * 0.72, size * 0.2, size * 0.2, color, 0.25)
+	disc("BellCap", size * 0.4, size * 0.14, size * 0.36, color, 0.18)
+	disc("Rim", size * 1.04, size * 0.07, -size * 0.1, glow, 0.05)
+	local thick = math.max(0.25, size * 0.04)
+	for k = 1, 8 do
+		local a = k / 8 * TAU
+		local long = size * rng:NextNumber(1.8, JELLY_TRAIL)
+		piece(
+			"Tentacle",
+			Enum.PartType.Block,
+			Vector3.new(thick, long, thick),
+			CFrame.new(math.cos(a) * size * 0.42, -size * 0.12 - long / 2, math.sin(a) * size * 0.42)
+				* CFrame.Angles(rng:NextNumber(-0.12, 0.12), 0, rng:NextNumber(-0.12, 0.12)),
+			glow,
+			0.15
+		)
+	end
+	for k = 1, 3 do
+		local a = k / 3 * TAU + 0.5
+		local long = size * rng:NextNumber(1.1, 1.7)
+		piece(
+			"OralArm",
+			Enum.PartType.Block,
+			Vector3.new(size * 0.14, long, size * 0.08),
+			CFrame.new(math.cos(a) * size * 0.1, -size * 0.12 - long / 2, math.sin(a) * size * 0.1)
+				* CFrame.Angles(0, a, 0.15),
+			color,
+			0.25
+		)
+	end
+	return { core }
 end
 
 local function buildView(window: BasePart): View?
@@ -354,17 +405,18 @@ local function buildView(window: BasePart): View?
 		local holder = Instance.new("Model")
 		holder.Name = "Jelly"
 		holder.Parent = model
-		local size = rng:NextNumber(1.6, 3.4)
-		local parts = jelly(holder, size, JELLY[(i % #JELLY) + 1])
-		local ahead = rng:NextNumber(22, 110)
+		local size = rng:NextNumber(4.5, 8.5)
+		local parts = jelly(holder, size, JELLY[(i % #JELLY) + 1], rng)
+		local ahead = rng:NextNumber(28, 110)
 		local side = rng:NextNumber(-60, 60)
-		local rise = rng:NextNumber(-30, 34)
+		-- (its bob is 7 studs, its tentacles up to JELLY_TRAIL bells under it)
+		local rise = rng:NextNumber(-SEA_DOWN + 8 + size * (JELLY_TRAIL + 0.15), 34)
 		local phase = rng:NextNumber(0, TAU)
 		table.insert(drifters, {
 			parts = parts,
 			jelly = true,
 			phase = phase,
-			reach = size * 2,
+			reach = size * (JELLY_TRAIL + 0.2),
 			every = 4,
 			slot = i % 4,
 			path = function(t: number): CFrame

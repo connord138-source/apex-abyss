@@ -2,12 +2,19 @@
 shop art built from the game itself (the Deep Pass icon: compose.py `pass`).
 
     python3.11 tools/marketing/render_fish.py -- <fish.glb> <skins_dir> <Shade> <out.png> [size] [view]
+    blender -b -P tools/marketing/render_fish.py -- assets/fbx/species/Nibbler.fbx - - <out.png> [size] [view]
 
 The fish is squared up the way tools/shades/render_shades.py does it (longest axis
 along Y, head toward -Y), then shot in perspective three-quarter from the front and a
 little below with a key, a fill and a cyan rim light. The skin's colour, roughness
 (its finish) and glow maps are wired the way they ship; its relief map is not used.
 `view` is x,y,z (the camera's direction from the fish, before normalising).
+
+The model can be a GLB or a rigged FBX (assets/fbx/species/<Fish>.fbx on the PC: its
+armature is dropped and the mesh rendered in its rest pose). A skins folder or shade
+of `-` keeps the model's own colour texture (the PC has no assets/shades/skins; the
+product icons, tools/marketing/product_icons.py, render the fish this way). No normal
+map is ever wired: any the model carries is unlinked and removed.
 """
 
 import json
@@ -20,13 +27,26 @@ import numpy as np
 from mathutils import Matrix, Vector
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
-SRC, SKINS, SHADE, OUT = argv[0], pathlib.Path(argv[1]).resolve(), argv[2], pathlib.Path(argv[3]).resolve()
+SRC, SKINS, SHADE, OUT = argv[0], argv[1], argv[2], pathlib.Path(argv[3]).resolve()
+OWN = SKINS == "-" or SHADE == "-"  # the model's own texture, no skin
+SKINS = None if OWN else pathlib.Path(SKINS).resolve()
 SIZE = int(argv[4]) if len(argv) > 4 else 1400
 VIEW = Vector(tuple(float(v) for v in argv[5].split(","))) if len(argv) > 5 else Vector((1.0, -1.1, 0.12))
 NAME = pathlib.Path(SRC).stem
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.gltf(filepath=SRC)
+if SRC.lower().endswith(".fbx"):
+    try:
+        bpy.ops.import_scene.fbx(filepath=SRC)
+    except AttributeError:  # a build without the Python FBX add-on
+        bpy.ops.wm.fbx_import(filepath=SRC)
+    # The rest pose: the skinning is dropped before the mesh is moved
+    for o in bpy.context.scene.objects:
+        if o.type == "MESH":
+            for m in [m for m in o.modifiers if m.type == "ARMATURE"]:
+                o.modifiers.remove(m)
+else:
+    bpy.ops.import_scene.gltf(filepath=SRC)
 meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 bpy.ops.object.select_all(action="DESELECT")
 for o in meshes:
@@ -36,6 +56,8 @@ bpy.ops.object.parent_clear(type="CLEAR_KEEP_TRANSFORM")
 if len(meshes) > 1:
     bpy.ops.object.join()
 body = bpy.context.view_layer.objects.active
+for o in [o for o in bpy.context.scene.objects if o is not body]:
+    bpy.data.objects.remove(o, do_unlink=True)  # armatures and empties
 body.data.transform(body.matrix_world)
 body.matrix_world = Matrix.Identity(4)
 co = np.array([v.co[:] for v in body.data.vertices])
@@ -67,10 +89,19 @@ tex = bsdf.inputs["Base Color"].links[0].from_node
 for name in ("Metallic", "Roughness", "Emission Color", "Normal"):
     for link in list(bsdf.inputs[name].links):
         tree.links.remove(link)
+# Nothing left feeding the shader (the normal map and its image) is kept at all
+for node in [n for n in tree.nodes if n.type == "NORMAL_MAP"]:
+    tree.nodes.remove(node)
+for node in [n for n in tree.nodes if n.type == "TEX_IMAGE" and n is not tex and not any(o.links for o in n.outputs)]:
+    tree.nodes.remove(node)
 bsdf.inputs["Metallic"].default_value = 0.0
-folder = SKINS / NAME
-spec = json.loads((folder / "skins.json").read_text()).get(SHADE, {})
-tex.image = bpy.data.images.load(str(folder / f"{SHADE}.png"))
+spec = {}
+if OWN:
+    bsdf.inputs["Roughness"].default_value = 0.55
+else:
+    folder = SKINS / NAME
+    spec = json.loads((folder / "skins.json").read_text()).get(SHADE, {})
+    tex.image = bpy.data.images.load(str(folder / f"{SHADE}.png"))
 
 
 def side_map(path, colour=False):
@@ -83,12 +114,13 @@ def side_map(path, colour=False):
     return node
 
 
-rough = folder / f"finish_{spec.get('finish', 'satin')}.png"
-if rough.exists():
-    tree.links.new(side_map(rough).outputs["Color"], bsdf.inputs["Roughness"])
-if spec.get("emit"):
-    tree.links.new(side_map(folder / f"{SHADE}_emit.png", True).outputs["Color"], bsdf.inputs["Emission Color"])
-    bsdf.inputs["Emission Strength"].default_value = 2.6
+if not OWN:
+    rough = folder / f"finish_{spec.get('finish', 'satin')}.png"
+    if rough.exists():
+        tree.links.new(side_map(rough).outputs["Color"], bsdf.inputs["Roughness"])
+    if spec.get("emit"):
+        tree.links.new(side_map(folder / f"{SHADE}_emit.png", True).outputs["Color"], bsdf.inputs["Emission Color"])
+        bsdf.inputs["Emission Strength"].default_value = 2.6
 
 scene = bpy.context.scene
 scene.render.engine = "CYCLES"
@@ -120,6 +152,8 @@ light("Rim", 4.0, (-60, 0, 200), (0.45, 0.95, 1.0))  # cyan from behind
 
 cam_data = bpy.data.cameras.new("Cam")
 cam_data.lens = 70
+cam_data.clip_start = length * 0.01  # an FBX can come in at any scale
+cam_data.clip_end = length * 20
 cam = bpy.data.objects.new("Cam", cam_data)
 scene.collection.objects.link(cam)
 scene.camera = cam
@@ -129,4 +163,4 @@ cam.rotation_euler = (mid - cam.location).to_track_quat("-Z", "Y").to_euler()
 OUT.parent.mkdir(parents=True, exist_ok=True)
 scene.render.filepath = str(OUT)
 bpy.ops.render.render(write_still=True)
-print(f"[render_fish] {NAME} in {SHADE} -> {OUT}")
+print(f"[render_fish] {NAME} in {'its own texture' if OWN else SHADE} -> {OUT}")

@@ -1,7 +1,7 @@
 --!strict
 -- The Tide Pass (PassService; owner, 2026-10-12: a monetizable asset that pays on
--- playtime): a season pass of `weeks` weeks on the Tide Clock's week numbers
--- (Shared/Tides.week), `tiers` tiers of `xpPerTier` XP each. Playing earns the XP
+-- playtime): a season pass of `weeks` weeks from `start` (the launch), `tiers` tiers
+-- of `xpPerTier` XP each. Playing earns the XP
 -- (`xp`: banking, catches, bounties, bosses, treasure, the daily streak and the
 -- playtime gifts), and every tier has a free reward; the Deep Pass (a developer
 -- product, Config/Monetization `DeepPass`, bought for the season) opens the paid
@@ -80,7 +80,13 @@ local riptide: Season = {
 return {
 	name = "Tide Pass",
 	product = "DeepPass", -- Config/Monetization product key
-	start = 1791763200, -- Monday 2026-10-12 00:00 UTC: season 1's first week
+	-- When season 1 begins: the launch (owner, 2026-11-02: "Nobody has seen season one
+	-- yet so once we go Live we will start season 1 from the beginning"). Seasons run
+	-- `weeks` weeks from this moment, not from a Monday. Before it the pass is a preview
+	-- (season 0, Riptide's tiers, for testing), and at this moment every record is
+	-- settled and starts again at season 1. Set it to the launch time in the launch
+	-- publish. (Monday 2026-10-12 until 2026-11-02.)
+	start = 1794787200, -- Monday 2026-11-16 00:00 UTC: a stand-in until the launch is set
 	weeks = 4,
 	xpPerTier = 1500, -- (2,000 over 30 tiers until 2026-10-17: the same 60,000 for the season)
 	paidXp = 1.2, -- Deep Pass holders earn this much more XP

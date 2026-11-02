@@ -65,6 +65,21 @@ function EconomyService.today(): number
 end
 
 function EconomyService.start()
+	-- The player's sound settings (the client mutes itself from the state)
+	Net.onRequest("Setting", function(player: Player, name: any, on: any)
+		local data = DataService.get(player)
+		if data == nil or typeof(on) ~= "boolean" then
+			return
+		end
+		if name == "music" then
+			data.settings.music = on
+		elseif name == "sound" then
+			data.settings.sound = on
+		else
+			return
+		end
+		DataService.markDirty(player)
+	end)
 	-- Shell packs (Robux): shells buy rolls, so they're paid random items (hidden
 	-- where restricted, odds shown first; MonetizationService)
 	local Tuning = Config.Monetization.tuning
@@ -97,6 +112,7 @@ function EconomyService.start()
 		state.trophies = data.trophies
 		state.titles = data.titles
 		state.title = data.title
+		state.settings = data.settings
 		local trades = data.shellTrades
 		local used = if trades.day == EconomyService.today() then trades.count else 0
 		state.shellTradesLeft = Config.Shop.shellTrade.perDay - used

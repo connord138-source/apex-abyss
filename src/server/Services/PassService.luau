@@ -1,7 +1,7 @@
 --!strict
 -- The Tide Pass (owner, 2026-10-12: a monetizable asset that pays on playtime;
--- Config/Pass). Seasons run on the Tide Clock's week numbers (Shared/Tides.week),
--- `weeks` each. Play earns XP (banking, catches, bounties, bosses, treasure, the
+-- Config/Pass). Seasons run `weeks` weeks each from `start` (the launch; before it a
+-- preview, season 0). Play earns XP (banking, catches, bounties, bosses, treasure, the
 -- daily streak and the playtime gifts, through Events), every `xpPerTier` XP is a
 -- tier, and each tier has a free reward and a Deep Pass reward. The Deep Pass is a
 -- developer product (Config/Monetization `DeepPass`) bought for the season from the
@@ -12,7 +12,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Events = require(script.Parent.Parent.Events)
 local Guard = require(script.Parent.Parent.Guard)
@@ -28,15 +27,21 @@ local Pass = Config.Pass
 
 local PassService = {}
 
--- Which season a Unix time is in (1 = the first), and when it ends
+local SEASON_SECONDS = Pass.weeks * 7 * 86400
+
+-- Which season a Unix time is in (1 = the first, 0 = the preview before the launch),
+-- and when it ends
 function PassService.seasonAt(unix: number): (number, number)
-	local startWeek = Tides.week(Pass.start)
-	local index = math.max(0, (Tides.week(unix) - startWeek) // Pass.weeks) + 1
-	return index, Tides.weekStart(startWeek + index * Pass.weeks)
+	if unix < Pass.start then
+		return 0, Pass.start
+	end
+	local index = (unix - Pass.start) // SEASON_SECONDS + 1
+	return index, Pass.start + index * SEASON_SECONDS
 end
 
+-- (the preview uses season 1's tiers)
 function PassService.seasonDef(index: number): typeof(Pass.seasons[1])
-	return Pass.seasons[(index - 1) % #Pass.seasons + 1]
+	return Pass.seasons[(math.max(index, 1) - 1) % #Pass.seasons + 1]
 end
 
 -- The tier `xp` reaches (0 = none yet)
@@ -102,15 +107,16 @@ local function settle(player: Player, data: PlayerData): boolean
 	if data.pass.season == current then
 		return false
 	end
-	if data.pass.season > 0 then
-		local got = claimAll(player, data)
-		if #got > 0 then
-			Net.notify(
-				player,
-				`Season {data.pass.season} of the Tide Pass ended: {table.concat(got, ", ")} were claimed for you`,
-				"good"
-			)
-		end
+	-- (a record still on the preview, or on the clock before the launch moved it, is
+	-- settled the same way)
+	local got = claimAll(player, data)
+	if #got > 0 then
+		local ended = if data.pass.season > 0 then `Season {data.pass.season}` else "The preview"
+		Net.notify(
+			player,
+			`{ended} of the Tide Pass ended: {table.concat(got, ", ")} were claimed for you`,
+			"good"
+		)
 	end
 	data.pass = { season = current, xp = 0, claimedFree = 0, claimedPaid = 0, paid = false }
 	return true

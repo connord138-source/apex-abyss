@@ -3230,6 +3230,54 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - Left as is: the swap that kept fitting things in the bigger room (DE4: the brief
     was wrong); Studio 0.745's "forbidden access" on some SurfaceAppearances (not the
     game's code; check a live server); the pack's overlapping tags.
+- **The pre-launch round (owner, 2026-11-02: "make the jellies bigger and less
+  see-through", then of the launch list "Nobody has seen season one yet so once we go
+  Live we will start season 1 from the beginning. lets go with your recs as well"):**
+  - **Tide Pass from the launch:** `Config/Pass` `start` is the exact moment season 1
+    begins (a stand-in, Monday 2026-11-16 00:00 UTC, until the launch is set; **set it
+    in the launch publish**), and seasons run `weeks` × 7 days from it, not from a
+    Monday (`PassService.seasonAt`). Before it the pass is a preview, season 0, on
+    season 1's tiers (PREVIEW · RIPTIDE, "season 1 starts in …, and this resets
+    then"); at `start` every record is settled (what was unlocked is claimed) and starts
+    at season 1. Old records on the old clock settle into the preview the same way.
+    Only season 1 exists: write season 2 before its four weeks run out.
+  - **Catch of the Week, eight weeks:** weeks 5–8 are Glowing Garibaldi, Golden
+    Parrotfish, Crystal Lionfish and Glowing Yellowfin Tuna, each with one of the four
+    week skins again (for another fish) and a boost trail of its own for every fish
+    (`Config/Catch` `weekly` `trail`; `Config/Trails` `week`: Sea Glass Wake, Reef
+    Bloom, Venom Cloud, Sunlit Wake, new colourways of existing styles, so no textures);
+    CatchService grants the trail itself (RewardsService needs HuntService, which needs
+    CatchService). The Wardrobe tags them CATCH OF THE WEEK; `passSource` names the week.
+  - **Titles:** `Equip` kind "title" (WardrobeService; "" shows the name alone) and
+    `MenuController.openTitles` (the Wardrobe stage's TITLES button): yours to wear, then
+    every other title with how it's got (`titleSources`: pass rows, bosses, the Apex,
+    the weekly boards, the Catch Log). Before, only the first title earned was ever worn.
+  - **Sound settings:** `data.settings` `{ music, sound }`, the `Setting` request
+    (EconomyService), the Shop's SETTINGS rows; MenuController applies them from the state
+    (`MusicController.setMuted`, `Sfx.setMuted`: every sound effect now plays through
+    the `Effects` SoundGroup).
+  - **Centre banners on the stage:** the biome title (dropped if you've left the biome
+    by its turn), the tide (dropped if the tide turned again) and WELCOME BACK go
+    through `Ui.stageBanner` like the catch and tutorial banners.
+  - **ForageController** looks only at spots within `HOP_DISTANCE` of the camera or the
+    suction's reach of the mouth (a 48-stud grid), plus sets of the eaten (waiting to
+    come back), the ones being sucked in and the ones drawn off their spot; it built a
+    CFrame for all ~1,700 every frame (32–48 ms/s everywhere, dens too). Crabs still go
+    through `stepCrabs` as before.
+  - **Speed checks** can pull a fish back to its last fair spot (`SpeedService`
+    `ENFORCE`, off): turn it on after a full-server playtest's Output has no
+    `[SpeedCheck]` lines from fair play.
+  - **Old normal maps:** `tools/studio/clear_normal_maps.luau` (command bar, then save)
+    takes the NormalMap off every SurfaceAppearance in the place; nothing uploaded or
+    deleted. Archiving the old images is Connor's, in Creator Hub.
+  - **Store page:** a new description in `docs/STORE_PAGE.md` (players aren't
+    swallowed; rare catches, schooling, the Apex, the den's aquarium and hearts,
+    trails).
+  - **Observatory jellies** (AquariumController): 4.5–8.5 studs (were 1.6–3.4), the
+    Open Blue's stepped-bell look (`BlueDress` `jellyfish`: three discs, a bright rim,
+    eight tentacles, three oral arms) at 0.05–0.3 transparency (the bell was 0.45, the
+    strands 0.35); each is still one moved part (an invisible core, the rest welded on),
+    kept high enough that its tentacles stay over the sand (`SEA_DOWN` 35).
 
 ## Tech
 

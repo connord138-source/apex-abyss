@@ -123,6 +123,12 @@ check(spawn.cap >= 2, "the cap leaves room")
 check(CatchConfig.weekly.rate > 0 and CatchConfig.weekly.every > 0, "the week's stream")
 for _, week in CatchConfig.weekly.list do
 	check(Config.Prey.byId[week.prey] ~= nil and CatchConfig.byId[week.rarity] ~= nil, `week {week.prey}`)
+	check(
+		Config.Shades.byId[week.skin] ~= nil and Config.Shades.byId[week.skin].week ~= nil,
+		`week {week.prey}'s skin`
+	)
+	local trail = week.trail and Config.Trails.byId[week.trail]
+	check(week.trail == nil or (trail and trail.week == true), `week {week.prey}'s trail`)
 end
 
 if failures == 0 then

@@ -35,6 +35,7 @@ local Sfx = require(script.Parent.Parent.Sfx)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
 local Wardrobe = require(script.Parent.Parent.Wardrobe)
+local MusicController = require(script.Parent.MusicController)
 local StartController = require(script.Parent.StartController)
 
 local Shop = Config.Shop
@@ -1938,9 +1939,20 @@ end
 
 -- Where a reward (a skin or a boost trail) sits on this season's Tide Pass
 local function passSource(field: string, id: string): string?
+	if field == "trail" then
+		local trail = Config.Trails.byId[id]
+		if trail and trail.week then
+			for _, week in Config.Catch.weekly.list do
+				if week.trail == id then
+					local prey = Config.Prey.byId[week.prey]
+					return `The Catch of the Week: a {week.rarity} {if prey then prey.name else week.prey}`
+				end
+			end
+		end
+	end
 	local pass = state().pass
 	local season = if typeof(pass) == "table" and typeof(pass.season) == "number" then pass.season else 1
-	local def = Config.Pass.seasons[(season - 1) % #Config.Pass.seasons + 1]
+	local def = Config.Pass.seasons[(math.max(season, 1) - 1) % #Config.Pass.seasons + 1]
 	for i, entry in def.tiers do
 		if entry.free and (entry.free :: any)[field] == id then
 			return `Tide Pass free row, tier {i}`
@@ -2004,6 +2016,9 @@ function MenuController.openWardrobe()
 			end,
 			openIndex = function(tab: string?)
 				MenuController.openIndex(tab)
+			end,
+			openTitles = function()
+				MenuController.openTitles()
 			end,
 		})
 		return { window = window, render = built.render, cleanup = built.cleanup }
@@ -2391,6 +2406,124 @@ local function heading(list: ScrollingFrame, order: number, text: string)
 	label.TextYAlignment = Enum.TextYAlignment.Bottom
 end
 
+-- Every title the game gives, with how it's got (the TITLES window): the Tide Pass's
+-- rows, the bosses, the Apex bounty, the weekly boards and the Catch Log
+local function titleSources(): { { title: string, how: string } }
+	local sources: { { title: string, how: string } } = {}
+	local seen: { [string]: boolean } = {}
+	local function add(title: string?, how: string)
+		if title and not seen[title] then
+			seen[title] = true
+			table.insert(sources, { title = title, how = how })
+		end
+	end
+	for _, season in Config.Pass.seasons do
+		for i, entry in season.tiers do
+			add(entry.free and entry.free.title, `Tide Pass, {season.name}: free row, tier {i}`)
+			add(entry.paid and entry.paid.title, `Tide Pass, {season.name}: Deep Pass row, tier {i}`)
+		end
+	end
+	for _, boss in Config.Bosses.list do
+		add(boss.rewards.title, `Help take down the {boss.name}`)
+	end
+	add(Config.Pvp.apex.title, "Eat the Apex (the gold ★) and claim its bounty")
+	for _, board in Config.Leaderboards.boards do
+		local ranks = board.ranks or Config.Leaderboards.ranks
+		for i, title in board.titles do
+			local rank = ranks[i] or 100
+			add(title, `{if rank == 1 then "First" else `Top {rank}`} on the weekly {board.name} board`)
+		end
+	end
+	add(Config.Catch.logTitle, "Catch every species at every rarity in the Catch Log")
+	return sources
+end
+
+-- The titles window (owner's go, 2026-11-02: titles were earned but only the first
+-- was ever worn): the one over your fish's name, the others you have, and the rest
+-- with how to get them. Opened from the Wardrobe's TITLES.
+function MenuController.openTitles()
+	open("Titles", "Worn over your fish's name for everyone to see", Vector2.new(760, 520), function(window)
+		local list = Ui.list(window.content, 6)
+		return {
+			window = window,
+			render = function()
+				local s = state()
+				local owned: { [string]: boolean } = if typeof(s.titles) == "table" then s.titles else {}
+				local worn = if typeof(s.title) == "string" then s.title else ""
+				rerender(list, function()
+					local order = 0
+					local function wearRow(title: string, how: string)
+						order += 1
+						local wearing = worn == title
+						local _, button = row(
+							list,
+							order,
+							`Title{order}`,
+							if title == "" then "No title" else `"{title}"`,
+							how,
+							nil,
+							if wearing then "WORN" else "WEAR",
+							if wearing then "disabled" else "primary",
+							if wearing then Ui.color.haul else nil
+						)
+						if button and not wearing then
+							button.Activated:Connect(function()
+								ClientState.request("Equip", "title", title)
+							end)
+						end
+					end
+					local sources = titleSources()
+					local count = 0
+					heading(list, 0, "YOURS")
+					for _, source in sources do
+						if owned[source.title] then
+							count += 1
+							wearRow(source.title, source.how)
+						end
+					end
+					-- (any other title, an old one or an admin's)
+					local others: { string } = {}
+					for title in owned do
+						local known = false
+						for _, source in sources do
+							known = known or source.title == title
+						end
+						if not known then
+							table.insert(others, title)
+						end
+					end
+					table.sort(others)
+					for _, title in others do
+						count += 1
+						wearRow(title, "Earned")
+					end
+					wearRow("", "Show only your name")
+					order += 1
+					heading(list, order, "STILL TO EARN")
+					for _, source in sources do
+						if not owned[source.title] then
+							order += 1
+							row(
+								list,
+								order,
+								`Locked{order}`,
+								`"{source.title}"`,
+								source.how,
+								"LOCKED",
+								nil,
+								nil,
+								nil
+							)
+						end
+					end
+					window.subtitle.Text =
+						`Worn over your fish's name for everyone to see · {count} of {#sources + #others} earned`
+				end)
+			end,
+		}
+	end)
+end
+
 -- The Shop (SHOP on the HUD, or the View button on a controller): Robux boosts and
 -- passes, the daily reward and the free perks. Roblox's own prompts do the buying;
 -- the server grants (MonetizationService). Shell packs are paid random items (they
@@ -2626,6 +2759,41 @@ function MenuController.openStore()
 								nil,
 								Ui.color.safe
 							)
+						end
+						-- Music and sound effects, saved with the player (EconomyService)
+						heading(list, next(), "SETTINGS")
+						local settings = if typeof(s.settings) == "table" then s.settings else {}
+						for _, entry in
+							{
+								{
+									id = "music",
+									name = "Music",
+									blurb = "The music for each place and the bosses",
+								},
+								{
+									id = "sound",
+									name = "Sound effects",
+									blurb = "Bites, banking, rolls, the sea round you",
+								},
+							}
+						do
+							local on = settings[entry.id] ~= false
+							local _, toggle = row(
+								list,
+								next(),
+								`Setting{entry.id}`,
+								entry.name,
+								entry.blurb,
+								if on then "ON" else "OFF",
+								if on then "TURN OFF" else "TURN ON",
+								"secondary",
+								if on then Ui.color.safe else Ui.color.muted
+							)
+							if toggle then
+								toggle.Activated:Connect(function()
+									ClientState.request("Setting", entry.id, not on)
+								end)
+							end
 						end
 					end)
 				end,
@@ -4062,7 +4230,9 @@ function MenuController.openPass()
 				if typeof(pass) ~= "table" then
 					return
 				end
-				local def = Pass.seasons[((pass.season or 1) - 1) % #Pass.seasons + 1]
+				-- (season 0 is the preview before the launch, on season 1's tiers)
+				local preview = pass.season == 0
+				local def = Pass.seasons[(math.max(pass.season or 1, 1) - 1) % #Pass.seasons + 1]
 				local tier = pass.tier or 0
 				local tiers = pass.tiers or #def.tiers
 				local per = pass.per or Pass.xpPerTier
@@ -4071,9 +4241,14 @@ function MenuController.openPass()
 				local waiting = pass.waiting or 0
 				local paid = pass.paid == true
 				local left = (pass.endsAt or 0) - workspace:GetServerTimeNow()
-				seasonLabel.Text = `SEASON {pass.season or 1} · {string.upper(def.name)}`
+				seasonLabel.Text = if preview
+					then `PREVIEW · {string.upper(def.name)}`
+					else `SEASON {pass.season or 1} · {string.upper(def.name)}`
 				window.subtitle.Text = if os.clock() < claimedUntil
 					then claimedText
+					elseif
+						preview
+					then `Preview: season 1 starts in {Format.duration(left)}, and this resets then`
 					elseif Input.isTouch() then `Skins work on every fish · ends in {Format.duration(
 						left
 					)}`
@@ -4719,6 +4894,7 @@ local function weeklyRows(list: ScrollingFrame)
 		local rarity = Config.Catch.byId[featured.rarity]
 		local prey = Config.Prey.byId[featured.prey]
 		local skin = Config.Shades.byId[featured.skin]
+		local trail = if featured.trail then Config.Trails.byId[featured.trail] else nil
 		heading(list, 1, `CATCH OF THE WEEK · ends in {longClock(endsAt - unix)}`)
 		tallRow(
 			list,
@@ -4727,9 +4903,9 @@ local function weeklyRows(list: ScrollingFrame)
 			`{string.upper(rarity.name)} {string.upper(prey.name)}`,
 			`It swims {rarity.name} far more often all week: hunting where {prey.name}s swim, about one every {Config.Catch.weekly.every} min. The first one you catch pays {Ui.number(
 				featured.coral
-			)} coral, {featured.shells} shells, {Config.Wheel.weekly} wheel spins and the {if skin
-				then skin.name
-				else featured.skin} skin for the fish you catch it with.`,
+			)} coral, {featured.shells} shells, {Config.Wheel.weekly} wheel spins{if trail
+				then `, the {trail.name} boost trail for every fish`
+				else ""} and the {if skin then skin.name else featured.skin} skin for the fish you catch it with.`,
 			if s.weeklyFeatured then "✓ CAUGHT" else "NOT YET",
 			nil,
 			nil,
@@ -5129,7 +5305,21 @@ function MenuController.start()
 		openNearShop()
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.E, Enum.KeyCode.ButtonY)
+	-- The saved sound settings (the Shop's SETTINGS)
+	local mutedMusic, mutedSound = false, false
 	ClientState.changed:connect(function()
+		local settings = state().settings
+		if typeof(settings) == "table" then
+			local music, sound = settings.music == false, settings.sound == false
+			if music ~= mutedMusic then
+				mutedMusic = music
+				MusicController.setMuted(music)
+			end
+			if sound ~= mutedSound then
+				mutedSound = sound
+				Sfx.setMuted(sound)
+			end
+		end
 		if current then
 			current.render()
 		end

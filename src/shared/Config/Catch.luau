@@ -159,15 +159,50 @@ export type Weekly = {
 	prey: string, -- Config/Prey id
 	rarity: string,
 	skin: string, -- the week's limited skin (Config/Shades id, `week` set)
+	trail: string?, -- and a boost trail for every fish (Config/Trails id, `week` set)
 	coral: number,
 	shells: number,
 }
 
+-- (weeks 5–8 since 2026-11-02, so the list turns every eight weeks: new prey in every
+-- band, the four skins again for another fish, and a trail of their own)
 local weekly: { Weekly } = {
 	{ prey = "Grouper", rarity = "Crystal", skin = "WeekWave", coral = 5000, shells = 100 },
 	{ prey = "Snapper", rarity = "Glowing", skin = "WeekReef", coral = 3000, shells = 75 },
 	{ prey = "Barracuda", rarity = "Golden", skin = "WeekWreck", coral = 3000, shells = 75 },
 	{ prey = "Wrasse", rarity = "Crystal", skin = "WeekSeaGlass", coral = 4000, shells = 100 },
+	{
+		prey = "Garibaldi",
+		rarity = "Glowing",
+		skin = "WeekSeaGlass",
+		trail = "SeaGlass",
+		coral = 3000,
+		shells = 75,
+	},
+	{
+		prey = "Parrotfish",
+		rarity = "Golden",
+		skin = "WeekReef",
+		trail = "ReefBloom",
+		coral = 3000,
+		shells = 75,
+	},
+	{
+		prey = "Lionfish",
+		rarity = "Crystal",
+		skin = "WeekWreck",
+		trail = "Venom",
+		coral = 5000,
+		shells = 100,
+	},
+	{
+		prey = "YellowfinTuna",
+		rarity = "Glowing",
+		skin = "WeekWave",
+		trail = "Sunlit",
+		coral = 4000,
+		shells = 100,
+	},
 }
 
 return {

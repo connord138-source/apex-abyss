@@ -1,6 +1,6 @@
 --!strict
--- Wearing shades, body parts, exotic variants and boost trails. The choice is saved,
--- and put on the fish as attributes (Shade, Parts, Variant, Trail) that every client
+-- Wearing shades, body parts, exotic variants, boost trails and titles. The choice is
+-- saved, and put on the fish as attributes (Shade, Parts, Variant, Trail, Title) that every client
 -- dresses it from (Shared/Cosmetics, TrailController).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +10,7 @@ local Perks = require(ReplicatedStorage.Shared.Perks)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Progress = require(script.Parent.Parent.Progress)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local Events = require(script.Parent.Parent.Events)
 local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local FishService = require(script.Parent.FishService)
@@ -71,6 +72,13 @@ function WardrobeService.equip(player: Player, kind: string, id: string, slot: s
 			return
 		end
 		data.trail = id
+	elseif kind == "title" then
+		-- (any title earned; "" shows the name alone)
+		if id ~= "" and not data.titles[id] then
+			return
+		end
+		data.title = id
+		Events.trophies:fire(player) -- (the den's title board)
 	elseif kind == "part" then
 		if id == "" then
 			if typeof(slot) == "string" and table.find(Config.Exotics.SLOTS, slot) then

@@ -4,6 +4,12 @@
 -- of the mouth (sucked in), and tells the server in small batches. If the server
 -- doesn't confirm an eat within a moment, the food comes back.
 --
+-- Only the food near the camera (where shrimp hop) or the mouth (where it's sucked
+-- in) is looked at each frame: the spots sit in a grid of CELL-stud cells, and the
+-- eaten ones waiting to come back, the ones being sucked in and the ones drawn off
+-- their spot are kept in their own sets (2026-11-02: looking at all ~1,700 spots
+-- every frame, each with a new CFrame, cost 32–48 ms/s everywhere, dens included).
+--
 -- Crabs (Config/Forage kinds with `crab`; owner, 2026-10-19: "Crabs should be edible
 -- too") are built only near the camera (their kind's `range`, at most MAX_CRABS, a few
 -- a frame) as AmbientBody: the imported `AmbientModels.Crab`, tinted or painted for
@@ -46,6 +52,7 @@ local MAX_CRABS = 40 -- crab bodies built at once (the nearest)
 local CRAB_BUILDS = 2 -- crab bodies built a frame at most
 local CRAB_FADE = 0.2 -- the last share of its range a crab fades over
 local ALARM_NEAR = 2.2 -- × its size (plus 4 studs): a fish it can't be eaten by this close alarms it
+local CELL = 48 -- studs a side of the grid's cells
 
 type Crab = {
 	def: ForageDef,
@@ -73,6 +80,8 @@ type Food = {
 	suckStart: number,
 	pulled: boolean, -- drawn toward a mouth right now (suction)
 	crab: Crab?,
+	rest: CFrame, -- where it lies when nothing moves it
+	visit: number, -- the frame it was last looked at
 }
 
 local foods: { Food } = {}
@@ -85,6 +94,17 @@ local batch: { number } = {}
 local lastSend = 0
 local moveParts: { BasePart } = {}
 local moveFrames: { CFrame } = {}
+-- The grid (crabs aren't in it: stepCrabs looks at them all) and the sets the frame
+-- looks at wherever they are
+local cells: { [number]: { Food } } = {}
+local waiting: { [Food]: boolean } = {} -- eaten, coming back at `backAt`
+local swallowing: { [Food]: boolean } = {} -- on its way into our mouth
+local displaced: { [Food]: boolean } = {} -- drawn off its spot (a hop, the suction)
+local visit = 0
+
+local function cellKey(cx: number, cz: number): number
+	return (cx + 1024) * 2048 + (cz + 1024)
+end
 
 local function ellipsoid(parent: Instance, color: Color3, size: Vector3): Part
 	local part = Instance.new("Part")
@@ -209,6 +229,7 @@ local function setHidden(food: Food, hidden: boolean)
 		return
 	end
 	food.hidden = hidden
+	waiting[food] = if hidden then true else nil
 	local crab = food.crab
 	if crab then
 		-- (shown again by stepCrabs, which fades it by distance)
@@ -280,6 +301,8 @@ local function build(positions: { Vector3 }, kinds: { string }, ups: { [string]:
 					frame = CFrame.new(position),
 					away = math.huge,
 				},
+				rest = CFrame.new(position),
+				visit = 0,
 			}
 			foods[index] = food
 			table.insert(crabFoods, food)
@@ -311,12 +334,22 @@ local function build(positions: { Vector3 }, kinds: { string }, ups: { [string]:
 			suckFrom = nil,
 			suckStart = 0,
 			pulled = false,
+			rest = CFrame.identity,
+			visit = 0,
 		}
 		foods[index] = food
 		local frame = frameOf(food, 0, false)
+		food.rest = frame
 		for i, part in parts do
 			part.CFrame = frame * offsets[i]
 		end
+		local key = cellKey(position.X // CELL, position.Z // CELL)
+		local cell = cells[key]
+		if cell == nil then
+			cell = {}
+			cells[key] = cell
+		end
+		table.insert(cell, food)
 	end
 	folder.Parent = workspace
 end
@@ -482,33 +515,41 @@ local function step()
 	local pullRange = reach * Forage.PULL
 	table.clear(moveParts)
 	table.clear(moveFrames)
-	for _, food in foods do
-		if food.hidden and food.suckFrom == nil then
-			if food.pendingUntil > 0 and now > food.pendingUntil then
-				food.pendingUntil = 0
-				food.backAt = 0
-			end
-			if food.pendingUntil == 0 and now >= food.backAt then
-				setHidden(food, false)
-			end
+	visit += 1
+	-- Eaten food coming back (crabs too)
+	for food in waiting do
+		if food.suckFrom ~= nil then
 			continue
 		end
-		if food.hidden or food.crab then
-			continue -- (crabs: stepCrabs)
+		if food.pendingUntil > 0 and now > food.pendingUntil then
+			food.pendingUntil = 0
+			food.backAt = 0
 		end
-		if food.suckFrom then
-			local alpha = math.clamp((now - food.suckStart) / SUCK_SECONDS, 0, 1)
-			local at = (food.suckFrom :: Vector3):Lerp(mouth or food.position, alpha * alpha)
-			place(food, CFrame.new(at) * CFrame.Angles(0, food.yaw, 0), 1 - alpha * 0.8)
-			if alpha >= 1 then
-				food.suckFrom = nil
-				setHidden(food, true)
-			end
-			continue
+		if food.pendingUntil == 0 and now >= food.backAt then
+			setHidden(food, false)
+		end
+	end
+	-- Food on its way into our mouth (crabs: stepCrabs)
+	for food in swallowing do
+		local alpha = math.clamp((now - food.suckStart) / SUCK_SECONDS, 0, 1)
+		local at = (food.suckFrom :: Vector3):Lerp(mouth or food.position, alpha * alpha)
+		place(food, CFrame.new(at) * CFrame.Angles(0, food.yaw, 0), 1 - alpha * 0.8)
+		if alpha >= 1 then
+			food.suckFrom = nil
+			swallowing[food] = nil
+			displaced[food] = nil
+			setHidden(food, true)
+		end
+	end
+	local function consider(food: Food)
+		food.visit = visit
+		if food.hidden or food.suckFrom then
+			return
 		end
 		local near = (food.position - camera).Magnitude < HOP_DISTANCE
-		local frame = frameOf(food, now, near)
-		local moved = near and food.kind == "Shrimp"
+		local hops = near and food.kind == "Shrimp"
+		local frame = if hops then frameOf(food, now, true) else food.rest
+		local moved = hops
 		local passBy = full and Forage.byId[food.kind].wrap == true
 		if passBy and food.pulled then
 			food.pulled, moved = false, true
@@ -530,13 +571,46 @@ local function step()
 				food.pendingUntil = now + CONFIRM_SECONDS
 				food.backAt = math.huge
 				food.pulled = false
+				swallowing[food] = true
 				table.insert(batch, food.index)
 				ForageController.ate:fire(Forage.byId[food.kind].mass, frame.Position)
-				continue
+				return
 			end
 		end
 		if moved then
 			place(food, frame, 1)
+			displaced[food] = true
+		elseif displaced[food] then
+			place(food, food.rest, 1)
+			displaced[food] = nil
+		end
+	end
+	local function around(at: Vector3, radius: number)
+		for cx = (at.X - radius) // CELL, (at.X + radius) // CELL do
+			for cz = (at.Z - radius) // CELL, (at.Z + radius) // CELL do
+				local cell = cells[cellKey(cx, cz)]
+				if cell then
+					for _, food in cell do
+						if food.visit ~= visit then
+							consider(food)
+						end
+					end
+				end
+			end
+		end
+	end
+	around(camera, HOP_DISTANCE)
+	if mouth then
+		around(mouth, pullRange + Forage.HOP)
+	end
+	-- Drawn off its spot and no longer looked at: back where it lies
+	for food in displaced do
+		if food.visit ~= visit and food.suckFrom == nil then
+			food.pulled = false
+			displaced[food] = nil
+			if not food.hidden then
+				place(food, food.rest, 1)
+			end
 		end
 	end
 	stepCrabs(now, camera, mouth, reach, pullRange, length)

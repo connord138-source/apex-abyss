@@ -396,6 +396,19 @@ local function onCaught(player: Player, preyId: string, rarityId: string, _posit
 			if Progress.grantShade(data, featured.skin, species) then
 				summary.weeklySkin = featured.skin
 			end
+			-- Its trail is every fish's (RewardsService.grant's rule; not required here:
+			-- RewardsService needs HuntService, which needs this)
+			if featured.trail and not data.trails[featured.trail] then
+				data.trails[featured.trail] = true
+				summary.weeklyTrail = featured.trail
+				if data.trail == "" then
+					data.trail = featured.trail
+					local character = player.Character
+					if character then
+						character:SetAttribute("Trail", featured.trail)
+					end
+				end
+			end
 			Net.notifyAll(
 				`{player.DisplayName} caught this week's {string.upper(rarityId)} {string.upper(prey.name)}!`,
 				"rare"

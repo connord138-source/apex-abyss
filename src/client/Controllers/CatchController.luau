@@ -194,6 +194,12 @@ local function onCaught(summary: { [string]: any })
 		if typeof(summary.weeklySkin) == "string" then
 			got ..= ` · the {shadeName(summary.weeklySkin)} skin for your {speciesName(summary.species)}`
 		end
+		local trail = if typeof(summary.weeklyTrail) == "string"
+			then Config.Trails.byId[summary.weeklyTrail]
+			else nil
+		if trail then
+			got ..= ` · the {trail.name} trail for every fish`
+		end
 		banner(
 			"CATCH OF THE WEEK",
 			`{string.upper(if rare then rare.name else "")} {string.upper(prey)}`,
