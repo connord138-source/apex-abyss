@@ -192,9 +192,9 @@ local Monetization = {
 			spins = 1, -- free Treasure Wheel spins a day
 			gardenHours = 4, -- the Coral Garden holds this much longer
 		},
-		-- The Roblox group: `id` 0 until the group exists. Members earn `coral` more;
-		-- joining pays `shells` once.
-		group = { id = 0, coral = 1.05, shells = 100 },
+		-- The Roblox community (Roblox's groups): TideBite Studios (owner, 2026-11-02;
+		-- 0 turns it off). Members earn `coral` more; joining pays `shells` once.
+		group = { id = 101133043, coral = 1.05, shells = 100 },
 	},
 }
 

@@ -226,7 +226,7 @@ local function rewardGroup(player: Player, data: PlayerData)
 	end
 	data.groupRewarded = true
 	EconomyService.addShells(player, group.shells)
-	Net.notify(player, `Thanks for joining the group! +{group.shells} Shells`, "rare")
+	Net.notify(player, `Thanks for joining TideBite Studios! +{group.shells} Shells`, "rare")
 end
 
 function RewardsService.start()

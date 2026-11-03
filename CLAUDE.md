@@ -48,7 +48,11 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   lettering APEX TIDE until then. **Community or individual** (Connor asked 2026-10-20):
   Claude recommended a studio community for both games, with this experience moved
   into it before launch (Creator Hub's free user-to-community transfer keeps the game,
-  place ids and URL); Connor to decide.
+  place ids and URL). **Decided 2026-11-02:** Connor's community **TideBite Studios**
+  (id 101133043, owner Dillionaire138, open entry) is `tuning.group`; the experience
+  moves into it before launch (Connor, in Creator Hub; grant the uploaded sound pack
+  76355431920138 to universe 10769954850 first, since a user's private audio plays
+  only in that user's own games).
 - **Reference:** the trending Fortnite UEFN fish maps "Be a fish" (civistudios) and
   "BE FISH" (ickrisp). We add twists, never copies.
 - **Core loop: Hunt & Haul** (the owner approved the design and disliked its first name,
@@ -537,7 +541,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     a controller. The growth note (×2 MASS, FRENZY ×2 · 14:03) is in the Haul card's
     top-right corner on every screen. `Ads.luau` doesn't poll in Studio (Studio
     never serves ads, and each check logged a warning).
-  - **Later:** codes, Pearl crates, the Roblox group (id 0 in `tuning.group`).
+  - **Later:** codes, Pearl crates. The Roblox community is TideBite Studios
+    (`tuning.group` 101133043, 2026-11-02).
 - **Creator Rewards round (owner, 2026-10-12: "We need monetizable assets that pay
   based on play time as well with rewards"; built):** Roblox's Creator Rewards (July
   2025, replacing Premium Payouts) pay 5 Robux each time an Active Spender (≥ $9.99
@@ -1598,8 +1603,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the basins' chimneys) is a hot disc with a dark rim. ~2,960 parts (`PARTS_CAP`
     3,300). **Rule: no sphere-mesh lumps in built scenery.**
   - **Community logo:** `marketing/community_{a,b,c}_512.png` (A recommended; screened
-    0.17 / 0.15 / 0.05). Connor creates the community and sends its id for
-    `tuning.group` in both games.
+    0.17 / 0.15 / 0.05). The community is TideBite Studios (101133043, in
+    `tuning.group` since 2026-11-02); Hatch & Snatch's `tuning.group` still wants it.
 - **The 2026-10-20 report's decisions (PC report `2026-10-20-pc.md`, published as v15;
   PC fixes e95679d…3b45f4a merged into `claude/world`; Connor's standing "go with all of
   your recs"):**
