@@ -34,8 +34,20 @@ local TOPIC = "ApexReferral"
 local CLAIM_EVERY = 300 -- seconds: online inviters look for credit (if a message was missed)
 local NUDGE_AFTER = 40 -- seconds after the tutorial: a line about inviting friends
 
-local store =
-	DataStoreService:GetDataStore(if Timing.isStudio() then "Referrals_Studio_v1" else "Referrals_v1")
+-- The inviters' records, opened on first use: opening a store can throw in an
+-- unpublished place, and at require time that would stop every service after this one
+local openedStore: DataStore? = nil
+local function storeOf(): DataStore?
+	if openedStore == nil then
+		local ok, store = pcall(
+			DataStoreService.GetDataStore,
+			DataStoreService,
+			if Timing.isStudio() then "Referrals_Studio_v1" else "Referrals_v1"
+		)
+		openedStore = if ok then store else nil
+	end
+	return openedStore
+end
 
 -- An inviter's record: the friends counted (user id → true), how many are waiting
 -- to be paid, and the last one's name
@@ -50,34 +62,41 @@ local function nameOf(userId: number): string
 	return if ok and typeof(name) == "string" then name else "Your friend"
 end
 
--- Pays `count` friends' rewards to an inviter in this server
+-- Pays `count` friends' rewards to an inviter in this server, as one reward and one
+-- line ("+300 shells, 3 wheel spins"; friend by friend the line repeated itself)
 local function pay(player: Player, data: PlayerData, count: number, last: string?)
-	local got: { string } = {}
-	for _ = 1, count do
-		data.referral.friends += 1
-		if data.referral.friends <= tune.rewarded then
-			for _, line in RewardsService.grant(player, data, tune.inviter) do
-				table.insert(got, line)
-			end
-		end
-		if data.referral.friends == tune.title.friends then
-			for _, line in RewardsService.grant(player, data, { title = tune.title.title }) do
-				table.insert(got, line)
-			end
+	local before = data.referral.friends
+	data.referral.friends += count
+	local paid = math.clamp(tune.rewarded - before, 0, count)
+	local reward: { [string]: any } = {}
+	if paid > 0 then
+		for name, value in tune.inviter :: any do
+			reward[name] = value * paid
 		end
 	end
+	if before < tune.title.friends and data.referral.friends >= tune.title.friends then
+		reward.title = tune.title.title
+	end
+	local got = RewardsService.grant(player, data, reward :: any)
 	DataService.markDirty(player)
-	local who = if count == 1 and last then last else `{count} friends you invited`
-	local line = if #got > 0
-		then `{who} finished the tutorial from your invite! +{table.concat(got, ", ")}`
-		else `{who} finished the tutorial from your invite! Thanks for bringing them`
-	Net.notify(player, line, "rare")
+	local who = if count > 1
+		then `{count} friends you invited finished the tutorial!`
+		elseif last then `{last} finished the tutorial from your invite!`
+		else "A friend you invited finished the tutorial!"
+	Net.notify(
+		player,
+		if paid > 0 or reward.title
+			then `{who} You got {table.concat(got, ", ")}`
+			else `{who} Thanks for bringing them`,
+		"rare"
+	)
 	Events.invited:fire(player)
 end
 
 -- Takes any credit waiting for this player (as an inviter) and pays it
 function ReferralService.claim(player: Player)
-	if claiming[player] then
+	local store = storeOf()
+	if claiming[player] or store == nil then
 		return
 	end
 	claiming[player] = true
@@ -113,6 +132,11 @@ end
 -- A friend this inviter brought finished the tutorial: count them (once) for the
 -- inviter, wherever the inviter is
 local function credit(inviterId: number, friend: Player)
+	local store = storeOf()
+	if store == nil then
+		warn(`[Referral] couldn't credit {inviterId} for {friend.Name}: no store here`)
+		return
+	end
 	local friendKey = tostring(friend.UserId)
 	local counted = false
 	local ok, problem = pcall(store.UpdateAsync, store, tostring(inviterId), function(old: any): any
@@ -266,7 +290,10 @@ function ReferralService.testReset(player: Player): string
 	end
 	data.referral = { by = 0, credited = false, friends = 0 }
 	DataService.markDirty(player)
-	pcall(store.RemoveAsync, store, tostring(player.UserId))
+	local store = storeOf()
+	if store then
+		pcall(store.RemoveAsync, store, tostring(player.UserId))
+	end
 	return `{player.Name}: invites reset`
 end
 

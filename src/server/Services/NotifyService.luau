@@ -36,7 +36,21 @@ local URL = "https://apis.roblox.com/cloud/v2/users/%d/notifications"
 local DUE_EVERY = 60 -- seconds between looks for notifications that are due
 local BATCH = 20
 
-local waiting = MemoryStoreService:GetSortedMap(if Timing.isStudio() then "Notify_Studio_v1" else "Notify_v1")
+-- The sorted map of notifications waiting, opened on first use: opening it throws in
+-- an unpublished place, and at require time that stopped every service after this one
+-- (PC 2026-11-03)
+local waitingMap: MemoryStoreSortedMap? = nil
+local function waiting(): MemoryStoreSortedMap?
+	if waitingMap == nil then
+		local ok, map = pcall(
+			MemoryStoreService.GetSortedMap,
+			MemoryStoreService,
+			if Timing.isStudio() then "Notify_Studio_v1" else "Notify_v1"
+		)
+		waitingMap = if ok then map else nil
+	end
+	return waitingMap
+end
 
 local NotifyService = {}
 
@@ -147,15 +161,13 @@ local function schedule(player: Player, data: PlayerData)
 	if kind == nil then
 		return
 	end
+	local map = waiting()
+	if map == nil then
+		return
+	end
 	local key = tostring(player.UserId)
-	local ok, problem = pcall(
-		waiting.SetAsync,
-		waiting,
-		key,
-		{ kind = kind, params = params },
-		math.floor(due - now) + 86400,
-		due
-	)
+	local ok, problem =
+		pcall(map.SetAsync, map, key, { kind = kind, params = params }, math.floor(due - now) + 86400, due)
 	if not ok then
 		warnOnce("schedule", `[Notify] couldn't keep one for later: {problem}`)
 	elseif Timing.isStudio() then
@@ -164,13 +176,20 @@ local function schedule(player: Player, data: PlayerData)
 end
 
 local function cancel(userId: number)
-	pcall(waiting.RemoveAsync, waiting, tostring(userId))
+	local map = waiting()
+	if map then
+		pcall(map.RemoveAsync, map, tostring(userId))
+	end
 end
 
 -- Sends what's due. Each one is claimed first, so two servers don't both send it.
 local function sendDue()
+	local map = waiting()
+	if map == nil then
+		return
+	end
 	local now = Timing.now()
-	local ok, items = pcall(waiting.GetRangeAsync, waiting, Enum.SortDirection.Ascending, BATCH, nil, {
+	local ok, items = pcall(map.GetRangeAsync, map, Enum.SortDirection.Ascending, BATCH, nil, {
 		sortKey = now,
 	})
 	if not ok or typeof(items) ~= "table" then
@@ -183,7 +202,7 @@ local function sendDue()
 			cancel(userId or 0)
 			continue
 		end
-		local claimed, entry = pcall(waiting.UpdateAsync, waiting, key, function(old: any, sortKey: any)
+		local claimed, entry = pcall(map.UpdateAsync, map, key, function(old: any, sortKey: any)
 			if typeof(old) ~= "table" or old.claimed then
 				return nil
 			end
