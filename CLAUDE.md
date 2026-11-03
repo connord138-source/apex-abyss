@@ -3331,6 +3331,18 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Admin:** Invites: joined from a user id's invite, friends finished the tutorial,
     reset; Notifications: send what would go now (sends even from Studio), show the
     card again.
+  - **Tested on the PC, published as v52 (2026-11-03, from b3fc6ef):** all 13 funnel
+    steps, the gift, rewards, title and cap, Roblox's invite window and notifications
+    prompt, the card on its real rule (4 banks) and every row, on desktop and an iPhone
+    view. The credit path through the store can't run in an unpublished place, so it was
+    run from the real source against a fake store (21 checks). **Never open a store or
+    memory store at require time:** in an unpublished place that throws and stops every
+    service after it; they open on first use in a pcall. `HttpService.HttpEnabled` is
+    stored in the place too, so it's on in `ApexAbyss.rbxl` (set from the command bar) to
+    keep a publish from turning it off. Not yet shown live: the key and Secret (the
+    admin's Notifications row in the live game answers), and a badge actually awarded
+    (Studio refuses them). The experience's tile is under TideBite Studios in the publish
+    dialog now.
 
 ## Tech
 
