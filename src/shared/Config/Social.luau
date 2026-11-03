@@ -52,7 +52,7 @@ export type Badge = {
 local badges: { Badge } = {
 	{
 		key = "Welcome",
-		id = 0,
+		id = 959721058179248,
 		name = "Welcome to Apex Tide",
 		description = "You dived into Apex Tide. Eat, grow and become the apex!",
 		measure = "joined",
@@ -61,7 +61,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "Graduate",
-		id = 0,
+		id = 1693890307800326,
 		name = "Tutorial Graduate",
 		description = "Finished the tutorial: hunted, banked, spun the wheel and rolled.",
 		measure = "tutorial",
@@ -70,7 +70,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "Golden",
-		id = 0,
+		id = 4137873823620250,
 		name = "Golden Catch",
 		description = "Caught a Golden fish.",
 		measure = "catches",
@@ -80,7 +80,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "BossHunter",
-		id = 0,
+		id = 2503319529940254,
 		name = "Boss Hunter",
 		description = "Helped bring down the Megalodon or the Giant Squid.",
 		measure = "bossKills",
@@ -89,7 +89,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "Level25",
-		id = 0,
+		id = 2780800322309078,
 		name = "Rising Predator",
 		description = "Reached level 25 with any fish.",
 		measure = "level",
@@ -158,17 +158,17 @@ local notify = {
 	universe = 10769954850,
 	messages = {
 		garden = {
-			id = "",
+			id = "d4532c78-11b4-194e-a587-644c822dba35",
 			text = "Your Coral Garden is full: {coral} coral is waiting in your den!",
 			category = "Coral Garden full",
 		},
 		spins = {
-			id = "",
+			id = "bac48ed9-567f-7149-bec6-4a498e21abc7",
 			text = "Your free Treasure Wheel spins are back. Come spin for a rare skin!",
 			category = "Wheel spins back",
 		},
 		friend = {
-			id = "",
+			id = "966ebe00-001f-4646-a1c4-fc8f3f2bb540",
 			text = "{friend} finished the tutorial from your invite. Your reward is waiting!",
 			category = "Invited friend",
 		},
