@@ -64,6 +64,7 @@ local Sfx = {}
 -- all (Sfx.setMuted); the music has its own (MusicController)
 local group = Instance.new("SoundGroup")
 group.Name = "Effects"
+group.Volume = 1 -- (a SoundGroup starts at 0.5, which halved every effect)
 group.Parent = SoundService
 
 function Sfx.setMuted(on: boolean)

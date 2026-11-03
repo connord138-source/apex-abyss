@@ -481,7 +481,10 @@ local function observatory(
 		* CFrame.Angles(0, facingIn, 0)
 	local pane = Decor.disc(parent, "ObservatoryWindow", paneAt, radius + 1, 0.4)
 	pane.Color = GLASS
-	pane.Material = Enum.Material.Glass
+	-- (not Glass: Roblox draws nothing see-through behind Glass, so the view's
+	-- jellies vanished through it; PC 2026-11-02)
+	pane.Material = Enum.Material.SmoothPlastic
+	pane.Reflectance = 0.08
 	pane.Transparency = 0.82
 	pane.CanCollide = true
 	pane:SetAttribute("Out", frame:VectorToWorldSpace(Vector3.new(plan.side, 0, 0)))

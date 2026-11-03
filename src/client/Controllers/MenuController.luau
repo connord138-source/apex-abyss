@@ -4901,11 +4901,12 @@ local function weeklyRows(list: ScrollingFrame)
 			2,
 			"Featured",
 			`{string.upper(rarity.name)} {string.upper(prey.name)}`,
-			`It swims {rarity.name} far more often all week: hunting where {prey.name}s swim, about one every {Config.Catch.weekly.every} min. The first one you catch pays {Ui.number(
+			-- (two lines in the row: the trail made the old wording run over, PC 2026-11-02)
+			`Swims {rarity.name} far more often all week, about one every {Config.Catch.weekly.every} min. The first pays {Ui.number(
 				featured.coral
 			)} coral, {featured.shells} shells, {Config.Wheel.weekly} wheel spins{if trail
-				then `, the {trail.name} boost trail for every fish`
-				else ""} and the {if skin then skin.name else featured.skin} skin for the fish you catch it with.`,
+				then `, the {trail.name} trail for every fish`
+				else ""} and the {if skin then skin.name else featured.skin} skin for your fish.`,
 			if s.weeklyFeatured then "✓ CAUGHT" else "NOT YET",
 			nil,
 			nil,

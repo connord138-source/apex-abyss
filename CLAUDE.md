@@ -3283,6 +3283,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     eight tentacles, three oral arms) at 0.05–0.3 transparency (the bell was 0.45, the
     strands 0.35); each is still one moved part (an invisible core, the rest welded on),
     kept high enough that its tentacles stay over the sand (`SEA_DOWN` 35).
+  - **Tested on the PC the same evening (every item passed after three fixes):** the
+    Observatory's window pane is SmoothPlastic now (DenWings): **Roblox draws nothing
+    see-through behind Glass**, so the jellies had never shown through it (rule: no
+    Glass in front of anything see-through). The `Effects` SoundGroup starts at Volume 1
+    (a new SoundGroup is 0.5, which halved every sound effect). The LOG's weekly row
+    keeps to two lines. `clear_normal_maps` cleared 29 templates (FishModels 5,
+    PreyModels 5, WorldProps 19; every placed prop is cloned from them) and the place
+    was saved. Measured in the Kelp: ForageController 19.8 ms/s (was 36), 7.1 of it
+    `stepCrabs`, 6.0 BulkMoveTo.
 
 ## Tech
 
