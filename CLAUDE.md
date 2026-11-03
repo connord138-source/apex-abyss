@@ -3292,6 +3292,45 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     PreyModels 5, WorldProps 19; every placed prop is cloned from them) and the place
     was saved. Measured in the Kelp: ForageController 19.8 ms/s (was 36), 7.1 of it
     `stepCrabs`, 6.0 BulkMoveTo.
+- **Getting seen (owner, 2026-11-03: "integrate all 4 of your build recs ... spend as
+  little as possible but I want the game to be seen/played"; the 50,000 Robux expedited
+  review is out, so under-16s come after 250 plays by highly engaged age-checked 16+
+  players within 60 days, shown on Creator Hub's Audience Reach):** `Config/Social.luau` holds the tuning and every Creator Hub id (0 or ""
+  until made; anything unset is skipped). The Creator Hub steps are in
+  `docs/STORE_PAGE.md` "Badges, invites and notifications".
+  - **Onboarding funnel** (`src/server/Funnel.luau`, AnalyticsService
+    `LogOnboardingFunnelStepEvent`, server only, published games only; Studio prints
+    `[Funnel]`): Joined, Dived in (`Events.dived` from StartService), the nine tutorial
+    steps (`Tutorial: <id>`, from Config/Tutorial), Banked on their own, Reached LV 15.
+    `data.onboarding` is the furthest step logged; a save that finished the tutorial
+    before this is -1 and never logged.
+  - **Friend invites** (`ReferralService`, Roblox's friend referral system:
+    `GetJoinData().ReferredByPlayerId`): a new player from an invite (no bank, tutorial
+    not done) gets `invitee` (500 coral, 50 shells, a spin); when they finish the
+    tutorial (`Events.tutorialDone`) the inviter is credited once for them in the
+    `Referrals_v1` DataStore (Studio `Referrals_Studio_v1`) and paid `inviter` (100
+    shells, a spin) for the first 10, the "Tide Caller" title at 3, the next time
+    they're in a server (MessagingService `ApexReferral` to their server, a check every
+    5 min, a notification if they're away). INVITE rows in the Shop's FREE PERKS and
+    the Pod window (`src/client/Social.luau` opens Roblox's prompt), a nudge 40 s
+    after the tutorial. `data.referral`.
+  - **Badges** (`BadgesService`, `Config/Social` `badges`, 10, made in that order since
+    Roblox gives 5 free a day): measured from the save like achievements, awarded once
+    (`data.badges`), Roblox's own toast. Icons `marketing/badge_<icon>_512.png` from
+    `tools/marketing/badge_icons.py` (product_icons' renders plus a Garibaldi mapped to
+    gold or ice and the Megalodon; all ten screened, nsfw ≤ 0.05). Hatch & Snatch can
+    read them (`BadgeService:UserHasBadgeAsync`) to reward Apex Tide players.
+  - **Notifications** (`NotifyService`, Open Cloud `CreateUserNotification` through
+    HttpService with the experience Secret `Notifications`): a player leaving gets one
+    waiting in the `Notify_v1` memory store sorted map (Coral Garden full, else free
+    spins back; 2 h to 3 days out; coming back cancels it); a friend finishing the
+    tutorial sends one now. Our card (MenuController.openNotify, SocialController:
+    after 4 banks, in the hub or a den, once a month) asks first, and YES opens Roblox's
+    prompt (which shows once in 30 days); the Shop's SETTINGS has Notifications ALLOW.
+    Roblox delivers one a day per experience, 13+ only, after the game has 100 visits.
+  - **Admin:** Invites: joined from a user id's invite, friends finished the tutorial,
+    reset; Notifications: send what would go now (sends even from Studio), show the
+    card again.
 
 ## Tech
 

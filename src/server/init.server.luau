@@ -40,6 +40,9 @@ local WheelService = require(Services.WheelService)
 local PlaytimeService = require(Services.PlaytimeService)
 local PassService = require(Services.PassService)
 local AchievementService = require(Services.AchievementService)
+local NotifyService = require(Services.NotifyService)
+local ReferralService = require(Services.ReferralService)
+local BadgesService = require(Services.BadgesService)
 local AbilityService = require(Services.AbilityService)
 local StartService = require(Services.StartService)
 local CompanionService = require(Services.CompanionService)
@@ -84,6 +87,9 @@ WheelService.start() -- the Treasure Wheel: spins, the line, prizes, free spins
 PlaytimeService.start() -- playtime gifts: a ladder of gifts for minutes played today, Premium's daily spin
 PassService.start() -- the Tide Pass: season XP from play, the free and Deep Pass rows
 AchievementService.start() -- achievements: each opens a den furniture set
+NotifyService.start() -- notifications for players away: the Coral Garden full, wheel spins back
+ReferralService.start() -- friend invites: a welcome gift, the inviter's reward once the friend finishes the tutorial
+BadgesService.start() -- Roblox badges, measured from the save
 AbilityService.start() -- signature abilities the server owns: Puff Up, Burrow, Lantern Flash
 StartService.start() -- the start screen's documentary shots: each one's water streamed in ahead
 CompanionService.start() -- sea life that helps: a turtle at your side, a ray's shells

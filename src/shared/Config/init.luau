@@ -43,4 +43,5 @@ return {
 	Start = require(script.Start),
 	Companions = require(script.Companions),
 	Places = require(script.Places),
+	Social = require(script.Social),
 }

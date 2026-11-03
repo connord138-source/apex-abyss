@@ -25,6 +25,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local StartShots = require(ReplicatedStorage.Shared.StartShots)
 local Timing = require(ReplicatedStorage.Shared.Timing)
+local Events = require(script.Parent.Parent.Events)
 local Net = require(script.Parent.Parent.Net)
 
 local StartService = {}
@@ -168,6 +169,9 @@ local function shot(player: Player, rawShot: any, rawSchool: any, rawShowShot: a
 end
 
 local function done(player: Player)
+	if player:GetAttribute(ON_SCREEN) then
+		Events.dived:fire(player)
+	end
 	player:SetAttribute(ON_SCREEN, nil)
 	player:SetAttribute(STREAMED, nil)
 	release(player)

@@ -55,6 +55,9 @@ local function ratesOf(player: Player, data: PlayerData): Garden.Rates
 	)
 end
 
+-- What a player's garden grows and holds (NotifyService: when it'll be full)
+GardenService.rates = ratesOf
+
 -- Whether the player's fish is inside their own den right now
 local function inOwnDen(player: Player): boolean
 	local _, root = FishService.character(player)

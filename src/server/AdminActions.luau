@@ -31,6 +31,8 @@ local GardenService = require(script.Parent.Services.GardenService)
 local HeartService = require(script.Parent.Services.HeartService)
 local HuntService = require(script.Parent.Services.HuntService)
 local MonetizationService = require(script.Parent.Services.MonetizationService)
+local NotifyService = require(script.Parent.Services.NotifyService)
+local ReferralService = require(script.Parent.Services.ReferralService)
 local PassService = require(script.Parent.Services.PassService)
 local PlaytimeService = require(script.Parent.Services.PlaytimeService)
 local TreasureService = require(script.Parent.Services.TreasureService)
@@ -884,7 +886,56 @@ local function passRestart(_admin: Player, targets: { Player }): string
 	return `{names(targets)}: Tide Pass record started again`
 end
 
+-- Friend invites: joined from user `by`'s invite (the welcome gift; finishing the
+-- tutorial then credits them), paid for `count` invited friends, or reset
+local function inviteArrive(_admin: Player, targets: { Player }, by: any): string
+	local id = amountOf(by, 1) or 1
+	local lines = {}
+	for _, player in targets do
+		table.insert(lines, ReferralService.testArrive(player, id))
+	end
+	return table.concat(lines, " · ")
+end
+
+local function inviteCredit(_admin: Player, targets: { Player }, count: any): string
+	local lines = {}
+	for _, player in targets do
+		table.insert(lines, ReferralService.testCredit(player, amountOf(count, 1) or 1))
+	end
+	return table.concat(lines, " · ")
+end
+
+local function inviteReset(_admin: Player, targets: { Player }): string
+	local lines = {}
+	for _, player in targets do
+		table.insert(lines, ReferralService.testReset(player))
+	end
+	return table.concat(lines, " · ")
+end
+
+-- Notifications: send what would go if the target left now, at once (even in Studio)
+local function notifyTest(_admin: Player, targets: { Player }): string
+	local lines = {}
+	for _, player in targets do
+		table.insert(lines, `{player.Name}: {NotifyService.test(player)}`)
+	end
+	return table.concat(lines, " · ")
+end
+
+-- Notifications: ask again (our card shows on the next state update)
+local function notifyAsk(_admin: Player, targets: { Player }): string
+	each(targets, function(_player, data)
+		data.notify.asked = 0
+	end)
+	return `{names(targets)}: the notifications card can show again`
+end
+
 AdminActions.byName = {
+	inviteArrive = inviteArrive :: Handler,
+	inviteCredit = inviteCredit :: Handler,
+	inviteReset = inviteReset :: Handler,
+	notifyTest = notifyTest :: Handler,
+	notifyAsk = notifyAsk :: Handler,
 	playtimeAdd = playtimeAdd :: Handler,
 	playtimeReset = playtimeReset :: Handler,
 	passXp = passXp :: Handler,

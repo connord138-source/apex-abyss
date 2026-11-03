@@ -32,6 +32,7 @@ local Input = require(script.Parent.Parent.Input)
 local ItemPhoto = require(script.Parent.Parent.ItemPhoto)
 local PreyPhoto = require(script.Parent.Parent.PreyPhoto)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Social = require(script.Parent.Parent.Social)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
 local Wardrobe = require(script.Parent.Parent.Wardrobe)
@@ -2406,6 +2407,40 @@ local function heading(list: ScrollingFrame, order: number, text: string)
 	label.TextYAlignment = Enum.TextYAlignment.Bottom
 end
 
+-- Friend invites (Config/Social referral): Roblox's invite prompt from the Shop and
+-- the Pod window. When it can't open, the row says why for a few seconds (these
+-- windows redraw every second, so it's kept here).
+local inviteProblem: { text: string, at: number }? = nil
+local notifyProblem: { text: string, at: number }? = nil
+
+local function recent(problem: { text: string, at: number }?): string?
+	return if problem and os.clock() - problem.at < 5 then problem.text else nil
+end
+
+local function inviteFriends()
+	local ok, why = Social.invite()
+	inviteProblem = if ok then nil else { text = why or "Not available", at = os.clock() }
+	MenuController.rerenderCurrent()
+end
+
+-- The invite row's status: a problem just now, or how many friends came
+local function inviteStatus(s: { [string]: any }): string?
+	local problem = recent(inviteProblem)
+	if problem then
+		return problem
+	end
+	local referral = if typeof(s.referral) == "table" then s.referral else {}
+	local friends = if typeof(referral.friends) == "number" then referral.friends else 0
+	return if friends > 0 then `{friends} joined` else nil
+end
+
+local function allowNotifications()
+	notifyProblem = if Social.allowNotifications()
+		then nil
+		else { text = "Already on, or asked lately", at = os.clock() }
+	MenuController.rerenderCurrent()
+end
+
 -- Every title the game gives, with how it's got (the TITLES window): the Tide Pass's
 -- rows, the bosses, the Apex bounty, the weekly boards and the Catch Log
 local function titleSources(): { { title: string, how: string } }
@@ -2435,6 +2470,8 @@ local function titleSources(): { { title: string, how: string } }
 		end
 	end
 	add(Config.Catch.logTitle, "Catch every species at every rarity in the Catch Log")
+	local invites = Config.Social.referral.title
+	add(invites.title, `Invite {invites.friends} friends who finish the tutorial (the Shop's INVITE)`)
 	return sources
 end
 
@@ -2710,6 +2747,20 @@ function MenuController.openStore()
 						end
 						-- Free perks
 						heading(list, next(), "FREE PERKS")
+						local _, inviteButton = tallRow(
+							list,
+							next(),
+							"Invite",
+							"Invite friends",
+							Config.Social.referral.blurb,
+							inviteStatus(s),
+							"INVITE",
+							"gold",
+							Ui.color.haul
+						)
+						if inviteButton then
+							inviteButton.Activated:Connect(inviteFriends)
+						end
 						local premium = s.premium == true
 						local premiumRow, premiumButton = tallRow(
 							list,
@@ -2794,6 +2845,19 @@ function MenuController.openStore()
 									ClientState.request("Setting", entry.id, not on)
 								end)
 							end
+						end
+						local _, allow = row(
+							list,
+							next(),
+							"SettingNotify",
+							"Notifications",
+							"A ping when your Coral Garden is full or your wheel spins are back",
+							recent(notifyProblem),
+							"ALLOW",
+							"secondary"
+						)
+						if allow then
+							allow.Activated:Connect(allowNotifications)
 						end
 					end)
 				end,
@@ -2926,6 +2990,64 @@ function MenuController.openPod()
 						end
 						if not any then
 							row(list, next(), "Nobody", "Nobody else is here yet", "", nil, nil, nil)
+						end
+						-- Friends who aren't playing: Roblox's invite (Config/Social referral)
+						heading(list, next(), "FRIENDS")
+						local _, invite = tallRow(
+							list,
+							next(),
+							"InviteFriends",
+							"Invite friends to Apex Tide",
+							Config.Social.referral.short,
+							inviteStatus(s),
+							"INVITE",
+							"gold",
+							Ui.color.haul
+						)
+						if invite then
+							invite.Activated:Connect(inviteFriends)
+						end
+					end)
+				end,
+			}
+		end
+	)
+end
+
+-- The notifications card (NotifyService `notifyAsk`: after a few banks, once a month
+-- at most). Our own question comes first, since Roblox's prompt shows only once in
+-- 30 days: a YES opens it.
+function MenuController.openNotify()
+	open(
+		"Notifications",
+		"Roblox can tell you when something's ready",
+		Vector2.new(760, 250),
+		function(window)
+			local list = Ui.list(window.content, 6)
+			return {
+				window = window,
+				render = function()
+					rerender(list, function()
+						local _, yes = tallRow(
+							list,
+							1,
+							"Allow",
+							"Get a ping when your Coral Garden is full?",
+							"Or when your free wheel spins are back. One a day at most.",
+							nil,
+							"YES",
+							"gold",
+							Ui.color.safe
+						)
+						if yes then
+							yes.Activated:Connect(function()
+								MenuController.close()
+								Social.allowNotifications()
+							end)
+						end
+						local _, no = row(list, 2, "NotNow", "Not now", "", nil, "NOT NOW", "secondary")
+						if no then
+							no.Activated:Connect(MenuController.close)
 						end
 					end)
 				end,

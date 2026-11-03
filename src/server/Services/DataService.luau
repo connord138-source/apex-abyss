@@ -154,12 +154,22 @@ export type PlayerData = {
 	-- user ids, once a day each; HeartService)
 	admired: { day: number, dens: { [string]: boolean } },
 	codes: { [string]: boolean }, -- redeem codes used (Config/Codes)
+	-- Friend invites (Config/Social referral; ReferralService): who invited this
+	-- player (their user id, 0 = nobody), whether that inviter has been credited
+	-- (after this player's tutorial), and how many friends this player invited who
+	-- finished the tutorial
+	referral: { by: number, credited: boolean, friends: number },
+	badges: { [string]: boolean }, -- Roblox badges awarded (Config/Social badges key)
+	-- Notifications (NotifyService): when our "get a ping?" card last showed (Unix)
+	notify: { asked: number },
 	-- Music and sound effects on or off (the Shop's SETTINGS; EconomyService)
 	settings: { music: boolean, sound: boolean },
 	-- Monetization
 	passes: { [string]: boolean },
 	groupRewarded: boolean, -- got the one-time Roblox group reward
 	purchaseIds: { string }, -- developer-product receipts already granted (newest last)
+	-- The furthest onboarding funnel step logged (Server/Funnel; -1: never logged,
+	-- a save that finished the tutorial before the funnel shipped)
 	onboarding: number,
 }
 
@@ -251,6 +261,9 @@ local TEMPLATE: PlayerData = {
 	pearls = {},
 	admired = { day = 0, dens = {} },
 	codes = {},
+	referral = { by = 0, credited = false, friends = 0 },
+	badges = {},
+	notify = { asked = 0 },
 	settings = { music = true, sound = true },
 	passes = {},
 	groupRewarded = false,

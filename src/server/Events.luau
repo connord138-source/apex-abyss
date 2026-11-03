@@ -35,4 +35,7 @@ return {
 	-- (player, itemId, used) an item from the item bar or wheel: used, or tried with
 	-- one in hand at full health (a Kelp Wrap is kept then; the tutorial counts both)
 	usedItem = Signal.new(),
+	dived = Signal.new(), -- (player) dived in from the start screen (the onboarding funnel)
+	tutorialDone = Signal.new(), -- (player) the tutorial finished (invites credit the inviter, badges)
+	invited = Signal.new(), -- (player) friends this player invited finished the tutorial (badges)
 }

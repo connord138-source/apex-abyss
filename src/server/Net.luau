@@ -109,6 +109,7 @@ local REQUESTS: { [string]: number } = {
 	Landmark = 0.25, -- ("bell" | "cannon" | "pearl", index) bit the galleon's bell or a clam's pearl, swam into the Bay Cannon (LandmarkService)
 	StartShot = 1.5, -- (shotIndex, schoolIndex, showingShot, showingSchool) the start screen's next shot: stream its water in (StartService)
 	StartDone = 1, -- () dived in from the start screen
+	NotifyAsked = 2, -- () our "get a ping?" card showed (NotifyService)
 }
 local requests: { [string]: RemoteEvent } = {}
 for name in REQUESTS do

@@ -108,3 +108,64 @@ the experience → Basic Info → Description.
 🏠 Build your den, fill its aquarium, win hearts from visitors.
 🎁 Daily rewards, playtime gifts and a free Tide Pass.
 ```
+
+## Badges, invites and notifications (Creator Hub setup, 2026-11-03)
+
+The game's side is built (`src/shared/Config/Social.luau`, see CLAUDE.md "Getting
+seen"). Each needs a few things made in Creator Hub → Creations → Apex Tide (the
+TideBite Studios community's), and the ids sent back to go in `Config/Social.luau`.
+Until then each is simply off.
+
+### Badges (Engagement → Badges → Create a Badge)
+
+Roblox gives 5 free a day, so make 1–5 first and 6–10 the next day (more cost 100
+Robux each). Upload the image, paste the name and description, create, then copy the
+badge's id. Every image passed the moderation screen (nsfw 0.05 at most).
+
+| # | Image | Name | Description |
+|---|---|---|---|
+| 1 | `badge_welcome_512.png` | Welcome to Apex Tide | You dived into Apex Tide. Eat, grow and become the apex! |
+| 2 | `badge_graduate_512.png` | Tutorial Graduate | Finished the tutorial: hunted, banked, spun the wheel and rolled. |
+| 3 | `badge_golden_512.png` | Golden Catch | Caught a Golden fish. |
+| 4 | `badge_boss_512.png` | Boss Hunter | Helped bring down the Megalodon or the Giant Squid. |
+| 5 | `badge_level25_512.png` | Rising Predator | Reached level 25 with any fish. |
+| 6 | `badge_friend_512.png` | School's In | A friend you invited finished the tutorial. |
+| 7 | `badge_treasure_512.png` | X Marks the Spot | Dug up a treasure chest. |
+| 8 | `badge_apex_512.png` | Apex Hunter | Ate the Apex and claimed its bounty. |
+| 9 | `badge_crystal_512.png` | Crystal Clear | Caught a Crystal fish. |
+| 10 | `badge_level100_512.png` | Top of the Food Chain | Reached level 100 with any fish. |
+
+Players who did these before a badge existed get it on their next visit. Rebuild the
+images with `python tools/marketing/badge_icons.py all <dir>` (see its header).
+
+### Friend invites: the reward banner (Engagement → Referral Rewards → Add Reward Details)
+
+Roblox shows this banner on top of the invite prompt (the Shop's and the Pod window's
+INVITE). The game has to have been live a day first. Icon `badge_friend_512.png`;
+reward name "A gift for you and your friend"; description "Your friend gets 500
+coral, 50 shells and a wheel spin. You get 100 shells and a spin when they finish the
+tutorial."; limit 10 rewards per inviter; no end date. Save, then Publish. Nothing to
+send back.
+
+### Notifications
+
+1. **Three notification strings** (Engagement → Notifications → Create a Notification
+   String). For each, a name for us and the message below exactly (the `{...}` words
+   are filled in by the game), then ⋯ → Copy Asset ID and send it:
+   - `garden`: `Your Coral Garden is full: {coral} coral is waiting in your den!`
+   - `spins`: `Your free Treasure Wheel spins are back. Come spin for a rare skin!`
+   - `friend`: `{friend} finished the tutorial from your invite. Your reward is waiting!`
+2. **An Open Cloud API key** (Creator Hub → Open Cloud → API Keys → Create API Key,
+   made from the TideBite Studios community's dashboard so it belongs to the
+   community): add the **user-notification** API with **write**, for the Apex Tide
+   experience; leave **Restrict IP addresses** off (Roblox's servers call it) and no
+   expiry. Copy the key (it shows once). Roblox switches a key off after 60 days
+   unused; the notifications keep it in use.
+3. **The Secret** (the experience → Secrets → Create Secret): name `Notifications`,
+   the key as the secret, domain `apis.roblox.com`. Never paste the key anywhere else.
+4. **Allow HTTP Requests** (Studio → File → Experience Settings → Security → on, then
+   save; or Creator Hub's settings for the experience).
+
+Roblox delivers at most one a day per experience, only to players 13+ who allowed
+them, and only once the game has 100 visits. The game asks players first with its own
+card (after a few banks), then Roblox's prompt.

@@ -15,6 +15,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local TutorialConfig = require(ReplicatedStorage.Shared.Config.Tutorial)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Events = require(script.Parent.Parent.Events)
+local Funnel = require(script.Parent.Parent.Funnel)
 local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local Progress = require(script.Parent.Parent.Progress)
@@ -67,6 +68,8 @@ end
 local function finish(player: Player, data: DataService.PlayerData)
 	local tutorial = data.tutorial
 	tutorial.done = true
+	Funnel.tutorial(player, data)
+	Events.tutorialDone:fire(player)
 	local reward = Tutorial.reward
 	EconomyService.addShells(player, reward.shells)
 	EconomyService.addCoral(player, reward.coral)
@@ -151,6 +154,7 @@ local function settle(player: Player, data: DataService.PlayerData)
 		end
 		tutorial.step += 1
 		tutorial.progress = 0
+		Funnel.tutorial(player, data)
 		local nextStep = Tutorial.steps[tutorial.step]
 		if nextStep then
 			Net.notify(player, "Tutorial step complete!", "good")
@@ -195,11 +199,32 @@ function TutorialService.start()
 	Events.leftHub:connect(function(player: Player)
 		count(player, "leftHub", 1)
 	end)
+	Events.dived:connect(function(player: Player)
+		local data = DataService.get(player)
+		if data and Funnel.reach(player, data, "Dived in") then
+			DataService.markDirty(player)
+		end
+	end)
 	Events.ate:connect(function(player: Player, amount: number)
 		count(player, "ate", amount)
 		count(player, "haul", 0)
 	end)
 	Events.banked:connect(function(player: Player)
+		-- The funnel's steps after the tutorial: the first bank on their own, and
+		-- the 'Cuda's level
+		local saved = DataService.get(player)
+		if saved and saved.tutorial.done then
+			local changed = Funnel.reach(player, saved, "Banked on their own")
+			if
+				Size.level(Progress.mass(saved, saved.current))
+				>= (Config.Species.byId.Cuda.unlock.level or 15)
+			then
+				changed = Funnel.reach(player, saved, "Reached LV 15") or changed
+			end
+			if changed then
+				DataService.markDirty(player)
+			end
+		end
 		-- Banked before the Haul was full: that's the lesson anyway, so the Haul step
 		-- and the Bank step both count
 		local data, step = current(player)
@@ -257,6 +282,7 @@ function TutorialService.start()
 	end)
 	DataService.loaded:connect(function(player: Player, data: DataService.PlayerData)
 		migrate(data)
+		Funnel.joined(player, data)
 		if not data.tutorial.done then
 			local step = Tutorial.steps[data.tutorial.step]
 			if step then
