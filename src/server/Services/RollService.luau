@@ -15,6 +15,7 @@ local Net = require(script.Parent.Parent.Net)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Progress = require(script.Parent.Parent.Progress)
+local StateService = require(script.Parent.StateService)
 local TreasureService = require(script.Parent.TreasureService)
 
 local Rolls = Config.Rolls
@@ -23,6 +24,13 @@ local Tiers = Config.Tiers
 local RollService = {}
 
 local rng = Random.new()
+
+-- Rolls until the guaranteed skin (Config/Rolls `guarantee`), this one included
+local function guaranteeLeft(data: DataService.PlayerData): number
+	local tune = Rolls.guarantee
+	local track = data.rollGuarantee
+	return math.max(1, (if track.had then tune.every else tune.first) - track.since)
+end
 
 local function owned(data: DataService.PlayerData, outcome: RollOdds.Outcome): { [string]: boolean }?
 	if outcome.kind == "shade" then
@@ -51,12 +59,31 @@ local function roll(player: Player)
 	-- This fish's shades are out of its table (they never roll again for it)
 	local fishShades = Progress.shades(data)
 	local species = Progress.speciesId(data)
-	local outcome = RollOdds.pick(luck, rng:NextNumber(), fishShades, species)
+	-- This one is the guaranteed skin, if it's come round and this fish has one to get
+	local guaranteed = false
+	local outcome: RollOdds.Outcome
+	local sure = if guaranteeLeft(data) <= 1
+		then RollOdds.pickSkin(luck, rng:NextNumber(), fishShades, species, Rolls.guarantee.tier)
+		else nil
+	if sure then
+		guaranteed = true
+		outcome = sure
+	else
+		outcome = RollOdds.pick(luck, rng:NextNumber(), fishShades, species)
+	end
 	local probability = 0
 	for _, entry in RollOdds.table(luck, fishShades, species) do
 		if entry.outcome == outcome then
 			probability = entry.probability
 		end
+	end
+	if
+		outcome.kind == "shade"
+		and Tiers.byId[outcome.tier].order >= Tiers.byId[Rolls.guarantee.tier].order
+	then
+		data.rollGuarantee = { since = 0, had = true }
+	else
+		data.rollGuarantee.since += 1
 	end
 
 	local result: { [string]: any } = {
@@ -66,6 +93,7 @@ local function roll(player: Player)
 		tier = outcome.tier,
 		probability = probability,
 		luck = luck,
+		guaranteed = guaranteed,
 	}
 	if outcome.kind == "coral" then
 		local amount = outcome.amount or 0
@@ -131,6 +159,9 @@ end
 
 function RollService.start()
 	Net.onRequest("Roll", roll)
+	StateService.provide(function(_player, data, state)
+		state.rollGuaranteeLeft = guaranteeLeft(data)
+	end)
 end
 
 return RollService

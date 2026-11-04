@@ -189,8 +189,14 @@ local function step()
 		end
 		local lamp = current
 		if lamp then
-			local scale = if lamp.fromShade then 0.2 + 0.8 * darkness else 1
+			-- (a lure only comes up with the dark too: at full power in bright water it washed
+			-- the whole fish out white, 2026-11-03)
+			local lure = lamp.key == "lure"
+			local scale = if lamp.fromShade then 0.2 + 0.8 * darkness elseif lure then darkness else 1
 			lamp.light.Brightness = lamp.source.brightness * lamp.boost * scale
+			if lure and lamp.beam then
+				lamp.beam.Brightness = lamp.source.beam * scale
+			end
 			if player == me then
 				myReveal = lamp.source.reveal
 			end

@@ -1324,7 +1324,7 @@ local function buildBiomes(parent: Instance)
 			local slant = Vector3.new(rng:NextNumber(-50, 50), 0, rng:NextNumber(-50, 50))
 			lightShaft(
 				shafts,
-				Vector3.new(ground.X, World.surfaceY - 2, ground.Z),
+				Vector3.new(ground.X, World.surfaceY + 6, ground.Z), -- (its top end hidden in the surface)
 				ground + Vector3.new(0, 10, 0) + slant,
 				rng:NextNumber(12, 26),
 				0.22
@@ -1338,7 +1338,7 @@ local function buildBiomes(parent: Instance)
 				local slant = Vector3.new(rng:NextNumber(-50, 50), 0, rng:NextNumber(-50, 50))
 				lightShaft(
 					shafts,
-					Vector3.new(ground.X, World.surfaceY - 2, ground.Z),
+					Vector3.new(ground.X, World.surfaceY + 6, ground.Z), -- (its top end hidden in the surface)
 					ground + Vector3.new(0, 10, 0) + slant,
 					rng:NextNumber(12, 26),
 					0.2
@@ -1352,7 +1352,7 @@ local function buildBiomes(parent: Instance)
 			local slant = Vector3.new(rng:NextNumber(-80, 80), 0, rng:NextNumber(-80, 80))
 			lightShaft(
 				shafts,
-				Vector3.new(ground.X, World.surfaceY - 2, ground.Z),
+				Vector3.new(ground.X, World.surfaceY + 6, ground.Z), -- (its top end hidden in the surface)
 				Vector3.new(ground.X, -260, ground.Z) + slant,
 				rng:NextNumber(18, 34),
 				0.14
@@ -1573,7 +1573,14 @@ function WorldService.start()
 	checkToonMaterials()
 	root = folder("World", workspace)
 	buildSeabed()
-	buildBounds(folder("Bounds", root))
+	-- (always streamed in: with the surface or a horizon wall streamed out, the sky showed
+	-- through wherever a fish was far from it, owner 2026-11-03: "There is also still a
+	-- skybox that should not be there")
+	local bounds = Instance.new("Model")
+	bounds.Name = "Bounds"
+	bounds.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	bounds.Parent = root
+	buildBounds(bounds)
 	buildHub(root)
 	buildVendors(root:FindFirstChild("Hub") :: Folder)
 	awaitTerrain()

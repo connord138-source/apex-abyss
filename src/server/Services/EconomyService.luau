@@ -104,6 +104,12 @@ function EconomyService.start()
 		state.boosts = data.boosts
 		state.shades = Progress.shades(data) -- the current fish's (shades are per fish)
 		state.otherShades = Progress.otherShades(data)
+		-- Every fish's skins, for the Index (a locked fish has none yet)
+		local allShades: { [string]: { [string]: boolean } } = {}
+		for id, record in data.species do
+			allShades[id] = record.shades or {}
+		end
+		state.allShades = allShades
 		state.parts = data.parts
 		state.variants = data.variants
 		state.equipped = data.equipped

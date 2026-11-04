@@ -65,7 +65,7 @@ floorParams.FilterDescendantsInstances = { workspace.Terrain }
 
 -- The real ground under a point (the Terrain), or the nominal floor
 local function floorUnder(x: number, z: number, from: number): number
-	local hit = workspace:Raycast(Vector3.new(x, from, z), Vector3.new(0, -1400, 0), floorParams)
+	local hit = workspace:Raycast(Vector3.new(x, from, z), Vector3.new(0, -2400, 0), floorParams)
 	return if hit then hit.Position.Y else Seafloor.y(x, z)
 end
 

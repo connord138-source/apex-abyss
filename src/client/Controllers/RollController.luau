@@ -329,6 +329,10 @@ local function filler(rng: Random): RollOdds.Outcome
 				outcome.kind ~= "coral"
 				and not outcome.fixed
 				and not (outcome.kind == "shade" and (fishShades[outcome.id] or outcome.species ~= species))
+				-- (nor another fish's variant: owner, 2026-11-03: "ensure variants only roll
+				-- for players once they have unlocked the fish". The roll itself never gave
+				-- one, RollOdds.otherFish, but the reel showed them going by)
+				and not (outcome.kind == "variant" and outcome.species ~= species)
 			then
 				table.insert(rare, outcome)
 			end
@@ -636,6 +640,7 @@ local function reveal(result: { [string]: any })
 		detail = if bossFrom
 			then `NEW · won from the {bossFrom}`
 			elseif treasurePool then "NEW · dug up from treasure"
+			elseif result.guaranteed then "NEW · your guaranteed Rare or better"
 			else `NEW · {RollOdds.oneIn(probability)}`
 	end
 	if (result.luck or 1) > 1 then

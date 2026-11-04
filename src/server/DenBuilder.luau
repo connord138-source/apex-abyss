@@ -412,7 +412,8 @@ local function buildShell(state: DenState, index: number, record: Record)
 						Enum.Material.Neon
 					)
 					core.Shape = Enum.PartType.Ball
-					light(core, LAMP, 40, if x == 0 then 0.8 else 0.6)
+					-- (a reach to the floor under the higher roof, and across the wider rooms, 2026-11-03)
+					light(core, LAMP, 60, if x == 0 then 1.15 else 0.95)
 				end
 			end
 			z -= 20

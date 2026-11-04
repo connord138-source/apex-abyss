@@ -83,23 +83,25 @@ local GRADES: { Grade } = {
 		-- clear deep blue it can be seen coming through, never black (owner,
 		-- 2026-10-09 and 2026-10-18)
 		color = Color3.fromRGB(34, 92, 132),
-		decay = Color3.fromRGB(10, 48, 82),
-		density = 0.58,
+		decay = Color3.fromRGB(14, 60, 100),
+		-- (the haze peaks here, owner, 2026-11-03: "harder to see distance until you get
+		-- deeper, and once you are at the depths it is clearer again, yet still darker")
+		density = 0.63,
 		tint = Color3.fromRGB(204, 220, 240),
 		brightness = -0.01,
 		saturation = 0,
-		exposure = -0.16,
+		exposure = -0.12,
 		sight = 560,
 	},
 	{
 		y = World.deep.floorY,
 		color = Color3.fromRGB(26, 74, 112),
-		decay = Color3.fromRGB(8, 38, 70),
-		density = 0.62,
+		decay = Color3.fromRGB(12, 52, 92),
+		density = 0.56,
 		tint = Color3.fromRGB(198, 214, 236),
 		brightness = -0.02,
 		saturation = -0.03,
-		exposure = -0.24,
+		exposure = -0.16,
 		sight = 440,
 	},
 	{
@@ -108,7 +110,7 @@ local GRADES: { Grade } = {
 		-- blend toward VENTS_GRADE (below) by their sector
 		color = Color3.fromRGB(20, 58, 96),
 		decay = Color3.fromRGB(6, 28, 58),
-		density = 0.64,
+		density = 0.55,
 		tint = Color3.fromRGB(198, 206, 228),
 		brightness = -0.01,
 		saturation = -0.05,
@@ -122,7 +124,7 @@ local GRADES: { Grade } = {
 		-- exposure -3.6 left it pure black even with a lantern)
 		color = Color3.fromRGB(8, 26, 48),
 		decay = Color3.fromRGB(3, 10, 24),
-		density = 0.68,
+		density = 0.54,
 		tint = Color3.fromRGB(176, 192, 222),
 		brightness = -0.04,
 		saturation = -0.14,
@@ -425,6 +427,63 @@ end
 -- Set by `snap`: the next frame takes the look where the camera is at once
 local snapping = false
 
+-- The water thickening below you (owner, 2026-11-03: "You shouldnt be able to see the
+-- deepest seafloor from the surface levels ... that mystery factor"; Atmosphere's fog
+-- goes by the camera's height alone, so the floor showed from above). Sheets of darker
+-- water across the deep, each drawn only from above (a SurfaceGui on a top face): looking
+-- down, each one you're over dims what's under it, and going down through them they fade
+-- out as you reach them and are gone overhead, so the depths are clear again (like the
+-- Blue Hole's veils, ReefDress). Rock hides them over the shelf. On this client only.
+local VEIL_FADE = 70 -- studs above a sheet that it starts to fade out
+local VEIL_SHARES = { 0.14, 0.28, 0.42, 0.56, 0.7, 0.84 } -- of the way down to the deep floor
+local veils: { { y: number, frame: Frame, gui: SurfaceGui, solid: number } } = {}
+
+local function buildVeils()
+	local folder = Instance.new("Folder")
+	folder.Name = "DepthVeils"
+	folder.Parent = workspace
+	local span = World.boundsRadius * 2 + 600
+	for i, share in VEIL_SHARES do
+		local y = World.deep.floorY * share
+		local sheet = Instance.new("Part")
+		sheet.Name = "Veil"
+		sheet.Anchored = true
+		sheet.CanCollide = false
+		sheet.CanQuery = false
+		sheet.CanTouch = false
+		sheet.CastShadow = false
+		sheet.Transparency = 1
+		sheet.Size = Vector3.new(span, 0.2, span)
+		sheet.CFrame = CFrame.new(0, y, 0)
+		sheet.Parent = folder
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Top
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 0.05
+		gui.LightInfluence = 0
+		gui.Adornee = sheet
+		local frame = Instance.new("Frame")
+		frame.Size = UDim2.fromScale(1, 1)
+		frame.BorderSizePixel = 0
+		frame.BackgroundColor3 = Color3.fromRGB(26, 84, 128)
+			:Lerp(Color3.fromRGB(6, 26, 58), (i - 1) / (#VEIL_SHARES - 1))
+		frame.BackgroundTransparency = 1
+		frame.Parent = gui
+		gui.Parent = sheet
+		table.insert(veils, { y = y, frame = frame, gui = gui, solid = 0.27 })
+	end
+end
+
+local function stepVeils(cameraY: number)
+	for _, veil in veils do
+		local over = cameraY - veil.y
+		veil.gui.Enabled = over > 0
+		if over > 0 then
+			veil.frame.BackgroundTransparency = 1 - veil.solid * math.clamp(over / VEIL_FADE, 0, 1)
+		end
+	end
+end
+
 local function step(dt: number)
 	local position = workspace.CurrentCamera.CFrame.Position
 	if snapping then
@@ -572,6 +631,7 @@ local function step(dt: number)
 	ink.Saturation = -0.8 * blind
 	ink.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(40, 24, 50), blind)
 	snowHolder.CFrame = CFrame.new(position)
+	stepVeils(position.Y)
 	local haze = atmosphere
 	if haze and haze.Parent then
 		-- The map's edge: thicker toward it whatever else cleared the water
@@ -669,6 +729,7 @@ end
 
 function OceanController.start()
 	waterSky()
+	buildVeils()
 	grade = Instance.new("ColorCorrectionEffect")
 	grade.Name = "OceanGrade"
 	grade.Contrast = 0.06

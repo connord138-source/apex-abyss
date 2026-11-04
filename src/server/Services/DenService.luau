@@ -152,6 +152,31 @@ local function relayout(den: DenRecord)
 		-- the bigger rooms and things of 2026-10-18 (DenSpace.grow)
 		DenSpace.grow(shapeOf(den), den.placed, Dens.layout.growth)
 	end
+	if mark < 5 then
+		-- The rooms widened on 2026-11-03: what stood past a room's old wall (in a wing)
+		-- moves out with it; wall and ceiling things go to the tray, their walls and roof
+		-- having moved; floor things stay where they stood
+		local kept = {}
+		for _, placement in den.placed do
+			local storey = DenSpace.storeyAt(placement.y)
+			local grew = 0
+			local old = math.huge
+			for _, room in Dens.rooms do
+				if room.storey == storey and placement.z <= room.z0 and placement.z >= room.z1 then
+					old = Dens.layout.widened[room.id] or room.x
+					grew = room.x - old
+					break
+				end
+			end
+			if math.abs(placement.x) > old + 1 then
+				placement.x += math.sign(placement.x) * grew
+				table.insert(kept, placement)
+			elseif placement.s == "floor" then
+				table.insert(kept, placement)
+			end
+		end
+		den.placed = kept
+	end
 	-- Anything that no longer fits goes back to the tray
 	for _ = 1, 3 do
 		local kept = {}

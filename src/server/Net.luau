@@ -40,6 +40,7 @@ local tideChanged = makeEvent("TideChanged") -- (tideId, endsAt) to everyone: th
 local passClaimed = makeEvent("PassClaimed") -- (summary) to the claimer: Tide Pass rewards claimed
 local achievement = makeEvent("Achievement") -- (summary) to the player: an achievement done and the den set it opened
 local chum = makeEvent("Chum") -- (kind, payload) to everyone: chum clouds and the Whale Fall (add, eat, remove, warn)
+local whaleEvent = makeEvent("WhaleEvent") -- (payload) to everyone: a hunted humpback's move (CompanionService)
 local hooks = makeEvent("Hooks") -- ({ boats }) to everyone: the fishing boats and their lines, about once a second
 -- (kind, index, payload) the biome landmarks: a bell rang, a cannon fired (LandmarkService).
 -- Not "Landmark": that's the request's name, and two remotes of one name let a client's
@@ -54,8 +55,8 @@ predatorState.Parent = folder
 -- Each request: its minimum seconds between calls from one player
 local REQUESTS: { [string]: number } = {
 	EatPrey = 0.05, -- ({ { index: number, at: number } }) batched by the client
-	Bite = 0.35, -- (userId)
-	BiteWhale = 0.3, -- (lane) a mouthful off a passing humpback (CompanionService)
+	Bite = 0.12, -- (userId) (the real limit is Perks.biteGap, HuntService)
+	BiteWhale = 0.12, -- (lane) a mouthful off a passing humpback (CompanionService)
 	Collect = 0.03, -- (shell spot index)
 	EatForage = 0.05, -- ({ number }) forage spot indexes, batched by the client
 	EatChum = 0.05, -- ({ { cloudId, chunkIndex } }) chum chunks, batched by the client
@@ -77,7 +78,7 @@ local REQUESTS: { [string]: number } = {
 	FinishDig = 0.4, -- () the dig hold completed
 	UseWrap = 0.3, -- () use a Kelp Wrap (heal)
 	UseItem = 0.3, -- (id) use an item from the item wheel (Config/Shop items)
-	BitePredator = 0.35, -- (predator index) bite an AI predator or boss
+	BitePredator = 0.12, -- (predator index) bite an AI predator or boss
 	Struggle = 0.05, -- () mash to break a boss's grab (0.12 dropped fast mashing, playtest 2026-10-08)
 	DenUpgrade = 0.5, -- () the den's next level
 	DenBuy = 0.2, -- (itemId) one more of a den thing, into the Build tray
@@ -96,6 +97,7 @@ local REQUESTS: { [string]: number } = {
 	EnterDen = 0.5, -- (index) swam into that den's doorway portal on the plaza
 	LeaveDen = 0.5, -- () swam into the way out on your den's front wall
 	Prestream = 4, -- () near a portal: stream the far side in ahead of the swim through
+	UseSpecial = 0.3, -- () spend a full special meter (Config/Specials)
 	UseAbility = 0.3, -- (abilityId) the fish's signature ability (Config/Abilities)
 	EndAbility = 0.3, -- () come out of a Burrow
 	ClaimDaily = 1, -- () today's daily streak reward
@@ -270,6 +272,10 @@ end
 
 -- Pushes a player's fish (a tail sweep, a shockwave): the client owns its physics,
 -- so it adds the velocity itself.
+function Net.whaleEvent(payload: { [string]: any })
+	whaleEvent:FireAllClients(payload)
+end
+
 function Net.shove(player: Player, velocity: Vector3)
 	player:SetAttribute("MovedAt", os.clock())
 	shove:FireClient(player, velocity)

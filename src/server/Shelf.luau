@@ -363,6 +363,9 @@ local function rimRow(
 	ball(ops, material, last, radius)
 end
 
+-- Where the wall's foot was until it came down on 2026-11-03
+local LOWER_WALL = -430
+
 local function dropOff(ops: { Op }, features: Features)
 	local cr = Random.new(World.seed + CLIFF_SEED)
 	local floor = deep.floorY
@@ -517,6 +520,11 @@ local function dropOff(ops: { Op }, features: Features)
 	local last = SANDSTONE
 	while true do
 		local thick = if cr:NextNumber() < 0.3 then cr:NextNumber(26, 36) else cr:NextNumber(12, 24)
+		-- Below the old foot of the wall the strata grow thicker and longer: the wall came
+		-- down 600 studs on 2026-11-03, and slabs this size there would be ~3,600 more ops
+		if level < LOWER_WALL then
+			thick *= 2.4
+		end
 		if level - thick < floor + 20 then
 			break
 		end
@@ -529,7 +537,7 @@ local function dropOff(ops: { Op }, features: Features)
 		table.insert(bands, {
 			y = level - thick / 2,
 			thick = thick,
-			out = cr:NextNumber(3, 9) + thick * 0.25 + 4 * low,
+			out = math.min(cr:NextNumber(3, 9) + thick * 0.25 + 4 * low, 22),
 			material = material,
 			erode = cr:NextNumber(0.03, 0.14),
 			-- (it swells, pinches and stands out more or less along the rim, in slow
@@ -546,7 +554,10 @@ local function dropOff(ops: { Op }, features: Features)
 		for _, stretch in stretches(14) do
 			local angle = stretch[1]
 			while true do
-				local length = if index == 1 then cr:NextNumber(90, 150) else cr:NextNumber(56, 150)
+				local length = if index == 1
+					then cr:NextNumber(90, 150)
+					elseif band.y < LOWER_WALL then cr:NextNumber(90, 190)
+					else cr:NextNumber(56, 150)
 				local stop = math.min(angle + math.deg(length / FACE), stretch[2])
 				local studs = math.rad(stop - angle) * FACE
 				if studs < 12 then
@@ -590,10 +601,10 @@ local function dropOff(ops: { Op }, features: Features)
 	end
 
 	-- Crevices: tall slots up the face, cut through every band in front of them to
-	-- 6 studs into the face
-	for _ = 1, 22 do
+	-- 6 studs into the face (the last few low on the deep wall)
+	for k = 1, 30 do
 		local angle = rimAngle(30)
-		local top = cr:NextNumber(-230, -70)
+		local top = if k <= 22 then cr:NextNumber(-230, -70) else cr:NextNumber(floor + 260, LOWER_WALL)
 		local bottom = math.max(top - cr:NextNumber(90, 230), floor + 12)
 		local radius = cr:NextNumber(7, 10)
 		if not free(angle, radius + 10, top + radius, bottom - radius) then
@@ -611,7 +622,7 @@ local function dropOff(ops: { Op }, features: Features)
 	end
 
 	-- Caves bitten into the face: a mouth and a darker hollow behind it
-	for _ = 1, 12 do
+	for _ = 1, 22 do
 		local angle = rimAngle(40)
 		local y = cr:NextNumber(floor + 50, -110)
 		local radius = cr:NextNumber(16, 26)
@@ -663,8 +674,8 @@ local function dropOff(ops: { Op }, features: Features)
 
 	-- Ledges: wide flat shelves along a band (its top a little over it), 60-110
 	-- long, standing 20-25 out of the face, for the coral gardens
-	for _ = 1, 70 do
-		if #cliff.ledges >= 48 then
+	for _ = 1, 100 do
+		if #cliff.ledges >= 66 then
 			break
 		end
 		local band = bands[cr:NextInteger(3, #bands)]

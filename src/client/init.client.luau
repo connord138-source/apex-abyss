@@ -16,6 +16,7 @@ local ForageController = require(script.Controllers.ForageController)
 local ChumController = require(script.Controllers.ChumController)
 local PvpController = require(script.Controllers.PvpController)
 local SocialController = require(script.Controllers.SocialController)
+local VendorController = require(script.Controllers.VendorController)
 local HookController = require(script.Controllers.HookController)
 local GardenController = require(script.Controllers.GardenController)
 local AquariumController = require(script.Controllers.AquariumController)
@@ -35,6 +36,7 @@ local CompanionController = require(script.Controllers.CompanionController)
 local LandmarkController = require(script.Controllers.LandmarkController)
 local PredatorController = require(script.Controllers.PredatorController)
 local AbilityController = require(script.Controllers.AbilityController)
+local SpecialController = require(script.Controllers.SpecialController)
 local BossController = require(script.Controllers.BossController)
 local MapController = require(script.Controllers.MapController)
 local LampController = require(script.Controllers.LampController)
@@ -85,6 +87,7 @@ CameraController.start()
 FishAnimator.start()
 PredatorController.start() -- AI predators: interpolation, tells, tags
 AbilityController.start() -- the ability button: Dash, or the Reef Shark's Blood Sense
+SpecialController.start() -- every fish's special attack: the meter, the key and how they look
 BossController.start() -- world boss: HUD bar, dread, countdown, rewards
 MapController.start() -- the minimap and the full map (M / R3 / tap it)
 LampController.start() -- lamps on fish (an Anglerfish's lure, Deep Lanterns) for the dark
@@ -103,6 +106,7 @@ SchoolController.start()
 ChumController.start() -- chum clouds, Blood Tide slicks and the Whale Fall: drawn and eaten here
 PvpController.start() -- the POD button, the Apex crown and bounty, depth pressure
 SocialController.start() -- the notifications card, now and then in a quiet moment
+VendorController.start() -- the plaza's shopkeepers bob, sway and turn to look at you
 HookController.start() -- fishing boats, their lines and bait; hooked fish reeled up
 NametagController.start()
 task.spawn(ShellController.start) -- waits for the server's shell spots

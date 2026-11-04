@@ -260,6 +260,15 @@ local function onBanked(summary: { [string]: any })
 	-- Shown once the bank's growth sequence has had its moment (it holds the stage)
 	task.delay(1.1, function()
 		local waited = 0
+		-- (and after a den's loading screen, which the sequence waits for: BankController)
+		local hadWash = Ui.washUp
+		while Ui.washUp and waited < 30 do
+			waited += task.wait(0.1)
+		end
+		if hadWash then
+			task.wait(0.6)
+		end
+		waited = 0
 		while Ui.stageWait() > 0 and waited < 8 do
 			waited += task.wait(0.1)
 		end

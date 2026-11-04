@@ -239,7 +239,9 @@ local levels: { Level } = {
 -- The decks are thick slabs down to it. 8 studs of rock stay between one storey's
 -- floor and the next one's ceiling.
 local storeys: { Storey } = {
-	{ deck = 1, floor = -4, ceiling = 40, wall = 22 },
+	-- (the main storey's roof raised 2026-11-03, owner: "we are a fish that needs space to
+	-- rotate"; nothing is above it. Was ceiling 40, wall 22)
+	{ deck = 1, floor = -4, ceiling = 52, wall = 26 },
 	{ deck = -54, floor = -60, ceiling = -12, wall = 24 },
 	{ deck = -114, floor = -120, ceiling = -68, wall = 26 },
 }
@@ -248,16 +250,19 @@ local storeys: { Storey } = {
 -- holds the way out on the main storey. v4 (2026-10-18): every number 1.22 times
 -- the v3 rooms' (`GROWTH`), so an old save's things move out with their walls.
 local rooms: { Room } = {
-	{ id = "Nook", level = 1, storey = 1, x = 37, z0 = 36, z1 = -36 },
-	{ id = "Burrow", level = 2, storey = 1, x = 34, z0 = -32, z1 = -110 },
-	{ id = "HallNave", level = 3, storey = 2, x = 39, z0 = 36, z1 = -24 },
-	{ id = "HallMid", level = 3, storey = 2, x = 49, z0 = -24, z1 = -86 },
-	{ id = "HallBack", level = 3, storey = 2, x = 56, z0 = -86, z1 = -146, pillars = 17 },
-	{ id = "GrottoWings", level = 4, storey = 2, x = 71, z0 = -36, z1 = -146 },
-	{ id = "GrottoDeep", level = 4, storey = 2, x = 76, z0 = -146, z1 = -208, pillars = 17 },
-	{ id = "SanctumFore", level = 5, storey = 3, x = 44, z0 = 36, z1 = -24 },
-	{ id = "SanctumNave", level = 5, storey = 3, x = 61, z0 = -24, z1 = -122, pillars = 19 },
-	{ id = "SanctumApse", level = 5, storey = 3, x = 80, z0 = -122, z1 = -220, pillars = 19 },
+	-- Widened 2026-11-03 (owner: the den "is very tight ... Needs to be widened and opened
+	-- up"; the following camera sits ~43 studs behind a big fish). Across only: the pool,
+	-- shafts, wing slots and tanks stand along z. `layout.widened` holds the old widths.
+	{ id = "Nook", level = 1, storey = 1, x = 54, z0 = 36, z1 = -36 },
+	{ id = "Burrow", level = 2, storey = 1, x = 50, z0 = -32, z1 = -110 },
+	{ id = "HallNave", level = 3, storey = 2, x = 52, z0 = 36, z1 = -24 },
+	{ id = "HallMid", level = 3, storey = 2, x = 60, z0 = -24, z1 = -86 },
+	{ id = "HallBack", level = 3, storey = 2, x = 64, z0 = -86, z1 = -146, pillars = 17 },
+	{ id = "GrottoWings", level = 4, storey = 2, x = 76, z0 = -36, z1 = -146 },
+	{ id = "GrottoDeep", level = 4, storey = 2, x = 80, z0 = -146, z1 = -208, pillars = 17 },
+	{ id = "SanctumFore", level = 5, storey = 3, x = 56, z0 = 36, z1 = -24 },
+	{ id = "SanctumNave", level = 5, storey = 3, x = 68, z0 = -24, z1 = -122, pillars = 19 },
+	{ id = "SanctumApse", level = 5, storey = 3, x = 84, z0 = -122, z1 = -220, pillars = 19 },
 }
 
 -- The wings (the proposal's five rooms). The Aquarium Hall's tanks, the Trophy
@@ -1461,7 +1466,7 @@ return {
 	-- studs out from the side wall, `passageHalf` either side of the slot's middle,
 	-- its walls `passageWall` high under a round arch to `passageCrown` (local y); a
 	-- wing taken down gives back `refund` of its price
-	wing = { level = 5, passage = 14, passageHalf = 8, passageWall = 13, passageCrown = 22, refund = 0.5 },
+	wing = { level = 5, passage = 14, passageHalf = 12, passageWall = 15, passageCrown = 26, refund = 0.5 },
 	-- Open Plan (the proposal, approved 2026-10-28): every storey's rooms take its
 	-- widest room's width plus `widen`, with no pillars, so the storey reads as one
 	-- great hall. Bought once with coral at `level` and then switched on or off in
@@ -1518,8 +1523,25 @@ return {
 	-- The shape the placements are saved in (`den.layout`): 3 the private interiors
 	-- of 2026-10-16, 4 the bigger rooms and things of 2026-10-18. An older save is
 	-- moved over once (DenService `relayout`): across and along by `growth`, the v4
-	-- rooms' size over the v3 ones'.
-	layout = { current = 4, growth = 1.22 },
+	-- rooms' size over the v3 ones'. 5 the rooms widened on 2026-11-03: `widened` is each
+	-- room's half-width before that (DenService `relayout` moves what stood in a wing out
+	-- with its wall, and sends wall and ceiling things to the tray).
+	layout = {
+		current = 5,
+		growth = 1.22,
+		widened = {
+			Nook = 37,
+			Burrow = 34,
+			HallNave = 39,
+			HallMid = 49,
+			HallBack = 56,
+			GrottoWings = 71,
+			GrottoDeep = 76,
+			SanctumFore = 44,
+			SanctumNave = 61,
+			SanctumApse = 80,
+		},
+	},
 	-- The way out: a bubble portal at the back of a round alcove in the main storey's
 	-- front wall, the same shape as the doorways on the plaza (owner, 2026-10-20: "den
 	-- exit needs to be more pronounced like the entrance too"; DenCarve cuts it, DenDoor

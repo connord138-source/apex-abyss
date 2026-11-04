@@ -71,7 +71,7 @@ end
 -- the screen). Never past EXIT_MAX (the plaza's raised centre). DenService steps it
 -- back toward the doorway while anything solid is in the way.
 local EXIT_ARCH = 6 -- the camera stays this far in front of the cavern wall
-Layout.EXIT_MAX = 58
+Layout.EXIT_MAX = 66
 function Layout.exitOut(length: number, cameraScale: number?): number
 	local camera = Config.Tuning.camera
 	local distance = (camera.baseDistance + camera.perLength * length) * (cameraScale or 1)
@@ -201,7 +201,8 @@ end
 
 -- The vendor stalls stand round the plaza's beacon (Config/Shop `angle`).
 Layout.PLAZA_TOP = 1.5
-Layout.COUNTER_RADIUS = 33
+Layout.PLAZA_OUTER = 116 -- the paving's outer edge
+Layout.COUNTER_RADIUS = 46
 Layout.COUNTER_SIZE = Vector3.new(12, 3.6, 3.5)
 
 -- The middle of a stall's counter, for the server's reach check and the client's

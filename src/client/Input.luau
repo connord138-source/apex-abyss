@@ -34,8 +34,12 @@ local cameraTuning = Config.Tuning.camera
 local Input = {
 	-- () — the bite button was pressed
 	bite = Signal.new(),
+	-- The bite button is down right now (HuntController's bite lock)
+	biteHeld = false,
 	-- () — the ability button was pressed (the Nibbler's Dash)
 	ability = Signal.new(),
+	-- () — the special attack button was pressed (SpecialController)
+	special = Signal.new(),
 	-- Set by menus to free the mouse
 	cursorWanted = false,
 	-- Alt tapped: the cursor stays free for the HUD buttons and panels until Alt
@@ -220,6 +224,7 @@ function Input.start()
 			or key == Enum.KeyCode.ButtonX
 		then
 			if not Input.locked and not Input.building then
+				Input.biteHeld = true
 				Input.bite:fire()
 			end
 		elseif mouse == Enum.UserInputType.MouseButton1 or key == Enum.KeyCode.ButtonR2 then
@@ -240,6 +245,13 @@ function Input.start()
 		end
 		setHeld(input.KeyCode, false)
 		setHeld(input.UserInputType, false)
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton2
+			or input.KeyCode == Enum.KeyCode.ButtonR1
+			or input.KeyCode == Enum.KeyCode.ButtonX
+		then
+			Input.biteHeld = false
+		end
 		if input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt then
 			local downAt = altDownAt
 			altDownAt = nil
@@ -381,6 +393,15 @@ function Input.biteKey(): string
 		return "RB"
 	end
 	return "RIGHT CLICK"
+end
+
+function Input.specialKey(): string
+	if Input.isTouch() then
+		return "SPECIAL"
+	elseif Input.isGamepad() then
+		return "L3"
+	end
+	return "Q"
 end
 
 function Input.dashKey(): string

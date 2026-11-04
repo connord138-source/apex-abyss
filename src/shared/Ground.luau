@@ -64,11 +64,16 @@ function Ground.y(x: number, z: number): number
 	local centerX, centerZ = (cx + 0.5) * CELL, (cz + 0.5) * CELL
 	local nominal = Seafloor.y(centerX, centerZ)
 	local from = Vector3.new(centerX, World.surfaceY - 1, centerZ)
-	local hit = workspace:Raycast(from, Vector3.new(0, nominal - World.surfaceY - 80, 0), rayParams())
+	-- On the drop-off the nominal floor is only a slope the cliff roughly follows, up to
+	-- hundreds of studs off the real rock: believe the ray there, all the way down
+	local r = Seafloor.polar(centerX, centerZ)
+	local onCliff = r > World.shelf.radius and r < World.shelf.radius + World.shelf.edge
+	local lowest = if onCliff then World.deep.floorY else nominal
+	local hit = workspace:Raycast(from, Vector3.new(0, lowest - World.surfaceY - 80, 0), rayParams())
 	if hit == nil then
 		return nominal
 	end
-	local top = math.max(hit.Position.Y, nominal - 40)
+	local top = if onCliff then hit.Position.Y else math.max(hit.Position.Y, nominal - 40)
 	cache[key] = top
 	return top
 end

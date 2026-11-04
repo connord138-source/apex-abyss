@@ -7,6 +7,7 @@
 -- server checks every bite (HuntService).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Signal = require(ReplicatedStorage.Shared.Signal)
@@ -30,6 +31,9 @@ local HuntController = {
 	-- or a creature (owner, 2026-10-20: "biting also needs a sound queue or something
 	-- to let the player know they are biting"; HudController draws the jaws)
 	snapped = Signal.new(),
+	-- (mouth, range) → the bite lock's point on a humpback, its gap and its motion, set
+	-- by AmbientLifeController
+	whaleLock = nil :: ((Vector3, number) -> (Vector3?, number, Vector3))?,
 	-- (mouth, reach) → the lane of a humpback in reach, set by AmbientLifeController
 	-- (the whales are edible: Config/Ambient `whale.feed`)
 	findWhale = nil :: ((Vector3, number) -> number?)?,
@@ -110,6 +114,55 @@ local function selfSafe(): boolean
 	return character == nil or HuntController.isSafe(character)
 end
 
+-- What the bite lock should hold on to (Config/Tuning `swim.lock`): the nearest thing
+-- to bite within `lengths` of its length past our reach. The point to swim at, the gap
+-- left to reach (<= 0: a bite lands), how it's moving, and whether it's a player.
+local function lockTarget(lengths: number): (Vector3?, number, Vector3, boolean)
+	local root = SwimController.root()
+	if root == nil or selfSafe() then
+		return nil, 0, Vector3.zero, false
+	end
+	local tune = Config.Tuning.swim.lock
+	local length = SwimController.length()
+	local reach = Size.reach(length)
+	local range = length * lengths + tune.pad
+	local mouth = root.CFrame:PointToWorldSpace(Size.mouthOffset(length))
+	local point: Vector3? = nil
+	local gap = math.huge
+	local velocity = Vector3.zero
+	local isPlayer = false
+	for _, entry in nearby(range) do
+		if not HuntController.isSafe(entry.character) then
+			point, gap, velocity, isPlayer =
+				entry.root.Position, entry.gap, entry.root.AssemblyLinearVelocity, true
+			break
+		end
+	end
+	local creature, creatureGap, creatureVelocity = PredatorController.closest(mouth, reach + range)
+	if creature and creatureGap - reach < gap then
+		point, gap, velocity, isPlayer = creature, creatureGap - reach, creatureVelocity, false
+	end
+	local findWhale = HuntController.whaleLock
+	if findWhale then
+		local whale, whaleGap, whaleVelocity = findWhale(mouth, reach + range)
+		if whale and whaleGap - reach < gap then
+			point, gap, velocity, isPlayer = whale, whaleGap - reach, whaleVelocity, false
+		end
+	end
+	return point, gap, velocity, isPlayer
+end
+
+local lockUntil = 0 -- a single press holds the lock until then
+local autoUntil = 0 -- a special attack bites by itself until then
+
+-- A special attack holds the lock on for a while, and may keep biting by itself
+function HuntController.holdOn(seconds: number, keepBiting: boolean)
+	lockUntil = math.max(lockUntil, os.clock() + seconds)
+	if keepBiting then
+		autoUntil = math.max(autoUntil, os.clock() + seconds)
+	end
+end
+
 local function onBite()
 	if SwimController.isHeld() then
 		SwimController.struggle()
@@ -165,8 +218,14 @@ local function onBite()
 			end
 		end
 	end
-	if not SwimController.lunge(target ~= nil) then
+	-- With something the lock can hold on to, there's no dart: it closes and stays
+	-- (the dart overshot and made a big fish loop back for its next bite)
+	local locking = (lockTarget(Config.Tuning.swim.lock.acquire))
+	if not SwimController.lunge(target ~= nil and locking == nil) then
 		return
+	end
+	if locking then
+		lockUntil = os.clock() + Config.Tuning.swim.lock.tap
 	end
 	-- Heard and seen every time: a sharp snap (it was 0.35, lost under the music), a
 	-- puff of bubbles at the mouth, a nudge of the camera and the jaws at the screen's
@@ -251,8 +310,37 @@ local function onHit(attackerId: number, victimId: number, damage: number)
 	end
 end
 
+-- The bite lock, each frame: while the bite is held (or just after a press), hold on to
+-- what's in reach; held with something in reach, it keeps biting
+local function stepLock()
+	local tune = Config.Tuning.swim.lock
+	local wanted = Input.biteHeld or os.clock() < lockUntil
+	if not wanted or Input.locked or Input.building or SwimController.isHeld() then
+		SwimController.lock = nil
+		return
+	end
+	-- (a target it already has is kept further out than a new one is found)
+	local point, gap, velocity, isPlayer = lockTarget(if SwimController.lock then tune.keep else tune.acquire)
+	if point == nil then
+		SwimController.lock = nil
+		return
+	end
+	-- Sits just inside its reach, not on top of it
+	local length = SwimController.length()
+	SwimController.lock = {
+		point = point,
+		gap = gap + Size.reach(length) * 0.25,
+		velocity = velocity,
+		player = isPlayer,
+	}
+	if (Input.biteHeld or os.clock() < autoUntil) and gap <= 0 and SwimController.canBite() then
+		onBite()
+	end
+end
+
 function HuntController.start()
 	Input.bite:connect(onBite)
+	RunService.RenderStepped:Connect(stepLock)
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local hit = remotes:WaitForChild("Hit") :: RemoteEvent
 	hit.OnClientEvent:Connect(onHit)

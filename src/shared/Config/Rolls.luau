@@ -6,6 +6,12 @@
 -- server and the odds panel both use it, so they can't disagree.
 return {
 	shellsPerRoll = 50,
+	-- A guaranteed good skin (owner, 2026-11-03: "each player should get a rare or higher
+	-- skin guaranteed in their first 20-30 rolls to keep them engaged"): a roll this many
+	-- since the last skin of `tier` or better is one, from the rolling fish's table at
+	-- its usual odds among them. `first` until a player's first, then `every`. A fish
+	-- that has every such skin rolls as usual and the count waits.
+	guarantee = { first = 25, every = 50, tier = "Rare" },
 	-- Coral takes whatever chance the shades and exotics leave, split by `share`
 	coral = {
 		{ id = "CoralHandful", name = "Handful of Coral", amount = 25, share = 0.7 },

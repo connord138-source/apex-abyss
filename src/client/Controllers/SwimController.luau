@@ -37,6 +37,7 @@ local SwimController = {
 	velocity = Vector3.zero,
 	boosting = false, -- mid-Dash
 	slipstream = false, -- in a podmate's slipstream (faster)
+	spin = 0, -- turned round its own length (radians): a Moray's Death Roll, SpecialController
 	draft = false, -- in a manta's wake (faster; AmbientLifeController sets it, Config/Companions)
 	dashCharge = 1, -- 0..1; the Dash is ready at 1
 	-- Held still (a Moray's Burrow, AbilityController): no swimming until it's let go
@@ -46,6 +47,9 @@ local SwimController = {
 	-- fish swims by this, so a camera sliding along a den's ceiling no longer tips
 	-- the swim down (nil until the camera runs: the camera's own CFrame then)
 	aim = nil :: CFrame?,
+	-- The bite lock (HuntController, Config/Tuning `swim.lock`): what to hold on to, if
+	-- anything: the point, the gap left to close, how it's moving, and whether it's a player
+	lock = nil :: { point: Vector3, gap: number, velocity: Vector3, player: boolean }?,
 	-- () — a bite lunge started (the animator snaps the jaw)
 	lunged = Signal.new(),
 	-- (character) — our fish spawned
@@ -342,8 +346,13 @@ end
 -- A bite if the cooldown allows (the jaw snaps); returns whether it did. It darts
 -- forward only with something to bite in reach (`dart`): a bite into open water is
 -- just the snap (owner, 2026-10-16: "right click is just a weaker dash").
+-- Whether a bite is ready (the bite lock repeats them while the button is held)
+function SwimController.canBite(): boolean
+	return root ~= nil and clock - lastBiteAt >= Perks.biteGap(character, Timing.clock())
+end
+
 function SwimController.lunge(dart: boolean?): boolean
-	if root == nil or clock - lastBiteAt < swim.biteCooldown then
+	if root == nil or clock - lastBiteAt < Perks.biteGap(character, Timing.clock()) then
 		return false
 	end
 	lastBiteAt = clock
@@ -532,8 +541,23 @@ local function step(dt: number)
 	local speed = velocity.Magnitude
 	local lunging = clock < lungeUntil
 	local direction: Vector3? = nil -- where the swim turned this frame
+	local lock = if boosting or SwimController.pinned then nil else SwimController.lock
 	if held then
 		-- (the pull above stands)
+	elseif lock then
+		-- The bite lock (Config/Tuning `swim.lock`, HuntController): turn on it, close
+		-- the gap and hold station, however the target moves
+		local tune = swim.lock
+		local to = lock.point - currentRoot.Position
+		local want = if to.Magnitude > 1e-3 then to.Unit else heading
+		direction =
+			rotateToward(heading, want, turnRate * (if lock.player then tune.playerTurn else tune.turn) * dt)
+		local fastest = top * tune.fastest
+		local wanted = lock.velocity + want * math.clamp(lock.gap * tune.close, -top * 0.5, fastest)
+		if wanted.Magnitude > fastest then
+			wanted = wanted.Unit * fastest
+		end
+		velocity = velocity:Lerp(wanted, Spring.alpha(tune.grip, dt))
 	elseif lunging then
 		-- A bite lunge: a straight dart along the heading
 		velocity = heading * math.max(speed, top * swim.lungeSpeed)
@@ -582,7 +606,14 @@ local function step(dt: number)
 	-- goes straight and eases onto the shaft's axis. The pitch limit turns straight
 	-- up into 80° along the heading, so a big fish under the Sanctum's mouth slid
 	-- along the vault instead of rising into it (PC overnight 2026-10-14)
-	if not held and not lunging and not reversing and intent > 0.05 and math.abs(wish.Unit.Y) > 0.55 then
+	if
+		not held
+		and not lock
+		and not lunging
+		and not reversing
+		and intent > 0.05
+		and math.abs(wish.Unit.Y) > 0.55
+	then
 		local axis = shaftAxis(currentRoot.Position)
 		if axis then
 			local toAxis = Vector3.new(axis.X - currentRoot.Position.X, 0, axis.Z - currentRoot.Position.Z)
@@ -637,7 +668,10 @@ local function step(dt: number)
 	-- backwards after it), keep facing forward and follow the aim's turn; level out
 	-- slowly when idle
 	local previous = heading
-	if reversing then
+	if lock and direction then
+		-- (it faces what it's biting, whichever way it drifts to hold station)
+		heading = limitPitch(direction :: Vector3)
+	elseif reversing then
 		local facing = Vector3.new(look.X, heading.Y, look.Z)
 		if facing.Magnitude > 1e-3 then
 			heading = rotateToward(heading, limitPitch(facing.Unit), turnRate * dt)
@@ -666,7 +700,7 @@ local function step(dt: number)
 	end
 	local targetRoll = math.clamp(yawRate * swim.rollFromTurn, -swim.maxRoll, swim.maxRoll)
 	roll, rollVelocity = Spring.number(roll, rollVelocity, targetRoll, 7, dt)
-	align.CFrame = CFrame.lookAt(Vector3.zero, heading) * CFrame.Angles(0, 0, roll)
+	align.CFrame = CFrame.lookAt(Vector3.zero, heading) * CFrame.Angles(0, 0, roll + SwimController.spin)
 end
 
 function SwimController.start()

@@ -188,6 +188,34 @@ function RollOdds.table(luck: number, owned: { [string]: boolean }?, species: st
 	return result
 end
 
+-- A skin of `tier` or better from this fish's table, at its usual odds among them
+-- (Config/Rolls `guarantee`). Nil when it has them all.
+function RollOdds.pickSkin(
+	luck: number,
+	r: number,
+	owned: { [string]: boolean }?,
+	species: string?,
+	tier: string
+): (Outcome?, number)
+	local from = Config.Tiers.byId[tier].order
+	local good: { Odds } = {}
+	local all = 0
+	for _, entry in RollOdds.table(luck, owned, species) do
+		if entry.outcome.kind == "shade" and Config.Tiers.byId[entry.outcome.tier].order >= from then
+			table.insert(good, entry)
+			all += entry.probability
+		end
+	end
+	local total = 0
+	for _, entry in good do
+		total += entry.probability
+		if r * all < total then
+			return entry.outcome, entry.probability
+		end
+	end
+	return nil, 0
+end
+
 -- Picks an outcome for a uniform random number `r` in [0, 1).
 function RollOdds.pick(luck: number, r: number, owned: { [string]: boolean }?, species: string?): Outcome
 	local odds = RollOdds.table(luck, owned, species)

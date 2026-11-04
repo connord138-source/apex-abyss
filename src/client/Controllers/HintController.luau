@@ -60,7 +60,7 @@ local function textFor(kind: Kind): string
 	if kind == "eat" then
 		return "Swim into smaller fish, shrimp and starfish to swallow them. No button needed."
 	elseif kind == "bite" then
-		return `Press {biteKey()} to bite other fish, predators and bosses. Bites wear them down.`
+		return `Hold {biteKey()} to bite other fish, predators and bosses: your fish stays on them and keeps biting.`
 	elseif kind == "danger" then
 		return "That fish is well above your level: its bites hit much harder. Dash away or hide!"
 	elseif kind == "school" then

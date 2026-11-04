@@ -1958,41 +1958,17 @@ local function stream(now: number)
 	end
 end
 
-local function onBite(player: Player, index: any)
-	if typeof(index) ~= "number" or index % 1 ~= 0 then
-		return
-	end
-	local predator = predators[index]
-	if predator == nil or predator.mode == "dead" then
-		return
-	end
-	local now = Timing.clock()
-	if now - (lastBite[player] or 0) < swim.biteCooldown * 0.8 then
-		return
-	end
-	local mouth, length, slack = HuntService.mouth(player)
-	local data = DataService.get(player)
-	if mouth == nil or data == nil then
-		return
-	end
-	-- Distance to the body, a segment from tail to nose
+-- A bite landing on a predator or boss, at `scale` × its damage (1 for a plain bite)
+local function landOn(
+	player: Player,
+	predator: Predator,
+	nearest: Vector3,
+	length: number,
+	data: DataService.PlayerData,
+	now: number,
+	scale: number
+)
 	local def = predator.def
-	local half = predator.heading * def.length * 0.5
-	local a, b = predator.position - half, predator.position + half
-	local ab = b - a
-	local t = math.clamp((mouth - a):Dot(ab) / math.max(ab:Dot(ab), 1e-4), 0, 1)
-	local nearest = a + ab * t
-	-- The biter's client draws the creature where it was a moment ago (the stream's
-	-- interpolation delay plus latency), so a fast boss gets that much room too
-	-- (retest 2026-10-09: bites on a swimming Megalodon's flank missed)
-	local drift = predator.velocity.Magnitude * (Predators.interpolationDelay + hunt.latencySeconds)
-	if
-		(nearest - mouth).Magnitude
-		> Size.reach(length) + def.length * (def.girth or 0.18) + slack + drift
-	then
-		return
-	end
-	lastBite[player] = now
 	local school = 0
 	for other, record in predator.hitBy do
 		if other ~= player and now - record.at < Predators.schoolWindow then
@@ -2024,7 +2000,13 @@ local function onBite(player: Player, index: any)
 	end
 	local jaw = Perks.bite(data.upgrades)
 	local species = Progress.species(data).stats.bite
-	local damage = hunt.biteDamage * ratio * (1 + Predators.schoolBonus * school) * jaw * species
+	local damage = hunt.biteDamage
+		* ratio
+		* (1 + Predators.schoolBonus * school)
+		* jaw
+		* species
+		* scale
+		* Perks.biteBonus(FishService.character(player), now)
 	if swallowed then
 		damage = math.max(damage, predator.health)
 	end
@@ -2037,6 +2019,45 @@ local function onBite(player: Player, index: any)
 		Events.bossDamage:fire(player, damage)
 	end
 	hurt(predator, player, damage, nearest, now, swallowed)
+end
+
+local function onBite(player: Player, index: any)
+	if typeof(index) ~= "number" or index % 1 ~= 0 then
+		return
+	end
+	local predator = predators[index]
+	if predator == nil or predator.mode == "dead" then
+		return
+	end
+	local now = Timing.clock()
+	if now - (lastBite[player] or 0) < Perks.biteGap(FishService.character(player), now) * 0.8 then
+		return
+	end
+	local mouth, length, slack = HuntService.mouth(player)
+	local data = DataService.get(player)
+	if mouth == nil or data == nil then
+		return
+	end
+	-- Distance to the body, a segment from tail to nose
+	local def = predator.def
+	local half = predator.heading * def.length * 0.5
+	local a, b = predator.position - half, predator.position + half
+	local ab = b - a
+	local t = math.clamp((mouth - a):Dot(ab) / math.max(ab:Dot(ab), 1e-4), 0, 1)
+	local nearest = a + ab * t
+	-- The biter's client draws the creature where it was a moment ago (the stream's
+	-- interpolation delay plus latency), so a fast boss gets that much room too
+	-- (retest 2026-10-09: bites on a swimming Megalodon's flank missed)
+	local drift = predator.velocity.Magnitude * (Predators.interpolationDelay + hunt.latencySeconds)
+	if
+		(nearest - mouth).Magnitude
+		> Size.reach(length) + def.length * (def.girth or 0.18) + slack + drift
+	then
+		return
+	end
+	lastBite[player] = now
+	landOn(player, predator, nearest, length, data, now, 1)
+	Events.biteLanded:fire(player)
 end
 
 local function make(def: Def, custom: boolean?): Predator
@@ -2135,6 +2156,63 @@ function PredatorService.stun(position: Vector3, radius: number, seconds: number
 		end
 	end
 	return count
+end
+
+-- A special attack's bite (SpecialService): `scale` × a bite, with no reach or cooldown
+-- check. Returns whether it landed.
+function PredatorService.strike(player: Player, predator: Predator, at: Vector3, scale: number): boolean
+	local _, length = HuntService.mouth(player)
+	local data = DataService.get(player)
+	if data == nil or length == 0 or predator.mode == "dead" then
+		return false
+	end
+	landOn(player, predator, at, length, data, Timing.clock(), scale)
+	return true
+end
+
+-- Every live predator and boss whose body comes within `radius` of the line a to b, and
+-- the nearest point of it found (bodies are tried at a few points along their length)
+function PredatorService.touching(
+	a: Vector3,
+	b: Vector3,
+	radius: number
+): { { predator: Predator, at: Vector3 } }
+	local found = {}
+	local ab = b - a
+	local long = math.max(ab:Dot(ab), 1e-4)
+	for _, predator in predators do
+		if predator.mode == "dead" then
+			continue
+		end
+		local def = predator.def
+		local half = predator.heading * def.length * 0.5
+		local reach = radius + def.length * (def.girth or 0.18)
+		local steps = math.clamp(math.ceil(def.length / math.max(reach, 1)), 1, 16)
+		local best: Vector3? = nil
+		local bestGap = reach
+		for k = 0, steps do
+			local point = predator.position - half + half * 2 * (k / steps)
+			local t = math.clamp((point - a):Dot(ab) / long, 0, 1)
+			local gap = (a + ab * t - point).Magnitude
+			if gap <= bestGap then
+				best, bestGap = point, gap
+			end
+		end
+		if best then
+			table.insert(found, { predator = predator, at = best })
+		end
+	end
+	return found
+end
+
+-- Throws or drags a plain predator: stunned, drifting at `velocity` (a boss is too big
+-- to move)
+function PredatorService.drive(predator: Predator, velocity: Vector3, seconds: number)
+	if predator.custom or predator.mode == "dead" then
+		return
+	end
+	stunOne(predator, seconds, Timing.clock())
+	predator.velocity = velocity
 end
 
 -- The share of a bite a fish takes: a puffed fish (character attribute `Puffed`, the

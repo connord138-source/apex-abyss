@@ -16,6 +16,10 @@
 --       -> ReplicatedStorage.WorldProps.<Name>        (a Model)
 --   rolled parts (GLB, parts_glb: AnglerLure, NarwhalHorn, SawSnout, SailFin, VeilTail)
 --       -> ReplicatedStorage.PartModels.<PartId>       (the MeshPart, stamped Facing "+Z")
+--   rolled parts fitted to each fish (GLB, assets/glb/parts/fit, tools/props/parts_fit.py:
+--   <Fish>_<PartId>, as Nibbler_SailFin, on Nibbler, Cuda, Puffer, MorayEel, ReefShark, Angler)
+--       -> ReplicatedStorage.PartModels.<Fish>_<PartId> (the MeshPart, stamped Facing "+Z", given a
+--          SurfaceAppearance if it came in with only a TextureID, so a worn shade can tint it)
 --   exotic variants (rigged FBX, variants_fbx: Puffball, Sabrecuda, Porcupine,
 --   DragonMoray, Hammerhead, Deepfang)
 --       -> ReplicatedStorage.VariantModels.<VariantId> (a Model holding the skinned MeshPart)
@@ -54,6 +58,13 @@ local PREY = {
 -- The rolled parts and the exotic variants (parts_glb, variants_fbx, 2026-10-21), worn
 -- by Shared/Cosmetics
 local PARTS = { AnglerLure = true, NarwhalHorn = true, SawSnout = true, SailFin = true, VeilTail = true }
+-- The same parts modelled per fish (Shared/PartFits, 2026-11-03): thirty <Fish>_<PartId>
+local FITS = {}
+for _, fish in { "Nibbler", "Cuda", "Puffer", "MorayEel", "ReefShark", "Angler" } do
+	for part in PARTS do
+		FITS[`{fish}_{part}`] = true
+	end
+end
 local VARIANTS =
 	{ Puffball = true, Sabrecuda = true, Porcupine = true, DragonMoray = true, Hammerhead = true, Deepfang = true }
 -- The sea life (ambient_fbx, 2026-10-19), read by AmbientLifeController and the
@@ -141,6 +152,15 @@ local function largestPart(model: Model): BasePart?
 	return best
 end
 
+-- A fitted part: one static mesh, faces +Z like the others (Cosmetics turns it round). A GLB
+-- whose root Studio named "Scene" still has the right name on the mesh inside it.
+local function fileFit(fitName: string, part: BasePart)
+	part.Name = fitName
+	part:SetAttribute("Facing", "+Z")
+	replaceIn(folder("PartModels"), fitName, part)
+	print(`[organize_imports] {fitName}: fitted part`)
+end
+
 local moved = 0
 for _, item in workspace:GetChildren() do
 	local name = item.Name
@@ -152,7 +172,12 @@ for _, item in workspace:GetChildren() do
 			item.PrimaryPart = primary
 		end
 		local rigged = item:FindFirstChildWhichIsA("Bone", true) ~= nil
-		if SPECIES[name] and rigged then
+		local fitName = if FITS[name] then name elseif primary and FITS[primary.Name] then primary.Name else nil
+		if fitName and primary then
+			fileFit(fitName, primary)
+			item:Destroy()
+			moved += 1
+		elseif SPECIES[name] and rigged then
 			-- (the 2026-10-19 rigs: a Jaw on the Megalodon, Reef Shark and 'Cuda, and
 			-- FinL/FinR on the Megalodon; say which came in, so an old file shows)
 			local extras = {}
@@ -202,7 +227,10 @@ for _, item in workspace:GetChildren() do
 			moved += 1
 		end
 	elseif item:IsA("MeshPart") then
-		if PARTS[name] then
+		if FITS[name] then
+			fileFit(name, item)
+			moved += 1
+		elseif PARTS[name] then
 			item:SetAttribute("Facing", "+Z")
 			replaceIn(folder("PartModels"), name, item)
 			print(`[organize_imports] {name}: part`)
@@ -252,6 +280,32 @@ for name in AMBIENT do
 		end
 	end
 end
+-- A fitted part with only a TextureID gets the same: its tint under a worn shade is a
+-- SurfaceAppearance's Color. Say what each came in with, so a lost glow map shows
+local partModels = ReplicatedStorage:FindFirstChild("PartModels")
+local fitsFiled, fitsMissing = 0, {}
+for name in FITS do
+	local part = partModels and partModels:FindFirstChild(name)
+	if part and part:IsA("MeshPart") then
+		fitsFiled += 1
+		if part.TextureID ~= "" and part:FindFirstChildOfClass("SurfaceAppearance") == nil then
+			local texture = part.TextureID
+			local appearance = Instance.new("SurfaceAppearance")
+			local ok, err = pcall(function()
+				(appearance :: any).ColorMap = texture
+			end)
+			if ok then
+				appearance.Parent = part
+				part.TextureID = ""
+			end
+			print(`[organize_imports] {name}: SurfaceAppearance from its texture {if ok then "made" else `failed ({err})`}`)
+		end
+	else
+		table.insert(fitsMissing, name)
+	end
+end
+table.sort(fitsMissing)
+print(`[organize_imports] fitted parts filed: {fitsFiled} of 30{if #fitsMissing > 0 then " (missing: " .. table.concat(fitsMissing, ", ") .. ")" else ""}`)
 -- Overlay props (imported now or before): their texture's low alpha shows the part's Color
 local worldProps = ReplicatedStorage:FindFirstChild("WorldProps")
 for name in OVERLAY do

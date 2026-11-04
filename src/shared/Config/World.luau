@@ -21,25 +21,29 @@ return {
 
 	hub = {
 		center = Vector3.new(0, 0, 0),
-		radius = 95, -- inner face of the cavern wall
+		-- Inner face of the cavern wall (owner, 2026-11-03: "The hub also needs to be made
+		-- larger ... The dens and vendors are very tightly packed together"; 95 until then).
+		-- Only inward: `denDepth` and `tunnelLength` gave up what it took, so the seamount's
+		-- foot (165), the tunnels' ends (195) and everything outside stay where they were.
+		radius = 125,
 		height = 110, -- cavern ceiling
 		wallThickness = 14,
 		segments = 24, -- wall pieces round the ring: dens, tunnels and plain wall
-		denDepth = 34, -- how far a den runs back into the wall
+		denDepth = 4, -- how far a den runs back into the wall (34 at radius 95)
 		denHeight = 26,
 		denFloorY = 4,
 		tunnelHeight = 36,
 		-- Out past the seamount's foot (165 from the center, its terrace drums up to
 		-- ~180): at 44 the tubes stopped inside the rock widened for the dens
 		-- (owner, 2026-10-11: "ensure all exits from the den are clear and open")
-		tunnelLength = 76,
+		tunnelLength = 46,
 		-- Bigger ways out (owner, 2026-10-28: "hub entrances should be bigger"): the
 		-- dens' doorways open either side of each tunnel at the cavern wall, so there a
 		-- tube can't be wider, only taller (a second tube `tunnelArch` higher); past the
 		-- wall (`tunnelWall` from the centre) it widens to `tunnelWide` radius, and its
 		-- mouth onto the sand flares wider still
 		tunnelArch = 12,
-		tunnelWall = 116,
+		tunnelWall = 146,
 		tunnelWide = 23,
 		oculusRadius = 28, -- the hole in the cavern roof (light comes down through it)
 		poolRadius = 7, -- each den's Haul Pool: swim into it to bank
@@ -55,8 +59,11 @@ return {
 		edge = 90,
 	},
 	deep = {
-		floorY = -430, -- the deep floor beyond the drop-off
-		ventsFloorY = -540, -- the Hydrothermal Vents' basins
+		-- Much deeper since 2026-11-03 (owner: "The map also needs to be much, much deeper. You
+		-- shouldnt be able to see the deepest seafloor from the surface levels"); the deep
+		-- floors all came down 600 together (-430, -540 and the Trench's -920 until then)
+		floorY = -1030, -- the deep floor beyond the drop-off
+		ventsFloorY = -1140, -- the Hydrothermal Vents' basins
 		ventsAngles = { 125, 215 }, -- the basins' sector (degrees from +X toward +Z)
 		ventsRadii = { 1000, 1440 },
 	},
@@ -74,7 +81,7 @@ return {
 		-- (Seafloor.trenchAxis, Shelf.luau).
 		center = Vector3.new(0, 0, 1210),
 		size = Vector3.new(700, 0, 560),
-		floorY = -920,
+		floorY = -1520,
 		angles = { 68, 112 }, -- the biome's sector (the canyon is narrower)
 		radii = { 990, 1430 },
 		width = 210, -- across, at the floor

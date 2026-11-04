@@ -118,5 +118,5 @@ return {
 	bountyChest = 1, -- spins in the Bounty Chest
 	weekly = 2, -- spins for the Catch of the Week
 	angle = 240, -- where it stands on the plaza (degrees from +X toward +Z) ...
-	radius = 62, -- ... and how far out from the beacon, facing it
+	radius = 82, -- ... and how far out from the beacon, facing it
 }

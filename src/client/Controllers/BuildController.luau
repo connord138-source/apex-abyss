@@ -136,6 +136,7 @@ local touchRow: Frame
 local snapButton: TextButton? = nil
 local trayButton: TextButton? = nil
 local shopButton: TextButton? = nil
+local leaveButton: TextButton? = nil
 -- The den shop is open over Build mode (owner, 2026-10-17: "I don't see a shop at all
 -- where you buy den items"): the bar steps aside and the view holds still until it closes
 local shopping = false
@@ -1437,7 +1438,10 @@ local function layoutTray()
 		shop.Visible = not touch
 		shop.Text = if Input.isGamepad() then "Y · SHOP" else "SHOP"
 	end
-	statusLabel.Size = if touch then UDim2.new(0.62, -14, 0, 18) else UDim2.new(0.62, -122, 0, 18)
+	if leaveButton then
+		leaveButton.Visible = not touch
+	end
+	statusLabel.Size = if touch then UDim2.new(0.62, -14, 0, 18) else UDim2.new(0.62, -162, 0, 18)
 	if not touch then
 		panel.Size = UDim2.fromOffset(860, 146)
 		panel.Position = UDim2.new(0.5, 0, 1, -120)
@@ -1592,7 +1596,7 @@ local function buildGui()
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Right
 	statusLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	-- The den shop, at the bar's top-right corner (a phone has it in its row)
-	local shop = Ui.button(panel, "Shop", "SHOP", UDim2.fromOffset(96, 24), UDim2.new(1, -106, 0, 6), "gold")
+	local shop = Ui.button(panel, "Shop", "SHOP", UDim2.fromOffset(96, 24), UDim2.new(1, -146, 0, 6), "gold")
 	shop.TextSize = 13
 	shop.Selectable = false
 	shop.Activated:Connect(function()
@@ -1600,6 +1604,18 @@ local function buildGui()
 		openShop()
 	end)
 	shopButton = shop
+	-- An X to leave beside it (owner, 2026-11-03: "add an X ... hitting b to close will
+	-- be confusing to a lot of people"; a phone has DONE in its row)
+	local leave =
+		Ui.button(panel, "Leave", "X", UDim2.fromOffset(32, 24), UDim2.new(1, -42, 0, 6), "secondary")
+	leave.FontFace = Ui.FONT_HEAVY
+	leave.TextSize = 14
+	leave.Selectable = false
+	leave.Activated:Connect(function()
+		buttonClock = os.clock()
+		BuildController.stop()
+	end)
+	leaveButton = leave
 	trayFrame = Instance.new("ScrollingFrame")
 	trayFrame.Name = "Things"
 	trayFrame.BackgroundTransparency = 1

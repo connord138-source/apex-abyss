@@ -23,7 +23,7 @@ DIR = os.path.abspath(argv[0])
 # --world: the whole seafloor (run_world.sh) at a coarse cell, from above and the sides
 WORLD = "--world" in argv
 CELL = 8.0 if WORLD else 2.0  # studs per voxel (Roblox uses 4; finer shows the shape better)
-BOUNDS = ((-1600, 1600), (-960, 130), (-1600, 1600)) if WORLD else ((-190, 190), (-34, 150), (-190, 190))
+BOUNDS = ((-1600, 1600), (-1560, 130), (-1600, 1600)) if WORLD else ((-190, 190), (-34, 150), (-190, 190))
 # Another region (run_ruins.sh): BOUNDS=x0,x1,y0,y1,z0,z1 and CELL=<studs>
 if os.environ.get("BOUNDS"):
     _b = [float(v) for v in os.environ["BOUNDS"].split(",")]

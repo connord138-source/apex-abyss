@@ -1108,7 +1108,7 @@ function Cliff.build(parent: Instance, layout: Shelf.Cliff, cast: Cast): Stats
 	end)
 
 	-- The lower face (-250 to the foot): sparse deep growth in the biome's colours
-	walk({ 60, 130 }, 16, function(angle)
+	walk({ 34, 80 }, 16, function(angle)
 		local look, zone = deepLook(angle)
 		local y0 = rng:NextNumber(floor + 30, -255)
 		for _ = 1, rng:NextInteger(2, 4) do

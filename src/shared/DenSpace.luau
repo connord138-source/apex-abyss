@@ -882,7 +882,7 @@ function DenSpace.check(level: ShapeArg, item: DensConfig.Item, surface: string,
 		return { ok = false, why = "That's outside your den" }
 	end
 	if surface == "wall" and DenSpace.onTank(level, at) then
-		return { ok = false, why = "That's an aquarium tank" }
+		return { ok = false, why = "That wall is kept for an aquarium tank" }
 	end
 	local storey = DenSpace.storeyAt(at.Y) or 1
 	local deck = DenSpace.storey(storey).deck

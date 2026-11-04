@@ -41,7 +41,11 @@ local FADE_IN = 0.22
 local FADE_OUT = 0.45
 local WAIT_MOST = 2.5 -- seconds to wait for the move before clearing anyway
 local LOAD_MOST = 25 -- seconds to wait for the place to stream in before clearing anyway
-local SETTLE = 0.6 -- the place must be there this long (Terrain meshes after it arrives)
+-- The place must be there this long (Terrain meshes after it arrives). Going in, long
+-- enough for the den to be drawn before the wash lifts (owner, 2026-11-03: "it takes a
+-- second for everything to load so the player misses the fish growth or haul deposit";
+-- was 0.6), and BankController waits for the wash (Ui.washUp)
+local SETTLE = 2
 -- Coming out on the plaza, longer: Roblox first draws the newly arrived hub Terrain
 -- coarse, which closes the doorway's arch over (a dark blue rock face, though rays
 -- already pass), and meshes it finely only 1.5–3.6 s after arriving (PC 2026-10-18,
@@ -55,10 +59,12 @@ local SETTLE_HUB = 3.5
 -- the rock-and-doorway check alone let the plaza's stalls, lamps and dressing pop in
 local HUB_SHARE = 0.96
 local QUEUE_LEFT = 4
+local DEN_QUEUE_MOST = 7 -- seconds, going into a den, to wait for that queue
 local PRESTREAM_REACH = 36 -- studs from a portal at which the far side is asked for
 local COOLDOWN = 1.2 -- after a move, before another portal takes the fish
 
 local busy = false
+local queueUntil = 0 -- going in, how long to wait for the den's meshes and textures
 local coolUntil = 0
 local arrived = false
 local shutNoteAt = 0
@@ -172,6 +178,8 @@ local function arrivedAt(door: number?): boolean
 		if not hubLoaded(hub :: Instance) or not cavernSettled() then
 			return false
 		end
+	elseif os.clock() < queueUntil and ContentProvider.RequestQueueSize > QUEUE_LEFT then
+		return false
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -228,6 +236,8 @@ end
 
 local function go(request: string, index: number?)
 	busy = true
+	Ui.washUp = true
+	queueUntil = os.clock() + DEN_QUEUE_MOST
 	arrived = false
 	cavernAt, cavernHits, cavernSince = 0, -1, 0
 	-- Leaving: the doorway on the plaza we'll come out at
@@ -287,6 +297,7 @@ local function go(request: string, index: number?)
 		Ui.tween(tipLabel, 0.2, { TextTransparency = 1 })
 		-- A frame for the camera to cut to the new place under the wash
 		task.wait(0.1)
+		Ui.washUp = false
 		Sfx.play("Bubble", { volume = 0.5, pitch = 0.8 })
 		bubbles()
 		Ui.tween(wash, FADE_OUT, { BackgroundTransparency = 1 })

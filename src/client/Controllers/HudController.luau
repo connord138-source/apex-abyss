@@ -12,6 +12,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
+local Perks = require(ReplicatedStorage.Shared.Perks)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Layout = require(ReplicatedStorage.Shared.Layout)
@@ -46,6 +47,8 @@ local safeText: TextLabel
 local safeDot: Frame
 local haulValue: TextLabel
 local haulScale: UIScale
+local haulLevels: TextLabel
+local haulGlow: UIStroke
 local haulFill: Frame
 local hintText: TextLabel
 local boostTrack: Frame
@@ -115,15 +118,45 @@ local function popMass(kg: number): string
 end
 
 -- The Haul card: what's on it against what a full one holds
-local function haulText(haul: number, full: number): string
+-- An amount in the Haul's own unit (the digits go with how much a full Haul holds)
+local function haulAmount(kg: number, full: number): string
 	if full < 1 then
-		return string.format("%.2f / %.2f kg", haul, full)
+		return string.format("%.2f kg", kg)
 	elseif full < 10 then
-		return string.format("%.1f / %.1f kg", haul, full)
+		return string.format("%.1f kg", kg)
 	elseif full < 1000 then
-		return string.format("%d / %d kg", math.floor(haul + 0.5), math.floor(full + 0.5))
+		return string.format("%d kg", math.floor(kg + 0.5))
 	end
-	return string.format("%.1f / %.1f t", haul / 1000, full / 1000)
+	return string.format("%.1f t", kg / 1000)
+end
+
+-- The Haul card's amount: "12.4 t / 17.5 t", the full mark quieter. Rewards can go past
+-- full (a boss, a whale), and "141.7 / 17.5 t" read as a bug (owner, 2026-11-03: "Haul
+-- amount phrasing"), so past full it says how many Hauls it holds.
+local function haulText(haul: number, full: number): string
+	local amount = haulAmount(haul, full)
+	if haul > full * 1.005 then
+		local times = haul / math.max(full, 1e-9)
+		local label = if times < 10
+			then string.format("%.1f", times)
+			else string.format("%d", math.floor(times))
+		return `{amount}<font size="16" color="#FFCC5C">  {label}× FULL</font>`
+	end
+	return `{amount}<font size="17" color="#8FA6B8"> / {haulAmount(full, full)}</font>`
+end
+
+-- What banking the Haul now would bring ("+3 LV"; a top-level fish banks it for coral)
+local function bankGain(banked: number, haul: number, upgrades: any): string
+	if haul <= 0 then
+		return ""
+	end
+	local levelNow = Size.level(banked)
+	if levelNow >= Config.Tuning.size.maxLevel then
+		return "BANKS FOR CORAL"
+	end
+	local gained = Size.level(banked + haul * Config.Tuning.hunt.bankMultiplier * Perks.bank(upgrades))
+		- levelNow
+	return if gained >= 1 then `+{gained} LV` else ""
 end
 
 local function buildLevelCard()
@@ -277,10 +310,48 @@ local function buildHaulCard()
 		UDim2.fromOffset(288, 32),
 		UDim2.fromOffset(16, 24)
 	)
+	haulValue.RichText = true
 	haulScale = Instance.new("UIScale")
 	haulScale.Parent = haulValue
-	local _, fill = Ui.bar(card, "Growth", UDim2.fromOffset(288, 6), UDim2.fromOffset(16, 60), Ui.color.haul)
+	-- What banking it now would bring ("+3 LV"), right of the amount
+	haulLevels = Ui.label(
+		card,
+		"Levels",
+		"",
+		Ui.FONT_HEAVY,
+		16,
+		Ui.color.safe,
+		UDim2.fromOffset(130, 20),
+		UDim2.new(1, -146, 0, 33)
+	)
+	haulLevels.TextXAlignment = Enum.TextXAlignment.Right
+	local track, fill =
+		Ui.bar(card, "Growth", UDim2.fromOffset(288, 9), UDim2.fromOffset(16, 58), Ui.color.haul)
 	haulFill = fill
+	local shine = Instance.new("UIGradient")
+	shine.Rotation = 90
+	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(205, 205, 205))
+	shine.Parent = fill
+	-- A tick for each level's worth of a full Haul (Config/Tuning `growth.cap`)
+	for index = 1, 4 do
+		local mark = Instance.new("Frame")
+		mark.Name = "Tick"
+		mark.AnchorPoint = Vector2.new(0.5, 0)
+		mark.Position = UDim2.fromScale(index / 5, 0)
+		mark.Size = UDim2.new(0, 2, 1, 0)
+		mark.BackgroundColor3 = Color3.fromRGB(6, 18, 30)
+		mark.BackgroundTransparency = 0.35
+		mark.BorderSizePixel = 0
+		mark.ZIndex = fill.ZIndex + 1
+		mark.Parent = track
+	end
+	-- A full Haul glows round the card, to say swim home
+	haulGlow = Instance.new("UIStroke")
+	haulGlow.Name = "FullGlow"
+	haulGlow.Color = Ui.color.haul
+	haulGlow.Thickness = 2
+	haulGlow.Transparency = 1
+	haulGlow.Parent = card
 	hintText = Ui.label(
 		card,
 		"Hint",
@@ -289,7 +360,7 @@ local function buildHaulCard()
 		13,
 		Ui.color.muted,
 		UDim2.fromOffset(288, 16),
-		UDim2.fromOffset(16, 70)
+		UDim2.fromOffset(16, 71)
 	)
 
 	local track, boost =
@@ -770,6 +841,17 @@ local function buildTouchButtons()
 	bite.Activated:Connect(function()
 		Input.bite:fire()
 	end)
+	-- Held, it keeps biting what's in reach (HuntController's bite lock)
+	bite.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.Touch then
+			Input.biteHeld = true
+		end
+	end)
+	bite.InputEnded:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.Touch then
+			Input.biteHeld = false
+		end
+	end)
 	local dash = touchButton("Dash", "DASH", 70, UDim2.new(1, -190, 1, -72))
 	dash.Activated:Connect(function()
 		Input.ability:fire()
@@ -869,7 +951,9 @@ local function hintFor(s: { [string]: any }): string
 			elseif overLevelNow() < 1 then "Too easy here: deeper water feeds you better"
 			else "Swim into smaller fish to swallow them"
 	elseif s.maxed then
-		return "MAX SIZE · bank your Haul to keep growing"
+		return if s.inHub
+			then "Haul full · into your den's glowing pool to bank it"
+			else "Haul full · swim home and bank it"
 	elseif s.inHub then
 		return "Swim into your den's glowing pool to bank"
 	elseif overLevelNow() < 1 then
@@ -892,6 +976,7 @@ local function onState(s: { [string]: any })
 	)
 	hintText.Text = hintFor(s)
 	local haul = s.haul or 0
+	haulLevels.Text = bankGain(mass, haul, s.upgrades)
 	if haul > lastHaul then
 		pulseVelocity += 6
 	end
@@ -916,6 +1001,8 @@ local function step(dt: number)
 	local wantGrowth = math.clamp(haul / math.max(full, 1e-9), 0, 1)
 	growth, growthVelocity = Spring.number(growth, growthVelocity, wantGrowth, 9, dt)
 	haulFill.Size = UDim2.fromScale(math.clamp(growth, 0, 1), 1)
+	-- Full: the card breathes gold until it's banked
+	haulGlow.Transparency = if wantGrowth >= 0.999 then 0.35 + 0.35 * math.sin(os.clock() * 3.2) else 1
 	-- The hint follows the fish between state updates too (into a biome below it:
 	-- "Too easy here"), twice a second
 	hintAge += dt

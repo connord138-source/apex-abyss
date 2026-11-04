@@ -32,6 +32,7 @@ local Input = require(script.Parent.Parent.Input)
 local ItemPhoto = require(script.Parent.Parent.ItemPhoto)
 local PreyPhoto = require(script.Parent.Parent.PreyPhoto)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Dex = require(script.Parent.Parent.Dex)
 local Social = require(script.Parent.Parent.Social)
 local Store = require(script.Parent.Parent.Store)
 local Ui = require(script.Parent.Parent.Ui)
@@ -2101,6 +2102,10 @@ local function guide(): { { title: string, text: string } }
 			)} other players, predators and bosses: players are never swallowed whole, and a higher level bites harder. A fish that's too big to eat will chase you: swim away.`,
 		},
 		{
+			title = "Special attack",
+			text = `Landing bites fills the meter by your Haul card (swallowing fills it a little). Full, {Input.specialKey()} sets off your fish's own special: every fish has a different one, and the FISH tab says what each does.`,
+		},
+		{
 			title = "Predators",
 			text = "Every predator shows its level on its tag. Ten levels above it you bite it apart in a few bites, twenty above you swallow it whole, and once you're twelve above it, it won't hunt you. Below its level its bites hurt more and yours barely scratch. Each hunts its own way, so read the warning: dash out of a grouper's gulp, dodge a goblin shark's jaws sideways.",
 		},
@@ -2161,7 +2166,7 @@ function MenuController.openIndex(startTab: string?)
 	if typeof(tutorial) == "table" and not tutorial.done then
 		ClientState.request("TutorialSaw", "Index")
 	end
-	open("Index", "How to get everything, and what to do next", Vector2.new(920, 560), function(window)
+	open("Index", "How to get everything, and what to do next", Wardrobe.size(), function(window)
 		local tab = startTab or "Guide"
 		local tabs: { [string]: TextButton } = {}
 		local holder = Instance.new("Frame")
@@ -2170,6 +2175,27 @@ function MenuController.openIndex(startTab: string?)
 		holder.Size = UDim2.new(1, 0, 1, -50)
 		holder.Parent = window.content
 		local list = Ui.list(holder, 6)
+		-- The collection tabs are a Pokédex (Dex); the GUIDE stays this list
+		local dexHolder = Instance.new("Frame")
+		dexHolder.Name = "DexHolder"
+		dexHolder.BackgroundTransparency = 1
+		dexHolder.Position = UDim2.fromOffset(0, 50)
+		dexHolder.Size = UDim2.new(1, 0, 1, -50)
+		dexHolder.Parent = window.content
+		local dex = Dex.new(dexHolder, {
+			shadeHow = shadeHow,
+			fxWords = fxWords,
+			passSource = passSource,
+			unlockHow = function(species: any): string
+				local rule = species.unlock
+				return if rule.kind == "start"
+					then "Everyone starts as one."
+					elseif rule.kind == "tutorial" then "Finish the tutorial."
+					else `Unlock it: {if rule.level then `Nibbler LV {rule.level}, then ` else ""}{rule.dna or 0} {(
+						Config.Biomes.byId[rule.biome or ""] or { name = "?" }
+					).name} DNA and {Ui.number(rule.coral or 0)} coral (FISH menu).`
+			end,
+		})
 		local menu: Menu
 		for i, name in INDEX_TABS do
 			local button = Ui.button(
@@ -2196,15 +2222,19 @@ function MenuController.openIndex(startTab: string?)
 			"gold"
 		)
 		odds.Activated:Connect(MenuController.openOdds)
-		local function owned(has: boolean): (string, Color3)
-			return if has then "YOURS" else "NOT YET", if has then Ui.color.safe else Ui.color.muted
-		end
 		menu = {
 			window = window,
+			cleanup = dex.destroy,
 			render = function()
 				for name, button in tabs do
 					Ui.setButtonStyle(button, if name == tab then "primary" else "secondary")
 				end
+				holder.Visible = tab == "Guide"
+				if tab ~= "Guide" then
+					dex.show(tab, state())
+					return
+				end
+				dex.hide()
 				rerender(list, function()
 					local s = state()
 					local order = 0
@@ -2220,131 +2250,6 @@ function MenuController.openIndex(startTab: string?)
 						denSection(list, next(), "How it works")
 						for _, entry in guide() do
 							infoRow(list, next(), entry.title, entry.text, Ui.color.accent)
-						end
-					elseif tab == "Skins" then
-						local species = Config.Species.byId[s.species or ""] or Config.Species.byId.Nibbler
-						local shades = s.shades or {}
-						denSection(list, next(), `{species.name} skins · this fish's own line`)
-						local line: { any } = Config.Shades.lines[species.id] or {}
-						for _, shade in line do
-							local tier = Tiers.byId[shade.tier]
-							local status, color = owned(shades[shade.id] == true)
-							local fx = if shade.fx then ` · effects: {fxWords(shade.fx)}` else ""
-							infoRow(
-								list,
-								next(),
-								`{shade.name} · {tier.name}`,
-								shadeHow(shade, s) .. fx,
-								tier.color,
-								status,
-								color
-							)
-						end
-						denSection(
-							list,
-							next(),
-							"Skins every fish can have · unlocked per fish (Tide Pass skins for all at once)"
-						)
-						for _, shade in Config.Shades.list do
-							if shade.species == nil and (shade.week == nil or shades[shade.id]) then
-								local tier = Tiers.byId[shade.tier]
-								local status, color = owned(shades[shade.id] == true)
-								local fx = if shade.fx then ` · effects: {fxWords(shade.fx)}` else ""
-								infoRow(
-									list,
-									next(),
-									`{shade.name} · {tier.name}`,
-									shadeHow(shade, s) .. fx,
-									tier.color,
-									status,
-									color
-								)
-							end
-						end
-					elseif tab == "Parts" then
-						denSection(
-							list,
-							next(),
-							"Body parts · one per slot, from rolls, on any fish · each with a small bonus, never bite damage"
-						)
-						for _, part in Config.Exotics.parts do
-							local status, color = owned((s.parts or {})[part.id] == true)
-							infoRow(
-								list,
-								next(),
-								`{part.name} · {part.slot}`,
-								`{part.blurb} Bonus: {part.bonus.text}. Roll it · about {RollOdds.oneIn(
-									1 / part.chance
-								)}. Duplicates turn into {Ui.number(part.refund)} coral.`,
-								Tiers.byId.Abyssal.color,
-								status,
-								color
-							)
-						end
-					elseif tab == "Variants" then
-						denSection(
-							list,
-							next(),
-							"Exotic variants · each a rare form of one fish, from rolls as that fish, with a small bonus to its ability"
-						)
-						for _, variant in Config.Exotics.variants do
-							local fish = Config.Species.byId[variant.species]
-							local status, color = owned((s.variants or {})[variant.id] == true)
-							infoRow(
-								list,
-								next(),
-								`{variant.name} · {if fish then fish.name else variant.species} only`,
-								`{variant.blurb} Bonus: {variant.bonus.text}. Roll it as {if fish
-									then fish.name
-									else "that fish"} · about {RollOdds.oneIn(1 / variant.chance)}.`,
-								Tiers.byId.Abyssal.color,
-								status,
-								color
-							)
-						end
-					elseif tab == "Fish" then
-						denSection(list, next(), "The fish · each levels up on its own")
-						for _, species in Config.Species.list do
-							local rule = species.unlock
-							local how = if rule.kind == "start"
-								then "Everyone starts as one."
-								elseif rule.kind == "tutorial" then "Finish the tutorial."
-								else `{if rule.level then `Nibbler LV {rule.level}, then ` else ""}{rule.dna or 0} {(
-									Config.Biomes.byId[rule.biome or ""] or { name = "?" }
-								).name} DNA and {Ui.number(rule.coral or 0)} coral (FISH menu).`
-							local status, color = owned((s.unlocked or {})[species.id] == true)
-							-- Its good points and drawbacks, as in FISH (Config/Species)
-							infoRow(
-								list,
-								next(),
-								`{species.name} · {species.role}`,
-								`Good at: {table.concat(species.perks, ", ")}. Watch out: {table.concat(
-									species.drawbacks,
-									", "
-								)}. {how}`,
-								species.fin,
-								status,
-								color
-							)
-						end
-					else
-						denSection(
-							list,
-							next(),
-							"Boost trails · every fish's, worn in the Wardrobe's TRAILS · they stream off you when you dash"
-						)
-						for _, trail in Config.Trails.list do
-							local tier = Tiers.byId[trail.tier]
-							local status, color = owned((s.trails or {})[trail.id] == true)
-							infoRow(
-								list,
-								next(),
-								`{trail.name} · {tier.name}`,
-								`{trail.blurb} {passSource("trail", trail.id) or "A later Tide Pass season"}.`,
-								trail.color,
-								status,
-								color
-							)
 						end
 					end
 				end)
@@ -2372,6 +2277,23 @@ function MenuController.openOdds()
 					table.sort(odds, function(a, b)
 						return a.probability > b.probability
 					end)
+					local left = state().rollGuaranteeLeft
+					if typeof(left) == "number" then
+						row(
+							list,
+							0,
+							"Guarantee",
+							`A {Config.Rolls.guarantee.tier} or better skin within {left} roll{if left
+									== 1
+								then ""
+								else "s"}`,
+							"Guaranteed if none comes first, for this fish if it has one left to get",
+							nil,
+							nil,
+							nil,
+							Ui.color.haul
+						)
+					end
 					for i, entry in odds do
 						local outcome = entry.outcome
 						local tier = Tiers.byId[outcome.tier]

@@ -534,6 +534,23 @@ made per species texture). Facing check: a horn or saw pointing back, or a sail 
 tall end trails, is a model whose `Facing` should be "-Z" (set it on the MeshPart in
 `PartModels`).
 
+
+### Parts fitted to each fish (`assets/glb/parts/fit`, 2026-11-03)
+
+Thirty models, one per fish and part, built from the fish's own mesh (`tools/props/parts_fit.py`;
+CLAUDE.md "The pre-launch tidy-up" says why). The FBX in `assets/fbx/species` are the only input.
+
+1. `blender --background --python tools/props/parts_fit.py -- build [Fish[:Part]]` writes the GLBs
+   and `seats.json`; `-- luau src/shared/PartFits.luau` the seats the game reads; `-- sheet Fish` and
+   `python tools/props/parts_fit_check.py board Fish` the contact sheets.
+2. `python tools/props/parts_fit_check.py check` screens every image: no normal map, skin tone at
+   most 25%, pale at most 2%, the classifier. Nothing uploads until it's clean.
+3. Studio's Import Queue, one fish at a time: the folder button, type the folder path ending in a
+   backslash in File name and press Return, then the quoted names (`"Cuda_SailFin.glb" ...`) and
+   Return. Each row reads "Scene" with a warning: that's Roblox folding the glow map into a mask
+   (its Normal File Path reads "No file provided"). Start Import.
+4. Paste `tools/studio/organize_imports.luau`: it prints `fitted parts filed: 30 of 30`. Save to File.
+
 ## Shade skins (tools/shades)
 
 Every shade is a texture per fish, made offline from the fish's own texture

@@ -44,6 +44,7 @@ local NotifyService = require(Services.NotifyService)
 local ReferralService = require(Services.ReferralService)
 local BadgesService = require(Services.BadgesService)
 local AbilityService = require(Services.AbilityService)
+local SpecialService = require(Services.SpecialService)
 local StartService = require(Services.StartService)
 local CompanionService = require(Services.CompanionService)
 local LandmarkService = require(Services.LandmarkService)
@@ -91,6 +92,7 @@ NotifyService.start() -- notifications for players away: the Coral Garden full, 
 ReferralService.start() -- friend invites: a welcome gift, the inviter's reward once the friend finishes the tutorial
 BadgesService.start() -- Roblox badges, measured from the save
 AbilityService.start() -- signature abilities the server owns: Puff Up, Burrow, Lantern Flash
+SpecialService.start() -- every fish's special attack: the meter, and what each one does
 StartService.start() -- the start screen's documentary shots: each one's water streamed in ahead
 CompanionService.start() -- sea life that helps: a turtle at your side, a ray's shells
 LandmarkService.start() -- the biome landmarks: named places found, the galleon's bell, the Bay Cannon, the clams' pearls

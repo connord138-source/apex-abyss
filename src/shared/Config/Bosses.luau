@@ -252,7 +252,7 @@ local megalodon: BossDef = {
 			crash = 0.9,
 			push = 70,
 		},
-		exhausted = 5,
+		exhausted = 10, -- (owner, 2026-11-03: "megalodon needs to stay stunned for longer"; was 5)
 	},
 	squid = nil,
 	baseHealth = 6000,
@@ -273,7 +273,8 @@ local megalodon: BossDef = {
 		-- Shallows and circled at the hub's keep-out)
 		leash = 160,
 	},
-	stagger = { need = 12, seconds = 4, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
+	-- (`seconds` 9, owner, 2026-11-03: "megalodon needs to stay stunned for longer"; was 4)
+	stagger = { need = 12, seconds = 9, cooldown = 18, softMultiplier = 2, staggerMultiplier = 3 },
 	softSpots = { { from = 0.6, to = 0.8 }, { from = 0, to = 0.22 } }, -- gills, tail
 	frenzySpeed = 1.3,
 	escapeClock = 60,

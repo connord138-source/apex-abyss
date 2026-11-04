@@ -310,6 +310,7 @@ local function build()
 
 	header("FISH")
 	actionRow("Heal fully", "heal", "HEAL", "secondary")
+	actionRow("Fill the special attack's meter", "specialFull", "FILL", "secondary")
 	actionRow("Get eaten (lose the Haul)", "kill", "EAT", "danger")
 	actionRow("Restart the tutorial", "resetTutorial", "RESTART", "secondary")
 	actionRow("Finish the tutorial (species select)", "finishTutorial", "FINISH", "secondary")

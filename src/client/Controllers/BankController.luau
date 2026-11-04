@@ -442,7 +442,18 @@ function BankController.start()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local banked = remotes:WaitForChild("Banked") :: RemoteEvent
 	banked.OnClientEvent:Connect(function(summary: { [string]: any })
-		task.spawn(play, summary)
+		task.spawn(function()
+			-- A fish banks the moment it arrives over the pool, under the loading screen:
+			-- the growth waits until it can be seen
+			if Ui.washUp then
+				local since = os.clock()
+				while Ui.washUp and os.clock() - since < 30 do
+					task.wait(0.05)
+				end
+				task.wait(0.35)
+			end
+			play(summary)
+		end)
 	end)
 	-- Any key, click, tap or pad button skips (the sequence holds the fish still, so
 	-- nothing else is lost)

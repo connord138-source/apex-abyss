@@ -114,6 +114,22 @@ return {
 		lungeSpeed = 1.7, -- a bite lunge's speed, × top speed
 		lungeSeconds = 0.2,
 		biteCooldown = 0.6,
+		-- The bite lock (owner, 2026-11-03: "the angles ... make attacking a bit tedious.
+		-- You keep looping and looping biting once each loop"; a bite's dart carried a big
+		-- fish a third of a second past its target, then it had to come round): with the
+		-- bite held, or for `tap` seconds after one lands, the fish turns on what's in reach
+		-- and keeps at it, closing and holding station. A Dash breaks it.
+		lock = {
+			acquire = 1.5, -- finds a target this many lengths past its reach (+ `pad` studs)
+			keep = 2.5, -- and lets it go past this many
+			pad = 6,
+			turn = 3.2, -- × the fish's own turn rate, on a creature
+			playerTurn = 1.8, -- on another player: they can still juke it
+			close = 6, -- closing speed per stud of gap
+			fastest = 1.3, -- × top speed, closing or keeping up
+			grip = 10, -- how quickly the swim settles onto that
+			tap = 0.7, -- seconds it holds after a single press
+		},
 		maxRoll = math.rad(42), -- bank angle into turns
 		rollFromTurn = 0.32, -- bank radians per radian/s of turning
 		maxPitch = math.rad(80),
@@ -316,7 +332,7 @@ return {
 		decay = Color3.fromRGB(7, 20, 24),
 		-- (0.7 until 2026-10-18: a little clearer with the rest of the sea, still the
 		-- murkiest water in it; the deep biomes' floors are 0.59–0.65)
-		density = 0.66,
+		density = 0.56, -- (0.66 until 2026-11-03: clearer in the depths, the dark does the rest)
 		exposure = 0.1,
 		grade = { tint = Color3.fromRGB(206, 228, 220), saturation = -0.22, contrast = 0.1 },
 		-- Each light source, rarest last: the glow's range and brightness, the forward

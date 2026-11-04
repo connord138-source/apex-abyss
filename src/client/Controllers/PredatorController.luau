@@ -2328,6 +2328,32 @@ function PredatorController.nearest(mouth: Vector3, reach: number): number?
 	return best
 end
 
+-- The nearest creature's body within `range` of `mouth`, for the bite lock: the
+-- closest point on it, how far off that is, and how it's moving
+function PredatorController.closest(mouth: Vector3, range: number): (Vector3?, number, Vector3)
+	local best: Visual? = nil
+	local bestGap = math.huge
+	local bestPoint = mouth
+	for _, visual in visuals do
+		if visual.hidden or visual.mode == "dead" then
+			continue
+		end
+		local half = visual.heading * visual.def.length * 0.42
+		local tail, span = visual.position - half, half * 2
+		local t = math.clamp((mouth - tail):Dot(span) / math.max(span:Dot(span), 1e-4), 0, 1)
+		local middle = tail + span * t
+		local radius = visual.def.length * (visual.def.girth or BODY_RADIUS)
+		local gap = (middle - mouth).Magnitude - radius
+		if gap <= range and gap < bestGap then
+			best, bestGap, bestPoint = visual, gap, middle
+		end
+	end
+	if best == nil then
+		return nil, 0, Vector3.zero
+	end
+	return bestPoint, math.max(bestGap, 0), (best :: Visual).motion.velocity
+end
+
 -- The creature drawn at `index`: its position, mode, health (0..1) and stagger
 -- meter (0..1), for the boss HUD. Nil when it isn't known here.
 -- How far `point` is from a creature's body (nil while it isn't drawn), and how

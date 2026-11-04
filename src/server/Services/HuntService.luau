@@ -469,43 +469,16 @@ local function targetOf(player: Player, userId: any): (Player?, Session?, BasePa
 	return target, session, root
 end
 
--- A bite on another player: every player fight is bitten out, however big the
--- biter (Config/Pvp `fight`: by level, never swallowed whole). Small fish do little
--- alone, but a school bites together (Config/Pvp `school`): everyone who bit the
--- same target in the last few seconds, close to the biter, bites with their combined
--- banked mass, so a school of small fish can bring down one far bigger than any of
--- them.
-local function onBite(player: Player, userId: any)
-	local session = sessions[player]
-	local _, root = FishService.character(player)
-	local length = liveLength(player)
-	local target, targetSession, targetRoot = targetOf(player, userId)
-	if
-		session == nil
-		or root == nil
-		or length == nil
-		or target == nil
-		or targetSession == nil
-		or targetRoot == nil
-	then
-		return
-	end
-	local now = Timing.clock()
-	if not session.alive or now - session.lastBiteAt < swim.biteCooldown * 0.8 then
-		return
-	end
-	if isSafe(session, now) or isSafe(targetSession, now) then
-		return
-	end
-	local targetLength = liveLength(target)
-	if targetLength == nil then
-		return
-	end
-	local distance = (targetRoot.Position - mouthOf(root, length)).Magnitude
-	if distance > Size.reach(length) + targetLength * 0.45 + slack(length) + slack(targetLength) then
-		return
-	end
-	session.lastBiteAt = now
+-- A bite landing, at `scale` × its damage (1 for a plain bite)
+local function landBite(
+	player: Player,
+	session: Session,
+	root: BasePart,
+	target: Player,
+	targetSession: Session,
+	now: number,
+	scale: number
+)
 	local schooling = Config.Pvp.school
 	local school = 0
 	local mass = bankedMassOf(player)
@@ -532,7 +505,13 @@ local function onBite(player: Player, userId: any)
 	local attackerData = DataService.get(player)
 	local jaw = Perks.bite(if attackerData then attackerData.upgrades else nil)
 	local species = if attackerData then Progress.species(attackerData).stats.bite else 1
-	local damage = hunt.biteDamage * ratio * (1 + schooling.bonus * school) * jaw * species
+	local damage = hunt.biteDamage
+		* ratio
+		* (1 + schooling.bonus * school)
+		* jaw
+		* species
+		* scale
+		* Perks.biteBonus(FishService.character(player), now)
 	-- Signature abilities (Config/Abilities): a Moray's bite out of a burrow is an
 	-- ambush, and a puffed-up Pufferfish takes less and spikes the biter
 	local abilities = Config.Abilities.byId
@@ -568,6 +547,50 @@ local function onBite(player: Player, userId: any)
 	if targetSession.health <= 0 then
 		eatPlayer(target, player)
 	end
+end
+
+-- A bite on another player: every player fight is bitten out, however big the
+-- biter (Config/Pvp `fight`: by level, never swallowed whole). Small fish do little
+-- alone, but a school bites together (Config/Pvp `school`): everyone who bit the
+-- same target in the last few seconds, close to the biter, bites with their combined
+-- banked mass, so a school of small fish can bring down one far bigger than any of
+-- them.
+local function onBite(player: Player, userId: any)
+	local session = sessions[player]
+	local _, root = FishService.character(player)
+	local length = liveLength(player)
+	local target, targetSession, targetRoot = targetOf(player, userId)
+	if
+		session == nil
+		or root == nil
+		or length == nil
+		or target == nil
+		or targetSession == nil
+		or targetRoot == nil
+	then
+		return
+	end
+	local now = Timing.clock()
+	if
+		not session.alive
+		or now - session.lastBiteAt < Perks.biteGap(FishService.character(player), now) * 0.8
+	then
+		return
+	end
+	if isSafe(session, now) or isSafe(targetSession, now) then
+		return
+	end
+	local targetLength = liveLength(target)
+	if targetLength == nil then
+		return
+	end
+	local distance = (targetRoot.Position - mouthOf(root, length)).Magnitude
+	if distance > Size.reach(length) + targetLength * 0.45 + slack(length) + slack(targetLength) then
+		return
+	end
+	session.lastBiteAt = now
+	landBite(player, session, root, target, targetSession, now, 1)
+	Events.biteLanded:fire(player)
 end
 
 local function bank(player: Player, session: Session, data: DataService.PlayerData)
@@ -809,6 +832,40 @@ end
 
 -- Hurts a fish by a share of its max health (predators and bosses; nothing
 -- one-shots, owner 2026-10-07). `source` names the attacker for the death screen.
+-- A special attack's bite (SpecialService): `scale` × a bite, with no reach or cooldown
+-- check, on a fish that can be bitten. Returns whether it landed.
+function HuntService.strike(player: Player, userId: number, scale: number): boolean
+	local session = sessions[player]
+	local _, root = FishService.character(player)
+	local target, targetSession = targetOf(player, userId)
+	if session == nil or root == nil or target == nil or targetSession == nil or not session.alive then
+		return false
+	end
+	local now = Timing.clock()
+	if isSafe(session, now) or isSafe(targetSession, now) then
+		return false
+	end
+	landBite(player, session, root, target, targetSession, now, scale)
+	return true
+end
+
+-- Whether a fish can't fight right now (gone, dead, in the hub or protected)
+function HuntService.safe(player: Player): boolean
+	local session = sessions[player]
+	return session == nil or not session.alive or isSafe(session, Timing.clock())
+end
+
+-- Gives back a share of a fish's max health (a shark's Blood Frenzy)
+function HuntService.heal(player: Player, fraction: number)
+	local session = sessions[player]
+	local character = FishService.character(player)
+	if session == nil or character == nil or not session.alive then
+		return
+	end
+	session.health = math.min(session.health + maxHealth(player) * fraction, maxHealth(player))
+	character:SetAttribute("Health", session.health)
+end
+
 function HuntService.damage(player: Player, fraction: number, source: string, quiet: boolean?)
 	local session = sessions[player]
 	local character = FishService.character(player)

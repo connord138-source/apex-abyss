@@ -12,6 +12,9 @@ local HeartGlyph = require(ReplicatedStorage.Shared.HeartGlyph)
 
 local Ui = {}
 
+-- The den's loading screen is up (DenDoorController): what wants to be seen waits for it
+Ui.washUp = false
+
 local FAMILY = "rbxasset://fonts/families/BuilderSans.json"
 Ui.FONT = Font.new(FAMILY, Enum.FontWeight.Medium)
 Ui.FONT_SEMI = Font.new(FAMILY, Enum.FontWeight.SemiBold)

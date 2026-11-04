@@ -21,6 +21,7 @@ local CatchService = require(script.Parent.Services.CatchService)
 local ApexService = require(script.Parent.Services.ApexService)
 local ChumService = require(script.Parent.Services.ChumService)
 local CompanionService = require(script.Parent.Services.CompanionService)
+local SpecialService = require(script.Parent.Services.SpecialService)
 local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local DataService = require(script.Parent.Services.DataService)
 local EconomyService = require(script.Parent.Services.EconomyService)
@@ -390,6 +391,13 @@ local function turtleJoin(_admin: Player, targets: { Player }): string
 end
 
 -- A test of the whale hunt: the humpback nearest the first target drops to 10%
+local function specialFull(_admin: Player, targets: { Player }): string
+	for _, player in targets do
+		SpecialService.fill(player)
+	end
+	return `Special meter full for {#targets}`
+end
+
 local function whaleHurt(_admin: Player, targets: { Player }): string
 	if #targets == 0 then
 		return "No target"
@@ -969,6 +977,7 @@ AdminActions.byName = {
 	chumHere = chumHere :: Handler,
 	turtleJoin = turtleJoin :: Handler,
 	whaleHurt = whaleHurt :: Handler,
+	specialFull = specialFull :: Handler,
 	whaleGo = whaleGo :: Handler,
 	hurtBoss = hurtBoss :: Handler,
 	endBoss = endBoss :: Handler,

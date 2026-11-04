@@ -32,9 +32,9 @@ return {
 	-- of lit water over, a deep-blue gradient round and navy under
 	-- (OceanController.waterSky); 0 keeps Roblox's default sky. The sky and surface are
 	-- the PC chat's: set these only with the owner's go-ahead
-	skyUp = 0, -- assets/textures/sky_water_up.png
-	skySide = 0, -- assets/textures/sky_water_side.png
-	skyDown = 0, -- assets/textures/sky_water_down.png
+	skyUp = 140383378725141, -- assets/textures/sky_water_up.png
+	skySide = 99113441440538, -- assets/textures/sky_water_side.png
+	skyDown = 73452315818507, -- assets/textures/sky_water_down.png
 	fxSpark = 123443623099259, -- assets/textures/fx_spark.png
 	-- the APEX TIDE logo over the start screen in place of the lettering
 	-- (tools/marketing/compose.py; StartController); 0 = the lettering

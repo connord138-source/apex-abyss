@@ -7,6 +7,7 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 
 return {
 	ate = Signal.new(), -- (player, count) prey, forage or players eaten
+	biteLanded = Signal.new(), -- (player) a bite landed on a fish, predator, boss or whale
 	atePrey = Signal.new(), -- (player, preyId, position) one prey fish eaten (treasure drops)
 	-- (player, amount, level, worth) a Haul banked: `amount` kg went on, `worth` is that
 	-- Haul before the Haul rate (Config/Tuning `growth`), for what a bank pays

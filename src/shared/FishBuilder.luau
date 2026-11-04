@@ -44,7 +44,7 @@ function FishBuilder.makePart(
 		part = model:Clone()
 		part.Anchored = false
 		for _, child in part:GetChildren() do
-			if not child:IsA("SurfaceAppearance") then
+			if not child:IsA("SurfaceAppearance") or spec.flat then
 				child:Destroy()
 			elseif spec.tint or spec.glow then
 				-- Its texture takes the fish's colours (a multiply: Shared/PartFit picks a
@@ -68,6 +68,11 @@ function FishBuilder.makePart(
 		mesh.Parent = part
 	end
 	part.Name = spec.name
+	if model and spec.flat then
+		(part :: any).TextureID = ""
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = spec.flat
+	end
 	if model == nil then
 		part.Material = spec.material or Enum.Material.SmoothPlastic
 		part.Color = if spec.color == "eye"
@@ -92,8 +97,17 @@ function FishBuilder.makePart(
 		local light = Instance.new("PointLight")
 		light.Color = spec.light
 		light.Range = 10
-		light.Brightness = 2
-		light.Parent = part
+		light.Brightness = spec.lightBrightness or 2
+		if spec.lightAt then
+			-- (off the part's middle: a fitted lure's middle is right over the fish's head)
+			local at = Instance.new("Attachment")
+			at.Name = "LightAt"
+			at.Position = spec.lightAt * length
+			at.Parent = part
+			light.Parent = at
+		else
+			light.Parent = part
+		end
 	end
 	part.Parent = body
 
@@ -144,8 +158,9 @@ function FishBuilder.build(
 end
 
 -- A rolled part's imported model (parts_glb, docs/ASSETS.md): the MeshPart filed as
--- ReplicatedStorage.PartModels.<PartId>, stamped Facing "+Z" (Cosmetics turns it round).
--- Nil while it isn't imported, and the part-built piece is drawn.
+-- ReplicatedStorage.PartModels.<PartId>, or <Fish>_<PartId> for one modelled on that fish
+-- (Shared/PartFits), stamped Facing "+Z" (Cosmetics turns it round). Nil while it isn't
+-- imported, and the part-built piece is drawn.
 function FishBuilder.partModel(name: string): MeshPart?
 	local folder = ReplicatedStorage:FindFirstChild("PartModels")
 	local model = if folder then folder:FindFirstChild(name) else nil

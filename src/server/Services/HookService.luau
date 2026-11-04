@@ -58,7 +58,7 @@ floorParams.FilterDescendantsInstances = { workspace.Terrain }
 
 local function floorUnder(x: number, z: number): number
 	local hit =
-		workspace:Raycast(Vector3.new(x, World.surfaceY - 2, z), Vector3.new(0, -1400, 0), floorParams)
+		workspace:Raycast(Vector3.new(x, World.surfaceY - 2, z), Vector3.new(0, -2400, 0), floorParams)
 	return if hit then hit.Position.Y else Seafloor.y(x, z)
 end
 

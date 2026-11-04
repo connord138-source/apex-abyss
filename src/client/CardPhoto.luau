@@ -523,7 +523,9 @@ end
 -- The subject for an outcome, built once and kept as the master copy
 local function master(outcome: Outcome): Model?
 	local character = Players.LocalPlayer.Character
-	local species = if character then character:GetAttribute("Species") else nil
+	-- (the Index shows a skin on the fish it's for; a roll's card, on the fish you are)
+	local wanted = (outcome :: any).species
+	local species = wanted or if character then character:GetAttribute("Species") else nil
 	local key = `{outcome.kind}:{outcome.id}:{tostring(species)}`
 	local made = masters[key]
 	if made then
@@ -532,7 +534,9 @@ local function master(outcome: Outcome): Model?
 	local model: Model? = nil
 	local kind = outcome.kind
 	if kind == "shade" then
-		model = fish({ shade = outcome.id, parts = {}, variant = nil }, nil, false)
+		model = fish({ shade = outcome.id, parts = {}, variant = nil }, wanted, false)
+	elseif kind == "fish" then
+		model = fish({ shade = nil, parts = {}, variant = nil }, outcome.id, false)
 	elseif kind == "part" then
 		local cosmetic = Config.Exotics.partsById[outcome.id]
 		if cosmetic then

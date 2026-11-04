@@ -20,7 +20,7 @@ import sys
 
 import numpy as np
 
-HUB_RADIUS = 95
+HUB_RADIUS = 125
 DEN_DEPTH = 34
 DEN_FLOOR = 4
 SEGMENTS = 24

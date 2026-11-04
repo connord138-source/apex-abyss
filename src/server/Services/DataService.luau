@@ -160,6 +160,9 @@ export type PlayerData = {
 	-- finished the tutorial
 	referral: { by: number, credited: boolean, friends: number },
 	badges: { [string]: boolean }, -- Roblox badges awarded (Config/Social badges key)
+	-- Rolls since the last Rare-or-better skin, and whether one has come yet (Config/Rolls
+	-- `guarantee`; RollService)
+	rollGuarantee: { since: number, had: boolean },
 	-- Notifications (NotifyService): when our "get a ping?" card last showed (Unix)
 	notify: { asked: number },
 	-- Music and sound effects on or off (the Shop's SETTINGS; EconomyService)
@@ -263,6 +266,7 @@ local TEMPLATE: PlayerData = {
 	codes = {},
 	referral = { by = 0, credited = false, friends = 0 },
 	badges = {},
+	rollGuarantee = { since = 0, had = false },
 	notify = { asked = 0 },
 	settings = { music = true, sound = true },
 	passes = {},

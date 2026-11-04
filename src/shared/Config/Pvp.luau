@@ -49,9 +49,9 @@ return {
 	pressure = {
 		bands = {
 			{ y = -60, level = 25, name = "the drop-off" }, -- off the shelf (Open Blue LV 35)
-			{ y = -330, level = 40, name = "the deep floor" }, -- the Ruins (LV 50)
-			{ y = -480, level = 55, name = "the vent basins" }, -- the Vents (LV 65)
-			{ y = -640, level = 70, name = "the Trench's depths" }, -- the Trench (LV 80)
+			{ y = -930, level = 40, name = "the deep floor" }, -- the Ruins (LV 50)
+			{ y = -1080, level = 55, name = "the vent basins" }, -- the Vents (LV 65)
+			{ y = -1240, level = 70, name = "the Trench's depths" }, -- the Trench (LV 80)
 		},
 		grace = 6,
 		damage = 0.03,

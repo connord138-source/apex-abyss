@@ -178,6 +178,18 @@ local list: { PreyDef } = {
 			-- (the Trench's 6 schools of 16 became Gulper Eels, Oarfish and Lanternfish,
 			-- the third prey batch, 2026-10-19)
 		} :: { Zone },
+		laterZones = {
+			-- (2026-11-03, the map much deeper) out in the long water under the shelf's edge
+			{
+				band = DEEP,
+				schools = 8,
+				perSchool = 20,
+				depth = { 450, 900 },
+				round = true,
+				spread = 0.55,
+				pathRadius = { 10, 22 },
+			},
+		} :: { Zone },
 		-- The Sardine Run's bait balls: big tight schools in the Kelp Shallows and over
 		-- the reef, out only while it's up
 		tideZones = {
@@ -450,6 +462,10 @@ local list: { PreyDef } = {
 		zones = {
 			{ band = DEEP, angles = OPEN_BLUE, schools = 7, spread = 0.7 },
 		} :: { Zone },
+		laterZones = {
+			-- (2026-11-03, the map much deeper) out in the long water under the shelf's edge
+			{ band = DEEP, angles = OPEN_BLUE, schools = 4, depth = { 400, 800 } },
+		} :: { Zone },
 		respawn = 8,
 		back = Color3.fromRGB(32, 48, 84),
 		belly = Color3.fromRGB(196, 206, 220),
@@ -469,6 +485,10 @@ local list: { PreyDef } = {
 		depth = { 180, 430 },
 		zones = {
 			{ band = DEEP, angles = OPEN_BLUE, schools = 6 },
+		} :: { Zone },
+		laterZones = {
+			-- (2026-11-03, the map much deeper) out in the long water under the shelf's edge
+			{ band = DEEP, schools = 6, perSchool = 4, depth = { 350, 850 } },
 		} :: { Zone },
 		respawn = 8,
 		back = Color3.fromRGB(56, 140, 88),
@@ -546,6 +566,10 @@ local list: { PreyDef } = {
 		depth = { 20, 220 },
 		zones = {
 			{ band = TRENCH, trench = true, schools = 10 }, -- (8 until 2026-10-19)
+		} :: { Zone },
+		laterZones = {
+			-- (2026-11-03, the map much deeper) out in the long water under the shelf's edge
+			{ band = DEEP, schools = 6, depth = { 150, 500 } },
 		} :: { Zone },
 		respawn = 3,
 		back = Color3.fromRGB(30, 40, 72),
@@ -922,6 +946,10 @@ local list: { PreyDef } = {
 		depth = { 30, 240 },
 		zones = {
 			{ band = TRENCH, trench = true, schools = 4 },
+		} :: { Zone },
+		laterZones = {
+			-- (2026-11-03, the map much deeper) out in the long water under the shelf's edge
+			{ band = DEEP, schools = 6, perSchool = 12, depth = { 250, 620 } },
 		} :: { Zone },
 		respawn = 3,
 		back = Color3.fromRGB(42, 74, 132),

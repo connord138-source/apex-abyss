@@ -73,12 +73,38 @@ end
 -- that many seconds longer (the server sees a fish a little in the past). Returns the
 -- speed and suction multipliers (1, 1 when it isn't sensing).
 function Perks.sense(character: Instance?, now: number, grace: number?): (number, number)
+	local speed, suction = 1, 1
 	local untilAt = if character then character:GetAttribute("Sensing") else nil
-	if typeof(untilAt) ~= "number" or untilAt + (grace or 0) <= now then
-		return 1, 1
+	if typeof(untilAt) == "number" and untilAt + (grace or 0) > now then
+		local sense = Config.Abilities.byId.BloodSense
+		speed, suction = sense.speed or 1, sense.suction or 1
 	end
-	local sense = Config.Abilities.byId.BloodSense
-	return sense.speed or 1, sense.suction or 1
+	-- (an Anglerfish's Abyss Maw draws prey in from far off too)
+	local maw = if character then character:GetAttribute("MawUntil") else nil
+	if typeof(maw) == "number" and maw + (grace or 0) > now then
+		suction *= Config.Specials.bySpecies.Anglerfish.suction or 1
+	end
+	return speed, suction
+end
+
+-- The seconds between a fish's bites: a Nibbler's Wild Thrash (Config/Specials) bites
+-- faster. The client and the server's checks both read it.
+function Perks.biteGap(character: Instance?, now: number): number
+	local gap = Config.Tuning.swim.biteCooldown
+	local thrash = if character then character:GetAttribute("ThrashUntil") else nil
+	if typeof(thrash) == "number" and thrash > now then
+		gap /= Config.Specials.bySpecies.Nibbler.rate or 1
+	end
+	return gap
+end
+
+-- × a fish's bite damage right now: a Reef Shark's Blood Frenzy (Config/Specials)
+function Perks.biteBonus(character: Instance?, now: number): number
+	local frenzy = if character then character:GetAttribute("FrenzyUntil") else nil
+	if typeof(frenzy) == "number" and frenzy > now then
+		return Config.Specials.bySpecies.ReefShark.bonus or 1
+	end
+	return 1
 end
 
 -- What a fish's rolled parts and exotic variant do for it (Config/Exotics `bonus`),

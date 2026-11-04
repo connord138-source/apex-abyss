@@ -14,6 +14,7 @@ local Config = require(script.Parent.Config)
 local ShadesConfig = require(script.Parent.Config.Shades)
 local FishBuilder = require(script.Parent.FishBuilder)
 local PartFit = require(script.Parent.PartFit)
+local PartFits = require(script.Parent.PartFits)
 local SkinFx = require(script.Parent.SkinFx)
 
 type PartSpec = FishBuilder.PartSpec
@@ -349,6 +350,70 @@ local function modelSpecs(id: string, look: FishBuilder.Look, glow: Color3?, on:
 		glow = glow,
 	}
 	return { spec }
+end
+
+-- The same part as a model of its own for this very fish (owner, 2026-11-03: "slight redesigns
+-- with the mesh of the fish itself to make it actual blend as a variant/mutation of that fish";
+-- tools/props/parts_fit.py, ReplicatedStorage.PartModels.<Fish>_<PartId>). It was authored in
+-- the fish's unit box with its root under the skin, so it hangs by its seat alone (no anchor,
+-- no stretch) and rides the bone the seat names. Nil until it's imported, and on a body that
+-- isn't a species' own mesh (a variant's model): modelSpecs or the part-built piece is hung
+-- then, as before. Its colour map wears the fish's natural skin at its root, so it reads for
+-- the bare fish. Under a worn skin it's drawn plain in the skin's colours instead, its facets
+-- carrying it: a multiply can only darken (SurfaceAppearance.Color clamps at 1), and it turned
+-- a Reef Shark's grey sail dark green on Golden (2026-11-03). A lure keeps a lit crystal then.
+local FIT_ANCHORS: { [string]: CFrame } = { Seat = CFrame.new() }
+local function fittedSpec(
+	body: Model,
+	id: string,
+	worn: FishBuilder.Look,
+	shaded: boolean,
+	glow: Color3?
+): ({ PartSpec }?, string?)
+	local meshPlan = body:GetAttribute("MeshPlan")
+	local seat, name = PartFits.seat(if typeof(meshPlan) == "string" then meshPlan else nil, id)
+	local template = if seat then FishBuilder.partModel(name) else nil
+	if seat == nil or template == nil then
+		return nil, nil
+	end
+	local model = PartFit.MODELS[id]
+	local turn = if template:GetAttribute("Facing") ~= "-Z" then MODEL_TURN else CFrame.new()
+	local spec: PartSpec = {
+		name = id,
+		parent = "Seat",
+		size = seat.size,
+		c0 = CFrame.new(seat.center) * turn,
+		c1 = CFrame.new(),
+		shape = "Block",
+		color = "fixed",
+		mesh = name,
+		light = if model then model.light else nil,
+		-- (lit from its crystal: its box's middle is right over the head)
+		lightAt = if seat.gem then turn:PointToObjectSpace(seat.gem - seat.center) else nil,
+		lightBrightness = 1,
+		flat = if shaded then worn.back else nil,
+		glow = glow,
+	}
+	local specs = { spec }
+	if shaded and seat.gem and seat.gemSize and model and model.light then
+		-- The crystal itself, lit: a square prism on its corner, just over the plain one
+		local across = seat.gemSize.X * 0.8
+		table.insert(
+			specs,
+			{
+				name = `{id}Gem`,
+				parent = "Seat",
+				size = Vector3.new(across, seat.gemSize.Y * 0.95, across),
+				c0 = CFrame.new(seat.gem) * CFrame.Angles(0, math.rad(45), 0),
+				c1 = CFrame.new(),
+				shape = "Block",
+				color = "fixed",
+				fixed = glow or model.light,
+				material = Enum.Material.Neon,
+			} :: PartSpec
+		)
+	end
+	return specs, seat.bone
 end
 
 local VARIANTS: { [string]: VariantShape } = {
@@ -709,14 +774,16 @@ local function stripMesh(body: Model, mesh: Model)
 	body:SetAttribute("MeshScale", 1)
 end
 
--- Hangs pieces on a mesh body (see above). `drawn` is the length the mesh is at.
+-- Hangs pieces on a mesh body (see above). `drawn` is the length the mesh is at. `riding`
+-- names the bone they ride, when it's known (a fitted model's seat)
 local function addMeshParts(
 	body: Model,
 	mesh: Model,
 	specs: { PartSpec },
 	look: FishBuilder.Look,
 	anchors: { [string]: CFrame },
-	bones: { [string]: Bone }
+	bones: { [string]: Bone },
+	riding: string?
 )
 	local primary, meshJoint = primaryOf(mesh)
 	local drawn = body:GetAttribute("Applied")
@@ -755,6 +822,9 @@ local function addMeshParts(
 		end
 		if parentFrame == nil then
 			continue
+		end
+		if riding and bones[riding] then
+			bone = bones[riding]
 		end
 		local restRoot = parentFrame * spec.c0 * spec.c1:Inverse() -- unit, root space
 		built[spec.name] = { frame = restRoot, bone = bone }
@@ -1437,12 +1507,18 @@ function Cosmetics.apply(
 			end
 			body:SetAttribute("MeshScale", variant.meshScale or 1)
 		end
+		local shaded = dress.shade ~= nil and Config.Shades.byId[dress.shade] ~= nil
 		for _, slot in Config.Exotics.SLOTS do
 			local id = dress.parts[slot]
 			local cosmetic = if id then PARTS[id] else nil
 			if cosmetic and id then
-				local specs = modelSpecs(id, worn, glow, fit) or scaledSpecs(cosmetic.parts, partScale)
-				addMeshParts(body, mesh, specs, worn, anchors, bones)
+				local fitted, riding = fittedSpec(body, id, worn, shaded, glow)
+				if fitted then
+					addMeshParts(body, mesh, fitted, worn, FIT_ANCHORS, bones, riding)
+				else
+					local specs = modelSpecs(id, worn, glow, fit) or scaledSpecs(cosmetic.parts, partScale)
+					addMeshParts(body, mesh, specs, worn, anchors, bones)
+				end
 			end
 		end
 		return rebuilt

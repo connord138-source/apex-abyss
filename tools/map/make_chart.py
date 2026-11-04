@@ -32,7 +32,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUT = ROOT / "assets" / "textures" / "map_chart.png"
 SPAN = 1600  # studs from the middle to the chart's edge (the map's wall is at 1,500)
 CELL = 4.0
-Y_RANGE = (-960.0, 220.0)
+Y_RANGE = (-1560.0, 220.0)
 PIXELS = 1024  # Roblox shows images at most 1024 across
 MATERIALS = {"Air": 0, "Rock": 1, "Slate": 2, "Sandstone": 3, "Sand": 4, "Basalt": 5, "Mud": 6, "CrackedLava": 7, "Glacier": 8}
 
@@ -43,9 +43,9 @@ RAMP = [
     (0.0, (104, 184, 196)),  # the shelf
     (-60.0, (72, 150, 184)),
     (-200.0, (44, 108, 160)),
-    (-430.0, (24, 66, 124)),  # the deep floor
-    (-560.0, (16, 46, 96)),  # the vent basins
-    (-920.0, (6, 16, 44)),  # the Trench's floor
+    (-1030.0, (24, 66, 124)),  # the deep floor
+    (-1160.0, (16, 46, 96)),  # the vent basins
+    (-1520.0, (6, 16, 44)),  # the Trench's floor
 ]
 LAVA = np.array((235, 92, 32), dtype=np.float32)
 

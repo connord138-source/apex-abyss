@@ -51,9 +51,9 @@ local CELL = 96
 local kinds: { [string]: Kind } = {
 	jelly = {
 		biomes = { "OpenBlue", "SunkenRuins", "AbyssalTrench", "HydrothermalVents" },
-		perCell = 2.4,
+		perCell = 2.8,
 		range = 210,
-		depth = { 30, 360 },
+		depth = { 30, 900 }, -- (all the way up the deep water since it came down, 2026-11-03)
 		size = { 1.6, 4.6 },
 		speed = { 0.6, 1.6 },
 		-- (the rims and tentacles; the bell is a paler, see-through version)
@@ -239,6 +239,19 @@ return {
 				roll = 2.5,
 				minShare = 0.15,
 				loot = { hauls = 1.5, coral = 2500, dna = 12 },
+				-- It fights back (owner, 2026-11-03: "The whale also doesnt really do anything
+				-- other than float there"), only at the fish hurting it (last `calm` s): a
+				-- telegraphed move every `every` s, turn about, `first` s after the first bite.
+				-- `slap` the flukes come down on what's round its tail, `song` a shockwave off
+				-- its whole body throws everyone clear. `radius` × the whale's length, `damage`
+				-- a share of max health. Swim or Dash clear during the tell (`tell` s).
+				fight = {
+					first = 6,
+					every = 8,
+					calm = 12,
+					slap = { tell = 1.6, radius = 0.42, damage = 0.16, push = 110 },
+					song = { tell = 2.2, radius = 0.72, damage = 0.08, push = 170 },
+				},
 			},
 			look = {
 				top = Color3.fromRGB(56, 72, 94),

@@ -692,6 +692,12 @@ function DenWings.tanks(parent: Instance, frame: CFrame, shape: DenSpace.Shape, 
 	local size = tune.size
 	local models: { { model: Model, front: Vector3, normal: Vector3 } } = {}
 	for _, tank in DenSpace.tanks(shape) do
+		-- Only a stocked tank is built (owner, 2026-11-03: "why are there three tanks in
+		-- the den?"; a new den stood three empty ones along its walls). The den menu's
+		-- aquarium rows stock one, and it appears.
+		if stock[tank.id] == nil then
+			continue
+		end
 		local model = Instance.new("Model")
 		model.Name = `Tank{tank.id}`
 		local normal = frame:VectorToWorldSpace(Vector3.new(tank.nx, 0, -tank.nz))

@@ -18,9 +18,12 @@ export type PartSpec = {
 	material: Enum.Material?,
 	transparency: number?,
 	light: Color3?, -- a small light in the part (an angler's lure)
+	lightAt: Vector3?, -- where on the part (fish lengths from its middle); its middle if nil
+	lightBrightness: number?,
 	mesh: string?, -- draw this ReplicatedStorage.PartModels MeshPart instead (its own texture)
 	tint: Color3?, -- a model's texture multiplied by this (Shared/PartFit: the fish's colours)
 	glow: Color3?, -- a model's glow tinted this (the shade's glow)
+	flat: Color3?, -- a model in this one colour, its textures off (a fitted part under a worn skin)
 }
 
 type Piece = {

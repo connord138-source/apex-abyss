@@ -37,9 +37,9 @@ local Plaza = {}
 
 local PLAZA_TOP = Layout.PLAZA_TOP
 local PAVING = hub.paving
-local INNER = 45 -- the raised centre's edge
-local CURB = 47.7 -- the curb ring round it
-local OUTER = 86 -- the paving's outer edge (the doorways' steps start at ~84)
+local INNER = 60 -- the raised centre's edge
+local CURB = 62.7 -- the curb ring round it
+local OUTER = Layout.PLAZA_OUTER -- the paving's outer edge (the doorways' steps start at ~114)
 local GAP = 0.32 -- grout between flagstones
 local DAIS = 7.6
 local ROSE = 19.6
@@ -130,7 +130,7 @@ end
 
 -- Whether a wall segment has the wheel in front of it (no bed or post there)
 local function wheelWall(angle: number): boolean
-	return (hub.center + outward(angle) * 62 - wheelAt).Magnitude < WHEEL_CLEAR
+	return (hub.center + outward(angle) * Config.Wheel.radius - wheelAt).Magnitude < WHEEL_CLEAR
 end
 
 -- How far `p` is from `angle`'s line out from the centre (and whether it's on it)
@@ -153,7 +153,7 @@ end
 
 -- Planter beds stand against the walls between the doorways
 local BED_HALF = 8.4
-local BED_FRONT = 80.5
+local BED_FRONT = 110.5
 local function inBed(p: Vector3): boolean
 	for _, angle in walls do
 		if not wheelWall(angle) then
@@ -309,9 +309,9 @@ local function floor(parent: Instance)
 	slab(folder, "Grout", INNER, PLAZA_TOP - 0.08, 1.0, GROUT_INNER)
 	-- The centre's rings, narrow by the rose and wider out; the vendors' ring is a
 	-- little teal
-	local rings = { ROSE + 0.3, 23.4, 27.4, 31.6, 36.0, 40.4, INNER }
+	local rings = { ROSE + 0.3, 23.4, 27.4, 31.6, 36.0, 40.4, 44.0, 49.0, 54.5, INNER }
 	for k = 1, #rings - 1 do
-		local accent = k == 4
+		local accent = rings[k] == 44.0
 		stoneRing(
 			folder,
 			rings[k],
@@ -327,7 +327,7 @@ local function floor(parent: Instance)
 		)
 	end
 	-- The outer rings: paths of warm stone toward each opening, grey-teal between
-	local outer = { CURB + 0.2, 54.0, 60.4, 66.8, 73.2, 79.6, OUTER }
+	local outer = { CURB + 0.2, 69.0, 75.5, 82.0, 88.5, 95.0, 101.5, 108.0, OUTER }
 	for k = 1, #outer - 1 do
 		local outermost = k == #outer - 1
 		stoneRing(
@@ -648,6 +648,11 @@ local function keeper(parent: Instance, at: CFrame, stand: CFrame, color: Color3
 	})
 	if dressed then
 		body.Transparency = 1
+		-- They move on each client (VendorController)
+		body:AddTag("Keeper")
+		if typeof(dressed) == "Instance" then
+			(dressed :: Instance):AddTag("Keeper")
+		end
 		return
 	end
 	for side = -1, 1, 2 do
@@ -1005,8 +1010,8 @@ function Plaza.vendors(parent: Instance)
 		counter:SetAttribute("Vendor", vendor.id)
 		keeper(
 			stall,
-			facingIn(angle, 36.2, PLAZA_TOP + 4.2),
-			facingIn(angle, 32, PLAZA_TOP + 3.75)
+			facingIn(angle, Layout.COUNTER_RADIUS + 3.2, PLAZA_TOP + 4.2),
+			facingIn(angle, Layout.COUNTER_RADIUS - 1, PLAZA_TOP + 3.75)
 				* CFrame.new(-KEEPER_SIDE, 0, 0)
 				* CFrame.Angles(0, KEEPER_TURN, 0),
 			vendor.color:Lerp(Color3.new(1, 1, 1), 0.25),

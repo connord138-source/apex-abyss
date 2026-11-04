@@ -28,6 +28,8 @@ local Layout = require(ReplicatedStorage.Shared.Layout)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local Perks = require(ReplicatedStorage.Shared.Perks)
+local Events = require(script.Parent.Parent.Events)
+local Guard = require(script.Parent.Parent.Guard)
 local Net = require(script.Parent.Parent.Net)
 local Progress = require(script.Parent.Parent.Progress)
 local BossService = require(script.Parent.BossService)
@@ -115,6 +117,8 @@ type Hunt = {
 	max: number,
 	hurt: { [Player]: number }, -- damage done
 	last: { [Player]: number }, -- clock of each hunter's last bite
+	nextMove: number?, -- when it next fights back (Config/Ambient `whale.hunt.fight`)
+	moves: number?, -- how many moves it has made
 	diedAt: number?,
 }
 local hunts: { [number]: Hunt } = {}
@@ -206,7 +210,10 @@ local function onBiteWhale(player: Player, lane: any)
 		return
 	end
 	local now = Timing.clock()
-	if BossService.active() or now - (lastWhaleBite[player] or 0) < Config.Tuning.swim.biteCooldown * 0.8 then
+	if
+		BossService.active()
+		or now - (lastWhaleBite[player] or 0) < Perks.biteGap(FishService.character(player), now) * 0.8
+	then
 		return
 	end
 	local data = DataService.get(player)
@@ -256,6 +263,7 @@ local function onBiteWhale(player: Player, lane: any)
 		end
 		return
 	end
+	Events.biteLanded:fire(player)
 	-- The hunt: what this bite does, the whale's health growing with its hunters
 	local hunt: Hunt
 	if found then
@@ -308,6 +316,66 @@ local function onBiteWhale(player: Player, lane: any)
 		bringDown(lane, hunt, pass, now)
 	else
 		publish(lane, hunt)
+	end
+end
+
+-- A hunted humpback's move landing (Config/Ambient `whale.hunt.fight`): every fish
+-- hunting it still in reach is hit and thrown clear
+local function strike(lane: number, hunt: Hunt, kind: string)
+	if hunts[lane] ~= hunt or hunt.diedAt then
+		return
+	end
+	local now = Timing.clock()
+	local pass = Giants.pass(lane, now)
+	if pass.kind ~= "whale" or pass.slot ~= hunt.slot then
+		return
+	end
+	local tune = Config.Ambient.giants.whale.hunt.fight
+	local move = if kind == "slap" then tune.slap else tune.song
+	local at = Giants.at(lane, pass.from, pass.to, now)
+	-- (the flukes are at the tail; the song comes off the whole whale)
+	local center = if kind == "slap" then at - (pass.to - pass.from).Unit * pass.size * 0.42 else at
+	local radius = pass.size * move.radius
+	for player, last in hunt.last do
+		if now - last > tune.calm then
+			continue
+		end
+		local mouth = HuntService.mouth(player)
+		if mouth and (mouth - center).Magnitude <= radius then
+			local away = mouth - center
+			HuntService.damage(player, move.damage, "Humpback")
+			Net.shove(player, (if away.Magnitude > 1e-3 then away.Unit else Vector3.yAxis) * move.push)
+		end
+	end
+	Net.whaleEvent({ lane = lane, kind = kind, strike = true, at = center, radius = radius })
+end
+
+-- Each hunted humpback's next move, when it's being hurt
+local function fightBack()
+	local now = Timing.clock()
+	local tune = Config.Ambient.giants.whale.hunt.fight
+	for lane, hunt in hunts do
+		if hunt.diedAt then
+			continue
+		end
+		local busy = false
+		for _, last in hunt.last do
+			busy = busy or now - last < tune.calm
+		end
+		if not busy then
+			hunt.nextMove = nil
+			continue
+		end
+		if hunt.nextMove == nil then
+			hunt.nextMove = now + tune.first
+		elseif now >= hunt.nextMove then
+			hunt.nextMove = now + tune.every
+			hunt.moves = (hunt.moves or 0) + 1
+			local kind = if hunt.moves % 2 == 1 then "slap" else "song"
+			local tell = if kind == "slap" then tune.slap.tell else tune.song.tell
+			Net.whaleEvent({ lane = lane, kind = kind, tell = tell, started = now })
+			task.delay(tell, strike, lane, hunt, kind)
+		end
 	end
 end
 
@@ -387,6 +455,7 @@ function CompanionService.join(player: Player): boolean
 end
 
 function CompanionService.start()
+	Guard.loop("CompanionService.fightBack", 0.5, fightBack)
 	Net.onRequest("Companion", onRequest)
 	Net.onRequest("BiteWhale", onBiteWhale)
 	local folder = Instance.new("Folder")

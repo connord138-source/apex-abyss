@@ -194,6 +194,7 @@ return {
 		"Your Haul only counts once it's banked in your den's pool. Get eaten first and it's gone.",
 		"Every 50 shells is a roll for a new skin. Golden shells in the Trench are worth 5.",
 		"Bigger fish are worth far more. Grow, then push into the deeper biomes.",
+		"Land bites to fill your special meter. Every fish has its own special attack.",
 		"The INDEX (on the HUD) shows how to get every skin, part, variant and trail.",
 		"Your Nibbler at LV 15 plus Kelp Shallows DNA unlocks the 'Cuda in the FISH menu.",
 		"Sparkling fish are rare: 15 Golden fish of 5 different kinds unlock the Golden skin for every fish.",

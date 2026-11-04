@@ -948,6 +948,31 @@ end
 
 -- A creature's frame this moment (rays, mantas, turtles, giants), how hard it's
 -- turning, and for a ray how settled it is and how long it has lain there
+-- A hunted humpback's moves (CompanionService, Config/Ambient `whale.hunt.fight`): the
+-- tell and what follows, by lane. `started` on the shared clock.
+local whaleMoves: { [number]: { kind: string, started: number, tell: number } } = {}
+
+-- How a move turns the whale: a slap arches its tail up through the tell and brings it
+-- down hard; the song rolls it slowly onto its side and back
+local function whalePose(lane: number, t: number): CFrame
+	local move = whaleMoves[lane]
+	if move == nil then
+		return CFrame.identity
+	end
+	local since = t - move.started
+	if since < 0 or since > move.tell + 1 then
+		return CFrame.identity
+	end
+	local toTell = math.clamp(since / move.tell, 0, 1)
+	local after = math.clamp((since - move.tell) / 1, 0, 1)
+	if move.kind == "slap" then
+		local up = math.sin(toTell * math.pi / 2) * 0.42
+		local down = if after > 0 then -math.sin(math.min(after * 3, 1) * math.pi / 2) * 0.72 else 0
+		return CFrame.Angles(up + down + (if after > 0.33 then (after - 0.33) / 0.67 * 0.3 else 0), 0, 0)
+	end
+	return CFrame.Angles(0, 0, math.sin(math.min(toTell + after * 0.5, 1) * math.pi) * 0.55)
+end
+
 local function frameOf(creature: Creature, t: number): (CFrame, number, number, number)
 	local kind = creature.kind
 	if kind == "ray" then
@@ -960,7 +985,7 @@ local function frameOf(creature: Creature, t: number): (CFrame, number, number, 
 			return (Giants.deadFrame(creature.key, from, to, diedAt, t)), 0, 0, -1
 		end
 		local at = giantAt(creature, t)
-		return CFrame.lookAt(at, at + (to - from)), 0, 0, -1
+		return CFrame.lookAt(at, at + (to - from)) * whalePose(creature.key, t), 0, 0, -1
 	end
 	local frame, rate = cruiseFrame(creature, t)
 	return frame, rate, 0, -1
@@ -1003,6 +1028,23 @@ local function whaleAt(mouth: Vector3, reach: number): number?
 		end
 	end
 	return nil
+end
+
+-- The bite lock on a whale in view: the point on its skin nearest `mouth` within
+-- `range`, how far off that is, and how it's moving
+local function whaleLock(mouth: Vector3, range: number): (Vector3?, number, Vector3)
+	local now = Timing.clock()
+	for _, creature in giants do
+		if creature.giant == "whale" and creature.fade < 0.5 and not brought(creature) then
+			local at = giantAt(creature, now)
+			local heading = ((creature.to :: Vector3) - (creature.from :: Vector3)).Unit
+			local gap, out = Giants.gap(at, heading, creature.size, mouth)
+			if gap <= range then
+				return mouth - out * gap, math.max(gap, 0), (giantAt(creature, now + 0.25) - at) * 4
+			end
+		end
+	end
+	return nil, 0, Vector3.zero
 end
 
 local function centerOf(creature: Creature, t: number): Vector3
@@ -1356,11 +1398,64 @@ local function step(dt: number)
 	poseFrames += 1
 end
 
+-- A hunted humpback's move: its tell, then the shockwave where it lands
+local function onWhaleEvent(payload: { [string]: any })
+	local lane = payload.lane
+	if typeof(lane) ~= "number" then
+		return
+	end
+	if payload.strike then
+		local at, radius = payload.at, payload.radius
+		if typeof(at) ~= "Vector3" or typeof(radius) ~= "number" then
+			return
+		end
+		local wave = Instance.new("Part")
+		wave.Name = "WhaleWave"
+		wave.Shape = Enum.PartType.Ball
+		wave.Anchored = true
+		wave.CanCollide = false
+		wave.CanQuery = false
+		wave.CanTouch = false
+		wave.CastShadow = false
+		wave.Material = Enum.Material.ForceField
+		wave.Color = Color3.fromRGB(190, 232, 255)
+		wave.Size = Vector3.one * 8
+		wave.CFrame = CFrame.new(at)
+		wave.Parent = workspace
+		Ui.tween(wave, 0.55, { Size = Vector3.one * radius * 2, Transparency = 1 })
+		task.delay(0.7, function()
+			wave:Destroy()
+		end)
+		return
+	end
+	if typeof(payload.started) ~= "number" or typeof(payload.tell) ~= "number" then
+		return
+	end
+	whaleMoves[lane] = { kind = payload.kind, started = payload.started, tell = payload.tell }
+	-- A warning if this fish is near enough to care
+	local root = SwimController.root()
+	local creature = giants[lane]
+	if root and creature then
+		local away = (giantAt(creature, Timing.clock()) - root.Position).Magnitude
+		if away < creature.size * 1.1 then
+			HudController.toast(
+				if payload.kind == "slap"
+					then "TAIL SLAP · GET AWAY FROM ITS FLUKES"
+					else "WHALE SONG · GET CLEAR",
+				"bad"
+			)
+		end
+	end
+end
+
 function AmbientLifeController.start()
+	local whaleEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("WhaleEvent") :: RemoteEvent
+	whaleEvent.OnClientEvent:Connect(onWhaleEvent)
 	folder = Instance.new("Folder")
 	folder.Name = "AmbientLife"
 	folder.Parent = workspace
 	HuntController.findWhale = whaleAt
+	HuntController.whaleLock = whaleLock
 	RunService.RenderStepped:Connect(step)
 end
 

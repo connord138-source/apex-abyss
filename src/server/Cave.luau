@@ -52,7 +52,8 @@ local AIR = Enum.Material.Air
 
 -- The cavern's shape: vertical walls to WALL_TOP, then a dome whose top is hub.height
 local WALL_TOP = 55
-local DOME_RADIUS = 97
+-- A wide, low dome whose edge meets the walls at WALL_TOP and whose top is hub.height
+local DOME_RADIUS = ((hub.height - WALL_TOP) ^ 2 + hub.radius ^ 2) / (2 * (hub.height - WALL_TOP))
 local DOME_CENTER_Y = hub.height - DOME_RADIUS
 local MOUND_TOP = hub.height - 2 -- the drum's flat top; the dome cap rises above it
 local DEN_FLOOR = hub.denFloorY
@@ -198,8 +199,8 @@ function Cave.ops(): { Op }
 	-- slabs and angular blocks (facets, not bubbles)
 	local terraces = {
 		{ y0 = -26, y1 = 36, r = hub.radius + hub.denDepth + 36 },
-		{ y0 = 36, y1 = 68, r = 132 },
-		{ y0 = 68, y1 = 92, r = 120 },
+		{ y0 = 36, y1 = 68, r = 160 },
+		{ y0 = 68, y1 = 92, r = 135 },
 		{ y0 = 92, y1 = MOUND_TOP, r = 108 },
 	}
 	for _, terrace in terraces do
@@ -296,7 +297,14 @@ function Cave.ops(): { Op }
 
 	-- 3. Carve the cavern: straight walls, then the dome
 	cylinder(ops, AIR, center + Vector3.new(0, WALL_TOP / 2, 0), Vector3.yAxis, WALL_TOP, hub.radius)
-	ball(ops, AIR, center + Vector3.new(0, DOME_CENTER_Y, 0), DOME_RADIUS)
+	-- The dome is a stack of discs, one to a row of voxels. A single ball this wide would
+	-- cut the walls back behind the doorways and hollow out the rock under the floor
+	for bottom = math.floor(WALL_TOP / 4) * 4, hub.height - 4, 4 do
+		local across = DOME_RADIUS ^ 2 - (bottom + 2 - DOME_CENTER_Y) ^ 2
+		if across > 0 then
+			cylinder(ops, AIR, center + Vector3.new(0, bottom + 2, 0), Vector3.yAxis, 4, math.sqrt(across))
+		end
+	end
 	-- The oculus, with a ragged rim
 	cylinder(ops, AIR, center + Vector3.new(0, hub.height + 20, 0), Vector3.yAxis, 70, hub.oculusRadius)
 	for i = 1, 7 do
@@ -344,7 +352,9 @@ function Cave.ops(): { Op }
 		local r = rng:NextNumber(hub.oculusRadius + 16, 72)
 		local domeY = DOME_CENTER_Y + math.sqrt(math.max(DOME_RADIUS ^ 2 - r ^ 2, 0))
 		local size = rng:NextNumber(18, 26)
-		ball(ops, AIR, at(angle, r, domeY + size * 0.75), size)
+		-- (mostly under the dome, only ~8 studs into the roof: a low dome's roof is thin, and
+		-- deeper ones broke right through it, 2026-11-03)
+		ball(ops, AIR, at(angle, r, domeY + 8 - size), size)
 	end
 	-- Drips hanging from the dome: rounded knobs mostly buried in the rock, in
 	-- groups, a few with a smaller drop under them
@@ -421,9 +431,7 @@ function Cave.ops(): { Op }
 	end
 
 	-- 7. Floors back: the cavern floor at 0, den floors at DEN_FLOOR, tunnel floors at 1.
-	-- The rock under the floor goes all the way down to the shelf's hollow: the dome's
-	-- ball reaches 84 under the floor, and it left a hidden void under the plaza that
-	-- the dens' lower storeys would have opened into (2026-10-13)
+	-- The rock under the floor goes all the way down to the shelf's hollow.
 	cylinder(ops, ROCK, center + Vector3.new(0, -44, 0), Vector3.yAxis, 88, hub.radius + hub.denDepth + 40)
 	for den = 1, Layout.DEN_COUNT do
 		Cave.denFloor(ops, den)
@@ -442,6 +450,10 @@ function Cave.ops(): { Op }
 			)
 		end
 	end
+	-- Under the paving the floor sits a row of voxels lower: Terrain draws a full voxel's
+	-- top ~1.75 studs above its edge, over the flagstones (top 1.1), so only shards of
+	-- them showed through the rock (2026-11-03). Past the paving's edge it rises to meet it
+	cylinder(ops, AIR, center, Vector3.yAxis, 8, Layout.PLAZA_OUTER) -- (the tunnel floors' top row too)
 	-- (The floor stays flat under the plaza's paving, Plaza.luau: the sand drifts
 	-- that were banked round it poked up through the flagstones, owner 2026-10-17:
 	-- "Ground still looks a bit rough in the starter zone")
