@@ -3366,6 +3366,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **The white glow was the lamps:** a fish took about ten at once at 1.15 / 0.95, and **a PointLight passes through rock**, so from den level 3 the storey below lit it too, nearer than its own lamps. Over the pool its cyan turned clipped orange white. Lamps are 0.55 / 0.45 now, softer under a roof lower than `LAMP_FULL_ROOF` 46; the pool's light 0.5. `DenLampController` (client, by the camera, so Build's view works) shows only the `DenLamp`-tagged lights whose `Storeys` mask holds the storey you're on: their own, plus the storey a shaft joins within `LAMP_SHAFT_REACH` 36. It fades 0.35 s from the server's `Full` attribute. **Never key a weak table on an Instance to remember a value:** the entry can go while the Instance lives, and lamps came back stuck at 0.
   - **Tones:** `Config/Shades` `TONES` multiply the palest skins' colour maps (`SurfaceAppearance.Color`, 0.72–0.85), which have no headroom under bright light. A new near-white skin belongs there. The glow map wasn't the cause.
   - **Thumbnail 8** is a new capture of a furnished Nook. **Tan rock flags the colour screen** (skin tone 31.4%): grade a den shot's rock cool before composing it, and screen it.
+  - **Tutorial beads fade near the camera** (`BEAD_GONE_WITHIN` 3, `BEAD_FULL_PAST` 8): a trail to something behind you runs along the camera's line, and one bead past the lens filled the screen with cyan. Don't read a big cyan shape in a den test as a bug in the lights: look from the side.
+  - **Published 2026-11-05 16:37 UTC from da05b50** (probably v54; the number wasn't shown), to the Public game. The bead fix came after and needs its own publish.
 
 ## Tech
 

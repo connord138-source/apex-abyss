@@ -109,6 +109,15 @@ the experience → Basic Info → Description.
 🎁 Daily rewards, playtime gifts and a free Tide Pass.
 ```
 
+## Audience and genre (read 2026-11-05)
+
+Public numbers that day: 6 visits, 0 playing, 1 upvote, 0 favourites, a community of 1. `genre_l1` is empty, so **no genre is set**; Adopt Me's reads Roleplay & Avatar Sim / Pet Care.
+
+- **Genre:** Creator Dashboard > the game > Publish Settings > Game Details. **Changes only once every 3 months.** Fish Eat Fish, Be Fish, Be a Shark and Deep Fishing all use Simulation / Incremental Simulator; DEVOUR, Hungry Ocean and THE REEF use Roleplay & Avatar Sim / Animal Sim. Recommended: Simulation / Incremental Simulator.
+- **Who can play now:** age-checked users 16+ only (the "trial phase"), docs/production/publishing/kids-and-select, updated 2026-11-04.
+- **To reach all ages, all of:** age verification (government ID at 18+), 2FA, then either 2 consecutive months of Roblox Plus or Premium or a **refundable 1,000 Robux publishing fee** (refunded at 25 highly engaged players for 60 days, kept if the game is permanently moderated; Audience > Reach > Refundable publishing fee), the whole Maturity & Compliance Questionnaire with a Minimal, Mild or Moderate rating, and evaluation: **250 unique plays by highly engaged age-checked users in 60 days** (a June forum post said 500). The 1,000 Robux doesn't skip the 250. Only the 50,000 Robux expedited review does that. Progress: Audience Reach.
+- **Ads:** objectives Plays, Earnings, Engagement. Engagement goes for "age-checked highly engaged players whose sessions count toward" the threshold and warns of a higher cost per play, with no figure. Studio's Manage Audience window says "Ads start at $5"; forum posts disagree on the exact minimum. The docs don't say outright that plays from ads count toward the 250.
+
 ## Badges, invites and notifications (Creator Hub setup, 2026-11-03)
 
 The game's side is built (`src/shared/Config/Social.luau`, see CLAUDE.md "Getting

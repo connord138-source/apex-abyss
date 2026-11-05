@@ -72,6 +72,12 @@ local pointedAt: GuiObject? = nil
 local TRAIL_DOTS = 9 -- lights between the fish and the target
 local TRAIL_NEAR = 14 -- studs: the trail goes out this close to the target
 local TRAIL_SPAN = 90 -- studs: the trail reaches this far ahead at most
+-- A bead this close to the camera fades out. The trail to a way out behind you runs back
+-- along the camera's line, and a fish from about LV 5 sits further from the camera than
+-- the trail's start, so a bead went right past the lens and filled the screen with a huge
+-- cyan blob (PC 2026-11-05)
+local BEAD_GONE_WITHIN = 3 -- studs from the camera: not drawn
+local BEAD_FULL_PAST = 8 -- studs from the camera: drawn in full
 local SEARCH_RANGE = 420 -- studs: how far the guide looks for food or a shell
 -- Bigger and bolder (owner, 2026-10-20: "tutorial needs to be more prominent its a
 -- bit small"): a headline with the goal, larger text, and the card drawn at
@@ -372,11 +378,17 @@ local function drawTrail(from: Vector3, to: Vector3, t: number)
 	local span = math.min(distance - TRAIL_NEAR, TRAIL_SPAN)
 	local start = from + direction * 6
 	local flow = (t * 0.9) % 1 -- the beads slide toward the target
+	local lens = workspace.CurrentCamera.CFrame.Position
 	for i, bead in beads do
 		local k = ((i - 1) + flow) / TRAIL_DOTS
 		local position = start + direction * (span * k)
 		local fade = math.sin(k * math.pi) -- bright in the middle, fading at both ends
-		bead.Transparency = 0.15 + 0.6 * (1 - fade)
+		local clear = math.clamp(
+			((position - lens).Magnitude - BEAD_GONE_WITHIN) / (BEAD_FULL_PAST - BEAD_GONE_WITHIN),
+			0,
+			1
+		)
+		bead.Transparency = 1 - (0.85 - 0.6 * (1 - fade)) * clear
 		local size = 0.8 + 0.5 * fade
 		bead.Size = Vector3.new(size, size, size)
 		beadFrames[i] = CFrame.new(position)
