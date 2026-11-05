@@ -17,7 +17,7 @@ named "Apex Abyss" until 2026-10-20), private until Connor makes it public. Ever
 | `thumb_5_shades.jpg` | Thumbnail 5 | Prismatic, Ghost, Magma, Nebula, Divine. "RARE SHADES!" |
 | `thumb_6_treasure.jpg` | Thumbnail 6 | A chest dug up in the shipwrecks, the map beside it. "TREASURE MAPS!" |
 | `thumb_7_biomes.jpg` | Thumbnail 7 | Kelp, reef arches and wrecks side by side. "EXPLORE 7 BIOMES!" |
-| `thumb_8_den.jpg` | Thumbnail 8 | In-game: a furnished Grotto, the full Coral Garden. "BUILD YOUR DEN!" |
+| `thumb_8_den.jpg` | Thumbnail 8 | In-game (2026-11-05): a furnished Nook, its rock graded cool to pass the colour screen. "BUILD YOUR DEN!" |
 | `thumb_9_megalodon.jpg` | Thumbnail 9 | In-game: the Megalodon's jaws. "FIGHT THE MEGALODON!" Provisional: retake it after the open-water rework (it's murky and staged) |
 | `thumb_10_reveal.jpg` | Thumbnail 10 | In-game: the roll reveal landing on Nebula. "ROLL RARE SHADES!" |
 | `logo.png` | Anywhere (transparent); also the start screen's title (`Config/Textures` `logo`) | APEX TIDE, a foam crest between the lines |

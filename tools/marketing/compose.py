@@ -373,7 +373,7 @@ def shots():
     # (headline, line, where the words go: "top" for the logo and headline along the
     # top, "bottom" for shots whose top is busy, like the roll reveal's reel)
     lines = {
-        "shot_8_den": ("BUILD YOUR\nDEN!", "TROPHIES · FURNITURE · CORAL GARDEN", "top"),
+        "shot_8_den": ("BUILD YOUR\nDEN!", "FURNITURE · TROPHIES · AQUARIUMS", "top"),
         # (the Megalodon lunges up at the fish at the top of this capture)
         "shot_9_megalodon": ("FIGHT THE\nMEGALODON!", "A WORLD BOSS EVERY 30 MINUTES", "bottom"),
         "shot_10_reveal": ("ROLL RARE\nSHADES!", "COLLECT SHELLS · 30+ SHADES TO FIND", "bottom"),

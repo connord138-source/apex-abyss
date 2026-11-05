@@ -161,8 +161,10 @@ local function relayout(den: DenRecord)
 			local storey = DenSpace.storeyAt(placement.y)
 			local grew = 0
 			local old = math.huge
+			-- (the rooms have been made longer since: its z here is from before that)
+			local z = DenSpace.deeperZ(placement.z)
 			for _, room in Dens.rooms do
-				if room.storey == storey and placement.z <= room.z0 and placement.z >= room.z1 then
+				if room.storey == storey and z <= room.z0 and z >= room.z1 then
 					old = Dens.layout.widened[room.id] or room.x
 					grew = room.x - old
 					break
@@ -176,6 +178,10 @@ local function relayout(den: DenRecord)
 			end
 		end
 		den.placed = kept
+	end
+	if mark < 6 then
+		-- The rooms made longer on 2026-11-04 (DenSpace.deepen)
+		DenSpace.deepen(shapeOf(den), den.placed)
 	end
 	-- Anything that no longer fits goes back to the tray
 	for _ = 1, 3 do
@@ -948,13 +954,25 @@ end
 -- at its storey's old height, pulled in to the old rooms' size, no layout mark),
 -- then loads it the way an old save loads (relayout). Returns a line for the admin
 -- panel.
-function DenService.simulateOldSave(player: Player): string
+-- (`last`: a save from just before the latest layout, which keeps its walls and roof,
+-- so only the rooms' lengthening runs; without it, a save from before every layout)
+function DenService.simulateOldSave(player: Player, last: boolean?): string
 	local data = DataService.get(player)
 	if data == nil then
 		return "No data"
 	end
 	local den = data.den
 	local before = #den.placed
+	if last then
+		for _, placement in den.placed do
+			placement.z = snap(DenSpace.shallowerZ(placement.z))
+		end
+		den.layout = Dens.layout.current - 1
+		relayout(den)
+		DataService.markDirty(player)
+		DenService.refresh(player)
+		return `Last layout's save: {before} placed, {#den.placed} kept, {before - #den.placed} back to the tray`
+	end
 	local lower = 0
 	local growth = Dens.layout.growth
 	for _, placement in den.placed do
@@ -964,7 +982,7 @@ function DenService.simulateOldSave(player: Player): string
 		end
 		placement.y += OLD_DECKS[storey] - DenSpace.storey(storey).deck
 		placement.x = snap(placement.x / growth)
-		placement.z = snap(placement.z / growth)
+		placement.z = snap(DenSpace.shallowerZ(placement.z) / growth)
 	end
 	den.layout = nil
 	relayout(den)

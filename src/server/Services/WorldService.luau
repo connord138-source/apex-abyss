@@ -292,7 +292,8 @@ local function buildDen(parent: Instance, index: number)
 	local light = Instance.new("PointLight")
 	light.Color = POOL
 	light.Range = 22
-	light.Brightness = 1.6
+	-- (0.5: a fish arrives right over it, and cyan on a lamp-lit orange fish reads white)
+	light.Brightness = 0.5
 	light.Shadows = true
 	light.Parent = pool
 	local bubbles = Instance.new("ParticleEmitter")

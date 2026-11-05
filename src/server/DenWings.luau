@@ -691,12 +691,17 @@ function DenWings.tanks(parent: Instance, frame: CFrame, shape: DenSpace.Shape, 
 	local tune = Dens.aquarium
 	local size = tune.size
 	local models: { { model: Model, front: Vector3, normal: Vector3 } } = {}
+	local emptyShown = false
 	for _, tank in DenSpace.tanks(shape) do
-		-- Only a stocked tank is built (owner, 2026-11-03: "why are there three tanks in
-		-- the den?"; a new den stood three empty ones along its walls). The den menu's
-		-- aquarium rows stock one, and it appears.
+		-- Every stocked tank and one empty one, the next to stock (owner, 2026-11-03: "why
+		-- are there three tanks in the den?", when a new den stood three empty ones; then
+		-- 2026-11-04: "the personal fish tank seems to be gone", when none showed until
+		-- stocked). The den menu's aquarium rows still list them all.
 		if stock[tank.id] == nil then
-			continue
+			if emptyShown then
+				continue
+			end
+			emptyShown = true
 		end
 		local model = Instance.new("Model")
 		model.Name = `Tank{tank.id}`

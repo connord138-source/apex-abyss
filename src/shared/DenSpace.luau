@@ -1014,6 +1014,71 @@ function DenSpace.grow(level: ShapeArg, placed: { Placed }, growth: number)
 	end
 end
 
+-- Where a z in the rooms from before 2026-11-04 stands in the longer rooms (Config/Dens
+-- `layout.deepen`, from the front wall back), and the way back
+function DenSpace.deeperZ(z: number): number
+	return Dens.maxFront - (Dens.maxFront - z) * Dens.layout.deepen
+end
+function DenSpace.shallowerZ(z: number): number
+	return Dens.maxFront - (Dens.maxFront - z) / Dens.layout.deepen
+end
+
+-- An old save's placements moved into the longer rooms (owner, 2026-11-04: "it also needs to
+-- be deeper"). Everything in the house moves back with its walls, so what hung on the back
+-- wall is still on it and a set keeps its place in its room. What's in a wing moves with the
+-- wing's doorway, the wing itself being the same size. What stands on something keeps its
+-- spot on it, moving exactly as far as its base. Changes `placed` in place; DenService then
+-- sends what still doesn't fit back to the tray.
+function DenSpace.deepen(level: ShapeArg, placed: { Placed })
+	local before = Dens.layout.slotsBefore
+	local plans = DenSpace.wingPlans(level)
+	local function wingShift(p: Placed): number?
+		if DenSpace.storeyAt(p.y) ~= 1 then
+			return nil
+		end
+		for _, plan in plans do
+			local old = before[plan.slot.id]
+			-- (past the passage, so never a thing on the house's own side wall)
+			if old and p.x * plan.side >= plan.x1 - 2 and math.abs(p.z - old) <= plan.def.depth / 2 + 6 then
+				return plan.z - old
+			end
+		end
+		return nil
+	end
+	-- Lowest first, so a base has its new place before what stands on it
+	local order = table.clone(placed)
+	table.sort(order, function(a, b)
+		return a.y < b.y
+	end)
+	local newZ: { [number]: number } = {}
+	for _, p in order do
+		local shift = wingShift(p)
+		if shift == nil and p.s == "floor" then
+			local storey = DenSpace.storeyAt(p.y)
+			if storey and p.y > DenSpace.storey(storey).deck + 0.3 then
+				for _, other in placed do
+					local item = Dens.itemsById[other.id]
+					if
+						other.uid ~= p.uid
+						and other.s == "floor"
+						and item ~= nil
+						and newZ[other.uid] ~= nil
+						and math.abs(other.y + item.size.Y - p.y) <= 0.9
+						and underFootprint(other, item, p.x, p.z)
+					then
+						shift = newZ[other.uid] - other.z
+						break
+					end
+				end
+			end
+		end
+		newZ[p.uid] = snap2(if shift then p.z + shift else DenSpace.deeperZ(p.z))
+	end
+	for _, p in placed do
+		p.z = newZ[p.uid]
+	end
+end
+
 export type LayoutPlacement = { id: string, x: number, y: number, z: number, r: number }
 
 -- Where a starter layout (Config/Dens `layouts`) fits on the floor round `anchor`

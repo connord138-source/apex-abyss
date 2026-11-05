@@ -99,7 +99,7 @@ expect(DenSpace.onDeck(1, 1, 9, 6), "the Nook floor beside the pool is deck")
 local hallShaft, sanctumShaft = Dens.shafts[1].z, Dens.shafts[2].z
 expect(not DenSpace.onDeck(3, 1, 0, hallShaft), "the Hall shaft is cut out of the Burrow")
 expect(DenSpace.onDeck(2, 1, 0, hallShaft), "the Burrow floor is deck before the Hall")
-expect(not DenSpace.onDeck(3, 2, 0, 4), "the garden bed is cut out of the Hall")
+expect(not DenSpace.onDeck(3, 2, 0, DenSpace.garden(3).z), "the garden bed is cut out of the Hall")
 expect(
 	not DenSpace.onDeck(4, 2, 0, sanctumShaft) == false,
 	"the Grotto floor over the Sanctum shaft is deck before L5"
@@ -115,7 +115,7 @@ local function ok(check: { ok: boolean, why: string? }): boolean
 	return check.ok
 end
 expect(ok(DenSpace.check(1, lamp, "floor", v(16, 1, -6))), "a lamp on the Nook floor")
-expect(not ok(DenSpace.check(1, lamp, "floor", v(0, 1, -50))), "no lamp in the Burrow before it's dug")
+expect(not ok(DenSpace.check(1, lamp, "floor", v(0, 1, -100))), "no lamp in the Burrow before it's dug")
 expect(not ok(DenSpace.check(1, lamp, "wall", v(30, 8, 0))), "a lamp isn't a wall thing")
 local nookX = Dens.roomsById.Nook.x
 expect(ok(DenSpace.check(1, lantern, "wall", v(nookX + 0.5, 8, 0))), "a lantern on the Nook wall")
@@ -255,7 +255,8 @@ do
 	local old = {
 		{ uid = 1, id = "DriftwoodTable", x = 4, y = deck, z = -6, r = 0, s = "floor" },
 		{ uid = 2, id = "CoralLamp", x = 4.5, y = deck + 3, z = -6, r = 0, s = "floor" },
-		{ uid = 3, id = "KelpRug", x = 25, y = deck, z = -14, r = 0, s = "floor" },
+		-- (out by the Nook's wall since it was widened: 40 × growth hangs over the edge)
+		{ uid = 3, id = "KelpRug", x = 40, y = deck, z = -14, r = 0, s = "floor" },
 		{ uid = 4, id = "SeaGlassLantern", x = 30.5, y = 8, z = 0, r = 90, s = "wall" },
 	}
 	DenSpace.grow(1, old, growth)
@@ -277,12 +278,47 @@ do
 		DenSpace.footprintOnDeck(1, 1, rug, old[3].x, old[3].z, 0, 0.4),
 		`grow: the rug back on the deck (x {old[3].x})`
 	)
-	expect(old[3].x < 25 * growth, "grow: the rug moved in, not out")
+	expect(old[3].x < 40 * growth, "grow: the rug moved in, not out")
 	expect(
 		old[4].y == 8
 			and ok(DenSpace.check(1, Dens.itemsById.SeaGlassLantern, "wall", v(old[4].x, old[4].y, old[4].z))),
 		"grow: the lantern still on its wall"
 	)
+end
+
+-- An old save moved into the longer rooms (DenSpace.deepen, 2026-11-04): the house's things
+-- back with their walls, a lamp stays on its table, what's in a wing moves with its doorway,
+-- and all of it still fits
+do
+	local deck = DenSpace.storey(1).deck
+	local tableItem = Dens.itemsById.DriftwoodTable
+	local shape = { level = 5, wings = { FrontLeft = "TrophyGallery" } }
+	local plan = DenSpace.wingPlans(shape)[1]
+	local inWing = plan.side * (plan.x1 + 4)
+	local old = {
+		{ uid = 1, id = "DriftwoodTable", x = 20, y = deck, z = -20, r = 0, s = "floor" },
+		{ uid = 2, id = "CoralLamp", x = 21, y = deck + tableItem.size.Y, z = -20.5, r = 0, s = "floor" },
+		{ uid = 3, id = "SeaGlassLantern", x = 54.5, y = 10, z = -28, r = 90, s = "wall" },
+		{ uid = 4, id = "SeaGlassLantern", x = 6, y = 10, z = -35.5, r = 0, s = "wall" },
+		{ uid = 5, id = "JellyLamp", x = 10, y = 30, z = -10, r = 0, s = "ceiling" },
+		{ uid = 6, id = "CoralLamp", x = inWing, y = deck, z = 8, r = 0, s = "floor" },
+		{ uid = 7, id = "CoralLamp", x = 10, y = -54, z = -100, r = 0, s = "floor" },
+	}
+	DenSpace.deepen(shape, old)
+	local near = function(a: number, b: number): boolean
+		return math.abs(a - b) < 0.02
+	end
+	expect(near(old[1].z, DenSpace.deeperZ(-20)), `deepen: the table back with its walls ({old[1].z})`)
+	expect(near(old[2].z - old[1].z, -0.5), `deepen: the lamp keeps its spot on the table ({old[2].z})`)
+	expect(ok(DenSpace.resting(shape, old, v(old[2].x, old[2].y, old[2].z), 2)), "deepen: the lamp rests on it")
+	expect(near(old[4].z, DenSpace.deeperZ(-35.5)), `deepen: the back wall's lantern ({old[4].z})`)
+	expect(old[4].z <= Dens.roomsById.Nook.z1 + 2, "deepen: the back wall's lantern is still on the back wall")
+	expect(near(old[6].z, plan.z + 8), `deepen: the wing's lamp stays 8 from its doorway's middle ({old[6].z})`)
+	expect(near(old[7].z, DenSpace.deeperZ(-100)), `deepen: the Hall's lamp ({old[7].z})`)
+	for _, p in old do
+		local item = Dens.itemsById[p.id]
+		expect(ok(DenSpace.check(shape, item, p.s, v(p.x, p.y, p.z))), `deepen: {p.id} {p.uid} still fits`)
+	end
 end
 
 -- Den things: a cluster's kinds are pieces DenItems builds; rugs are big, a wall

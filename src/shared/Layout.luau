@@ -161,7 +161,9 @@ Layout.DEN_EXTENT = { half = HALF, front = FRONT, back = BACK, top = TOP, bottom
 -- counts, however far an upgrade dug it back and down.
 function Layout.denAt(position: Vector3): number?
 	local column = math.floor((position.X - interior.x) / interior.spacing + 0.5)
-	local row = math.floor((position.Z - interior.z) / interior.spacing + 0.5)
+	-- (a block runs much further back than forward, so a row's share of the grid is centred
+	-- on its block, not on its frame: past 320 studs back a den would read as the next row's)
+	local row = math.floor((position.Z - interior.z + (FRONT + BACK) / 2) / interior.spacing + 0.5)
 	if column < 0 or column >= interior.columns or row < 0 then
 		return nil
 	end

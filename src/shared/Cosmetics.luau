@@ -1379,6 +1379,10 @@ local function paintMesh(body: Model, shadeId: string?, length: number, skinRead
 				clone.Name = "ShadeSkin"
 				-- The glow map's strength (the Angler's lure glows in every skin)
 				clone.EmissiveStrength = (shade :: ShadesConfig.Shade).emissive or 1
+				local tone = (shade :: ShadesConfig.Shade).tone
+				if tone then
+					clone.Color = Color3.new(tone, tone, tone)
+				end
 				clone.Parent = part
 				table.insert(worn, clone)
 			elseif skin:IsA("StringValue") then

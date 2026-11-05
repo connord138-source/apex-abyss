@@ -253,16 +253,20 @@ local rooms: { Room } = {
 	-- Widened 2026-11-03 (owner: the den "is very tight ... Needs to be widened and opened
 	-- up"; the following camera sits ~43 studs behind a big fish). Across only: the pool,
 	-- shafts, wing slots and tanks stand along z. `layout.widened` holds the old widths.
-	{ id = "Nook", level = 1, storey = 1, x = 54, z0 = 36, z1 = -36 },
-	{ id = "Burrow", level = 2, storey = 1, x = 50, z0 = -32, z1 = -110 },
-	{ id = "HallNave", level = 3, storey = 2, x = 52, z0 = 36, z1 = -24 },
-	{ id = "HallMid", level = 3, storey = 2, x = 60, z0 = -24, z1 = -86 },
-	{ id = "HallBack", level = 3, storey = 2, x = 64, z0 = -86, z1 = -146, pillars = 17 },
-	{ id = "GrottoWings", level = 4, storey = 2, x = 76, z0 = -36, z1 = -146 },
-	{ id = "GrottoDeep", level = 4, storey = 2, x = 80, z0 = -146, z1 = -208, pillars = 17 },
-	{ id = "SanctumFore", level = 5, storey = 3, x = 56, z0 = 36, z1 = -24 },
-	{ id = "SanctumNave", level = 5, storey = 3, x = 68, z0 = -24, z1 = -122, pillars = 19 },
-	{ id = "SanctumApse", level = 5, storey = 3, x = 84, z0 = -122, z1 = -220, pillars = 19 },
+	-- Half as long again 2026-11-04 (owner: "You made the den wider but it also needs to be
+	-- deeper"): every z from the front wall back × `layout.deepen`, to the 2-stud grid, so a
+	-- 108 × 108 Nook. The shafts, wing slots, tank spots and gardens moved with them; the
+	-- front wall and the pool stayed, and a wing kept its own size.
+	{ id = "Nook", level = 1, storey = 1, x = 54, z0 = 36, z1 = -72 },
+	{ id = "Burrow", level = 2, storey = 1, x = 50, z0 = -66, z1 = -184 },
+	{ id = "HallNave", level = 3, storey = 2, x = 52, z0 = 36, z1 = -54 },
+	{ id = "HallMid", level = 3, storey = 2, x = 60, z0 = -54, z1 = -148 },
+	{ id = "HallBack", level = 3, storey = 2, x = 64, z0 = -148, z1 = -238, pillars = 17 },
+	{ id = "GrottoWings", level = 4, storey = 2, x = 76, z0 = -72, z1 = -238 },
+	{ id = "GrottoDeep", level = 4, storey = 2, x = 80, z0 = -238, z1 = -330, pillars = 17 },
+	{ id = "SanctumFore", level = 5, storey = 3, x = 56, z0 = 36, z1 = -54 },
+	{ id = "SanctumNave", level = 5, storey = 3, x = 68, z0 = -54, z1 = -202, pillars = 19 },
+	{ id = "SanctumApse", level = 5, storey = 3, x = 84, z0 = -202, z1 = -348, pillars = 19 },
 }
 
 -- The wings (the proposal's five rooms). The Aquarium Hall's tanks, the Trophy
@@ -332,24 +336,24 @@ local wings: { Wing } = {
 }
 
 -- The doorways the wings open from: two down each side of the main storey, off
--- the Nook (z 0) and off the Burrow (z -78), clear of the pool, the shaft and the
+-- the Nook (z -18) and off the Burrow (z -134), clear of the pool, the shaft and the
 -- aquarium tanks on the side walls
 local wingSlots: { WingSlot } = {
-	{ id = "FrontLeft", name = "Front left", side = -1, z = 0 },
-	{ id = "FrontRight", name = "Front right", side = 1, z = 0 },
-	{ id = "BackLeft", name = "Back left", side = -1, z = -78 },
-	{ id = "BackRight", name = "Back right", side = 1, z = -78 },
+	{ id = "FrontLeft", name = "Front left", side = -1, z = -18 },
+	{ id = "FrontRight", name = "Front right", side = 1, z = -18 },
+	{ id = "BackLeft", name = "Back left", side = -1, z = -134 },
+	{ id = "BackRight", name = "Back right", side = 1, z = -134 },
 }
 
 local shafts: { Shaft } = {
-	{ id = "HallShaft", level = 3, from = 1, to = 2, z = -70, radius = 10 },
-	{ id = "SanctumShaft", level = 5, from = 2, to = 3, z = -110, radius = 11 },
+	{ id = "HallShaft", level = 3, from = 1, to = 2, z = -124, radius = 10 },
+	{ id = "SanctumShaft", level = 5, from = 2, to = 3, z = -184, radius = 11 },
 }
 
 local gardenSpots: { GardenSpot } = {
-	{ level = 1, storey = 1, z = -32, shape = "trough", width = 30, depth = 6 },
-	{ level = 2, storey = 1, z = -106, shape = "trough", width = 30, depth = 6 },
-	{ level = 3, storey = 2, z = 4, shape = "bed", width = 28, depth = 20 },
+	{ level = 1, storey = 1, z = -68, shape = "trough", width = 30, depth = 6 },
+	{ level = 2, storey = 1, z = -180, shape = "trough", width = 30, depth = 6 },
+	{ level = 3, storey = 2, z = -12, shape = "bed", width = 28, depth = 20 },
 }
 
 -- Sizes (v4, owner 2026-10-18): beside a fish 2 to 17 studs long in a 74 × 72 Nook.
@@ -1498,24 +1502,24 @@ return {
 		size = Vector3.new(11, 7, 4),
 		height = 7,
 		spots = {
-			{ side = -1, z = 22 },
-			{ side = 1, z = 22 },
-			{ side = -1, z = -20 },
-			{ side = 1, z = -20 },
-			{ side = -1, z = -50 },
-			{ side = 1, z = -50 },
-			{ side = -1, z = -100 },
-			{ side = 1, z = -100 },
+			{ side = -1, z = 15 },
+			{ side = 1, z = 15 },
+			{ side = -1, z = -48 },
+			{ side = 1, z = -48 },
+			{ side = -1, z = -94 },
+			{ side = 1, z = -94 },
+			{ side = -1, z = -168 },
+			{ side = 1, z = -168 },
 		},
 	},
 	-- The Den Expansion pass: this many more things placed, at any level
 	expansionCapacity = 25,
 	-- The main room's back wall at plaque height (local z), before and after the
 	-- Burrow carves it back (the trophy wall is seated on the real rock by raycast)
-	backWall = { -36, -110 },
+	backWall = { -72, -184 },
 	-- The furthest the rooms reach back and forward (local z): the den's block of
 	-- rock (DenCarve) and the safe zone (Layout.denAt)
-	maxBack = -220,
+	maxBack = -348,
 	maxFront = 36,
 	-- The Haul Pool, near the front of the Nook: you come in over it, so swimming
 	-- home through your doorway banks your Haul (local z, and its radius)
@@ -1525,10 +1529,14 @@ return {
 	-- moved over once (DenService `relayout`): across and along by `growth`, the v4
 	-- rooms' size over the v3 ones'. 5 the rooms widened on 2026-11-03: `widened` is each
 	-- room's half-width before that (DenService `relayout` moves what stood in a wing out
-	-- with its wall, and sends wall and ceiling things to the tray).
+	-- with its wall, and sends wall and ceiling things to the tray). 6 the rooms made longer
+	-- on 2026-11-04: from the front wall back every z × `deepen` (DenSpace.deepen), but what's
+	-- in a wing moves with its doorway (`slotsBefore`: each doorway's z until then).
 	layout = {
-		current = 5,
+		current = 6,
 		growth = 1.22,
+		deepen = 1.5,
+		slotsBefore = { FrontLeft = 0, FrontRight = 0, BackLeft = -78, BackRight = -78 },
 		widened = {
 			Nook = 37,
 			Burrow = 34,

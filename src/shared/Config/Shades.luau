@@ -65,6 +65,7 @@ export type Shade = {
 	-- bright the skin's glow map burns (SurfaceAppearance.EmissiveStrength), how the
 	-- glow moves, and what drifts off the fish. Cosmetics reads them.
 	emissive: number?,
+	tone: number?, -- multiplies the skin's colour map, 0..1 (a pale skin's detail under bright light)
 	pulse: Pulse?,
 	aura: Aura?,
 	spectral: boolean?, -- the whole fish turns ghostly: see-through, lit from within, haloed (Ghost)
@@ -1430,6 +1431,25 @@ for id, look in WINDOWS do
 	local shade = byId[id]
 	assert(shade, `Config/Shades WINDOWS: no shade {id}`)
 	shade.sheen = look
+end
+
+-- The palest skins, a little darker (owner, 2026-11-04: "the fish's white glow ... only
+-- certain skins"). A colour map near white has no headroom: under a den's lamps it
+-- clips to flat white and its pattern goes, where a mid-toned skin only brightens.
+local TONES: { [string]: number } = {
+	DrownedPearl = 0.72,
+	CatchSilver = 0.75,
+	Lunar = 0.75,
+	Diamond = 0.78,
+	Divine = 0.78,
+	Prismatic = 0.8,
+	Glacier = 0.8,
+	CatchGolden = 0.85,
+}
+for id, tone in TONES do
+	local shade = byId[id]
+	assert(shade, `Config/Shades TONES: no shade {id}`)
+	shade.tone = tone
 end
 
 -- Whether a fish of `speciesId` can have a skin: one of its own line, or one every

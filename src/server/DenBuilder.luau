@@ -88,6 +88,10 @@ type DenState = {
 
 local STONE = Color3.fromRGB(176, 164, 140)
 local LAMP = Color3.fromRGB(255, 222, 180)
+-- How far along a shaft's z a lamp still shows from the storey at its other end
+local LAMP_SHAFT_REACH = 36
+-- A storey's height, deck to ceiling, that its lamps are at full brightness from
+local LAMP_FULL_ROOF = 46
 
 local states: { [number]: DenState } = {}
 
@@ -114,12 +118,13 @@ local function part(
 	return made
 end
 
-local function light(on: Instance, color: Color3, range: number, brightness: number)
+local function light(on: Instance, color: Color3, range: number, brightness: number): PointLight
 	local made = Instance.new("PointLight")
 	made.Color = color
 	made.Range = range
 	made.Brightness = brightness
 	made.Parent = on
+	return made
 end
 
 local function glowOf(record: Record): Color3
@@ -412,11 +417,31 @@ local function buildShell(state: DenState, index: number, record: Record)
 						Enum.Material.Neon
 					)
 					core.Shape = Enum.PartType.Ball
-					-- (a reach to the floor under the higher roof, and across the wider rooms, 2026-11-03)
-					light(core, LAMP, 60, if x == 0 then 1.15 else 0.95)
+					-- (a reach to the floor under the higher roof, and across the wider rooms,
+					-- 2026-11-03. Soft, since several overlap: at 1.15 / 0.95 a fish took about
+					-- ten at once and its colour clipped, pale skins to plain white, 2026-11-04)
+					-- (a lower roof hangs them nearer the fish: the Hall's 42 against the Sanctum's 46)
+					local roof = math.min(((s.ceiling - s.deck) / LAMP_FULL_ROOF) ^ 2, 1)
+					local lamp = light(core, LAMP, 60, (if x == 0 then 0.55 else 0.45) * roof)
+					-- Shows from its own storey, and by a shaft from the one it joins
+					-- (a light passes through rock: DenLampController)
+					local storeys = bit32.lshift(1, storey - 1)
+					for _, shaft in DenSpace.shafts(level) do
+						if math.abs(z - shaft.z) <= LAMP_SHAFT_REACH then
+							if shaft.from == storey then
+								storeys = bit32.bor(storeys, bit32.lshift(1, shaft.to - 1))
+							elseif shaft.to == storey then
+								storeys = bit32.bor(storeys, bit32.lshift(1, shaft.from - 1))
+							end
+						end
+					end
+					lamp:SetAttribute("Storeys", storeys)
+					lamp:SetAttribute("Full", lamp.Brightness)
+					lamp:AddTag("DenLamp")
 				end
 			end
-			z -= 20
+			-- (20 until the rooms were made half as long again, 2026-11-04: their reach is 60)
+			z -= 26
 		end
 	end
 	task.delay(0.5, function()

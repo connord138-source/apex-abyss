@@ -40,6 +40,7 @@ local SpecialController = require(script.Controllers.SpecialController)
 local BossController = require(script.Controllers.BossController)
 local MapController = require(script.Controllers.MapController)
 local LampController = require(script.Controllers.LampController)
+local DenLampController = require(script.Controllers.DenLampController)
 local AdminController = require(script.Controllers.AdminController)
 local AmbienceController = require(script.Controllers.AmbienceController)
 local MusicController = require(script.Controllers.MusicController)
@@ -91,6 +92,7 @@ SpecialController.start() -- every fish's special attack: the meter, the key and
 BossController.start() -- world boss: HUD bar, dread, countdown, rewards
 MapController.start() -- the minimap and the full map (M / R3 / tap it)
 LampController.start() -- lamps on fish (an Anglerfish's lure, Deep Lanterns) for the dark
+DenLampController.start() -- den lamps light the storey you're looking at
 AdminController.start() -- the owner's admin panel (shows only for admins)
 AmbienceController.start() -- the water's sound: shallow, deep and cavern beds by depth
 MusicController.start() -- the music for where you are (Config/Music)

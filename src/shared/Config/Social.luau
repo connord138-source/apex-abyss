@@ -98,7 +98,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "Friend",
-		id = 0,
+		id = 3794532163500694,
 		name = "School's In",
 		description = "A friend you invited finished the tutorial.",
 		measure = "friends",
@@ -107,7 +107,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "Treasure",
-		id = 0,
+		id = 2167725287037968,
 		name = "X Marks the Spot",
 		description = "Dug up a treasure chest.",
 		measure = "treasures",
@@ -116,7 +116,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "ApexHunter",
-		id = 0,
+		id = 1246626926758042,
 		name = "Apex Hunter",
 		description = "Ate the Apex and claimed its bounty.",
 		measure = "apexKills",
@@ -125,7 +125,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "Crystal",
-		id = 0,
+		id = 3726153593606308,
 		name = "Crystal Clear",
 		description = "Caught a Crystal fish.",
 		measure = "catches",
@@ -135,7 +135,7 @@ local badges: { Badge } = {
 	},
 	{
 		key = "Level100",
-		id = 0,
+		id = 1981720186372877,
 		name = "Top of the Food Chain",
 		description = "Reached level 100 with any fish.",
 		measure = "level",

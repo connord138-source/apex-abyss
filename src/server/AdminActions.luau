@@ -577,10 +577,10 @@ local function denLevel(_admin: Player, targets: { Player }, level: any): string
 end
 
 -- Den: a save from before the private interiors, loaded (tests DenService relayout)
-local function denOldSave(_admin: Player, targets: { Player }): string
+local function denOldSave(_admin: Player, targets: { Player }, last: any): string
 	local lines: { string } = {}
 	for _, player in targets do
-		table.insert(lines, `{player.Name}: {DenService.simulateOldSave(player)}`)
+		table.insert(lines, `{player.Name}: {DenService.simulateOldSave(player, last == true)}`)
 	end
 	return table.concat(lines, " | ")
 end
