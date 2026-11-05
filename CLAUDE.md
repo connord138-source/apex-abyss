@@ -3367,7 +3367,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Tones:** `Config/Shades` `TONES` multiply the palest skins' colour maps (`SurfaceAppearance.Color`, 0.72–0.85), which have no headroom under bright light. A new near-white skin belongs there. The glow map wasn't the cause.
   - **Thumbnail 8** is a new capture of a furnished Nook. **Tan rock flags the colour screen** (skin tone 31.4%): grade a den shot's rock cool before composing it, and screen it.
   - **Tutorial beads fade near the camera** (`BEAD_GONE_WITHIN` 3, `BEAD_FULL_PAST` 8): a trail to something behind you runs along the camera's line, and one bead past the lens filled the screen with cyan. Don't read a big cyan shape in a den test as a bug in the lights: look from the side.
-  - **Published 2026-11-05 16:37 UTC from da05b50** (probably v54; the number wasn't shown), to the Public game. The bead fix came after and needs its own publish.
+  - **Published 2026-11-05** to the Public game: da05b50 at 16:37 UTC (v54, by the next one's number; none was shown), then **v55** from ee1f3a0 at 17:20 UTC with the bead fix.
 
 ## Tech
 
