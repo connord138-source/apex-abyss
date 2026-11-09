@@ -56,6 +56,39 @@ function Layout.doorFrame(index: number): CFrame
 	return CFrame.lookAt(at, at - radial)
 end
 
+-- The hub's four tunnels, by angle (radians), and the one nearest den `index`'s
+-- doorway: the way out to sea and home again for a fish from that den (a new fish's
+-- first dive starts past its mouth, FishService)
+Layout.tunnelAngles = {} :: { number }
+for segment = 1, hub.segments do
+	if Layout.segmentKind(segment) == "tunnel" then
+		table.insert(Layout.tunnelAngles, Layout.segmentAngle(segment))
+	end
+end
+local function angleGap(a: number, b: number): number
+	return math.abs((a - b + math.pi) % (2 * math.pi) - math.pi)
+end
+function Layout.nearestTunnel(index: number): number
+	local door = Layout.segmentAngle(denSegments[index])
+	local best, bestGap = Layout.tunnelAngles[1], math.huge
+	for _, angle in Layout.tunnelAngles do
+		local gap = angleGap(angle, door)
+		if gap < bestGap - 1e-6 then
+			best, bestGap = angle, gap
+		end
+	end
+	return best
+end
+
+-- A tunnel's two ends at swimming height: `inner` just inside the cavern, `outer` out
+-- on the sand past its mouth (the tubes end `MOUTH` from the centre and flare wider)
+Layout.MOUTH = hub.radius + hub.wallThickness + hub.tunnelLength + 10
+function Layout.tunnelEnds(angle: number): (Vector3, Vector3)
+	local out = outward(angle)
+	local up = Vector3.new(0, hub.denFloorY + hub.tunnelHeight * 0.4, 0)
+	return hub.center + out * (hub.radius - 6) + up, hub.center + out * (Layout.MOUTH + 12) + up
+end
+
 -- Where a fish comes out into the hub from its den: `out` studs in front of the
 -- doorway's portal (EXIT_OUT when not given), facing the plaza
 Layout.EXIT_OUT = 16

@@ -2,10 +2,11 @@
 -- The first-session tutorial (Config/Tutorial): one step at a time, each counting
 -- one kind of event, checked here on the server. Since 2026-10-18 it walks a whole
 -- first loop (owner: "show them how to complete a full cycle of hunting, storing,
--- spinning, etc."): leave the hub, eat, shells, fill the Haul (its size read here),
--- bank it, spin the Treasure Wheel, roll, use a Kelp Wrap, open the INDEX. Steps
--- that need something hand it over as they start (a wheel spin, shells for a roll, a
--- Kelp Wrap) if the player has none. Finishing opens species select and pays a
+-- spinning, etc."): eat, shells, fill the Haul (its size read here), bank it, roll,
+-- use a Kelp Wrap, open the INDEX, spin the Treasure Wheel (since 2026-11-08 a new
+-- fish starts out in the sea and the wheel is last: Config/Tutorial). Steps that
+-- need something hand it over as they start (a wheel spin, shells for a roll, a Kelp
+-- Wrap) if the player has none. Finishing opens species select and pays a
 -- little coral and shells (the 'Cuda is earned after, Config/Species). The client
 -- shows the current step and points the way (TutorialController).
 local Players = game:GetService("Players")
@@ -30,39 +31,33 @@ local Tutorial = Config.Tutorial
 
 local TutorialService = {}
 
--- Saves from before the 2026-10-18 list (v nil: LeaveHub, Eat, Bank, Shells, Level)
--- move onto the new one: the same step where it still exists, else the next new
--- thing to learn. A Bank step goes back to filling the Haul (a rejoin starts with an
--- empty one), the old Shells and Level steps on to the Treasure Wheel. A brand-new
--- save (step 1, v nil too) stays on step 1.
-local OLD_STEPS: { [number]: string } = {
-	[1] = "LeaveHub",
-	[2] = "Eat",
-	[3] = "Haul",
-	[4] = "Wheel",
-	[5] = "Wheel",
-}
-
 local stepIndex: { [string]: number } = {}
 for i, step in Tutorial.steps do
 	stepIndex[step.id] = i
 end
 
+-- A save from an older step list (Config/Tutorial `carryOn`: v nil, the list before
+-- 2026-10-18, and every brand-new save; v2, before 2026-11-08) moves onto this one:
+-- the first step it hadn't done, its progress kept only on the same step. A Bank step
+-- with nothing aboard goes back to filling the Haul on its own (the Haul loop below).
+-- The onboarding funnel's furthest step moves with it (Funnel.reordered).
 local function migrate(data: DataService.PlayerData)
 	local tutorial = data.tutorial
 	if tutorial.v == Tutorial.version then
 		return
 	end
+	local before = tutorial.v
 	if not tutorial.done then
-		local id = OLD_STEPS[tutorial.step] or "Wheel"
-		local index = stepIndex[id] or 1
-		-- Progress carries over only where the step is the same one
-		if index ~= tutorial.step or (id ~= "LeaveHub" and id ~= "Eat") then
+		local index, same = Tutorial.carryOn(tutorial)
+		if not same then
 			tutorial.progress = 0
 		end
 		tutorial.step = index
 	end
 	tutorial.v = Tutorial.version
+	if before == 2 then
+		Funnel.reordered(data, 9)
+	end
 end
 
 local function finish(player: Player, data: DataService.PlayerData)
@@ -196,9 +191,6 @@ local function back(player: Player, data: DataService.PlayerData, id: string, te
 end
 
 function TutorialService.start()
-	Events.leftHub:connect(function(player: Player)
-		count(player, "leftHub", 1)
-	end)
 	Events.dived:connect(function(player: Player)
 		local data = DataService.get(player)
 		if data and Funnel.reach(player, data, "Dived in") then
@@ -260,6 +252,8 @@ function TutorialService.start()
 			count(player, "index", 1)
 		end
 	end)
+	-- How the game runs on the player's device, for Analytics (Funnel.device)
+	Net.onRequest("DeviceReport", Funnel.device)
 	-- The Haul step reads the Haul itself (chum, bites and kills grow it too), and a
 	-- fish on the Bank step with nothing left to bank (eaten on the way, or back after
 	-- a rejoin) goes back to filling it

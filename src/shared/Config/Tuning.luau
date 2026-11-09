@@ -130,6 +130,21 @@ return {
 			grip = 10, -- how quickly the swim settles onto that
 			tap = 0.7, -- seconds it holds after a single press
 		},
+		-- Aim help on touch screens (AimHelpController; owner, 2026-11-08: phones and
+		-- tablets lost 3-5x more new players than computers at every step that meant
+		-- swimming somewhere, and a phone changes depth only by dragging the view):
+		-- with the stick pushed, food or a shell a little above or below the way the
+		-- fish is heading tilts its swim toward it. Only the tilt: the heading stays the
+		-- player's. Not while UP or DOWN is held, nor indoors; a player aiming steeply
+		-- themselves (past `levelFull`) keeps their own.
+		touchHelp = {
+			range = 30, -- studs ahead it looks, plus `perLength` × the fish's length
+			perLength = 3,
+			cone = math.rad(28), -- this far left or right of the way it's heading
+			steepest = math.rad(60), -- above or below by more than this is left alone
+			ease = 5, -- how quickly the tilt settles onto it
+			every = 0.15, -- seconds between looks
+		},
 		maxRoll = math.rad(42), -- bank angle into turns
 		rollFromTurn = 0.32, -- bank radians per radian/s of turning
 		maxPitch = math.rad(80),

@@ -15,7 +15,9 @@
 --             backs up; right stick aims (up and down too); RT ability, RB or X
 --             bites, A / B up and down, Y shops at a stall
 --   Touch:    the same stick under the left thumb (bottom left), drag anywhere
---             else to aim, the HUD's Dash and Bite buttons
+--             else to aim, the HUD's Dash and Bite buttons, and UP / DOWN beside
+--             the depth gauge (owner, 2026-11-08: a phone could change depth only
+--             by dragging the view)
 --
 -- The move vector is built here from the keys and sticks, not from Roblox's
 -- PlayerModule: that module isn't inserted for this game's custom fish character
@@ -60,6 +62,12 @@ local Input = {
 	-- Set while Build mode's editor view has the screen: the fish holds still and
 	-- the cursor stays free (BuildController drives the camera)
 	editing = false,
+	-- () — the screen was touched for the first time on a device that plays with a
+	-- mouse and keys (Input.isTouch false: a touch laptop, a Chromebook, a tablet with
+	-- a keyboard and trackpad): the HUD adds the stick and the touch buttons then
+	touchStarted = Signal.new(),
+	-- A touch has been seen this session
+	touchSeen = false,
 }
 
 local ALT_TAP = 0.35 -- seconds: an Alt let go sooner than this toggles the cursor
@@ -85,6 +93,9 @@ local stick1 = Vector2.zero
 local stick2 = Vector2.zero
 local stickPad: Enum.UserInputType? = nil -- the gamepad that last moved a stick
 local touchMove = Vector2.zero
+-- The HUD's UP and DOWN buttons, held
+local touchUp = false
+local touchDown = false
 local wheel = 0
 local held: { [string]: boolean } = {}
 
@@ -189,6 +200,12 @@ function Input.start()
 			if not processed then
 				lookTouches[input] = true
 			end
+			if not Input.touchSeen then
+				Input.touchSeen = true
+				if not Input.isTouch() then
+					Input.touchStarted:fire()
+				end
+			end
 			return
 		end
 		if processed then
@@ -281,6 +298,7 @@ function Input.start()
 		table.clear(held)
 		table.clear(lookTouches)
 		stick1, stick2, touchMove = Vector2.zero, Vector2.zero, Vector2.zero
+		touchUp, touchDown = false, false
 	end)
 	UserInputService.WindowFocused:Connect(holdMouseLock)
 	-- Before the camera and the swim read them this frame
@@ -340,13 +358,22 @@ function Input.setTouchMove(vector: Vector2)
 	touchMove = vector
 end
 
+-- The HUD's UP and DOWN buttons: held (true) or let go
+function Input.setTouchVertical(button: "up" | "down", pressed: boolean)
+	if button == "up" then
+		touchUp = pressed
+	else
+		touchDown = pressed
+	end
+end
+
 -- Up/down: +1, 0 or -1.
 function Input.vertical(): number
 	if Input.locked or Input.editing then
 		return 0
 	end
-	local up = down("Space") or down("ButtonA")
-	local dive = down("LeftControl") or down("C") or down("ButtonB")
+	local up = down("Space") or down("ButtonA") or touchUp
+	local dive = down("LeftControl") or down("C") or down("ButtonB") or touchDown
 	return (if up then 1 else 0) - (if dive then 1 else 0)
 end
 
@@ -381,13 +408,28 @@ function Input.consumeZoom(): number
 	return notches
 end
 
+-- A device played by touch: a touch screen with no keyboard, or with no mouse. A
+-- tablet in a keyboard case (and some Android tablets, which say they have a
+-- keyboard) counted as a computer: it got no stick, and Roblox's own is off (above),
+-- so it couldn't swim (owner, 2026-11-08: 0 of 29 tablet players banked a Haul). A
+-- touch laptop or a Chromebook, with a mouse and keys, still plays as a computer and
+-- gets the stick too once its screen is touched (`touchStarted`, `usingTouch`).
+-- Ui.isTouch is the same test.
 function Input.isTouch(): boolean
-	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	return UserInputService.TouchEnabled
+		and (not UserInputService.KeyboardEnabled or not UserInputService.MouseEnabled)
+end
+
+-- Whether the player is playing by touch right now: a touch device, or a computer
+-- whose screen was the last thing touched (the tutorial's key caps, hints)
+function Input.usingTouch(): boolean
+	return Input.isTouch()
+		or (Input.touchSeen and UserInputService:GetLastInputType() == Enum.UserInputType.Touch)
 end
 
 -- The names of the two fish buttons on this device, for hints and the tutorial
 function Input.biteKey(): string
-	if Input.isTouch() then
+	if Input.usingTouch() then
 		return "BITE"
 	elseif Input.isGamepad() then
 		return "RB"
@@ -396,7 +438,7 @@ function Input.biteKey(): string
 end
 
 function Input.specialKey(): string
-	if Input.isTouch() then
+	if Input.usingTouch() then
 		return "SPECIAL"
 	elseif Input.isGamepad() then
 		return "L3"
@@ -405,7 +447,7 @@ function Input.specialKey(): string
 end
 
 function Input.dashKey(): string
-	if Input.isTouch() then
+	if Input.usingTouch() then
 		return "DASH"
 	elseif Input.isGamepad() then
 		return "RT"

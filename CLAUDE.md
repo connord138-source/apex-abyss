@@ -3368,6 +3368,75 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   - **Thumbnail 8** is a new capture of a furnished Nook. **Tan rock flags the colour screen** (skin tone 31.4%): grade a den shot's rock cool before composing it, and screen it.
   - **Tutorial beads fade near the camera** (`BEAD_GONE_WITHIN` 3, `BEAD_FULL_PAST` 8): a trail to something behind you runs along the camera's line, and one bead past the lens filled the screen with cyan. Don't read a big cyan shape in a den test as a bug in the lights: look from the side.
   - **Published 2026-11-05** to the Public game: da05b50 at 16:37 UTC (v54, by the next one's number; none was shown), then **v55** from ee1f3a0 at 17:20 UTC with the bead fix.
+- **The first dive starts in the sea (owner, 2026-11-08: "go ahead with 1 and 2", after
+  the onboarding funnel for 11-01 to 11-07: 113 new players, 28% never left the hub, a
+  third of the rest never ate 5 things, 31% stopped at the wheel, 7 reached LV 15; half
+  gone by ~3 min):**
+  - **Out in the shallows** (`FishService` `seaFrame`): while the tutorial's step is
+    `outside` (Eat, Shells, Haul: `Config/Tutorial.outside(save)`) a fish spawns and
+    respawns on open sand 198–205 studs out past the mouth of the tunnel nearest its den
+    (`Layout.nearestTunnel`; `Ground.open`, cached per tunnel; inside the predators'
+    `hubKeepOut` 210, outside the safe zone), facing out, 8 over the sand. Every other
+    fish still starts in its den. A fish whose player is on the start screen is safe
+    until they dive in (`HuntService`: `safeUntil` 3 h, then `spawnProtection` from the
+    dive); the dive's hold is `diveHoldSea` 2.2 s out there (`Config/Start`). The eaten
+    screen says "Back out in the shallows" for those steps and the Bank step.
+  - **Steps (v3, eight):** Eat (swim / look / dash keys), Shells, Haul, Bank (the
+    trail leads into the hub by the cheapest tunnel, then the door: TutorialController
+    `intoHub`, "the tunnel into the hub" on the card), Roll, Wrap, Index, Wheel (last;
+    the trail goes out of the den, into the hub from the sea the same way). LeaveHub is
+    gone. Older saves carry on at the first step they hadn't done (`Tutorial.carryOn`,
+    `OLD_LISTS`; a v2 save past the wheel spins it again), and a v2 save's funnel step
+    moves with it (`Funnel.reordered`).
+  - **The funnel's steps renumber** (Joined, Dived in, Tutorial: Eat … Tutorial:
+    Wheel, Banked on their own, Reached LV 15: 12): read Analytics → Funnels from the
+    publish date on (Roblox warns on a range spanning renamed steps).
+- **Touch play (owner, 2026-11-08: "go ahead with all four", after the funnel by
+  platform: computer 18 new players, 61% banked a Haul; console 29, 45%; phone 45, 11%;
+  tablet 29, none; phones and tablets lost 3-5x more at every step that meant swimming
+  somewhere; the Performance page was empty):**
+  - **Touch devices** (`Input.isTouch`, `Ui.isTouch`): a touch screen with no keyboard
+    *or no mouse* (a tablet in a keyboard case, or an Android tablet that says it has a
+    keyboard, got no stick: `TouchControlsEnabled` is off). A computer with a touch
+    screen still plays as one, and its first touch (`Input.touchStarted`,
+    `touchSeen`) builds the stick and the touch buttons (`HudController`
+    `buildTouchButtons`, once) and moves the minimap to the phone's top-right spot;
+    `Input.usingTouch()` (a touch device, or the last input a touch) picks the
+    tutorial's key caps and the key names.
+  - **UP and DOWN** (`holdButton`): two 56-px round buttons stacked over the special
+    button (`(1, -136, 1, -290)` and `(1, -136, 1, -228)`), between SHOP at the end of
+    the HUD row and the depth gauge, under the biome chip (centred on the gauge they
+    lay over SHOP on an iPhone 17 Pro), held for as long as the touch that began
+    on them lasts (`Input.setTouchVertical`, read by `Input.vertical`). They step aside
+    while the phone's action button is up (`actionButtonUp`: StallButton.Shop, i.e.
+    DEN & SHOP and the stalls, AdmireButton.Admire, WheelButtons.Spin, Treasure.Dig),
+    which shares (1, -96, 1, -204) and lay over DOWN. The Eat step's
+    phone card shows STICK, DRAG, UP / DOWN (no DASH), the Shells step's UP / DOWN.
+  - **Aim help** (`AimHelpController`, `Config/Tuning` `swim.touchHelp`): every 0.15 s,
+    for a fish played by touch out of the hub and dens, the nearest swallowable fish,
+    filler food or shell within 30 + 3 × length studs, 28° of the heading and 60° above
+    or below (`nearestEdible`/`nearest` take an `accept` filter) becomes
+    `SwimController.helpPoint`; with the stick pushed and UP / DOWN let go the swim's
+    tilt eases toward it (`ease` 5), fully while the aim is within `levelZone`, not at
+    all past `levelFull`. The heading stays the player's. W on a touch device's
+    keyboard counts as pushing ahead. Tests read the point off the fish's client-side
+    `AimHelp` attribute.
+  - **Frame-rate report** (`DeviceReportController`, `Funnel.device`, request
+    `DeviceReport`): after 60 s of play past the start screen (frames held still don't
+    count) the client sends its average FPS, `Stats:GetTotalMemoryUsageMb()` and its
+    kind (phone: a touch screen's short side under 600; tablet; gamepad; computer); the
+    server checks it and logs once per player per server `LogCustomEvent` "FrameRate"
+    (value: FPS; fields: FPS band, kind, memory band) in Analytics → Custom events
+    (printed in Studio).
+  - **Tested on the PC (2026-11-08, Studio, iPhone 17 Pro simulator and keyboard):** a
+    new fish spawns 202 out past the 0° tunnel, protected 3 h on the start screen; the
+    trail from the sea ends at the tunnel's mouth, inside it at its inner end, in the hub
+    at den 1's door; all eight steps in order (funnel steps 3-10), the wheel last; eaten
+    on the Eat step it comes back at the same spot with its count; holding the stick
+    straight ahead the tilt followed food (−15° to +16°) and ate 2 in 16 s; UP raised
+    the fish 52 studs in 3 s; FrameRate printed 48 and 43 FPS "phone" 60 s after the
+    dive; old v2/v0 saves carry on as planned (`Tutorial.carryOn`). The simulator
+    reports a keyboard and a mouse a few seconds in, so only `touchSeen` keeps it touch.
 
 ## Tech
 

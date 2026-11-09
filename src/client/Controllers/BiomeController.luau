@@ -229,7 +229,8 @@ function BiomeController.start()
 			step()
 		end
 	end)
-	-- A new fish starts in its den (in the hub): nothing to announce yet
+	-- A fish starts in its den (in the hub): nothing to announce yet (a new fish's first
+	-- dive starts just out of the hub, FishService, and is announced as leaving it)
 	SwimController.spawned:connect(function()
 		current, candidate, wasInHub = nil, nil, true
 		updateChip()

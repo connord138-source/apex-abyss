@@ -1392,7 +1392,13 @@ end
 -- The nearest prey fish a fish `length` long could swallow, within `range` studs of
 -- `from` (the tutorial's guide points at it). Positions come off the shared paths,
 -- so it costs nothing to ask for one that isn't drawn.
-function SchoolController.nearestEdible(from: Vector3, length: number, range: number): Vector3?
+-- (`accept`, if given, says which places count: the aim help's cone, AimHelpController)
+function SchoolController.nearestEdible(
+	from: Vector3,
+	length: number,
+	range: number,
+	accept: ((Vector3) -> boolean)?
+): Vector3?
 	local now = Timing.clock()
 	local best: Vector3? = nil
 	local bestDistance = range
@@ -1413,7 +1419,7 @@ function SchoolController.nearestEdible(from: Vector3, length: number, range: nu
 			end
 			local position = Schools.fishFrame(index, schoolFrame, now).Position
 			local distance = (position - from).Magnitude
-			if distance < bestDistance then
+			if distance < bestDistance and (accept == nil or accept(position)) then
 				bestDistance = distance
 				best = position
 			end

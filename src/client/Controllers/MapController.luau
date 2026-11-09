@@ -382,6 +382,12 @@ function MapController.start()
 		miniHolder.Position = UDim2.new(1, -12, 0, 34)
 		miniHolder.AnchorPoint = Vector2.new(1, 0)
 	end
+	-- A computer whose screen is touched gets the stick, BITE and DASH too
+	-- (HudController), so its minimap moves up there as well
+	Input.touchStarted:connect(function()
+		miniHolder.Position = UDim2.new(1, -12, 0, 34)
+		miniHolder.AnchorPoint = Vector2.new(1, 0)
+	end)
 	mini = MapDraw.new(miniHolder, size, size / (2 * MINI_SPAN), false)
 	mini.frame.Position = UDim2.fromOffset(6, 6)
 	local north = Ui.label(

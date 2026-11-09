@@ -233,19 +233,56 @@ local function nearestExit(from: Vector3): Vector3?
 	return best
 end
 
--- Where the step's trail leads right now
+-- From out in the sea, the way into the hub toward `goal`: out on the sand, the
+-- outer end of the tunnel that makes the shortest trip; inside a tunnel, its inner
+-- end; so the trail home never runs into the seamount's rock (a new fish's first
+-- dive starts out there, FishService). Nil once in the cavern or a den.
+local TUNNEL_CONE = 0.2 -- radians either side of a tunnel's line that count as in it
+local TUNNEL_TOP = hub.denFloorY + hub.tunnelHeight + hub.tunnelArch + 8
+local function intoHub(from: Vector3, goal: Vector3): Vector3?
+	if Layout.denAt(from) then
+		return nil
+	end
+	local offset = from - hub.center
+	local flat = Vector2.new(offset.X, offset.Z).Magnitude
+	if flat < hub.radius - 2 and offset.Y < hub.height then
+		return nil
+	end
+	local heading = math.atan2(offset.Z, offset.X)
+	local best: Vector3? = nil
+	local bestCost = math.huge
+	for _, angle in Layout.tunnelAngles do
+		local inner, outer = Layout.tunnelEnds(angle)
+		local gap = math.abs((heading - angle + math.pi) % (2 * math.pi) - math.pi)
+		if flat < Layout.MOUTH + 14 and gap < TUNNEL_CONE and offset.Y < TUNNEL_TOP then
+			return inner
+		end
+		local cost = (outer - from).Magnitude + (inner - outer).Magnitude + (goal - inner).Magnitude
+		if cost < bestCost then
+			best, bestCost = outer, cost
+		end
+	end
+	return best
+end
+
+-- Where the step's trail leads right now (`viaTunnel`: to a tunnel on the way, intoHub)
+local viaTunnel = false
 local function findTarget(kind: string?, from: Vector3, s: { [string]: any }): Vector3?
+	viaTunnel = false
 	if kind == "exits" then
 		return nearestExit(from)
 	elseif kind == "den" then
 		if typeof(s.denIndex) ~= "number" or s.denIndex <= 0 then
 			return nil
 		end
-		-- Through the doorway first, then to the pool inside
+		-- Into the hub, through the doorway, then to the pool inside
 		if Layout.denAt(from) == s.denIndex then
 			return Layout.poolPosition(s.denIndex) + Vector3.new(0, 2, 0)
 		end
-		return Layout.doorFrame(s.denIndex).Position
+		local door = Layout.doorFrame(s.denIndex).Position
+		local way = intoHub(from, door)
+		viaTunnel = way ~= nil
+		return way or door
 	elseif kind == "food" then
 		local fish = SchoolController.nearestEdible(from, SwimController.length(), SEARCH_RANGE)
 		local food = ForageController.nearest(from, SEARCH_RANGE)
@@ -264,7 +301,12 @@ local function findTarget(kind: string?, from: Vector3, s: { [string]: any }): V
 		end
 		local wheelState = ReplicatedStorage:FindFirstChild("WheelState")
 		local at = if wheelState then wheelState:GetAttribute("ButtonPosition") else nil
-		return if typeof(at) == "Vector3" then at else nil
+		if typeof(at) ~= "Vector3" then
+			return nil
+		end
+		local way = intoHub(from, at)
+		viaTunnel = way ~= nil
+		return way or at
 	end
 	return nil
 end
@@ -455,12 +497,12 @@ end
 
 -- Which kind of controls this device shows
 local function device(): string
-	return if Input.isTouch() then "touch" elseif Input.isGamepad() then "pad" else "keys"
+	return if Input.usingTouch() then "touch" elseif Input.isGamepad() then "pad" else "keys"
 end
 
 -- The key for a control on this device, or nil when it has none
 local function keyFor(control: TutorialConfig.Control): string?
-	if Input.isTouch() then
+	if Input.usingTouch() then
 		return control.touch
 	elseif Input.isGamepad() then
 		return control.pad
@@ -547,7 +589,7 @@ end
 
 -- The cursor tip under the card, for players with a mouse
 local function cursorTip(): string
-	if Input.isTouch() or Input.isGamepad() then
+	if Input.usingTouch() or Input.isGamepad() then
 		return ""
 	end
 	return "Tap ALT to free the cursor for buttons and menus · ALT again to swim"
@@ -856,8 +898,9 @@ local function step(_dt: number)
 	local targetYaw = math.atan2(-offset.X, -offset.Z)
 	guideArrow.Rotation = math.deg(targetYaw - cameraYaw)
 	guideArrow.Visible = true
-	local what = if guideKind == "exits"
-		then "the nearest exit"
+	local what = if viaTunnel
+		then "the tunnel into the hub"
+		elseif guideKind == "exits" then "the nearest exit"
 		elseif guideKind == "den" then "your den's pool"
 		elseif guideKind == "shells" then "the nearest shell"
 		elseif guideKind == "wheel" then "the Treasure Wheel"

@@ -44,6 +44,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Biomes = require(ReplicatedStorage.Shared.Biomes)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local Schools = require(ReplicatedStorage.Shared.Schools)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local StartShots = require(ReplicatedStorage.Shared.StartShots)
@@ -1388,16 +1389,20 @@ function StartController.start()
 			Input.consumeZoom() -- (a wheel turned on the start screen)
 			local character = Players.LocalPlayer.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart")
+			local inSea = false
 			if root and root:IsA("BasePart") then
 				workspace.CurrentCamera.Focus = root.CFrame
+				-- (a new fish's first dive starts out past a tunnel's mouth, FishService)
+				inSea = Layout.denAt(root.Position) == nil
 			end
 			MusicController.hold(nil)
 			OceanController.setDark(0)
 			snapIn = 2
 			setLoading(false, 0)
 			ClientState.request("StartDone")
-			-- ...held while the den's Terrain meshes in round the camera, then clears
-			task.wait(timing.diveHold)
+			-- ...held while the den's (or the sea's) Terrain meshes in round the camera,
+			-- then clears
+			task.wait(if inSea then timing.diveHoldSea else timing.diveHold)
 			up = false
 			Input.hold("start", false)
 			Input.cursorWanted = false

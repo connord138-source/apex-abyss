@@ -627,9 +627,16 @@ local function eatenScreen(summary: { [string]: any })
 	countdown.ZIndex = 21
 	Ui.tween(overlay, 0.35, { BackgroundTransparency = 0.35 })
 	local seconds = typeof(summary.respawn) == "number" and summary.respawn or hunt.respawnSeconds
+	-- (before its first bank a fish in the tutorial comes back out in the sea,
+	-- FishService; eaten on the way home it's back to filling its Haul, TutorialService)
+	local tutorial = state().tutorial
+	local step = if typeof(tutorial) == "table" then Config.Tutorial.current(tutorial) else nil
+	local where = if step and (step.outside or step.event == "banked")
+		then "Back out in the shallows"
+		else "Back in your den"
 	task.spawn(function()
 		for left = math.ceil(seconds), 1, -1 do
-			countdown.Text = `Back in your den in {left}…`
+			countdown.Text = `{where} in {left}…`
 			task.wait(1)
 		end
 		Ui.tween(overlay, 0.4, { BackgroundTransparency = 1 })
@@ -835,8 +842,87 @@ local function buildThumbstick()
 	end)
 end
 
+-- A round touch button that counts while it's held (UP and DOWN): from the touch
+-- that starts on it until that touch ends, wherever the thumb slides meanwhile
+local function holdButton(
+	name: string,
+	text: string,
+	size: number,
+	position: UDim2,
+	which: "up" | "down"
+): TextButton
+	local button = touchButton(name, text, size, position)
+	local holding: InputObject? = nil
+	button.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch or holding ~= nil then
+			return
+		end
+		holding = input
+		Input.setTouchVertical(which, true)
+		button.BackgroundTransparency = 0.1
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if input ~= holding then
+			return
+		end
+		holding = nil
+		Input.setTouchVertical(which, false)
+		button.BackgroundTransparency = 0.35
+	end)
+	return button
+end
+
+-- The phone's action button (a stall's or the den's, ADMIRE, the wheel's SPIN, each in
+-- its own ScreenGui at (1, -96, 1, -204)) lies over DOWN, and DIG over both: UP and
+-- DOWN step aside while one is up (PC 2026-11-08: DEN & SHOP hid DOWN in the den)
+local ACTION_BUTTONS = {
+	{ "StallButton", "Shop" },
+	{ "AdmireButton", "Admire" },
+	{ "WheelButtons", "Spin" },
+	{ "Treasure", "Dig" },
+}
+local function actionButtonUp(): boolean
+	local playerGui = gui.Parent
+	if playerGui == nil then
+		return false
+	end
+	for _, path in ACTION_BUTTONS do
+		local holder = playerGui:FindFirstChild(path[1])
+		if holder and holder:IsA("ScreenGui") and holder.Enabled then
+			for _, child in holder:GetChildren() do
+				if child.Name == path[2] and child:IsA("GuiButton") and child.Visible then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+local touchBuilt = false
 local function buildTouchButtons()
+	if touchBuilt then
+		return
+	end
+	touchBuilt = true
 	buildThumbstick()
+	-- UP and DOWN (owner, 2026-11-08: a phone changed depth only by dragging the view
+	-- toward the floor, and the first step's shrimp and starfish lie on the seabed;
+	-- phones and tablets lost 3-5x more new players than computers at every step that
+	-- meant swimming somewhere): a pair stacked over the special button (SpecialController,
+	-- (1, -136, 1, -166)), 6 apart, in the gap between the end of the HUD's button row
+	-- (SHOP) and the depth gauge, under the biome chip (PC 2026-11-08, iPhone 17 Pro:
+	-- centred on the gauge they lay over SHOP and the chip)
+	local up = holdButton("Up", "UP", 56, UDim2.new(1, -136, 1, -290), "up")
+	local down = holdButton("Down", "DOWN", 56, UDim2.new(1, -136, 1, -228), "down")
+	task.spawn(function()
+		while up.Parent do
+			local shown = not actionButtonUp()
+			up.Visible = shown
+			down.Visible = shown
+			task.wait(0.2)
+		end
+	end)
 	local bite = touchButton("Bite", "BITE", 92, UDim2.new(1, -86, 1, -110))
 	bite.Activated:Connect(function()
 		Input.bite:fire()
@@ -910,8 +996,8 @@ local function buildCursorChip()
 end
 
 local function showControlsHint()
-	local text = if Input.isTouch()
-		then "Left stick: push up to swim, sideways to turn · drag to aim · swim into smaller fish to eat · BITE other players"
+	local text = if Input.usingTouch()
+		then "Left stick: push up to swim, sideways to turn · drag to aim · UP / DOWN to dive · swim into smaller fish to eat · BITE other players"
 		elseif
 			Input.isGamepad()
 		then "Left stick: up to swim, sideways to turn · right stick aims · swim into smaller fish to eat · RB bites other players · RT dash · LB heal (hold for items) · Y at a stall"
@@ -1189,6 +1275,9 @@ function HudController.start()
 	if Input.isTouch() then
 		buildTouchButtons()
 	end
+	-- A computer's screen touched (a touch laptop, a Chromebook): the stick and the
+	-- touch buttons too, whatever the device says it has
+	Input.touchStarted:connect(buildTouchButtons)
 
 	ClientState.changed:connect(onState)
 	if ClientState.current then

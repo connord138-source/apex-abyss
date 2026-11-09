@@ -273,7 +273,8 @@ local function onResult(index: number, backAt: number)
 end
 
 -- The nearest shell still lying there, within `range` of `from`
-function ShellController.nearest(from: Vector3, range: number): Vector3?
+-- (`accept`, if given, says which places count: the aim help's cone, AimHelpController)
+function ShellController.nearest(from: Vector3, range: number, accept: ((Vector3) -> boolean)?): Vector3?
 	local best: Vector3? = nil
 	local bestDistance = range
 	for _, shell in shells do
@@ -281,7 +282,7 @@ function ShellController.nearest(from: Vector3, range: number): Vector3?
 			continue
 		end
 		local distance = (shell.position - from).Magnitude
-		if distance < bestDistance then
+		if distance < bestDistance and (accept == nil or accept(shell.position)) then
 			bestDistance = distance
 			best = shell.position
 		end

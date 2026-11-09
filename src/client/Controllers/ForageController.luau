@@ -641,7 +641,8 @@ end
 
 -- The nearest starfish, shrimp or crab still lying there (a crab only if this fish
 -- can swallow it), within `range` of `from`
-function ForageController.nearest(from: Vector3, range: number): Vector3?
+-- (`accept`, if given, says which places count: the aim help's cone, AimHelpController)
+function ForageController.nearest(from: Vector3, range: number, accept: ((Vector3) -> boolean)?): Vector3?
 	local best: Vector3? = nil
 	local bestDistance = range
 	local length = SwimController.length()
@@ -654,7 +655,7 @@ function ForageController.nearest(from: Vector3, range: number): Vector3?
 			continue
 		end
 		local distance = (food.position - from).Magnitude
-		if distance < bestDistance then
+		if distance < bestDistance and (accept == nil or accept(food.position)) then
 			bestDistance = distance
 			best = food.position
 		end

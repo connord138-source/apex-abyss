@@ -142,6 +142,10 @@ local function refreshSize(player: Player)
 	DataService.markDirty(player)
 end
 
+-- How long a fish waiting on the start screen is kept safe (until its player dives in;
+-- an attract mode left on longer than this is left to its spawn protection's end)
+local WAITING = 3 * 3600
+
 local function isSafe(session: Session, now: number): boolean
 	return session.inHub or now < session.safeUntil
 end
@@ -1027,7 +1031,23 @@ function HuntService.start()
 		session.worth = session.haul / haulRate(player)
 		character:SetAttribute("InHub", true)
 		character:SetAttribute("Haul", 0)
+		-- A fish whose player is still on the start screen can't be touched until they
+		-- dive in, and its spawn protection starts then: a new fish waits out in the sea
+		-- (FishService: the first dive starts past a tunnel's mouth), where other
+		-- players swim by
+		if player:GetAttribute("StartScreen") == true then
+			session.safeUntil = Timing.clock() + WAITING
+			character:SetAttribute("SafeUntil", session.safeUntil)
+		end
 		refreshSize(player)
+	end)
+	Events.dived:connect(function(player: Player)
+		local session = sessions[player]
+		local character = FishService.character(player)
+		if session and character then
+			session.safeUntil = Timing.clock() + hunt.spawnProtection
+			character:SetAttribute("SafeUntil", session.safeUntil)
+		end
 	end)
 	DataService.releasing:connect(function(player: Player)
 		sessions[player] = nil

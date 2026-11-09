@@ -89,8 +89,10 @@ local function topLight(parent: Instance, inset: number, transparency: number)
 	end)
 end
 
+-- (the same test as Input.isTouch: a touch screen with no keyboard, or no mouse)
 function Ui.isTouch(): boolean
-	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	return UserInputService.TouchEnabled
+		and (not UserInputService.KeyboardEnabled or not UserInputService.MouseEnabled)
 end
 
 -- A ScreenGui that scales its pixel layout to the screen (phones get a smaller

@@ -316,6 +316,14 @@ The approved details:
   6. Spend your first Growth Point.
   7. Reach level 10. Species select opens, and the 'Cuda unlocks as the tutorial's
      reward.
+
+  **As built since 2026-11-08** (`Config/Tutorial`, eight steps): a new fish's first
+  dive starts out in the Kelp Shallows past the mouth of the tunnel nearest its den,
+  then: eat 5 small things, pick up 5 shells, fill the Haul, bank it at home (the trail
+  leads back through the tunnel), roll, use a Kelp Wrap, open the INDEX, and spin the
+  Treasure Wheel on the plaza. The 'Cuda is earned after (Nibbler LV 15). On phones
+  and tablets (2026-11-08) UP and DOWN buttons sit by the depth gauge, and pushing the
+  stick toward food or a shell a little above or below tilts the swim toward it.
 - **Body parts from rolls are looks only.**
   - Rolls will be sold for Robux (Shell packs), so functional rolled parts would mean
     paying to win PvP, and dozens of parts across six species couldn't be balanced.

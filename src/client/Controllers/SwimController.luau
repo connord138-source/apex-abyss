@@ -47,6 +47,10 @@ local SwimController = {
 	-- fish swims by this, so a camera sliding along a den's ceiling no longer tips
 	-- the swim down (nil until the camera runs: the camera's own CFrame then)
 	aim = nil :: CFrame?,
+	-- Aim help on touch (AimHelpController, Config/Tuning `swim.touchHelp`): food or a
+	-- shell ahead that the swim's tilt leans toward while the stick is pushed (nil:
+	-- none, or not playing by touch)
+	helpPoint = nil :: Vector3?,
 	-- The bite lock (HuntController, Config/Tuning `swim.lock`): what to hold on to, if
 	-- anything: the point, the gap left to close, how it's moving, and whether it's a player
 	lock = nil :: { point: Vector3, gap: number, velocity: Vector3, player: boolean }?,
@@ -68,6 +72,10 @@ local dashUntil = 0
 local dashStarted = false
 local dashTurn = swim.dashTurn -- turning while the burst runs (a Torpedo barely turns)
 local clock = 0
+-- The aim help's tilt toward `helpPoint` (radians) and how much of the swim's tilt
+-- it has (0..1), both eased so a new target or letting go never jerks the fish
+local helpPitch = 0
+local helpWeight = 0
 -- The velocity the constraint was last asked for (no idle bob): what the physics did
 -- with it says what stopped the fish (`feedback`)
 local lastCommand = Vector3.zero
@@ -493,7 +501,27 @@ local function step(dt: number)
 	-- Level swimming: an aim tipped within `levelZone` of level swims level, and by
 	-- `levelFull` the fish swims where you look (straight up is straight up)
 	local look = aim.LookVector
-	local pitch = swimPitch(math.asin(math.clamp(look.Y, -1, 1)))
+	local aimPitch = math.asin(math.clamp(look.Y, -1, 1))
+	local pitch = swimPitch(aimPitch)
+	-- Aim help (touch; Config/Tuning `swim.touchHelp`): pushing ahead toward food a
+	-- little above or below, the tilt leans toward it, all of it while the aim is
+	-- within `levelZone` and none once the player aims past `levelFull` themselves.
+	-- UP and DOWN held are the player's own say.
+	local helpWanted = 0
+	local point = SwimController.helpPoint
+	if point and math.max(ahead, -move.Z) > 0.2 and Input.vertical() == 0 then
+		local to = point - currentRoot.Position
+		local across = Vector3.new(to.X, 0, to.Z).Magnitude
+		local steepest = swim.touchHelp.steepest
+		local want = math.clamp(math.atan2(to.Y, math.max(across, 1e-3)), -steepest, steepest)
+		local settle = Spring.alpha(swim.touchHelp.ease, dt)
+		helpPitch += (want - helpPitch) * (if helpWeight < 1e-3 then 1 else settle)
+		helpWanted = 1 - smoothstep((math.abs(aimPitch) - swim.levelZone) / (swim.levelFull - swim.levelZone))
+	end
+	helpWeight += (helpWanted - helpWeight) * Spring.alpha(swim.touchHelp.ease, dt)
+	if helpWeight > 1e-3 then
+		pitch += (helpPitch - pitch) * helpWeight
+	end
 	local flatLook = Vector3.new(look.X, 0, look.Z)
 	local forward = if flatLook.Magnitude > 1e-3
 		then flatLook.Unit * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)

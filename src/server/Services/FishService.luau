@@ -3,12 +3,15 @@
 -- HumanoidRootPart, a Humanoid so the touch controls and camera plumbing work,
 -- and the graybox body from FishBuilder). The player's own client moves it
 -- (SwimController, with network ownership); the server sizes it, spawns it in its
--- den and respawns it after it's eaten. Dens are handed out here too.
+-- den (or, on a new fish's first dive, out in the sea) and respawns it after it's
+-- eaten. Dens are handed out here too.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local FishBuilder = require(ReplicatedStorage.Shared.FishBuilder)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local Seafloor = require(ReplicatedStorage.Shared.Seafloor)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
@@ -116,6 +119,55 @@ local function makeCharacter(player: Player, species: SpeciesDef, length: number
 	return character
 end
 
+-- Where a fish starts out in the sea while its tutorial's work is out there
+-- (Config/Tutorial `outside`: a new fish's first dive, and again after being eaten
+-- before its first bank): on open sand just past the mouth of the tunnel nearest its
+-- den, facing out into the Kelp Shallows, so it's eating within seconds and the Bank
+-- step leads it home the way it came (owner, 2026-11-08: the funnel lost 28% of new
+-- players before they were out of the hub). Inside the predators' keep-out
+-- (Config/Predators `hubKeepOut` 210) but outside the safe zone (Layout.inHub, 162).
+-- Each tunnel's spot is found once (Ground.open: Terrain under it, nothing solid
+-- round it), else the nominal sand there.
+local SEA_RADII = { 202, 198, 205 }
+local SEA_ACROSS = { 0, -7, 7, -14, 14 }
+local SEA_HEIGHT = 8 -- over the sand
+local seaSpots: { [number]: CFrame } = {}
+local function seaFrame(den: number): CFrame
+	local angle = Layout.nearestTunnel(den)
+	local key = math.floor(math.deg(angle) + 0.5)
+	local known = seaSpots[key]
+	if known then
+		return known
+	end
+	local center = Config.World.hub.center
+	local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+	local side = out:Cross(Vector3.yAxis)
+	local floor: Vector3? = nil
+	for _, r in SEA_RADII do
+		for _, across in SEA_ACROSS do
+			local p = center + out * r + side * across
+			floor = Ground.open(p.X, p.Z, 3, 0.6, 6)
+			if floor then
+				break
+			end
+		end
+		if floor then
+			break
+		end
+	end
+	local found = floor ~= nil
+	if floor == nil then
+		local p = center + out * SEA_RADII[1]
+		floor = Vector3.new(p.X, Seafloor.y(p.X, p.Z), p.Z)
+	end
+	local at = (floor :: Vector3) + Vector3.new(0, SEA_HEIGHT, 0)
+	local frame = CFrame.lookAt(at, at + out)
+	if found then
+		seaSpots[key] = frame
+	end
+	return frame
+end
+
 function FishService.spawn(player: Player)
 	local data = DataService.get(player)
 	local den = dens[player]
@@ -124,7 +176,7 @@ function FishService.spawn(player: Player)
 	end
 	-- Dens are far outside the play area (Layout.denOrigin): have the place stream in
 	-- round the fish before it appears there
-	local at = Layout.spawnFrame(den)
+	local at = if Config.Tutorial.outside(data.tutorial) then seaFrame(den) else Layout.spawnFrame(den)
 	pcall(function()
 		player:RequestStreamAroundAsync(at.Position, 3)
 	end)
@@ -153,7 +205,8 @@ function FishService.despawn(player: Player)
 	end
 end
 
--- Removes the fish now and brings it back in its den after `seconds`.
+-- Removes the fish now and brings it back in its den (or out in the sea, above)
+-- after `seconds`.
 function FishService.respawnIn(player: Player, seconds: number)
 	FishService.despawn(player)
 	local token = respawnToken[player]

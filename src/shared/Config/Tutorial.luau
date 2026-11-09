@@ -7,10 +7,19 @@
 --
 -- A full first loop (owner, 2026-10-18: "Tutorial could be a bit longer and
 -- actually show them how to complete a full cycle of hunting, storing, spinning,
--- etc."; a large share of the players are kids who need direction): out of the den
--- and the hub, eat, pick up shells, fill the Haul, bank it at home (the growth
--- sequence shows the fish getting bigger), spin the Treasure Wheel, roll, use a
--- Kelp Wrap from the item bar, and open the INDEX, which says what to do next.
+-- etc."; a large share of the players are kids who need direction): eat, pick up
+-- shells, fill the Haul, bank it at home (the growth sequence shows the fish getting
+-- bigger), roll, use a Kelp Wrap from the item bar, open the INDEX, which says what
+-- to do next, and spin the Treasure Wheel on the plaza.
+--
+-- Out in the sea first (owner, 2026-11-08, from the onboarding funnel: 28% of new
+-- players never got out of the hub and a third of the rest never ate 5 things; half
+-- were gone by 3 minutes): a new fish starts its first dive on the sand past the
+-- mouth of the tunnel nearest its den (FishService), not in its den behind a loading
+-- wash, the plaza and a tunnel, so it's eating within seconds; the Bank step leads it
+-- home the way it came. The steps that need nothing but a button (Roll, Wrap, Index)
+-- come straight after the bank, in the den, and the trip out to the plaza's wheel is
+-- last (31% stopped at the wheel when it came straight after the bank).
 local Tuning = require(script.Parent.Tuning)
 
 -- A control the step's card shows: the key on each kind of device (nil = the
@@ -28,7 +37,7 @@ export type Step = {
 	text: string,
 	-- How many of `event` finish it ("haul": percent of the Haul target)
 	goal: number,
-	event: "leftHub" | "ate" | "shells" | "haul" | "banked" | "spun" | "rolled" | "item" | "index",
+	event: "ate" | "shells" | "haul" | "banked" | "spun" | "rolled" | "item" | "index",
 	marker: string?, -- what the client points at in the world ("exits", "den")
 	-- What the guide trail leads to while this step is up (TutorialController):
 	-- the nearest exit, the nearest food, your den's pool, the nearest shell, the
@@ -40,6 +49,9 @@ export type Step = {
 	-- What the server hands over as the step starts, when the player has none: a
 	-- wheel spin, shells up to a roll, a Kelp Wrap (TutorialService `enter`)
 	grant: ("spin" | "roll" | "wrap")?,
+	-- The step's work is out in the sea: while it's up the fish (re)spawns there, on the
+	-- sand past the tunnel nearest its den (FishService), instead of in its den
+	outside: boolean?,
 	controls: { Control },
 }
 
@@ -49,20 +61,6 @@ export type Step = {
 -- step's target, or a ring breathes round the HUD button it needs.
 local steps: { Step } = {
 	{
-		id = "LeaveHub",
-		title = "SWIM OUT OF THE HUB",
-		text = "Swim out of your den, then follow the lights out of the hub: a tunnel or the hole in the roof",
-		goal = 1,
-		event = "leftHub",
-		marker = "exits",
-		guide = "exits",
-		controls = {
-			{ keys = "W A S D", pad = "L STICK", touch = "STICK", does = "swim" },
-			{ keys = "MOUSE", pad = "R STICK", touch = "DRAG", does = "look" },
-			{ keys = "SPACE / CTRL", pad = "A / B", does = "up / down" },
-		},
-	},
-	{
 		id = "Eat",
 		-- (5, not 10: ten of the shallows' fish filled a new fish's whole Haul, so the
 		-- Haul step was done the moment it showed; PC report 2026-10-20)
@@ -71,9 +69,14 @@ local steps: { Step } = {
 		goal = 5,
 		event = "ate",
 		guide = "food",
+		outside = true,
+		-- (on a phone UP / DOWN instead of DASH: the shrimp and starfish lie on the
+		-- seabed, and the card has room for three; owner, 2026-11-08)
 		controls = {
-			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
-			{ keys = "SPACE / CTRL", pad = "A / B", does = "up / down" },
+			{ keys = "W A S D", pad = "L STICK", touch = "STICK", does = "swim" },
+			{ keys = "MOUSE", pad = "R STICK", touch = "DRAG", does = "look" },
+			{ keys = "LEFT CLICK", pad = "RT", does = "dash" },
+			{ touch = "UP / DOWN", does = "up / down" },
 		},
 	},
 	{
@@ -83,8 +86,10 @@ local steps: { Step } = {
 		goal = 5,
 		event = "shells",
 		guide = "shells",
+		outside = true,
 		controls = {
 			{ keys = "W A S D", pad = "L STICK", touch = "STICK", does = "swim to it" },
+			{ keys = "SPACE / CTRL", pad = "A / B", touch = "UP / DOWN", does = "up / down" },
 			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
 		},
 	},
@@ -95,6 +100,7 @@ local steps: { Step } = {
 		goal = 100,
 		event = "haul",
 		guide = "food",
+		outside = true,
 		controls = {
 			{ keys = "RIGHT CLICK", pad = "RB", touch = "BITE", does = "bite other fish" },
 			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
@@ -103,7 +109,7 @@ local steps: { Step } = {
 	{
 		id = "Bank",
 		title = "BANK IT AT HOME",
-		text = "Swim home through your den's door and into the glowing pool to bank your Haul. Watch yourself grow!",
+		text = "Follow the lights home through a tunnel and your den's door into its glowing pool. Watch yourself grow!",
 		goal = 1,
 		event = "banked",
 		marker = "den",
@@ -111,18 +117,6 @@ local steps: { Step } = {
 		controls = {
 			{ keys = "M", pad = "R3", touch = "MAP", does = "map" },
 			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash home" },
-		},
-	},
-	{
-		id = "Wheel",
-		title = "SPIN THE TREASURE WHEEL",
-		text = "Spin the Treasure Wheel on the plaza: here's a free spin! A new one comes every 4 hours",
-		goal = 1,
-		event = "spun",
-		guide = "wheel",
-		grant = "spin",
-		controls = {
-			{ keys = "E", pad = "Y", touch = "SPIN", does = "spin at the red button" },
 		},
 	},
 	{
@@ -161,6 +155,18 @@ local steps: { Step } = {
 			{ keys = "I", pad = "D-PAD →", touch = "INDEX", does = "open the Index" },
 		},
 	},
+	{
+		id = "Wheel",
+		title = "SPIN THE TREASURE WHEEL",
+		text = "Swim out to the plaza and spin the Treasure Wheel: here's a free spin! A new one comes every 4 hours",
+		goal = 1,
+		event = "spun",
+		guide = "wheel",
+		grant = "spin",
+		controls = {
+			{ keys = "E", pad = "Y", touch = "SPIN", does = "spin at the red button" },
+		},
+	},
 }
 
 -- The Haul step's target: a Haul worth this many levels once banked, from the
@@ -177,11 +183,62 @@ local function haulTarget(banked: number): number
 	return math.max(banked, Tuning.size.startMass) * (Tuning.size.levelGrowth ^ HAUL_LEVELS - 1)
 end
 
+-- The step list's version, stamped on the save (`tutorial.v`)
+local VERSION = 3
+
+-- Older saves' step lists, by the version stamped on them (0: none, the list before
+-- 2026-10-18, and a brand-new save), so one made under an older list carries on in
+-- this one (TutorialService `migrate`)
+local OLD_LISTS: { [number]: { string } } = {
+	[0] = { "LeaveHub", "Eat", "Bank", "Shells", "Level" },
+	[2] = { "LeaveHub", "Eat", "Shells", "Haul", "Bank", "Wheel", "Roll", "Wrap", "Index" },
+}
+
+export type Save = { step: number, progress: number, done: boolean, v: number? }
+
+-- Where a save from an older list carries on in this one: the first step here it
+-- hadn't done there (a step done ahead of its new place comes round again: one at the
+-- old Roll spins the wheel twice), and whether its progress carries over (the same
+-- step). A save already on this list stays where it is.
+local function carryOn(save: Save): (number, boolean)
+	if save.v == VERSION then
+		return save.step, true
+	end
+	local old = OLD_LISTS[save.v or 0] or OLD_LISTS[0]
+	local done: { [string]: boolean } = {}
+	for i = 1, math.min(save.step - 1, #old) do
+		done[old[i]] = true
+	end
+	for index, step in steps do
+		if not done[step.id] then
+			return index, step.id == old[save.step]
+		end
+	end
+	return #steps + 1, false
+end
+
+-- The step a save is on (nil once the tutorial is done), read through `carryOn`, so
+-- it's right before TutorialService has moved an older save onto this list
+local function current(save: Save): Step?
+	if save.done then
+		return nil
+	end
+	local index = carryOn(save)
+	return steps[index]
+end
+
 return {
 	steps = steps,
 	-- The step list's version, stamped on the save (TutorialService maps older saves'
-	-- step numbers onto this list once)
-	version = 2,
+	-- step numbers onto this list once, by `carryOn`)
+	version = VERSION,
+	carryOn = carryOn,
+	current = current,
+	-- Whether a fish on this save starts out in the sea (its step's `outside`)
+	outside = function(save: Save): boolean
+		local step = current(save)
+		return step ~= nil and step.outside == true
+	end,
 	haulLevels = HAUL_LEVELS,
 	haulTarget = haulTarget,
 	-- For finishing: enough shells for a first roll and some coral (the 'Cuda is

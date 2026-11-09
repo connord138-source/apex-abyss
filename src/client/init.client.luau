@@ -36,6 +36,8 @@ local CompanionController = require(script.Controllers.CompanionController)
 local LandmarkController = require(script.Controllers.LandmarkController)
 local PredatorController = require(script.Controllers.PredatorController)
 local AbilityController = require(script.Controllers.AbilityController)
+local AimHelpController = require(script.Controllers.AimHelpController)
+local DeviceReportController = require(script.Controllers.DeviceReportController)
 local SpecialController = require(script.Controllers.SpecialController)
 local BossController = require(script.Controllers.BossController)
 local MapController = require(script.Controllers.MapController)
@@ -113,6 +115,8 @@ HookController.start() -- fishing boats, their lines and bait; hooked fish reele
 NametagController.start()
 task.spawn(ShellController.start) -- waits for the server's shell spots
 task.spawn(ForageController.start) -- waits for the server's starfish and shrimp spots
+AimHelpController.start() -- touch screens: the swim leans toward food a little above or below
+DeviceReportController.start() -- once a session: the frame rate and memory, to Analytics
 SwimController.start() -- last: spawning fires the signals the others listen to
 
 print("[ApexTide] Client ready")

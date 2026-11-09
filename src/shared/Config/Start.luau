@@ -243,6 +243,9 @@ return {
 		reveal = 1.2, -- the backdrop clearing onto the first shot
 		diveIn = 0.45, -- the dive: the wash closing over the shot
 		diveHold = 0.9, -- held over the den while its Terrain meshes in round the camera
+		-- ...or over the open sand past a tunnel's mouth, where a new fish's first dive
+		-- starts (FishService): far more Terrain in view than a den's room
+		diveHoldSea = 2.2,
 		diveOut = 0.7,
 		letterbox = 0.085, -- the bars' height, a share of the screen's
 	},
