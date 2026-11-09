@@ -3437,6 +3437,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the fish 52 studs in 3 s; FrameRate printed 48 and 43 FPS "phone" 60 s after the
     dive; old v2/v0 saves carry on as planned (`Tutorial.carryOn`). The simulator
     reports a keyboard and a mouse a few seconds in, so only `touchSeen` keeps it touch.
+  - **Published 2026-11-08** (owner: "go ahead and commit and publish") from ca001e2 at
+    03:50 UTC 11-09 (games API `updated`; no version number shows in Studio 0.746,
+    probably v56): File → Publish → Update existing experience → TideBite Studios →
+    the tile → the place → Overwrite; Manage Audience closed with Escape.
 
 ## Tech
 
