@@ -313,7 +313,7 @@ The targets are mine, set to be checkable; they are not Roblox benchmarks.
 
 | # | Decision | My recommendation |
 |---|---|---|
-| 1 | Tide Pass before 11-16: start Season 1 at the next publish, or hide the Deep Pass button until then | Start Season 1 at the next publish (it was the 11-02 plan) |
+| 1 | Tide Pass before 11-16: start Season 1 at the next publish, or hide the Deep Pass button until then | **Done: Season 1 went live with the 11-13 publish** (Connor: "commit and publish") |
 | 2 | First bank after ~7 fish instead of ~19 (tutorial only; changes the 10-19 and 10-20 notes) | **Decided 11-13: yes, built** |
 | 3 | The "tomorrow" card and notification ask at the first bank, not after the tutorial and 4 banks | Yes |
 | 4 | Phones show a plain backdrop on the start screen instead of the rolling shots | **Decided 11-13: yes, built** |
@@ -326,8 +326,8 @@ The targets are mine, set to be checkable; they are not Roblox benchmarks.
 
 | Round | Aim | Built | Tested | Published | Read on | Result |
 |---|---|---|---|---|---|---|
-| 0 | Measure load and early FPS; fix the pass | 11-12 | 11-13 ✔ | | | |
-| 1 | First three minutes | 11-12: items 1, 4, 7 (half), 13, 15, 17; 11-13: items 2, 6, 18 (backdrop) | 11-13 ✔ | | | |
+| 0 | Measure load and early FPS; fix the pass | 11-12 | 11-13 ✔ | 11-13 (11d59d7, 01:01 UTC 11-14) | from 11-14 | |
+| 1 | First three minutes | 11-12: items 1, 4, 7 (half), 13, 15, 17; 11-13: items 2, 6, 18 (backdrop) | 11-13 ✔ | 11-13 (same publish) | from 11-14 | |
 
 **Studio test, 2026-11-13 (Studio 0.747, keyboard; the LEVEL pop on the phone simulator
 too). Every line below passed.** Shots in `docs/playtests/shots/2026-11-13/`. Changed

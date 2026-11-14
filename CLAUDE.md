@@ -3452,7 +3452,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the tile → the place → Overwrite; Manage Audience closed with Escape.
 - **Gameplan round 0 (owner, 2026-11-12: "lets get started", after the 2026-11-10 audit;
   `docs/GAMEPLAN.md`; run in Studio 2026-11-13, every line of its test list passed;
-  not yet published):**
+  published 2026-11-13 with round 1, below):**
   - **Season 1 is under way** (`Config/Pass` `start` 1794441600, Thursday 2026-11-12
     00:00 UTC, to 2026-12-10): the launch publish never replaced the 2026-11-16 stand-in,
     so the live game showed "Preview: season 1 starts in …, and this resets then" with
@@ -3493,7 +3493,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     shared random sequence; it needs a Studio look before and after.
 - **Gameplan round 1, first batch (2026-11-12; the items of `docs/GAMEPLAN.md` round 1
   that change no dated decision; run in Studio 2026-11-13, every line of its test list
-  passed, the LEVEL pop on the phone simulator too; not yet published):**
+  passed, the LEVEL pop on the phone simulator too; published 2026-11-13, below):**
   - **Levels show as they're earned** (`HudController` `liveLevel`): for a fish banked
     under LV 15, each level the Haul earns pops in the middle of the screen (LEVEL n ·
     "Bank it at your den to keep it", the LevelUp sound, `Ui.stageBanner` "liveLevel"
@@ -3517,7 +3517,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
 - **Gameplan round 1, second batch (owner, 2026-11-13: "yes to all three", asked as
   "first bank after about 7 fish, slightly shorter minnows, plain start backdrop on
   phones"; each narrows a dated decision above; run in Studio the same day, all three
-  passed; not yet published):**
+  passed; published 2026-11-13, below):**
   - **The first bank comes after ~7 fish** (`Config/Tutorial` `HAUL_LEVELS` 5 → 2; it
     changes 2026-10-20's "the tutorial's `HAUL_LEVELS` 5: LV 1 → 6"): the tutorial's
     Haul step, now GROW YOUR HAUL ("Eat a few more to grow your Haul…"), ends at two
@@ -3539,6 +3539,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     tablet before its first dive. Studio, iPhone 17 Pro simulator: the backdrop a
     minute in, `StartStreamed` nil, no `StartFoci`, the camera at the fish, TAP TO
     START dives in; on the computer the shots still play.
+- **Published 2026-11-13** (owner: "commit and publish"; rounds 0 and 1 with the second
+  batch) from 11d59d7 at 01:01 UTC 11-14 (20:01 on the PC; the games API's `updated`
+  2026-11-14T01:01:24Z; Studio 0.747 shows no version number, probably v57): the file
+  had been reopened, so PlaceId was 0: Save to File, File → Publish → Update existing
+  experience → TideBite Studios → the tile ("Public") → the place → Overwrite; Manage
+  audience ("available to players ages 16+") closed with its Close button; saved to
+  file again so the PlaceId stays. The live game is on Season 1 from this publish, three
+  days before the preview's 2026-11-16 reset would have run. **Read next (Creator Hub →
+  Analytics → Custom events and Funnels, from 2026-11-14):** JoinWait and LoadTime by
+  device (round 2's order hangs on them), FrameRateEarly, StartError, and the funnel's
+  Eat, Haul and Bank steps by platform against 11-09's.
 
 ## Tech
 
