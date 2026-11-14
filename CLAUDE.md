@@ -29,6 +29,15 @@ guarded loops, state sync). Everything about this game is new.
   app), never as a repo path or link: a link opens GitHub's code view, which shows no
   picture (owner, 2026-10-20). On the PC, the same files are in the local clone.
 
+## Growth gameplan (owner, 2026-11-10)
+
+`docs/GAMEPLAN.md` is the working plan for getting and keeping players (owner: "build a
+gameplan and workflow for yourself to increase the player base and playability"). It holds
+the audit's findings, the rounds in order, the scorecard, Claude's routine, the owner
+decisions still waiting and the round log. Read its sections 4, 7, 8 and 9 before any
+growth or playability work, and keep the log current. Several of its items change dated
+decisions below; those are marked **(owner)** there and wait for Connor's yes.
+
 ## Decisions already made (do not re-litigate)
 
 Every decision below was made with the owner on 2026-10-06. The details are in `docs/GDD.md`.
@@ -3441,6 +3450,95 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     03:50 UTC 11-09 (games API `updated`; no version number shows in Studio 0.746,
     probably v56): File → Publish → Update existing experience → TideBite Studios →
     the tile → the place → Overwrite; Manage Audience closed with Escape.
+- **Gameplan round 0 (owner, 2026-11-12: "lets get started", after the 2026-11-10 audit;
+  `docs/GAMEPLAN.md`; run in Studio 2026-11-13, every line of its test list passed;
+  not yet published):**
+  - **Season 1 is under way** (`Config/Pass` `start` 1794441600, Thursday 2026-11-12
+    00:00 UTC, to 2026-12-10): the launch publish never replaced the 2026-11-16 stand-in,
+    so the live game showed "Preview: season 1 starts in …, and this resets then" with
+    the 399 R$ Deep Pass on sale, and the reset would have taken it away. A record
+    leaving the preview keeps its Deep Pass (`PassService` `settle`: `paid` carries from
+    season 0, with a toast). `seasons` holds only Riptide: write season 2 before
+    2026-12-10 or it plays again.
+  - **The wait before playing is logged** (`Funnel.arrived`, `Funnel.load`; Analytics →
+    Custom events): every server start builds the whole sea before any save loads, most
+    joins start a server, and a player who gives up there never reaches "Joined".
+    `init.server` stamps `BOOT` before anything is required and each player's
+    `PlayerAdded` (the first one heard always counts from `BOOT`: their join started
+    the server, and in Studio it is only heard once everything has started; PC
+    2026-11-13); when a save loads, **"JoinWait"** logs the seconds waited
+    (fields: its band, cold or warm, the band of the server's whole start). The server
+    prints `[ApexTide] Server started in N s` and sets Workspace `ServerStartSeconds`.
+    `init.client` stamps the player's client-side `ClientBoot` attribute; when TAP TO
+    START shows (`StartController.afterPrompt`), `DeviceReportController` sends
+    `LoadReport` and **"LoadTime"** logs the seconds (fields: band, device kind, cold or
+    warm). A player who quits before their save loads still shows in neither: compare
+    Roblox's visits with the funnel's "Joined".
+  - **An early frame-rate sample:** `DeviceReport` takes a fourth argument, "early"
+    (after 10 s of play, logged as **"FrameRateEarly"**) or "minute" (the old
+    "FrameRate", unchanged); `Funnel.device` logs each once per player per server.
+  - **Protected starts:** `init.server` and `init.client` run every service's and
+    controller's start through `xpcall` (`start(name, …)`); one that throws is warned by
+    name and the rest still start (before, a server error left the saves unstarted and
+    a client error left the fish unable to swim). Logged as **"StartError"** (fields:
+    client or server, the first that failed; the client's names go by the `StartError`
+    request, a server failure is logged for each player as their save loads).
+  - **Studio, 2026-11-13:** the server starts in 6.5-7.9 s on Connor's PC (the 53 s of
+    2026-10-11 isn't what a start costs today; a live server's time is still
+    unmeasured, which is what "JoinWait" is for). Admin `passRestart` takes "paid" (a
+    record left on the preview with a Deep Pass, to see it carry); plain, it clears it.
+  - Not done, on purpose: yielding between the world's builders so a joining client
+    sees the game's own start screen sooner. Terrain filled in a frame doesn't answer
+    rays until a later one, so new yields can move where dressing lands and shift the
+    shared random sequence; it needs a Studio look before and after.
+- **Gameplan round 1, first batch (2026-11-12; the items of `docs/GAMEPLAN.md` round 1
+  that change no dated decision; run in Studio 2026-11-13, every line of its test list
+  passed, the LEVEL pop on the phone simulator too; not yet published):**
+  - **Levels show as they're earned** (`HudController` `liveLevel`): for a fish banked
+    under LV 15, each level the Haul earns pops in the middle of the screen (LEVEL n ·
+    "Bank it at your den to keep it", the LevelUp sound, `Ui.stageBanner` "liveLevel"
+    1.7 s). The level card still moves only at the den.
+  - **The first roll ever is a skin** (`Config/Rolls` `firstSkin` "Common",
+    `RollService`: `stats.rolls == 1` picks with `RollOdds.pickSkin`, Common or better
+    at their usual odds among them; the result carries `first`, and the reveal reads
+    "NEW · your first skin!"). The Rare guarantee counts on as before.
+  - **Learners are out of player fights** (`HuntService` `learning` in `targetOf`): a
+    fish whose tutorial isn't done can't be bitten by a player or a special attack and
+    can't bite one. Creatures and bosses are unchanged.
+  - **Bunched eats aren't dropped** (`Net` `BURSTS`): `EatPrey`, `EatForage` and
+    `EatChum` let 3 through back to back and earn one more every interval (a token
+    bucket); every other request keeps its plain minimum gap.
+  - **TOO BIG keeps showing in the tutorial** (`HintController` `LEARNER_COOLDOWN` 8 s,
+    no cap while `state.tutorial.done == false`); after it, 3 times as before.
+  - **Skins load when a roll is near** (`RollController` `warmAsked`, `WARM_AT` 0.5):
+    `CardPhoto.warm` runs once a roll is half earned or ready, not 2 s after joining.
+    `RollController.luau` holds stray carriage returns that make git treat it as
+    binary: edit it without changing its line endings, and don't run stylua on it.
+- **Gameplan round 1, second batch (owner, 2026-11-13: "yes to all three", asked as
+  "first bank after about 7 fish, slightly shorter minnows, plain start backdrop on
+  phones"; each narrows a dated decision above; run in Studio the same day, all three
+  passed; not yet published):**
+  - **The first bank comes after ~7 fish** (`Config/Tutorial` `HAUL_LEVELS` 5 → 2; it
+    changes 2026-10-20's "the tutorial's `HAUL_LEVELS` 5: LV 1 → 6"): the tutorial's
+    Haul step, now GROW YOUR HAUL ("Eat a few more to grow your Haul…"), ends at two
+    levels' worth, 0.65 kg of food at LV 1 and about a third of a full Haul, so the
+    first bank and its growth sequence are LV 1 → 3. A full Haul is still five levels
+    (`growth.cap`) and a player may eat on to MAX SIZE before swimming home. Why: the
+    first level-up used to wait for ~19 fish and the swim home, and half of new players
+    had left by then. Studio: five starfish and shrimp plus two Minnows reached it; the
+    bank read "+0.74 kg BANKED · LEVEL 1 → 3 · +2 LEVELS".
+  - **Minnows are a little shorter** (`Config/Prey` Minnow `look` 1.25 → 1.15; it
+    narrows 2026-10-19's "slightly larger"): at 1.25 the longest fifth of normal
+    Minnows were 1.41-1.51 studs, past the 1.40 a new fish swallows, and nothing marked
+    which. Their kg and schools are unchanged. Studio: 1,833 Minnows, the longest of
+    the 1,725 normal ones 1.388 and none too big for a LV 1 fish; 104 of the 108
+    trophies still are. Two of sizes 1.255 and 1.266 (too big before) were swallowed.
+  - **Touch devices keep the plain start backdrop** (`StartController` `plain`, read
+    as the screen opens; it narrows the 2026-10-19 attract mode to computers and
+    consoles): no `StartShot` is asked, so no far stretch of sea streams to a phone or
+    tablet before its first dive. Studio, iPhone 17 Pro simulator: the backdrop a
+    minute in, `StartStreamed` nil, no `StartFoci`, the camera at the fish, TAP TO
+    START dives in; on the computer the shots still play.
 
 ## Tech
 

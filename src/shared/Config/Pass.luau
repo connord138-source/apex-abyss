@@ -85,8 +85,12 @@ return {
 	-- `weeks` weeks from this moment, not from a Monday. Before it the pass is a preview
 	-- (season 0, Riptide's tiers, for testing), and at this moment every record is
 	-- settled and starts again at season 1. Set it to the launch time in the launch
-	-- publish. (Monday 2026-10-12 until 2026-11-02.)
-	start = 1794787200, -- Monday 2026-11-16 00:00 UTC: a stand-in until the launch is set
+	-- publish. (Monday 2026-10-12 until 2026-11-02; then a stand-in of Monday 2026-11-16
+	-- that the launch publish never replaced, so the live game showed "Preview ... this
+	-- resets then" with the Deep Pass on sale. Since the 2026-11-12 round it is that day:
+	-- season 1 is under way from the first publish after it and runs to 2026-12-10.
+	-- `seasons` holds only Riptide, so write season 2 before then or it plays again.)
+	start = 1794441600, -- Thursday 2026-11-12 00:00 UTC
 	weeks = 4,
 	xpPerTier = 1500, -- (2,000 over 30 tiers until 2026-10-17: the same 60,000 for the season)
 	paidXp = 1.2, -- Deep Pass holders earn this much more XP

@@ -100,14 +100,17 @@ function Funnel.reordered(data: Data, oldCount: number)
 	data.onboarding = math.max(TUTORIAL_FIRST - 1, TUTORIAL_FIRST + done - 1)
 end
 
--- How the game runs on each kind of device (DeviceReportController, once a session
--- after a minute's play; owner, 2026-11-08: phones and tablets lost far more new
--- players than computers, and the Performance page stays empty until the game is
--- bigger). Analytics → Custom events → "FrameRate": its value is the average frames a
--- second, and its three fields are the frame rate's band, the kind of device and the
--- memory's band, so a breakdown shows how many phones ran under 20. Once per player
--- per server; whatever the client sends is checked first.
+-- How the game runs on each kind of device (DeviceReportController; owner, 2026-11-08:
+-- phones and tablets lost far more new players than computers, and the Performance
+-- page stays empty until the game is bigger). Analytics → Custom events: the value is
+-- the average frames a second, and the three fields are the frame rate's band, the
+-- kind of device and the memory's band, so a breakdown shows how many phones ran
+-- under 20. Two samples a session, each once per player per server: "FrameRateEarly"
+-- over the first 10 seconds of play (2026-11-12: half of new players leave within three
+-- minutes, and the minute's sample never heard from the ones who left first) and
+-- "FrameRate" over the first minute. Whatever the client sends is checked first.
 local KINDS = { phone = true, tablet = true, gamepad = true, computer = true }
+local STAGES: { [string]: string } = { early = "FrameRateEarly", minute = "FrameRate" }
 type Band = { below: number, name: string }
 local FPS_BANDS: { Band } = {
 	{ below = 20, name = "under 20" },
@@ -121,7 +124,15 @@ local MEMORY_BANDS: { Band } = {
 	{ below = 2000, name = "1.5-2 GB" },
 	{ below = 3000, name = "2-3 GB" },
 }
-local reported: { [number]: boolean } = {}
+local WAIT_BANDS: { Band } = {
+	{ below = 5, name = "under 5 s" },
+	{ below = 10, name = "5-9 s" },
+	{ below = 20, name = "10-19 s" },
+	{ below = 40, name = "20-39 s" },
+	{ below = 60, name = "40-59 s" },
+	{ below = 90, name = "60-89 s" },
+}
+local reported: { [string]: boolean } = {}
 
 local function band(value: number, bands: { Band }, top: string): string
 	for _, entry in bands do
@@ -136,27 +147,120 @@ local function finite(value: any, low: number, high: number): boolean
 	return typeof(value) == "number" and value == value and value >= low and value <= high
 end
 
-function Funnel.device(player: Player, fps: any, memory: any, kind: any)
-	if reported[player.UserId] or not finite(fps, 1, 1000) or not finite(memory, 0, 100000) then
+-- True the first time `what` is asked for this player in this server
+local function once(player: Player, what: string): boolean
+	local key = `{player.UserId}:{what}`
+	if reported[key] then
+		return false
+	end
+	reported[key] = true
+	return true
+end
+
+function Funnel.device(player: Player, fps: any, memory: any, kind: any, stage: any)
+	local event = STAGES[if typeof(stage) == "string" then stage else "minute"]
+	if event == nil or not finite(fps, 1, 1000) or not finite(memory, 0, 100000) then
 		return
 	end
-	if typeof(kind) ~= "string" or not KINDS[kind] then
+	if typeof(kind) ~= "string" or not KINDS[kind] or not once(player, event) then
 		return
 	end
-	reported[player.UserId] = true
 	local fpsBand = band(fps, FPS_BANDS, "55+")
 	local memoryBand = band(memory, MEMORY_BANDS, "3 GB+")
 	if Timing.isStudio() then
 		print(
-			`[Funnel] {player.Name}: {math.floor(fps + 0.5)} FPS ({fpsBand}), {kind}, {math.floor(memory)} MB`
+			`[Funnel] {player.Name}: {event} {math.floor(fps + 0.5)} FPS ({fpsBand}), {kind}, {math.floor(
+				memory
+			)} MB`
 		)
 		return
 	end
 	Guard.run("Funnel.device", function()
-		AnalyticsService:LogCustomEvent(player, "FrameRate", math.floor(fps + 0.5), {
+		AnalyticsService:LogCustomEvent(player, event, math.floor(fps + 0.5), {
 			[Enum.AnalyticsCustomFieldKeys.CustomField01.Name] = fpsBand,
 			[Enum.AnalyticsCustomFieldKeys.CustomField02.Name] = kind,
 			[Enum.AnalyticsCustomFieldKeys.CustomField03.Name] = memoryBand,
+		})
+	end)
+end
+
+-- How long players wait before they can play (2026-11-12: every server start builds
+-- the whole sea before any save loads, most joins start a server, and a player who
+-- gives up on the loading screen never reaches "Joined", so nothing showed the wait).
+-- Two custom events, each once per player per server:
+--   "JoinWait": seconds from the player's connection being heard (the server's own
+--     start for one who was there before its scripts ran) to their save being loaded;
+--     fields: the wait's band, "cold" (they came while the sea was being built) or
+--     "warm", and the band of this server's whole start.
+--   "LoadTime": seconds from the client's scripts starting to TAP TO START showing
+--     (StartController `prompted`); fields: its band, the kind of device, cold or warm.
+local arrivals: { [number]: string } = {}
+
+function Funnel.arrived(player: Player, waited: number, cold: boolean, serverStart: number)
+	local how = if cold then "cold" else "warm"
+	arrivals[player.UserId] = how
+	if not once(player, "JoinWait") then
+		return
+	end
+	local seconds = math.floor(math.clamp(waited, 0, 3600) + 0.5)
+	local waitBand = band(seconds, WAIT_BANDS, "90 s+")
+	local startBand = band(serverStart, WAIT_BANDS, "90 s+")
+	if Timing.isStudio() then
+		print(`[Funnel] {player.Name}: JoinWait {seconds} s ({waitBand}), {how}, server start {startBand}`)
+		return
+	end
+	Guard.run("Funnel.arrived", function()
+		AnalyticsService:LogCustomEvent(player, "JoinWait", seconds, {
+			[Enum.AnalyticsCustomFieldKeys.CustomField01.Name] = waitBand,
+			[Enum.AnalyticsCustomFieldKeys.CustomField02.Name] = how,
+			[Enum.AnalyticsCustomFieldKeys.CustomField03.Name] = startBand,
+		})
+	end)
+end
+
+function Funnel.load(player: Player, seconds: any, kind: any)
+	if not finite(seconds, 0, 3600) or typeof(kind) ~= "string" or not KINDS[kind] then
+		return
+	end
+	if not once(player, "LoadTime") then
+		return
+	end
+	local whole = math.floor(seconds + 0.5)
+	local waitBand = band(whole, WAIT_BANDS, "90 s+")
+	local how = arrivals[player.UserId] or "unknown"
+	if Timing.isStudio() then
+		print(`[Funnel] {player.Name}: LoadTime {whole} s ({waitBand}), {kind}, {how}`)
+		return
+	end
+	Guard.run("Funnel.load", function()
+		AnalyticsService:LogCustomEvent(player, "LoadTime", whole, {
+			[Enum.AnalyticsCustomFieldKeys.CustomField01.Name] = waitBand,
+			[Enum.AnalyticsCustomFieldKeys.CustomField02.Name] = kind,
+			[Enum.AnalyticsCustomFieldKeys.CustomField03.Name] = how,
+		})
+	end)
+end
+
+-- A controller (client) or service (server) whose start threw (init.client and
+-- init.server start each one protected, so the rest still start). Custom event
+-- "StartError": fields "client" or "server", and the first that failed. Once per
+-- player per server and side; a client's names are checked before they're logged.
+function Funnel.startError(player: Player, side: string, names: any)
+	if typeof(names) ~= "string" or #names == 0 or #names > 200 or names:find("[^%w,_]") then
+		return
+	end
+	if (side ~= "client" and side ~= "server") or not once(player, `StartError:{side}`) then
+		return
+	end
+	local first = names:match("^[^,]+") or names
+	warn(`[Funnel] {player.Name}: {side} start failed: {names}`)
+	if Timing.isStudio() then
+		return
+	end
+	Guard.run("Funnel.startError", function()
+		AnalyticsService:LogCustomEvent(player, "StartError", 1, {
+			[Enum.AnalyticsCustomFieldKeys.CustomField01.Name] = side,
+			[Enum.AnalyticsCustomFieldKeys.CustomField02.Name] = first,
 		})
 	end)
 end

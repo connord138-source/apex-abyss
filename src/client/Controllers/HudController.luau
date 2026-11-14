@@ -145,18 +145,81 @@ local function haulText(haul: number, full: number): string
 	return `{amount}<font size="17" color="#8FA6B8"> / {haulAmount(full, full)}</font>`
 end
 
+-- How many levels banking the Haul now would bring
+local function levelsGained(banked: number, haul: number, upgrades: any): number
+	if haul <= 0 then
+		return 0
+	end
+	return Size.level(banked + haul * Config.Tuning.hunt.bankMultiplier * Perks.bank(upgrades))
+		- Size.level(banked)
+end
+
 -- What banking the Haul now would bring ("+3 LV"; a top-level fish banks it for coral)
 local function bankGain(banked: number, haul: number, upgrades: any): string
 	if haul <= 0 then
 		return ""
 	end
-	local levelNow = Size.level(banked)
-	if levelNow >= Config.Tuning.size.maxLevel then
+	if Size.level(banked) >= Config.Tuning.size.maxLevel then
 		return "BANKS FOR CORAL"
 	end
-	local gained = Size.level(banked + haul * Config.Tuning.hunt.bankMultiplier * Perks.bank(upgrades))
-		- levelNow
+	local gained = levelsGained(banked, haul, upgrades)
 	return if gained >= 1 then `+{gained} LV` else ""
+end
+
+-- Each level the Haul earns shows in the middle of the screen as it's earned, for a
+-- fish banked under `LIVE_LEVEL_BELOW` (2026-11-12, the gameplan's first-minutes
+-- round: the level card only moves at the den, so a new fish read LV 1 with an empty
+-- bar for its whole first dive, about three minutes on a computer and eight on a
+-- phone, and half of new players had left by three; the only sign was the Haul card's
+-- small "+1 LV"). Later on a dive is five levels every time and the card says enough.
+local LIVE_LEVEL_BELOW = 15
+local liveGained = 0 -- the levels the Haul had earned when last looked at
+local function liveLevel(level: number)
+	Sfx.play("LevelUp", { volume = 0.5 })
+	Ui.stageBanner("liveLevel", 1.7, 0.4, function()
+		local holder = Instance.new("Frame")
+		holder.Name = "LiveLevelBanner"
+		holder.AnchorPoint = Vector2.new(0.5, 0.5)
+		holder.Position = UDim2.fromScale(0.5, 0.28)
+		holder.Size = UDim2.fromOffset(560, 84)
+		holder.BackgroundTransparency = 1
+		local scale = Instance.new("UIScale")
+		scale.Scale = 0.6
+		scale.Parent = holder
+		local title = Ui.label(
+			holder,
+			"Title",
+			`LEVEL {level}`,
+			Ui.FONT_HEAVY,
+			46,
+			Ui.color.haul,
+			UDim2.new(1, 0, 0, 52)
+		)
+		title.TextXAlignment = Enum.TextXAlignment.Center
+		title.TextStrokeTransparency = 0.45
+		local under = Ui.label(
+			holder,
+			"Under",
+			"Bank it at your den to keep it",
+			Ui.FONT_BOLD,
+			20,
+			Ui.color.text,
+			UDim2.new(1, 0, 0, 24),
+			UDim2.fromOffset(0, 56)
+		)
+		under.TextXAlignment = Enum.TextXAlignment.Center
+		under.TextStrokeTransparency = 0.6
+		holder.Parent = gui
+		Ui.tween(scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+		return function(quick: boolean)
+			local seconds = if quick then 0.15 else 0.4
+			Ui.tween(title, seconds, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			Ui.tween(under, seconds, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			task.delay(seconds + 0.05, function()
+				holder:Destroy()
+			end)
+		end
+	end)
 end
 
 local function buildLevelCard()
@@ -1063,6 +1126,11 @@ local function onState(s: { [string]: any })
 	hintText.Text = hintFor(s)
 	local haul = s.haul or 0
 	haulLevels.Text = bankGain(mass, haul, s.upgrades)
+	local gained = levelsGained(mass, haul, s.upgrades)
+	if gained > liveGained and haul > lastHaul and level < LIVE_LEVEL_BELOW then
+		liveLevel(level + gained)
+	end
+	liveGained = gained
 	if haul > lastHaul then
 		pulseVelocity += 6
 	end

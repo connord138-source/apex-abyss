@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Size = require(ReplicatedStorage.Shared.Size)
+local ClientState = require(script.Parent.Parent.ClientState)
 local Input = require(script.Parent.Parent.Input)
 local Ui = require(script.Parent.Parent.Ui)
 local ForageController = require(script.Parent.ForageController)
@@ -43,6 +44,11 @@ local RULES: { [Kind]: Rule } = {
 	school = { tag = "SCHOOL", color = Color3.fromRGB(110, 236, 220), cooldown = 40, cap = 3 },
 }
 local HOLD = 4.5 -- seconds a hint stays up
+-- While the tutorial runs, TOO BIG shows every time, this many seconds apart
+-- (2026-11-12, the gameplan's first-minutes round: about half the schools round the
+-- spawn are fish a new one can't swallow, nothing marks which, and after three hints
+-- the game said no more about it)
+local LEARNER_COOLDOWN = 8
 
 local gui: ScreenGui
 local chip: Frame? = nil
@@ -100,17 +106,32 @@ local function hide()
 	end)
 end
 
+local function learning(): boolean
+	local state = ClientState.current
+	local tutorial = state and state.tutorial
+	return typeof(tutorial) == "table" and tutorial.done == false
+end
+
 local function show(kind: Kind)
 	local rule = RULES[kind]
 	local now = os.clock()
-	if (shownCount[kind] or 0) >= rule.cap or now - (shownAt[kind] or -math.huge) < rule.cooldown then
+	local since = now - (shownAt[kind] or -math.huge)
+	local learner = kind == "tooBig" and learning()
+	if learner then
+		if since < LEARNER_COOLDOWN then
+			return
+		end
+	elseif (shownCount[kind] or 0) >= rule.cap or since < rule.cooldown then
 		return
 	end
 	if StartController.isUp() or MenuController.isOpen() or chip then
 		return
 	end
 	shownAt[kind] = now
-	shownCount[kind] = (shownCount[kind] or 0) + 1
+	if not learner then
+		-- (the tutorial's showings don't use up the three that come after it)
+		shownCount[kind] = (shownCount[kind] or 0) + 1
+	end
 	local frame =
 		Ui.panel(gui, "Hint", UDim2.fromOffset(0, 40), UDim2.new(0.5, 0, 1, -146), Vector2.new(0.5, 1))
 	frame.AutomaticSize = Enum.AutomaticSize.X

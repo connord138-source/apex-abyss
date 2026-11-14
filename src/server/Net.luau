@@ -106,7 +106,9 @@ local REQUESTS: { [string]: number } = {
 	WatchAd = 3, -- () a rewarded video ad (its reward: Double Haul on a small Haul)
 	SpinWheel = 0.3, -- (all: boolean) spend a Treasure Wheel spin at its button (or join the line; all = Spin all)
 	TutorialSaw = 1, -- ("Index") the tutorial's last step: the INDEX was opened
-	DeviceReport = 30, -- (fps, memoryMb, kind) once a session, after a minute's play: to Analytics (Funnel.device)
+	DeviceReport = 30, -- (fps, memoryMb, kind, "early" | "minute") the frame rate after 10 s of play and after a minute: to Analytics (Funnel.device)
+	LoadReport = 30, -- (seconds, kind) TAP TO START showed this long after the client's scripts began: to Analytics (Funnel.load)
+	StartError = 30, -- (names) controllers whose start threw, comma-separated: to Analytics (Funnel.startError)
 	AdmireDen = 1, -- (index) admire the den you're visiting: a heart for its owner, once a day (HeartService)
 	Companion = 1, -- ("turtle" | "ray") a sea turtle joined us, or we flushed a resting ray (Config/Companions)
 	Landmark = 0.25, -- ("bell" | "cannon" | "pearl", index) bit the galleon's bell or a clam's pearl, swam into the Bay Cannon (LandmarkService)
@@ -350,18 +352,38 @@ function Net.notifyAll(text: string, kind: NotifyKind?)
 	notify:FireAllClients(text, kind or "info")
 end
 
+-- Requests that may arrive bunched: up to this many are let through back to back, and
+-- one more is earned every interval (2026-11-12, the gameplan's first-minutes round:
+-- clients send eats at least 0.06 s apart and the server dropped any that arrived
+-- under 0.05 s after the last, with no resend, so on a jittery phone connection a
+-- swallowed fish popped, wasn't counted and swam back a second later). Each eat is
+-- still checked by its handler; over time the rate is the same.
+local BURSTS: { [string]: number } = { EatPrey = 3, EatForage = 3, EatChum = 3 }
+
 -- Handles one kind of client request. The handler gets the raw, untrusted arguments.
 function Net.onRequest(name: string, handler: (Player, ...any) -> ())
 	local interval = REQUESTS[name]
 	assert(interval, `unknown request {name}`)
+	local burst = BURSTS[name]
+	local saved = name .. ":saved"
 	requests[name].OnServerEvent:Connect(function(player: Player, ...: any)
 		local now = os.clock()
 		local last = lastRequest[player] or {}
 		lastRequest[player] = last
-		if now - (last[name] or 0) < interval then
-			return
+		if burst then
+			local calls = math.min(burst, (last[saved] or burst) + (now - (last[name] or now)) / interval)
+			last[name] = now
+			if calls < 1 then
+				last[saved] = calls
+				return
+			end
+			last[saved] = calls - 1
+		else
+			if now - (last[name] or 0) < interval then
+				return
+			end
+			last[name] = now
 		end
-		last[name] = now
 		handler(player, ...)
 	end)
 end

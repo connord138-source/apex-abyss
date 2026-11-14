@@ -12,6 +12,11 @@ return {
 	-- its usual odds among them. `first` until a player's first, then `every`. A fish
 	-- that has every such skin rolls as usual and the count waits.
 	guarantee = { first = 25, every = 50, tier = "Rare" },
+	-- A player's very first roll is a skin of this tier or better, from the rolling
+	-- fish's table at its usual odds among them (2026-11-12, the gameplan's
+	-- first-minutes round: the tutorial's ROLL FOR A NEW LOOK step gave a look about one
+	-- time in six, most often 25 coral, and the Index step after it showed 0 of 12)
+	firstSkin = "Common",
 	-- Coral takes whatever chance the shades and exotics leave, split by `share`
 	coral = {
 		{ id = "CoralHandful", name = "Handful of Coral", amount = 25, share = 0.7 },

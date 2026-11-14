@@ -226,8 +226,9 @@ return {
 	--   predator loot) stops at a full Haul: MAX SIZE, swim home and bank. Rewards (a
 	--   boss's Haul, a treasure's, the admin's) go on top, and a Second Chance gives
 	--   back what was lost.
-	-- * `cap`: levels a full Haul banks: 5, the first one too (Config/Tutorial
-	--   HAUL_LEVELS: LV 1 → 6) and every one after (owner, 2026-10-20: "a full load
+	-- * `cap`: levels a full Haul banks: 5, the first one too (the tutorial's Haul step
+	--   asks for only 2 of them since 2026-11-13, Config/Tutorial HAUL_LEVELS: the
+	--   first bank is LV 1 → 3) and every one after (owner, 2026-10-20: "a full load
 	--   from lvl one ... sends you to level 8 but then it takes two more full loads to
 	--   get to level 10 ... the growth is linear. Less than one to one level per load
 	--   is far too low"; it was 7 for a new fish, then 1 at LV 8 rising to 2). With the

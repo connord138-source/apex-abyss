@@ -457,12 +457,24 @@ local function bankedMassOf(player: Player): number
 	return Progress.mass(data)
 end
 
+-- Whether a fish is still in the tutorial. It can't be bitten by a player and can't
+-- bite one (2026-11-12, the gameplan's first-minutes round: nothing shielded a new
+-- fish past its few seconds of spawn protection, a fish ten levels up took 48 of its
+-- 100 health a bite, and being eaten sent it back to the Haul step).
+local function learning(who: Player): boolean
+	local data = DataService.get(who)
+	return data ~= nil and not data.tutorial.done
+end
+
 local function targetOf(player: Player, userId: any): (Player?, Session?, BasePart?)
 	if not finite(userId) then
 		return nil, nil, nil
 	end
 	local target = Players:GetPlayerByUserId(userId)
 	if target == nil or target == player or podmates(player, target) then
+		return nil, nil, nil
+	end
+	if learning(player) or learning(target) then
 		return nil, nil, nil
 	end
 	local session = sessions[target]

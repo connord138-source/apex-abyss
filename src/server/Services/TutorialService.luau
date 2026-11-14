@@ -254,6 +254,10 @@ function TutorialService.start()
 	end)
 	-- How the game runs on the player's device, for Analytics (Funnel.device)
 	Net.onRequest("DeviceReport", Funnel.device)
+	Net.onRequest("LoadReport", Funnel.load)
+	Net.onRequest("StartError", function(player: Player, names: any)
+		Funnel.startError(player, "client", names)
+	end)
 	-- The Haul step reads the Haul itself (chum, bites and kills grow it too), and a
 	-- fish on the Bank step with nothing left to bank (eaten on the way, or back after
 	-- a rejoin) goes back to filling it

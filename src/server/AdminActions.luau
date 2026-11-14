@@ -887,9 +887,9 @@ local function passPaid(_admin: Player, targets: { Player }, which: any): string
 	return `{names(targets)}: Deep Pass {if on then "bought" else "not bought"} this season`
 end
 
-local function passRestart(_admin: Player, targets: { Player }): string
+local function passRestart(_admin: Player, targets: { Player }, which: any): string
 	for _, player in targets do
-		PassService.restart(player)
+		PassService.restart(player, which == "paid")
 	end
 	return `{names(targets)}: Tide Pass record started again`
 end

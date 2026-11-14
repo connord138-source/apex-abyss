@@ -641,6 +641,7 @@ local function reveal(result: { [string]: any })
 			then `NEW · won from the {bossFrom}`
 			elseif treasurePool then "NEW · dug up from treasure"
 			elseif result.guaranteed then "NEW · your guaranteed Rare or better"
+			elseif result.first then "NEW · your first skin!"
 			else `NEW · {RollOdds.oneIn(probability)}`
 	end
 	if (result.luck or 1) > 1 then
@@ -901,11 +902,23 @@ local function buildWallet()
 	end
 end
 
+-- This fish's shade skins load ahead of its roll, once a roll is `WARM_AT` earned (a
+-- species switch respawns, so each new fish gets its own). Until 2026-11-12 they
+-- loaded two seconds after joining: 27 or 28 skins of up to five images each, fetched
+-- and drawn on a new player's phone during its first swim, long before it could roll.
+-- (The reveal warms them too and waits for a card's skin, so nothing shows bare.)
+local WARM_AT = 0.5
+local warmAsked = false
+
 local function onState(s: { [string]: any })
 	fishShades = if typeof(s.shades) == "table" then s.shades else {}
 	local perRoll = s.shellsPerRoll or Config.Rolls.shellsPerRoll
 	local shells = s.shells or 0
 	local ready = s.rollsReady or 0
+	if not warmAsked and (ready > 0 or shells >= perRoll * WARM_AT) then
+		warmAsked = true
+		task.delay(1, CardPhoto.warm)
+	end
 	coralText.Text = `{Ui.number(s.coral or 0)} CORAL`
 	shellText.Text = `{shells % perRoll} / {perRoll} SHELLS`
 	Ui.tween(shellFill, 0.4, { Size = UDim2.fromScale((shells % perRoll) / perRoll, 1) })
@@ -923,12 +936,10 @@ function RollController.start()
 	hud = Ui.screen("Wallet", playerGui, 6)
 	revealGui = Ui.screen("RollReveal", playerGui, 20)
 	buildWallet()
-	-- This fish's shade skins load ahead of any roll (a species switch respawns, so
-	-- each new fish gets its own)
+	-- (this fish's shade skins load ahead of its roll: `warmAsked`, onState)
 	Players.LocalPlayer.CharacterAdded:Connect(function()
-		task.delay(2, CardPhoto.warm)
+		warmAsked = false
 	end)
-	task.delay(2, CardPhoto.warm)
 	-- Other players' skins load as soon as they wear them, wherever they are
 	local function watch(other: Player)
 		if other == Players.LocalPlayer then

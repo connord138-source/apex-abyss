@@ -90,7 +90,11 @@ local list: { PreyDef } = {
 		name = "Minnow",
 		biome = "KelpShallows",
 		mass = 0.1,
-		look = 1.25,
+		-- (1.25 until 2026-11-13, owner's yes: the longest fifth of them, 1.21–1.3 of
+		-- the species' length, came to 1.41–1.51 studs, past the 1.40 a new fish can
+		-- swallow, and nothing marked which. At 1.15 every normal Minnow is under 1.39;
+		-- only the 1 in 16 trophies are too big for a LV 1 fish)
+		look = 1.15,
 		schools = 14,
 		perSchool = 14,
 		spread = 3.2,

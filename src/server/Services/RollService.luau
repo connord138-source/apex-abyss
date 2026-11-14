@@ -65,8 +65,14 @@ local function roll(player: Player)
 	local sure = if guaranteeLeft(data) <= 1
 		then RollOdds.pickSkin(luck, rng:NextNumber(), fishShades, species, Rolls.guarantee.tier)
 		else nil
+	-- A player's first roll ever is a skin too (Config/Rolls `firstSkin`)
+	local first = false
+	if sure == nil and data.stats.rolls == 1 then
+		sure = RollOdds.pickSkin(luck, rng:NextNumber(), fishShades, species, Rolls.firstSkin)
+		first = sure ~= nil
+	end
 	if sure then
-		guaranteed = true
+		guaranteed = not first
 		outcome = sure
 	else
 		outcome = RollOdds.pick(luck, rng:NextNumber(), fishShades, species)
@@ -94,6 +100,7 @@ local function roll(player: Player)
 		probability = probability,
 		luck = luck,
 		guaranteed = guaranteed,
+		first = first,
 	}
 	if outcome.kind == "coral" then
 		local amount = outcome.amount or 0

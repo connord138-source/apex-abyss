@@ -887,7 +887,9 @@ local FISH = { { 1, 18 }, { 6, 24 }, { 11, 35 }, { 16, 50 }, { 25, 90 }, { 40, 1
 -- loads to get to level 10 ... the growth is linear. Less than one to one level per
 -- load is far too low")
 local LEVELS = { { 1, 5 }, { 100, 5 } }
-local TUTORIAL_LEVELS = 5 -- a full Haul below LV 4 (Config/Tutorial HAUL_LEVELS)
+-- a full Haul below LV 4 (Config/Tuning `growth.cap`; the tutorial's own Haul step
+-- asks for 2 of them since 2026-11-13, Config/Tutorial HAUL_LEVELS)
+local TUTORIAL_LEVELS = 5
 
 local function lerpPoints(points: { { number } }, x: number): number
 	if x <= points[1][1] then

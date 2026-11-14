@@ -34,6 +34,12 @@
 -- the fish in its den behind it, and the wash clears there, where the tutorial (or
 -- the Daily panel, or WELCOME BACK) picks up.
 --
+-- Touch devices keep the plain backdrop and never ask for a shot (owner, 2026-11-13:
+-- yes to "plain start backdrop on phones"; it narrows the 2026-10-19 attract mode to
+-- computers and consoles): each shot streams a far stretch of the sea to the device
+-- before the player has seen their own, on the devices with the least memory and the
+-- longest loads (61% of players, and the ones leaving before their first dive).
+--
 -- Other controllers hold their join-time UI until then with `afterStart`.
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
@@ -79,6 +85,7 @@ local CURSOR_IDLE = 2 -- seconds the mouse must rest before the cursor hides ove
 
 local up = false
 local done = false
+local plain = false -- a touch device: the backdrop only, no shots (read as the screen opens)
 local waiting: { () -> () } = {}
 local viewing: Vector3? = nil -- the shot's camera, while one is on screen
 
@@ -93,6 +100,19 @@ function StartController.afterStart(fn: () -> ())
 		task.spawn(fn)
 	else
 		table.insert(waiting, fn)
+	end
+end
+
+-- Runs `fn` once TAP TO START has shown (straight away if it already has), with how
+-- long after the start screen opened that was and the clock then
+-- (DeviceReportController sends it to Analytics as the load time)
+local promptedAt: { number }? = nil
+local promptWaiting: { (number, number) -> () } = {}
+function StartController.afterPrompt(fn: (sinceOpened: number, at: number) -> ())
+	if promptedAt then
+		task.spawn(fn, promptedAt[1], promptedAt[2])
+	else
+		table.insert(promptWaiting, fn)
 	end
 end
 
@@ -576,6 +596,7 @@ end
 
 function StartController.start()
 	device = (if Input.isTouch() then "touch" elseif Input.isGamepad() then "gamepad" else "keys") :: Device
+	plain = device == "touch"
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	up = true
 	Input.hold("start", true)
@@ -1137,6 +1158,9 @@ function StartController.start()
 	-- The schedule, each frame until the dive: the next shot asked for, its water
 	-- waited for and its path checked, then cut to when the one on screen is done
 	local function tick()
+		if plain then
+			return -- (the backdrop stays: nothing is asked for, streamed or cut to)
+		end
 		local now = os.clock()
 		if pending == nil and cutPhase ~= "out" then
 			ask()
@@ -1484,7 +1508,13 @@ function StartController.start()
 		end
 		prompt.Text = promptText()
 		prompt.TextColor3 = Color3.new(1, 1, 1)
-		promptAt = os.clock()
+		local shownAt = os.clock()
+		promptAt = shownAt
+		promptedAt = { shownAt - opened, shownAt }
+		for _, fn in promptWaiting do
+			task.spawn(fn, shownAt - opened, shownAt)
+		end
+		table.clear(promptWaiting)
 	end)
 end
 

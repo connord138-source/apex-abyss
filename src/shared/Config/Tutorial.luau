@@ -95,8 +95,10 @@ local steps: { Step } = {
 	},
 	{
 		id = "Haul",
-		title = "FILL YOUR HAUL",
-		text = "Keep eating to fill your Haul. It grows you now, but it's only yours for good once it's banked",
+		-- (GROW, not FILL, since 2026-11-13: the step ends at two levels' worth, about a
+		-- third of a full Haul; HAUL_LEVELS below)
+		title = "GROW YOUR HAUL",
+		text = "Eat a few more to grow your Haul. It grows you now, but it's only yours for good once it's banked",
 		goal = 100,
 		event = "haul",
 		guide = "food",
@@ -170,15 +172,17 @@ local steps: { Step } = {
 }
 
 -- The Haul step's target: a Haul worth this many levels once banked, from the
--- fish's banked mass (1.05 kg for a LV 1 Nibbler, 1.3 kg at LV 3): a new fish's full
--- Haul (Tuning `growth` `cap`: 5 levels, every Haul), so the step ends at MAX
--- SIZE and the bank takes the Nibbler from LV 1 to 6 (TutorialService stops it at a
--- full Haul for a fish that banked part of its first dive past LV 3). With the Haul
--- rate at LV 1 (Tuning `growth` `rate`, 0.068 since 2026-10-19; it was the whole kg)
--- the Eat and Shells steps' snacking fills ~10–25% of it, so this step is a minute or
--- so of hunting in the Kelp, not done on arrival (PC 2026-10-19: at the whole kg the
--- Haul was full before the step showed)
-local HAUL_LEVELS = 5
+-- fish's banked mass. Two since 2026-11-13 (owner: yes to "first bank after about 7
+-- fish"; docs/GAMEPLAN.md round 1 item 2): about a third of a new fish's full Haul
+-- (Tuning `growth` `cap`: 5 levels), ~0.65 kg of food at LV 1, so the first bank and
+-- its growth sequence come after ~7 of the kelp's fish instead of ~19 and take the
+-- Nibbler from LV 1 to 3. Half of new players had left before the first bank at 5
+-- (its history: 7 levels, LV 1 → 8, on 2026-10-18; 5, a full Haul and LV 1 → 6, from
+-- 2026-10-20). The Eat step's five snacks are about half of it, so this step is two
+-- to four more fish; a player may still eat on to MAX SIZE before swimming home, and
+-- every Haul after is the full five levels. (TutorialService stops the target at a
+-- full Haul for a fish that banked part of its first dive.)
+local HAUL_LEVELS = 2
 local function haulTarget(banked: number): number
 	return math.max(banked, Tuning.size.startMass) * (Tuning.size.levelGrowth ^ HAUL_LEVELS - 1)
 end

@@ -118,7 +118,13 @@ local function settle(player: Player, data: PlayerData): boolean
 			"good"
 		)
 	end
-	data.pass = { season = current, xp = 0, claimedFree = 0, claimedPaid = 0, paid = false }
+	-- A Deep Pass bought during the preview is for the first real season (2026-11-12:
+	-- the live game sold it under "this resets then", and the reset took it away)
+	local carried = data.pass.season == 0 and data.pass.paid and current > 0
+	data.pass = { season = current, xp = 0, claimedFree = 0, claimedPaid = 0, paid = carried }
+	if carried then
+		Net.notify(player, `Your Deep Pass is yours for Season {current} of the Tide Pass`, "rare")
+	end
 	return true
 end
 
@@ -172,10 +178,12 @@ function PassService.setPaid(player: Player, paid: boolean)
 	end
 end
 
-function PassService.restart(player: Player)
+-- (admin) `paid`: as a record left on the preview with a Deep Pass bought, to see it
+-- carry into the season
+function PassService.restart(player: Player, paid: boolean?)
 	local data = DataService.get(player)
 	if data then
-		data.pass = { season = 0, xp = 0, claimedFree = 0, claimedPaid = 0, paid = false }
+		data.pass = { season = 0, xp = 0, claimedFree = 0, claimedPaid = 0, paid = paid == true }
 		settle(player, data)
 		DataService.markDirty(player)
 	end
