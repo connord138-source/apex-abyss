@@ -379,7 +379,11 @@ function Net.onRequest(name: string, handler: (Player, ...any) -> ())
 			end
 			last[saved] = calls - 1
 		else
-			if now - (last[name] or 0) < interval then
+			-- (never asked before = long ago, not clock 0: with 0, a player's first
+			-- LoadReport, DeviceReport or StartError was dropped whenever the server's
+			-- clock was still under their 30 s interval, which is every join that
+			-- starts a server; 2026-11-18: 3 LoadTime events for 14 joins, all warm)
+			if now - (last[name] or -math.huge) < interval then
 				return
 			end
 			last[name] = now

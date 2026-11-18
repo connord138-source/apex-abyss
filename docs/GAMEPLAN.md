@@ -149,7 +149,7 @@ Aim: know the real load time and early frame rate; no purchase can be lost.
 
 1. **Built 11-12.** Tide Pass: Season 1 starts 2026-11-12 (takes effect at the next
    publish), and a Deep Pass bought in the preview carries into it.
-2. **Built 11-12.** Custom events (Analytics → Custom events):
+2. **Built 11-12.** Custom events (Analytics → Explore; each event is a Source there):
    - `JoinWait`: seconds a player waited for their save, cold or warm server, and the
      band of the server's whole start;
    - `LoadTime`: seconds from the client's scripts starting to TAP TO START, by device;
@@ -255,14 +255,14 @@ asked about notifications.
 
 | Number | Where | Now | First target |
 |---|---|---|---|
-| Cold join, phone, tap Play → TAP TO START | stopwatch, then the load event | unknown | under 20 s |
+| Cold join, phone, tap Play → TAP TO START | stopwatch, then the load event | save loaded in 5-13 s on 10 cold joins (11-18); LoadTime by device still missing | under 20 s |
 | Left within 3 min | Analytics → Retention / session curve | ~50% | under 35% |
 | Ate 5, phone | Funnels by platform | 38% | 70% |
 | Banked once, phone / computer | Funnels by platform | 11% / 61% | 45% / 80% |
 | Finished the tutorial | Funnels | few | 35% |
 | New-player session | Engagement | 6.3 min | 10 min |
 | Day-1 retention | Retention | 0% | 10% |
-| FPS at 10 s, phone / tablet | Custom events → FrameRate | no data | 30+ |
+| FPS at 10 s, phone / tablet | Explore → FrameRateEarly by device | 2 phones (one 20-29, one 55+), 1 tablet at 60 (11-18) | 30+ |
 | Asked about notifications | Custom event (to add) | ~0 | half of bankers |
 
 The targets are mine, set to be checkable; they are not Roblox benchmarks.
@@ -272,8 +272,9 @@ The targets are mine, set to be checkable; they are not Roblox benchmarks.
 **Start of a session**
 1. Read sections 4, 8 and 9 here, and the memory notes.
 2. `git status` and `git log -3` on `claude/core-systems`.
-3. If a measurement window has ended, ask Connor for exactly the screens in section 6.
-   Otherwise carry on with the current round.
+3. If a measurement window has ended, read section 6's numbers in Creator Hub (the
+   app's built-in browser is signed in since 11-18; read only, and ask Connor to sign in
+   again if it shows the login page). Otherwise carry on with the current round.
 
 **Building (no PC needed)**
 1. One round at a time. Write the round's aim and number in section 9 before coding.
@@ -326,8 +327,32 @@ The targets are mine, set to be checkable; they are not Roblox benchmarks.
 
 | Round | Aim | Built | Tested | Published | Read on | Result |
 |---|---|---|---|---|---|---|
-| 0 | Measure load and early FPS; fix the pass | 11-12 | 11-13 ✔ | 11-13 (11d59d7, 01:01 UTC 11-14) | from 11-14 | |
-| 1 | First three minutes | 11-12: items 1, 4, 7 (half), 13, 15, 17; 11-13: items 2, 6, 18 (backdrop) | 11-13 ✔ | 11-13 (same publish) | from 11-14 | |
+| 0 | Measure load and early FPS; fix the pass | 11-12 | 11-13 ✔ | 11-13 (11d59d7, 01:01 UTC 11-14) | from 11-14 | 11-18: Season 1 live; cold joins 5-13 s, so round 2 stays where it is; load time and early FPS need the logging fix and more players |
+| 1 | First three minutes | 11-12: items 1, 4, 7 (half), 13, 15, 17; 11-13: items 2, 6, 18 (backdrop) | 11-13 ✔ | 11-13 (same publish) | from 11-14 | 11-18: no verdict, only 5 new players since the ad stopped |
+
+**First read, 2026-11-18 (Creator Hub, read by Claude in the signed-in built-in browser;
+Roblox showed a reporting-delay banner).**
+- **Too few players to judge.** The ad stopped after 11-13 (impressions 5,323 → 10 → 0):
+  new players a day went 7, 46, 50, 71, 75, 35 (11-08 to 11-13), then 1, 1, 2, 1. The new
+  build had 14 joins and 5 new players by 11-17. Of the 5: all dived in, 2 ate five, and
+  both finished every step through the wheel.
+- **JoinWait, 14 joins:** 10 cold (they started a server) waited 5-13 s, average 8.6; 4
+  warm about 0-1 s. Server starts: under 5 s ×5, 5-9 s ×4, 10-19 s ×5. Nothing over 20 s.
+- **FrameRateEarly, 8 reports:** phones 2 (one 20-29, one 55+), tablet 60, gamepads 4
+  (average 58), computer 102. **StartError:** none.
+- **The baseline to beat** (the 11-08 build with the ad on, 11-09 to 11-13, 275 new
+  players): Dived in 99%, Eat 63%, Shells 40%, Haul 25%, Bank 17%, Roll 14%, Wrap 10%,
+  Index 9%, Wheel 7%, banked on their own 4.7%, LV 15 4%. Day-1 retention 0-3%, day-7 0.
+  FPS after a minute: phones 36 (74 players), tablets 44 (42), gamepads 49 (47),
+  computers 54 (18). 275 of 277 new users reached "Joined".
+- **Logging bug found and fixed:** LoadTime had 3 events for 14 joins, all "warm".
+  `Net.onRequest`'s rate limit treated "never asked" as clock 0, so a player's first
+  LoadReport, DeviceReport or StartError was dropped while the server's clock was under
+  the 30 s interval: every join that starts a server. Fixed in `Net.luau` ("never asked"
+  = long ago). Numbers for those three events before the fix undercount cold joins.
+- **Next:** publish the fix, then a few days of ad traffic (Connor's switch) to fill the
+  window: about 100 new players reads a step's rate. Check Explore for the first "cold"
+  LoadTime to confirm the fix on a live server.
 
 **Studio test, 2026-11-13 (Studio 0.747, keyboard; the LEVEL pop on the phone simulator
 too). Every line below passed.** Shots in `docs/playtests/shots/2026-11-13/`. Changed

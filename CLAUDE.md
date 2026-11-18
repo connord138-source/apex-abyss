@@ -3435,7 +3435,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     count) the client sends its average FPS, `Stats:GetTotalMemoryUsageMb()` and its
     kind (phone: a touch screen's short side under 600; tablet; gamepad; computer); the
     server checks it and logs once per player per server `LogCustomEvent` "FrameRate"
-    (value: FPS; fields: FPS band, kind, memory band) in Analytics → Custom events
+    (value: FPS; fields: FPS band, kind, memory band) in Analytics → Explore
     (printed in Studio).
   - **Tested on the PC (2026-11-08, Studio, iPhone 17 Pro simulator and keyboard):** a
     new fish spawns 202 out past the 0° tunnel, protected 3 h on the start screen; the
@@ -3461,7 +3461,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     season 0, with a toast). `seasons` holds only Riptide: write season 2 before
     2026-12-10 or it plays again.
   - **The wait before playing is logged** (`Funnel.arrived`, `Funnel.load`; Analytics →
-    Custom events): every server start builds the whole sea before any save loads, most
+    Explore): every server start builds the whole sea before any save loads, most
     joins start a server, and a player who gives up there never reaches "Joined".
     `init.server` stamps `BOOT` before anything is required and each player's
     `PlayerAdded` (the first one heard always counts from `BOOT`: their join started
@@ -3547,9 +3547,36 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   audience ("available to players ages 16+") closed with its Close button; saved to
   file again so the PlaceId stays. The live game is on Season 1 from this publish, three
   days before the preview's 2026-11-16 reset would have run. **Read next (Creator Hub →
-  Analytics → Custom events and Funnels, from 2026-11-14):** JoinWait and LoadTime by
+  Analytics → Explore and Funnels, from 2026-11-14):** JoinWait and LoadTime by
   device (round 2's order hangs on them), FrameRateEarly, StartError, and the funnel's
   Eat, Haul and Bank steps by platform against 11-09's.
+- **First read of the live numbers (2026-11-18).** Connor signed the app's built-in
+  browser in to Creator Hub, so Claude reads Analytics itself (read only; nothing on the
+  account is changed). Custom events have no page of their own: they are a Source inside
+  Analytics → **Explore** (say "Explore" to Connor, never "Custom events").
+  - **The ad stopped after 11-13** (Sponsored Ads impressions 5,323 → 10 → 0) and new
+    players fell from 35-75 a day to 1-2, so the 11-13 build had 14 joins and 5 new
+    players by 11-17: too few to judge rounds 0 and 1. Roblox showed an "analytics
+    reporting delays" banner that day.
+  - **JoinWait (14 joins):** 10 cold joins waited 5-13 s (average 8.6), 4 warm ~0-1 s,
+    none over 20 s, so round 2 (the cold start) doesn't move ahead on this evidence.
+    FrameRateEarly (8 reports): one of two phones in the 20-29 band, everything else
+    55+. No StartError. The funnel: 5 joined, 5 dived in, 2 ate five, and both of those
+    finished every step.
+  - **The baseline to beat** (the 11-08 build with the ad on, 11-09 to 11-13, 275 new
+    players): Dived in 99%, Eat 63%, Shells 40%, Haul 25%, Bank 17%, Wheel 7%, banked on
+    their own 4.7%, LV 15 4%; day-1 retention 0-3%; FPS after a minute: phones 36
+    (74 players), tablets 44, gamepads 49, computers 54. 275 of 277 new users reached
+    "Joined", so almost nobody quit before their save loaded.
+  - **A player's first report on a fresh server was dropped** (`Net.onRequest`): the
+    rate limit read "never asked" as clock 0, so while the server's `os.clock()` was
+    under a request's interval (30 s for `LoadReport`, `DeviceReport` and `StartError`)
+    the first one was thrown away, which is every join that starts a server. The
+    evidence: 3 LoadTime events for 14 joins, all three "warm", and on 11-15 a minute
+    FrameRate with no FrameRateEarly. "Never asked" now counts as long ago
+    (`-math.huge`). Studio can't show it either way (its clock is already large), so
+    the proof is the first "cold" LoadTime in Explore. LoadTime, FrameRateEarly and
+    StartError from before this fix are undercounted for cold joins.
 
 ## Tech
 
