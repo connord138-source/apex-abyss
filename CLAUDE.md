@@ -3577,6 +3577,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     (`-math.huge`). Studio can't show it either way (its clock is already large), so
     the proof is the first "cold" LoadTime in Explore. LoadTime, FrameRateEarly and
     StartError from before this fix are undercounted for cold joins.
+- **Published 2026-11-18** (owner: "commit and publish"; the logging fix) from 20ba0db at
+  19:07 UTC (14:07 on the PC) as **v58** (the Output's Quick Links read "Add publish
+  notes to v58", so 11-13's was v57; the games API's `updated` 2026-11-18T19:08:11Z):
+  the window still held the PlaceId from 11-13, so Save to File, then File → Publish
+  went straight through with no dialog. A Play just before it printed `Server started in
+  7 s`, `JoinWait 9 s, cold` and `LoadTime 3 s, computer, cold`, with no script errors.
+  Read numbers for LoadTime, FrameRateEarly and StartError from 2026-11-19 on.
 
 ## Tech
 

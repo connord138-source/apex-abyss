@@ -350,9 +350,13 @@ Roblox showed a reporting-delay banner).**
   LoadReport, DeviceReport or StartError was dropped while the server's clock was under
   the 30 s interval: every join that starts a server. Fixed in `Net.luau` ("never asked"
   = long ago). Numbers for those three events before the fix undercount cold joins.
-- **Next:** publish the fix, then a few days of ad traffic (Connor's switch) to fill the
-  window: about 100 new players reads a step's rate. Check Explore for the first "cold"
-  LoadTime to confirm the fix on a live server.
+- **Published 2026-11-18 as v58** (Connor: "commit and publish") from 20ba0db at 19:07
+  UTC. A Studio Play just before it: server started in 7 s, `JoinWait 9 s, cold`,
+  `LoadTime 3 s, computer, cold`, no script errors.
+- **Next:** a few days of ad traffic (Connor's switch) to fill the window: about 100 new
+  players reads a step's rate. Check Explore for the first "cold" LoadTime to confirm
+  the fix on a live server, and read LoadTime, FrameRateEarly and StartError from
+  2026-11-19 on.
 
 **Studio test, 2026-11-13 (Studio 0.747, keyboard; the LEVEL pop on the phone simulator
 too). Every line below passed.** Shots in `docs/playtests/shots/2026-11-13/`. Changed
