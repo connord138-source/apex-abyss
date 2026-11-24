@@ -52,11 +52,13 @@ local function showBanner(biome: Biomes.Biome): (quick: boolean) -> ()
 	holder.AnchorPoint = Vector2.new(0.5, 0)
 	holder.Position = UDim2.new(0.5, 0, 0.18, 0)
 	holder.Size = UDim2.fromOffset(640, 96)
-	local bossBottom = Ui.bossBottom()
-	if bossBottom > 0 then
-		-- Below the boss bar (on a phone 18% down is inside it)
+	-- Below the boss bar (on a phone 18% down is inside it), and below a phone's
+	-- tutorial strip and the SAFE ZONE chip under that (TutorialController)
+	local stripBottom = Ui.stripBottom()
+	local top = math.max(Ui.bossBottom(), if stripBottom > 0 then stripBottom + 32 else 0)
+	if top > 0 then
 		local height = gui.AbsoluteSize.Y / Ui.scaleOf(gui)
-		holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.18, bossBottom + 10))
+		holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.18, top + 10))
 	end
 	holder.BackgroundTransparency = 1
 	local title = Ui.label(

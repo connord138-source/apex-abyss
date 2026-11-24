@@ -3396,7 +3396,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     the trail goes out of the den, into the hub from the sea the same way). LeaveHub is
     gone. Older saves carry on at the first step they hadn't done (`Tutorial.carryOn`,
     `OLD_LISTS`; a v2 save past the wheel spins it again), and a v2 save's funnel step
-    moves with it (`Funnel.reordered`).
+    moves with it (`Funnel.reordered`). (Built 2026-11-20, not yet published: Shells
+    moves to the end, after the wheel; "Gameplan round 1, third batch" below.)
   - **The funnel's steps renumber** (Joined, Dived in, Tutorial: Eat … Tutorial:
     Wheel, Banked on their own, Reached LV 15: 12): read Analytics → Funnels from the
     publish date on (Roblox warns on a range spanning renamed steps).
@@ -3584,6 +3585,94 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   went straight through with no dialog. A Play just before it printed `Server started in
   7 s`, `JoinWait 9 s, cold` and `LoadTime 3 s, computer, cold`, with no script errors.
   Read numbers for LoadTime, FrameRateEarly and StartError from 2026-11-19 on.
+- **Gameplan round 1, third batch (owner, 2026-11-20: "keep going on round 1"; the rest
+  of `docs/GAMEPLAN.md` round 1; tested in Studio 0.748 on 2026-11-24, every line that
+  could be run passing, with two phone faults fixed that day; not committed and not
+  published; the test list and results are in the plan's section 9):**
+  - **Shells is the tutorial's last step** (`Config/Tutorial` v4: Eat, Haul, Bank, Roll,
+    Wrap, Index, Wheel, Shells; it changes the 2026-11-08 order, where Shells was second
+    and the wheel last). The Shells step stood between the first snacks and the first
+    bank: of 275 new players 63% ate five things, 40% picked up five shells, 17% banked,
+    and the Roll step tops shells up to a roll anyway. At the end it is the way back out
+    to sea: from the wheel, out a tunnel, five shells, done, with the finish's 50 shells
+    making a second roll. Straight after the bank it would have been a trip out of the
+    den before the button steps, where 31% stopped when the wheel stood there. v3 saves
+    carry on by `carryOn` (`OLD_LISTS[3]`; Shells comes round again at the end) and
+    their funnel step moves with them (`Funnel.reordered(data, 8)`). **The funnel's
+    steps renumber again:** read each by name, from the publish date on.
+  - **A ring on the trail's target** (`TutorialController` `drawRing`): the trail goes
+    out within 18 studs of its target, which at spawn is nearly always, and nothing
+    marked which fish was the small one. A thin cyan ring (a BillboardGui, on top of
+    the haze, 3.2 studs wide at the target's distance within 5.5-16% of the screen's
+    height, to 220 studs) sits on the fish, shrimp, starfish or shell. A fish is
+    followed between the half-second searches (`SchoolController.nearestEdibleFish`,
+    `fishPosition`; eaten, the search runs again at once).
+  - **The trail never runs into the hub's rock** (`outOfHub`): for food and shells, from
+    a den it leads to the den's way out, in the cavern to the inner end of the tunnel
+    that makes the shortest trip, there or inside a tunnel to its outer end; the card
+    names the stop ("the tunnel out to sea", "your den's way out"). **Never Medkelp**
+    (`ForageController.nearest` `foodOnly`; a frond has mass 0, so eating one counted
+    for nothing): the aim help skips it too once the fish carries all its Kelp Wraps.
+  - **A phone's step is a strip at the top** (`buildStrip`; the device is touch):
+    title, one short line (`Config/Tutorial` `phone`), the count, the arrow and distance,
+    a progress bar, 460 × 90 at the top centre. The card under the steering thumb isn't
+    shown on a phone, nor the step's centre banner (the strip bounces and its edge
+    flashes), nor the HUD's controls line. The strip stands in the tide chip's place:
+    `Ui.stripBottom` (0 when it isn't up), `Ui.topBottom` counts it, TideController
+    hides its chip meanwhile, and the biome title starts under it and the SAFE ZONE chip.
+  - **A phone's button row is put away until the Index is met** (`rowWanted`, `sortRow`;
+    `Ui.isTouch`): nothing on Eat, Haul, Bank and Wrap, only ROLL on the Roll step and
+    INDEX on the Index step, the whole row from the wheel step on and after the
+    tutorial. The buttons are moved into a hidden `Wallet.ButtonsHeld` frame, not hidden
+    one by one, since their own controllers set `Visible` and more join the row late.
+  - **A learner's view levels itself on a phone** (`CameraController`, `Config/Tuning`
+    `camera.touchLevel`): with the tutorial not done, out of the hub and dens, the stick
+    pushed, UP and DOWN let go and no touch aiming for 1 s (`Input.touchLookIdle`), the
+    pitch eases back to -0.12 at 2.2 a second. A stray swipe used to leave the view
+    tipped for good, past the angle where the aim help lets go. After the tutorial a
+    dive aimed by hand keeps its tilt.
+  - **The phone stick** (`HudController` `buildThumbstick`): a full push is
+    `camera.touchTravel` 72 screen points from where the thumb came down (it was the
+    ring's radius, 41 points on an iPhone); the knob's centre still stops at the ring's
+    edge. A
+    touch that began on no frame in the lower-left of the whole screen is the stick's
+    too (`Input.claimTouch`): the zone lies inside the safe area, so a thumb in the
+    notch strip turned the view instead.
+  - **UP and DOWN** are 60 across (56; 72 was planned and doesn't fit between SHOP, the
+    biome chip, the depth gauge and the special button), and **stay in the den**: the
+    phone's DEN & SHOP / stall button, ADMIRE and SPIN end at (1, -176, 1, -204), left
+    of the pair (ALL at -344); only DIG still hides them.
+  - **Aim help for gamepads** (`AimHelpController`: touch or a gamepad).
+  - **Draw detail on phones** (`src/client/Detail.luau`, written by SchoolController each
+    frame, read by KelpController and ForageController): a touch device starts at 0.6
+    and climbs to 1 if its frames are fast; frames over 1/25 s ease it down to 0.4
+    (`DETAIL_LOW`), and it only comes back up from under 0.6 once frames are fast. The
+    kelp's sway reach is 120 × detail (at least 60) and a crab's range × detail (at
+    least half). **While the fish is held still** (`Input.locked`: the start screen, the
+    loading washes) fast frames bring it back only as far as the device started
+    (`startDetail`: 0.6 on touch, 1 elsewhere): a phone's plain start screen had taken
+    it to 1 before the first dive (PC 2026-11-24). It must be able to come back to its
+    start there, since the client's first slow seconds take it down (to 0.43 in Studio).
+  - **The LEVEL pop stands under the top centre's stack** (`HudController` `liveLevel`:
+    the lower of 28% down the screen and `Ui.topBottom() + 50`, like the catch banner):
+    a phone's strip under a boss bar or countdown lay across it (PC 2026-11-24).
+  - **The first dive waits for the sea floor** (`StartController` `seaFloorIn`,
+    `Config/Start` `diveHoldMax` 8, `diveFloor` 48): after the usual 2.2 s, until rays
+    down from high over the fish and four spots 48 studs round it meet the Terrain, 8 s
+    at most (a warning in the Output if it gives up).
+  - **Why these first (the second read, 2026-11-20; `docs/GAMEPLAN.md` section 9):**
+    players came back on 11-19 (56 new ones), the first real sample of the 11-13 build.
+    Banked 41% (17% before), finished the tutorial 21% (7%), phones banked 26% (11%).
+    Eat to Shells was the biggest drop left (29% lost), and phones averaged 31 FPS in
+    their first 10 s; 10 of the 56 devices that reported were under 20 (not split by
+    device, most likely phones). LoadTime arrives marked cold since
+    v58, so the 11-18 logging fix works. Funnels take `&filter_Platform=Phone` (or
+    Computer, Console, Tablet) in the URL.
+  - **Not built, on purpose:** touch buttons on keyboard-plus-touch devices (eight
+    controllers build theirs once at start; needs such a device to test); far predators
+    by detail (nothing measured says they cost much); **shadows off on phones (asked of
+    Connor first: it changes the surface lighting on phones)**. Item 5 (the card points
+    home at 40% Haul) is what item 2 already does.
 
 ## Tech
 

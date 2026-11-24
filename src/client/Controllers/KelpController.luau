@@ -32,6 +32,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local Detail = require(script.Parent.Parent.Detail)
+
 type Plant = {
 	model: Model,
 	base: CFrame, -- the stalk's foot, upright
@@ -60,6 +62,9 @@ type Plant = {
 
 local REACH = 120 -- studs from the camera a plant still sways ...
 local BLEND = 40 -- ... easing to stillness over the last this many
+-- (× the client's draw detail since 2026-11-20, never under REACH_LEAST: a phone whose
+-- frames run slow sways only the plants round its fish; Detail)
+local REACH_LEAST = 60
 -- (180 and 50 until 2026-10-20: the sway moved as many parts as all the prey, and
 -- moving parts is what the renderer's prepare step pays for, PC 2026-10-20 round 2)
 -- Past HALF_RATE studs a plant no fish is pushing is posed every other frame, past
@@ -462,6 +467,7 @@ local function step(dt: number)
 	local steps = math.max(1, math.ceil(dt * 60))
 	local h = dt / steps
 	frameCount += 1
+	local reach = math.max(REACH * Detail.value, REACH_LEAST)
 	for _, plant in active do
 		-- (how far the camera is from its stalk, in the world's axes: a plant stands
 		-- within a few degrees of upright)
@@ -471,7 +477,7 @@ local function step(dt: number)
 		local up = camera.Y - at.Y
 		local over = up - math.clamp(up, 0, plant.height)
 		local distance = math.sqrt(across * across + over * over)
-		local weight = smooth((REACH - distance) / BLEND)
+		local weight = smooth((reach - distance) / BLEND)
 		local radius = FADE_RADIUS + plant.spread * 0.25 + (if plant.fade > 0 then FADE_OUT else 0)
 		local resting = math.abs(plant.leanX) + math.abs(plant.leanZ) < 1e-3
 			and math.abs(plant.spinX) + math.abs(plant.spinZ) < 1e-3

@@ -171,34 +171,53 @@ Reward sooner:
 1. **Built 11-12.** A centre pop for every level earned in the dive, under LV 15.
 2. **Built 11-13 (owner: yes).** First bank after about 7 fish: tutorial `HAUL_LEVELS`
    5 → 2 (the Haul step reads GROW YOUR HAUL; the first bank is LV 1 → 3).
-3. Move the Shells step after the Bank step.
+3. **Built 11-20.** The Shells step moves after the first bank, to the very end: Eat,
+   Haul, Bank, Roll, Wrap, Index, Wheel, Shells. (Straight after the bank it would have
+   been a trip out of the den before the button steps, which is where 31% stopped when
+   the wheel stood there; at the end it is the way back out to sea.)
 4. **Built 11-12.** The first roll ever is always a skin (Common or better).
-5. At about 40% Haul, the card and trail already point home.
+5. **Covered by item 2.** At about 40% Haul, the card and trail already point home: the
+   Haul step now ends at two levels' worth, about a third of a full Haul, and the Bank
+   step's card and trail take over from there.
 
 Make food obvious:
 6. **Built 11-13 (owner: yes).** Minnow `look` 1.25 → 1.15 so a new fish can swallow
    every normal minnow.
-7. A ring on the trail's current target. **Built 11-12:** TOO BIG keeps showing during
-   the tutorial (every 8 s at most).
-8. Trail fixes: no beads into rock from the hub or den; never target Medkelp.
+7. **Built 11-20.** A ring on the trail's current target (it follows a fish as it
+   swims). **Built 11-12:** TOO BIG keeps showing during the tutorial (every 8 s at
+   most).
+8. **Built 11-20.** Trail fixes: no beads into rock from the hub or den (the trail to
+   food or shells goes by the den's way out and a tunnel); never target Medkelp.
 
 Phones:
-9. During the tutorial, hide the menu row (show ROLL and INDEX on their steps only) and
-   move the step title to a large strip at the top.
-10. Camera pitch eases back to level after 1 s without a look touch while the stick is pushed.
-11. Find the stick by screen position (works in the notch strip); travel 41 → about 80.
-12. UP/DOWN about 72 px, and they stay in the den.
+9. **Built 11-20.** During the tutorial, hide the menu row (ROLL and INDEX show on
+   their steps only; the whole row is back from the step after the Index) and show the
+   step as a large strip at the top instead of the card under the thumb.
+10. **Built 11-20, learners only.** Camera pitch eases back to level after 1 s without a
+    look touch while the stick is pushed (out of the hub and dens, UP/DOWN let go; after
+    the tutorial a deliberate dive keeps its tilt).
+11. **Built 11-20.** Find the stick by screen position (works in the notch strip); travel
+    41 → 72 points.
+12. **Built 11-20, smaller than planned.** UP/DOWN 56 → 60 (72 doesn't fit between SHOP,
+    the biome chip, the depth gauge and the special button), and they stay in the den:
+    DEN & SHOP, ADMIRE and SPIN now end left of them.
 13. **Built 11-12.** A burst of 3 eat messages passes before the rate limit drops any.
-14. Aim help for gamepads; full touch buttons on keyboard-plus-touch devices.
+14. **Built 11-20:** aim help for gamepads. **Not built:** full touch buttons on
+    keyboard-plus-touch devices (eight controllers each build their phone button once at
+    start; it needs a touch laptop or Chromebook to test, and such players have their
+    keys).
 
 Safety and smoothness:
 15. **Built 11-12.** Bites on or by a fish still in the tutorial do nothing.
-16. Touch devices start at detail 0.6; the floor can fall to 0.4 under 25 FPS; detail also
-    scales kelp reach, far predators and crabs; shadows off on touch.
+16. **Built 11-20:** touch devices start at detail 0.6; the floor can fall to 0.4 under
+    25 FPS; detail also scales the kelp's sway reach and the crabs. **Not built:** far
+    predators (no measurement says they cost much; wait for a phone profile), and
+    shadows off on touch (**owner:** it changes the surface lighting on phones, which
+    the standing rule says to leave alone).
 17. **Built 11-12.** Skin previews load once a roll is half earned, not at join.
-18. The first dive waits for the sea floor to load (capped). **Built 11-13 (owner:
-    yes):** touch devices show only the backdrop on the start screen (it narrows the
-    10-19 attract mode to computers and consoles).
+18. **Built 11-20.** The first dive waits for the sea floor to load (capped at 8 s).
+    **Built 11-13 (owner: yes):** touch devices show only the backdrop on the start
+    screen (it narrows the 10-19 attract mode to computers and consoles).
 
 ### Round 2: the cold start (order depends on Round 0's measurement)
 
@@ -255,14 +274,14 @@ asked about notifications.
 
 | Number | Where | Now | First target |
 |---|---|---|---|
-| Cold join, phone, tap Play → TAP TO START | stopwatch, then the load event | save loaded in 5-13 s on 10 cold joins (11-18); LoadTime by device still missing | under 20 s |
+| Cold join, phone, tap Play → TAP TO START | stopwatch, then the load event | 11-19: the save loaded in 7.8 s on 28 cold joins (2.4 s on 21 warm), then TAP TO START 2-3 s after the client's scripts start on every device; two slow joins on 11-20 (20-39 s and 60-89 s) | under 20 s |
 | Left within 3 min | Analytics → Retention / session curve | ~50% | under 35% |
-| Ate 5, phone | Funnels by platform | 38% | 70% |
-| Banked once, phone / computer | Funnels by platform | 11% / 61% | 45% / 80% |
-| Finished the tutorial | Funnels | few | 35% |
+| Ate 5, phone | Funnels by platform | 61% (19 of 31, 11-19; was 38%) | 70% |
+| Banked once, phone / computer | Funnels by platform | 26% / 80% (8 of 31, 8 of 10, 11-19; were 11% / 61%) | 45% / 80% |
+| Finished the tutorial | Funnels | 21% (12 of 56, 11-19; was 7%) | 35% |
 | New-player session | Engagement | 6.3 min | 10 min |
 | Day-1 retention | Retention | 0% | 10% |
-| FPS at 10 s, phone / tablet | Explore → FrameRateEarly by device | 2 phones (one 20-29, one 55+), 1 tablet at 60 (11-18) | 30+ |
+| FPS at 10 s, phone / tablet | Explore → FrameRateEarly by device | phones 31 (30 reports, 11-19 and 11-20), tablets 47 (7); 10 of the 56 reports on all devices were under 20 | 30+ |
 | Asked about notifications | Custom event (to add) | ~0 | half of bankers |
 
 The targets are mine, set to be checkable; they are not Roblox benchmarks.
@@ -328,7 +347,8 @@ The targets are mine, set to be checkable; they are not Roblox benchmarks.
 | Round | Aim | Built | Tested | Published | Read on | Result |
 |---|---|---|---|---|---|---|
 | 0 | Measure load and early FPS; fix the pass | 11-12 | 11-13 ✔ | 11-13 (11d59d7, 01:01 UTC 11-14) | from 11-14 | 11-18: Season 1 live; cold joins 5-13 s, so round 2 stays where it is; load time and early FPS need the logging fix and more players |
-| 1 | First three minutes | 11-12: items 1, 4, 7 (half), 13, 15, 17; 11-13: items 2, 6, 18 (backdrop) | 11-13 ✔ | 11-13 (same publish) | from 11-14 | 11-18: no verdict, only 5 new players since the ad stopped |
+| 1 | First three minutes | 11-12: items 1, 4, 7 (half), 13, 15, 17; 11-13: items 2, 6, 18 (backdrop) | 11-13 ✔ | 11-13 (same publish) | from 11-14 | 11-18: no verdict, only 5 new players since the ad stopped. **11-20: keep.** 56 new players on 11-19: banked 41% (was 17%), finished the tutorial 21% (was 7%); phones banked 26% (was 11%) |
+| 1, third batch | First three minutes, phones first | 11-20: items 3, 7, 8, 9, 10, 11, 12, 14 (gamepads), 16 (most), 18 | 11-24 ✔ (Studio 0.748; two fixes found and made while testing) | not yet | | |
 
 **First read, 2026-11-18 (Creator Hub, read by Claude in the signed-in built-in browser;
 Roblox showed a reporting-delay banner).**
@@ -399,6 +419,152 @@ same evening; all three passed, no script errors.**
   (Vent Eelpout was the first).
 - To read after publishing: the funnel's Bank step on phones and computers (was the
   biggest drop after Eat), and LoadTime and FrameRateEarly by device.
+
+**Second read, 2026-11-20 (Creator Hub, read by Claude; the funnel's data ran to Nov 19,
+11 PM).** Players came back on 11-19: 49 joins and 56 new players in the funnel for
+11-19 and 11-20, against 1 or 2 a day since the ad stopped. Where from isn't in yet
+(Acquisition ran only to 11-18, when Sponsored Ads showed 13 impressions again and Home
+Recommendation had shown 155 the day before). This is the 11-13 build's first real
+sample: rounds 0 and 1 as published then, without the third batch.
+- **The funnel, 56 new players, against the 275 of 11-09 to 11-13:** Dived in 100% (99),
+  Eat 75% (63), Shells 54% (40), Haul 46% (25), Bank 41% (17), Roll 34% (14), Wrap 29%
+  (10), Index 25% (9), Wheel 21% (7), banked on their own 16% (4.7), LV 15 7% (4). The
+  first bank more than doubled and three times as many finished the tutorial. One day
+  and 56 players: the bank's rate is good to about 13 points either way.
+- **By platform (new players; Bank):** phones 31, Eat 61%, Shells 42%, Haul 32%, Bank
+  26%, Wheel 16%; computers 10, Bank 80%; consoles 8, Bank 63%; tablets 7, Bank 29%
+  (11-01 to 11-07: phones 11%, computers 61%, consoles 45%, tablets 0%). Phones are
+  still the leak: 12 of 31 never ate five things and 6 of the 19 who did stopped at the
+  Shells step, the step the third batch moves out of the way.
+- **Frame rate, first 10 s:** phones 31 FPS on average (30 reports), tablets 47 (7),
+  gamepads 55 (9), computers 80 (10). Of all 56 reports, 10 were under 20 FPS and 3 more
+  under 30. After a minute: phones 31 (22), tablets 42, gamepads 54, computers 75.
+- **The wait:** JoinWait on 11-19: 28 cold joins 7.8 s on average, 21 warm 2.4 s; none
+  over 20 s (19 under 5 s, 21 at 5-9, 9 at 10-19). On 11-20 two of 9 were slow: one
+  20-39 s and one 60-89 s. LoadTime: all 58 under 5 s, 2.0-2.7 s by device. Round 2
+  stays where it is, with the two slow joins to watch.
+- **The logging fix works:** LoadTime now arrives marked cold (28 of 49 on 11-19; 0
+  before v58), and FrameRateEarly came from 47 of 49 joins. **StartError:** none.
+- **What it says for the third batch:** the Shells step is now the biggest drop after
+  the first bite on every device but computers (Eat to Shells loses 29%), and 10 of 56
+  devices start under 20 FPS (not split by device; most likely phones, whose average
+  was 31), so items 3 and 16 are the ones to test and ship first.
+
+**Round 1 third batch, built 2026-11-20 (Connor: "keep going on round 1"). Tested in
+Studio on 2026-11-24 (results under its test list below); not committed and not
+published.** What changed is in `CLAUDE.md` ("Gameplan round 1, third batch"). It moves
+the funnel's steps: "Tutorial: Shells" is now the last tutorial step, so read each step
+by name, and read rates from the publish date on. Left out on purpose: touch buttons on
+keyboard-plus-touch devices, far predators by detail, and shadows off on phones (the
+last one is Connor's call).
+
+**Round 1 third-batch test list (Studio Play, when the PC is free)**
+Keyboard, fresh save (admin reset):
+1. The card reads STEP 1 OF 8, EAT 5 SMALL THINGS; then GROW YOUR HAUL, BANK IT AT HOME,
+   ROLL, WRAP, INDEX, the wheel, and PICK UP 5 SHELLS last. Funnel steps print in that
+   order. Finishing on the Shells step pays the 50 shells and 500 coral out in the sea.
+2. A cyan ring sits on the fish, shrimp or starfish the trail leads to, stays on a fish
+   as it swims, and moves on when that one is eaten. On the Shells step it sits on a
+   shell. No ring on the way home or to the wheel.
+3. On the Haul step, swim into the hub: the trail leads to a tunnel's inner end, then
+   its outer end, then to food; never into the cavern's wall. In the den it leads to the
+   way out. On the Shells step from the wheel the same.
+4. The trail never leads to a Medkelp frond (stand by one with no fish near).
+5. Old saves carry on (command bar, `Config.Tutorial.carryOn` with `v = 3`): step 2
+   (Shells) gives 2 (Haul) and false; step 3 (Haul) gives 2 and true; step 5 (Roll)
+   gives 4 and true; step 8 (the wheel) gives 7 and true. Shells then comes round at
+   the end for all of them.
+6. Gamepad (Controller Emulator): pushing ahead over a shrimp a little below, the fish
+   tilts down to it (the `AimHelp` attribute holds the point); A / B held stop it.
+7. A first dive still clears about 2 s after TAP TO START (no `[Start] the dive cleared
+   after` warning in the Output).
+Phone simulator (iPhone), fresh save:
+8. No card in the lower left. A strip at the top centre shows the step's title, a short
+   line, the count and the distance with its arrow; the tide chip is gone while it's
+   up and SAFE ZONE / PROTECTED sits under it. No controls line across it, and no step
+   banner in the middle (LEVEL 2 still pops there).
+9. The button row is gone on Eat, Haul and Bank; only ROLL on the Roll step (ringed);
+   nothing on Wrap; only INDEX on the Index step; the whole row back on the wheel step
+   and after the tutorial.
+10. Swipe the view down past 30° and push the stick: after a second the view eases
+    back to level and the fish swims level again. Not in the hub or den, not while UP
+    or DOWN is held, and not once the tutorial is done.
+11. The stick: a full push needs a longer drag than before (72 points) and the knob's
+    centre stops at the ring's edge. UP and DOWN are a little bigger, and in your own
+    den they stay on screen with DEN & SHOP to their left; at the wheel SPIN sits left
+    of them too.
+12. `workspace.Prey` `Detail` reads 0.6 on the start screen and at the dive, and climbs
+    toward 1 after it on a fast machine. (0.4 needs a slow device: force it by loading
+    the PC, or read it on a real phone.)
+
+**Results, 2026-11-24 (Studio 0.748 Play on the PC: keyboard, Controller Emulator, Device
+Simulator iPhone 17 Pro; six fresh Plays; shots in `docs/playtests/shots/2026-11-24/`).**
+Every line that could be run passed; two faults turned up on the phone and were fixed and
+re-tested the same day.
+1. ✔ STEP 1 OF 8 EAT 5 SMALL THINGS, GROW YOUR HAUL (0.58 kg / 0.65 kg), BANK IT AT HOME,
+   ROLL FOR A NEW LOOK, USE A KELP WRAP, OPEN THE INDEX, SPIN THE TREASURE WHEEL, PICK UP
+   5 SHELLS (8 OF 8). Funnel: 1 Joined, 2 Dived in, 3 Eat, 4 Haul, 5 Bank, 6 Roll, 7 Wrap,
+   8 Index, 9 Wheel, 10 Shells. TUTORIAL COMPLETE out in the sea, 253 studs from the hub's
+   middle: coral 95 → 595, shells 45 → 95.
+2. ✔ The ring sat on a starfish (0.3 studs off), then on a Minnow and stayed within 0.05
+   studs of it over 3 s of half-second samples while the school swam; eaten, it was on
+   another fish at the next sample. On the Shells step it sat on a shell. No ring on the
+   Bank step, the wheel step, or while the trail led to a tunnel.
+3. ✔ On the Eat step and on the Shells step: in the cavern (100 studs out, between two
+   tunnels) the trail led to a tunnel's inner end ("79 ft to the tunnel out to sea"), at
+   the inner end and half-way down the tunnel to its outer end, past the mouth to the
+   food or shell with the ring; in the den to "your den's way out". The same code serves
+   the Haul step, which the test fish passed in seconds.
+4. ✔ Standing 4 studs from a Medkelp frond whose nearest other food was 22 studs off, with
+   room for a wrap: the trail and ring led to a Minnow 32-36 studs from the frond.
+5. ✔ `carryOn` with `v = 3`: step 1 → 1 (keeps its count), 2 → 2 Haul (fresh), 3 → 2
+   (keeps), 4 → 3, 5 → 4, 6 → 5, 7 → 6, 8 → 7 (all keep).
+6. ✔ With the emulated pad's stick held, `AimHelp` held a point and the swim tilted to it
+   both ways (to +29° at a fish above and -24° at one below, the camera level at -7°
+   throughout). A alone rose and B alone sank straight, with the point left alone. **Not
+   run:** the stick and A or B held together (the test tool presses one key at a time);
+   the gate is the same `Input.vertical()` line as a phone's UP and DOWN.
+7. ✔ The HUD was back 2.66-2.68 s after the key or tap on six dives (keyboard and phone),
+   and no `[Start]` warning.
+8. ✔ No card; the strip showed each step's title, its short line, the count and the way,
+   n / 8 in its corner; no tide chip while it was up (back after the tutorial), SAFE ZONE
+   under it in the den and at the wheel, the biome title under it; no controls line; no
+   step banner through three step changes; LEVEL 2 … popped under it.
+9. ✔ Row empty on Eat, Haul and Bank; only ROLL on the Roll step, ringed; empty on Wrap
+   (the item bar's Kelp Wrap ringed); only INDEX on the Index step, ringed; the whole row
+   from the wheel step on and after the tutorial. The Index's first line reads "follow
+   the strip at the top of the screen".
+10. ✔ A swipe to 49° down, then the stick: the view held about a second, then eased to 7°
+    down within two more, and the fish swam level. In the den the view stayed at 40° down;
+    with the tutorial done it stayed at 40° down out at sea. **Not run:** UP or DOWN held
+    with the stick (one pointer in the simulator).
+11. ✔ A drag of 51 screen px gave 0.71 of a push and of top speed, 78 px a full one (the
+    ring's radius is 40 px there; 72 px is a full push). UP and DOWN are 42 px (60 design)
+    and stayed up in the den with DEN & SHOP ending 7 px left of them; at the wheel SPIN
+    sat in the same place and the row's SHOP ended 9 px left of UP.
+12. ✔ after a fix (below): 0.6 through the start screen and at the dive, then 0.73, 0.80,
+    0.88 … 1.0 over about 15 s at 56 FPS.
+
+**Fixed while testing (both in the working tree with the batch):**
+- **Draw detail climbed back to 1 on the start screen.** A phone's plain start screen
+  draws almost nothing, so its fast frames took the detail from 0.6 to 1 before the first
+  dive (it read 1 at the dive). Now, while the fish is held still (`Input.locked`: the
+  start screen and the loading washes), fast frames bring the detail back only as far as
+  the device started (0.6 on touch, 1 elsewhere); it still eases down there. A first try
+  that simply stopped it rising left it at 0.43 after the load's slow first seconds, so it
+  has to be able to come back to its start. Computers are unchanged (their start is 1).
+- **A boss bar or countdown pushed the strip over the LEVEL pop.** The strip sits under
+  the boss countdown when one is up, which put it across the level's title. The pop is now
+  placed under the top centre's stack when the stack reaches that far (as the catch banner
+  already was): with the Megalodon's countdown up it stood 6 px under the strip on four
+  pops. On a computer it is where it was.
+
+**Seen, left as they are:** the phone's minimap covers the top of the biome chip (it did on
+2026-11-08 too); in a dense bait ball with a full Haul the aim help's point hops between
+fish above and below and the fish wobbles (the same code as on touch since 11-08; with
+room in the Haul it eats what it tilts to); on a computer the start screen's shots can
+hold the detail at 0.6 until a few seconds after the dive (the 10-20 rule, not this
+batch).
 
 **Round 0 test list (Studio Play, when the PC is free)**
 1. Output shows `[ApexTide] Server started in N s` and no `failed to start` line; the

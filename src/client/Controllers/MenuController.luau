@@ -2036,7 +2036,7 @@ end
 local function nextGoals(s: any): { { title: string, text: string } }
 	local goals: { { title: string, text: string } } = {}
 	local tutorial = s.tutorial
-	-- (opening this finishes the tutorial's last step, so that step doesn't show)
+	-- (opening this finishes the tutorial's Index step, so that step doesn't show)
 	local tutorialStep = if typeof(tutorial) == "table"
 		then Config.Tutorial.steps[tutorial.step or 1]
 		else nil
@@ -2047,7 +2047,10 @@ local function nextGoals(s: any): { { title: string, text: string } }
 	then
 		table.insert(goals, {
 			title = "Finish the tutorial",
-			text = `Step {tutorial.step or 1} of {#Config.Tutorial.steps}: follow the card at the top left and the trail of lights.`,
+			-- (a phone's step is a strip at the top of the screen, TutorialController)
+			text = `Step {tutorial.step or 1} of {#Config.Tutorial.steps}: follow the {if Input.isTouch()
+				then "strip at the top of the screen"
+				else "card at the top left"} and the trail of lights.`,
 		})
 	end
 	local levels = s.speciesLevels or {}
@@ -5247,11 +5250,12 @@ local function buildHint(playerGui: Instance)
 	chip.Activated:Connect(openNearShop)
 	hintGui.Parent = playerGui
 
-	-- Phones: above BITE and HEAL, left of the depth gauge, clear of the Haul card
-	-- (at -168 its bottom edge sat on the HEAL button)
+	-- Phones: above BITE and HEAL, left of UP and DOWN, clear of the Haul card
+	-- (at -168 its bottom edge sat on the HEAL button; until 2026-11-20 it ended at -96,
+	-- over DOWN, so UP and DOWN hid while it was up: all the time in your own den)
 	local buttonGui = Ui.screen("StallButton", playerGui, 9)
 	shopButton =
-		Ui.button(buttonGui, "Shop", "", UDim2.fromOffset(230, 44), UDim2.new(1, -96, 1, -204), "primary")
+		Ui.button(buttonGui, "Shop", "", UDim2.fromOffset(230, 44), UDim2.new(1, -176, 1, -204), "primary")
 	shopButton.AnchorPoint = Vector2.new(1, 1)
 	shopButton.Selectable = false
 	-- One line, long vendor names shrink a little: the label's spaces are

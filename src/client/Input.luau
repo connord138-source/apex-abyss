@@ -89,6 +89,9 @@ end
 
 local touchLook = Vector2.zero
 local lookTouches: { [InputObject]: boolean } = {}
+-- Touches the HUD's stick took for itself (Input.claimTouch): they never aim the view
+local claimedTouches: { [InputObject]: boolean } = {}
+local lastTouchLook = 0 -- when a touch last aimed the view (os.clock)
 local stick1 = Vector2.zero
 local stick2 = Vector2.zero
 local stickPad: Enum.UserInputType? = nil -- the gamepad that last moved a stick
@@ -197,8 +200,9 @@ function Input.start()
 	GuiService.TouchControlsEnabled = false
 	UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
 		if input.UserInputType == Enum.UserInputType.Touch then
-			if not processed then
+			if not processed and not claimedTouches[input] then
 				lookTouches[input] = true
+				lastTouchLook = os.clock()
 			end
 			if not Input.touchSeen then
 				Input.touchSeen = true
@@ -252,7 +256,11 @@ function Input.start()
 	end)
 	UserInputService.InputEnded:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.Touch then
+			if lookTouches[input] then
+				lastTouchLook = os.clock()
+			end
 			lookTouches[input] = nil
+			claimedTouches[input] = nil
 			return
 		end
 		if input.KeyCode == Enum.KeyCode.Thumbstick1 then
@@ -282,6 +290,7 @@ function Input.start()
 			holdMouseLock()
 		elseif input.UserInputType == Enum.UserInputType.Touch and lookTouches[input] then
 			touchLook += Vector2.new(input.Delta.X, input.Delta.Y)
+			lastTouchLook = os.clock()
 		elseif input.UserInputType == Enum.UserInputType.MouseWheel then
 			if not processed then
 				wheel += input.Position.Z
@@ -297,6 +306,7 @@ function Input.start()
 	UserInputService.WindowFocusReleased:Connect(function()
 		table.clear(held)
 		table.clear(lookTouches)
+		table.clear(claimedTouches)
 		stick1, stick2, touchMove = Vector2.zero, Vector2.zero, Vector2.zero
 		touchUp, touchDown = false, false
 	end)
@@ -356,6 +366,23 @@ end
 -- The HUD's touch thumbstick: x = right, y = back (screen down), length at most 1.
 function Input.setTouchMove(vector: Vector2)
 	touchMove = vector
+end
+
+-- A touch the HUD's stick takes for itself though it began on no button or panel (a
+-- thumb down in the strip beside a phone's notch, outside the safe area and so outside
+-- every frame of the HUD): it steers, and never aims the view. Whichever handler hears
+-- the touch first, it ends up the stick's.
+function Input.claimTouch(input: InputObject)
+	claimedTouches[input] = true
+	lookTouches[input] = nil
+end
+
+-- Seconds since a touch last aimed the view (0 while a finger that aims is down)
+function Input.touchLookIdle(): number
+	if next(lookTouches) ~= nil then
+		return 0
+	end
+	return os.clock() - lastTouchLook
 end
 
 -- The HUD's UP and DOWN buttons: held (true) or let go

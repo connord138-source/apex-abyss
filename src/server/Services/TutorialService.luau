@@ -2,9 +2,10 @@
 -- The first-session tutorial (Config/Tutorial): one step at a time, each counting
 -- one kind of event, checked here on the server. Since 2026-10-18 it walks a whole
 -- first loop (owner: "show them how to complete a full cycle of hunting, storing,
--- spinning, etc."): eat, shells, fill the Haul (its size read here), bank it, roll,
--- use a Kelp Wrap, open the INDEX, spin the Treasure Wheel (since 2026-11-08 a new
--- fish starts out in the sea and the wheel is last: Config/Tutorial). Steps that
+-- spinning, etc."): eat, grow the Haul (its size read here), bank it, roll, use a
+-- Kelp Wrap, open the INDEX, spin the Treasure Wheel, pick up shells (since 2026-11-08
+-- a new fish starts out in the sea; since 2026-11-20 the shells come last, after the
+-- first bank instead of before it: Config/Tutorial). Steps that
 -- need something hand it over as they start (a wheel spin, shells for a roll, a Kelp
 -- Wrap) if the player has none. Finishing opens species select and pays a
 -- little coral and shells (the 'Cuda is earned after, Config/Species). The client
@@ -37,7 +38,8 @@ for i, step in Tutorial.steps do
 end
 
 -- A save from an older step list (Config/Tutorial `carryOn`: v nil, the list before
--- 2026-10-18, and every brand-new save; v2, before 2026-11-08) moves onto this one:
+-- 2026-10-18, and every brand-new save; v2, before 2026-11-08; v3, before 2026-11-20)
+-- moves onto this one:
 -- the first step it hadn't done, its progress kept only on the same step. A Bank step
 -- with nothing aboard goes back to filling the Haul on its own (the Haul loop below).
 -- The onboarding funnel's furthest step moves with it (Funnel.reordered).
@@ -57,6 +59,8 @@ local function migrate(data: DataService.PlayerData)
 	tutorial.v = Tutorial.version
 	if before == 2 then
 		Funnel.reordered(data, 9)
+	elseif before == 3 then
+		Funnel.reordered(data, 8)
 	end
 end
 

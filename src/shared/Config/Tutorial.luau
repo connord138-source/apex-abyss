@@ -7,10 +7,10 @@
 --
 -- A full first loop (owner, 2026-10-18: "Tutorial could be a bit longer and
 -- actually show them how to complete a full cycle of hunting, storing, spinning,
--- etc."; a large share of the players are kids who need direction): eat, pick up
--- shells, fill the Haul, bank it at home (the growth sequence shows the fish getting
+-- etc."; a large share of the players are kids who need direction): eat, grow the
+-- Haul, bank it at home (the growth sequence shows the fish getting
 -- bigger), roll, use a Kelp Wrap from the item bar, open the INDEX, which says what
--- to do next, and spin the Treasure Wheel on the plaza.
+-- to do next, spin the Treasure Wheel on the plaza, and pick up shells out in the sea.
 --
 -- Out in the sea first (owner, 2026-11-08, from the onboarding funnel: 28% of new
 -- players never got out of the hub and a third of the rest never ate 5 things; half
@@ -18,8 +18,16 @@
 -- mouth of the tunnel nearest its den (FishService), not in its den behind a loading
 -- wash, the plaza and a tunnel, so it's eating within seconds; the Bank step leads it
 -- home the way it came. The steps that need nothing but a button (Roll, Wrap, Index)
--- come straight after the bank, in the den, and the trip out to the plaza's wheel is
--- last (31% stopped at the wheel when it came straight after the bank).
+-- come straight after the bank, in the den, and the trip out to the plaza's wheel
+-- comes after them (31% stopped at the wheel when it came straight after the bank).
+--
+-- Shells last (2026-11-20, docs/GAMEPLAN.md round 1 item 3): the Shells step stood
+-- between the first five snacks and the first bank, a detour before any reward (of the
+-- 275 new players of 11-09 to 11-13, 63% ate five things, 40% picked up five shells and
+-- 17% banked), and the Roll step tops shells up to a roll anyway. Now the first bank is
+-- Eat, Haul, Bank, and picking up shells is the way back out to sea at the end: from
+-- the wheel on the plaza, out a tunnel, five shells, done, out where the hunting is
+-- with the finish's shells making a second roll.
 local Tuning = require(script.Parent.Tuning)
 
 -- A control the step's card shows: the key on each kind of device (nil = the
@@ -46,6 +54,9 @@ export type Step = {
 	-- A HUD button the step rings instead (TutorialController): the ROLL button, the
 	-- item bar's Kelp Wrap, the INDEX button
 	point: ("Roll" | "Wrap" | "Index")?,
+	-- One short line for a phone, whose step shows as a strip at the top of the screen
+	-- with no room for `text` (TutorialController)
+	phone: string,
 	-- What the server hands over as the step starts, when the player has none: a
 	-- wheel spin, shells up to a roll, a Kelp Wrap (TutorialService `enter`)
 	grant: ("spin" | "roll" | "wrap")?,
@@ -66,6 +77,7 @@ local steps: { Step } = {
 		-- Haul step was done the moment it showed; PC report 2026-10-20)
 		title = "EAT 5 SMALL THINGS",
 		text = "Swim into 5 small fish, shrimp or starfish. Smaller things are swallowed on touch, no button",
+		phone = "Push the stick to swim · UP / DOWN to rise and dive",
 		goal = 5,
 		event = "ate",
 		guide = "food",
@@ -80,25 +92,12 @@ local steps: { Step } = {
 		},
 	},
 	{
-		id = "Shells",
-		title = "PICK UP 5 SHELLS",
-		text = "Pick up 5 shells from the seabed. Every 50 shells buys a roll for a new skin",
-		goal = 5,
-		event = "shells",
-		guide = "shells",
-		outside = true,
-		controls = {
-			{ keys = "W A S D", pad = "L STICK", touch = "STICK", does = "swim to it" },
-			{ keys = "SPACE / CTRL", pad = "A / B", touch = "UP / DOWN", does = "up / down" },
-			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
-		},
-	},
-	{
 		id = "Haul",
 		-- (GROW, not FILL, since 2026-11-13: the step ends at two levels' worth, about a
 		-- third of a full Haul; HAUL_LEVELS below)
 		title = "GROW YOUR HAUL",
 		text = "Eat a few more to grow your Haul. It grows you now, but it's only yours for good once it's banked",
+		phone = "It's only yours for good once it's banked",
 		goal = 100,
 		event = "haul",
 		guide = "food",
@@ -112,6 +111,7 @@ local steps: { Step } = {
 		id = "Bank",
 		title = "BANK IT AT HOME",
 		text = "Follow the lights home through a tunnel and your den's door into its glowing pool. Watch yourself grow!",
+		phone = "Follow the lights home, into your den's pool",
 		goal = 1,
 		event = "banked",
 		marker = "den",
@@ -125,6 +125,7 @@ local steps: { Step } = {
 		id = "Roll",
 		title = "ROLL FOR A NEW LOOK",
 		text = "Roll for a new look! Every 50 shells is a roll, and here are enough for your first",
+		phone = "Every 50 shells is a roll for a new look",
 		goal = 1,
 		event = "rolled",
 		point = "Roll",
@@ -137,6 +138,7 @@ local steps: { Step } = {
 		id = "Wrap",
 		title = "USE A KELP WRAP",
 		text = "Health never comes back on its own. Use your Kelp Wrap from the item bar to heal",
+		phone = "Health never comes back on its own",
 		goal = 1,
 		event = "item",
 		point = "Wrap",
@@ -150,6 +152,7 @@ local steps: { Step } = {
 		id = "Index",
 		title = "OPEN THE INDEX",
 		text = "Open the INDEX. Its NEXT FOR YOU always shows what to do next",
+		phone = "NEXT FOR YOU shows what to do next",
 		goal = 1,
 		event = "index",
 		point = "Index",
@@ -161,12 +164,29 @@ local steps: { Step } = {
 		id = "Wheel",
 		title = "SPIN THE TREASURE WHEEL",
 		text = "Swim out to the plaza and spin the Treasure Wheel: here's a free spin! A new one comes every 4 hours",
+		phone = "A free spin · a new one every 4 hours",
 		goal = 1,
 		event = "spun",
 		guide = "wheel",
 		grant = "spin",
 		controls = {
 			{ keys = "E", pad = "Y", touch = "SPIN", does = "spin at the red button" },
+		},
+	},
+	{
+		id = "Shells",
+		title = "PICK UP 5 SHELLS",
+		-- (last since 2026-11-20: from the plaza the trail leads out a tunnel to the nearest)
+		text = "Shells buy rolls. Swim out a tunnel and pick up 5 from the seabed: every 50 is another roll",
+		phone = "Shells buy rolls · they lie on the seabed",
+		goal = 5,
+		event = "shells",
+		guide = "shells",
+		outside = true,
+		controls = {
+			{ keys = "W A S D", pad = "L STICK", touch = "STICK", does = "swim to it" },
+			{ keys = "SPACE / CTRL", pad = "A / B", touch = "UP / DOWN", does = "up / down" },
+			{ keys = "LEFT CLICK", pad = "RT", touch = "DASH", does = "dash" },
 		},
 	},
 }
@@ -188,7 +208,7 @@ local function haulTarget(banked: number): number
 end
 
 -- The step list's version, stamped on the save (`tutorial.v`)
-local VERSION = 3
+local VERSION = 4
 
 -- Older saves' step lists, by the version stamped on them (0: none, the list before
 -- 2026-10-18, and a brand-new save), so one made under an older list carries on in
@@ -196,6 +216,8 @@ local VERSION = 3
 local OLD_LISTS: { [number]: { string } } = {
 	[0] = { "LeaveHub", "Eat", "Bank", "Shells", "Level" },
 	[2] = { "LeaveHub", "Eat", "Shells", "Haul", "Bank", "Wheel", "Roll", "Wrap", "Index" },
+	-- (2026-11-08 to 2026-11-20: Shells second, the wheel last)
+	[3] = { "Eat", "Shells", "Haul", "Bank", "Roll", "Wrap", "Index", "Wheel" },
 }
 
 export type Save = { step: number, progress: number, done: boolean, v: number? }

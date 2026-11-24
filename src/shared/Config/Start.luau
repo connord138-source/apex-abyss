@@ -246,6 +246,12 @@ return {
 		-- ...or over the open sand past a tunnel's mouth, where a new fish's first dive
 		-- starts (FishService): far more Terrain in view than a den's room
 		diveHoldSea = 2.2,
+		-- Out in the sea the dive also waits for the sea floor itself to have streamed
+		-- in under the fish and `diveFloor` studs round it (StartController `seaFloorIn`;
+		-- docs/GAMEPLAN.md round 1 item 18: the first thing a new player saw could be a
+		-- fish hanging in empty blue), at most `diveHoldMax` seconds in all
+		diveHoldMax = 8,
+		diveFloor = 48,
 		diveOut = 0.7,
 		letterbox = 0.085, -- the bars' height, a share of the screen's
 	},

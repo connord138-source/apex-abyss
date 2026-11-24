@@ -503,7 +503,7 @@ local function step(dt: number)
 	local look = aim.LookVector
 	local aimPitch = math.asin(math.clamp(look.Y, -1, 1))
 	local pitch = swimPitch(aimPitch)
-	-- Aim help (touch; Config/Tuning `swim.touchHelp`): pushing ahead toward food a
+	-- Aim help (touch and gamepads; Config/Tuning `swim.touchHelp`): pushing ahead toward food a
 	-- little above or below, the tilt leans toward it, all of it while the aim is
 	-- within `levelZone` and none once the player aims past `levelFull` themselves.
 	-- UP and DOWN held are the player's own say.

@@ -83,6 +83,34 @@ local ASK_GAP = 1.6 -- seconds between shot requests (Net allows one every 1.5)
 local GUARD_EASE = 3 -- how fast the camera eases back out once rock no longer pulls it in
 local CURSOR_IDLE = 2 -- seconds the mouse must rest before the cursor hides over a shot
 
+-- Whether the sea floor has streamed in under a fish out in the open and round it:
+-- a ray down from high over it and from four spots `diveFloor` studs off each meets
+-- the Terrain. (Terrain arrives a region at a time, so the fish's own column can be
+-- there before the next one. From high up, since a spot toward the hub can lie
+-- inside the seamount's foot, and a ray that starts inside rock finds nothing.)
+local floorParams = RaycastParams.new()
+floorParams.FilterType = Enum.RaycastFilterType.Include
+floorParams.FilterDescendantsInstances = { workspace.Terrain }
+floorParams.IgnoreWater = true
+local function seaFloorIn(at: Vector3): boolean
+	local span = timing.diveFloor
+	for _, offset in
+		{
+			Vector3.zero,
+			Vector3.new(span, 0, 0),
+			Vector3.new(-span, 0, 0),
+			Vector3.new(0, 0, span),
+			Vector3.new(0, 0, -span),
+		}
+	do
+		local from = at + offset + Vector3.new(0, 300, 0)
+		if workspace:Raycast(from, Vector3.new(0, -700, 0), floorParams) == nil then
+			return false
+		end
+	end
+	return true
+end
+
 local up = false
 local done = false
 local plain = false -- a touch device: the backdrop only, no shots (read as the screen opens)
@@ -1425,8 +1453,19 @@ function StartController.start()
 			setLoading(false, 0)
 			ClientState.request("StartDone")
 			-- ...held while the den's (or the sea's) Terrain meshes in round the camera,
-			-- then clears
-			task.wait(if inSea then timing.diveHoldSea else timing.diveHold)
+			-- then clears. Out in the sea (a new fish's first dive) it also waits for
+			-- the sea floor to be there at all, `diveHoldMax` at most
+			local held = task.wait(if inSea then timing.diveHoldSea else timing.diveHold)
+			if inSea and root and root:IsA("BasePart") then
+				while held < timing.diveHoldMax and root.Parent ~= nil and not seaFloorIn(root.Position) do
+					held += task.wait(0.1)
+				end
+				if held >= timing.diveHoldMax then
+					warn(
+						string.format("[Start] the dive cleared after %.1f s with no sea floor in yet", held)
+					)
+				end
+			end
 			up = false
 			Input.hold("start", false)
 			Input.cursorWanted = false

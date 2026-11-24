@@ -677,7 +677,7 @@ local function buildHint(playerGui: Instance)
 	-- Phones: SPIN and ALL where the stall button goes
 	local buttons = Ui.screen("WheelButtons", playerGui, 9)
 	phoneSpin =
-		Ui.button(buttons, "Spin", "SPIN", UDim2.fromOffset(160, 44), UDim2.new(1, -96, 1, -204), "gold")
+		Ui.button(buttons, "Spin", "SPIN", UDim2.fromOffset(160, 44), UDim2.new(1, -176, 1, -204), "gold")
 	phoneSpin.AnchorPoint = Vector2.new(1, 1)
 	phoneSpin.Selectable = false
 	phoneSpin.Visible = false
@@ -685,7 +685,7 @@ local function buildHint(playerGui: Instance)
 		ClientState.request("SpinWheel", false)
 	end)
 	phoneAll =
-		Ui.button(buttons, "All", "ALL", UDim2.fromOffset(64, 44), UDim2.new(1, -264, 1, -204), "secondary")
+		Ui.button(buttons, "All", "ALL", UDim2.fromOffset(64, 44), UDim2.new(1, -344, 1, -204), "secondary")
 	phoneAll.AnchorPoint = Vector2.new(1, 1)
 	phoneAll.Selectable = false
 	phoneAll.Visible = false

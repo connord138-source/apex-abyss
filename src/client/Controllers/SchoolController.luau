@@ -38,6 +38,8 @@ local SwimWave = require(ReplicatedStorage.Shared.SwimWave)
 local Tides = require(ReplicatedStorage.Shared.Tides)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local ClientState = require(script.Parent.Parent.ClientState)
+local Detail = require(script.Parent.Parent.Detail)
+local Input = require(script.Parent.Parent.Input)
 local SwimController = require(script.Parent.SwimController)
 
 local SchoolController = {
@@ -110,6 +112,19 @@ local BUILD_BUDGET = 0.003 -- seconds a frame spent building newly near schools
 local DETAIL_MIN = 0.6 -- (0.7 until 2026-10-20: the fuller sea held Kelp, Reef and Trench at it)
 local SLOW_FRAME = 1 / 38
 local FAST_FRAME = 1 / 52
+-- Since 2026-11-20 (docs/GAMEPLAN.md round 1 item 16; phones averaged 36 FPS a minute in
+-- and one of the two early samples was in the 20s): frames longer than CRAWL_FRAME ease
+-- it on down to DETAIL_LOW, and it only comes back up from there once frames are fast;
+-- a phone or tablet starts at DETAIL_TOUCH instead of 1 (it eased down only after
+-- several slow seconds, the first of a new player's swim) and climbs to 1 if it can.
+-- While the fish is held still (Input.locked: the start screen, the loading washes)
+-- fast frames bring it back only as far as the device started: those draw little, so
+-- they say nothing about the sea, and a phone had climbed from 0.6 to 1 on the start
+-- screen before its first dive (PC 2026-11-24). It still eases down there, and the
+-- client's first slow seconds do take it down, so it has to be able to come back.
+local DETAIL_LOW = 0.4
+local CRAWL_FRAME = 1 / 25
+local DETAIL_TOUCH = 0.6
 -- Static GLB prey meshes came in facing +Z (owner, 2026-10-07: "swimming backwards");
 -- they're turned round when drawn. Rigged FBX bodies face -Z already.
 local MESH_FLIP = CFrame.Angles(0, math.pi, 0)
@@ -195,7 +210,9 @@ local nextFish: { [number]: number } = {} -- school index → its next fish to b
 local backAts: { [number]: number } = {} -- prey index → clock it's back after being eaten
 local protos: { [string]: Proto } = {}
 local folder: Folder? = nil
-local detail = 1 -- how far this client draws (×), from its frame time
+local startDetail = if Ui.isTouch() then DETAIL_TOUCH else 1
+local detail = startDetail -- how far this client draws (×), from its frame time
+Detail.value = detail
 local smoothDt = 1 / 60
 local frameCount = 0
 local wanted: { { index: number, away: number } } = {}
@@ -1393,14 +1410,17 @@ end
 -- `from` (the tutorial's guide points at it). Positions come off the shared paths,
 -- so it costs nothing to ask for one that isn't drawn.
 -- (`accept`, if given, says which places count: the aim help's cone, AimHelpController)
-function SchoolController.nearestEdible(
+-- (`nearestEdibleFish` is the same search, giving the fish itself too: its index, for
+-- `fishPosition`, so the tutorial's ring can stay on a fish that swims on)
+local function nearestEdible(
 	from: Vector3,
 	length: number,
 	range: number,
 	accept: ((Vector3) -> boolean)?
-): Vector3?
+): (Vector3?, number?)
 	local now = Timing.clock()
 	local best: Vector3? = nil
+	local bestIndex: number? = nil
 	local bestDistance = range
 	for schoolIndex, school in Schools.list do
 		if (school.center - from).Magnitude > range + school.radius or not schoolOut(school) then
@@ -1422,10 +1442,43 @@ function SchoolController.nearestEdible(
 			if distance < bestDistance and (accept == nil or accept(position)) then
 				bestDistance = distance
 				best = position
+				bestIndex = index
 			end
 		end
 	end
-	return best
+	return best, bestIndex
+end
+
+function SchoolController.nearestEdible(
+	from: Vector3,
+	length: number,
+	range: number,
+	accept: ((Vector3) -> boolean)?
+): Vector3?
+	return (nearestEdible(from, length, range, accept))
+end
+
+function SchoolController.nearestEdibleFish(from: Vector3, length: number, range: number): (Vector3?, number?)
+	return nearestEdible(from, length, range, nil)
+end
+
+-- Where prey fish `index` swims right now, or nil once it's eaten or its school is in
+-- (off the shared paths, like `nearestEdible`)
+function SchoolController.fishPosition(index: number): Vector3?
+	local fish = Schools.fish[index]
+	if fish == nil then
+		return nil
+	end
+	local school = Schools.list[fish.school]
+	if school == nil or not schoolOut(school) then
+		return nil
+	end
+	local now = Timing.clock()
+	local visual = visuals[index]
+	if if visual then visual.hidden else (backAts[index] or 0) > now then
+		return nil
+	end
+	return Schools.fishFrame(index, Schools.schoolFrame(fish.school, now), now).Position
 end
 
 -- The prey fish a fish `length` long could swallow within `range` studs of `from`,
@@ -1649,8 +1702,14 @@ local function step(dt: number)
 	-- of seconds, eases the ranges in on a slow device and back out
 	smoothDt += (math.min(dt, 0.1) - smoothDt) * math.min(1, dt * 0.6)
 	frameCount += 1
-	local wantDetail = if smoothDt > SLOW_FRAME then DETAIL_MIN elseif smoothDt < FAST_FRAME then 1 else detail
+	local ceiling = if Input.locked then startDetail else 1
+	local wantDetail = if smoothDt > CRAWL_FRAME
+		then DETAIL_LOW
+		elseif smoothDt > SLOW_FRAME then math.min(detail, DETAIL_MIN)
+		elseif smoothDt < FAST_FRAME then math.max(detail, ceiling)
+		else detail
 	detail += (wantDetail - detail) * math.min(1, dt * 0.3)
+	Detail.value = detail
 	-- Schools near enough are built (nearest first, a few milliseconds a frame), far
 	-- ones let go; only built ones are drawn
 	table.clear(wanted)
@@ -2153,7 +2212,7 @@ local function onPreyEaten(index: number, backAt: number, eaterUserId: number)
 	end
 end
 
--- How far this client draws (×, DETAIL_MIN..1): eased in while its frames run slow
+-- How far this client draws (×, DETAIL_LOW..1): eased in while its frames run slow
 function SchoolController.detail(): number
 	return detail
 end

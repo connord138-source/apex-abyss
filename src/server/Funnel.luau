@@ -83,9 +83,10 @@ function Funnel.tutorial(player: Player, data: Data)
 end
 
 -- A save logged under an older tutorial list (TutorialService `migrate`; v2 had
--- `oldCount` steps, LeaveHub first and the Treasure Wheel sixth, before 2026-11-08):
--- its furthest step is moved to what it has done in this list, so the steps still
--- ahead of it log. Past the tutorial it keeps its place counted from the end.
+-- `oldCount` steps, LeaveHub first and the Treasure Wheel sixth, before 2026-11-08; v3
+-- had Shells second, before 2026-11-20): its furthest step is moved to what it has done
+-- in this list, so the steps still ahead of it log. Past the tutorial it keeps its
+-- place counted from the end.
 function Funnel.reordered(data: Data, oldCount: number)
 	local furthest = data.onboarding
 	if furthest < TUTORIAL_FIRST then

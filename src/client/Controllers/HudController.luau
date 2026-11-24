@@ -180,7 +180,10 @@ local function liveLevel(level: number)
 		local holder = Instance.new("Frame")
 		holder.Name = "LiveLevelBanner"
 		holder.AnchorPoint = Vector2.new(0.5, 0.5)
-		holder.Position = UDim2.fromScale(0.5, 0.28)
+		-- (below the top centre's stack when it reaches this far down: a phone's
+		-- tutorial strip under a boss bar or countdown covered the level, PC 2026-11-24)
+		local height = gui.AbsoluteSize.Y / Ui.scaleOf(gui)
+		holder.Position = UDim2.new(0.5, 0, 0, math.max(height * 0.28, Ui.topBottom() + 50))
 		holder.Size = UDim2.fromOffset(560, 84)
 		holder.BackgroundTransparency = 1
 		local scale = Instance.new("UIScale")
@@ -814,7 +817,10 @@ end
 -- up; dragging anywhere else aims up and down. The ring appears under the thumb, so
 -- it's always where the thumb already is.
 local function buildThumbstick()
-	local RADIUS = 56
+	local RADIUS = 56 -- the ring as drawn, design units
+	-- A full push, in screen points from where the thumb came down (Config/Tuning
+	-- `camera.touchTravel`): it was the ring's radius, 41 points on an iPhone
+	local TRAVEL = Config.Tuning.camera.touchTravel
 	local zone = Instance.new("Frame")
 	zone.Name = "SwimStick"
 	zone.BackgroundTransparency = 1
@@ -870,28 +876,52 @@ local function buildThumbstick()
 		-- top bar's height under the thumb, playtest 2026-10-07)
 		return Vector2.new(input.Position.X, input.Position.Y)
 	end
-	zone.InputBegan:Connect(function(input: InputObject)
-		if input.UserInputType ~= Enum.UserInputType.Touch or active ~= nil then
-			return
-		end
+	local function begin(input: InputObject)
 		active = input
 		start = screenPoint(input)
 		local scale = Ui.scaleOf(gui)
 		local localPoint = (start - zone.AbsolutePosition) / scale
 		ring.Position = UDim2.fromOffset(localPoint.X, localPoint.Y)
 		ring.BackgroundTransparency = 0.55
+	end
+	zone.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch or active ~= nil then
+			return
+		end
+		begin(input)
+	end)
+	-- By where it lands on the screen too (docs/GAMEPLAN.md round 1 item 11): the zone
+	-- lies inside the screen's safe area, so a thumb down in the strip beside a
+	-- phone's notch, or under its home bar, was on no frame at all and turned the view
+	-- instead of steering. A touch that began on nothing, in the same lower-left part
+	-- of the whole screen, is the stick's (Input.claimTouch keeps it from aiming).
+	UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
+		if
+			processed
+			or input.UserInputType ~= Enum.UserInputType.Touch
+			or active ~= nil
+			or not gui.Enabled
+		then
+			return
+		end
+		local screen = workspace.CurrentCamera.ViewportSize
+		local point = screenPoint(input)
+		if point.X < screen.X * zone.Size.X.Scale and point.Y > screen.Y * (1 - zone.Size.Y.Scale) then
+			Input.claimTouch(input)
+			begin(input)
+		end
 	end)
 	UserInputService.InputChanged:Connect(function(input: InputObject)
 		if input ~= active then
 			return
 		end
-		local scale = Ui.scaleOf(gui)
-		local delta = (screenPoint(input) - start) / scale
-		if delta.Magnitude > RADIUS then
-			delta = delta.Unit * RADIUS
+		-- (screen points, not design units: a thumb is the same size on every screen)
+		local push = (screenPoint(input) - start) / TRAVEL
+		if push.Magnitude > 1 then
+			push = push.Unit
 		end
-		knob.Position = UDim2.new(0.5, delta.X, 0.5, delta.Y)
-		Input.setTouchMove(delta / RADIUS)
+		knob.Position = UDim2.new(0.5, push.X * RADIUS, 0.5, push.Y * RADIUS)
+		Input.setTouchMove(push)
 	end)
 	UserInputService.InputEnded:Connect(function(input: InputObject)
 		if input ~= active then
@@ -935,13 +965,13 @@ local function holdButton(
 	return button
 end
 
--- The phone's action button (a stall's or the den's, ADMIRE, the wheel's SPIN, each in
--- its own ScreenGui at (1, -96, 1, -204)) lies over DOWN, and DIG over both: UP and
--- DOWN step aside while one is up (PC 2026-11-08: DEN & SHOP hid DOWN in the den)
+-- DIG (its own ScreenGui, at (1, -86, 1, -240)) lies over UP and DOWN, which step
+-- aside while it's up. The phone's other action buttons (a stall's or the den's,
+-- ADMIRE, the wheel's SPIN) used to lie over DOWN from (1, -96, 1, -204) and hid both
+-- too, so in your own den, where DEN & SHOP is always up, a phone had no UP or DOWN at
+-- all; since 2026-11-20 they end left of the pair, at (1, -176, 1, -204)
+-- (docs/GAMEPLAN.md round 1 item 12).
 local ACTION_BUTTONS = {
-	{ "StallButton", "Shop" },
-	{ "AdmireButton", "Admire" },
-	{ "WheelButtons", "Spin" },
 	{ "Treasure", "Dig" },
 }
 local function actionButtonUp(): boolean
@@ -973,11 +1003,13 @@ local function buildTouchButtons()
 	-- toward the floor, and the first step's shrimp and starfish lie on the seabed;
 	-- phones and tablets lost 3-5x more new players than computers at every step that
 	-- meant swimming somewhere): a pair stacked over the special button (SpecialController,
-	-- (1, -136, 1, -166)), 6 apart, in the gap between the end of the HUD's button row
+	-- (1, -136, 1, -166)), in the gap between the end of the HUD's button row
 	-- (SHOP) and the depth gauge, under the biome chip (PC 2026-11-08, iPhone 17 Pro:
-	-- centred on the gauge they lay over SHOP and the chip)
-	local up = holdButton("Up", "UP", 56, UDim2.new(1, -136, 1, -290), "up")
-	local down = holdButton("Down", "DOWN", 56, UDim2.new(1, -136, 1, -228), "down")
+	-- centred on the gauge they lay over SHOP and the chip). 60 across since 2026-11-20
+	-- (56 was 41.7 points on an iPhone, under the 44 a thumb wants; the gap between SHOP,
+	-- the chip, the gauge and the special button has room for no more), 4 to 5 apart.
+	local up = holdButton("Up", "UP", 60, UDim2.new(1, -136, 1, -293), "up")
+	local down = holdButton("Down", "DOWN", 60, UDim2.new(1, -136, 1, -229), "down")
 	task.spawn(function()
 		while up.Parent do
 			local shown = not actionButtonUp()
@@ -1059,6 +1091,12 @@ local function buildCursorChip()
 end
 
 local function showControlsHint()
+	-- (a phone in the tutorial: its step's strip at the top of the screen says how,
+	-- TutorialController, and this line would sit across it)
+	local tutorial = state().tutorial
+	if Input.isTouch() and typeof(tutorial) == "table" and tutorial.done == false then
+		return
+	end
 	local text = if Input.usingTouch()
 		then "Left stick: push up to swim, sideways to turn · drag to aim · UP / DOWN to dive · swim into smaller fish to eat · BITE other players"
 		elseif

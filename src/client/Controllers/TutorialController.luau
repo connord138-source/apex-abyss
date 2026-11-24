@@ -16,6 +16,11 @@
 -- Treasure Wheel's red button, the Haul step counts the Haul against its target in
 -- kg, and the steps done at the HUD (ROLL, the item bar's Kelp Wrap, INDEX) get a
 -- ring breathing round that button instead of a trail (`point`).
+-- Since 2026-11-20 (docs/GAMEPLAN.md round 1 items 7 to 9): a ring marks the very
+-- fish, shrimp or shell the trail leads to; from the hub or a den the trail to food
+-- or shells goes by the way out and a tunnel, never into the rock; and a phone shows
+-- the step as a strip at the top of the screen instead of the card (which lay under
+-- the steering thumb), with the HUD's button row put away until the INDEX is met.
 -- The server counts the steps (TutorialService).
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -55,6 +60,16 @@ local capsRow: Frame
 local guideLine: TextLabel
 local guideArrow: TextLabel
 local tipLine: TextLabel
+-- A phone's step: a strip at the top of the screen (buildStrip)
+local strip: Frame
+local stripStep: TextLabel
+local stripTitle: TextLabel
+local stripCount: TextLabel
+local stripLine: TextLabel
+local stripGuide: TextLabel
+local stripArrow: TextLabel
+local stripFill: Frame
+local showing = false -- the tutorial is up: its card, or the strip on a phone
 local markers: Folder
 local trail: Folder
 local shownStep = 0
@@ -62,8 +77,10 @@ local shownDevice = "" -- the device its key caps were drawn for
 local shownMarker: string? = nil
 local wasDone: boolean? = nil
 local target: Vector3? = nil
+local targetFish: number? = nil -- the prey fish the trail leads to (its index), if it is one
 local guideKind: string? = nil
 local nextSearch = 0
+local nextTidy = 0 -- when the phone's strip and button row are next looked at
 
 local pointRing: Frame? = nil -- the ring round the HUD button a step needs
 local pointKind: string? = nil
@@ -79,6 +96,13 @@ local TRAIL_SPAN = 90 -- studs: the trail reaches this far ahead at most
 local BEAD_GONE_WITHIN = 3 -- studs from the camera: not drawn
 local BEAD_FULL_PAST = 8 -- studs from the camera: drawn in full
 local SEARCH_RANGE = 420 -- studs: how far the guide looks for food or a shell
+-- The ring on the trail's target: its width is `RING_STUDS` of the world at the
+-- target's distance, within these shares of the screen's height, and none past
+-- `RING_REACH` studs from the camera
+local RING_STUDS = 3.2
+local RING_SMALLEST = 0.055
+local RING_BIGGEST = 0.16
+local RING_REACH = 220
 -- Bigger and bolder (owner, 2026-10-20: "tutorial needs to be more prominent its a
 -- bit small"): a headline with the goal, larger text, and the card drawn at
 -- CARD_SCALE (a little less on a phone's smaller screen); each step also opens with
@@ -265,10 +289,51 @@ local function intoHub(from: Vector3, goal: Vector3): Vector3?
 	return best
 end
 
--- Where the step's trail leads right now (`viaTunnel`: to a tunnel on the way, intoHub)
-local viaTunnel = false
+-- The other way: from the hub, the way out to sea toward `goal` (nil: the nearest
+-- way out). In the cavern, the inner end of the tunnel that makes the shortest trip;
+-- at that end or inside a tunnel, its outer end on the sand; so a trail to food or a
+-- shell never runs into the cavern's wall (the Haul step after a trip home, the Shells
+-- step from the plaza). Nil out in the sea. A den's way out is the caller's.
+local INNER_NEAR = 24 -- studs from a tunnel's inner end: on to its outer end
+local function outOfHub(from: Vector3, goal: Vector3?): Vector3?
+	local offset = from - hub.center
+	local flat = Vector2.new(offset.X, offset.Z).Magnitude
+	-- (the tubes end 10 short of MOUTH: past that a fish is out on the sand)
+	if offset.Y >= hub.height or flat >= Layout.MOUTH - 10 then
+		return nil
+	end
+	local heading = math.atan2(offset.Z, offset.X)
+	local best: Vector3? = nil
+	local bestCost = math.huge
+	for _, angle in Layout.tunnelAngles do
+		local inner, outer = Layout.tunnelEnds(angle)
+		local gap = math.abs((heading - angle + math.pi) % (2 * math.pi) - math.pi)
+		local toInner = (inner - from).Magnitude
+		if
+			toInner < INNER_NEAR
+			or (flat >= hub.radius - 2 and gap < TUNNEL_CONE and offset.Y < TUNNEL_TOP)
+		then
+			return outer
+		end
+		local cost = toInner + (outer - inner).Magnitude + (if goal then (goal - outer).Magnitude else 0)
+		if cost < bestCost then
+			best, bestCost = inner, cost
+		end
+	end
+	-- (past the cavern's wall and in no tunnel: out on the seamount's flank)
+	if flat >= hub.radius + hub.wallThickness then
+		return nil
+	end
+	return best
+end
+
+-- Where the step's trail leads right now. `viaWhat` names a place on the way there (a
+-- tunnel, a den's way out) while the trail leads to that first; `targetFish` is the
+-- prey fish it leads to, when it is one.
+local viaWhat: string? = nil
 local function findTarget(kind: string?, from: Vector3, s: { [string]: any }): Vector3?
-	viaTunnel = false
+	viaWhat = nil
+	targetFish = nil
 	if kind == "exits" then
 		return nearestExit(from)
 	elseif kind == "den" then
@@ -281,22 +346,46 @@ local function findTarget(kind: string?, from: Vector3, s: { [string]: any }): V
 		end
 		local door = Layout.doorFrame(s.denIndex).Position
 		local way = intoHub(from, door)
-		viaTunnel = way ~= nil
-		return way or door
-	elseif kind == "food" then
-		local fish = SchoolController.nearestEdible(from, SwimController.length(), SEARCH_RANGE)
-		local food = ForageController.nearest(from, SEARCH_RANGE)
-		if fish and food then
-			return if (fish - from).Magnitude <= (food - from).Magnitude + 20 then fish else food
+		if way then
+			viaWhat = "the tunnel into the hub"
 		end
-		return fish or food
-	elseif kind == "shells" then
-		return ShellController.nearest(from, SEARCH_RANGE)
+		return way or door
+	elseif kind == "food" or kind == "shells" then
+		-- From a den the sea is a doorway and a tunnel away: its way out first
+		local den = Layout.denAt(from)
+		if den then
+			viaWhat = "your den's way out"
+			return Layout.exitFrame(den).Position
+		end
+		local goal: Vector3? = nil
+		local fishIndex: number? = nil
+		if kind == "food" then
+			-- (never Medkelp: it feeds nothing and counts for nothing, ForageController)
+			local fish, index =
+				SchoolController.nearestEdibleFish(from, SwimController.length(), SEARCH_RANGE)
+			local food = ForageController.nearest(from, SEARCH_RANGE, nil, true)
+			if fish and (food == nil or (fish - from).Magnitude <= (food - from).Magnitude + 20) then
+				goal, fishIndex = fish, index
+			else
+				goal = food
+			end
+		else
+			goal = ShellController.nearest(from, SEARCH_RANGE)
+		end
+		-- From the hub, by a tunnel
+		local way = outOfHub(from, goal)
+		if way then
+			viaWhat = "the tunnel out to sea"
+			return way
+		end
+		targetFish = fishIndex
+		return goal
 	elseif kind == "wheel" then
 		-- The Treasure Wheel's red button (WheelService publishes where it is); from a
 		-- den, through its way out first
 		local den = Layout.denAt(from)
 		if den then
+			viaWhat = "your den's way out"
 			return Layout.exitFrame(den).Position
 		end
 		local wheelState = ReplicatedStorage:FindFirstChild("WheelState")
@@ -305,7 +394,9 @@ local function findTarget(kind: string?, from: Vector3, s: { [string]: any }): V
 			return nil
 		end
 		local way = intoHub(from, at)
-		viaTunnel = way ~= nil
+		if way then
+			viaWhat = "the tunnel into the hub"
+		end
 		return way or at
 	end
 	return nil
@@ -438,8 +529,80 @@ local function drawTrail(from: Vector3, to: Vector3, t: number)
 	workspace:BulkMoveTo(beads, beadFrames, Enum.BulkMoveMode.FireCFrameChanged)
 end
 
+-- A ring on the very thing the trail leads to (docs/GAMEPLAN.md round 1 item 7). The
+-- trail goes out within TRAIL_NEAR of its target, which in the shallows is nearly
+-- always (food is everywhere at spawn), and nothing said which of the fish in view was
+-- the one small enough to swallow. A thin ring in the trail's colour sits on the fish,
+-- shrimp, starfish or shell itself, drawn over the water's haze; a fish is followed as
+-- it swims (SchoolController.fishPosition).
+local ringPart: Part
+local ringGui: BillboardGui
+local ringStroke: UIStroke
+
+local function buildRing()
+	ringPart = Instance.new("Part")
+	ringPart.Name = "Target"
+	ringPart.Anchored = true
+	ringPart.CanCollide = false
+	ringPart.CanQuery = false
+	ringPart.CanTouch = false
+	ringPart.CastShadow = false
+	ringPart.Transparency = 1
+	ringPart.Size = Vector3.one
+	ringPart.Parent = trail
+	ringGui = Instance.new("BillboardGui")
+	ringGui.Name = "Ring"
+	ringGui.AlwaysOnTop = true
+	ringGui.LightInfluence = 0
+	ringGui.Size = UDim2.fromOffset(60, 60)
+	ringGui.Adornee = ringPart
+	ringGui.Enabled = false
+	ringGui.Parent = ringPart
+	local circle = Instance.new("Frame")
+	circle.Name = "Circle"
+	circle.BackgroundTransparency = 1
+	circle.AnchorPoint = Vector2.new(0.5, 0.5)
+	circle.Position = UDim2.fromScale(0.5, 0.5)
+	circle.Size = UDim2.new(1, -8, 1, -8)
+	Ui.corner(circle, UDim.new(1, 0))
+	ringStroke = Ui.stroke(circle, Ui.color.accent, 0.2, 2.5)
+	circle.Parent = ringGui
+end
+
+local function hideRing()
+	if ringGui.Enabled then
+		ringGui.Enabled = false
+	end
+end
+
+local function drawRing(at: Vector3, t: number)
+	local camera = workspace.CurrentCamera
+	local away = (at - camera.CFrame.Position).Magnitude
+	if away > RING_REACH then
+		hideRing()
+		return
+	end
+	ringPart.CFrame = CFrame.new(at)
+	-- (a stud at `away` is this many pixels tall: the lens's half height over its tangent)
+	local height = camera.ViewportSize.Y
+	local perStud = height / (2 * math.tan(math.rad(camera.FieldOfView) / 2) * math.max(away, 1))
+	local pixels = math.clamp(RING_STUDS * perStud, RING_SMALLEST * height, RING_BIGGEST * height)
+	ringGui.Size = UDim2.fromOffset(pixels, pixels)
+	ringStroke.Transparency = 0.2 + 0.3 * (0.5 + 0.5 * math.sin(t * 4))
+	if not ringGui.Enabled then
+		ringGui.Enabled = true
+	end
+end
+
+-- The trail and the ring, both away
+local function hideGuide()
+	hideTrail()
+	hideRing()
+end
+
 local function celebrate()
-	-- The last step opens the INDEX: the banner waits until it's read and closed
+	-- A menu may be open (the INDEX was the last step until 2026-11-20): the banner
+	-- waits until it's read and closed
 	local waited = task.wait(0.3)
 	while MenuController.isOpen() and waited < 90 do
 		waited += task.wait(0.2)
@@ -510,6 +673,215 @@ local function keyFor(control: TutorialConfig.Control): string?
 	return control.keys
 end
 
+-- A phone's step (docs/GAMEPLAN.md round 1 item 9). The card sat in the lower left,
+-- under the thumb that steers, its text about 10 px tall on an iPhone. On a phone the
+-- step is a strip at the top of the screen instead, in the tide chip's place
+-- (TideController hides its chip meanwhile, and the SAFE ZONE chip moves under the
+-- strip: Ui.stripBottom, Ui.topBottom): the goal big, one short line (Config/Tutorial
+-- `phone`), the count and the way.
+local STRIP_SIZE = Vector2.new(460, 90)
+local STRIP_TOP = 8
+
+local function buildStrip()
+	strip = Ui.panel(
+		gui,
+		"Strip",
+		UDim2.fromOffset(STRIP_SIZE.X, STRIP_SIZE.Y),
+		UDim2.new(0.5, 0, 0, STRIP_TOP),
+		Vector2.new(0.5, 0)
+	)
+	local stroke = strip:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = Ui.color.accent
+		stroke.Transparency = 0.5
+	end
+	stripTitle = Ui.label(
+		strip,
+		"Title",
+		"",
+		Ui.FONT_HEAVY,
+		26,
+		Ui.color.text,
+		UDim2.new(1, -28, 0, 30),
+		UDim2.fromOffset(14, 6)
+	)
+	stripTitle.TextXAlignment = Enum.TextXAlignment.Center
+	stripTitle.TextScaled = true
+	local titleSize = Instance.new("UITextSizeConstraint")
+	titleSize.MaxTextSize = 26
+	titleSize.Parent = stripTitle
+	stripStep = Ui.label(
+		strip,
+		"Step",
+		"",
+		Ui.FONT_BOLD,
+		11,
+		Ui.color.muted,
+		UDim2.fromOffset(40, 12),
+		UDim2.new(1, -50, 0, 6)
+	)
+	stripStep.TextXAlignment = Enum.TextXAlignment.Right
+	stripLine = Ui.label(
+		strip,
+		"Line",
+		"",
+		Ui.FONT_SEMI,
+		15,
+		Ui.color.text,
+		UDim2.new(1, -28, 0, 18),
+		UDim2.fromOffset(14, 38)
+	)
+	stripLine.TextXAlignment = Enum.TextXAlignment.Center
+	stripLine.TextScaled = true
+	local lineSize = Instance.new("UITextSizeConstraint")
+	lineSize.MaxTextSize = 15
+	lineSize.Parent = stripLine
+	-- The count, then an arrow and the distance to the step's target, in one centred row
+	local way = Instance.new("Frame")
+	way.Name = "Way"
+	way.BackgroundTransparency = 1
+	way.Position = UDim2.fromOffset(0, 58)
+	way.Size = UDim2.new(1, 0, 0, 18)
+	way.Parent = strip
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0, 8)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = way
+	stripCount = Ui.label(way, "Count", "", Ui.FONT_HEAVY, 15, Ui.color.accent, UDim2.fromOffset(0, 18))
+	stripCount.AutomaticSize = Enum.AutomaticSize.X
+	stripCount.LayoutOrder = 1
+	stripCount.Visible = false
+	stripArrow = Ui.label(way, "Arrow", "▲", Ui.FONT_HEAVY, 14, Ui.color.accent, UDim2.fromOffset(16, 18))
+	stripArrow.TextXAlignment = Enum.TextXAlignment.Center
+	stripArrow.LayoutOrder = 2
+	stripArrow.Visible = false
+	stripGuide = Ui.label(way, "Guide", "", Ui.FONT_BOLD, 14, Ui.color.accent, UDim2.fromOffset(0, 18))
+	stripGuide.AutomaticSize = Enum.AutomaticSize.X
+	stripGuide.LayoutOrder = 3
+	stripGuide.Visible = false
+	local _, bar =
+		Ui.bar(strip, "Progress", UDim2.new(1, -28, 0, 5), UDim2.new(0, 14, 1, -11), Ui.color.accent)
+	stripFill = bar
+	strip.Visible = false
+end
+
+-- The strip's count ("2 / 5", "DONE ✓"; hidden when there's nothing to count)
+local function stripCounts(text: string, color: Color3)
+	stripCount.Text = text
+	stripCount.TextColor3 = color
+	stripCount.Visible = text ~= ""
+end
+
+-- The card for a mouse or a pad, the strip for a phone, or neither
+local function present()
+	local touch = shownDevice == "touch"
+	panel.Visible = showing and not touch
+	strip.Visible = showing and touch
+end
+
+-- A little bounce so a new step is noticed (the card, or the strip, whose edge
+-- flashes too: a phone gets no banner in the middle of the screen, the strip is it)
+local function bounce(by: number, seconds: number)
+	local touch = device() == "touch"
+	local piece = if touch then strip else panel
+	local rest = if touch then 1 else CARD_SCALE
+	local scaler = piece:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	scaler.Parent = piece
+	scaler.Scale = rest * by
+	Ui.tween(scaler, seconds, { Scale = rest }, Enum.EasingStyle.Back)
+	local stroke = piece:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Transparency = 0
+		Ui.tween(stroke, 1.6, { Transparency = 0.5 })
+	end
+end
+
+-- The guide: the distance to the step's target and an arrow turned toward it (nil:
+-- none), on the card and on the strip
+local function showGuide(text: string?, turn: number?)
+	guideLine.Visible = text ~= nil
+	stripGuide.Visible = text ~= nil
+	if text then
+		guideLine.Text = text
+		stripGuide.Text = text
+	end
+	guideArrow.Visible = turn ~= nil
+	stripArrow.Visible = turn ~= nil
+	if turn then
+		guideArrow.Rotation = turn
+		stripArrow.Rotation = turn
+	end
+end
+
+-- Phones: the HUD's button row runs across the middle of the screen, nine buttons
+-- just over the fish (the 2026-11-08 phone screenshot), and until a new player has
+-- met the INDEX there is nothing in it for them. So on a phone it's put away for the
+-- tutorial's first steps: only ROLL shows on the Roll step and INDEX on the Index
+-- step (the ring finds them), and from the step after the INDEX on, and ever after,
+-- the whole row is back. The buttons are moved to a hidden frame beside the row, not
+-- hidden one by one: their own controllers set Visible (ROLL only with a roll ready,
+-- MAPS with a map held), and more join the row late (PASS, LOG, DAILY, SHOP, POD).
+local EVERY = "*"
+local rowAllowed: string? = EVERY -- every button, the one named, or none (nil)
+local heldRow: Frame? = nil
+local lastPoint = 0 -- the last step done at a HUD button
+for index, each in Tutorial.steps do
+	if each.point ~= nil then
+		lastPoint = index
+	end
+end
+
+local function rowWanted(s: { [string]: any }): string?
+	local tutorial = s.tutorial
+	if not Ui.isTouch() or typeof(tutorial) ~= "table" or tutorial.done then
+		return EVERY
+	end
+	local index = tutorial.step
+	if typeof(index) ~= "number" or index > lastPoint then
+		return EVERY
+	end
+	local step = Tutorial.steps[index]
+	local point = if step then step.point else nil
+	return if point == "Roll" or point == "Index" then point else nil
+end
+
+local function sortRow()
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local wallet = playerGui and playerGui:FindFirstChild("Wallet")
+	local row = wallet and wallet:FindFirstChild("Buttons")
+	if wallet == nil or row == nil then
+		return
+	end
+	local held = heldRow
+	if held == nil or held.Parent ~= wallet then
+		if rowAllowed == EVERY then
+			return -- (nothing was ever put away)
+		end
+		held = Instance.new("Frame")
+		held.Name = "ButtonsHeld"
+		held.BackgroundTransparency = 1
+		held.Visible = false
+		held.Parent = wallet
+		heldRow = held
+	end
+	local allowed = rowAllowed
+	for _, child in held:GetChildren() do
+		if child:IsA("GuiButton") and (allowed == EVERY or child.Name == allowed) then
+			child.Parent = row
+		end
+	end
+	if allowed ~= EVERY then
+		for _, child in row:GetChildren() do
+			if child:IsA("GuiButton") and child.Name ~= allowed then
+				child.Parent = held
+			end
+		end
+	end
+end
+
 -- The card's rows for this device. On a phone the guide line (the distance to the
 -- step's target) sits right under the header, clear of the swim stick's resting
 -- ring at the screen's lower left, which lay over it (PC 2026-10-19: "21 ft to the
@@ -539,6 +911,7 @@ end
 local function showControls(step: TutorialConfig.Step)
 	shownDevice = device()
 	layoutCard()
+	present()
 	capsRow:ClearAllChildren()
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -653,19 +1026,18 @@ end
 -- The card turns to another step (or to a step shown done): a little bounce so it's
 -- noticed, and its keys; the trail or ring only for the step being played
 local function newCard(index: number, step: TutorialConfig.Step, done: boolean)
-	if shownStep ~= 0 then
-		local bounce = panel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-		bounce.Parent = panel
-		bounce.Scale = cardScale() * 1.08
-		Ui.tween(bounce, 0.4, { Scale = cardScale() }, Enum.EasingStyle.Back)
-		Sfx.play("Banner", { volume = 0.3 })
-	end
-	if not done and shownStep ~= index then
+	local first = shownStep == 0
+	-- (a phone's strip sits where the banner would open: the strip itself is the banner)
+	if not done and shownStep ~= index and device() ~= "touch" then
 		stepBanner(index, step)
 	end
 	shownStep = index
 	shownRecap = done
 	showControls(step)
+	if not first then
+		bounce(1.08, 0.4)
+		Sfx.play("Banner", { volume = 0.3 })
+	end
 	tipLine.Text = cursorTip()
 	guideKind = if done then nil else step.guide
 	pointKind = if done then nil else step.point
@@ -705,6 +1077,12 @@ local function drawRecap(index: number, s: { [string]: any })
 	countText.Text = "DONE ✓"
 	countText.TextColor3 = Ui.color.safe
 	Ui.tween(fill, 0.35, { Size = UDim2.fromScale(1, 1) })
+	stripStep.Text = `{index} / {#Tutorial.steps}`
+	stripTitle.Text = step.title
+	stripLine.Text = stepText.Text
+	stripLine.TextColor3 = Ui.color.haul
+	stripCounts("DONE ✓", Ui.color.safe)
+	Ui.tween(stripFill, 0.35, { Size = UDim2.fromScale(1, 1) })
 end
 
 -- The card for the step being played
@@ -736,6 +1114,12 @@ local function drawLive(s: { [string]: any })
 		countText.Text = if step.goal > 1 then `{progress} / {step.goal}` else ""
 	end
 	Ui.tween(fill, 0.35, { Size = UDim2.fromScale(progress / step.goal, 1) })
+	stripStep.Text = `{index} / {#Tutorial.steps}`
+	stripTitle.Text = step.title
+	stripLine.Text = step.phone
+	stripLine.TextColor3 = Ui.color.text
+	stripCounts(countText.Text, Ui.color.accent)
+	Ui.tween(stripFill, 0.35, { Size = UDim2.fromScale(progress / step.goal, 1) })
 end
 
 -- The card: a step shown done while any wait their turn, else the live step
@@ -759,8 +1143,11 @@ local function onState(s: { [string]: any })
 	if typeof(tutorial) ~= "table" then
 		return
 	end
+	rowAllowed = rowWanted(s)
+	sortRow()
 	if tutorial.done then
-		panel.Visible = false
+		showing = false
+		present()
 		table.clear(recaps)
 		recapStep = nil
 		showMarkers(nil, s)
@@ -768,7 +1155,8 @@ local function onState(s: { [string]: any })
 		pointKind = nil
 		clearPoint()
 		target = nil
-		hideTrail()
+		targetFish = nil
+		hideGuide()
 		-- A restart draws its first card afresh (its trail, banner and keys): the card
 		-- that was up when it finished may be the same step (PC 2026-10-20, DX: finished
 		-- at step 1, restarted, no trail)
@@ -804,8 +1192,9 @@ local function onState(s: { [string]: any })
 		liveShownAt = nil
 	end
 	liveStep = index
-	panel.Visible = true
+	showing = true
 	render(s)
+	present()
 end
 
 -- What the guide line says on a `point` step
@@ -819,7 +1208,7 @@ local POINT_LINES: { [string]: string } = {
 -- server's grant arrives, and be rebuilt)
 local function stepPoint()
 	local kind = pointKind
-	if kind == nil or not panel.Visible then
+	if kind == nil or not showing then
 		clearPoint()
 		return
 	end
@@ -836,19 +1225,28 @@ local function stepPoint()
 			ringRound(found)
 		end
 	end
-	guideArrow.Visible = false
-	guideLine.Text = POINT_LINES[kind] or ""
-	guideLine.Visible = true
+	showGuide(POINT_LINES[kind] or "", nil)
 end
 
 -- Every frame: find or refresh the target, draw the trail, write the distance (or
 -- ring the HUD button a `point` step needs)
 local function step(_dt: number)
+	-- Twice a second: the phone's button row (buttons join it late), and the strip
+	-- under the boss bar while one is up
+	local now = os.clock()
+	if now >= nextTidy then
+		nextTidy = now + 0.5
+		sortRow()
+		if strip.Visible then
+			local boss = Ui.bossBottom()
+			strip.Position = UDim2.new(0.5, 0, 0, if boss > 0 then boss + 6 else STRIP_TOP)
+		end
+	end
 	-- A step shown done has had its moment: the next one done, or the live step
-	if recapStep ~= nil and os.clock() >= recapUntil then
+	if recapStep ~= nil and now >= recapUntil then
 		recapStep = nil
 		local s = ClientState.current
-		if s and panel.Visible then
+		if s and showing then
 			render(s)
 		end
 	end
@@ -856,58 +1254,70 @@ local function step(_dt: number)
 	-- phone the card kept W A S D, MOUSE and the ALT tip, drawn while the simulator
 	-- still read as a keyboard; a pad picked up mid-step kept the keyboard's too)
 	local shown = Tutorial.steps[shownStep]
-	if shown and panel.Visible and device() ~= shownDevice then
+	if shown and showing and device() ~= shownDevice then
 		showControls(shown)
 		tipLine.Text = cursorTip()
 	end
-	if pointKind ~= nil and panel.Visible then
-		hideTrail()
+	if pointKind ~= nil and showing then
+		hideGuide()
 		stepPoint()
 		return
 	end
 	clearPoint()
-	if not panel.Visible or guideKind == nil then
-		hideTrail()
-		guideLine.Visible = false
-		guideArrow.Visible = false
+	if not showing or guideKind == nil then
+		hideGuide()
+		showGuide(nil, nil)
 		return
 	end
 	local root = SwimController.root()
 	if root == nil then
-		hideTrail()
+		hideGuide()
 		return
 	end
-	local now = os.clock()
 	if now >= nextSearch then
 		nextSearch = now + 0.5
 		target = findTarget(guideKind, root.Position, ClientState.current or {})
 	end
 	local to = target
 	if to == nil then
-		hideTrail()
-		guideLine.Visible = false
-		guideArrow.Visible = false
+		hideGuide()
+		showGuide(nil, nil)
 		return
 	end
+	-- A fish swims on between looks: the trail and the ring stay on it (eaten, by us or
+	-- anyone: look again now)
+	local fish = targetFish
+	if fish then
+		local live = SchoolController.fishPosition(fish)
+		if live then
+			to = live
+		else
+			nextSearch = 0
+		end
+	end
 	drawTrail(root.Position, to, now)
+	if viaWhat == nil and (guideKind == "food" or guideKind == "shells") then
+		drawRing(to, now)
+	else
+		hideRing()
+	end
 	local offset = to - root.Position
 	local distance = offset.Magnitude
 	-- The arrow turns relative to where the camera looks
 	local look = workspace.CurrentCamera.CFrame.LookVector
 	local cameraYaw = math.atan2(-look.X, -look.Z)
 	local targetYaw = math.atan2(-offset.X, -offset.Z)
-	guideArrow.Rotation = math.deg(targetYaw - cameraYaw)
-	guideArrow.Visible = true
-	local what = if viaTunnel
-		then "the tunnel into the hub"
-		elseif guideKind == "exits" then "the nearest exit"
-		elseif guideKind == "den" then "your den's pool"
-		elseif guideKind == "shells" then "the nearest shell"
-		elseif guideKind == "wheel" then "the Treasure Wheel"
-		else "the nearest food"
+	local what = viaWhat
+		or (
+			if guideKind == "exits"
+				then "the nearest exit"
+				elseif guideKind == "den" then "your den's pool"
+				elseif guideKind == "shells" then "the nearest shell"
+				elseif guideKind == "wheel" then "the Treasure Wheel"
+				else "the nearest food"
+		)
 	local vertical = if offset.Y > 8 then " · above you" elseif offset.Y < -8 then " · below you" else ""
-	guideLine.Text = `{Format.distance(distance)} to {what}{vertical}`
-	guideLine.Visible = true
+	showGuide(`{Format.distance(distance)} to {what}{vertical}`, math.deg(targetYaw - cameraYaw))
 end
 
 function TutorialController.start()
@@ -1016,6 +1426,7 @@ function TutorialController.start()
 		Ui.bar(panel, "Progress", UDim2.new(1, -28, 0, 5), UDim2.new(0, 14, 1, -13), Ui.color.accent)
 	fill = bar
 	panel.Visible = false
+	buildStrip()
 	markers = Instance.new("Folder")
 	markers.Name = "TutorialMarkers"
 	markers.Parent = workspace
@@ -1023,6 +1434,7 @@ function TutorialController.start()
 	trail.Name = "TutorialTrail"
 	trail.Parent = workspace
 	buildTrail()
+	buildRing()
 	ClientState.changed:connect(onState)
 	if ClientState.current then
 		onState(ClientState.current)
@@ -1031,19 +1443,11 @@ function TutorialController.start()
 	-- After the start screen the step pops, so a new player sees where to begin
 	StartController.afterStart(function()
 		task.wait(0.6)
-		if not panel.Visible then
+		if not showing then
 			return
 		end
 		Sfx.play("Banner", { volume = 0.4 })
-		local bounce = panel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-		bounce.Parent = panel
-		bounce.Scale = 1.14
-		Ui.tween(bounce, 0.5, { Scale = 1 }, Enum.EasingStyle.Back)
-		if stroke then
-			local was = stroke.Transparency
-			stroke.Transparency = 0
-			Ui.tween(stroke, 1.6, { Transparency = was })
-		end
+		bounce(1.14, 0.5)
 	end)
 end
 

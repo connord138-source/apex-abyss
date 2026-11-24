@@ -9,6 +9,9 @@
 -- swim toward it (`helpPoint`) while the stick is pushed. Not in the hub or a den,
 -- where the tunnels and shafts are the player's to steer. Tests read the point off the
 -- fish's client-side `AimHelp` attribute.
+-- Gamepads too since 2026-11-20 (docs/GAMEPLAN.md round 1 item 14): a pad's left stick
+-- steers the same way and its right stick aims the tilt, which a new player on a
+-- console leaves alone.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -26,7 +29,7 @@ local AimHelpController = {}
 -- Where the swim should lean toward now, or nil
 local function find(): Vector3?
 	local root = SwimController.root()
-	if root == nil or Input.locked or not Input.usingTouch() then
+	if root == nil or Input.locked or not (Input.usingTouch() or Input.isGamepad()) then
 		return nil
 	end
 	local from = root.Position

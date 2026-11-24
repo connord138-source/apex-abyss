@@ -136,7 +136,9 @@ return {
 		-- with the stick pushed, food or a shell a little above or below the way the
 		-- fish is heading tilts its swim toward it. Only the tilt: the heading stays the
 		-- player's. Not while UP or DOWN is held, nor indoors; a player aiming steeply
-		-- themselves (past `levelFull`) keeps their own.
+		-- themselves (past `levelFull`) keeps their own. Gamepads get it too since
+		-- 2026-11-20 (docs/GAMEPLAN.md round 1 item 14: consoles were the second biggest
+		-- group of new players and banked less often than computers, 45% against 61%).
 		touchHelp = {
 			range = 30, -- studs ahead it looks, plus `perLength` × the fish's length
 			perLength = 3,
@@ -199,6 +201,18 @@ return {
 		steerDeadZone = 0.12,
 		steerCurve = 1.25,
 		touchDeadZone = 0.1,
+		-- The phone stick's full push, in screen points from where the thumb came down
+		-- (HudController). It was the drawn ring's radius, 41 points on an iPhone, so a
+		-- twitch of the thumb was full speed and full turn (docs/GAMEPLAN.md round 1
+		-- item 11); the knob still rides inside the ring.
+		touchTravel = 72,
+		-- A learner's view levels itself on a phone (CameraController; round 1 item 10): a
+		-- stray swipe left the view tipped for good, and past `levelFull` the fish swims
+		-- where the view points and the aim help lets go, so it climbed or dived out of
+		-- the food by the seabed. While the tutorial isn't done, out of the hub and dens,
+		-- with the stick pushed, UP and DOWN let go and no touch aiming for `after`
+		-- seconds, the tilt eases back to `pitch` at `rate` a second.
+		touchLevel = { after = 1, rate = 2.2, pitch = -0.12 },
 		-- A stick's sideways push turns the aim: the fish's own turn rate × steerScale,
 		-- within these (radians/s), so the camera and the fish turn together
 		steerScale = 0.75,

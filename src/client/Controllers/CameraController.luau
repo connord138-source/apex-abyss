@@ -219,7 +219,7 @@ local function update(dt: number)
 	yaw -= look.X
 	-- A stick's sideways push (controller, phone) turns the aim, at the fish's own
 	-- turn rate so the camera and the fish swing round together
-	local _, steer = Input.drive()
+	local throttle, steer = Input.drive()
 	if steer ~= 0 then
 		local turn = SwimController.turnRate()
 		yaw -= steer * math.clamp(turn * tuning.steerScale, tuning.steerMin, tuning.steerMax) * dt
@@ -234,6 +234,22 @@ local function update(dt: number)
 	local root = SwimController.root()
 	local length = SwimController.length()
 	local character = SwimController.character()
+	-- A learner's view levels itself on a phone (Config/Tuning `camera.touchLevel`)
+	local level = tuning.touchLevel
+	if
+		root
+		and throttle ~= 0
+		and Input.usingTouch()
+		and Input.vertical() == 0
+		and Input.touchLookIdle() >= level.after
+		and not Layout.inHub(root.Position)
+	then
+		local s = ClientState.current
+		local tutorial = if s then s.tutorial else nil
+		if typeof(tutorial) == "table" and tutorial.done == false then
+			pitch += (level.pitch - pitch) * Spring.alpha(level.rate, dt)
+		end
+	end
 	-- Thin fish sit a little closer (Config/Species `camera`)
 	local speciesId = if character then character:GetAttribute("Species") else nil
 	local species = if typeof(speciesId) == "string" then Config.Species.byId[speciesId] else nil

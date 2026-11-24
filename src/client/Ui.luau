@@ -317,11 +317,28 @@ function Ui.tideBottom(): number
 	return 0
 end
 
+-- The bottom of a phone's tutorial strip at the top centre (TutorialController; design
+-- units), or 0 while it's not up. It stands in the tide chip's place (TideController
+-- hides its chip meanwhile), under the boss bar while one is up.
+function Ui.stripBottom(): number
+	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	local tutorial = playerGui and playerGui:FindFirstChild("Tutorial")
+	if tutorial == nil or not tutorial:IsA("ScreenGui") or not tutorial.Enabled then
+		return 0
+	end
+	local strip = tutorial:FindFirstChild("Strip")
+	if strip and strip:IsA("GuiObject") and strip.Visible then
+		return strip.Position.Y.Offset + strip.Size.Y.Offset
+	end
+	return 0
+end
+
 -- The bottom of everything stacked at the top centre: the boss bar or countdown,
--- and the tide chip under it. The SAFE ZONE chip and centre banners start below it
--- (playtest 2026-10-10: the tide chip was drawn over SAFE ZONE).
+-- and the tide chip (or a phone's tutorial strip) under it. The SAFE ZONE chip and
+-- centre banners start below it (playtest 2026-10-10: the tide chip was drawn over
+-- SAFE ZONE).
 function Ui.topBottom(): number
-	return math.max(Ui.bossBottom(), Ui.tideBottom())
+	return math.max(Ui.bossBottom(), Ui.tideBottom(), Ui.stripBottom())
 end
 
 -- Centre banners share the middle of the screen, so they take turns (playtest

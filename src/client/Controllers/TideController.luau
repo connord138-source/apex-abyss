@@ -197,10 +197,11 @@ local function step()
 	chip.Size = UDim2.fromOffset(250, if tall then 40 else 28)
 	nameLabel.Position = UDim2.fromOffset(32, if tall then 4 else 4)
 	dot.Position = UDim2.fromOffset(14, if tall then 9 else 9)
-	-- Under the boss bar while one is up; hidden on the start screen
+	-- Under the boss bar while one is up; hidden on the start screen, and while a
+	-- phone's tutorial strip stands in its place (TutorialController)
 	local bossBottom = Ui.bossBottom()
 	chip.Position = UDim2.new(0.5, 0, 0, if bossBottom > 0 then bossBottom + 6 else CHIP_TOP)
-	chip.Visible = not StartController.isUp()
+	chip.Visible = not StartController.isUp() and Ui.stripBottom() == 0
 end
 
 -- The tide now (a Config/Tides record), for the menus

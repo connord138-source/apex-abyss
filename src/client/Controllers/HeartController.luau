@@ -160,7 +160,7 @@ local function build(playerGui: Instance)
 		"Admire",
 		"ADMIRE",
 		UDim2.fromOffset(230, 44),
-		UDim2.new(1, -96, 1, -204),
+		UDim2.new(1, -176, 1, -204),
 		"primary"
 	)
 	phone.AnchorPoint = Vector2.new(1, 1)

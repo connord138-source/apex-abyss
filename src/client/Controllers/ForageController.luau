@@ -34,6 +34,7 @@ local Size = require(ReplicatedStorage.Shared.Size)
 local Timing = require(ReplicatedStorage.Shared.Timing)
 local AmbientBody = require(script.Parent.Parent.AmbientBody)
 local ClientState = require(script.Parent.Parent.ClientState)
+local Detail = require(script.Parent.Parent.Detail)
 local SwimController = require(script.Parent.SwimController)
 
 local Forage = Config.Forage
@@ -51,6 +52,9 @@ local SEND_INTERVAL = 0.06
 local MAX_CRABS = 40 -- crab bodies built at once (the nearest)
 local CRAB_BUILDS = 2 -- crab bodies built a frame at most
 local CRAB_FADE = 0.2 -- the last share of its range a crab fades over
+-- A crab's range goes with the client's draw detail (Detail), never under this share
+-- of it: a crab is food, and it has to be there to be seen before it's swum into
+local CRAB_DETAIL_LEAST = 0.5
 local ALARM_NEAR = 2.2 -- × its size (plus 4 studs): a fish it can't be eaten by this close alarms it
 local CELL = 48 -- studs a side of the grid's cells
 
@@ -389,6 +393,7 @@ local function stepCrabs(
 	frameCount += 1
 	local started = os.clock()
 	local builds = 0
+	local detail = math.max(Detail.value, CRAB_DETAIL_LEAST)
 	for _, food in crabFoods do
 		local crab = food.crab :: Crab
 		local def = crab.def
@@ -399,9 +404,10 @@ local function stepCrabs(
 		local size = def.size or 1
 		local away = (food.position - camera).Magnitude
 		crab.away = away
+		local range = look.range * detail
 		local body = crab.body
 		if body == nil then
-			if away >= look.range or food.hidden or builds >= CRAB_BUILDS or crabsBuilt >= MAX_CRABS then
+			if away >= range or food.hidden or builds >= CRAB_BUILDS or crabsBuilt >= MAX_CRABS then
 				continue
 			end
 			builds += 1
@@ -414,7 +420,7 @@ local function stepCrabs(
 			}, crabFolder :: Folder)
 			crab.body = body
 			AmbientBody.fade(body :: AmbientBody.Body, 1)
-		elseif away > look.range * 1.15 then
+		elseif away > range * 1.15 then
 			dropCrab(crab)
 			continue
 		end
@@ -425,7 +431,7 @@ local function stepCrabs(
 		end
 		local feet, moving = crabFeet(food, crab, now)
 		local middle = feet * CFrame.new(0, built.floor, 0)
-		local fade = math.clamp((away - look.range * (1 - CRAB_FADE)) / (look.range * CRAB_FADE), 0, 1)
+		local fade = math.clamp((away - range * (1 - CRAB_FADE)) / (range * CRAB_FADE), 0, 1)
 		fade = math.floor(fade * 10 + 0.5) / 10
 		local suckFrom: Vector3? = food.suckFrom
 		local sucking = typeof(suckFrom) == "Vector3"
@@ -642,12 +648,24 @@ end
 -- The nearest starfish, shrimp or crab still lying there (a crab only if this fish
 -- can swallow it), within `range` of `from`
 -- (`accept`, if given, says which places count: the aim help's cone, AimHelpController)
-function ForageController.nearest(from: Vector3, range: number, accept: ((Vector3) -> boolean)?): Vector3?
+-- Medkelp counts only for a fish with room for its Kelp Wrap, and never with
+-- `foodOnly` (the tutorial's guide: its trail led new players to a frond that feeds
+-- nothing and counts for nothing; docs/GAMEPLAN.md round 1 item 8)
+function ForageController.nearest(
+	from: Vector3,
+	range: number,
+	accept: ((Vector3) -> boolean)?,
+	foodOnly: boolean?
+): Vector3?
 	local best: Vector3? = nil
 	local bestDistance = range
 	local length = SwimController.length()
+	local noWraps = foodOnly == true or wrapsFull()
 	for _, food in foods do
 		if food.hidden then
+			continue
+		end
+		if noWraps and Forage.byId[food.kind].wrap == true then
 			continue
 		end
 		local crab = food.crab
