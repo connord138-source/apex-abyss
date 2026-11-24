@@ -348,7 +348,7 @@ The targets are mine, set to be checkable; they are not Roblox benchmarks.
 |---|---|---|---|---|---|---|
 | 0 | Measure load and early FPS; fix the pass | 11-12 | 11-13 ✔ | 11-13 (11d59d7, 01:01 UTC 11-14) | from 11-14 | 11-18: Season 1 live; cold joins 5-13 s, so round 2 stays where it is; load time and early FPS need the logging fix and more players |
 | 1 | First three minutes | 11-12: items 1, 4, 7 (half), 13, 15, 17; 11-13: items 2, 6, 18 (backdrop) | 11-13 ✔ | 11-13 (same publish) | from 11-14 | 11-18: no verdict, only 5 new players since the ad stopped. **11-20: keep.** 56 new players on 11-19: banked 41% (was 17%), finished the tutorial 21% (was 7%); phones banked 26% (was 11%) |
-| 1, third batch | First three minutes, phones first | 11-20: items 3, 7, 8, 9, 10, 11, 12, 14 (gamepads), 16 (most), 18 | 11-24 ✔ (Studio 0.748; two fixes found and made while testing) | not yet | | |
+| 1, third batch | First three minutes, phones first | 11-20: items 3, 7, 8, 9, 10, 11, 12, 14 (gamepads), 16 (most), 18 | 11-24 ✔ (Studio 0.748; two fixes found and made while testing) | 11-24, v59 | from 11-25 | |
 
 **First read, 2026-11-18 (Creator Hub, read by Claude in the signed-in built-in browser;
 Roblox showed a reporting-delay banner).**
@@ -451,10 +451,11 @@ sample: rounds 0 and 1 as published then, without the third batch.
   was 31), so items 3 and 16 are the ones to test and ship first.
 
 **Round 1 third batch, built 2026-11-20 (Connor: "keep going on round 1"). Tested in
-Studio on 2026-11-24 (results under its test list below); not committed and not
-published.** What changed is in `CLAUDE.md` ("Gameplan round 1, third batch"). It moves
+Studio on 2026-11-24 (results under its test list below), committed as f288e19 and
+published the same day as v59 at 18:14 UTC (Connor: "commit and publish").** What
+changed is in `CLAUDE.md` ("Gameplan round 1, third batch"). It moves
 the funnel's steps: "Tutorial: Shells" is now the last tutorial step, so read each step
-by name, and read rates from the publish date on. Left out on purpose: touch buttons on
+by name, and read rates from 2026-11-25 on (the first whole day). Left out on purpose: touch buttons on
 keyboard-plus-touch devices, far predators by detail, and shadows off on phones (the
 last one is Connor's call).
 
@@ -545,7 +546,7 @@ re-tested the same day.
 12. ✔ after a fix (below): 0.6 through the start screen and at the dive, then 0.73, 0.80,
     0.88 … 1.0 over about 15 s at 56 FPS.
 
-**Fixed while testing (both in the working tree with the batch):**
+**Fixed while testing (both in f288e19 with the batch):**
 - **Draw detail climbed back to 1 on the start screen.** A phone's plain start screen
   draws almost nothing, so its fast frames took the detail from 0.6 to 1 before the first
   dive (it read 1 at the dive). Now, while the fish is held still (`Input.locked`: the

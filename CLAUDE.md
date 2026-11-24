@@ -3587,8 +3587,8 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   Read numbers for LoadTime, FrameRateEarly and StartError from 2026-11-19 on.
 - **Gameplan round 1, third batch (owner, 2026-11-20: "keep going on round 1"; the rest
   of `docs/GAMEPLAN.md` round 1; tested in Studio 0.748 on 2026-11-24, every line that
-  could be run passing, with two phone faults fixed that day; not committed and not
-  published; the test list and results are in the plan's section 9):**
+  could be run passing, with two phone faults fixed that day; committed as f288e19 and
+  published that day as v59; the test list and results are in the plan's section 9):**
   - **Shells is the tutorial's last step** (`Config/Tutorial` v4: Eat, Haul, Bank, Roll,
     Wrap, Index, Wheel, Shells; it changes the 2026-11-08 order, where Shells was second
     and the wheel last). The Shells step stood between the first snacks and the first
@@ -3673,6 +3673,17 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     by detail (nothing measured says they cost much); **shadows off on phones (asked of
     Connor first: it changes the surface lighting on phones)**. Item 5 (the card points
     home at 40% Haul) is what item 2 already does.
+- **Published 2026-11-24** (owner: "commit and publish"; round 1's third batch) from
+  f288e19 at 18:14 UTC (13:14 on the PC) as **v59** (Creator Hub's version history for
+  the place lists 59 at that minute, ticked as published). Studio 0.748 had reopened
+  the file after its update, so the PlaceId was 0: Save to File, File → Publish →
+  Update existing experience… → TideBite Studios → the tile ("Public") → the place's
+  radio → Overwrite; Manage audience ("ages 16+") shut with Close; saved to file again.
+  The log then holds about 115 `Commit Failure: Publish Assets … 429` lines (the
+  scripts' version history, rate limited); the publishes of 11-05, 11-08 and 11-13
+  had 112-114 of them and went live whole, so they mean nothing for the place.
+  **The funnel's steps moved** (Shells is last): read each step by name, and read this
+  build's rates and FrameRateEarly on phones from 2026-11-25 on.
 
 ## Tech
 
