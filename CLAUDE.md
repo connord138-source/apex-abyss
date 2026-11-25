@@ -3709,6 +3709,13 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   from v2 and play (PlaybackLoudness peaks 130-300), with no "Failed to load sound".
   v3 comes back only if Roblox Support restores it (Connor has the appeal text; the
   request is his to send) or as a new, different pack: paste its id into `id`.
+  **Published 2026-11-25** from 50c885a at 15:49 UTC (10:49 on the PC) as **v60**
+  (Studio's Quick Link reads "Add publish notes to v60" and Creator Hub's version
+  history lists 60 at that minute). The PlaceId was still set, so Save to File and
+  File → Publish went straight through. Roblox's permission check answers
+  HasPermission for v2 on universe 10769954850 and NoPermission on Connor's two other
+  universes, so the grant is real (`check-permissions`, read in the signed-in browser
+  pane). Claude can't hear the live game: Connor's ears are the last check.
 
 ## Tech
 
