@@ -15,8 +15,14 @@
 -- v2 (owner, 2026-10-11: "The music is horrible too ... it's just random bells"):
 -- no bells in the beds or everyday cues (tools/audio/make_sfx.py); real music is
 -- Config/Music. v3 (owner, 2026-10-20: the bite "sounds like a coconut falling"):
--- Snap and Bite are teeth clacking shut and a wet crunch, nothing else changed. Until
--- v3's id is pasted into `id`, the v2 pack (`legacy`) keeps playing.
+-- Snap and Bite are teeth clacking shut and a wet crunch, nothing else changed. While
+-- `id` is 0 the v2 pack (`legacy`) plays.
+--
+-- v2 plays again since 2026-11-25 (owner: "v2 now"): Roblox moderated the v3 upload
+-- 76355431920138 (found 2026-11-24, no reason given; the game had been silent since
+-- about 2026-11-07) and rejected a second upload of the same file (118626695497042)
+-- within a minute. Don't upload that file again; when Roblox restores v3, or a new pack
+-- is approved, paste its id into `id`.
 export type Region = { number } -- { start, length } in seconds
 export type Pack = { id: number, regions: { [string]: Region }, skip: { [string]: boolean }? }
 
@@ -27,7 +33,7 @@ local Sounds: {
 	legacy: Pack,
 } =
 	{
-		id = 76355431920138, -- the uploaded v3 apex_sfx.ogg (Creator Hub → Development Items → Audio); 0 plays `legacy`
+		id = 0, -- 0 plays `legacy` (v2); v3's id was 76355431920138 (moderated, see above)
 		regions = {
 			-- BEGIN REGIONS (written by tools/audio/make_sfx.py; { start, length } in seconds)
 			AmbientShallow = { 0.100, 14.500 },

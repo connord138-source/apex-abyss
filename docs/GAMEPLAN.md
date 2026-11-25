@@ -459,6 +459,12 @@ by name, and read rates from 2026-11-25 on (the first whole day). Left out on pu
 keyboard-plus-touch devices, far predators by detail, and shadows off on phones
 (Connor, 2026-11-24: "keep shadows").
 
+**Sound was missing through all of this.** Roblox moderated the v3 sound pack around
+2026-11-07, so every build from 11-08 to v59 most likely ran with no effects or water
+beds (the music played). The v2 pack is back from the 2026-11-25 publish (Connor: "v2
+now"), so reads from that publish on have sound and the earlier ones don't: keep that
+beside the third batch's numbers.
+
 **Round 1 third-batch test list (Studio Play, when the PC is free)**
 Keyboard, fresh save (admin reset):
 1. The card reads STEP 1 OF 8, EAT 5 SMALL THINGS; then GROW YOUR HAUL, BANK IT AT HOME,

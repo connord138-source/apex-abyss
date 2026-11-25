@@ -3685,7 +3685,7 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   had 112-114 of them and went live whole, so they mean nothing for the place.
   **The funnel's steps moved** (Shells is last): read each step by name, and read this
   build's rates and FrameRateEarly on phones from 2026-11-25 on.
-- **The v3 sound pack was moderated (found 2026-11-24, not fixed):** Creator Hub's page
+- **The v3 sound pack was moderated (found 2026-11-24; v2 plays since 2026-11-25):** Creator Hub's page
   for `apex_sfx` 76355431920138 (`Config/Sounds` `id`) reads "Your audio was moderated."
   with no reason given, and Studio has logged "Failed to load sound … Asset is not
   approved for the requester" for it since 2026-11-07. Every effect and the three water
@@ -3694,6 +3694,21 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   played while `id` is 0) is not moderated; it may need granting to universe
   10769954850 like v3 did. Connor was given both ways back (`id = 0` and the grant, or
   a new upload of v3) and chose the upload (2026-11-24: "UPLOAD V3").
+  **The new upload was rejected at once:** `assets/audio/apex_sfx.ogg` went up through
+  the Asset Manager at 00:50 UTC 2026-11-25 as 118626695497042 (TideBite Studios, fee
+  0) and read "Your audio was moderated." within a minute (the Asset Manager's warning
+  icon says "Violation", the log `AssetDelivery403Moderated`); the same ten minutes on.
+  Neither copy has an entry on the account's Violations & Appeals page, so an appeal
+  goes through Roblox Support. **Don't upload this file a third time.** v2 still loads
+  in the group's place (111.7 s) and was granted to the universe by its own upload
+  dialog.
+  **v2 plays again (owner, 2026-11-25: "v2 now"):** `Config/Sounds` `id = 0`, so `Sfx`
+  plays `legacy` (v2, 126295816698039). The bite is v2's again (the one Connor called
+  "a coconut falling"); everything else sounds the same. Studio Play in the cloud place
+  that day: the three beds, Bubble, Dash, Snap, Forage, Banner and BossWarning all load
+  from v2 and play (PlaybackLoudness peaks 130-300), with no "Failed to load sound".
+  v3 comes back only if Roblox Support restores it (Connor has the appeal text; the
+  request is his to send) or as a new, different pack: paste its id into `id`.
 
 ## Tech
 
