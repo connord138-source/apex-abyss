@@ -3670,9 +3670,10 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
     Computer, Console, Tablet) in the URL.
   - **Not built, on purpose:** touch buttons on keyboard-plus-touch devices (eight
     controllers build theirs once at start; needs such a device to test); far predators
-    by detail (nothing measured says they cost much); **shadows off on phones (asked of
-    Connor first: it changes the surface lighting on phones)**. Item 5 (the card points
-    home at 40% Haul) is what item 2 already does.
+    by detail (nothing measured says they cost much); **shadows off on phones (owner,
+    2026-11-24: "keep shadows"; tried that day in the phone simulator, where the rocks
+    and kelp went brighter and flatter, and undone; don't ask again without new phone
+    numbers)**. Item 5 (the card points home at 40% Haul) is what item 2 already does.
 - **Published 2026-11-24** (owner: "commit and publish"; round 1's third batch) from
   f288e19 at 18:14 UTC (13:14 on the PC) as **v59** (Creator Hub's version history for
   the place lists 59 at that minute, ticked as published). Studio 0.748 had reopened
@@ -3684,6 +3685,15 @@ Every decision below was made with the owner on 2026-10-06. The details are in `
   had 112-114 of them and went live whole, so they mean nothing for the place.
   **The funnel's steps moved** (Shells is last): read each step by name, and read this
   build's rates and FrameRateEarly on phones from 2026-11-25 on.
+- **The v3 sound pack was moderated (found 2026-11-24, not fixed):** Creator Hub's page
+  for `apex_sfx` 76355431920138 (`Config/Sounds` `id`) reads "Your audio was moderated."
+  with no reason given, and Studio has logged "Failed to load sound … Asset is not
+  approved for the requester" for it since 2026-11-07. Every effect and the three water
+  beds are stretches of that one file, so the live game has most likely had none of
+  them since then (`Config/Music` is separate). The v2 pack 126295816698039 (`legacy`,
+  played while `id` is 0) is not moderated; it may need granting to universe
+  10769954850 like v3 did. Connor was given both ways back (`id = 0` and the grant, or
+  a new upload of v3) and chose the upload (2026-11-24: "UPLOAD V3").
 
 ## Tech
 

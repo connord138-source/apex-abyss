@@ -212,8 +212,8 @@ Safety and smoothness:
 16. **Built 11-20:** touch devices start at detail 0.6; the floor can fall to 0.4 under
     25 FPS; detail also scales the kelp's sway reach and the crabs. **Not built:** far
     predators (no measurement says they cost much; wait for a phone profile), and
-    shadows off on touch (**owner:** it changes the surface lighting on phones, which
-    the standing rule says to leave alone).
+    shadows off on touch (**owner, 2026-11-24: "keep shadows".** Tried that day in the
+    phone simulator, where the rocks and kelp went brighter and flatter, and undone).
 17. **Built 11-12.** Skin previews load once a roll is half earned, not at join.
 18. **Built 11-20.** The first dive waits for the sea floor to load (capped at 8 s).
     **Built 11-13 (owner: yes):** touch devices show only the backdrop on the start
@@ -456,8 +456,8 @@ published the same day as v59 at 18:14 UTC (Connor: "commit and publish").** Wha
 changed is in `CLAUDE.md` ("Gameplan round 1, third batch"). It moves
 the funnel's steps: "Tutorial: Shells" is now the last tutorial step, so read each step
 by name, and read rates from 2026-11-25 on (the first whole day). Left out on purpose: touch buttons on
-keyboard-plus-touch devices, far predators by detail, and shadows off on phones (the
-last one is Connor's call).
+keyboard-plus-touch devices, far predators by detail, and shadows off on phones
+(Connor, 2026-11-24: "keep shadows").
 
 **Round 1 third-batch test list (Studio Play, when the PC is free)**
 Keyboard, fresh save (admin reset):
